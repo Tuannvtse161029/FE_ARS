@@ -54,3 +54,36 @@ export const registerSchema = yup.object({
 
 export type LoginFormData = yup.InferType<typeof loginSchema>;
 export type RegisterFormData = yup.InferType<typeof registerSchema>;
+
+// Reset Password schemas
+
+export const forgotPasswordSchema = yup.object({
+  email: yup
+    .string()
+    .required('Email is required')
+    .email('Invalid email format'),
+});
+
+export const verifyOtpSchema = yup.object({
+  otp: yup
+    .string()
+    .required('Verification code is required')
+    .matches(/^\d{6}$/, 'Code must be exactly 6 digits'),
+});
+
+export const resetPasswordSchema = yup.object({
+  newPassword: yup
+    .string()
+    .required('New password is required')
+    .min(8, 'Password must be at least 8 characters')
+    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .matches(/[0-9]/, 'Password must contain at least one number'),
+  confirmPassword: yup
+    .string()
+    .required('Please confirm your password')
+    .oneOf([yup.ref('newPassword')], 'Passwords must match'),
+});
+
+export type ForgotPasswordFormData = yup.InferType<typeof forgotPasswordSchema>;
+export type VerifyOtpFormData = yup.InferType<typeof verifyOtpSchema>;
+export type ResetPasswordFormData = yup.InferType<typeof resetPasswordSchema>;

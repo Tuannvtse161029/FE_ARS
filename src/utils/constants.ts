@@ -6,6 +6,9 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/auth/register',
     REFRESH: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    VERIFY_OTP: '/api/auth/verify-otp',
+    RESET_PASSWORD: '/api/auth/reset-password',
   },
   USER: {
     BASE: '/api/user',
@@ -31,15 +34,19 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const ROLES = {
-  ADMIN: 'Admin',
   RESEARCHER: 'Researcher',
   REVIEWER: 'Reviewer',
+  LECTURER: 'Lecturer',
+  GRADUATE_STUDENT: 'Graduate Student',
 } as const;
+
+export type RoleName = typeof ROLES[keyof typeof ROLES];
 
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   REGISTER: '/register',
+  FORGOT_PASSWORD: '/forgot-password',
   FORUM: '/forum',
   DASHBOARD: '/dashboard',
   USERS: '/users',

@@ -6,3 +6,12 @@ dist
 .env.local
 .env.*.local
 coverage
+
+# Local-only secrets & credentials — never commit
+docs/local-only/
+secrets/
+*.pem
+*.key
+*.pfx
+appsettings.Development.json
+appsettings.*.local.json

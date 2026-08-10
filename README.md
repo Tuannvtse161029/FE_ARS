@@ -16,7 +16,7 @@ Academic Research System - Frontend Application built with React + TypeScript + 
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 
 ### Installation
@@ -46,7 +46,7 @@ VITE_APP_URL=http://localhost:3000
 
 ## Project Structure
 
-```
+```text
 src/
 ├── assets/          # Images, icons, fonts
 ├── components/      # Reusable components
@@ -55,16 +55,16 @@ src/
 ├── pages/           # Page components
 │   └── Login/
 ├── layouts/         # Layout components
-├── routes/         # Routing configuration
+├── routes/          # Routing configuration
 ├── services/        # API services
-├── context/        # React Context
-├── store/          # Zustand store
-├── types/          # TypeScript types
-├── utils/          # Utility functions
-├── styles/         # Global styles
-├── config/         # App configuration
-├── hooks/          # Custom hooks
-└── lib/            # Library setup
+├── context/         # React Context
+├── store/           # Zustand store
+├── types/           # TypeScript types
+├── utils/           # Utility functions
+├── styles/          # Global styles
+├── config/          # App configuration
+├── hooks/           # Custom hooks
+└── lib/             # Library setup
 ```
 
 ## Features
@@ -85,7 +85,7 @@ The frontend expects the backend API to be running at `http://localhost:5000`. T
 
 ## Default Test Account
 
-- **Username**: admin@arsplatform.com
+- **Username**: <admin@arsplatform.com>
 - **Password**: Password123
 
 (Configure in backend seed data)

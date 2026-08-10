@@ -8,12 +8,12 @@
 /* Sidebar Styling */
 .sidebar {
   width: 260px;
-  background-color: #1e2538; /* Rich dark navy blue */
+  background-color: #0f172a; /* Deep dark navy — matches your image */
   color: #94a3b8;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid #2e374d;
+  border-right: 1px solid #1e293b;
 }
 
 .sidebarHeader {
@@ -34,16 +34,18 @@
 
 .logoTitle {
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .logoSubtitle {
   font-size: 0.65rem;
   font-weight: 500;
-  color: #64748b;
+  color: #94a3b8;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .sidebarNav {
@@ -74,9 +76,9 @@
 }
 
 .navItemActive {
-  background-color: rgba(37, 99, 235, 0.15); /* Light blue highlight background */
-  color: #3b82f6 !important; /* Bright blue text */
-  font-weight: 600;
+  background-color: #2563eb; /* Bright blue fill — matches your image */
+  color: #ffffff !important; /* White text */
+  font-weight: 700;
 }
 
 .navIcon {
@@ -93,7 +95,7 @@
 .navDot {
   width: 6px;
   height: 6px;
-  background-color: #3b82f6;
+  background-color: #f97316; /* Orange dot — matches your image */
   border-radius: 50%;
   position: absolute;
   right: var(--spacing-4);
@@ -165,8 +167,11 @@
 
 .userCardRole {
   font-size: var(--font-size-xs);
-  color: #64748b;
+  color: #2563eb;
   margin-top: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .logoutButton {
@@ -381,7 +386,10 @@
 
 .userPillRole {
   font-size: 0.65rem;
-  color: #64748b;
+  color: #2563eb;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Content Body */

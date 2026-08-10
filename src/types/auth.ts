@@ -3,6 +3,7 @@ export interface LoginRequest {
   password: string;
 }
 
+// UserRole - only for self-registration (excludes Admin which is DB-only)
 export type UserRole = 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student';
 
 export interface RegisterPayload {

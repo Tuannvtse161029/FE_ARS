@@ -1,0 +1,75 @@
+---
+description: Authentication rules - email login and session auto-clear
+alwaysApply: true
+---
+
+# Authentication Rules
+
+## Login Credentials
+
+- **Always use email** for login — not username
+- The login form must have an `email` field (not `username`)
+- The authentication service must send `email` and `password` to the API
+
+```typescript
+// ❌ WRONG
+const loginData = { username, password };
+
+// ✅ CORRECT
+const loginData = { email, password };
+```
+
+## Session & "Remember Me" Behavior
+
+### Default Behavior (Remember Me OFF)
+- Store auth data (token, user info) in **sessionStorage**
+- When the browser tab or window is closed, the session is **automatically cleared**
+- User must re-login on next visit
+
+### Remember Me ON
+- Store auth data in **localStorage**
+- Session persists across browser restarts
+- User stays logged in until manually logged out
+
+```typescript
+// Example implementation pattern:
+// if (rememberMe) → localStorage.setItem('auth', token)
+// else → sessionStorage.setItem('auth', token)
+```
+
+## Implementation Checklist
+
+When implementing auth:
+
+- [ ] Login form has `email` and `password` fields (and a "Remember Me" checkbox)
+- [ ] Auth service/API calls use `email` field, not `username`
+- [ ] Without "Remember Me": use `sessionStorage`
+- [ ] With "Remember Me": use `localStorage`
+- [ ] Logout clears both `sessionStorage` and `localStorage`
+- [ ] Auth guard/redirect logic checks the appropriate storage
+
+## Storage Keys Convention
+
+```typescript
+// Without Remember Me (sessionStorage - clears on tab close)
+sessionStorage.setItem('ars_token', token);
+sessionStorage.setItem('ars_user', JSON.stringify(user));
+
+// With Remember Me (localStorage - persists)
+localStorage.setItem('ars_token', token);
+localStorage.setItem('ars_user', JSON.stringify(user));
+```
+
+## Logout
+
+Always clear both storages to ensure complete logout:
+
+```typescript
+const logout = () => {
+  localStorage.removeItem('ars_token');
+  localStorage.removeItem('ars_user');
+  sessionStorage.removeItem('ars_token');
+  sessionStorage.removeItem('ars_user');
+  // redirect to login
+};
+```

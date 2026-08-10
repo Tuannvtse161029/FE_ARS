@@ -134,7 +134,7 @@ const Login = () => {
             <span className={styles.toggleSlider}></span>
             <span className={styles.toggleLabel}>Remember me</span>
           </label>
-          <Link to="/" className={styles.forgotLink}>
+          <Link to={ROUTES.FORGOT_PASSWORD} className={styles.forgotLink}>
             Forgot password?
           </Link>
         </div>

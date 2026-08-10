@@ -15,7 +15,7 @@ const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true, // true until persisted state is rehydrated
 
       login: (user: User, token: string) => {
         set({
@@ -52,6 +52,13 @@ const useAuthStore = create<AuthStore>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // After rehydration, clear the initial loading flag
+        // so the route guard can see the real auth state
+        if (state) {
+          state.isLoading = false;
+        }
+      },
     }
   )
 );

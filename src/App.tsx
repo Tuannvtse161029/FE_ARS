@@ -5,6 +5,9 @@ import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import ForgotPassword from './pages/ResetPassword/ForgotPassword';
+import VerifyOtp from './pages/ResetPassword/VerifyOtp';
+import ResetPassword from './pages/ResetPassword/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { MainLayout } from './layouts/MainLayout';
 import { Forum } from './pages/Forum';
@@ -31,6 +34,9 @@ const App = () => {
             <Route element={<AuthLayout />}>
               <Route path={ROUTES.LOGIN} element={<Login />} />
               <Route path={ROUTES.REGISTER} element={<Register />} />
+              <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+              <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtp />} />
+              <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
             </Route>
           </Route>
 
@@ -50,7 +56,7 @@ const App = () => {
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
               <Route path={ROUTES.REVIEW_TASKS} element={<ReviewTasks />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />
-              <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
             </Route>
           </Route>
 

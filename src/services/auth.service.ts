@@ -68,6 +68,26 @@ export const authService = {
   isAuthenticated: (): boolean => {
     return !!storage.getToken();
   },
+
+  // --- Reset Password flow (TEST MOCK — restore real BE calls before prod) ---
+  forgotPassword: async (_email: string): Promise<void> => {
+    // TODO (BE): Replace with real POST /api/auth/forgot-password
+    await new Promise((r) => setTimeout(r, 800)); // simulate network
+    console.log('[MOCK] forgotPassword called — replace with real BE call');
+  },
+
+  verifyOtp: async (_payload: { email: string; otp: string }): Promise<{ resetToken: string }> => {
+    // TODO (BE): Replace with real POST /api/auth/verify-otp
+    await new Promise((r) => setTimeout(r, 800)); // simulate network
+    console.log('[MOCK] verifyOtp called — replace with real BE call');
+    return { resetToken: 'mock-reset-token-123456' };
+  },
+
+  resetPassword: async (_payload: { token: string; newPassword: string }): Promise<void> => {
+    // TODO (BE): Replace with real POST /api/auth/reset-password
+    await new Promise((r) => setTimeout(r, 800)); // simulate network
+    console.log('[MOCK] resetPassword called — replace with real BE call');
+  },
 };
 
 export default authService;

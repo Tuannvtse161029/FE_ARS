@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
+import type { UserRole } from '../types/auth';
 import styles from './MainLayout.module.css';
 
 // SVG Icons
@@ -81,10 +82,9 @@ const SettingsIcon = () => (
 );
 
 const ARSPlatformLogo = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="24" height="24" rx="6" fill="#2563EB" />
-    <path d="M12 5L18 10V18H6V10L12 5Z" fill="white" opacity="0.8" />
-    <path d="M9 12H15V18H9V12Z" fill="#1D2A4A" />
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="36" height="36" rx="8" fill="#2563EB" />
+    <text x="18" y="24" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="800">A</text>
   </svg>
 );
 
@@ -100,10 +100,10 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Selected role for mockup switching
-  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>(() => {
+  // Selected role for mockup switching (excludes Admin - must login to access)
+  const [activeRole, setActiveRole] = useState<UserRole>(() => {
     const saved = localStorage.getItem('ars_active_role');
-    return (saved as any) || 'Researcher';
+    return (saved as UserRole) || 'Researcher';
   });
 
   // Wallet balance sync state
@@ -122,13 +122,13 @@ export const MainLayout = () => {
   }, []);
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const role = e.target.value as 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student';
+    const role = e.target.value as UserRole;
     setActiveRole(role);
     localStorage.setItem('ars_active_role', role);
 
     // Redirect to default pages based on role selection
     if (role === 'Researcher') {
-      navigate(ROUTES.DASHBOARD);
+      navigate(ROUTES.FORUM);
     } else if (role === 'Reviewer') {
       navigate(ROUTES.DASHBOARD);
     } else if (role === 'Lecturer') {
@@ -203,8 +203,8 @@ export const MainLayout = () => {
           <div className={styles.logoContainer}>
             <ARSPlatformLogo />
             <div className={styles.logoText}>
-              <span className={styles.logoTitle}>ARS</span>
-              <span className={styles.logoSubtitle}>RESEARCH PLATFORM</span>
+              <span className={styles.logoTitle}>ARS PLATFORM</span>
+              <span className={styles.logoSubtitle}>Academic Research System</span>
             </div>
           </div>
         </div>

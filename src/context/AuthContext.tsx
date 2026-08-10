@@ -24,22 +24,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const storedUser = authService.getCurrentUser();
-    if (storedUser && storage.getToken()) {
-      authStore.login(
-        {
-          id: 0,
-          username: storedUser.username,
-          email: storedUser.email,
-          fullName: storedUser.username,
-          roleId: 0,
-          roleName: storedUser.role,
-        },
-        storedUser.token
-      );
-    }
-  }, []);
+  // Session is restored automatically via Zustand persist (reads from ars-auth-storage).
+  // The old useEffect that re-imported from ars_token/ars_user is removed
+  // because it caused a double-write that triggered isLoading=true and blank screens.
 
   const login = async (credentials: LoginRequest) => {
     setIsLoading(true);
@@ -62,7 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.token
       );
 
+      // Normalize: strip whitespace and match lowercase. Redirect Researcher → Forum, others → Dashboard.
+      // Always redirect to Dashboard after login. Dashboard is the default landing
+      // page and contains the role-aware Researcher Central view.
       navigate(ROUTES.DASHBOARD);
+      localStorage.setItem('ars_active_role', response.role ?? '');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
       setError(errorMessage);

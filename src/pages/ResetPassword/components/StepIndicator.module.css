@@ -1,0 +1,80 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-6);
+  padding: 0 var(--spacing-2);
+}
+
+.stepWrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.stepWrapper:last-child {
+  flex: 0 0 auto;
+}
+
+.stepRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  min-width: 64px;
+}
+
+.circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-bg-secondary, #f3f4f6);
+  color: var(--color-text-muted, #6b7280);
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold, 600);
+  transition: all 0.2s ease;
+}
+
+.circleActive {
+  background-color: #0075ff;
+  color: #ffffff;
+  border-color: #0075ff;
+  box-shadow: 0 0 0 4px rgba(0, 117, 255, 0.15);
+}
+
+.circleCompleted {
+  background-color: #0075ff;
+  color: #ffffff;
+  border-color: #0075ff;
+}
+
+.label {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-muted, #6b7280);
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+}
+
+.labelActive {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.connector {
+  flex: 1;
+  height: 2px;
+  background-color: var(--color-border, #e5e7eb);
+  margin: 0 var(--spacing-2);
+  margin-bottom: 26px;
+  transition: background-color 0.2s ease;
+}
+
+.connectorCompleted {
+  background-color: #0075ff;
+}
