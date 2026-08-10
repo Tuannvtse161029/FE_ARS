@@ -10,6 +10,9 @@ import { MainLayout } from './layouts/MainLayout';
 import { Forum } from './pages/Forum';
 import { Papers } from './pages/Papers';
 import { Reviewers } from './pages/Reviewers';
+import { EvaluationDesk } from './pages/Reviewers/components/EvaluationDesk';
+import { SeminarWorkspace } from './pages/Lecturer/SeminarWorkspace';
+import { ResearchGroup } from './pages/Lecturer/ResearchGroup';
 import './styles/globals.css';
 
 const App = () => {
@@ -32,6 +35,9 @@ const App = () => {
               <Route path={ROUTES.FORUM} element={<Forum />} />
               <Route path={ROUTES.PAPERS} element={<Papers />} />
               <Route path={ROUTES.REVIEWERS} element={<Reviewers />} />
+              <Route path={ROUTES.EVALUATION} element={<EvaluationDesk />} />
+              <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
+              <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>

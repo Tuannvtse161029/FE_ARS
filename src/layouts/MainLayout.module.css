@@ -99,6 +99,21 @@
   right: var(--spacing-4);
 }
 
+.navBadge {
+  background-color: #4f46e5;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: var(--spacing-4);
+}
+
 .disabledNavItem {
   opacity: 0.5;
   cursor: not-allowed;
@@ -237,6 +252,39 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-4);
+}
+
+.roleSwitcherContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-right: var(--spacing-2);
+}
+
+.roleSwitcherLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.roleSelect {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-1) var(--spacing-2.5);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #334155;
+  outline: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.roleSelect:hover {
+  border-color: #94a3b8;
+  background-color: #ffffff;
 }
 
 /* Wallet Badge */

@@ -14,6 +14,7 @@ interface Reviewer {
   fee: number;
   tags: string[];
   orcid: string;
+  specializations: string[];
 }
 
 interface ReviewRequest {
@@ -30,12 +31,12 @@ interface ReviewRequest {
 export const Reviewers = () => {
   // Navigation & Tabs state
   const [activeTab, setActiveTab] = useState<'discover' | 'requests'>('discover');
-  const [screenState, setScreenState] = useState<'list' | 'create-request'>('list');
+  const [screenState, setScreenState] = useState<'list' | 'create-request' | 'checkout'>('list');
 
   // Wallet state
   const [walletBalance, setWalletBalance] = useState(() => {
     const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 500000;
+    return saved ? parseInt(saved, 10) : 1500000; // Default to 1,500,000 VND
   });
 
   // Selected reviewer for creating request
@@ -46,8 +47,14 @@ export const Reviewers = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Form states
-  const [selectedPaper, setSelectedPaper] = useState('Framework_Design_V2.pdf');
+  const [selectedPaper, setSelectedPaper] = useState('Framework_Design_v2.pdf');
   const [notes, setNotes] = useState('');
+  const [priority, setPriority] = useState('Standard Priority');
+  const [requestedByDate, setRequestedByDate] = useState('2024-12-31');
+
+  // Checkout states
+  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
   // Review requests history state
   const [requests, setRequests] = useState<ReviewRequest[]>([]);
@@ -56,7 +63,7 @@ export const Reviewers = () => {
   useEffect(() => {
     const handleWalletUpdate = () => {
       const saved = localStorage.getItem('ars_wallet');
-      setWalletBalance(saved ? parseInt(saved, 10) : 500000);
+      setWalletBalance(saved ? parseInt(saved, 10) : 1500000);
     };
     window.addEventListener('wallet-update', handleWalletUpdate);
     return () => window.removeEventListener('wallet-update', handleWalletUpdate);
@@ -68,13 +75,14 @@ export const Reviewers = () => {
       name: 'Dr. Nguyen Van A',
       title: 'Senior Lecturer',
       initials: 'NA',
-      avatarBg: '#14b8a6', // Teal
+      avatarBg: '#1D2A4A', // Deep navy
       hIndex: 24,
       publications: 87,
       reviews: 142,
       fee: 500000,
       tags: ['#ComputerScience', '#DistributedSystems'],
-      orcid: '0000-0002-1234-5678',
+      orcid: '0000-0002-1823-xxxx',
+      specializations: ['Machine Learning', 'Data Science', 'NLP', 'HCI']
     },
     {
       id: 'rev-2',
@@ -88,6 +96,7 @@ export const Reviewers = () => {
       fee: 750000,
       tags: ['#SoftwareEngineering', '#CloudComputing'],
       orcid: '0000-0003-9876-5432',
+      specializations: ['Distributed Systems', 'Cloud Computing', 'Escrow Security']
     },
     {
       id: 'rev-3',
@@ -101,6 +110,7 @@ export const Reviewers = () => {
       fee: 400000,
       tags: ['#DistributedSystems', '#NetworkSystems'],
       orcid: '0000-0001-5555-4444',
+      specializations: ['Mobile Networks', 'IoT Protocols', 'Cyber Security']
     },
   ];
 
@@ -109,15 +119,43 @@ export const Reviewers = () => {
     setScreenState('create-request');
   };
 
+  const handleProceedToPayment = () => {
+    setScreenState('checkout');
+  };
+
+  const handlePinInput = (index: number, val: string) => {
+    if (!/^\d*$/.test(val)) return; // numbers only
+    const nextPin = [...pinDigits];
+    nextPin[index] = val.slice(-1);
+    setPinDigits(nextPin);
+
+    // Auto-focus next input
+    if (val && index < 5) {
+      const nextEl = document.getElementById(`pin-${index + 1}`);
+      nextEl?.focus();
+    }
+
+    // If fully filled, trigger payment processing
+    if (nextPin.every((d) => d !== '') && index === 5) {
+      setIsProcessingCheckout(true);
+      setTimeout(() => {
+        handleConfirmRequest();
+      }, 1500);
+    }
+  };
+
   const handleConfirmRequest = () => {
     if (!selectedReviewer) return;
 
+    const totalDeductible = selectedReviewer.fee + 25000; // Fee + processing tax
+
     // Deduct from wallet
-    const newVal = walletBalance - selectedReviewer.fee;
+    const newVal = walletBalance - totalDeductible;
     localStorage.setItem('ars_wallet', newVal.toString());
     window.dispatchEvent(new Event('wallet-update'));
 
     // Open Success Modal
+    setIsProcessingCheckout(false);
     setShowSuccessModal(true);
   };
 
@@ -134,7 +172,7 @@ export const Reviewers = () => {
       reviewerInitials: selectedReviewer.initials,
       reviewerAvatarBg: selectedReviewer.avatarBg,
       date: today,
-      fee: selectedReviewer.fee,
+      fee: selectedReviewer.fee + 25000, // Total fee
       status: 'Pending',
     };
 
@@ -144,16 +182,18 @@ export const Reviewers = () => {
     setActiveTab('requests');
     setSelectedReviewer(null);
     setNotes('');
+    setPinDigits(['', '', '', '', '', '']);
   };
 
   const handleTopUpSuccess = (amount: number) => {
-    // When top up completes, refresh balance and show alert/prompt
     console.log(`Successfully topped up ${amount} VND`);
   };
 
   return (
     <div className={styles.reviewersPage}>
-      {/* List Screen */}
+      {/* ─────────────────────────────────────────────────────────────────────────
+         LIST SCREEN
+         ─────────────────────────────────────────────────────────────────────── */}
       {screenState === 'list' && (
         <>
           {/* Page Title */}
@@ -191,7 +231,7 @@ export const Reviewers = () => {
                   value={selectedPaper}
                   onChange={(e) => setSelectedPaper(e.target.value)}
                 >
-                  <option>Framework_Design_V2.pdf</option>
+                  <option>Framework_Design_v2.pdf</option>
                   <option>Cloud_Routing_v1.pdf</option>
                   <option>Microservice_Consensus_v3.pdf</option>
                 </select>
@@ -329,7 +369,7 @@ export const Reviewers = () => {
                           <td className={styles.feeCell}>{req.fee.toLocaleString('vi-VN')} VND</td>
                           <td>
                             <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>
-                              ● {req.status}
+                              ● Pending
                             </span>
                           </td>
                           <td>
@@ -361,17 +401,25 @@ export const Reviewers = () => {
         </>
       )}
 
-      {/* Create Review Request Form Screen */}
+      {/* ─────────────────────────────────────────────────────────────────────────
+         CREATE PAID REVIEW REQUEST SCREEN (FRAME 1)
+         ─────────────────────────────────────────────────────────────────────── */}
       {screenState === 'create-request' && selectedReviewer && (
         <div className={styles.createRequestContainer}>
+          {/* Breadcrumbs */}
+          <div className={styles.breadcrumbs}>
+            Home &gt; Reviewer Directory &gt; Submit Manuscript Request
+          </div>
+
           {/* Header title */}
           <div className={styles.header}>
-            <h1 className={styles.pageTitle}>Create Review Request</h1>
+            <h1 className={styles.pageTitle}>Create Peer Review Request</h1>
           </div>
 
           <div className={styles.formGrid}>
-            {/* Left Column: Reviewer details summary */}
+            {/* Left Column: Reviewer Profile */}
             <div className={styles.reviewerSummaryCard}>
+              <div className={styles.sectionHeaderLabel}>REVIEWER PROFILE</div>
               <div className={styles.avatarCircleLarge} style={{ backgroundColor: selectedReviewer.avatarBg }}>
                 {selectedReviewer.initials}
               </div>
@@ -386,7 +434,7 @@ export const Reviewers = () => {
                 </div>
                 <div className={styles.formStatCol}>
                   <span className={styles.formStatVal}>{selectedReviewer.publications}</span>
-                  <span className={styles.formStatLabel}>Pubs</span>
+                  <span className={styles.formStatLabel}>Publications</span>
                 </div>
                 <div className={styles.formStatCol}>
                   <span className={styles.formStatVal}>{selectedReviewer.reviews}</span>
@@ -400,28 +448,44 @@ export const Reviewers = () => {
                 <span className={styles.formFeeVal}>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</span>
               </div>
 
-              {/* ORCID Banner */}
+              {/* Specializations list */}
+              <div className={styles.specializationsContainer}>
+                <span className={styles.specLabel}>Specializations</span>
+                <div className={styles.specTagsGrid}>
+                  {selectedReviewer.specializations.map((spec, idx) => (
+                    <span key={idx} className={styles.specTag}>{spec}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ORCID Banner (Blue-grey styling matching Frame 1) */}
               <div className={styles.orcidBanner}>
-                <span className={styles.orcidDot}>●</span>
-                <span className={styles.orcidLabel}>ORCID ID</span>
+                <span className={styles.orcidIcon}>🔗</span>
+                <span className={styles.orcidLabel}>ORCID:</span>
                 <span className={styles.orcidVal}>{selectedReviewer.orcid}</span>
               </div>
             </div>
 
-            {/* Right Column: Form inputs */}
+            {/* Right Column: Manuscript Submission */}
             <div className={styles.formFieldsCard}>
+              <div className={styles.sectionHeaderLabel}>MANUSCRIPT SUBMISSION</div>
+
               {/* Select Paper */}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Select Paper</label>
-                <select 
-                  className={styles.formSelect}
-                  value={selectedPaper}
-                  onChange={(e) => setSelectedPaper(e.target.value)}
-                >
-                  <option>Framework_Design_V2.pdf</option>
-                  <option>Cloud_Routing_v1.pdf</option>
-                  <option>Microservice_Consensus_v3.pdf</option>
-                </select>
+                <div className={styles.selectWrapper}>
+                  <select 
+                    className={styles.formSelect}
+                    value={selectedPaper}
+                    onChange={(e) => setSelectedPaper(e.target.value)}
+                  >
+                    <option>Framework_Design_v2.pdf</option>
+                    <option>Cloud_Routing_v1.pdf</option>
+                    <option>Microservice_Consensus_v3.pdf</option>
+                  </select>
+                  <span className={styles.selectArrow}>&gt;</span>
+                </div>
+                <span className={styles.fieldHelper}>Choose the manuscript you wish to submit for peer review</span>
               </div>
 
               {/* Notes to Reviewer */}
@@ -429,20 +493,50 @@ export const Reviewers = () => {
                 <label className={styles.formLabel}>Notes to Reviewer</label>
                 <textarea
                   className={styles.formTextarea}
-                  placeholder="Add any specific instructions, focus areas, or context for the reviewer..."
+                  placeholder="Describe your review requirements, specific areas to focus on..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={6}
+                  maxLength={500}
+                  rows={5}
                 />
+                <span className={styles.charCounter}>{notes.length} / 500 characters</span>
+              </div>
+
+              {/* Priority & Date Row */}
+              <div className={styles.rowFormGroup}>
+                <div className={styles.formGroup} style={{ flex: 1 }}>
+                  <label className={styles.formLabel}>Priority Level</label>
+                  <div className={styles.priorityBox}>
+                    <span className={styles.priorityDot}>●</span>
+                    <select
+                      className={styles.prioritySelect}
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      <option>Standard Priority</option>
+                      <option>Urgent Priority (+100k)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.formGroup} style={{ flex: 1 }}>
+                  <label className={styles.formLabel}>Requested By</label>
+                  <input
+                    type="text"
+                    className={styles.formDateInput}
+                    value={requestedByDate}
+                    onChange={(e) => setRequestedByDate(e.target.value)}
+                  />
+                </div>
               </div>
 
               {/* Estimated completion alert banner */}
               <div className={styles.estimateBanner}>
-                <span className={styles.infoIcon}>ℹ</span>
+                <span className={styles.infoIcon}>🕒</span>
                 <div className={styles.estimateTextWrapper}>
                   <span className={styles.estimateTitle}>Estimated Completion: 7 Days</span>
-                  <span className={styles.estimateSub}>Based on reviewer's current workload and standard review cycle</span>
                 </div>
+                <span className={styles.estimateSub}>Based on reviewer availability</span>
               </div>
             </div>
           </div>
@@ -450,17 +544,137 @@ export const Reviewers = () => {
           {/* Bottom Confirmation status bar */}
           <div className={styles.confirmationStatusBar}>
             <span className={styles.confirmationText}>
-              ● Review request will be sent to {selectedReviewer.name} upon confirmation. Funds will be auto-deducted from your wallet.
+              ✓ Review request will be sent to {selectedReviewer.name} upon confirmation
             </span>
             <div className={styles.confirmationActions}>
               <button 
                 className={styles.formCancelBtn}
                 onClick={() => { setScreenState('list'); setSelectedReviewer(null); }}
               >
-                Cancel
+                ✕ Cancel
               </button>
-              <button className={styles.formConfirmBtn} onClick={handleConfirmRequest}>
-                Confirm
+              <button className={styles.formConfirmBtn} onClick={handleProceedToPayment}>
+                Confirm & Proceed to Payment &gt;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────────
+         ESCROW CHECKOUT SCREEN (FRAME 2)
+         ─────────────────────────────────────────────────────────────────────── */}
+      {screenState === 'checkout' && selectedReviewer && (
+        <div className={styles.createRequestContainer}>
+          {/* Breadcrumbs */}
+          <div className={styles.breadcrumbs}>
+            Home &gt; My Wallet &gt; Escrow Checkout [Request ID: #REV-99211]
+          </div>
+
+          <div className={styles.formGrid}>
+            {/* Left Card: Invoice Summary */}
+            <div className={styles.formFieldsCard} style={{ gap: '20px' }}>
+              <h3 className={styles.invoiceTitle}>INVOICE SUMMARY</h3>
+
+              <div className={styles.invoiceTable}>
+                <div className={styles.invoiceRow}>
+                  <span className={styles.invoiceLabel}>Target Item</span>
+                  <span className={styles.invoiceValue}>Peer Review Service</span>
+                </div>
+                <div className={styles.invoiceRow}>
+                  <span className={styles.invoiceLabel}>Manuscript</span>
+                  <span className={styles.invoiceValue}>{selectedPaper}</span>
+                </div>
+                <div className={styles.invoiceRow}>
+                  <span className={styles.invoiceLabel}>Reviewer</span>
+                  <span className={styles.invoiceValue}>{selectedReviewer.name}</span>
+                </div>
+              </div>
+
+              <div className={styles.invoiceCalculation}>
+                <div className={styles.calcRow}>
+                  <span>Base Fee</span>
+                  <span>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</span>
+                </div>
+                <div className={styles.calcRow}>
+                  <span>Processing Tax</span>
+                  <span>25,000 VND</span>
+                </div>
+                <div className={`${styles.calcRow} ${styles.calcRowTotal}`}>
+                  <span>Total Amount</span>
+                  <span>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</span>
+                </div>
+              </div>
+
+              {/* Escrow banner */}
+              <div className={styles.escrowBanner}>
+                <span className={styles.escrowShieldIcon}>🛡️</span>
+                <span>Protected by Escrow — funds held until review confirmed</span>
+              </div>
+            </div>
+
+            {/* Right Card: Integrated Wallet Checkout */}
+            <div className={styles.formFieldsCard}>
+              <h3 className={styles.invoiceTitle}>INTEGRATED WALLET CHECKOUT</h3>
+
+              <div className={styles.checkoutGroup}>
+                <span className={styles.checkoutLabel}>Current Available Balance</span>
+                <div className={styles.checkoutBalanceVal}>
+                  {walletBalance.toLocaleString('vi-VN')} VND
+                </div>
+              </div>
+
+              <div className={styles.deductibleBox}>
+                <span>Invoice Deductible Total</span>
+                <span className={styles.deductibleAmount}>
+                  -{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND
+                </span>
+              </div>
+
+              {/* Sufficient balance alert */}
+              <div className={styles.remainingBalanceBox}>
+                <span className={styles.remainingIcon}>✓</span>
+                <div className={styles.remainingTexts}>
+                  <span className={styles.remainingTitle}>
+                    Remaining Balance Post-Payment: {(walletBalance - (selectedReviewer.fee + 25000)).toLocaleString('vi-VN')} VND
+                  </span>
+                  <span className={styles.remainingSub}>Sufficient funds — ready to authorize payment</span>
+                </div>
+              </div>
+
+              {/* PIN Code Box */}
+              <div className={styles.pinCodeSection}>
+                <label className={styles.pinLabel}>* Enter 6-Digit Wallet PIN</label>
+                <div className={styles.pinInputsRow}>
+                  {[0, 1, 2, 3, 4, 5].map((idx) => (
+                    <input
+                      key={idx}
+                      id={`pin-${idx}`}
+                      type="password"
+                      maxLength={1}
+                      className={styles.pinInputCircle}
+                      value={pinDigits[idx]}
+                      onChange={(e) => handlePinInput(idx, e.target.value)}
+                      disabled={isProcessingCheckout}
+                    />
+                  ))}
+                </div>
+
+                {isProcessingCheckout && (
+                  <div className={styles.processingLedger}>
+                    <div className={styles.spinner}></div>
+                    <span>Processing wallet isolation ledger...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Cancel transaction button */}
+              <button 
+                className={styles.cancelTransactionBtn}
+                onClick={() => setScreenState('create-request')}
+                disabled={isProcessingCheckout}
+              >
+                CANCEL TRANSACTION
               </button>
             </div>
           </div>
@@ -487,7 +701,7 @@ export const Reviewers = () => {
             </div>
             <h3 className={styles.successTitle}>Review Request Submitted Successfully!</h3>
             <p className={styles.successDescription}>
-              <b>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</b> has been deducted from your wallet escrow. Your request is routed to {selectedReviewer.name}.
+              <b>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</b> has been deducted from your wallet escrow. Your request is routed to {selectedReviewer.name}.
             </p>
 
             {/* Info Box Details table */}

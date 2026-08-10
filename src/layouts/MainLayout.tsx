@@ -43,8 +43,6 @@ const PapersIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
     <polyline points="14 2 14 8 20 8"></polyline>
-    <line x1="16" y1="13" x2="8" y2="13"></line>
-    <line x1="16" y1="17" x2="8" y2="17"></line>
   </svg>
 );
 
@@ -57,16 +55,28 @@ const BrowseReviewersIcon = () => (
   </svg>
 );
 
-const PremiumIcon = () => (
+const SeminarIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="16" y1="2" x2="16" y2="6"></line>
+    <line x1="8" y1="2" x2="8" y2="6"></line>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
   </svg>
 );
 
-const ProfileIcon = () => (
+const GroupIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-    <circle cx="12" cy="7" r="4"></circle>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+    <circle cx="9" cy="7" r="4"></circle>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </svg>
+);
+
+const SettingsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
   </svg>
 );
 
@@ -82,45 +92,92 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Selected role for mockup switching
+  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer'>(() => {
+    const saved = localStorage.getItem('ars_active_role');
+    return (saved as any) || 'Researcher';
+  });
+
   // Wallet balance sync state
   const [balance, setBalance] = useState(() => {
     const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 500000;
+    return saved ? parseInt(saved, 10) : 1500000; // Initialize to 1,500,000 VND
   });
+
+  useEffect(() => {
+    // Keep 1,500,000 VND in localstorage if not set yet
+    if (!localStorage.getItem('ars_wallet')) {
+      localStorage.setItem('ars_wallet', '1500000');
+      setBalance(1500000);
+    }
+  }, []);
 
   useEffect(() => {
     const handleWalletUpdate = () => {
       const saved = localStorage.getItem('ars_wallet');
-      setBalance(saved ? parseInt(saved, 10) : 500000);
+      setBalance(saved ? parseInt(saved, 10) : 1500000);
     };
     window.addEventListener('wallet-update', handleWalletUpdate);
     return () => window.removeEventListener('wallet-update', handleWalletUpdate);
   }, []);
 
-  const username = user?.username || 'Dr. Nguyen Van A';
-  const role = user?.role || 'Researcher';
-  const avatarInitials = username
-    .split(' ')
-    .filter(n => n)
-    .map(n => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const role = e.target.value as 'Researcher' | 'Reviewer' | 'Lecturer';
+    setActiveRole(role);
+    localStorage.setItem('ars_active_role', role);
+
+    // Redirect to default pages based on role selection
+    if (role === 'Researcher') {
+      navigate(ROUTES.DASHBOARD);
+    } else if (role === 'Reviewer') {
+      navigate(ROUTES.EVALUATION);
+    } else if (role === 'Lecturer') {
+      navigate(ROUTES.SEMINAR_WORKSPACE);
+    }
+  };
+
+  const username = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : 'Lecturer Account');
+  const avatarInitials = activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : 'LA';
 
   const handleLogout = () => {
     logout();
     navigate(ROUTES.LOGIN);
   };
 
-  const navItems = [
-    { to: ROUTES.DASHBOARD, label: 'Home', icon: <HomeIcon /> },
-    { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon />, showDot: true },
-    { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon /> },
-    { to: ROUTES.REVIEWERS, label: 'Browse Reviewers', icon: <BrowseReviewersIcon /> },
-    { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
-    { to: '#packages', label: 'Premium Packages', icon: <PremiumIcon /> },
-    { to: '#profile', label: 'Profile', icon: <ProfileIcon /> },
-  ];
+  // Nav items filtered dynamically based on active role
+  const getNavItemsByRole = () => {
+    switch (activeRole) {
+      case 'Reviewer':
+        return [
+          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
+          { to: ROUTES.EVALUATION, label: 'Review Tasks', icon: <PapersIcon />, badge: '4' },
+          { to: '#reviews', label: 'Submitted Reviews', icon: <ForumIcon /> },
+          { to: '#author-subs', label: 'Author Submissions', icon: <BrowseReviewersIcon /> },
+          { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
+        ];
+      case 'Lecturer':
+        return [
+          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar Workspace', icon: <SeminarIcon /> },
+          { to: ROUTES.RESEARCH_GROUP, label: 'Guidance Group', icon: <GroupIcon /> },
+          { to: '#catalog', label: 'Course Catalog', icon: <PapersIcon /> },
+          { to: '#participants', label: 'Participants', icon: <BrowseReviewersIcon /> },
+          { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
+        ];
+      case 'Researcher':
+      default:
+        return [
+          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon />, showDot: true },
+          { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon /> },
+          { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon /> },
+          { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon /> },
+          { to: '#wallet', label: 'My Wallet', icon: <WalletIcon /> },
+        ];
+    }
+  };
+
+  const navItems = getNavItemsByRole();
 
   return (
     <div className={styles.mainContainer}>
@@ -157,6 +214,7 @@ export const MainLayout = () => {
                 <span className={styles.navIcon}>{item.icon}</span>
                 <span className={styles.navLabel}>{item.label}</span>
                 {item.showDot && <span className={styles.navDot}></span>}
+                {item.badge && <span className={styles.navBadge}>{item.badge}</span>}
               </NavLink>
             );
           })}
@@ -168,7 +226,7 @@ export const MainLayout = () => {
             <div className={styles.avatarCircle}>{avatarInitials}</div>
             <div className={styles.userCardInfo}>
               <div className={styles.userCardName} title={username}>{username}</div>
-              <div className={styles.userCardRole}>{role}</div>
+              <div className={styles.userCardRole}>{activeRole}</div>
             </div>
             <button className={styles.logoutButton} onClick={handleLogout} title="Log out">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -197,6 +255,20 @@ export const MainLayout = () => {
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
+            {/* Role Switcher Selector dropdown */}
+            <div className={styles.roleSwitcherContainer}>
+              <span className={styles.roleSwitcherLabel}>Active Role:</span>
+              <select
+                className={styles.roleSelect}
+                value={activeRole}
+                onChange={handleRoleChange}
+              >
+                <option value="Researcher">Researcher</option>
+                <option value="Reviewer">Reviewer</option>
+                <option value="Lecturer">Lecturer (Seminar/Group)</option>
+              </select>
+            </div>
+
             {/* Wallet Balance */}
             <div className={styles.walletBadge}>
               <span className={styles.walletIcon}><WalletIcon /></span>
@@ -214,7 +286,7 @@ export const MainLayout = () => {
               <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
               <div className={styles.userInfoText}>
                 <div className={styles.userPillName}>{username}</div>
-                <div className={styles.userPillRole}>{role}</div>
+                <div className={styles.userPillRole}>{activeRole}</div>
               </div>
             </div>
           </div>
