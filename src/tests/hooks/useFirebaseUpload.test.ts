@@ -16,6 +16,7 @@ vi.mock('firebase/storage', () => ({
 
 vi.mock('../../firebase', () => ({
   storage: {},
+  isFirebaseConfigured: vi.fn(() => true),
 }));
 
 describe('useFirebaseUpload', () => {
