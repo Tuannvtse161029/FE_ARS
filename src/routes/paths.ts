@@ -16,6 +16,7 @@ export const ROUTES = {
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',
+  STUDENT_RESEARCH_GROUPS: '/student/research-groups',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

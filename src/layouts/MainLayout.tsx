@@ -88,6 +88,14 @@ const ARSPlatformLogo = () => (
   </svg>
 );
 
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  showDot?: boolean;
+  badge?: string;
+}
+
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -139,7 +147,7 @@ export const MainLayout = () => {
   };
 
   // Nav items filtered dynamically based on active role
-  const getNavItemsByRole = () => {
+  const getNavItemsByRole = (): NavItem[] => {
     switch (activeRole) {
       case 'Reviewer':
         return [
@@ -148,7 +156,7 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon />, badge: '2' },
           { to: ROUTES.EARNINGS_WALLET, label: 'Wallet', icon: <WalletIcon /> },
           { to: ROUTES.EARNINGS_WALLET, label: 'Withdrawal Request', icon: <WalletIcon /> },
-          { to: '#profile', label: 'Profile', icon: <SettingsIcon /> },
+          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Lecturer':
         return [
@@ -158,15 +166,18 @@ export const MainLayout = () => {
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon /> },
           { to: '#shared-material', label: 'Shared Material', icon: <PapersIcon /> },
           { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
-          { to: '#profile', label: 'Profile', icon: <SettingsIcon /> },
+          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home Dashboard', icon: <HomeIcon /> },
-          { to: '#assignments', label: 'My Assignments', icon: <PapersIcon /> },
-          { to: ROUTES.SUBMIT_REPORT, label: 'Group Workspace', icon: <GroupIcon /> },
-          { to: '#history', label: 'Submission History', icon: <ForumIcon /> },
-          { to: '#messages', label: 'Messages', icon: <BrowseReviewersIcon /> },
+          { to: ROUTES.DASHBOARD, label: 'Home', icon: <HomeIcon /> },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon /> },
+          { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon /> },
+          { to: ROUTES.REVIEWERS, label: 'Browse Reviewers', icon: <BrowseReviewersIcon /> },
+          { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon /> },
+          { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
+          { to: '#premium-packages', label: 'Premium Packages', icon: <BrowseReviewersIcon /> },
+          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Researcher':
       default:
@@ -177,6 +188,7 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon /> },
           { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon /> },
           { to: '#wallet', label: 'My Wallet', icon: <WalletIcon /> },
+          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
     }
   };
