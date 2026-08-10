@@ -33,6 +33,12 @@ export const SeminarWorkspace = () => {
   const [bannerText, setBannerText] = useState('');
   const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<Seminar | null>(null);
 
+  // AI Summarizer states (Frame 35 & 36)
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiModalStep, setAiModalStep] = useState<'upload' | 'results'>('upload');
+  const [aiNotesSaved, setAiNotesSaved] = useState(false);
+  const [selectedSeminarForAi, setSelectedSeminarForAi] = useState<Seminar | null>(null);
+
   // Form states inside Create Modal (Frame 30)
   const [seminarName, setSeminarName] = useState('Advanced Cloud Routing Architecture Seminar');
   const [dateTime, setDateTime] = useState('2026-07-29 · 10:00 AM');
@@ -342,9 +348,24 @@ export const SeminarWorkspace = () => {
                   <>
                     <button
                       className={styles.viewNotesBtn}
-                      onClick={() => alert(`Notes for ${sem.title}`)}
+                      onClick={() => {
+                        setSelectedSeminarForAi(sem);
+                        if (aiNotesSaved) {
+                          setAiModalStep('results');
+                        } else {
+                          setAiModalStep('upload');
+                        }
+                        setShowAiModal(true);
+                      }}
                     >
-                      👁️ View Notes
+                      {aiNotesSaved ? (
+                        <>
+                          👁️ View Notes (AI Generated){' '}
+                          <span className={styles.greenAiBadge}>✓ AI</span>
+                        </>
+                      ) : (
+                        '👁️ View Notes'
+                      )}
                     </button>
                     <button
                       className={styles.feedbackGradingBtn}
@@ -654,6 +675,137 @@ export const SeminarWorkspace = () => {
               <button className={styles.modalCloseNavyBtn} onClick={() => setShowFeedbackModal(false)}>
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FRAME 35 & 36: SEMINAR RECORDING AI SUMMARIZER MODAL */}
+      {showAiModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.aiSummarizerModalCard}>
+            {/* Header */}
+            <div className={styles.modalHeaderRow}>
+              <div className={styles.modalTitleBlock}>
+                <span className={styles.aiIconCircle}>✨</span>
+                <div>
+                  <h3 className={styles.modalTitle}>Seminar Recording AI Summarizer</h3>
+                  <span className={styles.modalSubtitle}>Upload meeting media to generate automated AI notes.</span>
+                </div>
+              </div>
+              <button className={styles.closeBtn} onClick={() => setShowAiModal(false)}>×</button>
+            </div>
+
+            {/* Content for Step 1: Upload (Frame 35) or Step 2: Results (Frame 36) */}
+            <div className={styles.aiModalContentArea}>
+              {/* Media Dropzone */}
+              <div className={styles.mediaDropzone}>
+                <span className={styles.dropzoneFilmIcon}>🎬</span>
+                <span className={styles.dropzoneMainText}>Drag & drop your meeting recording here or click to browse</span>
+                <span className={styles.dropzoneSubText}>Supported formats: .mp4, .wav · Maximum file size: Below 3 GB</span>
+                <button className={styles.browseFilesBtn} type="button">
+                  📤 Browse files
+                </button>
+              </div>
+
+              {/* Attached file card */}
+              <div className={styles.attachedFileCard}>
+                <span className={styles.attachedFilmIcon}>📼</span>
+                <div className={styles.attachedFileMeta}>
+                  <span className={styles.attachedFileName}>Phase2_DB_Review_20260720.mp4</span>
+                  <span className={styles.attachedFileSize}>1.2 GB · Ready to process</span>
+                </div>
+                <span className={styles.attachedPillBadge}>✓ Attached</span>
+              </div>
+
+              {/* STEP 2 RESULTS PANEL (Frame 36) */}
+              {aiModalStep === 'results' && (
+                <div className={styles.aiGeneratedResultsCard}>
+                  <div className={styles.aiResultsHeaderRow}>
+                    <div className={styles.aiResultsHeaderLeft}>
+                      <span className={styles.sparkleIcon}>✨</span>
+                      <span className={styles.aiResultsTitle}>AI Generated Notes & Key Takeaways</span>
+                    </div>
+                    <span className={styles.regenerationAttemptsPill}>🔄 Regeneration Attempts Left: 3/3</span>
+                  </div>
+
+                  <div className={styles.aiResultSection}>
+                    <h5 className={styles.aiSectionLabel}>EXECUTIVE OVERVIEW</h5>
+                    <p className={styles.aiSectionText}>
+                      Discussed distributed database consistency models, multi-region replication latency, and trade-offs under CAP theorem constraints.
+                    </p>
+                  </div>
+
+                  <div className={styles.aiResultSection}>
+                    <h5 className={styles.aiSectionLabel}>KEY ACTION ITEMS</h5>
+                    <div className={styles.actionItemsList}>
+                      <div className={styles.actionItemRow}>
+                        <span className={styles.actionNumBadge}>1</span>
+                        <span>Group 1 to migrate metadata to PostgreSQL with read replicas.</span>
+                      </div>
+                      <div className={styles.actionItemRow}>
+                        <span className={styles.actionNumBadge}>2</span>
+                        <span>Group 2 approved for testing Raft consensus protocol.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.aiResultSection}>
+                    <h5 className={styles.aiSectionLabel}>PARTICIPANT ENGAGEMENT</h5>
+                    <div className={styles.engagementBadge}>
+                      🟢 <b>4/4 active</b> participants active in Q&A session.
+                    </div>
+                  </div>
+
+                  <div className={styles.aiDisclaimerFooter}>
+                    ⓘ AI-generated content. Review for accuracy before saving. Notes will be attached to the seminar record permanently.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className={styles.aiModalFooter}>
+              {aiModalStep === 'upload' ? (
+                <>
+                  <span className={styles.filesReadyText}>📁 1 file ready · 1.2 GB</span>
+                  <div className={styles.footerBtnsRight}>
+                    <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
+                      Cancel
+                    </button>
+                    <button
+                      className={styles.summarizeMagicBtn}
+                      onClick={() => setAiModalStep('results')}
+                    >
+                      🪄 Click to Summarize
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button className={styles.regenerateBtn} onClick={() => alert('Regenerated AI notes!')}>
+                    🔄 Regenerate (3/3 Left)
+                  </button>
+                  <div className={styles.footerBtnsRight}>
+                    <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
+                      Cancel
+                    </button>
+                    <button
+                      className={styles.agreeSaveNavyBtn}
+                      onClick={() => {
+                        setAiNotesSaved(true);
+                        setBannerText(
+                          'AI Seminar Notes successfully saved and attached to Phase 2 Milestone Review - Distributed DBs.\nGenerated by AI · Accessible via "View Notes (AI Generated)" on the seminar card below.'
+                        );
+                        setShowSuccessBanner(true);
+                        setShowAiModal(false);
+                      }}
+                    >
+                      ✔ Agree & Save Notes
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
