@@ -1,154 +1,27 @@
 .forumPage {
   width: 100%;
-  max-width: 800px; /* Căn giữa khung vừa vặn giống Figma */
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
   font-family: var(--font-family-primary);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
 }
 
-.forumHeader {
+.breadcrumbs {
+  font-size: 0.75rem;
+  color: #64748b;
   text-align: left;
 }
 
-.pageTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: var(--spacing-1);
-}
-
-.pageSubtitle {
-  font-size: var(--font-size-sm);
-  color: #64748b;
-}
-
-/* Tabs Bar */
-.tabBar {
-  display: flex;
-  gap: var(--spacing-4);
-  margin-bottom: var(--spacing-1);
-}
-
-.tabBtn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3) var(--spacing-5);
-  cursor: pointer;
-  text-align: left;
-  transition: all var(--transition-fast);
-  color: #64748b;
-  flex: 1;
-  max-width: 240px;
-}
-
-.tabBtn:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
-}
-
-.tabBtnActive {
-  background-color: #ffffff;
-  border-color: #e2e8f0;
-  color: #0f172a;
-  box-shadow: var(--shadow-sm);
-}
-
-.tabText {
-  display: flex;
-  flex-direction: column;
-}
-
-.tabTitle {
-  font-size: var(--font-size-sm);
+.activeBreadcrumb {
   font-weight: 600;
+  color: #0f172a;
 }
 
-.tabSub {
-  font-size: 0.7rem;
-  color: #94a3b8;
-  margin-top: 1px;
-}
-
-/* Create Post Bar */
-.createPostBar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
+/* Card container */
+.sectionCard {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-4) var(--spacing-6);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-sm);
-}
-
-.createPostBar:hover {
-  border-color: #cbd5e1;
-  box-shadow: var(--shadow-md);
-}
-
-.avatarCircle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #1e293b;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: var(--font-size-sm);
-  flex-shrink: 0;
-}
-
-.createPostInputPlaceholder {
-  flex: 1;
-  color: #94a3b8;
-  font-size: var(--font-size-sm);
-  text-align: left;
-  user-select: none;
-}
-
-.createPostBtn {
-  background-color: #1e293b;
-  color: #ffffff;
-  border: none;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.createPostBtn:hover {
-  background-color: #0f172a;
-}
-
-/* Feed List */
-.feedContainer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-5);
-}
-
-.postsList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-5);
-}
-
-.postCard {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--radius-2xl);
+  border-radius: 20px;
   padding: var(--spacing-6);
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -157,247 +30,229 @@
   text-align: left;
 }
 
-.postHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.sectionHeaderLabel {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
 }
 
-.postAuthorInfo {
+/* Publish form */
+.publishForm {
   display: flex;
-  align-items: center;
   gap: var(--spacing-3);
+  width: 100%;
 }
 
-.authorMeta {
-  display: flex;
-  flex-direction: column;
+.publishInput {
+  flex: 1;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  height: 44px;
 }
 
-.authorNameRow {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
+.publishInput:focus {
+  border-color: #2563eb;
+  background-color: #ffffff;
 }
 
-.authorName {
+.publishBtn {
+  background-color: #2563eb;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  padding: 0 var(--spacing-6);
   font-size: var(--font-size-sm);
   font-weight: 700;
-  color: #0f172a;
-}
-
-.authorRoleBadge {
-  font-size: 0.65rem;
-  font-weight: 600;
-  background-color: #eff6ff;
-  color: #2563eb;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid #bfdbfe;
-}
-
-.postTime {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin-top: 2px;
-}
-
-.optionsBtn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: var(--spacing-1);
-}
-
-.optionsBtn:hover {
-  color: #0f172a;
-}
-
-/* Post content */
-.postBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-}
-
-.postText {
-  font-size: var(--font-size-sm);
-  color: #334155;
-  line-height: var(--line-height-relaxed);
-}
-
-/* Attached PDF Card styling */
-.pdfAttachmentCard {
-  display: flex;
-  align-items: center;
-  background-color: #fef2f2; /* Light red/pinkish tint for PDF */
-  border: 1px solid #fee2e2;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3) var(--spacing-4);
-  gap: var(--spacing-3);
-}
-
-.pdfIconWrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  background-color: #fee2e2;
-  color: #ef4444;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.attachmentPdfSvg {
-  stroke-width: 2;
-}
-
-.pdfMetaInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.pdfName {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: #991b1b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pdfSize {
-  font-size: 0.75rem;
-  color: #b91c1c;
-  margin-top: 2px;
-}
-
-.viewPdfBtn {
-  background-color: #2563eb;
-  color: #ffffff;
-  border: none;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
   cursor: pointer;
   transition: background-color var(--transition-fast);
   white-space: nowrap;
 }
 
-.viewPdfBtn:hover {
+.publishBtn:hover {
   background-color: #1d4ed8;
 }
 
-/* Post Actions block */
-.postActions {
+/* Thesis Thread Details */
+.thesisThread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.threadTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: var(--line-height-tight);
+}
+
+.badgesRow {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.badgeAuthor {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.badgeField {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.badgeCertified {
+  background-color: #e6fcf5;
+  color: #099268;
+  border: 1px solid #c3fae8;
+}
+
+/* Abstract */
+.abstractBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  background-color: #f8fafc;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  border-left: 3px solid #cbd5e1;
+}
+
+.abstractLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.abstractText {
+  font-size: var(--font-size-sm);
+  color: #334155;
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+/* PDF card styling */
+.pdfViewerCard {
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.pdfHeader {
+  background-color: #1e293b;
+  color: #ffffff;
+  padding: var(--spacing-3) var(--spacing-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.pdfBody {
+  height: 480px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Download file bar */
+.attachmentBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4) var(--spacing-5);
+}
+
+.attachmentLeft {
   display: flex;
   align-items: center;
-  gap: var(--spacing-4);
-  border-top: 1px solid #f1f5f9;
-  border-bottom: 1px solid #f1f5f9;
-  padding: var(--spacing-2) 0;
+  gap: var(--spacing-3.5);
 }
 
-.actionBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  background: none;
-  border: none;
-  color: #64748b;
+.attachmentIcon {
+  font-size: 1.5rem;
+}
+
+.attachmentMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.attachmentName {
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  padding: var(--spacing-2) var(--spacing-3);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-}
-
-.actionBtn:hover {
-  background-color: #f8fafc;
+  font-weight: 700;
   color: #0f172a;
 }
 
-.likedAction {
-  color: #2563eb !important;
+.attachmentSize {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 1px;
 }
 
-.activeAction {
-  background-color: #f1f5f9;
-  color: #0f172a !important;
+.downloadBtn {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
 }
 
-/* Comments block */
-.commentsSection {
+.downloadBtn:hover {
   background-color: #f8fafc;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-4);
+  border-color: #94a3b8;
+}
+
+/* Discussion Thread Section */
+.discussionSection {
+  border-top: 1px solid #e2e8f0;
+  padding-top: var(--spacing-5);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
 }
 
-.writeCommentBox {
+.discussionHeader {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-3);
 }
 
-.avatarCircleSmall {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: #475569;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
+.discussionTitle {
   font-size: 0.75rem;
-  flex-shrink: 0;
+  font-weight: 800;
+  color: #1e3a8a;
+  letter-spacing: 0.5px;
 }
 
-.commentInputWrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 0 var(--spacing-2) 0 var(--spacing-4);
-  height: 36px;
-}
-
-.commentInput {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-}
-
-.sendCommentBtn {
-  background: none;
-  border: none;
-  color: #2563eb;
-  cursor: pointer;
-  padding: var(--spacing-1) var(--spacing-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background-color var(--transition-fast);
-}
-
-.sendCommentBtn:hover {
-  background-color: #f1f5f9;
+.commentsCount {
+  font-size: var(--font-size-xs);
+  color: #64748b;
 }
 
 .commentsList {
@@ -406,221 +261,114 @@
   gap: var(--spacing-4);
 }
 
+.commentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
 .commentItem {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-}
-
-.commentMain {
-  display: flex;
+  gap: var(--spacing-3.5);
   align-items: flex-start;
-  gap: var(--spacing-3);
 }
 
-.commentContentCard {
-  flex: 1;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3) var(--spacing-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-}
-
-.commentHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.commentAuthor {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.commentTime {
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
-
-.commentText {
-  font-size: var(--font-size-sm);
-  color: #334155;
-  line-height: var(--line-height-normal);
-}
-
-.commentActions {
-  display: flex;
-  gap: var(--spacing-4);
-  padding-left: 44px; /* Align with content */
-}
-
-.commentLikeBtn, .commentReplyBtn {
-  background: none;
-  border: none;
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.commentLikeBtn:hover, .commentReplyBtn:hover {
-  color: #0f172a;
-  text-decoration: underline;
-}
-
-.commentLiked {
-  color: #2563eb !important;
-  font-weight: 600;
-}
-
-/* Threaded replies indentation */
-.repliesList {
-  margin-top: var(--spacing-3);
-  padding-left: 44px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-  border-left: 2px solid #e2e8f0;
-  margin-left: 16px;
-}
-
-.replyItem {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-3);
-}
-
-.replyContentCard {
-  flex: 1;
-  background-color: #eff6ff; /* Tinted blue for replies */
-  border: 1px solid #dbeafe;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3) var(--spacing-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-}
-
-.replyHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.replyAuthor {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #1e3a8a;
-}
-
-.replyTime {
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
-
-.replyText {
-  font-size: var(--font-size-sm);
-  color: #1e40af;
-  line-height: var(--line-height-normal);
-}
-
-.replyTag {
-  color: #2563eb;
-  font-weight: 600;
-  margin-right: 4px;
-}
-
-/* Placeholder for Following tab */
-.followingPlaceholder {
-  padding: var(--spacing-16) var(--spacing-8);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--radius-2xl);
-  color: #94a3b8;
-  gap: var(--spacing-3);
-}
-
-.followingPlaceholder svg {
-  width: 48px;
-  height: 48px;
-  color: #cbd5e1;
-}
-
-.followingPlaceholder h3 {
-  color: #0f172a;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-}
-
-/* Fullscreen PDF Viewer overlay modal */
-.pdfViewerModalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
+.commentUserAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: var(--spacing-4);
+  font-weight: 700;
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
 }
 
-.pdfViewerModalCard {
-  background-color: #ffffff;
-  border-radius: 20px;
-  width: 90%;
-  max-width: 1000px;
-  height: 90%;
-  box-shadow: var(--shadow-2xl);
-  overflow: hidden;
+.commentMeta {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
-.pdfViewerHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-4) var(--spacing-6);
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8fafc;
-}
-
-.pdfViewerTitle {
-  font-size: 1.125rem;
+.commentAuthorName {
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: #0f172a;
 }
 
-.closePdfBtn {
-  background-color: #ef4444;
-  color: #ffffff;
+.commentTextContent {
+  font-size: var(--font-size-sm);
+  color: #334155;
+  margin-top: 2px;
+  line-height: var(--line-height-relaxed);
+  margin-bottom: 0;
+}
+
+/* Indented replies */
+.replyItem {
+  display: flex;
+  gap: var(--spacing-3.5);
+  align-items: flex-start;
+  margin-left: 44px;
+  position: relative;
+}
+
+.replyLine {
+  position: absolute;
+  left: -24px;
+  top: -16px;
+  bottom: 16px;
+  width: 2px;
+  background-color: #cbd5e1;
+}
+
+/* Comment Form box */
+.commentForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+  border-top: 1px solid #f1f5f9;
+  padding-top: var(--spacing-4);
+}
+
+.commentTextarea {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  font-family: var(--font-family-primary);
+  resize: vertical;
+}
+
+.commentTextarea:focus {
+  border-color: #2563eb;
+}
+
+.postCommentBtn {
+  background-color: #2563eb;
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  color: #ffffff;
+  padding: var(--spacing-2) var(--spacing-6);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
-.closePdfBtn:hover {
-  background-color: #dc2626;
+.postCommentBtn:hover {
+  background-color: #1d4ed8;
 }
 
-.pdfViewerBody {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
+@media (max-width: 640px) {
+  .publishForm {
+    flex-direction: column;
+  }
 }

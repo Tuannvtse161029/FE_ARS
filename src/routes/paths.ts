@@ -11,6 +11,7 @@ export const ROUTES = {
   RESEARCH_GROUP: '/research-group',
   CONFIGURE_MILESTONES: '/configure-milestones',
   SUBMIT_REPORT: '/submit-report',
+  EARNINGS_WALLET: '/earnings-wallet',
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',

@@ -455,21 +455,155 @@ export const Dashboard = () => {
     );
   }
 
-  // Fallback for Lecturer
+  // RENDER: LECTURER CONSOLE (FRAME 11)
   return (
     <div className={styles.dashboard}>
-      <div className={styles.roleHeaderArea}>
-        <h1 className={styles.roleTitle}>Lecturer Studio Hub</h1>
-        <p className={styles.roleSubtitle}>Manage your academic seminars and student guidance rosters.</p>
+      {/* Breadcrumbs */}
+      <div className={styles.breadcrumbs}>
+        Home &gt; <span className={styles.activeBreadcrumb}>Lecturer Management Console</span>
       </div>
-      <div className={styles.lecturerLandingCards}>
-        <div className={styles.lecturerCard} onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}>
-          <h3>Seminar Workspace</h3>
-          <p>Schedule research presentation meetings and invite student cohorts.</p>
+
+      {/* Header */}
+      <div className={styles.roleHeaderArea}>
+        <h1 className={styles.roleTitle}>Lecturer Console</h1>
+        <p className={styles.roleSubtitle}>Manage cohorts, seminars, and materials from a single workspace.</p>
+      </div>
+
+      {/* Grid: Groups status + seminars */}
+      <div className={styles.resGrid}>
+        {/* Left Column: Guided Active Groups */}
+        <div className={styles.studentInfoCard}>
+          <div className={styles.studentCardHeader}>
+            <span className={styles.studentCardHeaderTitle}>GUIDED ACTIVE GROUPS STATUS</span>
+          </div>
+
+          <div className={styles.lecturerGroupsList}>
+            {/* Group 1 */}
+            <div className={styles.lecturerGroupItem}>
+              <div className={styles.groupMetaHeader}>
+                <div>
+                  <span className={styles.groupNumber}>GROUP 01</span>
+                  <h4 className={styles.groupProjectTitle}>Core Automation V3</h4>
+                </div>
+                <div className={styles.groupStatusRow}>
+                  <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>Pending Review</span>
+                  <span className={styles.groupPhaseLabel}>Phase 2</span>
+                </div>
+              </div>
+              <div className={styles.groupItemFooter}>
+                <span className={styles.groupMembersText}>4 members · 3 submissions pending</span>
+                <button 
+                  className={styles.reviewSubmissionsBtn}
+                  onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
+                >
+                  Review Submissions ↗
+                </button>
+              </div>
+            </div>
+
+            {/* Group 2 */}
+            <div className={styles.lecturerGroupItem} style={{ borderBottom: 'none', paddingBottom: 0 }}>
+              <div className={styles.groupMetaHeader}>
+                <div>
+                  <span className={styles.groupNumber}>GROUP 02</span>
+                  <h4 className={styles.groupProjectTitle}>Data Mining Group B</h4>
+                </div>
+                <div className={styles.groupStatusRow}>
+                  <span className={`${styles.statusDotLabel} ${styles.statusAccepted}`}>On Track</span>
+                  <span className={styles.groupPhaseLabel} style={{ color: '#64748b' }}>No action required</span>
+                </div>
+              </div>
+              <div className={styles.groupItemFooter}>
+                <span className={styles.groupMembersText}>6 members</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className={styles.lecturerCard} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
-          <h3>Guidance Group</h3>
-          <p>Initialize students teams and assign guidance rosters.</p>
+
+        {/* Right Column: Upcoming planned seminars */}
+        <div className={styles.studentInfoCard}>
+          <div className={styles.studentCardHeader}>
+            <span className={styles.studentCardHeaderTitle}>UPCOMING PLANNED SEMINARS</span>
+          </div>
+
+          <div className={styles.lecturerSeminarCard}>
+            <div className={styles.seminarSessionCard}>
+              <div className={styles.seminarIconCircle}>📹</div>
+              <div className={styles.seminarSessionMeta}>
+                <span className={styles.seminarSessionLabel}>NEXT SESSION</span>
+                <h4 className={styles.seminarSessionTitle}>Distributed Ledgers</h4>
+                <span className={styles.seminarSessionTime}>🕒 2026-07-15 - 14:00 UTC</span>
+              </div>
+            </div>
+            {/* Meet Link banner */}
+            <div className={styles.meetLinkBanner}>
+              <span className={styles.meetDot}>●</span>
+              <span>Meet Linked</span>
+            </div>
+          </div>
+
+          <div className={styles.lecturerSeminarFooter}>
+            <span className={styles.additionalSeminars}>2 additional seminars scheduled</span>
+            <button 
+              className={styles.launchSeminarHubBtn}
+              onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}
+            >
+              Launch Seminar Hub ↗
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Controls Section */}
+      <div className={styles.studentFeedbackCard}>
+        <div className={styles.studentCardHeader}>
+          <span className={styles.studentCardHeaderTitle}>CONSOLE QUICK MANAGEMENT CONTROLS</span>
+        </div>
+
+        <div className={styles.lecturerControlsGrid}>
+          <div className={styles.controlCard} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+            <div className={styles.controlCardLeft}>
+              <span className={styles.controlIconBg}>＋</span>
+              <div className={styles.controlMeta}>
+                <span className={styles.controlTitle}>Instantiate New Guidance Group</span>
+                <span className={styles.controlSub}>Create & configure a cohort</span>
+              </div>
+            </div>
+            <span className={styles.controlArrow}>&gt;</span>
+          </div>
+
+          <div className={styles.controlCard} onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}>
+            <div className={styles.controlCardLeft}>
+              <span className={styles.controlIconBg} style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>📅</span>
+              <div className={styles.controlMeta}>
+                <span className={styles.controlTitle}>Schedule Academic Seminar</span>
+                <span className={styles.controlSub}>Set date, topic & link</span>
+              </div>
+            </div>
+            <span className={styles.controlArrow}>&gt;</span>
+          </div>
+
+          <div className={styles.controlCard}>
+            <div className={styles.controlCardLeft}>
+              <span className={styles.controlIconBg} style={{ backgroundColor: '#f0fdf4', color: '#16a34a' }}>📁</span>
+              <div className={styles.controlMeta}>
+                <span className={styles.controlTitle}>Distribute Colleague Materials</span>
+                <span className={styles.controlSub}>Push docs to group members</span>
+              </div>
+            </div>
+            <span className={styles.controlArrow}>&gt;</span>
+          </div>
+
+          <div className={styles.controlCard}>
+            <div className={styles.controlCardLeft}>
+              <span className={styles.controlIconBg} style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>🛡️</span>
+              <div className={styles.controlMeta}>
+                <span className={styles.controlTitle}>Open Access License Auditing</span>
+                <span className={styles.controlSub}>Review permissions & access</span>
+              </div>
+            </div>
+            <span className={styles.controlArrow}>&gt;</span>
+          </div>
         </div>
       </div>
     </div>

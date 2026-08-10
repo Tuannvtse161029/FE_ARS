@@ -145,7 +145,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
           { to: ROUTES.EVALUATION, label: 'Review Tasks', icon: <PapersIcon />, badge: '4' },
-          { to: '#reviews', label: 'Submitted Reviews', icon: <ForumIcon /> },
+          { to: ROUTES.EARNINGS_WALLET, label: 'Earnings Wallet', icon: <WalletIcon /> },
           { to: '#author-subs', label: 'Author Submissions', icon: <BrowseReviewersIcon /> },
           { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
         ];

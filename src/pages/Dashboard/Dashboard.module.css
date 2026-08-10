@@ -747,40 +747,247 @@
   background-color: #059669;
 }
 
-/* Fallback Lecturer landing cards */
-.lecturerLandingCards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-5);
+/* Lecturer Console (Frame 11) styles */
+.lecturerGroupsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
 }
 
-.lecturerCard {
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 16px;
-  padding: var(--spacing-6);
+.lecturerGroupItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-4);
+}
+
+.groupMetaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.groupNumber {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.groupProjectTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 1px;
+}
+
+.groupStatusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.groupPhaseLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #2563eb;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.groupItemFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.groupMembersText {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+}
+
+.reviewSubmissionsBtn {
+  background-color: #1d2a4a;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 5px var(--spacing-3);
+  font-size: 0.75rem;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.reviewSubmissionsBtn:hover {
+  background-color: #0f172a;
+}
+
+/* Seminars right column */
+.lecturerSeminarCard {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3.5);
+}
+
+.seminarSessionCard {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.seminarIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.seminarSessionMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.seminarSessionLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.seminarSessionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 1px;
+}
+
+.seminarSessionTime {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.meetLinkBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1.5);
+  background-color: #ffffff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  padding: 6px var(--spacing-3);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.meetDot {
+  color: #2563eb;
+  font-size: 0.8rem;
+}
+
+.lecturerSeminarFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-1);
+}
+
+.additionalSeminars {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+}
+
+.launchSeminarHubBtn {
+  background-color: #ffffff;
+  border: 1px solid #1d2a4a;
+  color: #1d2a4a;
+  border-radius: var(--radius-md);
+  padding: 5px var(--spacing-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: all var(--transition-fast);
-  text-align: left;
 }
 
-.lecturerCard:hover {
+.launchSeminarHubBtn:hover {
+  background-color: #f1f5f9;
+}
+
+/* Controls bottom section */
+.lecturerControlsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-4);
+}
+
+.controlCard {
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background-color: #ffffff;
+}
+
+.controlCard:hover {
   border-color: #2563eb;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  background-color: #f8fafc;
+  box-shadow: var(--shadow-sm);
 }
 
-.lecturerCard h3 {
-  font-size: 1.15rem;
+.controlCardLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.controlIconBg {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: #e6fcf5;
+  color: #099268;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.controlMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.controlTitle {
+  font-size: var(--font-size-sm);
   font-weight: 700;
   color: #0f172a;
 }
 
-.lecturerCard p {
-  font-size: var(--font-size-sm);
+.controlSub {
+  font-size: var(--font-size-xs);
   color: #64748b;
-  margin-top: var(--spacing-2);
+  margin-top: 1px;
+}
+
+.controlArrow {
+  color: #cbd5e1;
+  font-weight: 700;
 }
 
 @media (max-width: 1024px) {
@@ -789,8 +996,14 @@
   }
 }
 
+@media (max-width: 768px) {
+  .lecturerControlsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
-  .reviewerMatrixGrid, .studentTopGrid, .lecturerLandingCards {
+  .reviewerMatrixGrid, .studentTopGrid {
     grid-template-columns: 1fr;
   }
 }

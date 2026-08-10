@@ -15,6 +15,7 @@ import { SeminarWorkspace } from './pages/Lecturer/SeminarWorkspace';
 import { ResearchGroup } from './pages/Lecturer/ResearchGroup';
 import { ConfigureMilestones } from './pages/Lecturer/ConfigureMilestones';
 import { SubmitReport } from './pages/Student/SubmitReport';
+import { EarningsWallet } from './pages/Reviewers/EarningsWallet';
 import './styles/globals.css';
 
 const App = () => {
@@ -42,6 +43,7 @@ const App = () => {
               <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
               <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
               <Route path={ROUTES.SUBMIT_REPORT} element={<SubmitReport />} />
+              <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>
