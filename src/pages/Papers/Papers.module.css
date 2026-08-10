@@ -1,0 +1,386 @@
+.papersPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  font-family: var(--font-family-primary);
+}
+
+.header {
+  text-align: left;
+}
+
+.pageTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Tabs Bar */
+.tabsRow {
+  display: flex;
+  gap: var(--spacing-6);
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: var(--spacing-2);
+  margin-bottom: var(--spacing-1);
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  padding: var(--spacing-2) 0;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.tabBtn:hover {
+  color: #0f172a;
+}
+
+.tabBtnActive {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.tabBtnActive::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #2563eb;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+/* Section Card */
+.sectionCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sectionHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.manuscriptCount {
+  font-size: var(--font-size-sm);
+  color: #64748b;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 6px var(--spacing-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.refreshBtn:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+/* Table styles */
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.table td {
+  padding: var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.manuscriptCell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.fileIcon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.fileNameText {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dateCell {
+  color: #64748b;
+}
+
+.emptyRow {
+  padding: var(--spacing-8) !important;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Status dots */
+.statusDotLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.statusWaiting {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.statusDraft {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.statusAccepted {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+.statusRejected {
+  background-color: #fdf2f8;
+  color: #db2777;
+}
+
+.actionCellBtns {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.btnActionView {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: 5px var(--spacing-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btnActionView:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.btnActionNote {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 5px var(--spacing-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btnActionNoteAccept {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #16a34a;
+}
+
+.btnActionNoteAccept:hover {
+  background-color: #dcfce7;
+}
+
+.btnActionNoteReject {
+  background-color: #fdf2f8;
+  border-color: #fbcfe8;
+  color: #db2777;
+}
+
+.btnActionNoteReject:hover {
+  background-color: #fce7f3;
+}
+
+/* Upload Section */
+.uploadSectionTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: var(--spacing-1);
+}
+
+.uploadZone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background-color: #ffffff;
+  padding: var(--spacing-8) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.uploadZone:hover {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+}
+
+.uploadIconWrapper {
+  color: #94a3b8;
+  margin-bottom: var(--spacing-3);
+}
+
+.uploadZoneTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: var(--spacing-1);
+}
+
+.uploadZoneSubtitle {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin-bottom: var(--spacing-2);
+}
+
+.uploadZoneOr {
+  font-size: var(--font-size-xs);
+  color: #94a3b8;
+  margin-bottom: var(--spacing-2);
+}
+
+.browseFilesBtn {
+  background-color: #1e293b;
+  border: 1px solid #1e293b;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2) var(--spacing-6);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.browseFilesBtn:hover {
+  background-color: #0f172a;
+  border-color: #0f172a;
+}
+
+/* Fullscreen PDF Viewer overlay modal */
+.pdfViewerModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-4);
+}
+
+.pdfViewerModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 1000px;
+  height: 90%;
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdfViewerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-6);
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.pdfViewerTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.closePdfBtn {
+  background-color: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.closePdfBtn:hover {
+  background-color: #dc2626;
+}
+
+.pdfViewerBody {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}

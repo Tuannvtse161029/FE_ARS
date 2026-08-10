@@ -1,0 +1,229 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-4);
+}
+
+.modal {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  box-shadow: var(--shadow-2xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalEnter 0.2s ease-out;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-5) var(--spacing-6);
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.headerTitleArea {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.fileName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+}
+
+.badgeAccept {
+  background-color: #e6fcf5;
+  color: #099268;
+  border: 1px solid #c3fae8;
+}
+
+.badgeReject {
+  background-color: #fff5f5;
+  color: #e03131;
+  border: 1px solid #ffe3e3;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.closeBtn:hover {
+  color: #0f172a;
+}
+
+/* Modal Body */
+.body {
+  padding: var(--spacing-6);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  background-color: #f8fafc;
+}
+
+.criteriaCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+}
+
+.criteriaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.criteriaTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+}
+
+.scorePills {
+  display: flex;
+  gap: 6px;
+}
+
+.scorePill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #ffffff;
+}
+
+.scorePillActive {
+  background-color: #1e293b; /* Dark navy score pill */
+  color: #ffffff;
+  border-color: #1e293b;
+}
+
+.commentText {
+  font-size: var(--font-size-sm);
+  color: #475569;
+  line-height: var(--line-height-relaxed);
+  background-color: #f8fafc;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid #cbd5e1;
+}
+
+/* Decision Styles */
+.decisionText {
+  font-weight: 800;
+  font-size: var(--font-size-sm);
+  letter-spacing: 1px;
+}
+
+.textAccept {
+  color: #099268;
+}
+
+.textReject {
+  color: #e03131;
+}
+
+/* Footer Section */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-6);
+  border-top: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.reviewerInfo {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.reviewerInfo b {
+  font-size: var(--font-size-lg);
+  vertical-align: middle;
+}
+
+.footerCloseBtn {
+  background-color: #1e293b;
+  border: 1px solid #1e293b;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2) var(--spacing-5);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.footerCloseBtn:hover {
+  background-color: #0f172a;
+}
