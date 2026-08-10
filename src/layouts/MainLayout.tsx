@@ -162,11 +162,14 @@ export const MainLayout = () => {
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home Dashboard', icon: <HomeIcon /> },
-          { to: '#assignments', label: 'My Assignments', icon: <PapersIcon /> },
-          { to: ROUTES.SUBMIT_REPORT, label: 'Group Workspace', icon: <GroupIcon /> },
-          { to: '#history', label: 'Submission History', icon: <ForumIcon /> },
-          { to: '#messages', label: 'Messages', icon: <BrowseReviewersIcon /> },
+          { to: ROUTES.DASHBOARD, label: 'Home', icon: <HomeIcon /> },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon /> },
+          { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon /> },
+          { to: ROUTES.REVIEWERS, label: 'Browse Reviewers', icon: <BrowseReviewersIcon /> },
+          { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon /> },
+          { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
+          { to: '#premium-packages', label: 'Premium Packages', icon: <BrowseReviewersIcon /> },
+          { to: '#profile', label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Researcher':
       default:
