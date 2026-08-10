@@ -1,31 +1,54 @@
 ---
-description: Preserve ignoreDeprecations value in tsconfig.json
+description: Avoid deprecated tsconfig.json options
 globs: tsconfig.json
 alwaysApply: false
 ---
 
-# Preserve ignoreDeprecations in tsconfig.json
+# Avoid Deprecated TypeScript Options
 
-When editing `tsconfig.json`, the `ignoreDeprecations` value in `compilerOptions` **must always remain at `"6.0"`**.
+The `baseUrl` option is deprecated in TypeScript 6.0+ and will cause build failures on platforms like Vercel. **Do not use `ignoreDeprecations`** as a workaround - instead, remove deprecated options entirely.
+
+## Rule
+
+- **DO NOT** add `"ignoreDeprecations": "6.0"` to tsconfig.json
+- **DO NOT** use `baseUrl` option - Vite handles path aliases via `resolve.alias` in `vite.config.ts`
+- If you need path aliases, use `paths` only without `baseUrl`, or rely on Vite's built-in alias resolution
+
+## Correct Configuration
+
+Vite's `resolve.alias` handles the `@/` import path automatically:
 
 ```json
+// vite.config.ts
+resolve: {
+  alias: {
+    '@': resolve(__dirname, 'src'),
+  },
+}
+```
+
+```json
+// tsconfig.json - NO baseUrl needed
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0"
+    "target": "ES2020",
+    "strict": true
   }
 }
 ```
 
-## Rule
-
-- **DO NOT** change `"ignoreDeprecations": "6.0"` to any other value
-- **DO NOT** remove the `ignoreDeprecations` property
-- If TypeScript build fails due to deprecation warnings, address the actual code issues rather than changing this config value
-
 ## Example
 
 ```json
-// ✅ CORRECT - ignoreDeprecations stays at "6.0"
+// ✅ CORRECT - no baseUrl, no ignoreDeprecations
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "noUnusedLocals": true
+  }
+}
+
+// ❌ WRONG - do not use ignoreDeprecations
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -33,11 +56,13 @@ When editing `tsconfig.json`, the `ignoreDeprecations` value in `compilerOptions
   }
 }
 
-// ❌ WRONG - never change this value
+// ❌ WRONG - baseUrl is deprecated
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "ignoreDeprecations": "5.0"
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   }
 }
 ```
