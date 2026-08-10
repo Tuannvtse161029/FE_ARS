@@ -1,76 +1,75 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../routes/paths';
 import { PdfViewer } from '../../../components/PdfViewer';
 import styles from './EvaluationDesk.module.css';
 
-interface CriteriaScore {
-  methodology: number;
-  contribution: number;
-  literature: number;
-  clarity: number;
-}
-
 export const EvaluationDesk = () => {
-  const [scores, setScores] = useState<CriteriaScore>({
-    methodology: 5,
-    contribution: 4,
-    literature: 4,
-    clarity: 5,
-  });
-  const [comments, setComments] = useState('');
+  const navigate = useNavigate();
+
+  // Ratings for 5 criteria
+  const [originality, setOriginality] = useState(4);
+  const [literatureReview, setLiteratureReview] = useState(4);
+  const [methodology, setMethodology] = useState(5);
+  const [resultsDiscussion, setResultsDiscussion] = useState(4);
+  const [formattingStructure, setFormattingStructure] = useState(5);
+  
+  const [finalDecision, setFinalDecision] = useState('Accept');
+  const [qualitativeComments, setQualitativeComments] = useState(
+    'This paper makes a substantial contribution to the field of distributed systems. The modular architecture is elegantly designed and the experimental evaluation is rigorous. I recommend acceptance with minor revisions to address the scalability claims under adversarial network conditions and to include a more detailed comparison with recent 2025 literature on adaptive routing protocols.'
+  );
+
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-
-  // Compute composite score
-  const compositeScore = ((scores.methodology + scores.contribution + scores.literature + scores.clarity) / 4).toFixed(1);
-  const compositePercent = (parseFloat(compositeScore) / 5) * 100;
-
-  const handleScoreChange = (criteria: keyof CriteriaScore, val: number) => {
-    setScores({
-      ...scores,
-      [criteria]: val,
-    });
-  };
 
   const handleSaveDraft = () => {
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
 
-  const handleSubmitFeedback = () => {
-    if (comments.length < 50) {
-      alert('Please write at least 50 characters of comments to provide thorough feedback.');
-      return;
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitted(true);
+  };
+
+  // Render rating numbers helper
+  const renderRatingButtons = (currentVal: number, setVal: (n: number) => void) => {
+    return (
+      <div className={styles.ratingRow}>
+        {[1, 2, 3, 4, 5].map((num) => (
+          <button
+            key={num}
+            type="button"
+            className={`${styles.ratingBtn} ${currentVal === num ? styles.activeRatingBtn : ''}`}
+            onClick={() => setVal(num)}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className={styles.evaluationDesk}>
-      {/* Breadcrumbs & Status */}
-      <div className={styles.headerRow}>
-        <div className={styles.breadcrumbs}>
-          Home &gt; Assigned Review Tasks &gt; <span className={styles.activeBreadcrumb}>Evaluation Desk</span>
-          <span className={styles.statusBadge}>● IN REVIEW</span>
-        </div>
+      {/* Breadcrumbs */}
+      <div className={styles.breadcrumbs}>
+        Home &gt; Assigned Review Tasks &gt; <span className={styles.activeBreadcrumb}>Evaluation Desk</span>
       </div>
 
-      {/* Manuscript Info Banner */}
-      <div className={styles.manuscriptBanner}>
-        <div className={styles.bannerFileIcon}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
+      {/* Sub header details */}
+      <div className={styles.subHeader}>
+        <div className={styles.subHeaderLeft}>
+          <span className={styles.docIcon}>📄</span>
+          <div className={styles.docMeta}>
+            <h2 className={styles.docTitle}>Framework_Design_v2.pdf</h2>
+            <span className={styles.docSubText}>Submission #2847 · Journal of Distributed Computing</span>
+          </div>
         </div>
-        <div className={styles.bannerInfo}>
-          <h2 className={styles.manuscriptTitle}>Framework_Design_v2.pdf</h2>
-          <p className={styles.manuscriptSub}>
-            Submission #2847 - Journal of Distributed Computing - Submitted Jun 3, 2026
-          </p>
-        </div>
+        <span className={styles.inReviewBadge}>● IN REVIEW</span>
       </div>
 
-      {/* Main Grid: PDF Viewer + Scorecard */}
+      {/* Grid: PDF + Scorecard */}
       <div className={styles.deskGrid}>
         
         {/* Left Column: PDF Viewer */}
@@ -78,158 +77,138 @@ export const EvaluationDesk = () => {
           <div className={styles.pdfHeader}>
             <span className={styles.pdfTitle}>PDF VIEWER: Framework_Design_v2.pdf</span>
             <div className={styles.pdfControls}>
-              <span>Page 1 of 14</span>
-              <button className={styles.pdfControlBtn}>🔍 100%</button>
-              <button className={styles.pdfControlBtn}>🔄</button>
-              <button className={styles.pdfControlBtn}>⬇</button>
+              <span>&lt; Page 1 of 14 &gt;</span>
+              <span className={styles.zoomControl}>🔍 100% 🔍</span>
+              <span className={styles.pdfActionBtn}>🔄</span>
+              <span className={styles.pdfActionBtn}>⬇️</span>
             </div>
           </div>
           <div className={styles.pdfBody}>
             <PdfViewer url="/sample.pdf" />
           </div>
-          {/* Review Deadline Banner at bottom of Sidebar */}
-          <div className={styles.deadlineStickyBar}>
-            <span className={styles.clockIcon}>🕒</span>
-            <div className={styles.deadlineInfo}>
-              <span className={styles.deadlineDateLabel}>Review Deadline</span>
-              <span className={styles.deadlineDate}>Jul 15, 2026</span>
-            </div>
-            <span className={styles.progressPercent}>60% complete · 3 pending</span>
-          </div>
         </div>
 
-        {/* Right Column: Scorecard Form */}
+        {/* Right Column: Scorecard */}
         <div className={styles.scorecardCard}>
           <div className={styles.scorecardHeader}>
             <h3 className={styles.scorecardTitle}>CRITERIA EVALUATION SCORECARD</h3>
-            <span className={styles.autosaveBadge}>DRAFT AUTOSAVED</span>
+            <span className={styles.autosaveBadge}>✓ Draft Autosaved</span>
           </div>
 
-          <div className={styles.scorecardBody}>
-            {/* Quantitative Section */}
-            <div className={styles.sectionTitle}>Quantitative Assessment</div>
-
-            <div className={styles.criteriaSelects}>
-              {/* Methodology Integrity */}
-              <div className={styles.criteriaGroup}>
-                <label className={styles.criteriaLabel}>Methodology Integrity</label>
-                <select
-                  className={styles.criteriaSelect}
-                  value={scores.methodology}
-                  onChange={(e) => handleScoreChange('methodology', parseInt(e.target.value, 10))}
-                >
-                  <option value={5}>Score 5 - Excellent and reproducible methodology</option>
-                  <option value={4}>Score 4 - Solid experimental setup with minor limits</option>
-                  <option value={3}>Score 3 - Average setup, lacks extensive comparison</option>
-                  <option value={2}>Score 2 - Faulty methodology or insufficient baselines</option>
-                  <option value={1}>Score 1 - Critical methodology flaws</option>
-                </select>
+          <form onSubmit={handleSubmit} className={styles.scorecardBody}>
+            
+            {/* 1. ORIGINALITY */}
+            <div className={styles.scorecardSection}>
+              <div className={styles.sectionHeaderRow}>
+                <span className={styles.sectionTitle}>1. ORIGINALITY</span>
+                {renderRatingButtons(originality, setOriginality)}
               </div>
+              <p className={styles.criteriaFeedbackText}>
+                The paper presents a genuinely novel approach to modular backend routing that distinguishes itself clearly from prior art. The concept of decoupled orchestration layers is well-motivated.
+              </p>
+            </div>
 
-              {/* Academic Contribution */}
-              <div className={styles.criteriaGroup}>
-                <label className={styles.criteriaLabel}>Academic Contribution</label>
-                <select
-                  className={styles.criteriaSelect}
-                  value={scores.contribution}
-                  onChange={(e) => handleScoreChange('contribution', parseInt(e.target.value, 10))}
-                >
-                  <option value={5}>Score 5 - Highly original, substantial value add</option>
-                  <option value={4}>Score 4 - Good innovation, builds on existing work</option>
-                  <option value={3}>Score 3 - Moderate contribution, incremental update</option>
-                  <option value={2}>Score 2 - Minor contribution, explores solved ideas</option>
-                  <option value={1}>Score 1 - No notable contribution or novelty</option>
-                </select>
+            {/* 2. LITERATURE REVIEW */}
+            <div className={styles.scorecardSection}>
+              <div className={styles.sectionHeaderRow}>
+                <span className={styles.sectionTitle}>2. LITERATURE REVIEW</span>
+                {renderRatingButtons(literatureReview, setLiteratureReview)}
               </div>
+              <p className={styles.criteriaFeedbackText}>
+                The literature review is comprehensive and covers the relevant works in distributed systems. A few recent 2025 publications on CAP theorem extensions could strengthen the survey.
+              </p>
+            </div>
 
-              {/* Literature Review Depth */}
-              <div className={styles.criteriaGroup}>
-                <label className={styles.criteriaLabel}>Literature Review Depth</label>
-                <select
-                  className={styles.criteriaSelect}
-                  value={scores.literature}
-                  onChange={(e) => handleScoreChange('literature', parseInt(e.target.value, 10))}
-                >
-                  <option value={5}>Score 5 - Comprehensive references, covers up to 2025</option>
-                  <option value={4}>Score 4 - Thorough review with minor literature gaps</option>
-                  <option value={3}>Score 3 - Basic review, misses key recent studies</option>
-                  <option value={2}>Score 2 - Weak review, superficial references</option>
-                  <option value={1}>Score 1 - Totally inadequate bibliography</option>
-                </select>
+            {/* 3. METHODOLOGY */}
+            <div className={styles.scorecardSection}>
+              <div className={styles.sectionHeaderRow}>
+                <span className={styles.sectionTitle}>3. METHODOLOGY</span>
+                {renderRatingButtons(methodology, setMethodology)}
               </div>
+              <p className={styles.criteriaFeedbackText}>
+                Methodology is rigorous and reproducible. The three production-scale environment benchmarks are well-documented with clear threat-to-validity analysis.
+              </p>
+            </div>
 
-              {/* Clarity & Presentation */}
-              <div className={styles.criteriaGroup}>
-                <label className={styles.criteriaLabel}>Clarity & Presentation</label>
+            {/* 4. RESULTS & DISCUSSION */}
+            <div className={styles.scorecardSection}>
+              <div className={styles.sectionHeaderRow}>
+                <span className={styles.sectionTitle}>4. RESULTS & DISCUSSION</span>
+                {renderRatingButtons(resultsDiscussion, setResultsDiscussion)}
+              </div>
+              <p className={styles.criteriaFeedbackText}>
+                Results are clearly presented. The 47% throughput improvement claim is well-supported by the experimental data. Discussion of limitations is honest and appropriate.
+              </p>
+            </div>
+
+            {/* 5. FORMATTING & STRUCTURE */}
+            <div className={styles.scorecardSection}>
+              <div className={styles.sectionHeaderRow}>
+                <span className={styles.sectionTitle}>5. FORMATTING & STRUCTURE</span>
+                {renderRatingButtons(formattingStructure, setFormattingStructure)}
+              </div>
+              <p className={styles.criteriaFeedbackText}>
+                Paper adheres strictly to the Journal of Distributed Computing style guide. Figures are crisp and properly captioned. References are consistently formatted.
+              </p>
+            </div>
+
+            {/* 6. FINAL DECISION */}
+            <div className={styles.scorecardSection} style={{ borderBottom: 'none', paddingBottom: 0 }}>
+              <span className={styles.sectionTitle}>6. FINAL DECISION</span>
+              <div className={styles.dropdownWrapper}>
                 <select
-                  className={styles.criteriaSelect}
-                  value={scores.clarity}
-                  onChange={(e) => handleScoreChange('clarity', parseInt(e.target.value, 10))}
+                  className={styles.finalDecisionSelect}
+                  value={finalDecision}
+                  onChange={(e) => setFinalDecision(e.target.value)}
                 >
-                  <option value={5}>Score 5 - Crisp figures, precise terminology</option>
-                  <option value={4}>Score 4 - Easy to read with small styling issues</option>
-                  <option value={3}>Score 3 - Satisfactory clarity, needs minor editing</option>
-                  <option value={2}>Score 2 - Hard to follow, layout exceeds limit</option>
-                  <option value={1}>Score 1 - Unreadable, poor structure</option>
+                  <option value="Accept">Accept</option>
+                  <option value="Reject">Reject</option>
                 </select>
               </div>
             </div>
 
-            {/* Composite Score Panel */}
-            <div className={styles.compositePanel}>
-              <div className={styles.compositeHeader}>
-                <span className={styles.compositeLabel}>Composite Score</span>
-                <span className={styles.compositeVal}>{compositeScore} <span className={styles.compositeMax}>/ 5.0</span></span>
-              </div>
-              <div className={styles.progressBarWrapper}>
-                <div className={styles.progressBar} style={{ width: `${compositePercent}%` }}></div>
-              </div>
-              <span className={styles.recommendationText}>
-                RECOMMENDATION: {parseFloat(compositeScore) >= 4.0 ? 'ACCEPT WITH MINOR REVISIONS' : parseFloat(compositeScore) >= 3.0 ? 'RE-SUBMIT FOR REVIEW' : 'REJECT'}
-              </span>
-            </div>
-
-            {/* Qualitative Section */}
-            <div className={styles.sectionTitle} style={{ marginTop: '10px' }}>Qualitative Review</div>
-
-            <div className={styles.criteriaGroup}>
-              <label className={styles.criteriaLabel}>Qualitative Comments (Min 200 chars)</label>
+            {/* 7. QUALITATIVE COMMENTS */}
+            <div className={styles.scorecardSection} style={{ borderBottom: 'none', paddingBottom: 0, marginTop: '10px' }}>
+              <span className={styles.sectionTitle}>7. QUALITATIVE COMMENTS</span>
               <textarea
-                className={styles.commentsTextarea}
-                placeholder="Enter your qualitative evaluation of this submission..."
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={5}
+                className={styles.qualitativeTextarea}
+                value={qualitativeComments}
+                onChange={(e) => setQualitativeComments(e.target.value)}
+                rows={6}
+                required
               />
-              <span className={styles.commentsCounter}>
-                {comments.length} characters (Min 50 for draft save, 200 for submit)
-              </span>
             </div>
-          </div>
 
-          {/* Form Actions */}
-          <div className={styles.actionsFooter}>
-            <button className={styles.draftBtn} onClick={handleSaveDraft}>
-              🕒 {isSaved ? 'Draft Saved!' : 'Save Draft'}
-            </button>
-            <button className={styles.submitBtn} onClick={handleSubmitFeedback}>
-              ✓ Submit Final Feedback to Author
-            </button>
-          </div>
+            {/* Actions Footer inside form card */}
+            <div className={styles.actionsFooter}>
+              <button 
+                type="button" 
+                className={styles.saveDraftBtn}
+                onClick={handleSaveDraft}
+              >
+                💾 {isSaved ? 'Draft Saved!' : 'Save Draft'}
+              </button>
+              <button type="submit" className={styles.submitBtn}>
+                ✉️ Submit Final Feedback to Author
+              </button>
+            </div>
+
+          </form>
         </div>
+
       </div>
 
-      {/* Submission Success Dialog */}
+      {/* Success Modal */}
       {isSubmitted && (
         <div className={styles.modalOverlay}>
-          <div className={styles.successModal}>
+          <div className={styles.successModalCard}>
             <div className={styles.successIconCircle}>✓</div>
-            <h3 className={styles.successModalTitle}>Evaluation Submitted Successfully!</h3>
+            <h3 className={styles.successModalTitle}>Feedback Submitted Successfully!</h3>
             <p className={styles.successModalText}>
-              Your grading scorecard has been recorded. Escrow funds will be released to your wallet upon author acknowledgement.
+              Your rating evaluation and decision "<b>{finalDecision}</b>" have been submitted to the journal editor. Escrow funds will be dispatched upon publication verification.
             </p>
-            <button className={styles.successBtn} onClick={() => setIsSubmitted(false)}>
-              Close Desk
+            <button className={styles.successBtn} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>
+              Back to Task List
             </button>
           </div>
         </div>

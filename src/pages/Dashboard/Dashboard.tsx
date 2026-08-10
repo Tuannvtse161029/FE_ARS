@@ -228,68 +228,156 @@ export const Dashboard = () => {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // RENDER: EXPERT REVIEWER ASSESSMENT PORTAL (FRAME 9)
+  // RENDER: EXPERT REVIEWER ASSESSMENT PORTAL (FRAME 15/16)
   // ───────────────────────────────────────────────────────────────────────────
+  const [acceptingRequests, setAcceptingRequests] = useState(true);
+
   if (activeRole === 'Reviewer') {
     return (
       <div className={styles.dashboard}>
         {/* Breadcrumbs */}
         <div className={styles.breadcrumbs}>
-          Home &gt; <span className={styles.activeBreadcrumb}>Reviewer Assessment Portal</span>
+          Home &gt; <span className={styles.activeBreadcrumb}>Reviewer Management Console</span>
         </div>
 
-        {/* Dashboard Title Banner */}
-        <div className={styles.roleHeaderArea}>
-          <h1 className={styles.roleTitle}>Reviewer Assessment Portal</h1>
+        {/* Welcome Dashboard Card */}
+        <div className={styles.reviewerWelcomeCard}>
+          <div className={styles.welcomeLeft}>
+            <span className={styles.welcomeCategory}>REVIEWER DASHBOARD</span>
+            <h2 className={styles.welcomeBigTitle}>Welcome back, Dr. Nguyen Van A!</h2>
+            <p className={styles.welcomeSubtitle}>
+              You have <span className={styles.highlightText}>2 review tasks</span> pending evaluation.
+              {!acceptingRequests && (
+                <> Your next deadline is in <span className={styles.highlightText} style={{ color: '#eab308' }}>3 days</span>.</>
+              )}
+            </p>
+            <button 
+              className={styles.goToReviewBtn}
+              onClick={() => navigate(ROUTES.REVIEW_TASKS)}
+            >
+              📄 Go to Review Paper
+            </button>
+          </div>
+
+          {/* Interactive Accepting Requests Toggle */}
+          <div className={styles.toggleWrapper}>
+            <span className={styles.toggleLabel}>Accepting New Requests</span>
+            <button 
+              type="button"
+              className={`${styles.toggleSwitch} ${acceptingRequests ? styles.toggleOn : styles.toggleOff}`}
+              onClick={() => setAcceptingRequests(!acceptingRequests)}
+            >
+              <span className={styles.toggleSlider}></span>
+            </button>
+          </div>
         </div>
 
-        {/* Frame 9 Active evaluation queue */}
-        <div className={styles.reviewerQueueCard}>
-          <div className={styles.queueHeader}>
+        {/* Row of 3 Metrics Cards */}
+        <div className={styles.reviewerRedesignMetricsRow}>
+          <div className={styles.redesignMetricCard}>
+            <div className={styles.redesignCardHeader}>
+              <span className={styles.redesignMetricTitle}>PENDING REVIEWS</span>
+              <span className={styles.actionNeededBadge}>Action Needed</span>
+            </div>
+            <span className={styles.redesignMetricVal}>2</span>
+          </div>
+
+          <div className={styles.redesignMetricCard}>
+            <div className={styles.redesignCardHeader}>
+              <span className={styles.redesignMetricTitle}>COMPLETED REVIEWS</span>
+              <span className={styles.allTimeBadge}>All Time</span>
+            </div>
+            <span className={styles.redesignMetricVal}>142</span>
+          </div>
+
+          <div className={styles.redesignMetricCard}>
+            <div className={styles.redesignCardHeader}>
+              <span className={styles.redesignMetricTitle}>HELD IN ESCROW</span>
+              <span className={styles.lockedBadge}>Locked</span>
+            </div>
+            <div className={styles.escrowValRow}>
+              <span className={styles.redesignMetricVal}>1,000,000</span>
+              <span className={styles.escrowCurrency}>VND</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Urgent Review required banner (yellow warning block) */}
+        <div className={styles.urgentBannerRow}>
+          <div className={styles.urgentBannerLeft}>
+            <span className={styles.urgentIconCircle}>⚡</span>
+            <div className={styles.urgentMeta}>
+              <span className={styles.urgentTitleLabel}>Urgent Review Required</span>
+              <span className={styles.urgentDesc}>
+                Framework_Design_v2.pdf · Deadline: <b>3 Days</b> · Fee: <b>500,000 VND</b>
+              </span>
+            </div>
+          </div>
+          <button 
+            className={styles.startEvaluationBtn}
+            onClick={() => navigate(ROUTES.EVALUATION)}
+          >
+            🚀 Start Evaluation
+          </button>
+        </div>
+
+        {/* Section: Assigned Review Requests */}
+        <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px' }}>
+          <div className={styles.queueHeader} style={{ marginBottom: '15px' }}>
             <div className={styles.queueTitleWrapper}>
               <span className={styles.queueIcon}>📋</span>
-              <h3 className={styles.queueTitle}>ACTIVE ASSIGNED EVALUATION QUEUE</h3>
+              <h3 className={styles.queueTitle} style={{ color: '#0f172a' }}>Assigned Review Requests</h3>
+              <span className={styles.actionNeededPill}>Action Needed</span>
             </div>
-            <span className={styles.pendingBadge}>2 PENDING</span>
+            <button className={styles.viewAllTableLink} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>View All ↗</button>
           </div>
 
           <div className={styles.tableResponsive}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>PAPER TITLE</th>
-                  <th>AUTHOR ROLE</th>
-                  <th>FEE BALANCE</th>
-                  <th>TIMELINE</th>
+                  <th>PAPER</th>
+                  <th>DOMAIN</th>
+                  <th>DEADLINE</th>
+                  <th>FEE</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className={styles.manuscriptTitleText}>Framework_Design</td>
-                  <td className={styles.authorRoleText}>Researcher</td>
-                  <td className={styles.feeBalanceText}>500,000 VND</td>
+                  <td className={styles.manuscriptTitleText}>Framework_Design_v2.pdf</td>
                   <td>
-                    <span className={styles.timelineAlertBadge}>⚠️ [!!] 3 Days Left</span>
+                    <span className={styles.domainPill}>#ComputerScience</span>
                   </td>
                   <td>
+                    <span className={styles.remainingOrange}>🕒 3 Days Remaining</span>
+                  </td>
+                  <td className={styles.feeBalanceText} style={{ color: '#0f172a' }}>500,000 VND</td>
+                  <td>
                     <button 
-                      className={styles.beginAssessmentBtn}
+                      className={styles.evaluateRequestBtn}
                       onClick={() => navigate(ROUTES.EVALUATION)}
                     >
-                      Begin Assessment
+                      Evaluate
                     </button>
                   </td>
                 </tr>
                 <tr>
-                  <td className={styles.manuscriptTitleText}>Network_Security</td>
-                  <td className={styles.authorRoleText}>Student Group</td>
-                  <td className={styles.feeBalanceText}>450,000 VND</td>
+                  <td className={styles.manuscriptTitleText}>Cloud_Routing_v1.pdf</td>
                   <td>
-                    <span className={styles.timelineOkBadge}>🕒 [ ] 12 Days Left</span>
+                    <span className={styles.domainPill}>#SoftwareEngineering</span>
                   </td>
                   <td>
-                    <span className={styles.lockedActionText}>- Locked -</span>
+                    <span className={styles.remainingGray}>🕒 7 Days Remaining</span>
+                  </td>
+                  <td className={styles.feeBalanceText} style={{ color: '#0f172a' }}>500,000 VND</td>
+                  <td>
+                    <button 
+                      className={styles.evaluateRequestBtn}
+                      onClick={() => navigate(ROUTES.EVALUATION)}
+                    >
+                      Evaluate
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -297,56 +385,43 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Matrix side by side */}
-        <div className={styles.reviewerMatrixGrid}>
-          {/* Earnings & credentials matrix */}
-          <div className={styles.matrixCard}>
-            <h3 className={styles.matrixTitle}>EARNINGS & CREDENTIALS MATRIX</h3>
-            
-            <div className={styles.matrixRow}>
-              <div className={styles.matrixCol}>
-                <span className={styles.matrixLabel}>UNLOCKED BALANCE</span>
-                <span className={styles.matrixVal}>4,200,000 <span className={styles.matrixCur}>VND</span></span>
-              </div>
-              <span className={styles.matrixIconCircle}>💼</span>
+        {/* Section: Recently Completed Reviews */}
+        <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px' }}>
+          <div className={styles.queueHeader} style={{ marginBottom: '15px' }}>
+            <div className={styles.queueTitleWrapper}>
+              <span className={styles.queueIcon}>✓</span>
+              <h3 className={styles.queueTitle} style={{ color: '#0f172a' }}>Recently Completed Reviews</h3>
             </div>
-
-            <div className={styles.matrixRow} style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
-              <div className={styles.matrixCol}>
-                <span className={styles.matrixLabel}>PENDING CLEAR</span>
-                <span className={styles.matrixVal} style={{ color: '#64748b' }}>500,000 <span className={styles.matrixCur}>VND</span></span>
-              </div>
-              <span className={styles.matrixIconCircle} style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>🕒</span>
-            </div>
+            <button className={styles.viewAllTableLink} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>View All ↗</button>
           </div>
 
-          {/* Reviews integrity metrics */}
-          <div className={styles.matrixCard}>
-            <h3 className={styles.matrixTitle}>REVIEWS INTEGRITY METRICS</h3>
-
-            <div className={styles.integrityMetricGroup}>
-              <div className={styles.integrityTextRow}>
-                <span className={styles.matrixLabel}>H-INDEX REGISTRY COUNT</span>
-                <span className={styles.integrityVal}>24</span>
-              </div>
-              {/* Mock bar chart graphic */}
-              <div className={styles.barChartMock}>
-                <span className={styles.bar} style={{ height: '14px' }}></span>
-                <span className={styles.bar} style={{ height: '22px' }}></span>
-                <span className={styles.bar} style={{ height: '18px' }}></span>
-                <span className={styles.bar} style={{ height: '28px' }}></span>
-                <span className={styles.bar} style={{ height: '34px' }}></span>
-                <span className={styles.bar} style={{ height: '40px' }}></span>
-              </div>
-            </div>
-
-            <div className={styles.integrityMetricGroup} style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
-              <div className={styles.integrityTextRow}>
-                <span className={styles.matrixLabel}>OVERALL SYSTEM RATING</span>
-                <span className={styles.integrityVal}>4.9 <span className={styles.matrixCur}>/ 5.0</span></span>
-              </div>
-              <span className={styles.yellowStars}>★★★★★ <span className={styles.emptyStar}>☆</span></span>
-            </div>
+          <div className={styles.tableResponsive}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>PAPER</th>
+                  <th>FINAL DECISION</th>
+                  <th>DATE</th>
+                  <th>FEE</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className={styles.manuscriptTitleText}>Distributed_DB_v3.pdf</td>
+                  <td>
+                    <span className={styles.completedDecisionBadge}>Accept with Minor Revisions</span>
+                  </td>
+                  <td>2026-07-10</td>
+                  <td className={styles.feeBalanceText} style={{ color: '#0f172a' }}>500,000 VND</td>
+                  <td>
+                    <button className={styles.viewScorecardBtn} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>
+                      View Scorecard
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

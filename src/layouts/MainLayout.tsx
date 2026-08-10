@@ -122,7 +122,7 @@ export const MainLayout = () => {
     if (role === 'Researcher') {
       navigate(ROUTES.DASHBOARD);
     } else if (role === 'Reviewer') {
-      navigate(ROUTES.EVALUATION);
+      navigate(ROUTES.DASHBOARD);
     } else if (role === 'Lecturer') {
       navigate(ROUTES.SEMINAR_WORKSPACE);
     } else if (role === 'Graduate Student') {
@@ -143,11 +143,12 @@ export const MainLayout = () => {
     switch (activeRole) {
       case 'Reviewer':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
-          { to: ROUTES.EVALUATION, label: 'Review Tasks', icon: <PapersIcon />, badge: '4' },
-          { to: ROUTES.EARNINGS_WALLET, label: 'Earnings Wallet', icon: <WalletIcon /> },
-          { to: '#author-subs', label: 'Author Submissions', icon: <BrowseReviewersIcon /> },
-          { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
+          { to: ROUTES.DASHBOARD, label: 'Home', icon: <HomeIcon /> },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon /> },
+          { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon />, badge: '2' },
+          { to: ROUTES.EARNINGS_WALLET, label: 'Wallet', icon: <WalletIcon /> },
+          { to: ROUTES.EARNINGS_WALLET, label: 'Withdrawal Request', icon: <WalletIcon /> },
+          { to: '#profile', label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Lecturer':
         return [

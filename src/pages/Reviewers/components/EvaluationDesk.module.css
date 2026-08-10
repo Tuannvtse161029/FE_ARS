@@ -6,18 +6,10 @@
   font-family: var(--font-family-primary);
 }
 
-.headerRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .breadcrumbs {
   font-size: 0.75rem;
   color: #64748b;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
+  text-align: left;
 }
 
 .activeBreadcrumb {
@@ -25,75 +17,69 @@
   color: #0f172a;
 }
 
-.statusBadge {
-  font-size: 0.65rem;
+/* Subheader details */
+.subHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: var(--spacing-3);
+  text-align: left;
+}
+
+.subHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.docIcon {
+  font-size: 1.5rem;
+  color: #2563eb;
+}
+
+.docMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.docTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.docSubText {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.inReviewBadge {
+  font-size: 0.7rem;
   font-weight: 700;
   color: #10b981;
   background-color: #ecfdf5;
   border: 1px solid #a7f3d0;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  border-radius: 4px;
 }
 
-/* Manuscript Info Banner */
-.manuscriptBanner {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: var(--spacing-4) var(--spacing-5);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3.5);
-  box-shadow: var(--shadow-sm);
-  text-align: left;
-}
-
-.bannerFileIcon {
-  color: #3b82f6;
-  background-color: #eff6ff;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bannerInfo {
-  display: flex;
-  flex-direction: column;
-}
-
-.manuscriptTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.manuscriptSub {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-/* Main Grid: PDF Viewer + Scorecard */
+/* Desk Grid */
 .deskGrid {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-5);
   align-items: start;
 }
 
-/* PDF Viewer Card styling */
+/* PDF card styling */
 .pdfViewerCard {
-  background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
-  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 240px);
+  box-shadow: var(--shadow-sm);
+  background-color: #ffffff;
 }
 
 .pdfHeader {
@@ -103,100 +89,58 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.pdfTitle {
   font-size: var(--font-size-xs);
   font-weight: 700;
-  letter-spacing: 0.5px;
 }
 
 .pdfControls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-4);
-  font-size: 0.75rem;
-  color: #cbd5e1;
+  gap: var(--spacing-3);
 }
 
-.pdfControlBtn {
-  background: none;
-  border: none;
-  color: #ffffff;
+.zoomControl {
+  background-color: #334155;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pdfActionBtn {
   cursor: pointer;
-  font-size: 0.8rem;
-  padding: 2px;
 }
 
 .pdfBody {
-  flex: 1;
+  height: 640px;
   overflow: hidden;
   position: relative;
 }
 
-.deadlineStickyBar {
-  background-color: #fffbeb;
-  border-top: 1px solid #fde047;
-  padding: var(--spacing-3) var(--spacing-5);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  text-align: left;
-}
-
-.clockIcon {
-  color: #d97706;
-  font-size: 1rem;
-}
-
-.deadlineInfo {
-  display: flex;
-  flex-direction: column;
-}
-
-.deadlineDateLabel {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #854d0e;
-  text-transform: uppercase;
-}
-
-.deadlineDate {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: #b45309;
-}
-
-.progressPercent {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: #854d0e;
-  margin-left: auto;
-}
-
-/* Scorecard Card styling */
+/* Scorecard right column */
 .scorecardCard {
   background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 20px;
+  padding: var(--spacing-5) var(--spacing-6);
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  max-height: calc(100vh - 240px);
+  gap: var(--spacing-4);
+  text-align: left;
+  max-height: 720px;
+  overflow-y: auto;
 }
 
 .scorecardHeader {
-  padding: var(--spacing-4) var(--spacing-5);
-  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3);
 }
 
 .scorecardTitle {
-  font-size: var(--font-size-xs);
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 850;
   color: #1e3a8a;
   letter-spacing: 0.5px;
 }
@@ -204,185 +148,169 @@
 .autosaveBadge {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #4f46e5;
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 1px 8px;
+  color: #10b981;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 2px 8px;
   border-radius: 4px;
 }
 
 .scorecardBody {
-  padding: var(--spacing-5);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--spacing-4.5);
 }
 
-.sectionTitle {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  border-left: 3px solid #2563eb;
-  padding-left: var(--spacing-2);
-  text-align: left;
-}
-
-.criteriaSelects {
+/* Scorecard Section */
+.scorecardSection {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--spacing-2);
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3.5);
 }
 
-.criteriaGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1.5);
-  text-align: left;
-}
-
-.criteriaLabel {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-}
-
-.criteriaSelect {
-  background-color: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-2.5) var(--spacing-4);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: #0f172a;
-  outline: none;
-  height: 40px;
-  cursor: pointer;
-}
-
-/* Composite Panel */
-.compositePanel {
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2.5);
-  text-align: left;
-}
-
-.compositeHeader {
+.sectionHeaderRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.compositeLabel {
+.sectionTitle {
   font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: #1e40af;
-  text-transform: uppercase;
-}
-
-.compositeVal {
-  font-size: 1.25rem;
   font-weight: 800;
-  color: #1e3a8a;
-}
-
-.compositeMax {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: #64748b;
-}
-
-.progressBarWrapper {
-  background-color: #cbd5e1;
-  border-radius: var(--radius-full);
-  height: 8px;
-  width: 100%;
-  overflow: hidden;
-}
-
-.progressBar {
-  background-color: #2563eb;
-  height: 100%;
-  border-radius: var(--radius-full);
-  transition: width var(--transition-normal);
-}
-
-.recommendationText {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #1d4ed8;
+  color: #1e293b;
   letter-spacing: 0.5px;
 }
 
-.commentsTextarea {
-  background-color: #ffffff;
+/* Rating buttons */
+.ratingRow {
+  display: flex;
+  gap: 4px;
+}
+
+.ratingBtn {
+  background-color: #f1f5f9;
   border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-3) var(--spacing-4);
+  color: #475569;
+  font-weight: 700;
   font-size: var(--font-size-xs);
-  color: #0f172a;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.ratingBtn:hover {
+  border-color: #94a3b8;
+  background-color: #e2e8f0;
+}
+
+.activeRatingBtn {
+  background-color: #1e293b !important;
+  border-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.criteriaFeedbackText {
+  font-size: 0.75rem;
+  line-height: var(--line-height-relaxed);
+  color: #475569;
+  margin: 0;
+  font-style: italic;
+  border-left: 2px solid #e2e8f0;
+  padding-left: var(--spacing-3);
+}
+
+/* Dropdown */
+.dropdownWrapper {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.finalDecisionSelect {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 0 var(--spacing-3);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #1e293b;
+  outline: none;
+  height: 38px;
+  cursor: pointer;
+}
+
+.finalDecisionSelect:focus {
+  border-color: #2563eb;
+}
+
+.qualitativeTextarea {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3);
+  font-size: 0.75rem;
+  color: #1e293b;
   outline: none;
   font-family: var(--font-family-primary);
+  line-height: var(--line-height-relaxed);
   resize: vertical;
 }
 
-.commentsCounter {
-  font-size: 0.65rem;
-  color: #64748b;
-  font-weight: 500;
+.qualitativeTextarea:focus {
+  border-color: #2563eb;
 }
 
 /* Actions footer */
 .actionsFooter {
-  padding: var(--spacing-4) var(--spacing-5);
-  background-color: #f8fafc;
-  border-top: 1px solid #e2e8f0;
   display: flex;
   gap: var(--spacing-3);
+  border-top: 1px solid #f1f5f9;
+  padding-top: var(--spacing-4);
 }
 
-.draftBtn {
-  background: none;
-  border: 1px solid #cbd5e1;
+.saveDraftBtn {
   background-color: #ffffff;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
+  border: 1.5px solid #cbd5e1;
   color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-4);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   cursor: pointer;
-  flex: 1;
+  transition: all var(--transition-fast);
 }
 
-.draftBtn:hover {
-  background-color: #f1f5f9;
+.saveDraftBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
 }
 
 .submitBtn {
+  flex: 1;
   background-color: #1e293b;
-  border: 1px solid #1e293b;
+  border: none;
   color: #ffffff;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2) var(--spacing-4);
+  padding: var(--spacing-2.5) var(--spacing-4);
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  flex: 1.5;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast);
 }
 
 .submitBtn:hover {
   background-color: #0f172a;
 }
 
-/* Modal Overlay for Success */
+/* Success Modal Overlay */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -397,7 +325,7 @@
   z-index: 1000;
 }
 
-.successModal {
+.successModalCard {
   background-color: #ffffff;
   border-radius: 20px;
   width: 100%;
@@ -408,7 +336,6 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-4);
-  animation: modalEnter 0.2s ease-out;
 }
 
 .successIconCircle {
@@ -455,25 +382,8 @@
   background-color: #0f172a;
 }
 
-@keyframes modalEnter {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @media (max-width: 1024px) {
   .deskGrid {
     grid-template-columns: 1fr;
-  }
-  .pdfViewerCard {
-    height: 500px;
-  }
-  .scorecardCard {
-    max-height: none;
   }
 }

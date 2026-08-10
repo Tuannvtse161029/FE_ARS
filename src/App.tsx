@@ -16,6 +16,7 @@ import { ResearchGroup } from './pages/Lecturer/ResearchGroup';
 import { ConfigureMilestones } from './pages/Lecturer/ConfigureMilestones';
 import { SubmitReport } from './pages/Student/SubmitReport';
 import { EarningsWallet } from './pages/Reviewers/EarningsWallet';
+import { ReviewTasks } from './pages/Reviewers/components/ReviewTasks';
 import './styles/globals.css';
 
 const App = () => {
@@ -44,6 +45,7 @@ const App = () => {
               <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
               <Route path={ROUTES.SUBMIT_REPORT} element={<SubmitReport />} />
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
+              <Route path={ROUTES.REVIEW_TASKS} element={<ReviewTasks />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>
