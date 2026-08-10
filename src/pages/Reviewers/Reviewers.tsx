@@ -1,0 +1,519 @@
+import { useState, useEffect } from 'react';
+import { TopUpModal } from './components/TopUpModal';
+import styles from './Reviewers.module.css';
+
+interface Reviewer {
+  id: string;
+  name: string;
+  title: string;
+  initials: string;
+  avatarBg: string;
+  hIndex: number;
+  publications: number;
+  reviews: number;
+  fee: number;
+  tags: string[];
+  orcid: string;
+}
+
+interface ReviewRequest {
+  id: string;
+  manuscriptTitle: string;
+  reviewerName: string;
+  reviewerInitials: string;
+  reviewerAvatarBg: string;
+  date: string;
+  fee: number;
+  status: 'Pending' | 'Completed' | 'Rejected';
+}
+
+export const Reviewers = () => {
+  // Navigation & Tabs state
+  const [activeTab, setActiveTab] = useState<'discover' | 'requests'>('discover');
+  const [screenState, setScreenState] = useState<'list' | 'create-request'>('list');
+
+  // Wallet state
+  const [walletBalance, setWalletBalance] = useState(() => {
+    const saved = localStorage.getItem('ars_wallet');
+    return saved ? parseInt(saved, 10) : 500000;
+  });
+
+  // Selected reviewer for creating request
+  const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
+
+  // Modal states
+  const [topUpReviewer, setTopUpReviewer] = useState<Reviewer | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Form states
+  const [selectedPaper, setSelectedPaper] = useState('Framework_Design_V2.pdf');
+  const [notes, setNotes] = useState('');
+
+  // Review requests history state
+  const [requests, setRequests] = useState<ReviewRequest[]>([]);
+
+  // Sync wallet balance
+  useEffect(() => {
+    const handleWalletUpdate = () => {
+      const saved = localStorage.getItem('ars_wallet');
+      setWalletBalance(saved ? parseInt(saved, 10) : 500000);
+    };
+    window.addEventListener('wallet-update', handleWalletUpdate);
+    return () => window.removeEventListener('wallet-update', handleWalletUpdate);
+  }, []);
+
+  const reviewers: Reviewer[] = [
+    {
+      id: 'rev-1',
+      name: 'Dr. Nguyen Van A',
+      title: 'Senior Lecturer',
+      initials: 'NA',
+      avatarBg: '#14b8a6', // Teal
+      hIndex: 24,
+      publications: 87,
+      reviews: 142,
+      fee: 500000,
+      tags: ['#ComputerScience', '#DistributedSystems'],
+      orcid: '0000-0002-1234-5678',
+    },
+    {
+      id: 'rev-2',
+      name: 'Prof. Tran Minh B',
+      title: 'Associate Professor',
+      initials: 'TB',
+      avatarBg: '#3b82f6', // Blue
+      hIndex: 31,
+      publications: 124,
+      reviews: 203,
+      fee: 750000,
+      tags: ['#SoftwareEngineering', '#CloudComputing'],
+      orcid: '0000-0003-9876-5432',
+    },
+    {
+      id: 'rev-3',
+      name: 'Dr. Le Thi C',
+      title: 'Research Fellow',
+      initials: 'LC',
+      avatarBg: '#f59e0b', // Amber
+      hIndex: 18,
+      publications: 62,
+      reviews: 89,
+      fee: 400000,
+      tags: ['#DistributedSystems', '#NetworkSystems'],
+      orcid: '0000-0001-5555-4444',
+    },
+  ];
+
+  const handleRequestClick = (reviewer: Reviewer) => {
+    setSelectedReviewer(reviewer);
+    setScreenState('create-request');
+  };
+
+  const handleConfirmRequest = () => {
+    if (!selectedReviewer) return;
+
+    // Deduct from wallet
+    const newVal = walletBalance - selectedReviewer.fee;
+    localStorage.setItem('ars_wallet', newVal.toString());
+    window.dispatchEvent(new Event('wallet-update'));
+
+    // Open Success Modal
+    setShowSuccessModal(true);
+  };
+
+  const handleGoToRequests = () => {
+    if (!selectedReviewer) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Add to requests list
+    const newRequest: ReviewRequest = {
+      id: `REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      manuscriptTitle: selectedPaper,
+      reviewerName: selectedReviewer.name,
+      reviewerInitials: selectedReviewer.initials,
+      reviewerAvatarBg: selectedReviewer.avatarBg,
+      date: today,
+      fee: selectedReviewer.fee,
+      status: 'Pending',
+    };
+
+    setRequests([newRequest, ...requests]);
+    setShowSuccessModal(false);
+    setScreenState('list');
+    setActiveTab('requests');
+    setSelectedReviewer(null);
+    setNotes('');
+  };
+
+  const handleTopUpSuccess = (amount: number) => {
+    // When top up completes, refresh balance and show alert/prompt
+    console.log(`Successfully topped up ${amount} VND`);
+  };
+
+  return (
+    <div className={styles.reviewersPage}>
+      {/* List Screen */}
+      {screenState === 'list' && (
+        <>
+          {/* Page Title */}
+          <div className={styles.header}>
+            <h1 className={styles.pageTitle}>Reviewers List</h1>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className={styles.tabsRow}>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'discover' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('discover')}
+            >
+              Discover Reviewers
+            </button>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'requests' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('requests')}
+            >
+              My Review Requests
+              {requests.length > 0 && (
+                <span className={styles.requestsCountBadge}>{requests.length}</span>
+              )}
+            </button>
+          </div>
+
+          {/* TAB: Discover Reviewers */}
+          {activeTab === 'discover' && (
+            <div className={styles.discoverContainer}>
+              {/* Manuscript Selector */}
+              <div className={styles.manuscriptSelectorCard}>
+                <span className={styles.selectorLabel}>Select Paper for Reviewer Recommendation</span>
+                <select 
+                  className={styles.selectorDropdown}
+                  value={selectedPaper}
+                  onChange={(e) => setSelectedPaper(e.target.value)}
+                >
+                  <option>Framework_Design_V2.pdf</option>
+                  <option>Cloud_Routing_v1.pdf</option>
+                  <option>Microservice_Consensus_v3.pdf</option>
+                </select>
+              </div>
+
+              {/* Reviewers Grid */}
+              <div className={styles.reviewersGrid}>
+                {reviewers.map((reviewer) => {
+                  const hasSufficientFunds = walletBalance >= reviewer.fee;
+                  const shortfall = reviewer.fee - walletBalance;
+
+                  return (
+                    <div key={reviewer.id} className={styles.reviewerCard}>
+                      {/* Avatar, name, title */}
+                      <div className={styles.reviewerHeader}>
+                        <div 
+                          className={styles.avatarCircle} 
+                          style={{ backgroundColor: reviewer.avatarBg }}
+                        >
+                          {reviewer.initials}
+                        </div>
+                        <div className={styles.authorMeta}>
+                          <span className={styles.reviewerName}>{reviewer.name}</span>
+                          <span className={styles.reviewerTitle}>{reviewer.title}</span>
+                        </div>
+                      </div>
+
+                      {/* Stats (H-Index, Pubs, Reviews) */}
+                      <div className={styles.statsRow}>
+                        <div className={styles.statCol}>
+                          <span className={styles.statVal}>{reviewer.hIndex}</span>
+                          <span className={styles.statLabel}>H-Index</span>
+                        </div>
+                        <div className={styles.statCol}>
+                          <span className={styles.statVal}>{reviewer.publications}</span>
+                          <span className={styles.statLabel}>Publications</span>
+                        </div>
+                        <div className={styles.statCol}>
+                          <span className={styles.statVal}>{reviewer.reviews}</span>
+                          <span className={styles.statLabel}>Reviews</span>
+                        </div>
+                      </div>
+
+                      {/* Review Fee Banner */}
+                      <div className={`${styles.feeBox} ${hasSufficientFunds ? styles.feeBoxBlue : styles.feeBoxRed}`}>
+                        <span className={styles.feeLabel}>Base Review Fee</span>
+                        <span className={styles.feeVal}>{reviewer.fee.toLocaleString('vi-VN')} VND</span>
+                      </div>
+
+                      {/* Tags */}
+                      <div className={styles.tagsRow}>
+                        {reviewer.tags.map((tag, i) => (
+                          <span key={i} className={styles.tagPill}>{tag}</span>
+                        ))}
+                      </div>
+
+                      {/* Action buttons */}
+                      {hasSufficientFunds ? (
+                        <button 
+                          className={styles.requestReviewBtn}
+                          onClick={() => handleRequestClick(reviewer)}
+                        >
+                          Request Review
+                        </button>
+                      ) : (
+                        <div className={styles.insufficientContainer}>
+                          <button 
+                            className={styles.addFundBtn}
+                            onClick={() => setTopUpReviewer(reviewer)}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                              <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                              <line x1="12" y1="20" x2="12" y2="4"></line>
+                            </svg>
+                            Add Fund to Wallet
+                          </button>
+                          <span className={styles.shortfallText}>
+                            Need {shortfall.toLocaleString('vi-VN')} VND more to request
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: My Review Requests */}
+          {activeTab === 'requests' && (
+            <div className={styles.sectionCard}>
+              <div className={styles.sectionHeader}>
+                <h3 className={styles.sectionTitle}>My Review Request</h3>
+                <button className={styles.refreshBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>MANUSCRIPT TITLE</th>
+                      <th>ASSIGNED REVIEWER</th>
+                      <th>SUBMISSION DATE</th>
+                      <th>REVIEW FEE</th>
+                      <th>STATUS</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {requests.length > 0 ? (
+                      requests.map((req) => (
+                        <tr key={req.id}>
+                          <td className={styles.manuscriptCell}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.fileIcon}>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span className={styles.fileNameText}>{req.manuscriptTitle}</span>
+                          </td>
+                          <td className={styles.reviewerCell}>
+                            <div 
+                              className={styles.avatarCircleSmall}
+                              style={{ backgroundColor: req.reviewerAvatarBg }}
+                            >
+                              {req.reviewerInitials}
+                            </div>
+                            <span className={styles.reviewerNameText}>{req.reviewerName}</span>
+                          </td>
+                          <td className={styles.dateCell}>{req.date}</td>
+                          <td className={styles.feeCell}>{req.fee.toLocaleString('vi-VN')} VND</td>
+                          <td>
+                            <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>
+                              ● {req.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button className={styles.btnActionDetails}>View Details</button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyRow}>
+                          No review requests submitted yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {requests.length > 0 && (
+                <div className={styles.tableFooter}>
+                  <span>Showing {requests.length} of {requests.length} requests</span>
+                  <span className={styles.footerTime}>
+                    Last updated: {requests[0].date} at {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ICT
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Create Review Request Form Screen */}
+      {screenState === 'create-request' && selectedReviewer && (
+        <div className={styles.createRequestContainer}>
+          {/* Header title */}
+          <div className={styles.header}>
+            <h1 className={styles.pageTitle}>Create Review Request</h1>
+          </div>
+
+          <div className={styles.formGrid}>
+            {/* Left Column: Reviewer details summary */}
+            <div className={styles.reviewerSummaryCard}>
+              <div className={styles.avatarCircleLarge} style={{ backgroundColor: selectedReviewer.avatarBg }}>
+                {selectedReviewer.initials}
+              </div>
+              <h2 className={styles.formReviewerName}>{selectedReviewer.name}</h2>
+              <span className={styles.formReviewerTitle}>{selectedReviewer.title}</span>
+
+              {/* Stats Grid */}
+              <div className={styles.formStatsGrid}>
+                <div className={styles.formStatCol}>
+                  <span className={styles.formStatVal}>{selectedReviewer.hIndex}</span>
+                  <span className={styles.formStatLabel}>H-Index</span>
+                </div>
+                <div className={styles.formStatCol}>
+                  <span className={styles.formStatVal}>{selectedReviewer.publications}</span>
+                  <span className={styles.formStatLabel}>Pubs</span>
+                </div>
+                <div className={styles.formStatCol}>
+                  <span className={styles.formStatVal}>{selectedReviewer.reviews}</span>
+                  <span className={styles.formStatLabel}>Reviews</span>
+                </div>
+              </div>
+
+              {/* Base Fee */}
+              <div className={styles.formFeeBox}>
+                <span className={styles.formFeeLabel}>Base Review Fee</span>
+                <span className={styles.formFeeVal}>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</span>
+              </div>
+
+              {/* ORCID Banner */}
+              <div className={styles.orcidBanner}>
+                <span className={styles.orcidDot}>●</span>
+                <span className={styles.orcidLabel}>ORCID ID</span>
+                <span className={styles.orcidVal}>{selectedReviewer.orcid}</span>
+              </div>
+            </div>
+
+            {/* Right Column: Form inputs */}
+            <div className={styles.formFieldsCard}>
+              {/* Select Paper */}
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Select Paper</label>
+                <select 
+                  className={styles.formSelect}
+                  value={selectedPaper}
+                  onChange={(e) => setSelectedPaper(e.target.value)}
+                >
+                  <option>Framework_Design_V2.pdf</option>
+                  <option>Cloud_Routing_v1.pdf</option>
+                  <option>Microservice_Consensus_v3.pdf</option>
+                </select>
+              </div>
+
+              {/* Notes to Reviewer */}
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Notes to Reviewer</label>
+                <textarea
+                  className={styles.formTextarea}
+                  placeholder="Add any specific instructions, focus areas, or context for the reviewer..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={6}
+                />
+              </div>
+
+              {/* Estimated completion alert banner */}
+              <div className={styles.estimateBanner}>
+                <span className={styles.infoIcon}>ℹ</span>
+                <div className={styles.estimateTextWrapper}>
+                  <span className={styles.estimateTitle}>Estimated Completion: 7 Days</span>
+                  <span className={styles.estimateSub}>Based on reviewer's current workload and standard review cycle</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Confirmation status bar */}
+          <div className={styles.confirmationStatusBar}>
+            <span className={styles.confirmationText}>
+              ● Review request will be sent to {selectedReviewer.name} upon confirmation. Funds will be auto-deducted from your wallet.
+            </span>
+            <div className={styles.confirmationActions}>
+              <button 
+                className={styles.formCancelBtn}
+                onClick={() => { setScreenState('list'); setSelectedReviewer(null); }}
+              >
+                Cancel
+              </button>
+              <button className={styles.formConfirmBtn} onClick={handleConfirmRequest}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Up Modal Overlay */}
+      {topUpReviewer && (
+        <TopUpModal
+          isOpen={true}
+          onClose={() => setTopUpReviewer(null)}
+          onSuccess={handleTopUpSuccess}
+          shortfallAmount={topUpReviewer.fee - walletBalance}
+          reviewerName={topUpReviewer.name}
+        />
+      )}
+
+      {/* Success Modal Overlay */}
+      {showSuccessModal && selectedReviewer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.successModalCard}>
+            <div className={styles.successIconWrapper}>
+              <span className={styles.successCheckIcon}>✓</span>
+            </div>
+            <h3 className={styles.successTitle}>Review Request Submitted Successfully!</h3>
+            <p className={styles.successDescription}>
+              <b>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</b> has been deducted from your wallet escrow. Your request is routed to {selectedReviewer.name}.
+            </p>
+
+            {/* Info Box Details table */}
+            <div className={styles.successDetailsTable}>
+              <div className={styles.successTableRow}>
+                <span className={styles.successTableLabel}>Request ID</span>
+                <span className={styles.successTableVal}>#REQ-2026-8812</span>
+              </div>
+              <div className={styles.successTableRow}>
+                <span className={styles.successTableLabel}>Status</span>
+                <span className={`${styles.statusDotLabel} ${styles.statusWaiting}`}>Waiting for Review</span>
+              </div>
+              <div className={styles.successTableRow}>
+                <span className={styles.successTableLabel}>Assigned to</span>
+                <span className={styles.successTableVal}>{selectedReviewer.name}</span>
+              </div>
+            </div>
+
+            <button className={styles.goToRequestsBtn} onClick={handleGoToRequests}>
+              Go to My Review Requests &rarr;
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Reviewers;

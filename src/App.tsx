@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { MainLayout } from './layouts/MainLayout';
 import { Forum } from './pages/Forum';
 import { Papers } from './pages/Papers';
+import { Reviewers } from './pages/Reviewers';
 import './styles/globals.css';
 
 const App = () => {
@@ -30,6 +31,7 @@ const App = () => {
               <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
               <Route path={ROUTES.FORUM} element={<Forum />} />
               <Route path={ROUTES.PAPERS} element={<Papers />} />
+              <Route path={ROUTES.REVIEWERS} element={<Reviewers />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>
