@@ -6,7 +6,7 @@ import {
   type UploadTask,
   type UploadTaskSnapshot,
 } from 'firebase/storage';
-import { storage } from '../firebase';
+import { storage, isFirebaseConfigured } from '../firebase';
 
 export interface UseFirebaseUploadReturn {
   uploadPdf: (file: File) => Promise<void>;
@@ -42,6 +42,18 @@ export const useFirebaseUpload = (
 
   const uploadPdf = useCallback(
     async (file: File): Promise<void> => {
+      if (!isFirebaseConfigured()) {
+        setError('Firebase storage is not configured. Please add your Firebase credentials to the .env file.');
+        setPdfUrl(null);
+        return;
+      }
+
+      if (!storage) {
+        setError('Firebase storage is not initialized.');
+        setPdfUrl(null);
+        return;
+      }
+
       if (file.type !== PDF_MIME_TYPE) {
         setError('Only PDF files are allowed.');
         setPdfUrl(null);
@@ -98,7 +110,7 @@ export const useFirebaseUpload = (
         uploadTaskRef.current = null;
       }
     },
-    [folderPath]
+    [folderPath, storage]
   );
 
   return {

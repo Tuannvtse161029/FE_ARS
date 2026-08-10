@@ -1,0 +1,43 @@
+---
+description: Preserve ignoreDeprecations value in tsconfig.json
+globs: tsconfig.json
+alwaysApply: false
+---
+
+# Preserve ignoreDeprecations in tsconfig.json
+
+When editing `tsconfig.json`, the `ignoreDeprecations` value in `compilerOptions` **must always remain at `"6.0"`**.
+
+```json
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  }
+}
+```
+
+## Rule
+
+- **DO NOT** change `"ignoreDeprecations": "6.0"` to any other value
+- **DO NOT** remove the `ignoreDeprecations` property
+- If TypeScript build fails due to deprecation warnings, address the actual code issues rather than changing this config value
+
+## Example
+
+```json
+// ✅ CORRECT - ignoreDeprecations stays at "6.0"
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "ignoreDeprecations": "6.0"
+  }
+}
+
+// ❌ WRONG - never change this value
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "ignoreDeprecations": "5.0"
+  }
+}
+```

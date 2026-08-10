@@ -46,7 +46,7 @@ const App = () => {
               <Route path={ROUTES.SUBMIT_REPORT} element={<SubmitReport />} />
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
               <Route path={ROUTES.REVIEW_TASKS} element={<ReviewTasks />} />
-              <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>
 
