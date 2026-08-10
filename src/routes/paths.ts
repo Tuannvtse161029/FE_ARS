@@ -4,6 +4,7 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   DASHBOARD: '/dashboard',
+  FORUM: '/forum',
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',

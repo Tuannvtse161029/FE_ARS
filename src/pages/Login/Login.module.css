@@ -13,11 +13,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 115px;
-  height: 115px;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-1);
-  background: transparent;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
 }
 
@@ -28,25 +25,23 @@
 }
 
 .brandText {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   letter-spacing: 0.5px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .header {
-  text-align: center;
-  margin-bottom: var(--spacing-8);
+  text-align: left;
+  margin-bottom: var(--spacing-6);
 }
 
 .title {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  margin-bottom: var(--spacing-2);
+  margin-bottom: 0;
 }
 
 .form {
@@ -63,6 +58,22 @@
   font-size: var(--font-size-sm);
   text-align: center;
   border: 1px solid var(--color-error-light);
+}
+
+.loginInput {
+  background-color: #f3f4f6 !important;
+  border: 1.5px solid transparent !important;
+  border-radius: 8px !important;
+  color: #000000 !important;
+  font-size: var(--font-size-sm) !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.loginInput:focus {
+  border-color: #0075ff !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 117, 255, 0.15) !important;
 }
 
 .passwordFieldWrapper {
@@ -89,6 +100,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: var(--spacing-1);
 }
 
 .toggleWrapper {
@@ -125,11 +137,11 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.toggleInput:checked+.toggleSlider {
-  background-color: var(--color-primary);
+.toggleInput:checked + .toggleSlider {
+  background-color: #0075ff;
 }
 
-.toggleInput:checked+.toggleSlider::before {
+.toggleInput:checked + .toggleSlider::before {
   transform: translateX(20px);
 }
 
@@ -141,30 +153,51 @@
 
 .forgotLink {
   font-size: var(--font-size-sm);
-  color: var(--color-primary);
+  color: #0075ff;
   font-weight: var(--font-weight-medium);
   transition: color var(--transition-fast);
+  text-decoration: none;
 }
 
 .forgotLink:hover {
-  color: var(--color-primary-hover);
+  color: #0062d6;
   text-decoration: underline;
 }
 
 .submitButton {
+  background-color: #0075ff !important;
+  border-color: #0075ff !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  min-height: 48px !important;
+  font-size: var(--font-size-base) !important;
   margin-top: var(--spacing-2);
 }
 
+.submitButton:hover:not(:disabled) {
+  background-color: #0062d6 !important;
+  border-color: #0062d6 !important;
+  box-shadow: var(--shadow-md);
+}
+
 .googleButton {
-  border-color: var(--color-text-primary) !important;
-  background-color: var(--color-surface) !important;
-  color: var(--color-text-primary) !important;
+  background-color: #2d2d2d !important;
+  border-color: #2d2d2d !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  min-height: 48px !important;
+  font-size: var(--font-size-sm) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--spacing-3) !important;
 }
 
 .googleButton:hover:not(:disabled) {
-  background-color: var(--color-border-light) !important;
-  border-color: var(--color-text-primary) !important;
-  transform: translateY(-1px);
+  background-color: #1a1a1a !important;
+  border-color: #1a1a1a !important;
   box-shadow: var(--shadow-md);
 }
 
@@ -175,7 +208,7 @@
 }
 
 .footer {
-  margin-top: var(--spacing-6);
+  margin-top: var(--spacing-4);
   text-align: center;
 }
 
@@ -185,12 +218,13 @@
 }
 
 .registerLink {
-  color: var(--color-primary);
+  color: #0075ff;
   font-weight: var(--font-weight-medium);
   transition: color var(--transition-fast);
+  text-decoration: none;
 }
 
 .registerLink:hover {
-  color: var(--color-primary-hover);
+  color: #0062d6;
   text-decoration: underline;
 }

@@ -64,7 +64,7 @@ const Login = () => {
         <div className={styles.logoWrapper}>
           <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         </div>
-        <span className={styles.brandText}>Academic Research System</span>
+        <span className={styles.brandText}>ARS - Academic Research Sharing</span>
       </div>
 
       <div className={styles.header}>
@@ -84,12 +84,12 @@ const Login = () => {
           render={({ field }) => (
             <Input
               {...field}
-              label="Email or Phone"
-              placeholder="Enter your email or phone"
+              label="Login"
+              placeholder="Email or phone number"
               error={errors.username?.message}
-              required
               autoComplete="email"
               disabled={isLoading}
+              className={styles.loginInput}
             />
           )}
         />
@@ -103,11 +103,11 @@ const Login = () => {
                 {...field}
                 type={showPassword ? 'text' : 'password'}
                 label="Password"
-                placeholder="Enter your password"
+                placeholder="Enter password"
                 error={errors.password?.message}
-                required
                 autoComplete="current-password"
                 disabled={isLoading}
+                className={styles.loginInput}
                 rightIcon={
                   <button
                     type="button"
@@ -165,7 +165,7 @@ const Login = () => {
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
-            Don't have an account?{' '}
+            Dont have an account?{' '}
             <Link to={ROUTES.REGISTER} className={styles.registerLink}>
               Sign up now
             </Link>
