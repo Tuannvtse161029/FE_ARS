@@ -20,6 +20,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -27,6 +28,12 @@
       ]
     }
   },
-  "include": ["src"],
-  "exclude": ["src/tests", "**/*.test.ts", "**/*.test.tsx"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/tests",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
 }
