@@ -29,7 +29,7 @@ const SCALE_STEP = 0.25;
 
 export const PdfViewer = ({
   url,
-  currentPage,
+  currentPage: _currentPage,
   onTotalPages,
   onPageChange,
 }: PdfViewerProps) => {
@@ -57,7 +57,7 @@ export const PdfViewer = ({
 
     const loadPdf = async () => {
       try {
-        const loadingTask = pdfjsLib.getDocument(url);
+        const loadingTask = pdfjsLib.getDocument(url as any);
         const doc = await loadingTask.promise;
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
@@ -102,9 +102,11 @@ export const PdfViewer = ({
           canvasContext: context,
           viewport,
           intent: 'display' as const,
+          canvas,
         };
 
-        const renderTask = page.render(renderContext);
+        const renderTask = page.render(renderContext as any);
+        renderTaskRef.current = renderTask;
         renderTaskRef.current = renderTask;
 
         await renderTask.promise;

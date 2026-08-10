@@ -319,7 +319,7 @@ export const SeminarWorkspace = () => {
               {/* Google Meet Box */}
               <div className={styles.meetBox}>
                 <span className={styles.meetIcon}>📹</span>
-                <a href={sem.meetLink} className={sem.meetLinkText} target="_blank" rel="noopener noreferrer">
+                <a href={sem.meetLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
                   {sem.meetLink} ↗
                 </a>
               </div>
@@ -690,7 +690,9 @@ export const SeminarWorkspace = () => {
                 <span className={styles.aiIconCircle}>✨</span>
                 <div>
                   <h3 className={styles.modalTitle}>Seminar Recording AI Summarizer</h3>
-                  <span className={styles.modalSubtitle}>Upload meeting media to generate automated AI notes.</span>
+                  <span className={styles.modalSubtitle}>
+                    Upload meeting media for {selectedSeminarForAi ? selectedSeminarForAi.title : 'seminar'} to generate automated AI notes.
+                  </span>
                 </div>
               </div>
               <button className={styles.closeBtn} onClick={() => setShowAiModal(false)}>×</button>

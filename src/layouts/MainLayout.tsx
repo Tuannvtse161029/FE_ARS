@@ -88,6 +88,14 @@ const ARSPlatformLogo = () => (
   </svg>
 );
 
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  showDot?: boolean;
+  badge?: string;
+}
+
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -139,7 +147,7 @@ export const MainLayout = () => {
   };
 
   // Nav items filtered dynamically based on active role
-  const getNavItemsByRole = () => {
+  const getNavItemsByRole = (): NavItem[] => {
     switch (activeRole) {
       case 'Reviewer':
         return [
