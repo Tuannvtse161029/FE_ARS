@@ -1,44 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { Button } from '../../components/Button';
-import { ScorecardModal } from './components/ScorecardModal';
-import { PdfViewer } from '../../components/PdfViewer';
 import { ROUTES } from '../../routes/paths';
 import styles from './Dashboard.module.css';
 
 // SVG Icons
-const PublishedIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.metricIconBlue}>
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+const UploadIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="17 8 12 3 7 8"></polyline>
+    <line x1="12" y1="3" x2="12" y2="15"></line>
   </svg>
 );
 
-const ReviewsIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.metricIconTeal}>
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-  </svg>
-);
-
-const CitationsIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.metricIconGreen}>
+const UsersIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
     <circle cx="9" cy="7" r="4"></circle>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-  </svg>
-);
-
-const VideoIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 7l-7 5 7 5V7z"></path>
-    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+    <circle cx="17" cy="8" r="1"></circle>
   </svg>
 );
 
 const CalendarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
     <line x1="16" y1="2" x2="16" y2="6"></line>
     <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -46,321 +29,449 @@ const CalendarIcon = () => (
   </svg>
 );
 
-interface Submission {
-  id: string;
-  name: string;
-  date: string;
-  status: 'Waiting for Review' | 'Under Review' | 'Accepted' | 'Rejected';
-  hasNote: boolean;
-}
-
-interface ReviewerRecommendation {
-  id: string;
-  name: string;
-  title: string;
-  tag: string;
-  reward: string;
-  initials: string;
-}
-
 export const Dashboard = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Modal States
-  const [selectedPaperForScorecard, setSelectedPaperForScorecard] = useState<string | null>(null);
-  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
-  
-  // Dynamic state for requested reviewers
-  const [requestedReviewers, setRequestedReviewers] = useState<{ [id: string]: boolean }>({});
+  // Selected role for dashboard layout switching
+  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>('Researcher');
 
-  const submissions: Submission[] = [
-    { id: '1', name: 'Framework_Design.pdf', date: '2026-07-22', status: 'Waiting for Review', hasNote: false },
-    { id: '2', name: 'Cloud_Routing_v1.pdf', date: '2026-07-15', status: 'Under Review', hasNote: false },
-    { id: '3', name: 'Microservice_Consensus_v3.pdf', date: '2026-07-10', status: 'Accepted', hasNote: true },
-    { id: '4', name: 'EdgeNet_Protocol_v2.pdf', date: '2026-07-03', status: 'Rejected', hasNote: true },
-  ];
+  useEffect(() => {
+    // Sync active role with layout
+    const checkRole = () => {
+      const saved = localStorage.getItem('ars_active_role');
+      if (saved) setActiveRole(saved as any);
+    };
+    checkRole();
+    window.addEventListener('storage', checkRole);
+    // Poll to detect localstorage updates instantly
+    const interval = setInterval(checkRole, 500);
+    return () => {
+      window.removeEventListener('storage', checkRole);
+      clearInterval(interval);
+    };
+  }, []);
 
-  const recommendedReviewers: ReviewerRecommendation[] = [
-    { id: 'rev-1', name: 'Dr. Nguyen Van A', title: 'Senior Lecturer', tag: '#ComputerScience', reward: '500,000 VND', initials: 'NA' },
-    { id: 'rev-2', name: 'Dr. Le Thi B', title: 'Associate Professor', tag: '#DistributedSystems', reward: '400,000 VND', initials: 'LB' },
-  ];
+  // Invitation tracking state for AI Match list
+  const [invitedReviewers, setInvitedReviewers] = useState<{ [name: string]: boolean }>({});
 
-  const handleRequestReviewer = (id: string) => {
-    setRequestedReviewers({
-      ...requestedReviewers,
-      [id]: true
+  const handleInviteReviewer = (name: string) => {
+    setInvitedReviewers({
+      ...invitedReviewers,
+      [name]: true
     });
   };
 
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case 'Waiting for Review': return styles.statusWaiting;
-      case 'Under Review': return styles.statusReview;
-      case 'Accepted': return styles.statusAccepted;
-      case 'Rejected': return styles.statusRejected;
-      default: return '';
-    }
-  };
+  // ───────────────────────────────────────────────────────────────────────────
+  // RENDER: RESEARCHER CENTRAL (FRAME 8)
+  // ───────────────────────────────────────────────────────────────────────────
+  if (activeRole === 'Researcher') {
+    return (
+      <div className={styles.dashboard}>
+        {/* Breadcrumbs */}
+        <div className={styles.breadcrumbs}>
+          Home &gt; <span className={styles.activeBreadcrumb}>Researcher Central Dashboard</span>
+        </div>
 
-  return (
-    <div className={styles.dashboard}>
-      <div className={styles.mainGrid}>
-        
-        {/* Left/Main Column */}
-        <div className={styles.leftCol}>
-          
-          {/* Welcome Banner */}
-          <div className={styles.welcomeBanner}>
-            <div className={styles.bannerInfo}>
-              <h2 className={styles.bannerTitle}>Welcome back, Researcher! 👋</h2>
-              <p className={styles.bannerText}>
-                Track your active paper progress or request peer reviews. Your research impact grows with every submission.
-              </p>
+        {/* Dashboard Title Banner */}
+        <div className={styles.roleHeaderArea}>
+          <h1 className={styles.roleTitle}>Researcher Central</h1>
+          <p className={styles.roleSubtitle}>Thursday, 26 June 2025 · Academic Year 2024-2025</p>
+        </div>
+
+        {/* Frame 8 split content */}
+        <div className={styles.resGrid}>
+          {/* Left Column: Quick Actions */}
+          <div className={styles.quickActionsCol}>
+            <div className={styles.sectionHeaderLabel}>QUICK ACTIONS WORKSPACE</div>
+            
+            <div className={styles.quickCard} onClick={() => navigate(ROUTES.PAPERS)}>
+              <div className={styles.quickCardLeft}>
+                <span className={styles.quickCardIcon}><UploadIcon /></span>
+                <span className={styles.quickCardText}>Upload New Manuscript Artifact</span>
+              </div>
+              <span className={styles.quickCardArrow}>&gt;</span>
             </div>
-            <div className={styles.bannerActions}>
-              <button 
-                className={styles.bannerBtnUpload} 
-                onClick={() => navigate(ROUTES.PAPERS)}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                Upload New Paper
-              </button>
-              <button className={styles.bannerBtnDiscover}>
-                Discover Reviewers
-              </button>
+
+            <div className={styles.quickCard} onClick={() => navigate(ROUTES.REVIEWERS)}>
+              <div className={styles.quickCardLeft}>
+                <span className={styles.quickCardIcon} style={{ color: '#10b981' }}><UsersIcon /></span>
+                <span className={styles.quickCardText}>Find Expert Peer Reviewers Pool</span>
+              </div>
+              <span className={styles.quickCardArrow}>&gt;</span>
+            </div>
+
+            <div className={styles.quickCard}>
+              <div className={styles.quickCardLeft}>
+                <span className={styles.quickCardIcon} style={{ color: '#f59e0b' }}><CalendarIcon /></span>
+                <span className={styles.quickCardText}>Browse Upcoming Faculty Seminars</span>
+              </div>
+              <span className={styles.quickCardArrow}>&gt;</span>
+            </div>
+
+            {/* Helper tip */}
+            <div className={styles.resTipBox}>
+              <span className={styles.tipLabel}>Tip:</span>
+              <span className={styles.tipText}>
+                Upload manuscripts before the Q2 2025 submission deadline - July 15, 2025.
+              </span>
             </div>
           </div>
 
-          {/* Metrics Grid */}
-          <div className={styles.metricsGrid}>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <span className={styles.metricTitle}>Published Papers</span>
-                <PublishedIcon />
-              </div>
-              <span className={styles.metricValue}>4</span>
+          {/* Right Column: Activities and AI recommends */}
+          <div className={styles.activitiesCol}>
+            {/* Core Recent Activities */}
+            <div className={styles.sectionHeaderWrapper}>
+              <div className={styles.sectionHeaderLabel}>CORE RECENT ACTIVITIES</div>
+              <span className={styles.blueBadge}>2 NEW</span>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <span className={styles.metricTitle}>Active Reviews</span>
-                <ReviewsIcon />
+
+            <div className={styles.activitiesContainer}>
+              <div className={styles.activityRow}>
+                <span className={styles.activityDot}>●</span>
+                <div className={styles.activityMeta}>
+                  <p className={styles.activityDesc}>Manuscript v2 review funds are safely held in escrow</p>
+                  <span className={styles.activityTime}>2h ago</span>
+                </div>
               </div>
-              <span className={styles.metricValue}>2</span>
+              <div className={styles.activityRow}>
+                <span className={styles.activityDot}>●</span>
+                <div className={styles.activityMeta}>
+                  <p className={styles.activityDesc}>Dr. Nguyen Van A accepted your evaluation request</p>
+                  <span className={styles.activityTime}>5h ago</span>
+                </div>
+              </div>
             </div>
-            <div className={styles.metricCard}>
-              <div className={styles.metricHeader}>
-                <span className={styles.metricTitle}>Citations / Views</span>
-                <CitationsIcon />
+
+            {/* AI Recommendations */}
+            <div className={styles.sectionHeaderWrapper} style={{ marginTop: '20px' }}>
+              <div>
+                <div className={styles.sectionHeaderLabel}>AI RECOMMENDATIONS</div>
+                <span className={styles.engineText}>GPT-4o · Reviewer Match Engine</span>
               </div>
-              <span className={styles.metricValue}>128</span>
+            </div>
+
+            <div className={styles.aiRecommendationsList}>
+              {/* Reviewer 1 */}
+              <div className={styles.aiReviewerCard}>
+                <div className={styles.aiCardMain}>
+                  <div className={styles.aiAvatar} style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>VA</div>
+                  <div className={styles.aiMeta}>
+                    <div className={styles.aiNameRow}>
+                      <span className={styles.aiReviewerName}>Dr. Nguyen Van A</span>
+                      <span className={styles.matchPill}>Match 94%</span>
+                    </div>
+                    <span className={styles.aiReviewerSub}>Computational Linguistics · Ho Chi Minh City University</span>
+                  </div>
+                </div>
+
+                <div className={styles.aiCardStatsRow}>
+                  <div className={styles.aiStatCol}>
+                    <span className={styles.aiStatTitle}>PUBLICATIONS</span>
+                    <span className={styles.aiStatVal}>47</span>
+                  </div>
+                  <div className={styles.aiStatCol}>
+                    <span className={styles.aiStatTitle}>H-INDEX</span>
+                    <span className={styles.aiStatVal}>12</span>
+                  </div>
+                  <button 
+                    className={`${styles.inviteReviewerBtn} ${invitedReviewers['Dr. Nguyen Van A'] ? styles.invitedBtn : ''}`}
+                    onClick={() => handleInviteReviewer('Dr. Nguyen Van A')}
+                    disabled={invitedReviewers['Dr. Nguyen Van A']}
+                  >
+                    {invitedReviewers['Dr. Nguyen Van A'] ? 'Invited' : 'Invite Reviewer'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Reviewer 2 */}
+              <div className={styles.aiReviewerCard}>
+                <div className={styles.aiCardMain}>
+                  <div className={styles.aiAvatar} style={{ backgroundColor: '#f0fdf4', color: '#16a34a' }}>VB</div>
+                  <div className={styles.aiMeta}>
+                    <div className={styles.aiNameRow}>
+                      <span className={styles.aiReviewerName}>Prof. Le Van B</span>
+                      <span className={styles.matchPill} style={{ backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Match 88%</span>
+                    </div>
+                    <span className={styles.aiReviewerSub}>Natural Language Processing · Hanoi University of Science</span>
+                  </div>
+                </div>
+
+                <div className={styles.aiCardStatsRow}>
+                  <div className={styles.aiStatCol}>
+                    <span className={styles.aiStatTitle}>PUBLICATIONS</span>
+                    <span className={styles.aiStatVal}>63</span>
+                  </div>
+                  <div className={styles.aiStatCol}>
+                    <span className={styles.aiStatTitle}>H-INDEX</span>
+                    <span className={styles.aiStatVal}>18</span>
+                  </div>
+                  <button 
+                    className={`${styles.inviteReviewerBtn} ${invitedReviewers['Prof. Le Van B'] ? styles.invitedBtn : ''}`}
+                    onClick={() => handleInviteReviewer('Prof. Le Van B')}
+                    disabled={invitedReviewers['Prof. Le Van B']}
+                  >
+                    {invitedReviewers['Prof. Le Van B'] ? 'Invited' : 'Invite Reviewer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* AI recommends footer */}
+            <div className={styles.aiRecommendsFooter}>
+              <span>✨ AI matched 14 additional reviewers for your manuscript topics.</span>
+              <button className={styles.viewAllMatchLink} onClick={() => navigate(ROUTES.REVIEWERS)}>View all</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RENDER: EXPERT REVIEWER ASSESSMENT PORTAL (FRAME 9)
+  // ───────────────────────────────────────────────────────────────────────────
+  if (activeRole === 'Reviewer') {
+    return (
+      <div className={styles.dashboard}>
+        {/* Breadcrumbs */}
+        <div className={styles.breadcrumbs}>
+          Home &gt; <span className={styles.activeBreadcrumb}>Reviewer Assessment Portal</span>
+        </div>
+
+        {/* Dashboard Title Banner */}
+        <div className={styles.roleHeaderArea}>
+          <h1 className={styles.roleTitle}>Reviewer Assessment Portal</h1>
+        </div>
+
+        {/* Frame 9 Active evaluation queue */}
+        <div className={styles.reviewerQueueCard}>
+          <div className={styles.queueHeader}>
+            <div className={styles.queueTitleWrapper}>
+              <span className={styles.queueIcon}>📋</span>
+              <h3 className={styles.queueTitle}>ACTIVE ASSIGNED EVALUATION QUEUE</h3>
+            </div>
+            <span className={styles.pendingBadge}>2 PENDING</span>
+          </div>
+
+          <div className={styles.tableResponsive}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>PAPER TITLE</th>
+                  <th>AUTHOR ROLE</th>
+                  <th>FEE BALANCE</th>
+                  <th>TIMELINE</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className={styles.manuscriptTitleText}>Framework_Design</td>
+                  <td className={styles.authorRoleText}>Researcher</td>
+                  <td className={styles.feeBalanceText}>500,000 VND</td>
+                  <td>
+                    <span className={styles.timelineAlertBadge}>⚠️ [!!] 3 Days Left</span>
+                  </td>
+                  <td>
+                    <button 
+                      className={styles.beginAssessmentBtn}
+                      onClick={() => navigate(ROUTES.EVALUATION)}
+                    >
+                      Begin Assessment
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className={styles.manuscriptTitleText}>Network_Security</td>
+                  <td className={styles.authorRoleText}>Student Group</td>
+                  <td className={styles.feeBalanceText}>450,000 VND</td>
+                  <td>
+                    <span className={styles.timelineOkBadge}>🕒 [ ] 12 Days Left</span>
+                  </td>
+                  <td>
+                    <span className={styles.lockedActionText}>- Locked -</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Matrix side by side */}
+        <div className={styles.reviewerMatrixGrid}>
+          {/* Earnings & credentials matrix */}
+          <div className={styles.matrixCard}>
+            <h3 className={styles.matrixTitle}>EARNINGS & CREDENTIALS MATRIX</h3>
+            
+            <div className={styles.matrixRow}>
+              <div className={styles.matrixCol}>
+                <span className={styles.matrixLabel}>UNLOCKED BALANCE</span>
+                <span className={styles.matrixVal}>4,200,000 <span className={styles.matrixCur}>VND</span></span>
+              </div>
+              <span className={styles.matrixIconCircle}>💼</span>
+            </div>
+
+            <div className={styles.matrixRow} style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+              <div className={styles.matrixCol}>
+                <span className={styles.matrixLabel}>PENDING CLEAR</span>
+                <span className={styles.matrixVal} style={{ color: '#64748b' }}>500,000 <span className={styles.matrixCur}>VND</span></span>
+              </div>
+              <span className={styles.matrixIconCircle} style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>🕒</span>
             </div>
           </div>
 
-          {/* Active Submissions Section */}
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionTitle}>My Active Submissions</h3>
-              <button className={styles.viewAllLink} onClick={() => navigate(ROUTES.PAPERS)}>View all</button>
+          {/* Reviews integrity metrics */}
+          <div className={styles.matrixCard}>
+            <h3 className={styles.matrixTitle}>REVIEWS INTEGRITY METRICS</h3>
+
+            <div className={styles.integrityMetricGroup}>
+              <div className={styles.integrityTextRow}>
+                <span className={styles.matrixLabel}>H-INDEX REGISTRY COUNT</span>
+                <span className={styles.integrityVal}>24</span>
+              </div>
+              {/* Mock bar chart graphic */}
+              <div className={styles.barChartMock}>
+                <span className={styles.bar} style={{ height: '14px' }}></span>
+                <span className={styles.bar} style={{ height: '22px' }}></span>
+                <span className={styles.bar} style={{ height: '18px' }}></span>
+                <span className={styles.bar} style={{ height: '28px' }}></span>
+                <span className={styles.bar} style={{ height: '34px' }}></span>
+                <span className={styles.bar} style={{ height: '40px' }}></span>
+              </div>
+            </div>
+
+            <div className={styles.integrityMetricGroup} style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+              <div className={styles.integrityTextRow}>
+                <span className={styles.matrixLabel}>OVERALL SYSTEM RATING</span>
+                <span className={styles.integrityVal}>4.9 <span className={styles.matrixCur}>/ 5.0</span></span>
+              </div>
+              <span className={styles.yellowStars}>★★★★★ <span className={styles.emptyStar}>☆</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RENDER: GRADUATE STUDENT COLLABORATIVE HUB (FRAME 10)
+  // ───────────────────────────────────────────────────────────────────────────
+  if (activeRole === 'Graduate Student') {
+    return (
+      <div className={styles.dashboard}>
+        {/* Breadcrumbs */}
+        <div className={styles.breadcrumbs}>
+          Home &gt; <span className={styles.activeBreadcrumb}>Student Collaborative Hub</span>
+        </div>
+
+        {/* Dashboard Title Banner */}
+        <div className={styles.roleHeaderArea} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 className={styles.roleTitle}>My Dashboard</h1>
+            <p className={styles.roleSubtitle}>Graduate Student Portal — Research Collaboration Workspace</p>
+          </div>
+          <span className={styles.syncBadge}>LAST SYNC: 2026-06-26 09:14</span>
+        </div>
+
+        {/* Frame 10 Top Cards grid */}
+        <div className={styles.studentTopGrid}>
+          {/* Research Group info */}
+          <div className={styles.studentInfoCard}>
+            <div className={styles.studentCardHeader}>
+              <span className={styles.studentCardHeaderIcon}>👥</span>
+              <span className={styles.studentCardHeaderTitle}>BOUNDED RESEARCH GROUP INFORMATION</span>
             </div>
             
-            <div className={styles.tableResponsive}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>MANUSCRIPT</th>
-                    <th>SUBMITTED</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((sub) => (
-                    <tr key={sub.id}>
-                      <td className={styles.manuscriptCell}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.fileIcon}>
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                        </svg>
-                        <span className={styles.fileNameText}>{sub.name}</span>
-                      </td>
-                      <td className={styles.dateCell}>{sub.date}</td>
-                      <td>
-                        <span className={`${styles.statusDotLabel} ${getStatusClass(sub.status)}`}>
-                          ● {sub.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.actionCellBtns}>
-                          <button 
-                            className={styles.btnActionView}
-                            onClick={() => setPdfViewerUrl('/sample.pdf')}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            View
-                          </button>
-                          {sub.hasNote && (
-                            <button 
-                              className={`${styles.btnActionNote} ${sub.status === 'Accepted' ? styles.btnActionNoteAccept : styles.btnActionNoteReject}`}
-                              onClick={() => setSelectedPaperForScorecard(sub.name)}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                              </svg>
-                              Reviewer Note
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={styles.studentInfoTable}>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>ACTIVE GROUP</span>
+                <span className={styles.infoVal}>Core Automation V3</span>
+              </div>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>ADVISOR HOST</span>
+                <span className={styles.infoVal}>Dr. Pham Lecturer</span>
+              </div>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>ASSIGNED ROSTER</span>
+                <span className={styles.infoVal}>3 Members Active</span>
+              </div>
             </div>
           </div>
 
-          {/* AI Recommended Reviewers */}
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.titleWithAiBadge}>
-                <h3 className={styles.sectionTitle}>AI Recommended Reviewers For You</h3>
-                <span className={styles.aiBadge}>AI</span>
-              </div>
-              <button className={styles.viewAllLink}>See all</button>
+          {/* Current timeline milestones */}
+          <div className={styles.studentInfoCard}>
+            <div className={styles.studentCardHeader}>
+              <span className={styles.studentCardHeaderIcon}>📅</span>
+              <span className={styles.studentCardHeaderTitle}>CURRENT TIMELINE MILESTONES</span>
             </div>
 
-            <div className={styles.aiControlsRow}>
-              <div className={styles.selectManuscriptWrapper}>
-                <span className={styles.selectLabel}>Select Manuscript</span>
-                <select className={styles.manuscriptDropdown}>
-                  <option>Framework_Design_v2.pdf</option>
-                  <option>Cloud_Routing_v1.pdf</option>
-                </select>
+            <div className={styles.studentInfoTable}>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>TARGET</span>
+                <span className={styles.infoVal}>Phase 2 Lit Review</span>
               </div>
-              <div className={styles.recommendedTags}>
-                <span className={styles.tagPill}>#ComputerScience</span>
-                <span className={styles.tagPill}>#DistributedSystems</span>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>DUE DATE</span>
+                <span className={styles.infoVal}>2026-08-01 23:59</span>
               </div>
-            </div>
-
-            {/* Reviewers List */}
-            <div className={styles.reviewersList}>
-              {recommendedReviewers.map((rev) => {
-                const isRequested = !!requestedReviewers[rev.id];
-                return (
-                  <div key={rev.id} className={styles.reviewerCard}>
-                    <div className={styles.reviewerCardHeader}>
-                      <div className={styles.reviewerAvatarCircle}>{rev.initials}</div>
-                      <div className={styles.reviewerInfoDetails}>
-                        <span className={styles.reviewerName}>{rev.name}</span>
-                        <span className={styles.reviewerTitle}>{rev.title}</span>
-                        <div className={styles.reviewerMetaRow}>
-                          <span className={styles.reviewerTagText}>{rev.tag}</span>
-                          <span className={styles.reviewerRewardText}>{rev.reward}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      className={`${styles.requestBtn} ${isRequested ? styles.requestBtnRequested : ''}`}
-                      disabled={isRequested}
-                      onClick={() => handleRequestReviewer(rev.id)}
-                    >
-                      {isRequested ? 'Requested' : 'Request'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (Seminars) */}
-        <div className={styles.rightCol}>
-          
-          {/* Upcoming Seminars */}
-          <div className={styles.seminarsCard}>
-            <div className={styles.seminarsHeader}>
-              <h3 className={styles.sectionTitle}>Upcoming Academic Seminars</h3>
-              <span className={styles.seminarsBookIcon}><CalendarIcon /></span>
-            </div>
-
-            <div className={styles.seminarsList}>
-              {/* Seminar 1 - LIVE */}
-              <div className={styles.seminarCard}>
-                <div className={styles.seminarTitleRow}>
-                  <h4 className={styles.seminarTitle}>Distributed Systems Architecture</h4>
-                  <span className={styles.liveBadge}>Live</span>
-                </div>
-                <p className={styles.seminarAuthor}>by Prof. Tran Minh · Dept. of Computer Science</p>
-                <div className={styles.seminarTimeRow}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                  <span>Today at 14:00 ICT</span>
-                </div>
-                <a 
-                  href="https://meet.google.com" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className={styles.joinMeetBtn}
-                >
-                  <VideoIcon />
-                  <span>Join Google Meet</span>
-                </a>
-              </div>
-
-              {/* Seminar 2 */}
-              <div className={styles.seminarCard}>
-                <h4 className={styles.seminarTitle}>AI in Peer Review Workflows</h4>
-                <p className={styles.seminarAuthor}>by Dr. Le Thi C · Research Methods Lab</p>
-                <div className={styles.seminarTimeRow}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                  <span>Tomorrow at 10:00 ICT</span>
-                </div>
+              <div className={styles.studentInfoRow}>
+                <span className={styles.infoLabel}>STATUS</span>
+                <span className={styles.studentWarningBadge}>⚠️ [!!] Pending Submission</span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Bottom advisor feedback */}
+        <div className={styles.studentFeedbackCard}>
+          <div className={styles.studentCardHeader}>
+            <span className={styles.studentCardHeaderIcon}>🔔</span>
+            <span className={styles.studentCardHeaderTitle}>RECENT ADVISOR FEEDBACK & NOTICES</span>
+          </div>
+
+          {/* Feedback notice row */}
+          <div className={styles.feedbackNoticeBox}>
+            <div className={styles.feedbackNoticeHeader}>
+              <div className={styles.advisorAvatarCircle}>P</div>
+              <div className={styles.advisorMeta}>
+                <span className={styles.advisorName}>Dr. Pham Lecturer</span>
+                <span className={styles.noticeDate}>2026-06-24 &mdash; Feedback Notice</span>
+              </div>
+            </div>
+            <p className={styles.noticeContent}>
+              "Please expand your literature review section to include at least 15 peer-reviewed references as specified."
+            </p>
+          </div>
+
+          {/* Action button */}
+          <button 
+            className={styles.uploadPhaseReportBtn}
+            onClick={() => navigate(ROUTES.SUBMIT_REPORT)}
+          >
+            [ Upload Phase Report Artifact ]
+          </button>
+        </div>
       </div>
+    );
+  }
 
-      {/* Evaluation Scorecard Modal */}
-      {selectedPaperForScorecard && (
-        <ScorecardModal
-          isOpen={true}
-          onClose={() => setSelectedPaperForScorecard(null)}
-          fileName={selectedPaperForScorecard}
-        />
-      )}
-
-      {/* Fullscreen PDF Viewer Modal Overlay */}
-      {pdfViewerUrl && (
-        <div className={styles.pdfViewerModalOverlay}>
-          <div className={styles.pdfViewerModalCard}>
-            <div className={styles.pdfViewerHeader}>
-              <h3 className={styles.pdfViewerTitle}>Document Preview</h3>
-              <button className={styles.closePdfBtn} onClick={() => setPdfViewerUrl(null)}>
-                Close Preview
-              </button>
-            </div>
-            <div className={styles.pdfViewerBody}>
-              <PdfViewer url={pdfViewerUrl} />
-            </div>
-          </div>
+  // Fallback for Lecturer
+  return (
+    <div className={styles.dashboard}>
+      <div className={styles.roleHeaderArea}>
+        <h1 className={styles.roleTitle}>Lecturer Studio Hub</h1>
+        <p className={styles.roleSubtitle}>Manage your academic seminars and student guidance rosters.</p>
+      </div>
+      <div className={styles.lecturerLandingCards}>
+        <div className={styles.lecturerCard} onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}>
+          <h3>Seminar Workspace</h3>
+          <p>Schedule research presentation meetings and invite student cohorts.</p>
         </div>
-      )}
+        <div className={styles.lecturerCard} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+          <h3>Guidance Group</h3>
+          <p>Initialize students teams and assign guidance rosters.</p>
+        </div>
+      </div>
     </div>
   );
 };

@@ -9,6 +9,8 @@ export const ROUTES = {
   EVALUATION: '/evaluation',
   SEMINAR_WORKSPACE: '/seminar-workspace',
   RESEARCH_GROUP: '/research-group',
+  CONFIGURE_MILESTONES: '/configure-milestones',
+  SUBMIT_REPORT: '/submit-report',
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',

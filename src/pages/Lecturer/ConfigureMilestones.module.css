@@ -1,0 +1,372 @@
+.configureMilestones {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  font-family: var(--font-family-primary);
+}
+
+.breadcrumbs {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: left;
+}
+
+.activeBreadcrumb {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Card Container */
+.configCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: var(--spacing-6) var(--spacing-8);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-4);
+}
+
+.headerTitleRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.headerLabel {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.pageTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.draftBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #10b981;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  width: 100%;
+}
+
+.formLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.5px;
+}
+
+.formSelect {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  height: 48px;
+  cursor: pointer;
+}
+
+.formTextarea {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  font-family: var(--font-family-primary);
+  line-height: var(--line-height-relaxed);
+  resize: vertical;
+}
+
+.textMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.charCounter {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.rowFormGroup {
+  display: flex;
+  gap: var(--spacing-4);
+  align-items: start;
+}
+
+.formInput {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  height: 48px;
+  width: 100%;
+}
+
+.remainingBox {
+  flex: 1;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  height: 48px;
+  align-self: flex-start;
+  margin-top: 24px;
+}
+
+.remainingDot {
+  color: #10b981;
+  font-size: 0.8rem;
+}
+
+.remainingTexts {
+  display: flex;
+  flex-direction: column;
+}
+
+.remainingTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #047857;
+}
+
+.remainingSub {
+  font-size: 0.7rem;
+  color: #059669;
+}
+
+/* Upload zone */
+.uploadZone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background-color: #ffffff;
+  padding: var(--spacing-6) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.uploadZone:hover {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+}
+
+.uploadIcon {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-2);
+}
+
+.uploadTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 2px;
+}
+
+.uploadSub {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin: 0;
+}
+
+.browseLink {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* File Row Queue */
+.filesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2.5);
+  background-color: #f1f5f9;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-4);
+}
+
+.fileName {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #334155;
+  flex: 1;
+}
+
+.removeFileBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.removeFileBtn:hover {
+  color: #ef4444;
+}
+
+.helperText {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* Publish btn */
+.publishBtn {
+  background-color: #10b981;
+  border: 1px solid #10b981;
+  color: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3.5) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+
+.publishBtn:hover {
+  background-color: #059669;
+}
+
+.publishDisclaimer {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: center;
+  margin-top: -8px;
+}
+
+/* Success Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.successModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.successIconCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #e6fcf5;
+  color: #099268;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+}
+
+.successModalTitle {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.successModalText {
+  font-size: var(--font-size-sm);
+  color: #475569;
+  line-height: var(--line-height-relaxed);
+  text-align: center;
+  margin: 0;
+}
+
+.successBtn {
+  background-color: #1e293b;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.successBtn:hover {
+  background-color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .rowFormGroup {
+    flex-direction: column;
+  }
+  .remainingBox {
+    margin-top: 0;
+    width: 100%;
+  }
+}

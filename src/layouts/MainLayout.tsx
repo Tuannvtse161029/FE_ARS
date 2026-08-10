@@ -28,7 +28,7 @@ const BellIcon = () => (
 
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
     <polyline points="9 22 9 12 15 12 15 22"></polyline>
   </svg>
 );
@@ -93,7 +93,7 @@ export const MainLayout = () => {
   const navigate = useNavigate();
 
   // Selected role for mockup switching
-  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer'>(() => {
+  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>(() => {
     const saved = localStorage.getItem('ars_active_role');
     return (saved as any) || 'Researcher';
   });
@@ -101,16 +101,8 @@ export const MainLayout = () => {
   // Wallet balance sync state
   const [balance, setBalance] = useState(() => {
     const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 1500000; // Initialize to 1,500,000 VND
+    return saved ? parseInt(saved, 10) : 1500000;
   });
-
-  useEffect(() => {
-    // Keep 1,500,000 VND in localstorage if not set yet
-    if (!localStorage.getItem('ars_wallet')) {
-      localStorage.setItem('ars_wallet', '1500000');
-      setBalance(1500000);
-    }
-  }, []);
 
   useEffect(() => {
     const handleWalletUpdate = () => {
@@ -122,7 +114,7 @@ export const MainLayout = () => {
   }, []);
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const role = e.target.value as 'Researcher' | 'Reviewer' | 'Lecturer';
+    const role = e.target.value as 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student';
     setActiveRole(role);
     localStorage.setItem('ars_active_role', role);
 
@@ -133,11 +125,13 @@ export const MainLayout = () => {
       navigate(ROUTES.EVALUATION);
     } else if (role === 'Lecturer') {
       navigate(ROUTES.SEMINAR_WORKSPACE);
+    } else if (role === 'Graduate Student') {
+      navigate(ROUTES.DASHBOARD);
     }
   };
 
-  const username = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : 'Lecturer Account');
-  const avatarInitials = activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : 'LA';
+  const username = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : activeRole === 'Graduate Student' ? 'Dr. N. Ashford' : 'Lecturer Account');
+  const avatarInitials = activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : activeRole === 'Graduate Student' ? 'NA' : 'LA';
 
   const handleLogout = () => {
     logout();
@@ -158,16 +152,25 @@ export const MainLayout = () => {
       case 'Lecturer':
         return [
           { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
+          { to: ROUTES.RESEARCH_GROUP, label: 'Guidance Groups', icon: <GroupIcon /> },
+          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestone Configuration', icon: <PapersIcon /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar Workspace', icon: <SeminarIcon /> },
-          { to: ROUTES.RESEARCH_GROUP, label: 'Guidance Group', icon: <GroupIcon /> },
           { to: '#catalog', label: 'Course Catalog', icon: <PapersIcon /> },
           { to: '#participants', label: 'Participants', icon: <BrowseReviewersIcon /> },
           { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
         ];
+      case 'Graduate Student':
+        return [
+          { to: ROUTES.DASHBOARD, label: 'Home Dashboard', icon: <HomeIcon /> },
+          { to: '#assignments', label: 'My Assignments', icon: <PapersIcon /> },
+          { to: ROUTES.SUBMIT_REPORT, label: 'Group Workspace', icon: <GroupIcon /> },
+          { to: '#history', label: 'Submission History', icon: <ForumIcon /> },
+          { to: '#messages', label: 'Messages', icon: <BrowseReviewersIcon /> },
+        ];
       case 'Researcher':
       default:
         return [
-          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
+          { to: ROUTES.DASHBOARD, label: 'Home Dashboard', icon: <HomeIcon /> },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon />, showDot: true },
           { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon /> },
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon /> },
@@ -266,6 +269,7 @@ export const MainLayout = () => {
                 <option value="Researcher">Researcher</option>
                 <option value="Reviewer">Reviewer</option>
                 <option value="Lecturer">Lecturer (Seminar/Group)</option>
+                <option value="Graduate Student">Graduate Student</option>
               </select>
             </div>
 

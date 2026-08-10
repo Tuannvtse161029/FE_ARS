@@ -1,0 +1,329 @@
+.submitReportPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  font-family: var(--font-family-primary);
+}
+
+.breadcrumbs {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: left;
+}
+
+.activeBreadcrumb {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.header {
+  text-align: left;
+}
+
+.pageTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Main Grid */
+.submitGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: var(--spacing-5);
+  align-items: start;
+}
+
+/* Cards styles */
+.detailsCard, .submissionCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1e3a8a;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-2);
+}
+
+/* Left column milestone details */
+.detailsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.detailLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.detailVal {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.deadlineWarning {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2.5);
+  background-color: #fffbeb;
+  border: 1px solid #fde047;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3.5) var(--spacing-4);
+  color: #b45309;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+}
+
+.warningIcon {
+  font-size: 1rem;
+}
+
+/* Right column dropzone */
+.dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: var(--spacing-8) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: #ffffff;
+  transition: all var(--transition-fast);
+}
+
+.dropzone:hover {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+}
+
+.uploadIcon {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-2);
+}
+
+.dropzoneTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 2px;
+}
+
+.dropzoneSub {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin: 0;
+}
+
+.browseLink {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* File Card Zone */
+.fileCardZone {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  background-color: #f8fafc;
+}
+
+.fileIcon {
+  font-size: 1.5rem;
+}
+
+.fileMeta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fileName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fileSize {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.removeFileBtn {
+  background-color: #fff5f5;
+  border: 1px solid #ffe3e3;
+  border-radius: var(--radius-md);
+  color: #e03131;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px var(--spacing-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.removeFileBtn:hover {
+  background-color: #fff0f0;
+}
+
+/* Notes Group */
+.notesGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.notesLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.notesTextarea {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  font-family: var(--font-family-primary);
+  resize: vertical;
+}
+
+.notesTextarea:focus {
+  border-color: #2563eb;
+}
+
+/* Submit Action Center */
+.submitActionCenter {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--spacing-2);
+}
+
+.submitBtn {
+  background-color: #10b981;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  padding: var(--spacing-3) var(--spacing-10);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.submitBtn:disabled {
+  background-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Success Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.successModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.successIconCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #e6fcf5;
+  color: #099268;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+}
+
+.successModalTitle {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.successModalText {
+  font-size: var(--font-size-sm);
+  color: #475569;
+  line-height: var(--line-height-relaxed);
+  text-align: center;
+  margin: 0;
+}
+
+.successBtn {
+  background-color: #1e293b;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.successBtn:hover {
+  background-color: #0f172a;
+}
+
+@media (max-width: 1024px) {
+  .submitGrid {
+    grid-template-columns: 1fr;
+  }
+}
