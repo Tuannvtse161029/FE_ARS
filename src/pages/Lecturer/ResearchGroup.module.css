@@ -53,6 +53,70 @@
   background-color: #0f172a;
 }
 
+/* Success Toast Banner (Frame 43) */
+.successToastBanner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  text-align: left;
+}
+
+.toastLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.toastCheckIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.toastTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  color: #065f46;
+}
+
+.toastSub {
+  font-size: 0.75rem;
+  color: #047857;
+  margin: 1px 0 0 0;
+}
+
+.toastRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.justNowText {
+  font-size: 0.7rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.toastCloseBtn {
+  background: none;
+  border: none;
+  color: #059669;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* Section Header Row */
 .sectionHeaderRow {
   display: flex;
@@ -151,6 +215,16 @@
   border: 1px solid #a7f3d0;
   font-size: 0.65rem;
   font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.newBadgePill {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 0.65rem;
+  font-weight: 800;
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -363,10 +437,26 @@
   line-height: var(--line-height-relaxed);
 }
 
+.assignedPillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1.5);
+}
+
 .assignedGroupPill {
-  background-color: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.unassignedPill {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
   font-size: 0.65rem;
   font-weight: 700;
   padding: 2px 8px;
@@ -408,7 +498,7 @@
   background-color: #ffffff;
   border-radius: 20px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   box-shadow: var(--shadow-2xl);
   padding: var(--spacing-6) var(--spacing-8);
   display: flex;
@@ -417,12 +507,75 @@
   text-align: left;
 }
 
-.modalHeader {
+/* Inner Modal Success Banner (Frame 40 & 41) */
+.innerModalSuccessBanner {
+  background-color: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.innerCheckIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.innerBannerMeta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  font-size: 0.75rem;
+  color: #047857;
+}
+
+.innerBannerMeta b {
+  color: #065f46;
+}
+
+.innerBannerClose {
+  background: none;
+  border: none;
+  color: #059669;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.modalHeaderRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   border-bottom: 1px solid #f1f5f9;
   padding-bottom: var(--spacing-3);
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
 }
 
 .modalTitle {
@@ -432,10 +585,16 @@
   margin: 0;
 }
 
+.modalSubtitle {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 .closeBtn {
   background: none;
   border: none;
   font-size: 1.5rem;
+  line-height: 1;
   color: #94a3b8;
   cursor: pointer;
   padding: 0;
@@ -482,6 +641,219 @@
   background-color: #ffffff;
 }
 
+/* Emails Input Box */
+.emailsInputBox {
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.emailRawInput {
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  width: 100%;
+}
+
+.emailTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.emailPill {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1.5);
+}
+
+.removeEmailCross {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+/* Materials Box (Frame 41) */
+.materialsBox {
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3);
+}
+
+.materialTagsList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.materialPillTag {
+  background-color: #ffffff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1.5);
+}
+
+.removeMatCross {
+  background: none;
+  border: none;
+  color: #1e40af;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.addMoreMatBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Purple Topic Box (Frame 42) */
+.purpleTopicBox {
+  background-color: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topicBeingAssignedLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #7c3aed;
+  letter-spacing: 0.5px;
+}
+
+.purpleTopicTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  color: #581c87;
+  margin: 0;
+}
+
+.purpleTopicDesc {
+  font-size: 0.75rem;
+  color: #6b21a8;
+  margin: 0;
+}
+
+/* Select Groups Section */
+.selectGroupsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.selectGroupsLabel {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.groupsCheckboxList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.groupCheckboxRow {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.groupCheckboxRow:hover {
+  border-color: #2563eb;
+}
+
+.selectedRow {
+  border-color: #2563eb !important;
+  background-color: #eff6ff !important;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkboxGroupId {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #2563eb;
+  background-color: #dbeafe;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.checkboxGroupName {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #0f172a;
+  flex: 1;
+}
+
+.checkboxMembersCount {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.assignModalFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: var(--spacing-4);
+}
+
+.selectedCountText {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #64748b;
+}
+
+.assignFooterBtnsRight {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
 .modalFooter {
   display: flex;
   gap: var(--spacing-3);
@@ -499,18 +871,19 @@
   cursor: pointer;
 }
 
-.submitBtn {
+.submitNavyBtn {
   flex: 1;
   background-color: #1e293b;
   border: none;
   color: #ffffff;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) 0;
+  padding: var(--spacing-2.5) var(--spacing-5);
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  transition: background-color var(--transition-fast);
 }
 
-.submitBtn:hover {
+.submitNavyBtn:hover {
   background-color: #0f172a;
 }
