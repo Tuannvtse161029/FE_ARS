@@ -29,6 +29,20 @@ export const EvaluationDesk = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.setItem('ars_framework_submitted', 'true');
+
+    // Release 500,000 VND to available wallets
+    const currentWallet = localStorage.getItem('ars_wallet');
+    const newWallet = (currentWallet ? parseInt(currentWallet, 10) : 1500000) + 500000;
+    localStorage.setItem('ars_wallet', newWallet.toString());
+
+    const currentReviewerBalance = localStorage.getItem('ars_reviewer_balance');
+    const newReviewerBalance = (currentReviewerBalance ? parseInt(currentReviewerBalance, 10) : 4200000) + 500000;
+    localStorage.setItem('ars_reviewer_balance', newReviewerBalance.toString());
+
+    // Dispatch wallet update
+    window.dispatchEvent(new Event('wallet-update'));
+
     setIsSubmitted(true);
   };
 
@@ -198,17 +212,36 @@ export const EvaluationDesk = () => {
 
       </div>
 
-      {/* Success Modal */}
+      {/* Success Modal (Frame 20) */}
       {isSubmitted && (
         <div className={styles.modalOverlay}>
-          <div className={styles.successModalCard}>
-            <div className={styles.successIconCircle}>✓</div>
-            <h3 className={styles.successModalTitle}>Feedback Submitted Successfully!</h3>
-            <p className={styles.successModalText}>
-              Your rating evaluation and decision "<b>{finalDecision}</b>" have been submitted to the journal editor. Escrow funds will be dispatched upon publication verification.
+          <div className={styles.successModalCard} style={{ maxWidth: '520px', padding: '32px' }}>
+            <button className={styles.closeModalCross} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>×</button>
+            <div className={styles.successIconCircle} style={{ width: '56px', height: '56px', backgroundColor: '#e6fcf5', color: '#099268' }}>✓</div>
+            <h3 className={styles.successModalTitle} style={{ fontSize: '1.25rem', marginTop: '10px' }}>Evaluation Submitted Successfully!</h3>
+            <p className={styles.successModalText} style={{ color: '#64748b' }}>
+              Your feedback has been securely delivered to the author for review.
             </p>
+
+            {/* Escrow Funds Released Alert card */}
+            <div className={styles.escrowReleasedAlertCard}>
+              <span className={styles.escrowAlertIcon}>🔓</span>
+              <div className={styles.escrowAlertMeta}>
+                <h4 className={styles.escrowAlertTitle}>Escrow Funds Released!</h4>
+                <p className={styles.escrowAlertText}>
+                  <b>500,000 VND</b> has been automatically transferred to your withdrawable wallet balance.
+                </p>
+              </div>
+            </div>
+
+            {/* Transaction ID */}
+            <div className={styles.transactionIdRow}>
+              <span className={styles.txLabel}>Transaction ID</span>
+              <span className={styles.txVal}>#ESCROW-RELEASE-9921</span>
+            </div>
+
             <button className={styles.successBtn} onClick={() => navigate(ROUTES.REVIEW_TASKS)}>
-              Back to Task List
+              Return to Review Directory
             </button>
           </div>
         </div>

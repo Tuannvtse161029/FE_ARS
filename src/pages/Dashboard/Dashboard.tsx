@@ -35,11 +35,14 @@ export const Dashboard = () => {
   // Selected role for dashboard layout switching
   const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>('Researcher');
 
+  const [isFrameworkSubmitted, setIsFrameworkSubmitted] = useState(false);
+
   useEffect(() => {
     // Sync active role with layout
     const checkRole = () => {
       const saved = localStorage.getItem('ars_active_role');
       if (saved) setActiveRole(saved as any);
+      setIsFrameworkSubmitted(localStorage.getItem('ars_framework_submitted') === 'true');
     };
     checkRole();
     window.addEventListener('storage', checkRole);
@@ -246,7 +249,7 @@ export const Dashboard = () => {
             <span className={styles.welcomeCategory}>REVIEWER DASHBOARD</span>
             <h2 className={styles.welcomeBigTitle}>Welcome back, Dr. Nguyen Van A!</h2>
             <p className={styles.welcomeSubtitle}>
-              You have <span className={styles.highlightText}>2 review tasks</span> pending evaluation.
+              You have <span className={styles.highlightText}>{isFrameworkSubmitted ? 1 : 2} review tasks</span> pending evaluation.
               {!acceptingRequests && (
                 <> Your next deadline is in <span className={styles.highlightText} style={{ color: '#eab308' }}>3 days</span>.</>
               )}
@@ -279,7 +282,7 @@ export const Dashboard = () => {
               <span className={styles.redesignMetricTitle}>PENDING REVIEWS</span>
               <span className={styles.actionNeededBadge}>Action Needed</span>
             </div>
-            <span className={styles.redesignMetricVal}>2</span>
+            <span className={styles.redesignMetricVal}>{isFrameworkSubmitted ? 1 : 2}</span>
           </div>
 
           <div className={styles.redesignMetricCard}>
@@ -296,30 +299,32 @@ export const Dashboard = () => {
               <span className={styles.lockedBadge}>Locked</span>
             </div>
             <div className={styles.escrowValRow}>
-              <span className={styles.redesignMetricVal}>1,000,000</span>
+              <span className={styles.redesignMetricVal}>{isFrameworkSubmitted ? '500,000' : '1,000,000'}</span>
               <span className={styles.escrowCurrency}>VND</span>
             </div>
           </div>
         </div>
 
         {/* Urgent Review required banner (yellow warning block) */}
-        <div className={styles.urgentBannerRow}>
-          <div className={styles.urgentBannerLeft}>
-            <span className={styles.urgentIconCircle}>⚡</span>
-            <div className={styles.urgentMeta}>
-              <span className={styles.urgentTitleLabel}>Urgent Review Required</span>
-              <span className={styles.urgentDesc}>
-                Framework_Design_v2.pdf · Deadline: <b>3 Days</b> · Fee: <b>500,000 VND</b>
-              </span>
+        {!isFrameworkSubmitted && (
+          <div className={styles.urgentBannerRow}>
+            <div className={styles.urgentBannerLeft}>
+              <span className={styles.urgentIconCircle}>⚡</span>
+              <div className={styles.urgentMeta}>
+                <span className={styles.urgentTitleLabel}>Urgent Review Required</span>
+                <span className={styles.urgentDesc}>
+                  Framework_Design_v2.pdf · Deadline: <b>3 Days</b> · Fee: <b>500,000 VND</b>
+                </span>
+              </div>
             </div>
+            <button 
+              className={styles.startEvaluationBtn}
+              onClick={() => navigate(ROUTES.EVALUATION)}
+            >
+              🚀 Start Evaluation
+            </button>
           </div>
-          <button 
-            className={styles.startEvaluationBtn}
-            onClick={() => navigate(ROUTES.EVALUATION)}
-          >
-            🚀 Start Evaluation
-          </button>
-        </div>
+        )}
 
         {/* Section: Assigned Review Requests */}
         <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px' }}>
@@ -344,24 +349,26 @@ export const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className={styles.manuscriptTitleText}>Framework_Design_v2.pdf</td>
-                  <td>
-                    <span className={styles.domainPill}>#ComputerScience</span>
-                  </td>
-                  <td>
-                    <span className={styles.remainingOrange}>🕒 3 Days Remaining</span>
-                  </td>
-                  <td className={styles.feeBalanceText} style={{ color: '#0f172a' }}>500,000 VND</td>
-                  <td>
-                    <button 
-                      className={styles.evaluateRequestBtn}
-                      onClick={() => navigate(ROUTES.EVALUATION)}
-                    >
-                      Evaluate
-                    </button>
-                  </td>
-                </tr>
+                {!isFrameworkSubmitted && (
+                  <tr>
+                    <td className={styles.manuscriptTitleText}>Framework_Design_v2.pdf</td>
+                    <td>
+                      <span className={styles.domainPill}>#ComputerScience</span>
+                    </td>
+                    <td>
+                      <span className={styles.remainingOrange}>🕒 3 Days Remaining</span>
+                    </td>
+                    <td className={styles.feeBalanceText} style={{ color: '#0f172a' }}>500,000 VND</td>
+                    <td>
+                      <button 
+                        className={styles.evaluateRequestBtn}
+                        onClick={() => navigate(ROUTES.EVALUATION)}
+                      >
+                        Evaluate
+                      </button>
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td className={styles.manuscriptTitleText}>Cloud_Routing_v1.pdf</td>
                   <td>

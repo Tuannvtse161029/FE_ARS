@@ -382,6 +382,83 @@
   background-color: #0f172a;
 }
 
+.closeModalCross {
+  position: absolute;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+}
+
+.closeModalCross:hover {
+  color: #64748b;
+}
+
+.escrowReleasedAlertCard {
+  display: flex;
+  gap: var(--spacing-3);
+  background-color: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  margin-top: var(--spacing-4);
+  width: 100%;
+  text-align: left;
+}
+
+.escrowAlertIcon {
+  font-size: 1.3rem;
+  color: #099268;
+}
+
+.escrowAlertMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.escrowAlertTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #099268;
+  margin: 0;
+}
+
+.escrowAlertText {
+  font-size: var(--font-size-xs);
+  color: #047857;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.transactionIdRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-top: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  width: 100%;
+  font-size: var(--font-size-xs);
+}
+
+.txLabel {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.txVal {
+  color: #0f172a;
+  font-weight: 700;
+}
+
 @media (max-width: 1024px) {
   .deskGrid {
     grid-template-columns: 1fr;

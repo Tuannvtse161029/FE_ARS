@@ -6,6 +6,9 @@ import styles from './ReviewTasks.module.css';
 export const ReviewTasks = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'pending' | 'inprogress' | 'completed'>('pending');
+  const [isFrameworkSubmitted] = useState(() => {
+    return localStorage.getItem('ars_framework_submitted') === 'true';
+  });
 
   return (
     <div className={styles.tasksPage}>
@@ -28,7 +31,7 @@ export const ReviewTasks = () => {
           className={`${styles.tabBtn} ${activeTab === 'pending' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('pending')}
         >
-          Pending / Action Required (2)
+          Pending / Action Required ({isFrameworkSubmitted ? 1 : 2})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'inprogress' ? styles.activeTab : ''}`}
@@ -51,28 +54,30 @@ export const ReviewTasks = () => {
         {activeTab === 'pending' && (
           <div className={styles.cardsList}>
             {/* Card 1 */}
-            <div className={styles.taskCard}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardHeaderLeft}>
-                  <span className={styles.docIcon}>📄</span>
-                  <div className={styles.docMeta}>
-                    <h3 className={styles.docTitle}>Framework_Design_v2.pdf</h3>
-                    <span className={styles.authorName}>Priya R. Subramaniam et al. - MIT</span>
+            {!isFrameworkSubmitted && (
+              <div className={styles.taskCard}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardHeaderLeft}>
+                    <span className={styles.docIcon}>📄</span>
+                    <div className={styles.docMeta}>
+                      <h3 className={styles.docTitle}>Framework_Design_v2.pdf</h3>
+                      <span className={styles.authorName}>Priya R. Subramaniam et al. - MIT</span>
+                    </div>
                   </div>
+                  <button 
+                    className={styles.evaluateBtn}
+                    onClick={() => navigate(ROUTES.EVALUATION)}
+                  >
+                    ✓ Evaluate Paper
+                  </button>
                 </div>
-                <button 
-                  className={styles.evaluateBtn}
-                  onClick={() => navigate(ROUTES.EVALUATION)}
-                >
-                  ✓ Evaluate Paper
-                </button>
+                <div className={styles.cardBadges}>
+                  <span className={styles.tagBadge}>#ComputerScience</span>
+                  <span className={styles.deadlineOrange}>🕒 Deadline: 3 Days Remaining</span>
+                  <span className={styles.feeLocked}>🔒 500,000 VND (Escrow Locked)</span>
+                </div>
               </div>
-              <div className={styles.cardBadges}>
-                <span className={styles.tagBadge}>#ComputerScience</span>
-                <span className={styles.deadlineOrange}>🕒 Deadline: 3 Days Remaining</span>
-                <span className={styles.feeLocked}>🔒 500,000 VND (Escrow Locked)</span>
-              </div>
-            </div>
+            )}
 
             {/* Card 2 */}
             <div className={styles.taskCard}>

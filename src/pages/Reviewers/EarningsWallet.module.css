@@ -17,7 +17,11 @@
   color: #0f172a;
 }
 
+/* Header */
 .pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   text-align: left;
 }
 
@@ -27,8 +31,30 @@
   color: #0f172a;
 }
 
-/* Card layout */
-.metricsCard, .formCard {
+.pageSubtitle {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin-top: var(--spacing-1);
+}
+
+.createRequestBtn {
+  background-color: #1e293b;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  padding: 10px 20px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.createRequestBtn:hover {
+  background-color: #0f172a;
+}
+
+/* Metrics Card */
+.metricsCard {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
@@ -42,14 +68,13 @@
 
 .sectionTitle {
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 850;
   color: #1e3a8a;
   letter-spacing: 0.5px;
   border-bottom: 1px solid #f1f5f9;
   padding-bottom: var(--spacing-2);
 }
 
-/* Metrics block */
 .metricsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -86,17 +111,319 @@
   color: #64748b;
 }
 
-/* Form block */
-.form {
+/* Table card */
+.tableCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: var(--spacing-3.5) var(--spacing-4);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.table td {
+  padding: var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.requestIdText {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bankNameText {
+  font-weight: 600;
+  color: #475569;
+}
+
+.amountText {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Status styles */
+.statusAccepted {
+  color: #10b981;
+  font-weight: 700;
+  font-size: var(--font-size-xs);
+}
+
+.statusRejected {
+  color: #ef4444;
+  font-weight: 700;
+  font-size: var(--font-size-xs);
+}
+
+.statusPending {
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: var(--font-size-xs);
+}
+
+.viewBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  color: #475569;
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.viewBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.viewReasonBtn {
+  background-color: #fff5f5;
+  border: 1.5px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #e53e3e;
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.viewReasonBtn:hover {
+  background-color: #fff5f5;
+  border-color: #e53e3e;
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Rejection Notice Modal Card (Frame 23) */
+.rejectModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-5);
+  text-align: left;
+}
+
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3);
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.warningShieldIcon, .withdrawalIcon {
+  font-size: 1.5rem;
+}
+
+.modalTitle {
+  font-size: var(--font-size-base);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.modalSubtitle {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Rejection Details summary */
+.rejectSummaryTable {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: var(--spacing-3);
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+}
+
+.summaryCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.summaryVal {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #334155;
+  margin-top: 1px;
+}
+
+.statusRejectedPill {
+  background-color: #fff5f5;
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Rejection text block */
+.rejectionNoteBox {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  background-color: #fef2f2;
+}
+
+.noteLabel {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #e53e3e;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-2);
+}
+
+.noteContent {
+  font-size: 0.75rem;
+  line-height: var(--line-height-relaxed);
+  color: #3f1e1e;
+  margin: 0;
+}
+
+.reviewerSignature {
+  font-size: 0.7rem;
+  color: #8b3e3e;
+  margin-top: var(--spacing-3);
+  border-top: 1px dashed #feb2b2;
+  padding-top: var(--spacing-2);
+}
+
+.modalCloseBtn {
+  background-color: #1e293b;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.modalCloseBtn:hover {
+  background-color: #0f172a;
+}
+
+/* Create Request Modal (Frame 24) */
+.createModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
+}
+
+.modalMetricsBar {
+  display: flex;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+}
+
+.metricItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.metricBarLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.metricBarVal {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+/* Modal Form */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--spacing-1.5);
   width: 100%;
 }
 
@@ -115,7 +442,7 @@
   font-size: var(--font-size-sm);
   color: #0f172a;
   outline: none;
-  height: 48px;
+  height: 44px;
 }
 
 .formSelect {
@@ -126,7 +453,52 @@
   border-color: #2563eb;
 }
 
-/* Amount Input with suffix VND */
+/* Verified Account Holder card */
+.verificationCard {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 2px;
+}
+
+.verifyIcon {
+  color: #099268;
+  font-size: 1rem;
+}
+
+.verifyMeta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.verifyTitle {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #099268;
+}
+
+.verifyName {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #059669;
+}
+
+.confirmedBadge {
+  background-color: #ffffff;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Amount wrapper */
 .amountInputWrapper {
   position: relative;
   display: flex;
@@ -143,7 +515,7 @@
   font-size: var(--font-size-sm);
   color: #0f172a;
   outline: none;
-  height: 48px;
+  height: 44px;
 }
 
 .amountInput:focus {
@@ -156,14 +528,18 @@
   font-size: var(--font-size-sm);
   font-weight: 700;
   color: #94a3b8;
-  pointer-events: none;
+}
+
+.availableText {
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
 .formTextarea {
   background-color: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: var(--radius-lg);
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-3);
   font-size: var(--font-size-sm);
   color: #0f172a;
   outline: none;
@@ -175,97 +551,51 @@
   border-color: #2563eb;
 }
 
-.submitBtn {
-  background-color: #2563eb;
-  border: none;
-  border-radius: var(--radius-lg);
-  color: #ffffff;
-  padding: var(--spacing-3.5) 0;
-  font-size: var(--font-size-sm);
+/* Form Actions */
+.modalFormFooter {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.modalCancelBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-5);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
-  width: 100%;
+}
+
+.modalCancelBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.modalSubmitBtn {
+  flex: 1;
+  background-color: #2563eb;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
-.submitBtn:hover {
+.modalSubmitBtn:hover {
   background-color: #1d4ed8;
-}
-
-/* Success Modal Overlay */
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.successModalCard {
-  background-color: #ffffff;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 440px;
-  box-shadow: var(--shadow-2xl);
-  padding: var(--spacing-6) var(--spacing-8);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-4);
-}
-
-.successIconCircle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #e6fcf5;
-  color: #099268;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-}
-
-.successModalTitle {
-  font-size: var(--font-size-base);
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.successModalText {
-  font-size: var(--font-size-sm);
-  color: #475569;
-  line-height: var(--line-height-relaxed);
-  text-align: center;
-  margin: 0;
-}
-
-.successBtn {
-  background-color: #1e293b;
-  color: #ffffff;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: all var(--transition-fast);
-}
-
-.successBtn:hover {
-  background-color: #0f172a;
 }
 
 @media (max-width: 640px) {
   .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+  .rejectSummaryTable {
     grid-template-columns: 1fr;
   }
 }
