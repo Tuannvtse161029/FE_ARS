@@ -17,7 +17,11 @@
   color: #0f172a;
 }
 
-.header {
+/* Header */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   text-align: left;
 }
 
@@ -27,217 +31,371 @@
   color: #0f172a;
 }
 
-/* Config Card */
-.configCard {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: var(--spacing-6) var(--spacing-8);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
-  text-align: left;
-}
-
-.cardHeader {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1.5);
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: var(--spacing-4);
-}
-
-.cardTitle {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #1e3a8a;
-  letter-spacing: 1px;
-}
-
-.cardSubtitle {
+.pageSubtitle {
   font-size: var(--font-size-xs);
   color: #64748b;
+  margin-top: var(--spacing-1);
 }
 
-/* Form Styles */
-.form {
+.createSeminarBtn {
+  background-color: #1e293b;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  padding: 10px 20px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.createSeminarBtn:hover {
+  background-color: #0f172a;
+}
+
+/* Tabs */
+.tabsRow {
+  display: flex;
+  gap: var(--spacing-1);
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 2px;
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #64748b;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  padding: var(--spacing-2) var(--spacing-4);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: -3px;
+}
+
+.tabBtn:hover {
+  color: #1e293b;
+}
+
+.activeTab {
+  color: #1e293b !important;
+  border-color: #1e293b !important;
+}
+
+/* List container */
+.seminarsList {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-5);
 }
 
-.formGroup {
+/* Empty Drafts */
+.emptyDrafts {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: var(--spacing-12) 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--spacing-2);
-  width: 100%;
+  color: #64748b;
 }
 
-.formLabel {
-  font-size: 0.7rem;
+.emptyIcon {
+  font-size: 2.5rem;
+  color: #cbd5e1;
+}
+
+.emptyTitle {
+  font-size: var(--font-size-base);
   font-weight: 700;
   color: #475569;
-  letter-spacing: 0.5px;
+  margin: 0;
 }
 
-.formInput {
+.emptyText {
+  font-size: var(--font-size-xs);
+  margin: 0;
+}
+
+/* Seminar Card */
+.seminarCard {
   background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: 0 var(--spacing-4);
-  font-size: var(--font-size-sm);
-  color: #0f172a;
-  outline: none;
-  height: 48px;
-  width: 100%;
-}
-
-.formInput:focus {
-  border-color: #2563eb;
-}
-
-.formTextarea {
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  color: #0f172a;
-  outline: none;
-  font-family: var(--font-family-primary);
-  resize: vertical;
-}
-
-.formTextarea:focus {
-  border-color: #2563eb;
-}
-
-.rowFormGroup {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
   display: flex;
+  flex-direction: column;
   gap: var(--spacing-4);
-}
-
-.formDateInput {
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: 0 var(--spacing-4);
-  font-size: var(--font-size-sm);
-  color: #334155;
-  outline: none;
-  height: 48px;
-  width: 100%;
-}
-
-/* Multi-select input */
-.multiSelectInputWrapper {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: 6px var(--spacing-4);
-  background-color: #ffffff;
-  min-height: 48px;
-}
-
-.searchIcon {
-  color: #94a3b8;
-  margin-right: 4px;
-}
-
-.tagsContainer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.inviteeTag {
-  background-color: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 3px var(--spacing-2);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #334155;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.removeTagBtn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-}
-
-.removeTagBtn:hover {
-  color: #ef4444;
-}
-
-.multiSelectInput {
-  border: none;
-  outline: none;
-  font-size: var(--font-size-sm);
-  color: #0f172a;
-  flex: 1;
-  min-width: 120px;
-}
-
-.helperText {
-  font-size: 0.7rem;
-  color: #64748b;
   text-align: left;
 }
 
-/* Form Actions */
-.formActions {
+.cardHeaderRow {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
   gap: var(--spacing-3);
-  border-top: 1px solid #f1f5f9;
-  padding-top: var(--spacing-4);
 }
 
-.cancelBtn {
-  background: none;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-6);
+.statusUpcoming {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 0.65rem;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.statusInProgress {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+  font-size: 0.65rem;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.statusCompleted {
+  background-color: #ecfdf5;
+  color: #10b981;
+  border: 1px solid #a7f3d0;
+  font-size: 0.65rem;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.seminarId {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.dateMeta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.seminarTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.seminarDescription {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  line-height: var(--line-height-relaxed);
   color: #475569;
-  cursor: pointer;
+  margin: 0;
 }
 
-.cancelBtn:hover {
+/* Roster list */
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.inviteCountText {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #475569;
+}
+
+.avatarList {
+  display: flex;
+  align-items: center;
+}
+
+.avatarCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   background-color: #f1f5f9;
+  border: 2px solid #ffffff;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -6px;
 }
 
-.submitBtn {
+.avatarCircle:first-child {
+  margin-left: 0;
+}
+
+.avatarCircle:nth-child(even) {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.avatarMore {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  border: 2px solid #ffffff;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -6px;
+}
+
+/* Meet Link Box */
+.meetBox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2.5);
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.meetIcon {
+  font-size: var(--font-size-base);
+}
+
+.meetLinkText {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #15803d;
+  text-decoration: none;
+}
+
+.meetLinkText:hover {
+  text-decoration: underline;
+}
+
+/* Feedback progress block */
+.feedbackProgressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1.5);
+}
+
+.feedbackProgressLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #475569;
+}
+
+.progressBg {
+  background-color: #e2e8f0;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progressFill {
+  background-color: #10b981;
+  height: 100%;
+  border-radius: 4px;
+}
+
+/* Card Actions */
+.cardActionsRow {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.joinMeetBtn {
   background-color: #1e293b;
-  border: 1px solid #1e293b;
+  border: none;
   color: #ffffff;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-6);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.joinMeetBtn:hover {
+  background-color: #0f172a;
+}
+
+.sendInviteBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.submitBtn:hover {
+.sendInviteBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.feedbackDisabledBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #94a3b8;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.feedbackGradingBtn {
+  flex: 1;
+  background-color: #1e293b;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.feedbackGradingBtn:hover {
   background-color: #0f172a;
 }
 
-/* Success Modal Overlay */
+.gradingBadge {
+  background-color: rgba(255, 255, 255, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+}
+
+/* Config modal styling (from original config card) */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -252,6 +410,189 @@
   z-index: 1000;
 }
 
+.configCard {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  padding: var(--spacing-8);
+  box-shadow: var(--shadow-2xl);
+  text-align: left;
+  width: 100%;
+}
+
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.cardTitle {
+  font-size: 0.75rem;
+  font-weight: 850;
+  color: #1e3a8a;
+  letter-spacing: 0.5px;
+}
+
+.cardSubtitle {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin-top: var(--spacing-1);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  width: 100%;
+}
+
+.rowFormGroup {
+  display: flex;
+  gap: var(--spacing-4);
+}
+
+.formLabel {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.5px;
+}
+
+.formInput, .formTextarea, .formDateInput {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  height: 42px;
+}
+
+.formTextarea {
+  padding: var(--spacing-3);
+  resize: vertical;
+  height: auto;
+  font-family: var(--font-family-primary);
+}
+
+.formInput:focus, .formTextarea:focus, .formDateInput:focus {
+  border-color: #2563eb;
+}
+
+/* Multi select invite */
+.multiSelectInputWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: #ffffff;
+  min-height: 42px;
+}
+
+.tagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.inviteeTag {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.removeTagBtn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.multiSelectInput {
+  border: none;
+  outline: none;
+  background: none;
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  min-width: 100px;
+}
+
+/* Form actions */
+.formActions {
+  display: flex;
+  gap: var(--spacing-3);
+  border-top: 1px solid #f1f5f9;
+  padding-top: var(--spacing-4);
+  margin-top: var(--spacing-2);
+}
+
+.cancelBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-5);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.submitBtn {
+  flex: 1;
+  background-color: #1e293b;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submitBtn:hover {
+  background-color: #0f172a;
+}
+
+/* Success Modal Overlay */
 .successModalCard {
   background-color: #ffffff;
   border-radius: 20px;
@@ -302,15 +643,8 @@
   font-weight: 600;
   cursor: pointer;
   width: 100%;
-  transition: all var(--transition-fast);
 }
 
 .successBtn:hover {
   background-color: #0f172a;
-}
-
-@media (max-width: 640px) {
-  .rowFormGroup {
-    flex-direction: column;
-  }
 }

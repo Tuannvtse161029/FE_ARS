@@ -1276,6 +1276,248 @@
   font-weight: 700;
 }
 
+.researchGroupLinkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.groupSubName {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.gradeReportBtn {
+  background-color: #1e293b;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.gradeReportBtn:hover {
+  background-color: #0f172a;
+}
+
+.todayScheduleBox {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  background-color: #ffffff;
+}
+
+.scheduleBadgeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upcomingTodayBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #7c3aed;
+  background-color: #f3e8ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.scheduleIdText {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.scheduleTitleText {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.scheduleTimeText {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.meetTextboxRow {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 var(--spacing-2);
+  height: 36px;
+}
+
+.meetTextboxIcon {
+  font-size: var(--font-size-sm);
+  color: #64748b;
+}
+
+.meetTextboxInput {
+  border: none;
+  background: none;
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: #0f172a;
+  padding: 0 var(--spacing-2);
+  outline: none;
+}
+
+.meetCopyBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.joinMeetGreenBtn {
+  width: 100%;
+  background-color: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 10px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.joinMeetGreenBtn:hover {
+  background-color: #059669;
+}
+
+.viewAllSeminarsLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  width: 100%;
+}
+
+.viewAllSeminarsLink:hover {
+  color: #1e293b;
+}
+
+.groupsProgressList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.groupProgressItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3);
+}
+
+.groupProgressItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.groupProgressMeta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.groupProgressNameBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.groupProgressIcon {
+  font-size: 1.25rem;
+  color: #3b82f6;
+}
+
+.groupProgressTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.groupProgressRoster {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.groupProgressPhaseBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.progressBarWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  width: 220px;
+}
+
+.progressBarBg {
+  flex: 1;
+  height: 8px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.progressPercentText {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.viewGroupArrowBtn {
+  background: none;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  color: #475569;
+  padding: 6px var(--spacing-4.5);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.viewGroupArrowBtn:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
 @media (max-width: 1024px) {
   .resGrid {
     grid-template-columns: 1fr;

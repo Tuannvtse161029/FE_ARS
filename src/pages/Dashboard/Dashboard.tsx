@@ -537,7 +537,9 @@ export const Dashboard = () => {
     );
   }
 
-  // RENDER: LECTURER CONSOLE (FRAME 11)
+  // ───────────────────────────────────────────────────────────────────────────
+  // RENDER: LECTURER CONSOLE DASHBOARD (FRAME 25)
+  // ───────────────────────────────────────────────────────────────────────────
   return (
     <div className={styles.dashboard}>
       {/* Breadcrumbs */}
@@ -545,146 +547,271 @@ export const Dashboard = () => {
         Home &gt; <span className={styles.activeBreadcrumb}>Lecturer Management Console</span>
       </div>
 
-      {/* Header */}
-      <div className={styles.roleHeaderArea}>
-        <h1 className={styles.roleTitle}>Lecturer Console</h1>
-        <p className={styles.roleSubtitle}>Manage cohorts, seminars, and materials from a single workspace.</p>
-      </div>
-
-      {/* Grid: Groups status + seminars */}
-      <div className={styles.resGrid}>
-        {/* Left Column: Guided Active Groups */}
-        <div className={styles.studentInfoCard}>
-          <div className={styles.studentCardHeader}>
-            <span className={styles.studentCardHeaderTitle}>GUIDED ACTIVE GROUPS STATUS</span>
-          </div>
-
-          <div className={styles.lecturerGroupsList}>
-            {/* Group 1 */}
-            <div className={styles.lecturerGroupItem}>
-              <div className={styles.groupMetaHeader}>
-                <div>
-                  <span className={styles.groupNumber}>GROUP 01</span>
-                  <h4 className={styles.groupProjectTitle}>Core Automation V3</h4>
-                </div>
-                <div className={styles.groupStatusRow}>
-                  <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>Pending Review</span>
-                  <span className={styles.groupPhaseLabel}>Phase 2</span>
-                </div>
-              </div>
-              <div className={styles.groupItemFooter}>
-                <span className={styles.groupMembersText}>4 members · 3 submissions pending</span>
-                <button 
-                  className={styles.reviewSubmissionsBtn}
-                  onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
-                >
-                  Review Submissions ↗
-                </button>
-              </div>
-            </div>
-
-            {/* Group 2 */}
-            <div className={styles.lecturerGroupItem} style={{ borderBottom: 'none', paddingBottom: 0 }}>
-              <div className={styles.groupMetaHeader}>
-                <div>
-                  <span className={styles.groupNumber}>GROUP 02</span>
-                  <h4 className={styles.groupProjectTitle}>Data Mining Group B</h4>
-                </div>
-                <div className={styles.groupStatusRow}>
-                  <span className={`${styles.statusDotLabel} ${styles.statusAccepted}`}>On Track</span>
-                  <span className={styles.groupPhaseLabel} style={{ color: '#64748b' }}>No action required</span>
-                </div>
-              </div>
-              <div className={styles.groupItemFooter}>
-                <span className={styles.groupMembersText}>6 members</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Upcoming planned seminars */}
-        <div className={styles.studentInfoCard}>
-          <div className={styles.studentCardHeader}>
-            <span className={styles.studentCardHeaderTitle}>UPCOMING PLANNED SEMINARS</span>
-          </div>
-
-          <div className={styles.lecturerSeminarCard}>
-            <div className={styles.seminarSessionCard}>
-              <div className={styles.seminarIconCircle}>📹</div>
-              <div className={styles.seminarSessionMeta}>
-                <span className={styles.seminarSessionLabel}>NEXT SESSION</span>
-                <h4 className={styles.seminarSessionTitle}>Distributed Ledgers</h4>
-                <span className={styles.seminarSessionTime}>🕒 2026-07-15 - 14:00 UTC</span>
-              </div>
-            </div>
-            {/* Meet Link banner */}
-            <div className={styles.meetLinkBanner}>
-              <span className={styles.meetDot}>●</span>
-              <span>Meet Linked</span>
-            </div>
-          </div>
-
-          <div className={styles.lecturerSeminarFooter}>
-            <span className={styles.additionalSeminars}>2 additional seminars scheduled</span>
+      {/* Welcome Card Banner */}
+      <div className={styles.reviewerWelcomeCard} style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', color: '#ffffff' }}>
+        <div className={styles.welcomeLeft}>
+          <span className={styles.welcomeCategory} style={{ color: '#93c5fd' }}>LECTURER OVERVIEW</span>
+          <h2 className={styles.welcomeBigTitle} style={{ color: '#ffffff' }}>Welcome back, Lecturer! 👋</h2>
+          <p className={styles.welcomeSubtitle} style={{ color: '#cbd5e1' }}>
+            Track your active paper progress or request peer reviews. Your research impact grows with every submission.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
             <button 
-              className={styles.launchSeminarHubBtn}
+              className={styles.goToReviewBtn}
               onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}
+              style={{ backgroundColor: '#ffffff', color: '#1e293b' }}
             >
-              Launch Seminar Hub ↗
+              ＋ Create Seminar
+            </button>
+            <button 
+              className={styles.goToReviewBtn}
+              onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              ＋ Create Research Group
             </button>
           </div>
         </div>
       </div>
 
-      {/* Quick Controls Section */}
-      <div className={styles.studentFeedbackCard}>
-        <div className={styles.studentCardHeader}>
-          <span className={styles.studentCardHeaderTitle}>CONSOLE QUICK MANAGEMENT CONTROLS</span>
+      {/* Lecturer Metrics Row */}
+      <div className={styles.reviewerRedesignMetricsRow}>
+        <div className={styles.redesignMetricCard}>
+          <div className={styles.redesignCardHeader}>
+            <span className={styles.redesignMetricTitle}>ACTIVE GROUPS</span>
+            <span className={styles.actionNeededBadge} style={{ backgroundColor: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>Active</span>
+          </div>
+          <span className={styles.redesignMetricVal}>5</span>
         </div>
 
-        <div className={styles.lecturerControlsGrid}>
-          <div className={styles.controlCard} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
-            <div className={styles.controlCardLeft}>
-              <span className={styles.controlIconBg}>＋</span>
-              <div className={styles.controlMeta}>
-                <span className={styles.controlTitle}>Instantiate New Guidance Group</span>
-                <span className={styles.controlSub}>Create & configure a cohort</span>
-              </div>
+        <div className={styles.redesignMetricCard}>
+          <div className={styles.redesignCardHeader}>
+            <span className={styles.redesignMetricTitle}>UPCOMING SEMINARS</span>
+            <span className={styles.allTimeBadge} style={{ backgroundColor: '#faf5ff', color: '#7c3aed', borderColor: '#e9d5ff' }}>Scheduled</span>
+          </div>
+          <span className={styles.redesignMetricVal}>2</span>
+        </div>
+
+        <div className={styles.redesignMetricCard}>
+          <div className={styles.redesignCardHeader}>
+            <span className={styles.redesignMetricTitle}>PENDING REPORTS</span>
+            <span className={styles.lockedBadge} style={{ backgroundColor: '#fffbeb', color: '#d97706', borderColor: '#fef3c7' }}>Action Required</span>
+          </div>
+          <span className={styles.redesignMetricVal}>3</span>
+        </div>
+      </div>
+
+      {/* Grid structure split */}
+      <div className={styles.resGrid}>
+        
+        {/* Left Column: Pending Student Phase Reports (Needs Grading) */}
+        <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px' }}>
+          <div className={styles.queueHeader} style={{ marginBottom: '15px' }}>
+            <div className={styles.queueTitleWrapper}>
+              <span className={styles.queueIcon}>📝</span>
+              <h3 className={styles.queueTitle} style={{ color: '#0f172a' }}>Pending Student Phase Reports (Needs Grading)</h3>
+              <span className={styles.actionNeededPill} style={{ backgroundColor: '#ffeecb', color: '#d97706' }}>3 Pending</span>
             </div>
-            <span className={styles.controlArrow}>&gt;</span>
           </div>
 
-          <div className={styles.controlCard} onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}>
-            <div className={styles.controlCardLeft}>
-              <span className={styles.controlIconBg} style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>📅</span>
-              <div className={styles.controlMeta}>
-                <span className={styles.controlTitle}>Schedule Academic Seminar</span>
-                <span className={styles.controlSub}>Set date, topic & link</span>
-              </div>
+          <div className={styles.tableResponsive}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>RESEARCH GROUP</th>
+                  <th>REPORT</th>
+                  <th>SUBMITTED</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <button className={styles.researchGroupLinkBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+                      RG-2026-012
+                    </button>
+                    <span className={styles.groupSubName} style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>Scalable Routing</span>
+                  </td>
+                  <td className={styles.manuscriptTitleText} style={{ fontWeight: 600 }}>Phase 3 Report</td>
+                  <td style={{ color: '#d97706', fontWeight: 600 }}>Submitted 2 hours ago</td>
+                  <td>
+                    <button className={styles.gradeReportBtn} onClick={() => navigate(ROUTES.CONFIGURE_MILESTONES)}>
+                      Grade Report
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <button className={styles.researchGroupLinkBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+                      RG-2026-015
+                    </button>
+                    <span className={styles.groupSubName} style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>Speech AI Team</span>
+                  </td>
+                  <td className={styles.manuscriptTitleText} style={{ fontWeight: 600 }}>Phase 2 Report</td>
+                  <td style={{ color: '#64748b' }}>Submitted Yesterday</td>
+                  <td>
+                    <button className={styles.gradeReportBtn} onClick={() => navigate(ROUTES.CONFIGURE_MILESTONES)}>
+                      Grade Report
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <button className={styles.researchGroupLinkBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+                      RG-2026-009
+                    </button>
+                    <span className={styles.groupSubName} style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>Graph Neural Nets</span>
+                  </td>
+                  <td className={styles.manuscriptTitleText} style={{ fontWeight: 600 }}>Phase 1 Report</td>
+                  <td style={{ color: '#64748b' }}>Submitted 3 days ago</td>
+                  <td>
+                    <button className={styles.gradeReportBtn} onClick={() => navigate(ROUTES.CONFIGURE_MILESTONES)}>
+                      Grade Report
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right Column: Today's Seminar Schedule */}
+        <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div className={styles.queueHeader} style={{ marginBottom: '0' }}>
+            <div className={styles.queueTitleWrapper}>
+              <span className={styles.queueIcon}>📅</span>
+              <h3 className={styles.queueTitle} style={{ color: '#0f172a' }}>Today's Seminar Schedule</h3>
+              <span className={styles.actionNeededPill} style={{ backgroundColor: '#f3e8ff', color: '#7c3aed' }}>1 Today</span>
             </div>
-            <span className={styles.controlArrow}>&gt;</span>
           </div>
 
-          <div className={styles.controlCard}>
-            <div className={styles.controlCardLeft}>
-              <span className={styles.controlIconBg} style={{ backgroundColor: '#f0fdf4', color: '#16a34a' }}>📁</span>
-              <div className={styles.controlMeta}>
-                <span className={styles.controlTitle}>Distribute Colleague Materials</span>
-                <span className={styles.controlSub}>Push docs to group members</span>
-              </div>
+          {/* Schedule card */}
+          <div className={styles.todayScheduleBox}>
+            <div className={styles.scheduleBadgeRow}>
+              <span className={styles.upcomingTodayBadge}>● Upcoming Today</span>
+              <span className={styles.scheduleIdText}>SEM-2026-047</span>
             </div>
-            <span className={styles.controlArrow}>&gt;</span>
+
+            <h4 className={styles.scheduleTitleText}>Distributed Systems Thesis Defense</h4>
+            <div className={styles.scheduleTimeText}>🕒 14:00 - 15:30 (UTC+7)</div>
+
+            {/* Meet link textbox input */}
+            <div className={styles.meetTextboxRow}>
+              <span className={styles.meetTextboxIcon}>📹</span>
+              <input 
+                type="text" 
+                className={styles.meetTextboxInput} 
+                value="https://meet.google.com/abc-defg-hij" 
+                readOnly 
+              />
+              <button 
+                type="button" 
+                className={styles.meetCopyBtn}
+                onClick={() => {
+                  navigator.clipboard.writeText('https://meet.google.com/abc-defg-hij');
+                  alert('Copied meet link!');
+                }}
+              >
+                📋
+              </button>
+            </div>
+
+            <button 
+              className={styles.joinMeetGreenBtn}
+              onClick={() => window.open('https://meet.google.com/abc-defg-hij', '_blank')}
+            >
+              📹 Join Google Meet
+            </button>
           </div>
 
-          <div className={styles.controlCard}>
-            <div className={styles.controlCardLeft}>
-              <span className={styles.controlIconBg} style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>🛡️</span>
-              <div className={styles.controlMeta}>
-                <span className={styles.controlTitle}>Open Access License Auditing</span>
-                <span className={styles.controlSub}>Review permissions & access</span>
+          <button 
+            className={styles.viewAllSeminarsLink}
+            onClick={() => navigate(ROUTES.SEMINAR_WORKSPACE)}
+          >
+            View All Seminars &gt;
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Section: My Active Research Groups (Quick Monitoring) */}
+      <div className={styles.reviewerQueueCard} style={{ padding: '24px 20px', borderRadius: '16px' }}>
+        <div className={styles.queueHeader} style={{ marginBottom: '20px' }}>
+          <div className={styles.queueTitleWrapper}>
+            <span className={styles.queueIcon}>👥</span>
+            <h3 className={styles.queueTitle} style={{ color: '#0f172a' }}>My Active Research Groups (Quick Monitoring)</h3>
+            <span className={styles.actionNeededPill} style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>5 Groups</span>
+          </div>
+        </div>
+
+        {/* Groups monitoring list */}
+        <div className={styles.groupsProgressList}>
+          {/* Group 1 */}
+          <div className={styles.groupProgressItem}>
+            <div className={styles.groupProgressMeta}>
+              <div className={styles.groupProgressNameBlock}>
+                <span className={styles.groupProgressIcon}>👥</span>
+                <div>
+                  <h4 className={styles.groupProgressTitle}>Scalable Routing Architecture Group</h4>
+                  <span className={styles.groupProgressRoster}>3 Members</span>
+                </div>
               </div>
+              <span className={styles.groupProgressPhaseBadge} style={{ backgroundColor: '#e6fffa', color: '#00b894' }}>Phase 3</span>
             </div>
-            <span className={styles.controlArrow}>&gt;</span>
+            <div className={styles.progressBarWrapper}>
+              <div className={styles.progressBarBg}>
+                <div className={styles.progressBarFill} style={{ width: '85%', backgroundColor: '#00b894' }}></div>
+              </div>
+              <span className={styles.progressPercentText}>85%</span>
+            </div>
+            <button className={styles.viewGroupArrowBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+              View Group &rarr;
+            </button>
+          </div>
+
+          {/* Group 2 */}
+          <div className={styles.groupProgressItem}>
+            <div className={styles.groupProgressMeta}>
+              <div className={styles.groupProgressNameBlock}>
+                <span className={styles.groupProgressIcon}>👥</span>
+                <div>
+                  <h4 className={styles.groupProgressTitle}>AI Speech-to-Text Research Team</h4>
+                  <span className={styles.groupProgressRoster}>2 Members</span>
+                </div>
+              </div>
+              <span className={styles.groupProgressPhaseBadge} style={{ backgroundColor: '#ebf8ff', color: '#3182ce' }}>Phase 2</span>
+            </div>
+            <div className={styles.progressBarWrapper}>
+              <div className={styles.progressBarBg}>
+                <div className={styles.progressBarFill} style={{ width: '60%', backgroundColor: '#3182ce' }}></div>
+              </div>
+              <span className={styles.progressPercentText}>60%</span>
+            </div>
+            <button className={styles.viewGroupArrowBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+              View Group &rarr;
+            </button>
+          </div>
+
+          {/* Group 3 */}
+          <div className={styles.groupProgressItem}>
+            <div className={styles.groupProgressMeta}>
+              <div className={styles.groupProgressNameBlock}>
+                <span className={styles.groupProgressIcon}>👥</span>
+                <div>
+                  <h4 className={styles.groupProgressTitle}>Graph Neural Networks Team</h4>
+                  <span className={styles.groupProgressRoster}>4 Members</span>
+                </div>
+              </div>
+              <span className={styles.groupProgressPhaseBadge} style={{ backgroundColor: '#faf5ff', color: '#805ad5' }}>Phase 1</span>
+            </div>
+            <div className={styles.progressBarWrapper}>
+              <div className={styles.progressBarBg}>
+                <div className={styles.progressBarFill} style={{ width: '40%', backgroundColor: '#805ad5' }}></div>
+              </div>
+              <span className={styles.progressPercentText}>40%</span>
+            </div>
+            <button className={styles.viewGroupArrowBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+              View Group &rarr;
+            </button>
           </div>
         </div>
       </div>

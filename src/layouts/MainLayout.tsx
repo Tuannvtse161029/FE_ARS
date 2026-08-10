@@ -124,7 +124,7 @@ export const MainLayout = () => {
     } else if (role === 'Reviewer') {
       navigate(ROUTES.DASHBOARD);
     } else if (role === 'Lecturer') {
-      navigate(ROUTES.SEMINAR_WORKSPACE);
+      navigate(ROUTES.DASHBOARD);
     } else if (role === 'Graduate Student') {
       navigate(ROUTES.DASHBOARD);
     }
@@ -152,13 +152,13 @@ export const MainLayout = () => {
         ];
       case 'Lecturer':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <HomeIcon /> },
-          { to: ROUTES.RESEARCH_GROUP, label: 'Guidance Groups', icon: <GroupIcon /> },
-          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestone Configuration', icon: <PapersIcon /> },
-          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar Workspace', icon: <SeminarIcon /> },
-          { to: '#catalog', label: 'Course Catalog', icon: <PapersIcon /> },
-          { to: '#participants', label: 'Participants', icon: <BrowseReviewersIcon /> },
-          { to: '#settings', label: 'Settings', icon: <SettingsIcon /> },
+          { to: ROUTES.DASHBOARD, label: 'Home', icon: <HomeIcon /> },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon /> },
+          { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon /> },
+          { to: '#shared-material', label: 'Shared Material', icon: <PapersIcon /> },
+          { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
+          { to: '#profile', label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Graduate Student':
         return [
