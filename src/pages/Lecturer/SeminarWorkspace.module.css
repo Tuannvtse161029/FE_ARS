@@ -53,12 +53,78 @@
   background-color: #0f172a;
 }
 
+/* Success Toast Banner (Frame 32 & 33) */
+.successToastBanner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  text-align: left;
+}
+
+.toastLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.toastCheckIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.toastTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  color: #065f46;
+}
+
+.toastSub {
+  font-size: 0.75rem;
+  color: #047857;
+  margin: 1px 0 0 0;
+}
+
+.toastRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.justNowText {
+  font-size: 0.7rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.toastCloseBtn {
+  background: none;
+  border: none;
+  color: #059669;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* Tabs */
 .tabsRow {
   display: flex;
+  align-items: center;
   gap: var(--spacing-1);
   border-bottom: 1.5px solid #e2e8f0;
   padding-bottom: 2px;
+  position: relative;
 }
 
 .tabBtn {
@@ -81,6 +147,12 @@
 .activeTab {
   color: #1e293b !important;
   border-color: #1e293b !important;
+}
+
+.showingCountRight {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
 /* List container */
@@ -144,6 +216,17 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
+}
+
+.newBadgePill {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
 }
 
 .statusUpcoming {
@@ -356,6 +439,22 @@
   color: #1e293b;
 }
 
+.viewNotesBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.viewNotesBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
 .feedbackDisabledBtn {
   background-color: #ffffff;
   border: 1.5px solid #e2e8f0;
@@ -368,7 +467,6 @@
 }
 
 .feedbackGradingBtn {
-  flex: 1;
   background-color: #1e293b;
   border: none;
   color: #ffffff;
@@ -395,7 +493,7 @@
   font-size: 0.65rem;
 }
 
-/* Config modal styling (from original config card) */
+/* Modals Overlay */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -410,14 +508,18 @@
   z-index: 1000;
 }
 
-.configCard {
+/* FRAME 30: Create Modal Card */
+.createModalCard {
   background-color: #ffffff;
-  border: 1.5px solid #cbd5e1;
   border-radius: 20px;
-  padding: var(--spacing-8);
-  box-shadow: var(--shadow-2xl);
-  text-align: left;
   width: 100%;
+  max-width: 580px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
 }
 
 .modalHeaderRow {
@@ -426,7 +528,37 @@
   align-items: flex-start;
   border-bottom: 1px solid #f1f5f9;
   padding-bottom: var(--spacing-3);
-  margin-bottom: var(--spacing-4);
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.modalHeaderIcon, .feedbackModalIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.modalTitle {
+  font-size: var(--font-size-base);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.modalSubtitle {
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .closeBtn {
@@ -436,22 +568,11 @@
   line-height: 1;
   color: #94a3b8;
   cursor: pointer;
+  padding: 0;
 }
 
-.cardTitle {
-  font-size: 0.75rem;
-  font-weight: 850;
-  color: #1e3a8a;
-  letter-spacing: 0.5px;
-}
-
-.cardSubtitle {
-  font-size: var(--font-size-xs);
-  color: #64748b;
-  margin-top: var(--spacing-1);
-}
-
-.form {
+/* Modal Form */
+.modalForm {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
@@ -460,107 +581,126 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--spacing-1.5);
   width: 100%;
 }
 
-.rowFormGroup {
-  display: flex;
-  gap: var(--spacing-4);
-}
-
 .formLabel {
-  font-size: 0.65rem;
-  font-weight: 800;
+  font-size: 0.7rem;
+  font-weight: 700;
   color: #475569;
   letter-spacing: 0.5px;
 }
 
-.formInput, .formTextarea, .formDateInput {
-  width: 100%;
-  background-color: #ffffff;
+.formInput, .formTextarea {
+  background-color: #f8fafc;
   border: 1.5px solid #cbd5e1;
   border-radius: var(--radius-lg);
   padding: 0 var(--spacing-4);
   font-size: var(--font-size-sm);
   color: #0f172a;
   outline: none;
-  height: 42px;
+  height: 44px;
 }
 
 .formTextarea {
   padding: var(--spacing-3);
-  resize: vertical;
   height: auto;
   font-family: var(--font-family-primary);
+  resize: vertical;
 }
 
-.formInput:focus, .formTextarea:focus, .formDateInput:focus {
+.formInput:focus, .formTextarea:focus {
   border-color: #2563eb;
+  background-color: #ffffff;
 }
 
-/* Multi select invite */
-.multiSelectInputWrapper {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-2);
+/* Emails Input Box */
+.emailsInputBox {
+  background-color: #f8fafc;
   border: 1.5px solid #cbd5e1;
   border-radius: var(--radius-lg);
-  padding: var(--spacing-2) var(--spacing-4);
-  background-color: #ffffff;
-  min-height: 42px;
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
 }
 
-.tagsContainer {
+.emailRawInput {
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  width: 100%;
+}
+
+.emailTagsContainer {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-2);
 }
 
-.inviteeTag {
+.emailPill {
   background-color: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #2563eb;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
   border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: var(--spacing-1);
+  gap: var(--spacing-1.5);
 }
 
-.removeTagBtn {
+.removeEmailCross {
   background: none;
   border: none;
   color: #2563eb;
   cursor: pointer;
-  padding: 0;
   font-size: 1rem;
   line-height: 1;
+  padding: 0;
 }
 
-.multiSelectInput {
-  border: none;
-  outline: none;
-  background: none;
-  flex: 1;
-  font-size: var(--font-size-sm);
-  color: #0f172a;
-  min-width: 100px;
+/* Checkbox Row */
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2.5);
+  margin-top: 2px;
 }
 
-/* Form actions */
-.formActions {
+.checkboxInput {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkboxLabel {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-xs);
+  color: #334155;
+  cursor: pointer;
+}
+
+.checkboxSub {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Modal Form Footer */
+.modalFormFooter {
   display: flex;
   gap: var(--spacing-3);
-  border-top: 1px solid #f1f5f9;
-  padding-top: var(--spacing-4);
   margin-top: var(--spacing-2);
 }
 
-.cancelBtn {
+.modalCancelBtn {
   background-color: #ffffff;
   border: 1.5px solid #cbd5e1;
   color: #475569;
@@ -571,12 +711,12 @@
   cursor: pointer;
 }
 
-.cancelBtn:hover {
+.modalCancelBtn:hover {
   border-color: #94a3b8;
   color: #1e293b;
 }
 
-.submitBtn {
+.modalSubmitNavyBtn {
   flex: 1;
   background-color: #1e293b;
   border: none;
@@ -586,65 +726,371 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  transition: background-color var(--transition-fast);
 }
 
-.submitBtn:hover {
+.modalSubmitNavyBtn:hover {
   background-color: #0f172a;
 }
 
-/* Success Modal Overlay */
-.successModalCard {
+/* FRAME 31: Generated Meet Modal */
+.generatedModalCard {
   background-color: #ffffff;
   border-radius: 20px;
   width: 100%;
-  max-width: 440px;
+  max-width: 520px;
   box-shadow: var(--shadow-2xl);
-  padding: var(--spacing-6) var(--spacing-8);
+  padding: var(--spacing-8);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-4);
+  text-align: center;
 }
 
-.successIconCircle {
-  width: 48px;
-  height: 48px;
+.generatedIconCircle {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background-color: #e6fcf5;
   color: #099268;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
 }
 
-.successModalTitle {
-  font-size: var(--font-size-base);
-  font-weight: 700;
+.generatedTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
   color: #0f172a;
-}
-
-.successModalText {
-  font-size: var(--font-size-sm);
-  color: #475569;
-  line-height: var(--line-height-relaxed);
-  text-align: center;
   margin: 0;
 }
 
-.successBtn {
+.generatedSub {
+  font-size: var(--font-size-xs);
+  color: #64748b;
+  margin-top: -8px;
+}
+
+.generatedMeetCard {
+  width: 100%;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.generatedMeetLabel {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #1d4ed8;
+  letter-spacing: 0.5px;
+}
+
+.generatedMeetInputRow {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 4px 6px 4px 12px;
+}
+
+.generatedMeetInput {
+  border: none;
+  background: none;
+  flex: 1;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #1e40af;
+  outline: none;
+}
+
+.copyLinkBlueBtn {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copyLinkBlueBtn:hover {
+  background-color: #1d4ed8;
+}
+
+/* Yellow Alert Box */
+.yellowAlertBox {
+  width: 100%;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: var(--spacing-3.5) var(--spacing-4);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.yellowAlertTitleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  font-size: 0.75rem;
+  line-height: var(--line-height-relaxed);
+  color: #92400e;
+}
+
+.yellowAlertIcon {
+  font-size: 1rem;
+}
+
+.yellowSentText {
+  font-size: 0.7rem;
+  color: #b45309;
+  border-top: 1px dashed #fcd34d;
+  padding-top: var(--spacing-1.5);
+}
+
+.generatedModalFooter {
+  display: flex;
+  gap: var(--spacing-3);
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.backToSeminarsBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-5);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.launchMeetGreenBtn {
+  flex: 1;
+  background-color: #10b981;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.launchMeetGreenBtn:hover {
+  background-color: #059669;
+}
+
+/* FRAME 34: Feedback Modal */
+.feedbackModalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+  text-align: left;
+}
+
+.feedbackStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) 1.5fr;
+  gap: var(--spacing-3);
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--spacing-4);
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.statVal {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 1px;
+}
+
+.statBlockCompletion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.completionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.completionPercent {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.completionBarBg {
+  background-color: #e2e8f0;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.completionBarFill {
+  background-color: #10b981;
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* Student Grades Table */
+.studentGradesTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.studentGradesTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.studentGradesTable th {
+  padding: var(--spacing-3) var(--spacing-3.5);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #f1f5f9;
+  text-align: left;
+}
+
+.studentGradesTable td {
+  padding: var(--spacing-3.5);
+  font-size: var(--font-size-xs);
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.studentCellBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2.5);
+}
+
+.studentAvatarMini {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.studentNameText {
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+
+.studentEmailText {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.submittedPill {
+  background-color: #ecfdf5;
+  color: #10b981;
+  border: 1px solid #a7f3d0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pendingPill {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.scoreValText {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.commentText {
+  font-style: italic;
+  color: #475569;
+}
+
+.feedbackModalFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: var(--spacing-4);
+}
+
+.remindPendingBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2.5) var(--spacing-4);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.remindPendingBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.modalCloseNavyBtn {
   background-color: #1e293b;
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  padding: var(--spacing-2.5) var(--spacing-6);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   cursor: pointer;
-  width: 100%;
 }
 
-.successBtn:hover {
+.modalCloseNavyBtn:hover {
   background-color: #0f172a;
 }
