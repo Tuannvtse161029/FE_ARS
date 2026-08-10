@@ -1,0 +1,124 @@
+.authLayout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.leftPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8);
+  background-image: url('../assets/images/login_wallpaper.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--color-text-inverse);
+  position: relative;
+  overflow: hidden;
+}
+
+.leftPanel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(33, 98, 201, 0.8) 50%, rgba(15, 118, 110, 0.75) 100%); */
+  z-index: 0;
+}
+
+.leftPanelContent {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 480px;
+  display: none;
+}
+
+.logoContainer {
+  margin-bottom: var(--spacing-6);
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.1);
+  padding: var(--spacing-3);
+  backdrop-filter: blur(8px);
+}
+
+.tagline {
+  font-size: var(--font-size-lg);
+  opacity: 0.9;
+  line-height: var(--line-height-relaxed);
+  font-weight: var(--font-weight-medium);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.rightPanel {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--spacing-12) var(--spacing-8);
+  background-color: #ffffff;
+  overflow-y: auto;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 420px;
+}
+
+@media (max-width: 1024px) {
+  .authLayout {
+    flex-direction: column;
+  }
+
+  .leftPanel {
+    min-height: 280px;
+    padding: var(--spacing-6);
+  }
+
+  .logo {
+    width: 100px;
+    height: 100px;
+  }
+
+  .tagline {
+    font-size: var(--font-size-base);
+  }
+
+  .rightPanel {
+    flex: 1;
+    padding: var(--spacing-6);
+  }
+}
+
+@media (max-width: 480px) {
+  .leftPanel {
+    min-height: 200px;
+    padding: var(--spacing-4);
+  }
+
+  .logo {
+    width: 80px;
+    height: 80px;
+    padding: var(--spacing-2);
+  }
+
+  .rightPanel {
+    padding: var(--spacing-4);
+  }
+
+  .formContainer {
+    max-width: 100%;
+  }
+}

@@ -1,0 +1,274 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-index-modal);
+  padding: var(--spacing-4);
+  animation: fadeIn 200ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-2xl);
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 220ms ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-5) var(--spacing-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-1);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  background-color: var(--color-border-light);
+  color: var(--color-text-primary);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
+}
+
+.tab {
+  flex: 1;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+  text-align: center;
+}
+
+.tab:hover {
+  background-color: var(--color-border-light);
+  color: var(--color-text-primary);
+}
+
+.tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background-color: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-6);
+  background-color: var(--color-background);
+}
+
+.documentWrapper {
+  position: relative;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.watermarkText {
+  font-size: 3rem;
+  font-weight: var(--font-weight-bold);
+  color: rgba(15, 23, 42, 0.06);
+  letter-spacing: 0.5rem;
+  transform: rotate(-30deg);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.docHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-5);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  z-index: 1;
+}
+
+.docTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.docBadge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section {
+  margin-bottom: var(--spacing-5);
+  position: relative;
+  z-index: 1;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) 0;
+  border-bottom: 1px dashed var(--color-border-light);
+  font-size: var(--font-size-sm);
+}
+
+.fieldRow:last-child {
+  border-bottom: none;
+}
+
+.fieldLabel {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.fieldValue {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.metricCard {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  text-align: center;
+}
+
+.metricValue {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.metricLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: var(--spacing-1) 0 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.recordItem {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-background);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.recordMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.footer {
+  padding: var(--spacing-4) var(--spacing-6);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  background-color: var(--color-surface);
+}
+
+.footerBtn {
+  min-width: 220px;
+}
