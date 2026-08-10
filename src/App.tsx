@@ -18,6 +18,7 @@ import { SubmitReport } from './pages/Student/SubmitReport';
 import { StudentResearchGroups } from './pages/Student/StudentResearchGroups';
 import { EarningsWallet } from './pages/Reviewers/EarningsWallet';
 import { ReviewTasks } from './pages/Reviewers/components/ReviewTasks';
+import { Profile } from './pages/Profile/Profile';
 import './styles/globals.css';
 
 const App = () => {
@@ -48,6 +49,7 @@ const App = () => {
               <Route path={ROUTES.STUDENT_RESEARCH_GROUPS} element={<StudentResearchGroups />} />
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
               <Route path={ROUTES.REVIEW_TASKS} element={<ReviewTasks />} />
+              <Route path={ROUTES.PROFILE} element={<Profile />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </Route>
           </Route>
