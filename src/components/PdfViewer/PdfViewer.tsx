@@ -44,7 +44,6 @@ export const PdfViewer = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pageState, setPageState] = useState<PageState>({
     pageNum: 1,
     rendering: false,
@@ -120,7 +119,7 @@ export const PdfViewer = ({
 
     const loadPdf = async () => {
       try {
-        let source: pdfjsLib.DocumentInitParams;
+        let source: string | { data: ArrayBuffer };
 
         if (typeof url === 'string') {
           source = url;
@@ -161,7 +160,6 @@ export const PdfViewer = ({
     return () => {
       cancelled = true;
       pdfDocRef.current = null;
-      setPdfDoc(null);
     };
   }, [url, onTotalPages]);
 

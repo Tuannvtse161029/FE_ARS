@@ -165,8 +165,6 @@ export const Papers = () => {
     setUploadPhase('preview');
   };
 
-  const pdfObjectUrl = null;
-
   // Filter papers based on active tab
   const filteredPapers = papers.filter((paper) => {
     if (activeTab === 'all') return true;
