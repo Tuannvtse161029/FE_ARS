@@ -18,6 +18,37 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Split node_modules into separate chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('pdfjs-dist') || id.includes('pdf-lib')) {
+              return 'vendor-pdf';
+            }
+            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('yup')) {
+              return 'vendor-forms';
+            }
+            if (id.includes('axios')) {
+              return 'vendor-axios';
+            }
+            if (id.includes('zustand')) {
+              return 'vendor-state';
+            }
+            return 'vendor-misc';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import authService from '../services/auth.service';
-import storage from '../utils/storage';
 import { ROUTES } from '../utils/constants';
 import type { LoginRequest, AuthResponse } from '../types/auth';
 
@@ -49,14 +48,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.token
       );
 
-      // DEBUG: Log what we're receiving
-      console.log('[AuthContext] Login response:', {
-        username: response.username,
-        email: response.email,
-        role: response.role,
-        token: response.token?.substring(0, 20) + '...'
-      });
-
       // Normalize the role string: trim, collapse spaces, lowercase for comparison.
       // - Admin → Dashboard
       // - Everyone else (Researcher, Reviewer, Lecturer, Graduate Student, etc.) → Forum
@@ -64,13 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const normalizedRole = rawRole.trim().replace(/\s+/g, ' ').toLowerCase();
       const isAdmin = normalizedRole === 'admin';
       const landingRoute = isAdmin ? ROUTES.DASHBOARD : ROUTES.FORUM;
-
-      console.log('[AuthContext] Navigation decision:', {
-        rawRole,
-        normalizedRole,
-        isAdmin,
-        landingRoute
-      });
 
       navigate(landingRoute);
       localStorage.setItem('ars_active_role', rawRole.trim());

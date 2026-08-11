@@ -279,10 +279,8 @@ export const MainLayout = () => {
 
   // Sync activeRole with user role from auth when user logs in
   useEffect(() => {
-    console.log('[MainLayout] user from useAuth:', user);
     if (user?.role) {
       const userRole = user.role as UserRole;
-      console.log('[MainLayout] Setting activeRole to:', userRole);
       setActiveRole(userRole);
       localStorage.setItem('ars_active_role', userRole);
     }
