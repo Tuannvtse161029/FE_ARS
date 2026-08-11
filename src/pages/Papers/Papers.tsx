@@ -12,6 +12,7 @@ interface Paper {
   date: string;
   status: 'Waiting for Review' | 'Draft' | 'Accepted' | 'Rejected';
   hasNote: boolean;
+  fileUrl?: string;
 }
 
 type UploadPhase = 'idle' | 'preview' | 'confirm' | 'delete';

@@ -70,7 +70,7 @@ export const PdfViewer = ({
     pageNum: number,
     canvas: HTMLCanvasElement,
     renderScale: number,
-    signal?: AbortSignal
+    _signal?: AbortSignal
   ) => {
     const doc = pdfDocRef.current;
     if (!doc) return;
