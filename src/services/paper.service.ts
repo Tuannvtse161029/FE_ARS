@@ -4,19 +4,28 @@ import type { PagedResult, PaginationParams } from '../types/api';
 
 export interface Paper {
   id: string;
-  name: string;
-  date: string;
+  title: string;
+  name?: string;
+  date?: string;
   status: string;
-  hasNote: boolean;
-  pdfUrl?: string;
+  hasNote?: boolean;
+  fileUrl?: string;
   researchFields?: string[];
   userId?: number;
+  authorId?: number;
+  authorName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PaperCreateRequest {
   title: string;
-  pdfUrl: string;
-  researchFields: string[];
+  abstract?: string;
+  fileUrl: string;
+  issn?: boolean;
+  isOpenAccess?: boolean;
+  quartile?: string;
+  subFieldId?: number;
 }
 
 export interface PaperUpdateRequest {

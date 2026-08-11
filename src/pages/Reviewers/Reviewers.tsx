@@ -58,6 +58,7 @@ export const Reviewers = () => {
 
   // Review requests history state
   const [requests, setRequests] = useState<ReviewRequest[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sync wallet balance
   useEffect(() => {
@@ -187,6 +188,14 @@ export const Reviewers = () => {
 
   const handleTopUpSuccess = (amount: number) => {
     console.log(`Successfully topped up ${amount} VND`);
+  };
+
+  const handleRefreshRequests = async () => {
+    setIsRefreshing(true);
+    // TODO: Replace with real API call when review-request endpoint is available
+    // e.g. const result = await reviewRequestService.getAll();
+    await new Promise((resolve) => setTimeout(resolve, 600)); // Simulate network delay
+    setIsRefreshing(false);
   };
 
   return (
@@ -325,11 +334,25 @@ export const Reviewers = () => {
             <div className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <h3 className={styles.sectionTitle}>My Review Request</h3>
-                <button className={styles.refreshBtn}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                <button className={styles.refreshBtn} onClick={handleRefreshRequests} disabled={isRefreshing}>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      marginRight: '6px',
+                      verticalAlign: 'middle',
+                      animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
+                    }}
+                  >
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                   </svg>
-                  Refresh
+                  {isRefreshing ? 'Refreshing…' : 'Refresh'}
                 </button>
               </div>
 

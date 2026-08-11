@@ -10,6 +10,8 @@ Academic Research System - Frontend Application built with React + TypeScript + 
 - **State Management**: Zustand
 - **Form Handling**: React Hook Form + Yup
 - **HTTP Client**: Axios
+- **PDF Rendering**: PDF.js (pdfjs-dist)
+- **File Storage**: Firebase Storage
 - **Styling**: CSS Modules
 
 ## Getting Started
@@ -48,44 +50,53 @@ VITE_APP_URL=http://localhost:3000
 
 ```text
 src/
-├── assets/          # Images, icons, fonts
+├── assets/          # Images, icons, fonts, sample PDFs
 ├── components/      # Reusable components
 │   ├── Button/
-│   └── Input/
+│   ├── Input/
+│   ├── Navbar/
+│   └── PdfViewer/    # PDF.js-based document viewer with thumbnail sidebar
 ├── pages/           # Page components
-│   └── Login/
-├── layouts/         # Layout components
-├── routes/          # Routing configuration
-├── services/        # API services
-├── context/         # React Context
-├── store/           # Zustand store
+│   ├── Login/
+│   ├── Register/
+│   ├── Papers/      # Research papers listing with PDF viewer
+│   ├── Forum/       # Discussion forum
+│   └── ResetPassword/
+├── layouts/         # Layout components (MainLayout, AuthLayout)
+├── routes/          # Routing configuration, private routes
+├── services/        # API services (auth, paper)
+├── store/           # Zustand store (authSlice)
 ├── types/           # TypeScript types
 ├── utils/           # Utility functions
 ├── styles/          # Global styles
-├── config/          # App configuration
 ├── hooks/           # Custom hooks
-└── lib/             # Library setup
+├── tests/           # Test files (unit, integration, e2e)
+├── firebase.ts      # Firebase configuration
+└── App.tsx          # Root component
 ```
 
 ## Features
 
-- JWT-based authentication
+- JWT-based authentication with session/local storage (Remember Me)
+- Protected routes with auth guards
 - Responsive split-screen login layout
 - Form validation with Yup
-- Protected routes
-- Error handling
-- Loading states
+- Research paper upload with PDF preview (drag-and-drop)
+- PDF viewer with thumbnail sidebar navigation
+- Discussion forum
+- Password reset flow with OTP verification
+- Error handling and loading states
+- Comprehensive test coverage (Vitest)
 
-## Backend Connection
+## API Documentation
 
-The frontend expects the backend API to be running at `http://localhost:5000`. The following endpoints are used:
+The backend API documentation is available at:
 
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
+**<https://arsplatform.onrender.com/swagger/index.html>**
 
 ## Default Test Account
 
-- **Username**: <admin@arsplatform.com>
+- **Email**: <admin@arsplatform.com>
 - **Password**: Password123
 
 (Configure in backend seed data)

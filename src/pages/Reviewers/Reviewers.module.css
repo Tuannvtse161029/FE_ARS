@@ -6,6 +6,11 @@
   font-family: var(--font-family-primary);
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .header {
   text-align: left;
 }
@@ -343,6 +348,11 @@
 .refreshBtn:hover {
   background-color: #f8fafc;
   color: #0f172a;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .tableResponsive {

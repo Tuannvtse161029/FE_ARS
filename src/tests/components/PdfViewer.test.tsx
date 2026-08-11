@@ -8,6 +8,28 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { PdfViewer } from '../../components/PdfViewer';
 
+// ── Polyfill IntersectionObserver (not available in JSDOM) ───────────
+const mockObserve = vi.fn();
+const mockUnobserve = vi.fn();
+const mockDisconnect = vi.fn();
+
+// Define as a regular class to allow `new` to work correctly
+class MockIntersectionObserver {
+  observe = mockObserve;
+  unobserve = mockUnobserve;
+  disconnect = mockDisconnect;
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+  takeRecords = vi.fn(() => []);
+}
+global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+// ── Polyfill Element.prototype.scrollIntoView (not available in JSDOM) ─
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = vi.fn();
+}
+
 // ── Mock factory (hoisted by vi.mock) ──────────────────────────────────────────
 const {
   getDocumentMock,
@@ -66,6 +88,9 @@ const renderViewer = (url = 'https://example.com/doc.pdf') =>
 describe('PdfViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockObserve.mockClear();
+    mockUnobserve.mockClear();
+    mockDisconnect.mockClear();
     // Reset defaults
     mockDoc.numPages = 5;
     mockPage.getViewport.mockReturnValue({ width: 595, height: 842 });
@@ -80,6 +105,9 @@ describe('PdfViewer', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    mockObserve.mockReset();
+    mockUnobserve.mockReset();
+    mockDisconnect.mockReset();
   });
 
   // ── Initial render ────────────────────────────────────────────────────────

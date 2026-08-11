@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PdfViewer } from '../../components/PdfViewer';
 import { ScorecardModal } from '../Dashboard/components/ScorecardModal';
 import { storage } from '../../firebase';
@@ -51,10 +51,10 @@ export const Papers = () => {
 
   // Papers local state for interactive uploads
   const [papers, setPapers] = useState<Paper[]>([
-    { id: '1', name: 'Framework_Design.pdf', date: '2026-07-22', status: 'Waiting for Review', hasNote: false },
-    { id: '2', name: 'Cloud_Routing_v1.pdf', date: '2026-07-15', status: 'Draft', hasNote: false },
-    { id: '3', name: 'Microservice_Consensus_v3.pdf', date: '2026-07-10', status: 'Accepted', hasNote: true },
-    { id: '4', name: 'EdgeNet_Protocol_v2.pdf', date: '2026-07-03', status: 'Rejected', hasNote: true },
+    { id: 'local-1', name: 'Framework_Design.pdf', date: '2026-07-22', status: 'Waiting for Review', hasNote: false },
+    { id: 'local-2', name: 'Cloud_Routing_v1.pdf', date: '2026-07-15', status: 'Draft', hasNote: false },
+    { id: 'local-3', name: 'Microservice_Consensus_v3.pdf', date: '2026-07-10', status: 'Accepted', hasNote: true },
+    { id: 'local-4', name: 'EdgeNet_Protocol_v2.pdf', date: '2026-07-03', status: 'Rejected', hasNote: true },
   ]);
 
   // Upload flow state
@@ -63,6 +63,27 @@ export const Papers = () => {
   const [selectedFields, setSelectedFields] = useState<string[]>(['Machine Learning']);
   const [isUploading, setIsUploading] = useState(false);
   const [showFieldDropdown, setShowFieldDropdown] = useState(false);
+
+  // Paper metadata for upload
+  const [paperTitle, setPaperTitle] = useState('');
+  const [paperAbstract, setPaperAbstract] = useState('');
+  const MAX_ABSTRACT_WORDS = 500;
+
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [titleError, setTitleError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Word count for abstract
+  const abstractWordCount = paperAbstract.trim() ? paperAbstract.trim().split(/\s+/).length : 0;
+
+  // Auto-dismiss toast after 2 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -73,6 +94,8 @@ export const Papers = () => {
     if (file && file.name.endsWith('.pdf')) {
       setSelectedFile(file);
       setSelectedFields(['Machine Learning']);
+      setPaperTitle('');
+      setPaperAbstract('');
       setUploadPhase('preview');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -85,6 +108,10 @@ export const Papers = () => {
   };
 
   const handleUploadPaper = () => {
+    if (!paperTitle.trim()) {
+      setTitleError(true);
+      return;
+    }
     if (selectedFields.length === 0) return;
     setUploadPhase('confirm');
   };
@@ -96,7 +123,6 @@ export const Papers = () => {
   const handleConfirmUpload = async () => {
     if (!selectedFile || selectedFields.length === 0 || !storage) return;
     setIsUploading(true);
-    setUploadPhase('confirm');
 
     const storageRef = ref(storage, `papers/${Date.now()}_${selectedFile.name}`);
     const task = uploadBytesResumable(storageRef, selectedFile);
@@ -110,19 +136,27 @@ export const Papers = () => {
         setUploadPhase('preview');
       },
       async () => {
-        // 1. Get the Firebase download URL
         const pdfUrl = await getDownloadURL(task.snapshot.ref);
 
-        // 2. Save paper record to backend database
         try {
-          const paperTitle = selectedFile.name.replace(/\.pdf$/i, '');
           const createdPaper = await paperService.create({
             title: paperTitle,
-            pdfUrl,
-            researchFields: selectedFields,
+            abstract: paperAbstract.trim() || undefined,
+            fileUrl: pdfUrl,
+            issn: false,
+            isOpenAccess: false,
+            quartile: undefined,
+            subFieldId: undefined,
           });
 
-          // 3. Add to local state with the real DB id and Firebase URL
+          // Verify the paper was saved by fetching it back
+          try {
+            await paperService.getById(createdPaper.id);
+            setToastMessage({ text: 'Document uploaded successfully', type: 'success' });
+          } catch {
+            setToastMessage({ text: 'Paper uploaded but verification failed.', type: 'error' });
+          }
+
           const today = new Date().toISOString().split('T')[0];
           const newPaper: Paper = {
             id: createdPaper.id,
@@ -134,19 +168,12 @@ export const Papers = () => {
           setPapers(prev => [newPaper, ...prev]);
         } catch (apiError) {
           console.error('Failed to save paper to database:', apiError);
-          // Paper is already uploaded to Firebase — still add to local state
-          const today = new Date().toISOString().split('T')[0];
-          const newPaper: Paper = {
-            id: `${Date.now()}`,
-            name: selectedFile.name,
-            date: today,
-            status: 'Waiting for Review',
-            hasNote: false,
-          };
-          setPapers(prev => [newPaper, ...prev]);
+          setToastMessage({ text: 'Failed to upload paper. Please try again.', type: 'error' });
         } finally {
           setSelectedFile(null);
           setSelectedFields(['Machine Learning']);
+          setPaperTitle('');
+          setPaperAbstract('');
           setIsUploading(false);
           setUploadPhase('idle');
         }
@@ -157,12 +184,49 @@ export const Papers = () => {
   const handleRemovePaper = () => {
     setSelectedFile(null);
     setSelectedFields(['Machine Learning']);
+    setPaperTitle('');
+    setPaperAbstract('');
+    setTitleError(false);
     setUploadPhase('idle');
     setShowFieldDropdown(false);
   };
 
   const handleCancelPopup = () => {
+    setTitleError(false);
     setUploadPhase('preview');
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await paperService.getAll();
+      const mapped: Paper[] = result.items.map((p) => {
+        const created = p.createdAt ? new Date(p.createdAt) : null;
+        const updated = p.updatedAt ? new Date(p.updatedAt) : null;
+        const hasScorecard =
+          created !== null &&
+          updated !== null &&
+          updated.getTime() - created.getTime() > 1000;
+        const rawStatus = p.status ?? 'Waiting for Review';
+        const allowedStatuses: Paper['status'][] = ['Waiting for Review', 'Draft', 'Accepted', 'Rejected'];
+        const status: Paper['status'] = allowedStatuses.includes(rawStatus as Paper['status'])
+          ? (rawStatus as Paper['status'])
+          : 'Waiting for Review';
+        return {
+          id: String(p.id),
+          name: p.title || p.fileUrl?.split('/').pop() || 'Untitled',
+          date: p.createdAt ? p.createdAt.split('T')[0] : '',
+          status,
+          hasNote: hasScorecard,
+          fileUrl: p.fileUrl,
+        };
+      });
+      setPapers(mapped);
+    } catch {
+      setToastMessage({ text: 'Failed to refresh papers.', type: 'error' });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Filter papers based on active tab
@@ -191,6 +255,31 @@ export const Papers = () => {
       <div className={styles.header}>
         <h1 className={styles.pageTitle}>Research Paper List</h1>
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`${styles.toast} ${toastMessage.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
+          {toastMessage.type === 'success' ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          )}
+          <span>{toastMessage.text}</span>
+          <button className={styles.toastClose} onClick={() => setToastMessage(null)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Tabs Filter */}
       <div className={styles.tabsRow}>
@@ -232,11 +321,25 @@ export const Papers = () => {
           <h3 className={styles.sectionTitle}>My Papers</h3>
           <div className={styles.sectionHeaderRight}>
             <span className={styles.manuscriptCount}>{filteredPapers.length} manuscripts</span>
-            <button className={styles.refreshBtn}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+            <button className={styles.refreshBtn} onClick={handleRefresh} disabled={isRefreshing}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  marginRight: '6px',
+                  verticalAlign: 'middle',
+                  animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
+                }}
+              >
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
               </svg>
-              Refresh
+              {isRefreshing ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -272,7 +375,11 @@ export const Papers = () => {
                       <div className={styles.actionCellBtns}>
                         <button
                           className={styles.btnActionView}
-                          onClick={() => setPdfViewerUrl('/sample.pdf')}
+                          onClick={() => {
+                            if (!paper.fileUrl) return;
+                            setPdfViewerUrl(paper.fileUrl);
+                          }}
+                          disabled={!paper.fileUrl}
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -388,6 +495,56 @@ export const Papers = () => {
 
               {/* Right: Research Fields */}
               <div className={styles.uploadPreviewRight}>
+                {/* Paper Metadata Section */}
+                <div className={styles.paperMetaSection}>
+                  <div className={styles.paperMetaSectionHeader}>
+                    <h4 className={styles.paperMetaSectionTitle}>Paper Details</h4>
+                  </div>
+
+                  {/* Title input (required) */}
+                  <div className={styles.paperMetaField}>
+                    <label className={styles.paperMetaLabel}>
+                      Title <span className={styles.requiredStar}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className={`${styles.paperMetaInput} ${titleError ? styles.paperMetaInputError : ''}`}
+                      placeholder="e.g., A Modular Backend Network Protocol..."
+                      value={paperTitle}
+                      onChange={(e) => {
+                        setPaperTitle(e.target.value);
+                        if (e.target.value.trim()) setTitleError(false);
+                      }}
+                    />
+                    {titleError && (
+                      <span className={styles.paperMetaError}>Title is required.</span>
+                    )}
+                  </div>
+
+                  {/* Abstract textarea (optional, word-limited) */}
+                  <div className={styles.paperMetaField}>
+                    <label className={styles.paperMetaLabel}>
+                      Abstract <span className={styles.optionalLabel}>(optional)</span>
+                    </label>
+                    <textarea
+                      className={styles.paperMetaTextarea}
+                      placeholder="Summarize your research paper..."
+                      value={paperAbstract}
+                      onChange={(e) => {
+                        const words = e.target.value.trim() ? e.target.value.trim().split(/\s+/).length : 0;
+                        if (words <= MAX_ABSTRACT_WORDS) {
+                          setPaperAbstract(e.target.value);
+                        }
+                      }}
+                      rows={4}
+                    />
+                    <span className={`${styles.wordCount} ${abstractWordCount > MAX_ABSTRACT_WORDS ? styles.wordCountError : ''}`}>
+                      {abstractWordCount} / {MAX_ABSTRACT_WORDS} words
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fields Section */}
                 <div className={styles.fieldsSection}>
                   <div className={styles.fieldsSectionHeader}>
                     <h4 className={styles.fieldsSectionTitle}>AI Recommended Research Fields</h4>
@@ -489,7 +646,7 @@ export const Papers = () => {
                 <button
                   className={styles.uploadBtn}
                   onClick={handleUploadPaper}
-                  disabled={selectedFields.length === 0}
+                  disabled={!paperTitle.trim() || selectedFields.length === 0}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -518,6 +675,10 @@ export const Papers = () => {
             <p className={styles.popupSubtitle}>Please review your paper details before uploading.</p>
 
             <div className={styles.popupDetails}>
+              <div className={styles.popupDetailRow}>
+                <span className={styles.popupDetailLabel}>Title</span>
+                <span className={styles.popupDetailValue}>{paperTitle}</span>
+              </div>
               <div className={styles.popupDetailRow}>
                 <span className={styles.popupDetailLabel}>File Name</span>
                 <span className={styles.popupDetailValue}>{selectedFile.name}</span>
