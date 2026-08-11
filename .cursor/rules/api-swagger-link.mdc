@@ -1,0 +1,23 @@
+---
+description: Backend API Swagger documentation link
+alwaysApply: true
+---
+
+# API Documentation
+
+## Swagger / API Reference
+
+The backend API documentation is available at:
+
+**https://arsplatform.onrender.com/swagger/index.html**
+
+Use this link to:
+- View all available API endpoints
+- Check request/response schemas
+- See authentication requirements
+- Test API calls directly
+
+All FE development should reference this Swagger documentation when:
+- Creating API service files
+- Defining TypeScript interfaces/types for API payloads
+- Understanding which endpoints to call

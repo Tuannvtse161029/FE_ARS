@@ -49,11 +49,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.token
       );
 
-      // Normalize: strip whitespace and match lowercase. Redirect Researcher → Forum, others → Dashboard.
-      // Always redirect to Dashboard after login. Dashboard is the default landing
-      // page and contains the role-aware Researcher Central view.
-      navigate(ROUTES.DASHBOARD);
-      localStorage.setItem('ars_active_role', response.role ?? '');
+      // Normalize the role string: trim, collapse spaces, lowercase for comparison.
+      // - Admin → Dashboard
+      // - Everyone else (Researcher, Reviewer, Lecturer, Graduate Student, etc.) → Forum
+      const rawRole = response.role ?? '';
+      const normalizedRole = rawRole.trim().replace(/\s+/g, ' ').toLowerCase();
+      const isAdmin = normalizedRole === 'admin';
+      const landingRoute = isAdmin ? ROUTES.DASHBOARD : ROUTES.FORUM;
+
+      navigate(landingRoute);
+      localStorage.setItem('ars_active_role', rawRole.trim());
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
       setError(errorMessage);

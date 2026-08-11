@@ -36,6 +36,14 @@ export const authService = {
 
   logout: (): void => {
     storage.clearAuth();
+    // Also clear the Zustand-persisted 'ars-auth-storage' key so that the
+    // next page load (which rehydrates from localStorage) doesn't keep the
+    // user "authenticated" and bounce PublicRoute → /dashboard.
+    try {
+      localStorage.removeItem('ars-auth-storage');
+    } catch {
+      /* ignore */
+    }
   },
 
   getCurrentUser: (): AuthResponse | null => {
