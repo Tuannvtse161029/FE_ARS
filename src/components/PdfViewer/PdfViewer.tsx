@@ -138,7 +138,6 @@ export const PdfViewer = ({
         }
 
         pdfDocRef.current = doc;
-        setPdfDoc(doc);
         setTotalPages(doc.numPages);
         onTotalPages?.(doc.numPages);
 
