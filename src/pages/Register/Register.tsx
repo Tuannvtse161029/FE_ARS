@@ -9,6 +9,7 @@ import { SamplePdfModal } from './components/SamplePdfModal';
 import { RegisterSuccessModal } from './components/RegisterSuccessModal';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
+import { Info } from '../../assets/icons/InfoIcon';
 
 const ROLE_OPTIONS: UserRole[] = [
   'Researcher',
@@ -27,24 +28,6 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
   'Graduate Student':
     'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
 };
-
-const InfoIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="16" x2="12" y2="12" />
-    <line x1="12" y1="8" x2="12.01" y2="8" />
-  </svg>
-);
 
 interface FormState {
   fullName: string;
@@ -372,7 +355,7 @@ export const Register = () => {
 
         <div className={styles.roleBanner}>
           <span className={styles.roleBannerIcon}>
-            <InfoIcon />
+            <Info size={20} />
           </span>
           <div className={styles.roleBannerContent}>
             <p className={styles.roleBannerTitle}>

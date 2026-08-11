@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import styles from './Forum.module.css';
+import { Heart } from '../../assets/icons/HeartIcon';
+import { Eye } from '../../assets/icons/ViewsIcon';
+import { MessageSquare } from 'lucide-react';
 
 type Category = 'All Posts' | 'My Posts' | 'Bookmarked';
 type Topic = 'All Topics' | 'Research' | 'Review' | 'Seminar' | 'Milestones' | 'Groups';
@@ -91,25 +94,6 @@ const ALL_POSTS: Post[] = [
     views: 478,
   },
 ];
-
-const HeartIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  </svg>
-);
-
-const CommentIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-);
-
-const EyeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
 
 export const Forum = () => {
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
@@ -265,15 +249,15 @@ export const Forum = () => {
                 {/* Stats row */}
                 <div className={styles.postStats}>
                   <span className={styles.postStatItem}>
-                    <HeartIcon />
+                    <Heart size={14} />
                     {post.likes}
                   </span>
                   <span className={styles.postStatItem}>
-                    <CommentIcon />
+                    <MessageSquare size={14} />
                     {post.comments}
                   </span>
                   <span className={styles.postStatItem}>
-                    <EyeIcon />
+                    <Eye size={14} />
                     {post.views}
                   </span>
                 </div>

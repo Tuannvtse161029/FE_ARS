@@ -2,32 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths';
 import styles from './Dashboard.module.css';
-
-// SVG Icons
-const UploadIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="17 8 12 3 7 8"></polyline>
-    <line x1="12" y1="3" x2="12" y2="15"></line>
-  </svg>
-);
-
-const UsersIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="9" cy="7" r="4"></circle>
-    <circle cx="17" cy="8" r="1"></circle>
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="16" y1="2" x2="16" y2="6"></line>
-    <line x1="8" y1="2" x2="8" y2="6"></line>
-    <line x1="3" y1="10" x2="21" y2="10"></line>
-  </svg>
-);
+import { Upload } from '../../assets/icons/UploadIcon';
+import { Users } from '../../assets/icons/UsersIcon';
+import { Calendar } from '../../assets/icons/CalendarIcon';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -89,7 +66,7 @@ export const Dashboard = () => {
             
             <div className={styles.quickCard} onClick={() => navigate(ROUTES.PAPERS)}>
               <div className={styles.quickCardLeft}>
-                <span className={styles.quickCardIcon}><UploadIcon /></span>
+                <span className={styles.quickCardIcon}><Upload size={18} /></span>
                 <span className={styles.quickCardText}>Upload New Manuscript Artifact</span>
               </div>
               <span className={styles.quickCardArrow}>&gt;</span>
@@ -97,7 +74,7 @@ export const Dashboard = () => {
 
             <div className={styles.quickCard} onClick={() => navigate(ROUTES.REVIEWERS)}>
               <div className={styles.quickCardLeft}>
-                <span className={styles.quickCardIcon} style={{ color: '#10b981' }}><UsersIcon /></span>
+                <span className={styles.quickCardIcon} style={{ color: '#10b981' }}><Users size={18} /></span>
                 <span className={styles.quickCardText}>Find Expert Peer Reviewers Pool</span>
               </div>
               <span className={styles.quickCardArrow}>&gt;</span>
@@ -105,7 +82,7 @@ export const Dashboard = () => {
 
             <div className={styles.quickCard}>
               <div className={styles.quickCardLeft}>
-                <span className={styles.quickCardIcon} style={{ color: '#f59e0b' }}><CalendarIcon /></span>
+                <span className={styles.quickCardIcon} style={{ color: '#f59e0b' }}><Calendar size={18} /></span>
                 <span className={styles.quickCardText}>Browse Upcoming Faculty Seminars</span>
               </div>
               <span className={styles.quickCardArrow}>&gt;</span>
