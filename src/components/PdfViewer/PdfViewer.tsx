@@ -1,14 +1,22 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.js?raw';
 import styles from './PdfViewer.module.css';
 
-// Configure PDF.js worker from CDN (avoids bundling the 600KB worker file)
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Create a Blob URL from the worker source at module init.
+// This is more reliable than ?url imports in sandboxed/embedded browsers
+// (e.g. Cursor IDE's internal browser) that block separate script fetches.
+const workerSrc = URL.createObjectURL(
+  new Blob([pdfjsWorkerSrc], { type: 'application/javascript' })
+);
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface PdfViewerProps {
-  /** URL of the PDF to render */
-  url: string;
+  /**
+   * URL string or a File/Blob object.
+   * Prefer File/Blob — read as ArrayBuffer internally for maximum compatibility.
+   */
+  url: string | File | Blob | null;
   /** Current page number (1-indexed), controlled externally */
   currentPage?: number;
   /** Called when total pages are known */
@@ -46,87 +54,121 @@ export const PdfViewer = ({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Unwatch ref to cancel in-progress renders on re-render
+  // Keep latest pdfDoc in a ref so the render function always reads the current value
+  const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+
+  // Keep latest page state in a ref too
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
+
+  // ── Render a single page (stable function, always reads latest pdfDoc from ref) ──
+  const renderPage = async (pageNum: number, scale: number) => {
+    const doc = pdfDocRef.current;
+    const canvas = canvasRef.current;
+    if (!doc || !canvas) return;
+
+    // Cancel any in-progress render to avoid flicker
+    if (renderTaskRef.current) {
+      renderTaskRef.current.cancel();
+      renderTaskRef.current = null;
+    }
+
+    setPageState((prev) => ({ ...prev, pageNum, rendering: true }));
+
+    try {
+      const page = await doc.getPage(pageNum);
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      const viewport = page.getViewport({ scale });
+
+      // Only set canvas pixel dimensions — let pdfjs v3 handle DPR internally
+      // via its own transform inside page.render(). No setTransform needed here.
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+
+      const renderTask = page.render({
+        canvasContext: context as CanvasRenderingContext2D,
+        viewport,
+      });
+      renderTaskRef.current = renderTask;
+
+      await renderTask.promise;
+      renderTaskRef.current = null;
+    } catch (err: unknown) {
+      const errName = (err as { name?: string })?.name;
+      if (errName !== 'RenderingCancelledException') {
+        console.error('Page render error:', err);
+      }
+    } finally {
+      setPageState((prev) => ({ ...prev, rendering: false }));
+    }
+  };
 
   // ── Load PDF document ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!url) return;
     setLoading(true);
     setError(null);
+    setTotalPages(0);
+    setPageState({ pageNum: 1, rendering: false, scale: 1.5 });
+
+    let cancelled = false;
 
     const loadPdf = async () => {
       try {
-        const loadingTask = pdfjsLib.getDocument(url as any);
+        let source: pdfjsLib.DocumentInitParams;
+
+        if (typeof url === 'string') {
+          source = url;
+        } else {
+          // Read File / Blob as ArrayBuffer for maximum compatibility
+          const buffer = await url.arrayBuffer();
+          source = { data: buffer };
+        }
+
+        const loadingTask = pdfjsLib.getDocument(source);
         const doc = await loadingTask.promise;
+
+        if (cancelled) {
+          doc.destroy();
+          return;
+        }
+
+        pdfDocRef.current = doc;
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
         onTotalPages?.(doc.numPages);
+
+        // Render page 1 immediately after doc is available
+        await renderPage(1, pageStateRef.current.scale);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load PDF');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load PDF');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadPdf();
 
     return () => {
+      cancelled = true;
+      pdfDocRef.current = null;
       setPdfDoc(null);
     };
   }, [url, onTotalPages]);
 
-  // ── Render a single page ─────────────────────────────────────────────────
-  const renderPage = useCallback(
-    async (pageNum: number, scale: number) => {
-      if (!pdfDoc || !canvasRef.current) return;
-
-      // Cancel any in-progress render to avoid flickering
-      if (renderTaskRef.current) {
-        renderTaskRef.current.cancel();
-        renderTaskRef.current = null;
-      }
-
-      setPageState((prev) => ({ ...prev, pageNum, rendering: true }));
-
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-        const canvas = canvasRef.current!;
-        const context = canvas.getContext('2d')!;
-
-        const viewport = page.getViewport({ scale });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        const renderContext = {
-          canvasContext: context,
-          viewport,
-          intent: 'display' as const,
-          canvas,
-        };
-
-        const renderTask = page.render(renderContext as any);
-        renderTaskRef.current = renderTask;
-        renderTaskRef.current = renderTask;
-
-        await renderTask.promise;
-        renderTaskRef.current = null;
-      } catch (err: unknown) {
-        if ((err as { name?: string })?.name !== 'RenderingCancelledException') {
-          console.error('Page render error:', err);
-        }
-        // Silently ignore cancelled renders
-      } finally {
-        setPageState((prev) => ({ ...prev, rendering: false }));
-      }
-    },
-    [pdfDoc]
-  );
-
-  // Re-render when page or scale changes
+  // Re-render when page or scale changes (renderPage is stable — reads pdfDoc from ref)
   useEffect(() => {
     renderPage(pageState.pageNum, pageState.scale);
-  }, [pageState.pageNum, pageState.scale, renderPage]);
+  }, [pageState.pageNum, pageState.scale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Page navigation ───────────────────────────────────────────────────────
   const goToPage = (pageNum: number) => {

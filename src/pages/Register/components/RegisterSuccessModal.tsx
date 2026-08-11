@@ -4,6 +4,7 @@ import { Button } from '../../../components/Button';
 import { ROUTES } from '../../../utils/constants';
 import type { UserRole } from '../../../types/auth';
 import styles from './RegisterSuccessModal.module.css';
+import { Check } from '../../../assets/icons/CheckIcon';
 
 interface RegisterSuccessModalProps {
   isOpen: boolean;
@@ -11,21 +12,6 @@ interface RegisterSuccessModalProps {
   role: UserRole;
   onClose: () => void;
 }
-
-const CheckIcon = () => (
-  <svg
-    className={styles.checkmarkIcon}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="3"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
 
 export const RegisterSuccessModal = ({
   isOpen,
@@ -67,7 +53,7 @@ export const RegisterSuccessModal = ({
     >
       <div className={styles.modal}>
         <div className={styles.checkmarkWrapper}>
-          <CheckIcon />
+          <Check className={styles.checkmarkIcon} size={24} />
         </div>
         <h2 id="register-success-title" className={styles.title}>
           Registration Submitted Successfully!

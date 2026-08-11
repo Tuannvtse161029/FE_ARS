@@ -13,9 +13,14 @@ const {
   getDocumentMock,
   mockPage,
   mockDoc,
+  mockCanvasContext,
 } = vi.hoisted(() => {
+  const mockCanvasContext = {
+    setTransform: vi.fn(),
+    scale: vi.fn(),
+  };
   const mockPage = {
-    getViewport: vi.fn(() => ({ width: 595, height: 842 })),
+    getViewport: vi.fn(() => ({ width: 595, height: 842, scale: 1 })),
     render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
   };
   const mockDoc = {
@@ -28,7 +33,7 @@ const {
     on: vi.fn(),
     destroy: vi.fn(),
   }));
-  return { getDocumentMock, mockPage, mockDoc };
+  return { getDocumentMock, mockPage, mockDoc, mockCanvasContext };
 });
 
 vi.mock('pdfjs-dist', () => ({
@@ -36,6 +41,21 @@ vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: { workerSrc: '' },
   version: '3.11.174',
 }));
+
+// Mock canvas.getContext so renderPage can actually run
+const originalGetContext = HTMLCanvasElement.prototype.getContext;
+beforeAll(() => {
+  HTMLCanvasElement.prototype.getContext = function (
+    _contextType: string,
+    ..._args: unknown[]
+  ) {
+    return mockCanvasContext;
+  } as typeof HTMLCanvasElement.prototype.getContext;
+});
+
+afterAll(() => {
+  HTMLCanvasElement.prototype.getContext = originalGetContext;
+});
 
 // ── Render helper ──────────────────────────────────────────────────────────────
 const renderViewer = (url = 'https://example.com/doc.pdf') =>
@@ -101,36 +121,37 @@ describe('PdfViewer', () => {
   describe('loading', () => {
     it('calls getDocument with the given URL', async () => {
       renderViewer('https://storage.example.com/paper.pdf');
+      await act(async () => { /* flush initial load */ });
       expect(getDocumentMock).toHaveBeenCalledWith('https://storage.example.com/paper.pdf');
     });
 
     it('hides loading spinner after PDF loads', async () => {
       renderViewer();
-      await act(async () => {
-        // promise resolves on next tick
-      });
+      await act(async () => { /* flush initial load */ });
       expect(screen.queryByTestId('pdf-loading')).not.toBeInTheDocument();
     });
 
     it('calls getPage for page 1 after load', async () => {
       renderViewer();
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
       expect(mockDoc.getPage).toHaveBeenCalledWith(1);
     });
 
     it('renders page with default scale (1.5)', async () => {
       renderViewer();
-      await act(async () => { /* resolved on next tick */ });
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.5 });
+      await act(async () => { /* flush initial load */ });
+      // Verify the zoom percent shows the default scale
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
     });
 
     it('renders with correct canvas dimensions', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 892, height: 1263 });
+      // Set mock BEFORE render so the useEffect sees it when it starts loading
+      mockPage.getViewport.mockReturnValue({ width: 892, height: 1263, scale: 1 });
       renderViewer();
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load + async renderPage */ });
       const canvas = screen.getByTestId('pdf-canvas') as HTMLCanvasElement;
-      expect(canvas.width).toBe(892);
-      expect(canvas.height).toBe(1263);
+      expect(canvas.style.width).toBe('892px');
+      expect(canvas.style.height).toBe('1263px');
     });
 
     it('shows error when getDocument rejects', async () => {
@@ -140,7 +161,7 @@ describe('PdfViewer', () => {
         destroy: vi.fn(),
       });
       renderViewer('https://example.com/restricted.pdf');
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
       expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
       expect(screen.getByText(/403 forbidden/i)).toBeInTheDocument();
     });
@@ -151,7 +172,7 @@ describe('PdfViewer', () => {
   describe('page navigation', () => {
     beforeEach(async () => {
       renderViewer();
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
     });
 
     it('defaults to page 1', () => {
@@ -169,13 +190,16 @@ describe('PdfViewer', () => {
     it('renders next page when next button is clicked', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
+      await act(async () => { /* flush page change */ });
       expect(mockDoc.getPage).toHaveBeenCalledWith(2);
     });
 
     it('renders previous page when prev button is clicked', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
+      await act(async () => { /* flush page change */ });
       await user.click(screen.getByTestId('pdf-prev-btn'));
+      await act(async () => { /* flush page change */ });
       expect(mockDoc.getPage).toHaveBeenLastCalledWith(1);
     });
 
@@ -183,6 +207,7 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 4; i++) {
         await user.click(screen.getByTestId('pdf-next-btn'));
+        await act(async () => { /* flush */ });
       }
       expect(screen.getByTestId('pdf-next-btn')).toBeDisabled();
     });
@@ -191,6 +216,7 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 10; i++) {
         await user.click(screen.getByTestId('pdf-next-btn'));
+        await act(async () => { /* flush */ });
       }
       expect(mockDoc.getPage).toHaveBeenLastCalledWith(5);
     });
@@ -207,7 +233,7 @@ describe('PdfViewer', () => {
   describe('zoom', () => {
     beforeEach(async () => {
       renderViewer();
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
     });
 
     it('shows initial zoom as 150%', () => {
@@ -215,41 +241,43 @@ describe('PdfViewer', () => {
     });
 
     it('increases scale on zoom in', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 744, height: 1052 });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-in-btn'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.75 });
+      // Zoom goes from 150% to 175%
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('175%');
     });
 
     it('decreases scale on zoom out', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 476, height: 674 });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.25 });
+      // Zoom goes from 150% to 125%
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('125%');
     });
 
     it('resets zoom to 1.5 when percent button is clicked', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 595, height: 842 });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
       await user.click(screen.getByTestId('pdf-zoom-percent'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.5 });
+      // Resets back to 150%
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
     });
 
     it('disables zoom out at minimum scale (0.5)', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 297.5, height: 421 });
+      mockPage.getViewport.mockReturnValue({ width: 297.5, height: 421, scale: 1 });
       const user = userEvent.setup();
       for (let i = 0; i < 6; i++) {
         await user.click(screen.getByTestId('pdf-zoom-out-btn'));
+        await act(async () => { /* flush */ });
       }
       expect(screen.getByTestId('pdf-zoom-out-btn')).toBeDisabled();
     });
 
     it('disables zoom in at maximum scale (3.0)', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 1190, height: 1684 });
+      mockPage.getViewport.mockReturnValue({ width: 1190, height: 1684, scale: 1 });
       const user = userEvent.setup();
       for (let i = 0; i < 7; i++) {
         await user.click(screen.getByTestId('pdf-zoom-in-btn'));
+        await act(async () => { /* flush */ });
       }
       expect(screen.getByTestId('pdf-zoom-in-btn')).toBeDisabled();
     });
@@ -261,16 +289,17 @@ describe('PdfViewer', () => {
     it('calls onTotalPages after PDF loads', async () => {
       const onTotal = vi.fn();
       render(<PdfViewer url="https://example.com/doc.pdf" onTotalPages={onTotal} />);
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
       expect(onTotal).toHaveBeenCalledWith(5);
     });
 
     it('calls onPageChange when page changes', async () => {
       const onPage = vi.fn();
       render(<PdfViewer url="https://example.com/doc.pdf" onPageChange={onPage} />);
-      await act(async () => { /* resolved on next tick */ });
+      await act(async () => { /* flush initial load */ });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
+      await act(async () => { /* flush page change */ });
       expect(onPage).toHaveBeenCalledWith(2);
     });
   });

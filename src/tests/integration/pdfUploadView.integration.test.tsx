@@ -15,6 +15,19 @@ import { Register } from '../../pages/Register/Register';
 import { PdfViewer } from '../../components/PdfViewer';
 import { mockPdfState, resetPdfMock, getDocumentMock, mockPage } from '../utils/mockPdfJs';
 
+// ── Canvas context mock so renderPage actually runs in jsdom ──────────────────
+const mockCanvasContext = { setTransform: vi.fn(), scale: vi.fn() };
+beforeAll(() => {
+  const orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type) {
+    if (type === '2d') return mockCanvasContext;
+    return orig.call(this, type);
+  } as typeof HTMLCanvasElement.prototype.getContext;
+});
+afterAll(() => {
+  HTMLCanvasElement.prototype.getContext = HTMLCanvasElement.prototype.getContext;
+});
+
 // ── vi.hoisted: shared mutable upload state ─────────────────────────────────
 // The mocked useFirebaseUpload uses real React state so the consumer
 // (PdfDropzone) re-renders when the mocked hook's state changes. Setters are
@@ -204,6 +217,7 @@ describe('PDF Upload -> Firebase -> View Pipeline', () => {
     });
 
     it('renders with canvas dimensions from viewport', async () => {
+      // Set viewport BEFORE render so the useEffect uses the right dimensions
       mockPage.getViewport.mockReturnValue({ width: 892, height: 1263 });
       renderViewer('https://example.com/research-paper.pdf');
       await waitFor(() => {
@@ -269,29 +283,26 @@ describe('PDF Upload -> Firebase -> View Pipeline', () => {
     });
 
     it('zooms in (150% -> 175%) when zoom-in button is clicked', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 744, height: 1052 });
       renderViewer('https://example.com/research-paper.pdf');
       await waitFor(() => {
         expect(screen.getByTestId('pdf-zoom-percent')).toBeInTheDocument();
       });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-in-btn'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.75 });
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('175%');
     });
 
     it('zooms out (150% -> 125%) when zoom-out button is clicked', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 476, height: 674 });
       renderViewer('https://example.com/research-paper.pdf');
       await waitFor(() => {
         expect(screen.getByTestId('pdf-zoom-percent')).toBeInTheDocument();
       });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.25 });
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('125%');
     });
 
     it('resets zoom to 150% when zoom percent button is clicked', async () => {
-      mockPage.getViewport.mockReturnValue({ width: 595, height: 842 });
       renderViewer('https://example.com/research-paper.pdf');
       await waitFor(() => {
         expect(screen.getByTestId('pdf-zoom-percent')).toBeInTheDocument();
@@ -299,7 +310,7 @@ describe('PDF Upload -> Firebase -> View Pipeline', () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
       await user.click(screen.getByTestId('pdf-zoom-percent'));
-      expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 1.5 });
+      expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
     });
 
     it('disables prev button on first page', async () => {

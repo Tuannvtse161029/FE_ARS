@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import styles from './Forum.module.css';
 import { Heart } from '../../assets/icons/HeartIcon';
 import { Eye } from '../../assets/icons/ViewsIcon';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, X, Tag, FileText, Image as ImageIcon, LayoutList, PenLine, UserCheck } from 'lucide-react';
 
-type Category = 'All Posts' | 'My Posts' | 'Bookmarked';
-type Topic = 'All Topics' | 'Research' | 'Review' | 'Seminar' | 'Milestones' | 'Groups';
+type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
 
 interface Post {
@@ -97,26 +96,28 @@ const ALL_POSTS: Post[] = [
 
 export const Forum = () => {
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
-  const [activeTopic, setActiveTopic] = useState<Topic>('All Topics');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [postContent, setPostContent] = useState('');
+  const [postTags, setPostTags] = useState('');
+  const [followingAuthors, setFollowingAuthors] = useState<Set<string>>(new Set());
+  const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const categories: Category[] = ['All Posts', 'My Posts', 'Following'];
 
   const filteredPosts = ALL_POSTS.filter((post) => {
-    if (activeTopic !== 'All Topics') {
-      return post.tags.some((t) => t.toLowerCase().includes(activeTopic.toLowerCase()));
-    }
+    if (activeCategory === 'All Posts') return true;
+    if (activeCategory === 'My Posts') return post.author === 'Dr. Nguyen Van A';
+    if (activeCategory === 'Following') return followingAuthors.has(post.author);
     return true;
   });
 
-  const categories: Category[] = ['All Posts', 'My Posts', 'Bookmarked'];
-  const topics: Topic[] = ['All Topics', 'Research', 'Review', 'Seminar', 'Milestones', 'Groups'];
-
   return (
     <div className={styles.forumPage}>
-      {/* Breadcrumbs */}
-      <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Forums</span>
-      </div>
-
       <div className={styles.forumLayout}>
         {/* ─── LEFT SIDEBAR ─── */}
         <aside className={styles.sidebar}>
@@ -132,26 +133,10 @@ export const Forum = () => {
                   className={`${styles.categoryItem} ${activeCategory === cat ? styles.categoryItemActive : ''}`}
                   onClick={() => setActiveCategory(cat)}
                 >
-                  {cat === 'All Posts' && <span className={styles.catIcon}>📋</span>}
-                  {cat === 'My Posts' && <span className={styles.catIcon}>✏️</span>}
-                  {cat === 'Bookmarked' && <span className={styles.catIcon}>🔖</span>}
+                  {cat === 'All Posts' && <LayoutList size={14} className={styles.catIcon} />}
+                  {cat === 'My Posts' && <PenLine size={14} className={styles.catIcon} />}
+                  {cat === 'Following' && <UserCheck size={14} className={styles.catIcon} />}
                   {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Topics */}
-          <div className={styles.sidebarSection}>
-            <div className={styles.sidebarSectionLabel}>Topics</div>
-            <div className={styles.topicList}>
-              {topics.map((topic) => (
-                <button
-                  key={topic}
-                  className={`${styles.topicPill} ${activeTopic === topic ? styles.topicPillActive : ''}`}
-                  onClick={() => setActiveTopic(topic)}
-                >
-                  {topic}
                 </button>
               ))}
             </div>
@@ -169,14 +154,6 @@ export const Forum = () => {
                   placeholder="Search author..."
                 />
               </div>
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Date Range</label>
-                <div className={styles.dateRangeRow}>
-                  <input type="date" className={styles.filterInput} />
-                  <span className={styles.dateSeparator}>—</span>
-                  <input type="date" className={styles.filterInput} />
-                </div>
-              </div>
             </div>
           </div>
         </aside>
@@ -188,6 +165,12 @@ export const Forum = () => {
             <div className={styles.feedTitleRow}>
               <h2 className={styles.feedTitle}>PUBLIC FORUM</h2>
               <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
+              <button
+                className={styles.createPostBtn}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                + Create Post
+              </button>
             </div>
 
             {/* Sort & Filter Toolbar */}
@@ -200,15 +183,6 @@ export const Forum = () => {
                 <option>Newest</option>
                 <option>Most Discussed</option>
                 <option>Most Viewed</option>
-              </select>
-              <select
-                className={styles.topicFilterSelect}
-                value={activeTopic}
-                onChange={(e) => setActiveTopic(e.target.value as Topic)}
-              >
-                {topics.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
               </select>
             </div>
           </div>
@@ -229,6 +203,24 @@ export const Forum = () => {
                     <span className={styles.postAuthorName}>{post.author}</span>
                     <span className={styles.postTimestamp}>{post.timestamp}</span>
                   </div>
+                  {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && (
+                    <button
+                      className={`${styles.cardFollowBtn} ${followingAuthors.has(post.author) ? styles.following : ''}`}
+                      onClick={() => {
+                        setFollowingAuthors(prev => {
+                          const next = new Set(prev);
+                          if (next.has(post.author)) {
+                            next.delete(post.author);
+                          } else {
+                            next.add(post.author);
+                          }
+                          return next;
+                        });
+                      }}
+                    >
+                      {followingAuthors.has(post.author) ? 'Following' : 'Follow'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -266,6 +258,152 @@ export const Forum = () => {
           </div>
         </div>
       </div>
+
+      {/* Create Post Modal */}
+      {isCreateModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsCreateModalOpen(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Create Forum Post</h2>
+            </div>
+
+            {/* Author Header */}
+            <div className={styles.modalAuthorHeader}>
+              <div
+                className={styles.modalAuthorAvatar}
+                style={{ backgroundColor: '#eff6ff', color: '#0f172a' }}
+              >
+                NA
+              </div>
+              <div className={styles.modalAuthorInfo}>
+                <span className={styles.modalAuthorName}>Dr. Nguyen Van A</span>
+                <span className={styles.modalPostingTo}>Posting to Forums</span>
+              </div>
+            </div>
+
+            <div className={styles.modalBody}>
+              {/* Plain Textarea - no label */}
+              <textarea
+                className={styles.modalTextarea}
+                placeholder="Share your thoughts..."
+                rows={8}
+                value={postContent}
+                onChange={(e) => setPostContent(e.target.value)}
+              />
+
+              {/* Tag Input with # prefix display */}
+              <div className={styles.tagInputRow}>
+                <label className={styles.tagLabel}>
+                  <Tag size={14} />
+                  Tags
+                </label>
+                <div className={styles.tagInputWrapper}>
+                  <span className={styles.tagHashPrefix}>#</span>
+                  <input
+                    type="text"
+                    className={styles.tagInputField}
+                    placeholder="Add tags..."
+                    value={postTags}
+                    onChange={(e) => setPostTags(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Attachment Buttons */}
+              <div className={styles.attachmentRow}>
+                <button
+                  className={styles.attachPdfBtn}
+                  onClick={() => pdfInputRef.current?.click()}
+                >
+                  <FileText size={16} />
+                  Attach PDF Paper
+                </button>
+                <input
+                  type="file"
+                  ref={pdfInputRef}
+                  accept=".pdf"
+                  className={styles.hiddenInput}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setAttachedPdf(file);
+                  }}
+                />
+
+                <button
+                  className={styles.uploadImgBtn}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <ImageIcon size={16} />
+                  Upload Image
+                </button>
+                <input
+                  type="file"
+                  ref={imageInputRef}
+                  accept="image/*"
+                  className={styles.hiddenInput}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setAttachedImage(file);
+                  }}
+                />
+              </div>
+
+              {/* Show attached files */}
+              {(attachedPdf || attachedImage) && (
+                <div className={styles.attachedFilesList}>
+                  {attachedPdf && (
+                    <div className={styles.attachedFile}>
+                      <FileText size={14} />
+                      <span>{attachedPdf.name}</span>
+                      <button
+                        className={styles.removeFileBtn}
+                        onClick={() => setAttachedPdf(null)}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  {attachedImage && (
+                    <div className={styles.attachedFile}>
+                      <ImageIcon size={14} />
+                      <span>{attachedImage.name}</span>
+                      <button
+                        className={styles.removeFileBtn}
+                        onClick={() => setAttachedImage(null)}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.publishBtn}
+                disabled={!postContent.trim()}
+                onClick={() => {
+                  console.log('Post published:', { content: postContent, tags: postTags, pdf: attachedPdf?.name, image: attachedImage?.name });
+                  setIsCreateModalOpen(false);
+                  setPostContent('');
+                  setPostTags('');
+                  setAttachedPdf(null);
+                  setAttachedImage(null);
+                }}
+              >
+                Publish Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
