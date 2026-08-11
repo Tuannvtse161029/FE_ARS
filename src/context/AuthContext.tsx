@@ -23,10 +23,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Session is restored automatically via Zustand persist (reads from ars-auth-storage).
-  // The old useEffect that re-imported from ars_token/ars_user is removed
-  // because it caused a double-write that triggered isLoading=true and blank screens.
-
   const login = async (credentials: LoginRequest) => {
     setIsLoading(true);
     setError(null);
@@ -48,16 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.token
       );
 
-      // Normalize the role string: trim, collapse spaces, lowercase for comparison.
-      // - Admin → Dashboard
-      // - Everyone else (Researcher, Reviewer, Lecturer, Graduate Student, etc.) → Forum
       const rawRole = response.role ?? '';
       const normalizedRole = rawRole.trim().replace(/\s+/g, ' ').toLowerCase();
       const isAdmin = normalizedRole === 'admin';
       const landingRoute = isAdmin ? ROUTES.DASHBOARD : ROUTES.FORUM;
 
       navigate(landingRoute);
-      localStorage.setItem('ars_active_role', rawRole.trim());
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
       setError(errorMessage);

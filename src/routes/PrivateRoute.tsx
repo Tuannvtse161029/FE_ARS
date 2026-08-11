@@ -11,7 +11,7 @@ export const PrivateRoute = () => {
 export const PublicRoute = () => {
   const { isAuthenticated } = useAuth();
 
-  return isAuthenticated ? <Navigate to={ROUTES.DASHBOARD} replace /> : <Outlet />;
+  return isAuthenticated ? <Navigate to={ROUTES.FORUM} replace /> : <Outlet />;
 };
 
 export default PrivateRoute;
