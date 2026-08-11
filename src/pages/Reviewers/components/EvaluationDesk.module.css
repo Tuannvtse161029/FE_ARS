@@ -307,7 +307,7 @@
 }
 
 .submitBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Success Modal Overlay */
@@ -379,7 +379,7 @@
 }
 
 .successBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .closeModalCross {

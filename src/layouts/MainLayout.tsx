@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import type { UserRole } from '../types/auth';
 import styles from './MainLayout.module.css';
+import arsLogo from '../assets/images/ARS_Logo.png';
 
 // SVG Icons
 const SearchIcon = () => (
@@ -81,11 +82,181 @@ const SettingsIcon = () => (
   </svg>
 );
 
-const ARSPlatformLogo = () => (
-  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="36" height="36" rx="8" fill="#2563EB" />
-    <text x="18" y="24" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="800">A</text>
+const UserIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+    <circle cx="12" cy="7" r="4"></circle>
   </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"></polyline>
+  </svg>
+);
+
+const LogOutIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+    <polyline points="16 17 21 12 16 7"></polyline>
+    <line x1="21" y1="12" x2="9" y2="12"></line>
+  </svg>
+);
+
+const SwitchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="17 1 21 5 17 9"></polyline>
+    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+    <polyline points="7 23 3 19 7 15"></polyline>
+    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const RoleSwitchModal = ({
+  isOpen,
+  onClose,
+  activeRole,
+  availableRoles,
+  onConfirm
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  activeRole: string;
+  availableRoles: { value: string; label: string }[];
+  onConfirm: (role: string) => void;
+}) => {
+  const [selectedRole, setSelectedRole] = useState(activeRole);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (selectedRole !== activeRole) {
+      onConfirm(selectedRole);
+    }
+    onClose();
+  };
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Switch Role</h2>
+          <button className={styles.modalCloseBtn} onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </div>
+        <div className={styles.modalBody}>
+          <p className={styles.modalDescription}>Select a role to switch to:</p>
+          <div className={styles.roleOptionsList}>
+            {availableRoles.map((role) => (
+              <label
+                key={role.value}
+                className={`${styles.roleOption} ${selectedRole === role.value ? styles.roleOptionSelected : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value={role.value}
+                  checked={selectedRole === role.value}
+                  onChange={() => setSelectedRole(role.value)}
+                  className={styles.roleOptionRadio}
+                />
+                <span className={styles.roleOptionLabel}>{role.label}</span>
+                {selectedRole === role.value && (
+                  <span className={styles.roleOptionCheck}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalCancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className={styles.modalConfirmBtn}
+            onClick={handleConfirm}
+            disabled={selectedRole === activeRole}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProfileDropdown = ({
+  username,
+  activeRole,
+  avatarInitials,
+  onLogout,
+  onProfileClick,
+  onAccountSettingsClick,
+  onSwitchRoleClick
+}: {
+  username: string;
+  activeRole: string;
+  avatarInitials: string;
+  onLogout: () => void;
+  onProfileClick: () => void;
+  onAccountSettingsClick: () => void;
+  onSwitchRoleClick: () => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className={styles.profileDropdownContainer}>
+      <button
+        className={styles.profileDropdownTrigger}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
+        <div className={styles.userInfoText}>
+          <div className={styles.userPillName}>{username}</div>
+          <div className={styles.userPillRole}>{activeRole}</div>
+        </div>
+        <ChevronDownIcon />
+      </button>
+
+      {isOpen && (
+        <div className={styles.profileDropdownMenu}>
+          <button className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
+            <UserIcon />
+            <span>My Profile & Role Upgrades</span>
+          </button>
+          <button className={styles.dropdownItem} onClick={() => { onAccountSettingsClick(); setIsOpen(false); }}>
+            <SettingsIcon />
+            <span>Account Settings</span>
+          </button>
+          <button className={styles.dropdownItem} onClick={() => { onSwitchRoleClick(); setIsOpen(false); }}>
+            <SwitchIcon />
+            <span>Switch Role</span>
+          </button>
+          <div className={styles.dropdownDivider}></div>
+          <button className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
+            <LogOutIcon />
+            <span>Log out</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ARSPlatformLogo = () => (
+  <img src={arsLogo} alt="ARS Platform Logo" width={120} height={120} style={{ borderRadius: 8 }} />
 );
 
 interface NavItem {
@@ -106,11 +277,33 @@ export const MainLayout = () => {
     return (saved as UserRole) || 'Researcher';
   });
 
+  // Sync activeRole with user role from auth when user logs in
+  useEffect(() => {
+    console.log('[MainLayout] user from useAuth:', user);
+    if (user?.role) {
+      const userRole = user.role as UserRole;
+      console.log('[MainLayout] Setting activeRole to:', userRole);
+      setActiveRole(userRole);
+      localStorage.setItem('ars_active_role', userRole);
+    }
+  }, [user?.role]);
+
   // Wallet balance sync state
   const [balance, setBalance] = useState(() => {
     const saved = localStorage.getItem('ars_wallet');
     return saved ? parseInt(saved, 10) : 1500000;
   });
+
+  // Role switch modal state
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+
+  // Available roles for the user
+  const availableRoles = [
+    { value: 'Researcher', label: 'Researcher' },
+    { value: 'Reviewer', label: 'Reviewer' },
+    { value: 'Lecturer', label: 'Lecturer (Seminar/Group)' },
+    { value: 'Graduate Student', label: 'Graduate Student' },
+  ];
 
   useEffect(() => {
     const handleWalletUpdate = () => {
@@ -121,25 +314,23 @@ export const MainLayout = () => {
     return () => window.removeEventListener('wallet-update', handleWalletUpdate);
   }, []);
 
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const role = e.target.value as UserRole;
-    setActiveRole(role);
+  const handleRoleSwitch = (role: string) => {
+    setActiveRole(role as UserRole);
     localStorage.setItem('ars_active_role', role);
 
     // Redirect to default pages based on role selection
     if (role === 'Researcher') {
       navigate(ROUTES.FORUM);
-    } else if (role === 'Reviewer') {
-      navigate(ROUTES.DASHBOARD);
-    } else if (role === 'Lecturer') {
-      navigate(ROUTES.DASHBOARD);
-    } else if (role === 'Graduate Student') {
+    } else {
       navigate(ROUTES.DASHBOARD);
     }
   };
 
-  const username = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : activeRole === 'Graduate Student' ? 'Dr. N. Ashford' : 'Lecturer Account');
-  const avatarInitials = activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : activeRole === 'Graduate Student' ? 'NA' : 'LA';
+  // Use real user data when available, fallback to mock data
+  const displayName = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : activeRole === 'Graduate Student' ? 'Dr. N. Ashford' : 'Lecturer Account');
+  const avatarInitials = user?.username
+    ? user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : (activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : activeRole === 'Graduate Student' ? 'NA' : 'LA');
 
   const handleLogout = () => {
     logout();
@@ -156,7 +347,6 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon />, badge: '2' },
           { to: ROUTES.EARNINGS_WALLET, label: 'Wallet', icon: <WalletIcon /> },
           { to: ROUTES.EARNINGS_WALLET, label: 'Withdrawal Request', icon: <WalletIcon /> },
-          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Lecturer':
         return [
@@ -166,7 +356,6 @@ export const MainLayout = () => {
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon /> },
           { to: '#shared-material', label: 'Shared Material', icon: <PapersIcon /> },
           { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
-          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Graduate Student':
         return [
@@ -177,7 +366,6 @@ export const MainLayout = () => {
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon /> },
           { to: '#wallet', label: 'Wallet', icon: <WalletIcon /> },
           { to: '#premium-packages', label: 'Premium Packages', icon: <BrowseReviewersIcon /> },
-          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
       case 'Researcher':
       default:
@@ -188,7 +376,6 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon /> },
           { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon /> },
           { to: '#wallet', label: 'My Wallet', icon: <WalletIcon /> },
-          { to: ROUTES.PROFILE, label: 'Profile', icon: <SettingsIcon /> },
         ];
     }
   };
@@ -202,10 +389,6 @@ export const MainLayout = () => {
         <div className={styles.sidebarHeader}>
           <div className={styles.logoContainer}>
             <ARSPlatformLogo />
-            <div className={styles.logoText}>
-              <span className={styles.logoTitle}>ARS PLATFORM</span>
-              <span className={styles.logoSubtitle}>Academic Research System</span>
-            </div>
           </div>
         </div>
 
@@ -235,24 +418,6 @@ export const MainLayout = () => {
             );
           })}
         </nav>
-
-        {/* User Card at bottom of Sidebar */}
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userProfileCard}>
-            <div className={styles.avatarCircle}>{avatarInitials}</div>
-            <div className={styles.userCardInfo}>
-              <div className={styles.userCardName} title={username}>{username}</div>
-              <div className={styles.userCardRole}>{activeRole}</div>
-            </div>
-            <button className={styles.logoutButton} onClick={handleLogout} title="Log out">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Right Column (Header + Content) */}
@@ -271,21 +436,6 @@ export const MainLayout = () => {
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
-            {/* Role Switcher Selector dropdown */}
-            <div className={styles.roleSwitcherContainer}>
-              <span className={styles.roleSwitcherLabel}>Active Role:</span>
-              <select
-                className={styles.roleSelect}
-                value={activeRole}
-                onChange={handleRoleChange}
-              >
-                <option value="Researcher">Researcher</option>
-                <option value="Reviewer">Reviewer</option>
-                <option value="Lecturer">Lecturer (Seminar/Group)</option>
-                <option value="Graduate Student">Graduate Student</option>
-              </select>
-            </div>
-
             {/* Wallet Balance */}
             <div className={styles.walletBadge}>
               <span className={styles.walletIcon}><WalletIcon /></span>
@@ -298,16 +448,27 @@ export const MainLayout = () => {
               <span className={styles.notificationBadge}>3</span>
             </button>
 
-            {/* User Info Pill */}
-            <div className={styles.userInfoPill}>
-              <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
-              <div className={styles.userInfoText}>
-                <div className={styles.userPillName}>{username}</div>
-                <div className={styles.userPillRole}>{activeRole}</div>
-              </div>
-            </div>
+            {/* Profile Dropdown */}
+            <ProfileDropdown
+              username={displayName}
+              activeRole={activeRole}
+              avatarInitials={avatarInitials}
+              onLogout={handleLogout}
+              onProfileClick={() => navigate(ROUTES.PROFILE)}
+              onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
+              onSwitchRoleClick={() => setIsRoleModalOpen(true)}
+            />
           </div>
         </header>
+
+        {/* Role Switch Modal */}
+        <RoleSwitchModal
+          isOpen={isRoleModalOpen}
+          onClose={() => setIsRoleModalOpen(false)}
+          activeRole={activeRole}
+          availableRoles={availableRoles}
+          onConfirm={handleRoleSwitch}
+        />
 
         {/* Content Body */}
         <main className={styles.contentBody}>

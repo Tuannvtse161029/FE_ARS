@@ -52,6 +52,7 @@ export const ROUTES = {
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',
+  ACCOUNT_SETTINGS: '/account-settings',
 } as const;
 
 export const PAPER_STATUS = {

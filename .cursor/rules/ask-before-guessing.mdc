@@ -1,0 +1,43 @@
+---
+description: Ask user when stuck instead of hallucinating
+alwaysApply: true
+---
+
+# Stuck? Ask First, Don't Guess
+
+## Rule
+
+When working on a task and you encounter something confusing, unclear, or repeatedly failing — **stop and ask the user** instead of guessing or hallucinating.
+
+## What To Do
+
+### ✅ DO: Ask Questions
+- "I'm not sure why this is failing. Can you clarify...?"
+- "This approach doesn't seem right. What should happen when...?"
+- "I don't understand this error. Could you explain the expected behavior?"
+
+### ❌ DON'T: Guess or Make Up
+- Don't assume what the code should do
+- Don't hallucinate reasons for errors
+- Don't try random fixes hoping something works
+- Don't guess API behavior or data structures
+
+## Examples
+
+**Situation**: A fetch call keeps failing and error messages are unclear.
+
+❌ Bad: "Let me try adding a timeout... or maybe change the headers... or perhaps use a different endpoint..."
+
+✅ Good: "The API call is failing and the error isn't clear. Could you help me understand what the expected response should look like? Or should I check the Swagger docs at https://arsplatform.onrender.com/swagger/index.html for the correct endpoint format?"
+
+**Situation**: TypeScript error about a type mismatch.
+
+❌ Bad: "I'll just add `as any` to bypass this..."
+
+✅ Good: "There's a type mismatch here. What type is this property supposed to be? Should I check the BE API contract for this response?"
+
+## Remember
+
+- **Asking saves time** — a quick clarification prevents 30 minutes of wrong code
+- **No shame in not knowing** — you're the FE dev, BE owns their API contracts
+- **Be specific** — explain what you tried, what happened, and what you need clarified

@@ -1,31 +1,22 @@
 .authLayout {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
   width: 100%;
   background-color: var(--color-background);
-  padding: var(--spacing-4);
   font-family: var(--font-family-primary);
+  overflow: hidden;
 }
 
 .authCard {
   display: flex;
-  background-color: var(--color-surface);
   width: 100%;
-  max-width: 1100px;
-  min-height: 680px;
-  border-radius: 24px;
-  box-shadow: var(--shadow-xl);
+  min-height: 100vh;
   overflow: hidden;
-  padding: var(--spacing-6);
-  gap: var(--spacing-6);
 }
 
 .leftPanel {
-  flex: 1.1;
+  flex: 1;
   display: flex;
-  border-radius: 18px;
   background-image: url('../assets/images/login_wallpaper.jpg');
   background-size: cover;
   background-position: center;
@@ -35,11 +26,12 @@
 }
 
 .rightPanel {
-  flex: 1.2;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-6);
+  background-color: var(--color-surface);
 }
 
 .formContainer {
@@ -51,34 +43,25 @@
   .authCard {
     flex-direction: column;
     min-height: auto;
-    padding: var(--spacing-4);
-    gap: var(--spacing-4);
   }
 
   .leftPanel {
     height: 240px;
     flex: none;
-    border-radius: 12px;
   }
 
   .rightPanel {
-    padding: var(--spacing-2);
+    min-height: auto;
+    padding: var(--spacing-4);
   }
 }
 
 @media (max-width: 480px) {
   .authLayout {
-    padding: var(--spacing-2);
-  }
-
-  .authCard {
-    padding: var(--spacing-3);
-    gap: var(--spacing-3);
-    border-radius: 16px;
+    padding: 0;
   }
 
   .leftPanel {
     height: 160px;
-    border-radius: 8px;
   }
 }

@@ -60,11 +60,9 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
-      <div className={styles.logoHeader}>
-        <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        </div>
-        <span className={styles.brandText}>ARS - Academic Research Sharing</span>
+      <div className={styles.logoSection}>
+        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+        <span className={styles.brandText}>Academic Research Sharing</span>
       </div>
 
       <div className={styles.header}>

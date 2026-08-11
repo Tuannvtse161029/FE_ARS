@@ -18,6 +18,7 @@ export const ROUTES = {
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',
+  ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
 } as const;
 

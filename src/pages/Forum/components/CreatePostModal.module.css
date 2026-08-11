@@ -258,7 +258,7 @@
 }
 
 .publishBtn:hover:not(:disabled) {
-  background-color: #0f172a;
+  background-color: #323964;
   border-color: #0f172a;
 }
 

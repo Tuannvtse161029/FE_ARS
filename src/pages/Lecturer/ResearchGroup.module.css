@@ -50,7 +50,7 @@
 }
 
 .createGroupBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Success Toast Banner (Frame 43) */
@@ -346,7 +346,7 @@
 }
 
 .viewGroupNavyBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Create New Group Dashed Card */
@@ -476,7 +476,7 @@
 }
 
 .assignGroupBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Modals */
@@ -885,5 +885,5 @@
 }
 
 .submitNavyBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }

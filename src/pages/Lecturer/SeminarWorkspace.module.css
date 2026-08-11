@@ -50,7 +50,7 @@
 }
 
 .createSeminarBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Success Toast Banner (Frame 32 & 33) */
@@ -419,7 +419,7 @@
 }
 
 .joinMeetBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .sendInviteBtn {
@@ -483,7 +483,7 @@
 }
 
 .feedbackGradingBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .gradingBadge {
@@ -730,7 +730,7 @@
 }
 
 .modalSubmitNavyBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* FRAME 31: Generated Meet Modal */
@@ -1092,7 +1092,7 @@
 }
 
 .modalCloseNavyBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .greenAiBadge {
@@ -1360,7 +1360,7 @@
 }
 
 .summarizeMagicBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .regenerateBtn {
@@ -1386,5 +1386,5 @@
 }
 
 .agreeSaveNavyBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }

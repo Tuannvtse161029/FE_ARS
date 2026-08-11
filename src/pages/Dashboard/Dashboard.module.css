@@ -789,7 +789,7 @@
 }
 
 .evaluateRequestBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .completedDecisionBadge {
@@ -1108,7 +1108,7 @@
 }
 
 .reviewSubmissionsBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 /* Seminars right column */
@@ -1305,7 +1305,7 @@
 }
 
 .gradeReportBtn:hover {
-  background-color: #0f172a;
+  background-color: #323964;
 }
 
 .todayScheduleBox {
