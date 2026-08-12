@@ -7,6 +7,10 @@ dist
 .env.*.local
 coverage
 
+# One-off seed / utility scripts (never commit)
+seed-reviewers.cjs
+*.seed.cjs
+
 # Local-only secrets & credentials — never commit
 docs/local-only/
 secrets/

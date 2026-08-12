@@ -1,0 +1,41 @@
+---
+description: Git commit settings - no Cursor co-author
+alwaysApply: true
+---
+
+# Git Commit Rules
+
+## No Cursor Co-Author
+
+When making git commits, **do NOT include Cursor as a co-author**. Never use this format:
+
+```bash
+# ❌ NEVER DO THIS
+git commit -m "message" --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>"
+```
+
+## Correct Commit Format
+
+Only the user should appear as the author:
+
+```bash
+# ✅ CORRECT
+git commit -m "Your descriptive commit message"
+```
+
+## Git Config
+
+Ensure the git configuration uses only the user's identity:
+
+```bash
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+```
+
+**Important**: Do NOT set any git commit templates or aliases that include co-author trailers.
+
+## Before Any Commit
+
+1. Run `git log -1 --format='%an %ae'` to verify the commit author is correct
+2. Check that no co-author trailers are being added
+3. Confirm with the user before pushing to remote

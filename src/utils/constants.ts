@@ -1,4 +1,10 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// Fallback to the live Swagger BE when no VITE_API_BASE_URL is provided.
+// Without this, a production build (e.g. on Vercel) would default to
+// http://localhost:5000 — which is unreachable from end-user browsers and
+// produces a Network Timeout on login. Local dev can override this in
+// .env.local with VITE_API_BASE_URL=http://localhost:5000.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://arsplatform.onrender.com';
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -24,6 +30,18 @@ export const API_ENDPOINTS = {
     CREATE: '/api/paper',
     UPDATE: (id: number) => `/api/paper/${id}`,
     DELETE: (id: number) => `/api/paper/${id}`,
+  },
+  PROFESSIONAL_PROFILE: {
+    GET_ALL: '/api/ProfessionalProfile',
+    GET_BY_ID: (id: number) => `/api/ProfessionalProfile/${id}`,
+  },
+  REVIEW_REQUEST: {
+    BASE: '/api/ReviewRequest',
+    GET_ALL: '/api/ReviewRequest',
+    CREATE: '/api/ReviewRequest',
+    GET_BY_ID: (id: number) => `/api/ReviewRequest/${id}`,
+    UPDATE: (id: number) => `/api/ReviewRequest/${id}`,
+    DELETE: (id: number) => `/api/ReviewRequest/${id}`,
   },
 } as const;
 

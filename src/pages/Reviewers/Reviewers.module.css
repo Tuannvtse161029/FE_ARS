@@ -12,6 +12,10 @@
 }
 
 .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
   text-align: left;
 }
 
@@ -129,6 +133,17 @@
   gap: var(--spacing-6);
 }
 
+.emptyReviewersHint {
+  grid-column: 1 / -1;
+  padding: var(--spacing-8) var(--spacing-5);
+  text-align: center;
+  color: #64748b;
+  font-size: var(--font-size-base);
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-lg);
+}
+
 .reviewerCard {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
@@ -215,7 +230,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-2.5) var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
 }
@@ -743,43 +758,6 @@
   gap: var(--spacing-4);
 }
 
-.priorityBox {
-  display: flex;
-  align-items: center;
-  background-color: #fffbeb;
-  border: 1px solid #fde047;
-  border-radius: var(--radius-lg);
-  padding: 0 var(--spacing-4);
-  height: 48px;
-}
-
-.priorityDot {
-  color: #d97706;
-  margin-right: var(--spacing-2);
-}
-
-.prioritySelect {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: #b45309;
-  width: 100%;
-  cursor: pointer;
-}
-
-.formDateInput {
-  background-color: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: var(--radius-lg);
-  padding: 0 var(--spacing-4);
-  font-size: var(--font-size-sm);
-  color: #334155;
-  outline: none;
-  height: 48px;
-}
-
 /* Estimated Completion Box */
 .estimateBanner {
   display: flex;
@@ -865,6 +843,16 @@
 
 .formConfirmBtn:hover {
   background-color: #323964;
+}
+
+.formConfirmBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #1d2a4a;
+}
+
+.formConfirmBtn:disabled:hover {
+  background-color: #1d2a4a;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1216,4 +1204,109 @@
   .confirmationStatusBar {
     left: 80px;
   }
+}
+
+/* Escrow Policy Card (Frame 1) */
+.policyCard {
+  margin-top: var(--spacing-6);
+  padding: var(--spacing-5) var(--spacing-6);
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.policyHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.policyShieldIcon {
+  font-size: 18px;
+}
+
+.policyHeaderTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.policyList {
+  margin: 0;
+  padding-left: var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: #334155;
+  line-height: 1.55;
+}
+
+.policyCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.policyCheckbox {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.policyCheckboxText {
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  line-height: 1.5;
+}
+
+/* Submit error banner (Create Request screen) */
+.submitErrorBanner {
+  margin-top: var(--spacing-6);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+}
+
+.submitErrorIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.submitErrorText {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+.submitErrorDismiss {
+  background: transparent;
+  border: none;
+  color: #991b1b;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.submitErrorDismiss:hover {
+  background-color: #fee2e2;
 }
