@@ -1,5 +1,5 @@
 export const EnvConfig = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://arsplatform.onrender.com',
   env: import.meta.env.MODE || 'development',
   isProduction: import.meta.env.PROD,
   isDevelopment: import.meta.env.DEV,

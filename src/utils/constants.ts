@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
     FORGOT_PASSWORD: '/api/auth/forgot-password',
     VERIFY_OTP: '/api/auth/verify-otp',
     RESET_PASSWORD: '/api/auth/reset-password',
+    VERIFY_EMAIL: '/api/auth/verify-email',
+    SEND_APPROVAL_EMAIL: '/api/auth/send-approval-email',
   },
   USER: {
     BASE: '/api/user',

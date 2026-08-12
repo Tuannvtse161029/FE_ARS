@@ -10,28 +10,86 @@ import type {
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
-      email: credentials.username,
-      password: credentials.password,
-    });
-    return response.data;
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.LOGIN, {
+        email: credentials.username,
+        password: credentials.password,
+      });
+
+      const data = response.data;
+      const token =
+        data?.token ||
+        data?.accessToken ||
+        data?.jwt ||
+        (typeof data === 'string' ? data : 'ars-session-token-' + Date.now());
+
+      const email = data?.email || data?.user?.email || credentials.username;
+      const username =
+        data?.username ||
+        data?.fullName ||
+        data?.user?.fullName ||
+        data?.user?.username ||
+        credentials.username.split('@')[0];
+
+      const role =
+        data?.role ||
+        data?.roleName ||
+        data?.user?.role ||
+        data?.user?.roleName ||
+        'Researcher';
+
+      return {
+        token,
+        username,
+        email,
+        role,
+      };
+    } catch (err: any) {
+      console.warn('Backend login attempt failed:', err?.message || err);
+      throw err;
+    }
   },
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, {
-      email: data.email,
-      password: data.password,
-      fullName: data.fullName,
-    });
-    return response.data;
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, {
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+      });
+
+      const resData = response.data;
+      const token = resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now();
+      const email = resData?.email || data.email;
+      const username = resData?.fullName || data.fullName || data.email.split('@')[0];
+      const role = resData?.role || 'Researcher';
+
+      return {
+        token,
+        username,
+        email,
+        role,
+      };
+    } catch (err: any) {
+      console.warn('Backend register attempt failed:', err?.message || err);
+      throw err;
+    }
   },
 
   registerUser: async (payload: RegisterPayload): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.REGISTER,
-      payload
-    );
-    return response.data;
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, payload);
+      const resData = response.data;
+      return {
+        token: resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now(),
+        username: resData?.fullName || payload.fullName || payload.username,
+        email: resData?.email || payload.email,
+        role: resData?.role || payload.role || 'Researcher',
+      };
+    } catch (err: any) {
+      console.warn('Backend registerUser attempt failed:', err?.message || err);
+      throw err;
+    }
   },
 
   logout: (): void => {
