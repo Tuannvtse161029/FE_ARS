@@ -10,18 +10,19 @@ import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { MainLayout } from './layouts/MainLayout';
-import { Forum } from './pages/Forum';
-import { Papers } from './pages/Papers';
-import { Reviewers } from './pages/Reviewers';
-import { EvaluationDesk } from './pages/Reviewers/components/EvaluationDesk';
+import { Forum } from './pages/Forum/Forum';
+import { Papers } from './pages/Papers/Papers';
+import { DiscoverReviewers } from './pages/Researcher/DiscoverReviewers';
+import { EvaluationDesk } from './pages/Reviewer/EvaluationDesk';
 import { SeminarWorkspace } from './pages/Lecturer/SeminarWorkspace';
 import { ResearchGroup } from './pages/Lecturer/ResearchGroup';
 import { ConfigureMilestones } from './pages/Lecturer/ConfigureMilestones';
-import { SubmitReport } from './pages/Student/SubmitReport';
-import { StudentResearchGroups } from './pages/Student/StudentResearchGroups';
-import { EarningsWallet } from './pages/Reviewers/EarningsWallet';
-import { ReviewTasks } from './pages/Reviewers/components/ReviewTasks';
+import { SubmitReport } from './pages/GraduateStudent/SubmitReport';
+import { StudentResearchGroups } from './pages/GraduateStudent/StudentResearchGroups';
+import { EarningsWallet } from './pages/Reviewer/EarningsWallet';
+import { AssignedReviews } from './pages/Reviewer/AssignedReviews';
 import { Profile } from './pages/Profile/Profile';
+import { AdminDashboard } from './pages/Admin/AdminDashboard';
 import './styles/globals.css';
 
 const App = () => {
@@ -46,7 +47,7 @@ const App = () => {
               <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
               <Route path={ROUTES.FORUM} element={<Forum />} />
               <Route path={ROUTES.PAPERS} element={<Papers />} />
-              <Route path={ROUTES.REVIEWERS} element={<Reviewers />} />
+              <Route path={ROUTES.REVIEWERS} element={<DiscoverReviewers />} />
               <Route path={ROUTES.EVALUATION} element={<EvaluationDesk />} />
               <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
               <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
@@ -54,8 +55,9 @@ const App = () => {
               <Route path={ROUTES.SUBMIT_REPORT} element={<SubmitReport />} />
               <Route path={ROUTES.STUDENT_RESEARCH_GROUPS} element={<StudentResearchGroups />} />
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
-              <Route path={ROUTES.REVIEW_TASKS} element={<ReviewTasks />} />
+              <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />
+              <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
             </Route>
           </Route>

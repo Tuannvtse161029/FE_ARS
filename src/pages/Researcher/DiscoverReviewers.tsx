@@ -4,7 +4,7 @@ import { paperService } from '../../services/paper.service';
 import type { Paper } from '../../services/paper.service';
 import { reviewerService, type ReviewerProfile } from '../../services/reviewer.service';
 import { reviewRequestService, type ReviewRequest } from '../../services/reviewRequest.service';
-import styles from './Reviewers.module.css';
+import styles from './DiscoverReviewers.module.css';
 
 // Domain shape used by the UI. Derived from ReviewerProfile + local-only fields
 // (fee, tags, initials, avatar color) until the BE exposes a reviewer endpoint.
@@ -96,7 +96,7 @@ function mapProfileToReviewer(p: ReviewerProfile): Reviewer {
   };
 }
 
-export const Reviewers = () => {
+export const DiscoverReviewers = () => {
   // Navigation & Tabs state
   const [activeTab, setActiveTab] = useState<'discover' | 'requests'>('discover');
   const [screenState, setScreenState] = useState<'list' | 'create-request'>('list');
@@ -853,4 +853,4 @@ export const Reviewers = () => {
   );
 };
 
-export default Reviewers;
+export default DiscoverReviewers;

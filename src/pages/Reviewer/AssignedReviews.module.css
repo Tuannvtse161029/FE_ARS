@@ -19,6 +19,52 @@
 
 .header {
   text-align: left;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.emptyState {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-8) var(--spacing-5);
+  text-align: center;
+  color: #64748b;
+  font-size: var(--font-size-sm);
+  font-style: italic;
 }
 
 .pageTitle {
@@ -171,7 +217,7 @@
 /* Badges row */
 .cardBadges {
   display: flex;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
   flex-wrap: wrap;
   align-items: center;
 }

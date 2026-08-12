@@ -39,7 +39,7 @@ vi.mock('../../components/PdfViewer', () => ({
 
 // ─── ScorecardModal mock ───────────────────────────────────────────────────────
 
-vi.mock('../../pages/Dashboard/components/ScorecardModal', () => ({
+vi.mock('../../pages/Reviewer/components/ScorecardModal', () => ({
   ScorecardModal: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="scorecard-modal">
       Scorecard Modal

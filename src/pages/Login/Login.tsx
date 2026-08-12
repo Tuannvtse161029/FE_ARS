@@ -9,7 +9,8 @@ import { loginSchema, type LoginFormData } from '../../utils/validation';
 import { ROUTES } from '../../utils/constants';
 import styles from './Login.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
-import { Eye, EyeOff, GoogleIcon } from '../../assets/icons';
+import { GoogleIcon } from '../../assets/icons/GoogleIcon';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const { login, isLoading, error } = useAuth();

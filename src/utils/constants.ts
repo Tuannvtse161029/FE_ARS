@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
   PROFESSIONAL_PROFILE: {
     GET_ALL: '/api/ProfessionalProfile',
     GET_BY_ID: (id: number) => `/api/ProfessionalProfile/${id}`,
+    UPDATE: (id: number) => `/api/ProfessionalProfile/${id}`,
   },
   REVIEW_REQUEST: {
     BASE: '/api/ReviewRequest',
@@ -73,6 +74,7 @@ export const ROUTES = {
   PAPERS: '/papers',
   PROFILE: '/profile',
   ACCOUNT_SETTINGS: '/account-settings',
+  ADMIN: '/admin',
 } as const;
 
 export const PAPER_STATUS = {

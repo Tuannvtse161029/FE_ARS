@@ -13,7 +13,7 @@ import {
 import authService from '../../services/auth.service';
 import styles from './ResetPassword.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
-import { Eye, EyeOff } from '../../assets/icons';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface LocationState {
   resetToken?: string;

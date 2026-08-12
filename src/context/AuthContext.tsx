@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const rawRole = response.role ?? '';
       const normalizedRole = rawRole.trim().replace(/\s+/g, ' ').toLowerCase();
       const isAdmin = normalizedRole === 'admin';
-      const landingRoute = isAdmin ? ROUTES.DASHBOARD : ROUTES.FORUM;
+      const landingRoute = isAdmin ? ROUTES.ADMIN : ROUTES.FORUM;
 
       navigate(landingRoute);
     } catch (err: unknown) {

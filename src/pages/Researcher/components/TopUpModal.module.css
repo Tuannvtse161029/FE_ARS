@@ -171,7 +171,7 @@
 .infoAlert {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
   background-color: #eff6ff;
   border: 1px solid #bfdbfe;
   border-radius: var(--radius-lg);

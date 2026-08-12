@@ -172,7 +172,7 @@
   color: #64748b;
   font-size: var(--font-size-sm);
   font-weight: 700;
-  padding: var(--spacing-2.5) var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
   cursor: pointer;
   transition: all var(--transition-fast);
   margin-bottom: -3px;
@@ -321,7 +321,7 @@
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-6);
+  padding: var(--spacing-3) var(--spacing-6);
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;

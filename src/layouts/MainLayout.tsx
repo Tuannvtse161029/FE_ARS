@@ -6,22 +6,24 @@ import type { UserRole } from '../types/auth';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
-// Icons from lucide-react
-import { Search } from '../assets/icons/SearchIcon';
-import { Wallet } from '../assets/icons/WalletIcon';
-import { Bell } from '../assets/icons/BellIcon';
-import { Home } from '../assets/icons/HomeIcon';
-import { MessageSquare as ForumIcon } from '../assets/icons/ForumIcon';
-import { FileText as PapersIcon } from '../assets/icons/PapersIcon';
-import { Users as BrowseReviewersIcon } from '../assets/icons/BrowseReviewersIcon';
-import { Calendar as SeminarIcon } from '../assets/icons/SeminarIcon';
-import { Users as GroupIcon } from '../assets/icons/GroupIcon';
-import { Settings } from '../assets/icons/SettingsIcon';
-import { User } from '../assets/icons/UserIcon';
-import { ChevronDown } from '../assets/icons/ChevronDownIcon';
-import { LogOut } from '../assets/icons/LogOutIcon';
-import { RefreshCw as SwitchIcon } from '../assets/icons/SwitchIcon';
-import { X } from '../assets/icons/XIcon';
+import {
+  Search,
+  Wallet,
+  Bell,
+  Home,
+  MessageSquare as ForumIcon,
+  FileText as PapersIcon,
+  Users as BrowseReviewersIcon,
+  Calendar as SeminarIcon,
+  Users as GroupIcon,
+  Settings,
+  User,
+  ChevronDown,
+  LogOut,
+  RefreshCw as SwitchIcon,
+  X,
+  Check,
+} from 'lucide-react';
 
 const RoleSwitchModal = ({
   isOpen,
@@ -75,9 +77,7 @@ const RoleSwitchModal = ({
                 <span className={styles.roleOptionLabel}>{role.label}</span>
                 {selectedRole === role.value && (
                   <span className={styles.roleOptionCheck}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
+                    <Check size={16} strokeWidth={3} />
                   </span>
                 )}
               </label>

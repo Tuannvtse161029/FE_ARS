@@ -20,6 +20,7 @@ export const ROUTES = {
   PROFILE: '/profile',
   ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
+  ADMIN: '/admin',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

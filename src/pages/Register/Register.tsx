@@ -9,7 +9,7 @@ import { SamplePdfModal } from './components/SamplePdfModal';
 import { RegisterSuccessModal } from './components/RegisterSuccessModal';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
-import { Info } from '../../assets/icons/InfoIcon';
+import { Info } from 'lucide-react';
 
 const ROLE_OPTIONS: UserRole[] = [
   'Researcher',

@@ -166,7 +166,7 @@
 .groupTitleRow {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
 }
 
 .groupName {
@@ -672,7 +672,7 @@
   border: 1.5px solid #cbd5e1;
   color: #475569;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-5);
+  padding: var(--spacing-3) var(--spacing-5);
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
@@ -684,7 +684,7 @@
   border: none;
   color: #ffffff;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) 0;
+  padding: var(--spacing-3) 0;
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
@@ -721,7 +721,7 @@
 .gradeStatusLeft {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
 }
 
 .gradeCheckIcon {
@@ -759,13 +759,13 @@
   padding: var(--spacing-4);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
 }
 
 .lecturerInfoRow {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
 }
 
 .lecturerAvatarCircle {
@@ -861,7 +861,7 @@
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-6);
+  padding: var(--spacing-3) var(--spacing-6);
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;

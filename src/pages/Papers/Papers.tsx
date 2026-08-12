@@ -1,9 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
 import { PdfViewer } from '../../components/PdfViewer';
-import { ScorecardModal } from '../Dashboard/components/ScorecardModal';
+import { ScorecardModal } from '../Reviewer/components/ScorecardModal';
 import { storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { paperService } from '../../services/paper.service';
+import {
+  CheckCircle2,
+  AlertCircle,
+  X,
+  RefreshCw,
+  FileText,
+  Eye,
+  Upload,
+  Plus,
+  Check,
+  Trash2,
+} from 'lucide-react';
 import styles from './Papers.module.css';
 
 interface Paper {
@@ -261,23 +273,13 @@ export const Papers = () => {
       {toastMessage && (
         <div className={`${styles.toast} ${toastMessage.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
           {toastMessage.type === 'success' ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
+            <CheckCircle2 size={16} />
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
+            <AlertCircle size={16} />
           )}
           <span>{toastMessage.text}</span>
           <button className={styles.toastClose} onClick={() => setToastMessage(null)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -323,23 +325,14 @@ export const Papers = () => {
           <div className={styles.sectionHeaderRight}>
             <span className={styles.manuscriptCount}>{filteredPapers.length} manuscripts</span>
             <button className={styles.refreshBtn} onClick={handleRefresh} disabled={isRefreshing}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <RefreshCw
+                size={14}
                 style={{
                   marginRight: '6px',
                   verticalAlign: 'middle',
                   animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
                 }}
-              >
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-              </svg>
+              />
               {isRefreshing ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
@@ -360,10 +353,7 @@ export const Papers = () => {
                 filteredPapers.map((paper) => (
                   <tr key={paper.id}>
                     <td className={styles.manuscriptCell}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.fileIcon}>
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                      </svg>
+                      <FileText size={16} className={styles.fileIcon} />
                       <span className={styles.fileNameText}>{paper.name}</span>
                     </td>
                     <td className={styles.dateCell}>{paper.date}</td>
@@ -382,10 +372,7 @@ export const Papers = () => {
                           }}
                           disabled={!paper.fileUrl}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                          </svg>
+                          <Eye size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                           View
                         </button>
                         {paper.hasNote && (
@@ -393,10 +380,7 @@ export const Papers = () => {
                             className={`${styles.btnActionNote} ${paper.status === 'Accepted' ? styles.btnActionNoteAccept : styles.btnActionNoteReject}`}
                             onClick={() => setSelectedPaperForScorecard(paper.name)}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                            </svg>
+                            <FileText size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                             Reviewer Note
                           </button>
                         )}
@@ -431,11 +415,7 @@ export const Papers = () => {
 
         <div className={styles.uploadZone} onClick={handleUploadClick}>
           <div className={styles.uploadIconWrapper}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
+            <Upload size={32} />
           </div>
           <p className={styles.uploadZoneTitle}>Click to upload or drag & drop</p>
           <p className={styles.uploadZoneSubtitle}>PDF files only · Max 50 MB</p>
@@ -480,10 +460,7 @@ export const Papers = () => {
             <div className={styles.uploadModalHeader}>
               <h3 className={styles.uploadModalTitle}>Upload Paper Preview</h3>
               <button className={styles.closeUploadBtn} data-testid="close-upload-btn" onClick={handleRemovePaper}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                <X size={16} />
               </button>
             </div>
 
@@ -571,10 +548,7 @@ export const Papers = () => {
                       className={styles.addFieldBtn}
                       onClick={() => setShowFieldDropdown(!showFieldDropdown)}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                      </svg>
+                      <Plus size={14} />
                       Add field
                     </button>
                     {showFieldDropdown && (
@@ -591,9 +565,7 @@ export const Papers = () => {
                               }}
                             >
                               {selectedFields.includes(sub) && (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
+                                <Check size={12} strokeWidth={2.5} />
                               )}
                               {sub}
                             </button>
@@ -633,10 +605,7 @@ export const Papers = () => {
             <div className={styles.uploadModalFooter}>
               <div className={styles.uploadFooterLeft}>
                 <button className={styles.deleteBtn} onClick={handleDeleteClick}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
-                  </svg>
+                  <Trash2 size={14} />
                   Delete
                 </button>
               </div>
@@ -649,11 +618,7 @@ export const Papers = () => {
                   onClick={handleUploadPaper}
                   disabled={!paperTitle.trim() || selectedFields.length === 0}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
+                  <Upload size={14} />
                   Upload Paper
                 </button>
               </div>
@@ -667,10 +632,7 @@ export const Papers = () => {
         <div className={styles.popupOverlay}>
           <div className={styles.popupCard}>
             <div className={styles.popupIcon}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-              </svg>
+              <FileText size={32} color="#2563eb" />
             </div>
             <h3 className={styles.popupTitle}>Confirm Upload</h3>
             <p className={styles.popupSubtitle}>Please review your paper details before uploading.</p>
@@ -710,9 +672,7 @@ export const Papers = () => {
                   </>
                 ) : (
                   <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
+                    <Check size={14} />
                     Confirm Upload
                   </>
                 )}
@@ -727,11 +687,7 @@ export const Papers = () => {
         <div className={styles.popupOverlay}>
           <div className={styles.popupCard}>
             <div className={`${styles.popupIcon} ${styles.popupIconDanger}`}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
+              <AlertCircle size={32} color="#ef4444" />
             </div>
             <h3 className={styles.popupTitle}>Remove this paper?</h3>
             <p className={styles.popupSubtitle}>

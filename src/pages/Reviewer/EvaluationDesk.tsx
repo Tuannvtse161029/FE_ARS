@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../routes/paths';
-import { PdfViewer } from '../../../components/PdfViewer';
+import { ROUTES } from '../../routes/paths';
+import { PdfViewer } from '../../components/PdfViewer';
 import styles from './EvaluationDesk.module.css';
 
 export const EvaluationDesk = () => {

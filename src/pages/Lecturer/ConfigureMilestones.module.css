@@ -231,10 +231,10 @@
 .fileRow {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2.5);
+  gap: var(--spacing-3);
   background-color: #f1f5f9;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
 }
 
 .fileName {
@@ -349,7 +349,7 @@
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  padding: var(--spacing-2.5) 0;
+  padding: var(--spacing-3) 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
