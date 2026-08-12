@@ -1,11 +1,11 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://arsplatform.onrender.com';
 
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    REFRESH: '/api/auth/refresh',
-    LOGOUT: '/api/auth/logout',
+    LOGIN: '/api/Auth/login',
+    REGISTER: '/api/Auth/register',
+    VERIFY_EMAIL: '/api/Auth/verify-email',
+    SEND_APPROVAL_EMAIL: '/api/Auth/send-approval-email',
   },
   USER: {
     BASE: '/api/user',
