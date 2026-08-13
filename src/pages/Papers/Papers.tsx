@@ -85,6 +85,7 @@ export const Papers = () => {
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [titleError, setTitleError] = useState(false);
+  const [abstractError, setAbstractError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Word count for abstract
@@ -134,6 +135,20 @@ export const Papers = () => {
   };
 
   const handleConfirmUpload = async () => {
+    const trimmedTitle = paperTitle.trim();
+    const trimmedAbstract = paperAbstract.trim();
+    let hasError = false;
+
+    if (!trimmedTitle) {
+      setTitleError(true);
+      hasError = true;
+    }
+    if (!trimmedAbstract) {
+      setAbstractError(true);
+      hasError = true;
+    }
+    if (hasError) return;
+
     if (!selectedFile || selectedFields.length === 0 || !storage) return;
     setIsUploading(true);
 
@@ -492,6 +507,7 @@ export const Papers = () => {
                       onChange={(e) => {
                         setPaperTitle(e.target.value);
                         if (e.target.value.trim()) setTitleError(false);
+                        setAbstractError(false);
                       }}
                     />
                     {titleError && (
@@ -502,7 +518,7 @@ export const Papers = () => {
                   {/* Abstract textarea (optional, word-limited) */}
                   <div className={styles.paperMetaField}>
                     <label className={styles.paperMetaLabel}>
-                      Abstract <span className={styles.optionalLabel}>(optional)</span>
+                      Abstract <span className={styles.requiredStar}>*</span>
                     </label>
                     <textarea
                       className={styles.paperMetaTextarea}
@@ -513,9 +529,13 @@ export const Papers = () => {
                         if (words <= MAX_ABSTRACT_WORDS) {
                           setPaperAbstract(e.target.value);
                         }
+                        setAbstractError(false);
                       }}
                       rows={4}
                     />
+                    {abstractError && (
+                      <span className={styles.paperMetaError}>Abstract is required.</span>
+                    )}
                     <span className={`${styles.wordCount} ${abstractWordCount > MAX_ABSTRACT_WORDS ? styles.wordCountError : ''}`}>
                       {abstractWordCount} / {MAX_ABSTRACT_WORDS} words
                     </span>

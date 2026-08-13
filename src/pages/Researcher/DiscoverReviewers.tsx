@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { RefreshCw, Wallet, FileText } from 'lucide-react';
 import { TopUpModal } from './components/TopUpModal';
 import { paperService } from '../../services/paper.service';
 import type { Paper } from '../../services/paper.service';
@@ -89,7 +90,7 @@ function mapProfileToReviewer(p: ReviewerProfile): Reviewer {
     hIndex: p.hindex ?? 0,
     publications: p.publicationCount ?? 0,
     reviews: fallback?.reviews ?? 0,
-    fee: fallback?.fee ?? 0,
+    fee: p.reviewFee ?? fallback?.fee ?? 0,
     tags: fallback?.tags ?? [],
     orcid: p.orcidId ?? '',
     specializations: fallback?.specializations ?? [],
@@ -126,7 +127,6 @@ export const DiscoverReviewers = () => {
 
   // Review requests history state — hydrated from BE
   const [requests, setRequests] = useState<ReviewRequest[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState<string | null>(null);
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -166,7 +166,7 @@ export const DiscoverReviewers = () => {
   // Hydrate My Review Requests when the user opens that tab for the first time,
   // or when the tab is re-entered after a successful submission.
   useEffect(() => {
-    if (activeTab === 'requests' && requests.length === 0 && !isLoadingRequests && !isRefreshing) {
+    if (activeTab === 'requests' && requests.length === 0 && !isLoadingRequests) {
       setIsLoadingRequests(true);
       loadRequests();
     }
@@ -268,7 +268,6 @@ export const DiscoverReviewers = () => {
 
   // Hydrate My Review Requests from the BE.
   const loadRequests = async () => {
-    setIsRefreshing(true);
     setRequestsError(null);
     try {
       const list = await reviewRequestService.getAll();
@@ -277,13 +276,8 @@ export const DiscoverReviewers = () => {
       const message = (err as { message?: string })?.message || 'Failed to load review requests.';
       setRequestsError(message);
     } finally {
-      setIsRefreshing(false);
       setIsLoadingRequests(false);
     }
-  };
-
-  const handleRefreshRequests = async () => {
-    await loadRequests();
   };
 
   // Refresh the Discover Reviewers list — re-fetches both papers and reviewer profiles.
@@ -316,21 +310,12 @@ export const DiscoverReviewers = () => {
               disabled={isRefreshingReviewers}
               aria-label="Refresh reviewer list"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <RefreshCw
+                size={14}
                 style={{
                   animation: isRefreshingReviewers ? 'spin 0.8s linear infinite' : 'none',
                 }}
-              >
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-              </svg>
+              />
               {isRefreshingReviewers ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
@@ -374,25 +359,29 @@ export const DiscoverReviewers = () => {
                 </select>
               </div>
 
-              {/* Reviewers Grid */}
-              <div className={styles.reviewersGrid}>
-                {isLoadingReviewers ? (
-                  <div className={styles.emptyReviewersHint}>Loading reviewers…</div>
-                ) : reviewers.length === 0 ? (
-                  <div className={styles.emptyReviewersHint}>
-                    No reviewers available yet. Confirm the seed script has been run.
-                  </div>
-                ) : (
-                  reviewers.map((reviewer) => {
-                  const hasSufficientFunds = walletBalance >= reviewer.fee;
-                  const shortfall = reviewer.fee - walletBalance;
+              {/* Reviewers Grid — hidden until a paper is selected */}
+              {!selectedPaperId ? (
+                <div className={styles.emptyReviewersHint}>
+                  Please select a paper above to discover reviewers.
+                </div>
+              ) : isLoadingReviewers ? (
+                <div className={styles.emptyReviewersHint}>Loading reviewers…</div>
+              ) : reviewers.length === 0 ? (
+                <div className={styles.emptyReviewersHint}>
+                  No reviewers available yet. Confirm the seed script has been run.
+                </div>
+              ) : (
+                <div className={styles.reviewersGrid}>
+                  {reviewers.map((reviewer) => {
+                    const hasSufficientFunds = walletBalance >= reviewer.fee;
+                    const shortfall = reviewer.fee - walletBalance;
 
-                  return (
+                    return (
                     <div key={reviewer.id} className={styles.reviewerCard}>
                       {/* Avatar, name, title */}
                       <div className={styles.reviewerHeader}>
-                        <div 
-                          className={styles.avatarCircle} 
+                        <div
+                          className={styles.avatarCircle}
                           style={{ backgroundColor: reviewer.avatarBg }}
                         >
                           {reviewer.initials}
@@ -434,7 +423,7 @@ export const DiscoverReviewers = () => {
 
                       {/* Action buttons */}
                       {hasSufficientFunds ? (
-                        <button 
+                        <button
                           className={styles.requestReviewBtn}
                           onClick={() => handleRequestClick(reviewer)}
                         >
@@ -442,14 +431,11 @@ export const DiscoverReviewers = () => {
                         </button>
                       ) : (
                         <div className={styles.insufficientContainer}>
-                          <button 
+                          <button
                             className={styles.addFundBtn}
                             onClick={() => setTopUpReviewer(reviewer)}
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
-                              <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                              <line x1="12" y1="20" x2="12" y2="4"></line>
-                            </svg>
+                            <Wallet size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                             Add Fund to Wallet
                           </button>
                           <span className={styles.shortfallText}>
@@ -458,10 +444,10 @@ export const DiscoverReviewers = () => {
                         </div>
                       )}
                     </div>
-                  );
-                })
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -470,26 +456,6 @@ export const DiscoverReviewers = () => {
             <div className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <h3 className={styles.sectionTitle}>My Review Request</h3>
-                <button className={styles.refreshBtn} onClick={handleRefreshRequests} disabled={isRefreshing}>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{
-                      marginRight: '6px',
-                      verticalAlign: 'middle',
-                      animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
-                    }}
-                  >
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-                  </svg>
-                  {isRefreshing ? 'Refreshing…' : 'Refresh'}
-                </button>
               </div>
 
               <div className={styles.tableResponsive}>
@@ -539,20 +505,19 @@ export const DiscoverReviewers = () => {
                         return (
                           <tr key={rowKey}>
                             <td className={styles.manuscriptCell}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.fileIcon}>
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                              </svg>
+                              <FileText size={16} className={styles.fileIcon} />
                               <span className={styles.fileNameText}>{manuscriptTitle}</span>
                             </td>
                             <td className={styles.reviewerCell}>
-                              <div
-                                className={styles.avatarCircleSmall}
-                                style={{ backgroundColor: reviewerAvatarBg }}
-                              >
-                                {reviewerInitials}
+                              <div className={styles.reviewerCellInner}>
+                                <div
+                                  className={styles.avatarCircleSmall}
+                                  style={{ backgroundColor: reviewerAvatarBg }}
+                                >
+                                  {reviewerInitials}
+                                </div>
+                                <span className={styles.reviewerNameText}>{reviewerName}</span>
                               </div>
-                              <span className={styles.reviewerNameText}>{reviewerName}</span>
                             </td>
                             <td className={styles.dateCell}>{dateValue}</td>
                             <td className={styles.feeCell}>{feeValue.toLocaleString('vi-VN')} VND</td>
