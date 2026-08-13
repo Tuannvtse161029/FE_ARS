@@ -38,13 +38,13 @@ export const EvaluationDesk = () => {
   const location = useLocation();
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const reviewRequest = (location.state as { reviewRequest?: { id?: number; paperId?: number } })?.reviewRequest;
+  const reviewRequest = (location.state as { reviewRequest?: { id?: number; paperId?: number; fee?: number } })?.reviewRequest;
   const reviewRequestId = reviewRequest?.id;
 
   const [paper, setPaper] = useState<Paper | null>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<DetailedEvaluation | null>(null);
   const [isLoadingPaper, setIsLoadingPaper] = useState(false);
-  const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
+  const [, setIsLoadingEvaluation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
