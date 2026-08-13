@@ -1,0 +1,78 @@
+---
+description: Use API instead of hardcoding data
+alwaysApply: true
+---
+
+# API-First Data Handling
+
+## Rule
+
+Before hardcoding any data or values, **always check the Swagger API first** to see if the data should be stored/retrieved from the database via API calls.
+
+## Why This Matters
+
+- Hardcoded data stays only on the frontend
+- Data sent via API persists in the database
+- Users expect their data to be saved and available later
+- Hardcoding bypasses the backend entirely
+
+## Checklist Before Hardcoding
+
+Before hardcoding any value, ask:
+
+1. **Does this need to persist?** → If yes, use API (POST to save, GET to retrieve)
+2. **Is this user-generated data?** → Must go through API
+3. **Should other users/sessions see this data?** → Must go through API
+4. **Is this truly static config?** → Hardcoding might be OK
+
+## Flow
+
+```
+❌ BEFORE (Hardcoding)
+User input → Hardcoded value → Lost after reload
+
+✅ AFTER (API-First)
+User input → POST to API → Saved in DB
+             ↓
+             GET from API → Data persists
+```
+
+## Examples
+
+**Situation**: User fills out a form
+
+❌ Bad: Save form data to a local variable/array
+```typescript
+const [users, setUsers] = useState([
+  { id: 1, name: "John" }  // Hardcoded!
+]);
+```
+
+✅ Good: POST to API, then GET from API
+```typescript
+// First POST to save
+await api.post('/users', formData);
+
+// Then GET to display
+const users = await api.get('/users');
+```
+
+**Situation**: Need dropdown options
+
+❌ Bad: `const status = ['Active', 'Inactive'];`
+✅ Good: Check Swagger — if there's a `/statuses` or `/options` endpoint, use that instead
+
+## Always Check Swagger First
+
+When in doubt, check: **https://arsplatform.onrender.com/swagger/index.html**
+
+Look for endpoints that:
+- `POST` — Save data to database
+- `GET` — Retrieve data from database
+- Can handle the type of data you're working with
+
+## Remember
+
+> **Data that needs to persist must flow through the API, not hardcoded values.**
+
+If the API doesn't have the endpoint you need, inform the user so the BE team can add it.

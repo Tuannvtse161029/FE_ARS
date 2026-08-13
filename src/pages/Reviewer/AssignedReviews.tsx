@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import {
+  RefreshCw,
+  FileText,
+  Check,
+  Clock,
+  DollarSign,
+  Lock,
+} from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
 import { useAuthStore } from '../../store/authSlice';
 import { reviewRequestService, type ReviewRequest } from '../../services/reviewRequest.service';
@@ -200,7 +207,13 @@ export const AssignedReviews = () => {
                 <div key={rowKey} className={styles.taskCard}>
                   <div className={styles.cardHeader}>
                     <div className={styles.cardHeaderLeft}>
-                      <span className={styles.docIcon}>{completed ? '✓' : '📄'}</span>
+                      <span className={styles.docIcon}>
+                        {completed ? (
+                          <Check size={18} color="#10b981" />
+                        ) : (
+                          <FileText size={18} color="#2563eb" />
+                        )}
+                      </span>
                       <div className={styles.docMeta}>
                         <h3 className={styles.docTitle}>{paperTitle(req)}</h3>
                         <span className={styles.authorName}>
@@ -213,16 +226,20 @@ export const AssignedReviews = () => {
                     {completed ? (
                       <button
                         className={styles.viewScorecardBtn}
-                        onClick={() => navigate(ROUTES.EVALUATION)}
+                        onClick={() =>
+                          navigate(ROUTES.EVALUATION, { state: { reviewRequest: req } })
+                        }
                       >
                         View Scorecard
                       </button>
                     ) : (
                       <button
                         className={styles.evaluateBtn}
-                        onClick={() => navigate(ROUTES.EVALUATION)}
+                        onClick={() =>
+                          navigate(ROUTES.EVALUATION, { state: { reviewRequest: req } })
+                        }
                       >
-                        ✓ Evaluate Paper
+                        <Check size={13} style={{ verticalAlign: 'middle' }} /> Evaluate Paper
                       </button>
                     )}
                   </div>
@@ -233,15 +250,21 @@ export const AssignedReviews = () => {
                           deadline.tone === 'orange' ? styles.deadlineOrange : styles.deadlineGray
                         }
                       >
-                        🕒 {deadline.text}
+                        <Clock size={12} style={{ verticalAlign: 'middle' }} /> {deadline.text}
                       </span>
                     ) : (
-                      <span className={styles.deadlineGray}>🕒 No deadline set</span>
+                      <span className={styles.deadlineGray}>
+                        <Clock size={12} style={{ verticalAlign: 'middle' }} /> No deadline set
+                      </span>
                     )}
                     {completed ? (
-                      <span className={styles.feeReleased}>💰 {feeText} Released</span>
+                      <span className={styles.feeReleased}>
+                        <DollarSign size={12} style={{ verticalAlign: 'middle' }} /> {feeText} Released
+                      </span>
                     ) : (
-                      <span className={styles.feeLocked}>🔒 {feeText} (Escrow Locked)</span>
+                      <span className={styles.feeLocked}>
+                        <Lock size={12} style={{ verticalAlign: 'middle' }} /> {feeText} (Escrow Locked)
+                      </span>
                     )}
                   </div>
                 </div>

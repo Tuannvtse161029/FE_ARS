@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Wallet, FileText } from 'lucide-react';
+import {
+  RefreshCw,
+  Wallet,
+  FileText,
+  Circle,
+  Link,
+  Clock,
+  AlertTriangle,
+  X,
+  Shield,
+  Check,
+} from 'lucide-react';
 import { TopUpModal } from './components/TopUpModal';
 import { paperService } from '../../services/paper.service';
 import type { Paper } from '../../services/paper.service';
@@ -523,7 +534,7 @@ export const DiscoverReviewers = () => {
                             <td className={styles.feeCell}>{feeValue.toLocaleString('vi-VN')} VND</td>
                             <td>
                               <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>
-                                ● {status}
+                                <Circle size={8} fill="currentColor" style={{ verticalAlign: 'middle' }} /> {status}
                               </span>
                             </td>
                             <td>
@@ -619,7 +630,7 @@ export const DiscoverReviewers = () => {
 
               {/* ORCID Banner (Blue-grey styling matching Frame 1) */}
               <div className={styles.orcidBanner}>
-                <span className={styles.orcidIcon}>🔗</span>
+                <span className={styles.orcidIcon}><Link size={16} /></span>
                 <span className={styles.orcidLabel}>ORCID:</span>
                 <span className={styles.orcidVal}>{selectedReviewer.orcid}</span>
               </div>
@@ -666,7 +677,7 @@ export const DiscoverReviewers = () => {
 
               {/* Estimated completion alert banner */}
               <div className={styles.estimateBanner}>
-                <span className={styles.infoIcon}>🕒</span>
+                <span className={styles.infoIcon}><Clock size={16} /></span>
                 <div className={styles.estimateTextWrapper}>
                   <span className={styles.estimateTitle}>Estimated Completion: 7 Days</span>
                 </div>
@@ -678,7 +689,7 @@ export const DiscoverReviewers = () => {
           {/* Submit error banner — only renders when handleProceedToPayment failed */}
           {submitError && (
             <div className={styles.submitErrorBanner} role="alert">
-              <span className={styles.submitErrorIcon} aria-hidden="true">⚠️</span>
+              <span className={styles.submitErrorIcon} aria-hidden="true"><AlertTriangle size={16} /></span>
               <span className={styles.submitErrorText}>{submitError}</span>
               <button
                 type="button"
@@ -686,7 +697,7 @@ export const DiscoverReviewers = () => {
                 onClick={() => setSubmitError(null)}
                 aria-label="Dismiss error"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
           )}
@@ -694,7 +705,7 @@ export const DiscoverReviewers = () => {
           {/* Escrow Policy block — researcher must accept before proceeding */}
           <div className={styles.policyCard}>
             <div className={styles.policyHeader}>
-              <span className={styles.policyShieldIcon} aria-hidden="true">🛡️</span>
+              <span className={styles.policyShieldIcon} aria-hidden="true"><Shield size={18} /></span>
               <span className={styles.policyHeaderTitle}>Escrow &amp; Refund Policy</span>
             </div>
 
@@ -737,7 +748,7 @@ export const DiscoverReviewers = () => {
           {/* Bottom Confirmation status bar */}
           <div className={styles.confirmationStatusBar}>
             <span className={styles.confirmationText}>
-              ✓ Review request will be sent to {selectedReviewer.name} upon confirmation
+              <Check size={14} style={{ verticalAlign: 'middle' }} /> Review request will be sent to {selectedReviewer.name} upon confirmation
             </span>
             <div className={styles.confirmationActions}>
               <button
@@ -748,7 +759,7 @@ export const DiscoverReviewers = () => {
                   setAcceptedPolicy(false);
                 }}
               >
-                ✕ Cancel
+                <X size={13} style={{ verticalAlign: 'middle' }} /> Cancel
               </button>
               <button
                 className={styles.formConfirmBtn}
@@ -778,7 +789,7 @@ export const DiscoverReviewers = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.successModalCard}>
             <div className={styles.successIconWrapper}>
-              <span className={styles.successCheckIcon}>✓</span>
+              <span className={styles.successCheckIcon}><Check size={28} strokeWidth={3} /></span>
             </div>
             <h3 className={styles.successTitle}>Review Request Submitted Successfully!</h3>
             <p className={styles.successDescription}>

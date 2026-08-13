@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       authStore.login(
         {
-          id: 0,
+          id: response.userId ?? 0,
           username: response.username,
           email: response.email,
           fullName: response.username,

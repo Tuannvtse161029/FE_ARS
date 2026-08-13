@@ -21,3 +21,21 @@ All FE development should reference this Swagger documentation when:
 - Creating API service files
 - Defining TypeScript interfaces/types for API payloads
 - Understanding which endpoints to call
+
+## Database Schema Reference
+
+The production database schema is documented at:
+
+**`docs/local-only/erd-schema-reference.md`**
+
+This file contains the full ERD analysis with all 28 tables, their columns, types, and foreign key relationships.
+
+## Critical: Cross-Reference Both Sources
+
+**The Swagger docs and the database schema are NOT always in sync.** The DB may have fields/tables that Swagger hasn't caught up with yet, and Swagger may expose endpoints that haven't been fully reflected in the DB. When implementing API features:
+
+1. **First**, check `docs/local-only/erd-schema-reference.md` to understand the underlying data model
+2. **Second**, check the Swagger docs at the link above to understand the API contract
+3. **If they conflict or differ**, use the database schema as the source of truth for what data exists — but follow the Swagger contract for API calls (unless the user confirms otherwise)
+
+Always tell the user if you notice discrepancies between Swagger and the DB schema.

@@ -677,6 +677,11 @@
   font-weight: 700;
 }
 
+.orcidIcon {
+  display: flex;
+  align-items: center;
+}
+
 /* Manuscript submission fields card (right) */
 .formFieldsCard {
   background-color: #ffffff;
@@ -777,6 +782,12 @@
   gap: var(--spacing-2.5);
   font-size: var(--font-size-sm);
   height: 48px;
+}
+
+.infoIcon {
+  display: flex;
+  align-items: center;
+  color: #1d4ed8;
 }
 
 .estimateTextWrapper {
@@ -1137,8 +1148,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-3xl);
-  font-weight: 700;
+}
+
+.successCheckIcon {
+  display: flex;
+  align-items: center;
 }
 
 .successTitle {
@@ -1233,7 +1247,8 @@
 }
 
 .policyShieldIcon {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
 }
 
 .policyHeaderTitle {
@@ -1294,8 +1309,8 @@
 }
 
 .submitErrorIcon {
-  font-size: 18px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
 }
 
 .submitErrorText {
@@ -1313,6 +1328,8 @@
   font-size: 14px;
   padding: 2px 6px;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
 }
 
 .submitErrorDismiss:hover {

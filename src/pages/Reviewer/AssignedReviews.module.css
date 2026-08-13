@@ -154,8 +154,8 @@
 }
 
 .docIcon {
-  font-size: 1.5rem;
-  color: #2563eb;
+  display: flex;
+  align-items: center;
 }
 
 .docMeta {

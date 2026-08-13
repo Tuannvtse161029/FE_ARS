@@ -1,4 +1,12 @@
 import { useState } from 'react';
+import {
+  Shield,
+  Building2,
+  Check,
+  X,
+  Eye,
+  AlertTriangle,
+} from 'lucide-react';
 import styles from './EarningsWallet.module.css';
 
 interface WithdrawalRequest {
@@ -187,10 +195,14 @@ export const EarningsWallet = () => {
                   <td className={styles.amountText}>{req.amount.toLocaleString('vi-VN')} VND</td>
                   <td>
                     {req.status === 'Accepted' && (
-                      <span className={styles.statusAccepted}>● Accepted</span>
+                      <span className={styles.statusAccepted}>
+                        <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Accepted
+                      </span>
                     )}
                     {req.status === 'Rejected' && (
-                      <span className={styles.statusRejected}>● Rejected</span>
+                      <span className={styles.statusRejected}>
+                        <X size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Rejected
+                      </span>
                     )}
                     {req.status === 'Pending' && (
                       <span className={styles.statusPending}>● Pending</span>
@@ -198,18 +210,18 @@ export const EarningsWallet = () => {
                   </td>
                   <td>
                     {req.status === 'Rejected' ? (
-                      <button 
+                      <button
                         className={styles.viewReasonBtn}
                         onClick={() => handleOpenRejectReason(req)}
                       >
-                        🛡️ View Reason
+                        <Shield size={13} style={{ verticalAlign: 'middle' }} /> View Reason
                       </button>
                     ) : (
-                      <button 
+                      <button
                         className={styles.viewBtn}
                         onClick={() => alert(`Details for request ${req.id}`)}
                       >
-                        👁️ View
+                        <Eye size={13} style={{ verticalAlign: 'middle' }} /> View
                       </button>
                     )}
                   </td>
@@ -226,13 +238,17 @@ export const EarningsWallet = () => {
           <div className={styles.rejectModalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.warningShieldIcon}>🛡️</span>
+                <span className={styles.warningShieldIcon}>
+                  <AlertTriangle size={24} color="#e53e3e" />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Request Rejection Notice</h3>
                   <span className={styles.modalSubtitle}>Admin review decision for {selectedRequest.id}</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowRejectModal(false)}>×</button>
+              <button className={styles.closeBtn} onClick={() => setShowRejectModal(false)}>
+                <X size={18} />
+              </button>
             </div>
 
             {/* Request Summary table */}
@@ -287,13 +303,17 @@ export const EarningsWallet = () => {
           <div className={styles.createModalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.withdrawalIcon}>🏦</span>
+                <span className={styles.withdrawalIcon}>
+                  <Building2 size={24} color="#2563eb" />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Submit Withdrawal Request</h3>
                   <span className={styles.modalSubtitle}>Transfer unlocked earnings to your bank account</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)}>×</button>
+              <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)}>
+                <X size={18} />
+              </button>
             </div>
 
             {/* Internal Metric Bar */}
@@ -336,12 +356,12 @@ export const EarningsWallet = () => {
                 {/* Account holder verification card */}
                 {isAccountVerified && (
                   <div className={styles.verificationCard}>
-                    <span className={styles.verifyIcon}>✓</span>
+                    <span className={styles.verifyIcon}><Check size={16} color="#099268" /></span>
                     <div className={styles.verifyMeta}>
                       <span className={styles.verifyTitle}>ACCOUNT HOLDER VERIFIED</span>
                       <span className={styles.verifyName}>NGUYEN VAN A</span>
                     </div>
-                    <span className={styles.confirmedBadge}>✓ Confirmed</span>
+                    <span className={styles.confirmedBadge}><Check size={11} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Confirmed</span>
                   </div>
                 )}
               </div>
@@ -385,7 +405,7 @@ export const EarningsWallet = () => {
                   Cancel
                 </button>
                 <button type="submit" className={styles.modalSubmitBtn}>
-                  ✈️ Submit Cash-Out Request
+                  Send Request
                 </button>
               </div>
             </form>

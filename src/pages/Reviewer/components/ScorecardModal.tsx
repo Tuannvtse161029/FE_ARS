@@ -1,3 +1,7 @@
+import {
+  Check,
+  X,
+} from 'lucide-react';
 import styles from './ScorecardModal.module.css';
 
 interface CriteriaItem {
@@ -116,9 +120,17 @@ export const ScorecardModal = ({ isOpen, onClose, fileName }: ScorecardModalProp
           </div>
           <div className={styles.headerActions}>
             <span className={`${styles.badge} ${data.decision === 'Accept' ? styles.badgeAccept : styles.badgeReject}`}>
-              {data.decision === 'Accept' ? '✓ Accept' : '✕ Reject'}
+              {data.decision === 'Accept' ? (
+                <>
+                  <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Accept
+                </>
+              ) : (
+                <>
+                  <X size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Reject
+                </>
+              )}
             </span>
-            <button className={styles.closeBtn} onClick={onClose}>&times;</button>
+            <button className={styles.closeBtn} onClick={onClose}><X size={18} /></button>
           </div>
         </div>
 

@@ -1,0 +1,40 @@
+---
+description: Project context for the ARS Academic Research Sharing platform
+alwaysApply: true
+---
+
+# ARS (Academic Research Sharing) Platform — Project Overview
+
+## Technology Stack
+
+- **Frontend:** React, TypeScript, Vite, CSS Modules, Axios
+- **Backend:** RESTful API (.NET)
+- **Database:** MySQL (relational storage for metadata, user accounts, transactions)
+- **File Storage:** Firebase Cloud Storage (PDFs — manuscripts, verification dossiers, assignments, annotated reviews)
+- **Auth:** Custom JWT authentication, managed by backend, stored in MySQL
+
+## User Roles
+
+| Role | Type | Notes |
+|---|---|---|
+| **System Admin** | Fixed | System oversight, user moderation, payout clearance, audit trails |
+| **Lecturer** | Acquirable | Research group creation, student supervision, topic assignment, grading |
+| **Researcher** | Acquirable | Manuscript submission, tracking review pipeline, revising papers |
+| **Reviewer** | Acquirable | Peer-review evaluation, report writing, earning fees, withdrawals |
+| **Graduate Student** | Fixed (base) | Join research groups, upload assignment PDFs, receive feedback |
+
+### Role Rules
+
+- **Graduate Student is a base tier** — cannot request additional roles, others cannot downgrade to it
+- **Multi-role compatibility:** Researcher, Reviewer, and Lecturer can be held simultaneously
+- **Role expansion** requires admin approval with proof (DOI links, PDFs, etc.)
+
+## Core Workflows
+
+1. **Submission Pipeline:** Researcher uploads PDF to Firebase → URL stored in MySQL → "Waiting for Review"
+2. **Peer Review:** Reviewers get assignments, inspect PDFs, submit decisions (Accept / Reject / Request Revision)
+3. **Wallet & Payouts:** Reviewers earn fees → in-app wallet balance → withdrawal to local bank
+4. **Research Groups:** Lecturer creates group → invites students → assigns topics with due dates
+5. **Student Submissions:** Graduate students upload PDFs → lecturers grade and attach annotated feedback
+6. **Subscription Management:** CRUD for platform premium packages per role
+7. **Audit & Compliance:** Activity logs with date range filters and CSV export

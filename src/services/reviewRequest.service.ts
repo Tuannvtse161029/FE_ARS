@@ -5,6 +5,9 @@ import { API_ENDPOINTS } from '../utils/constants';
 // (only "200: OK" is declared), so we model all known fields from the create
 // request schema plus the obvious server-managed fields. Anything the BE doesn't
 // return will simply be `undefined` — handlers should fall back gracefully.
+//
+// NOTE: The BE returns `reviewRequestId` (not `id`). This is normalized to `id`
+// in the mapped response so downstream code can use `r.id` consistently.
 export interface ReviewRequest {
   id?: number;
   paperId?: number | null;
@@ -35,7 +38,12 @@ export const reviewRequestService = {
   // GET /api/ReviewRequest — returns a raw array per the user's confirmed shape.
   getAll: async (): Promise<ReviewRequest[]> => {
     const response = await api.get<ReviewRequest[]>(API_ENDPOINTS.REVIEW_REQUEST.GET_ALL);
-    return Array.isArray(response.data) ? response.data : [];
+    const raw: any[] = Array.isArray(response.data) ? response.data : [];
+    // Normalize BE field name `reviewRequestId` → `id` so callers can use `r.id`
+    return raw.map((item) => ({
+      ...item,
+      id: item.reviewRequestId ?? item.id,
+    }));
   },
 
   getById: async (id: number): Promise<ReviewRequest> => {

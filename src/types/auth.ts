@@ -30,6 +30,7 @@ export interface AuthResponse {
   username: string;
   email: string;
   role: string;
+  userId?: number;
 }
 
 export interface User {

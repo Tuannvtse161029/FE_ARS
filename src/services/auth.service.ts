@@ -38,11 +38,18 @@ export const authService = {
         data?.user?.roleName ||
         'Researcher';
 
+      const userId =
+        data?.userId ??
+        data?.user?.userId ??
+        data?.user?.id ??
+        undefined;
+
       return {
         token,
         username,
         email,
         role,
+        userId,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);

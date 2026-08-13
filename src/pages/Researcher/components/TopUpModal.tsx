@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { QrCode } from 'lucide-react';
+import { CreditCard, Info, X } from 'lucide-react';
 import styles from './TopUpModal.module.css';
 
 interface TopUpModalProps {
@@ -44,10 +45,10 @@ export const TopUpModal = ({
         {/* Header */}
         <div className={styles.modalHeader}>
           <div className={styles.titleWrapper}>
-            <span className={styles.walletIcon}>💳</span>
+            <span className={styles.walletIcon}><CreditCard size={24} /></span>
             <h3 className={styles.modalTitle}>Top Up Wallet</h3>
           </div>
-          <button className={styles.closeBtn} onClick={onClose}>&times;</button>
+          <button className={styles.closeBtn} onClick={onClose}><X size={18} /></button>
         </div>
 
         {/* Shortfall warning banner */}
@@ -96,7 +97,7 @@ export const TopUpModal = ({
 
           {/* Info Alert Box */}
           <div className={styles.infoAlert}>
-            <span className={styles.infoIcon}>ℹ</span>
+            <span className={styles.infoIcon}><Info size={16} /></span>
             <p className={styles.infoText}>
               Funds will be added via VNPay and automatically applied to your review request for {reviewerName}.
             </p>

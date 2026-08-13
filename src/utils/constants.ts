@@ -46,6 +46,11 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/ReviewRequest/${id}`,
     DELETE: (id: number) => `/api/ReviewRequest/${id}`,
   },
+  DETAILED_EVALUATION: {
+    GET_ALL: '/api/DetailedEvaluation',
+    GET_BY_ID: (id: number) => `/api/DetailedEvaluation/${id}`,
+    UPDATE: (id: number) => `/api/DetailedEvaluation/${id}`,
+  },
 } as const;
 
 export const STORAGE_KEYS = {
