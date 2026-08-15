@@ -42,6 +42,19 @@ async function fetchViaFirebaseStorage(url: string): Promise<Blob> {
   return await response.blob();
 }
 
+/** True when `url` is already a resolved Firebase download URL (full HTTPS with alt=media). */
+function isFirebaseDownloadUrl(url: string): boolean {
+  return url.includes('firebasestorage.googleapis.com') && url.includes('alt=media');
+}
+
+async function fetchBlobFromUrl(url: string): Promise<ArrayBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+  }
+  return response.arrayBuffer();
+}
+
 export const PdfViewer = ({
   url,
   currentPage: _currentPage,
@@ -175,10 +188,18 @@ export const PdfViewer = ({
         let source: string | { data: ArrayBuffer };
 
         if (typeof url === 'string') {
-          if (url.includes('firebasestorage.googleapis.com')) {
+          if (isFirebaseDownloadUrl(url)) {
+            // Already a resolved Firebase download URL — fetch it directly
+            source = { data: await fetchBlobFromUrl(url) };
+          } else if (
+            storage &&
+            url.includes('firebasestorage.googleapis.com')
+          ) {
+            // Firebase storage path — resolve via Firebase SDK then fetch
             const blob = await fetchViaFirebaseStorage(url);
             source = { data: await blob.arrayBuffer() };
           } else {
+            // Absolute URL or relative path — pass directly to pdf.js
             source = url;
           }
         } else {
@@ -207,7 +228,9 @@ export const PdfViewer = ({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load PDF');
+          setError(err instanceof Error ? err.message : 'Failed to load PDF document.');
+        } else {
+          setError(`Failed to load PDF: the URL may be invalid or inaccessible. (URL: ${url})`);
         }
       } finally {
         if (!cancelled) setLoading(false);

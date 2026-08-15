@@ -497,14 +497,20 @@ export const DiscoverReviewers = () => {
                     ) : requests.length > 0 ? (
                       requests.map((req) => {
                         const manuscriptTitle =
-                          req.paperTitle ??
-                          (req.paperId != null ? paperTitleById.get(req.paperId) : undefined) ??
-                          `Paper #${req.paperId ?? '—'}`;
+                          req.paperTitle && req.paperTitle.trim()
+                            ? req.paperTitle
+                            : req.paperId != null
+                              ? (paperTitleById.get(req.paperId) ?? `Paper #${req.paperId}`)
+                              : 'Manuscript details unavailable';
                         const reviewerInfo =
                           req.reviewerId != null
                             ? reviewerNameByUserId.get(req.reviewerId)
                             : undefined;
-                        const reviewerName = req.reviewerName ?? reviewerInfo?.name ?? `Reviewer #${req.reviewerId ?? '—'}`;
+                        const reviewerName = req.reviewerName?.trim()
+                          ? req.reviewerName
+                          : req.reviewerId != null
+                            ? (reviewerInfo?.name ?? `Reviewer #${req.reviewerId}`)
+                            : 'Reviewer details unavailable';
                         const reviewerInitials = reviewerInfo?.initials ?? initialsFromName(reviewerName);
                         const reviewerAvatarBg = reviewerInfo?.avatarBg ?? '#1D2A4A';
                         const feeValue = req.fee ?? 0;

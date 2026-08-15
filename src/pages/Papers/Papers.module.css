@@ -263,6 +263,35 @@
   background-color: #fce7f3;
 }
 
+.btnActionDelete {
+  display: inline-flex;
+  align-items: center;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: var(--radius-md);
+  padding: 5px var(--spacing-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btnActionDelete:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.btnActionDelete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinningIcon {
+  animation: spin 0.7s linear infinite;
+}
+
 /* Upload Section */
 .uploadSectionTitle {
   font-size: 1.05rem;

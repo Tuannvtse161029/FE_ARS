@@ -15,6 +15,7 @@ import {
   Plus,
   Check,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import styles from './Papers.module.css';
 
@@ -58,6 +59,8 @@ export const Papers = () => {
   // Modal States
   const [selectedPaperForScorecard, setSelectedPaperForScorecard] = useState<string | null>(null);
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [paperToDelete, setPaperToDelete] = useState<Paper | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Active filter tab state
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'accepted' | 'rejected' | 'draft'>('all');
@@ -217,6 +220,33 @@ export const Papers = () => {
     setTitleError(false);
     setUploadPhase('idle');
     setShowFieldDropdown(false);
+  };
+
+  const handleDeleteTablePaper = (paper: Paper) => {
+    setPaperToDelete(paper);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!paperToDelete) return;
+    setIsDeleting(true);
+    try {
+      await paperService.delete(paperToDelete.id);
+      setPapers((prev) => prev.filter((p) => p.id !== paperToDelete.id));
+      setToastMessage({ text: 'Paper deleted successfully', type: 'success' });
+    } catch (err) {
+      console.error('Failed to delete paper:', err);
+      setToastMessage({
+        text: `Failed to delete paper: ${(err as Error)?.message ?? 'Unknown error'}`,
+        type: 'error',
+      });
+    } finally {
+      setIsDeleting(false);
+      setPaperToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setPaperToDelete(null);
   };
 
   const handleCancelPopup = () => {
@@ -390,7 +420,7 @@ export const Papers = () => {
                           <Eye size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                           View
                         </button>
-                        {paper.hasNote && (
+                        {paper.status !== 'Waiting for Review' && (
                           <button
                             className={`${styles.btnActionNote} ${paper.status === 'Accepted' ? styles.btnActionNoteAccept : styles.btnActionNoteReject}`}
                             onClick={() => setSelectedPaperForScorecard(paper.name)}
@@ -399,6 +429,14 @@ export const Papers = () => {
                             Reviewer Note
                           </button>
                         )}
+                        <button
+                          className={styles.btnActionDelete}
+                          onClick={() => handleDeleteTablePaper(paper)}
+                          title={`Delete "${paper.name}"`}
+                        >
+                          <Trash2 size={12} style={{ verticalAlign: 'middle' }} />
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -702,23 +740,42 @@ export const Papers = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Popup */}
-      {uploadPhase === 'delete' && (
+      {/* Delete Confirmation Modal */}
+      {paperToDelete && (
         <div className={styles.popupOverlay}>
           <div className={styles.popupCard}>
             <div className={`${styles.popupIcon} ${styles.popupIconDanger}`}>
               <AlertCircle size={32} color="#ef4444" />
             </div>
-            <h3 className={styles.popupTitle}>Remove this paper?</h3>
+            <h3 className={styles.popupTitle}>Delete Paper?</h3>
             <p className={styles.popupSubtitle}>
-              You are about to discard <strong>{selectedFile?.name}</strong>. This action cannot be undone.
+              Are you sure you want to delete <strong>"{paperToDelete.name}"</strong>?
+              This action cannot be undone.
             </p>
             <div className={styles.popupActions}>
-              <button className={styles.popupCancelBtn} onClick={handleCancelPopup}>
+              <button
+                className={styles.popupCancelBtn}
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
                 Cancel
               </button>
-              <button className={styles.popupDangerBtn} onClick={handleRemovePaper}>
-                Yes, Remove
+              <button
+                className={styles.popupDangerBtn}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={14} className={styles.spinningIcon} />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Delete Paper
+                  </>
+                )}
               </button>
             </div>
           </div>

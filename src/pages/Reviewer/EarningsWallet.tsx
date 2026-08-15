@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Shield,
   Building2,
@@ -6,65 +6,58 @@ import {
   X,
   Eye,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import styles from './EarningsWallet.module.css';
-
-interface WithdrawalRequest {
-  id: string;
-  date: string;
-  bank: string;
-  account: string;
-  amount: number;
-  status: 'Accepted' | 'Rejected' | 'Pending';
-}
+import { withdrawalService, WithdrawalRequest } from '../../services/withdrawal.service';
+import { WithdrawalSuccessModal } from './components/WithdrawalSuccessModal';
 
 export const EarningsWallet = () => {
   // Available balance state loaded from localStorage
-  const [unlockedBalance, setUnlockedBalance] = useState(() => {
+  const [unlockedBalance] = useState(() => {
     const saved = localStorage.getItem('ars_reviewer_balance');
     return saved ? parseInt(saved, 10) : 4200000;
   });
 
   const pendingHolds = 500000;
 
-  // Requests list
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([
-    {
-      id: '#WR-2026-001',
-      date: '2026-06-15',
-      bank: 'Vietcombank',
-      account: '101299482103',
-      amount: 1000000,
-      status: 'Accepted',
-    },
-    {
-      id: '#WR-2026-054',
-      date: '2026-05-10',
-      bank: 'BIDV',
-      account: '31410001284',
-      amount: 3000000,
-      status: 'Rejected',
-    },
-    {
-      id: '#WR-2026-092',
-      date: '2026-07-20',
-      bank: 'MB Bank',
-      account: '9990128472',
-      amount: 500000,
-      status: 'Pending',
-    },
-  ]);
+  // Requests list — loaded from API
+  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Modals visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successRequestId, setSuccessRequestId] = useState<string>('');
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
   // Form states inside modal
   const [targetBank, setTargetBank] = useState('Vietcombank (VCB)');
   const [accountNumber, setAccountNumber] = useState('101299482103');
-  const [withdrawalAmount, setWithdrawalAmount] = useState('2000000');
+  const [accountName, setAccountName] = useState('');
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [narrative, setNarrative] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await withdrawalService.getAll();
+      setRequests(data);
+    } catch (err) {
+      setError('Failed to load withdrawal requests. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
   const handleOpenRejectReason = (req: WithdrawalRequest) => {
     setSelectedRequest(req);
@@ -72,15 +65,15 @@ export const EarningsWallet = () => {
   };
 
   const handleOpenCreateModal = () => {
-    // Reset form
     setTargetBank('Vietcombank (VCB)');
     setAccountNumber('101299482103');
-    setWithdrawalAmount('2000000');
+    setAccountName('');
+    setWithdrawalAmount('');
     setNarrative('');
     setShowCreateModal(true);
   };
 
-  const handleCreateWithdrawal = (e: React.FormEvent) => {
+  const handleCreateWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseInt(withdrawalAmount, 10);
     if (isNaN(amount) || amount <= 0) {
@@ -92,36 +85,37 @@ export const EarningsWallet = () => {
       return;
     }
 
-    // Deduct balances
-    const newBalance = unlockedBalance - amount;
-    setUnlockedBalance(newBalance);
-    localStorage.setItem('ars_reviewer_balance', newBalance.toString());
+    setSubmitting(true);
+    try {
+      const result = await withdrawalService.create({
+        bankName: targetBank,
+        accountNumber,
+        accountName,
+        amount,
+        note: narrative,
+      });
 
-    // Deduct Header wallet balance as well
-    const headerWallet = localStorage.getItem('ars_wallet');
-    const newHeaderWallet = (headerWallet ? parseInt(headerWallet, 10) : 1500000) - amount;
-    localStorage.setItem('ars_wallet', newHeaderWallet.toString());
+      const returnedId = result.id ?? result.withdrawalRequestId;
+      const displayId = returnedId ? `#WR-${String(returnedId).padStart(6, '0')}` : `#WR-${Date.now()}`;
+      setSuccessRequestId(displayId);
 
-    // Dispatch event to sync wallet
-    window.dispatchEvent(new Event('wallet-update'));
-
-    // Add new pending request
-    const newId = `#WR-2026-${Math.floor(100 + Math.random() * 900)}`;
-    const today = new Date().toISOString().slice(0, 10);
-    const newReq: WithdrawalRequest = {
-      id: newId,
-      date: today,
-      bank: targetBank.split(' ')[0], // Extract initials
-      account: accountNumber,
-      amount: amount,
-      status: 'Pending',
-    };
-
-    setRequests([newReq, ...requests]);
-    setShowCreateModal(false);
+      await fetchRequests();
+      setShowCreateModal(false);
+      setShowSuccessModal(true);
+    } catch (err) {
+      alert('Failed to submit withdrawal request. Please try again.');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isAccountVerified = accountNumber === '101299482103';
+
+  const formatId = (req: WithdrawalRequest) => {
+    const raw = req.id ?? req.withdrawalRequestId;
+    return raw ? `#WR-${String(raw).padStart(6, '0')}` : '#WR-——';
+  };
 
   return (
     <div className={styles.walletPage}>
@@ -138,15 +132,25 @@ export const EarningsWallet = () => {
             Manage your bank cash-out requests and track approval status.
           </p>
         </div>
-        <button className={styles.createRequestBtn} onClick={handleOpenCreateModal}>
-          ＋ Create New Request
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.refreshBtn}
+            onClick={fetchRequests}
+            disabled={loading}
+            title="Refresh"
+          >
+            <RefreshCw size={15} className={loading ? styles.spinning : ''} />
+          </button>
+          <button className={styles.createRequestBtn} onClick={handleOpenCreateModal}>
+            ＋ Create New Request
+          </button>
+        </div>
       </div>
 
       {/* Section 1: Earnings Metrics Card */}
       <div className={styles.metricsCard}>
         <h3 className={styles.sectionTitle}>ACCOUNT EARNINGS METRICS</h3>
-        
+
         <div className={styles.metricsGrid}>
           <div className={styles.metricBlock}>
             <span className={styles.metricLabel}>Fully Unlocked Balance</span>
@@ -172,64 +176,89 @@ export const EarningsWallet = () => {
 
       {/* Section 2: Requests History Table */}
       <div className={styles.tableCard}>
-        <div className={styles.tableResponsive}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>REQUEST ID</th>
-                <th>SUBMISSION DATE</th>
-                <th>BANK NAME</th>
-                <th>ACCOUNT NUMBER</th>
-                <th>AMOUNT (VND)</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((req) => (
-                <tr key={req.id}>
-                  <td className={styles.requestIdText}>{req.id}</td>
-                  <td>{req.date}</td>
-                  <td className={styles.bankNameText}>{req.bank}</td>
-                  <td>{req.account}</td>
-                  <td className={styles.amountText}>{req.amount.toLocaleString('vi-VN')} VND</td>
-                  <td>
-                    {req.status === 'Accepted' && (
-                      <span className={styles.statusAccepted}>
-                        <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Accepted
-                      </span>
-                    )}
-                    {req.status === 'Rejected' && (
-                      <span className={styles.statusRejected}>
-                        <X size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Rejected
-                      </span>
-                    )}
-                    {req.status === 'Pending' && (
-                      <span className={styles.statusPending}>● Pending</span>
-                    )}
-                  </td>
-                  <td>
-                    {req.status === 'Rejected' ? (
-                      <button
-                        className={styles.viewReasonBtn}
-                        onClick={() => handleOpenRejectReason(req)}
-                      >
-                        <Shield size={13} style={{ verticalAlign: 'middle' }} /> View Reason
-                      </button>
-                    ) : (
-                      <button
-                        className={styles.viewBtn}
-                        onClick={() => alert(`Details for request ${req.id}`)}
-                      >
-                        <Eye size={13} style={{ verticalAlign: 'middle' }} /> View
-                      </button>
-                    )}
-                  </td>
+        {loading && requests.length === 0 ? (
+          <div className={styles.loadingState}>
+            <RefreshCw size={20} className={styles.spinning} />
+            <span>Loading withdrawal requests...</span>
+          </div>
+        ) : error ? (
+          <div className={styles.errorState}>
+            <AlertTriangle size={20} color="#ef4444" />
+            <span>{error}</span>
+            <button className={styles.retryBtn} onClick={fetchRequests}>
+              Retry
+            </button>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Building2 size={32} color="#94a3b8" />
+            <span>No withdrawal requests found.</span>
+            <button className={styles.createRequestBtn} onClick={handleOpenCreateModal}>
+              Create your first request
+            </button>
+          </div>
+        ) : (
+          <div className={styles.tableResponsive}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>REQUEST ID</th>
+                  <th>SUBMISSION DATE</th>
+                  <th>BANK NAME</th>
+                  <th>ACCOUNT NUMBER</th>
+                  <th>AMOUNT (VND)</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {requests.map((req) => (
+                  <tr key={req.id ?? req.withdrawalRequestId}>
+                    <td className={styles.requestIdText}>{formatId(req)}</td>
+                    <td>{req.createdAt ? req.createdAt.slice(0, 10) : '——'}</td>
+                    <td className={styles.bankNameText}>{req.bankName ?? '——'}</td>
+                    <td>{req.accountNumber ?? '——'}</td>
+                    <td className={styles.amountText}>
+                      {req.amount != null ? `${req.amount.toLocaleString('vi-VN')} VND` : '——'}
+                    </td>
+                    <td>
+                      {req.status === 'Accepted' && (
+                        <span className={styles.statusAccepted}>
+                          <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Accepted
+                        </span>
+                      )}
+                      {req.status === 'Rejected' && (
+                        <span className={styles.statusRejected}>
+                          <X size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Rejected
+                        </span>
+                      )}
+                      {(req.status === 'Pending' || !req.status) && (
+                        <span className={styles.statusPending}>● Pending</span>
+                      )}
+                    </td>
+                    <td>
+                      {req.status === 'Rejected' ? (
+                        <button
+                          className={styles.viewReasonBtn}
+                          onClick={() => handleOpenRejectReason(req)}
+                        >
+                          <Shield size={13} style={{ verticalAlign: 'middle' }} /> View Reason
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.viewBtn}
+                          onClick={() => alert(`Details for request ${formatId(req)}`)}
+                        >
+                          <Eye size={13} style={{ verticalAlign: 'middle' }} /> View
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* FRAME 23: REQUEST REJECTION NOTICE MODAL */}
@@ -243,7 +272,9 @@ export const EarningsWallet = () => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>Request Rejection Notice</h3>
-                  <span className={styles.modalSubtitle}>Admin review decision for {selectedRequest.id}</span>
+                  <span className={styles.modalSubtitle}>
+                    Admin review decision for {formatId(selectedRequest)}
+                  </span>
                 </div>
               </div>
               <button className={styles.closeBtn} onClick={() => setShowRejectModal(false)}>
@@ -251,42 +282,52 @@ export const EarningsWallet = () => {
               </button>
             </div>
 
-            {/* Request Summary table */}
             <div className={styles.rejectSummaryTable}>
               <div className={styles.summaryCol}>
                 <span className={styles.summaryLabel}>BANK</span>
-                <span className={styles.summaryVal}>{selectedRequest.bank}</span>
+                <span className={styles.summaryVal}>{selectedRequest.bankName ?? '——'}</span>
               </div>
               <div className={styles.summaryCol}>
                 <span className={styles.summaryLabel}>ACCOUNT</span>
-                <span className={styles.summaryVal}>{selectedRequest.account}</span>
+                <span className={styles.summaryVal}>{selectedRequest.accountNumber ?? '——'}</span>
               </div>
               <div className={styles.summaryCol}>
                 <span className={styles.summaryLabel}>AMOUNT</span>
-                <span className={styles.summaryVal}>{selectedRequest.amount.toLocaleString('vi-VN')} VND</span>
+                <span className={styles.summaryVal}>
+                  {selectedRequest.amount != null
+                    ? `${selectedRequest.amount.toLocaleString('vi-VN')} VND`
+                    : '——'}
+                </span>
               </div>
               <div className={styles.summaryCol}>
                 <span className={styles.summaryLabel}>SUBMITTED</span>
-                <span className={styles.summaryVal}>{selectedRequest.date}</span>
+                <span className={styles.summaryVal}>
+                  {selectedRequest.createdAt ? selectedRequest.createdAt.slice(0, 10) : '——'}
+                </span>
               </div>
               <span className={styles.statusRejectedPill}>● Rejected</span>
             </div>
 
-            {/* Admin rejection note content */}
             <div className={styles.rejectionNoteBox}>
               <div className={styles.noteLabel}>ADMIN REJECTION NOTE</div>
               <p className={styles.noteContent}>
-                Dear Reviewer,<br /><br />
-                After careful review, your withdrawal request <b>{selectedRequest.id}</b> submitted on <b>{selectedRequest.date}</b> has been rejected. Please review the findings below before resubmitting.<br /><br />
-                ---------------------------------------------------------------------<br />
-                <b>REASON &mdash; BENEFICIARY ACCOUNT VERIFICATION FAILURE</b><br /><br />
-                The beneficiary account number {selectedRequest.account} at {selectedRequest.bank} could not be validated through our banking partner verification service at the time of processing. The lookup returned a status of "Account Inactive or Non-Existent." This may indicate the account has been closed, the number was entered incorrectly, or the account belongs to a different branch routing code.<br /><br />
-                If you believe this rejection is in error or require further clarification, please contact the platform support team at <u>support@ars-platform.edu</u> and quote reference code <b>REJ-054-2026</b>.<br /><br />
-                Regards,<br />
-                ARS Platform Administration
+                {selectedRequest.rejectionReason ? (
+                  selectedRequest.rejectionReason
+                ) : (
+                  <>
+                    Dear Reviewer,<br /><br />
+                    After careful review, your withdrawal request{' '}
+                    <b>{formatId(selectedRequest)}</b> has been rejected. Please review the findings
+                    below before resubmitting.<br /><br />
+                    If you believe this rejection is in error, please contact the platform support team
+                    at <u>support@ars-platform.edu</u>.<br /><br />
+                    Regards,<br />
+                    ARS Platform Administration
+                  </>
+                )}
               </p>
               <div className={styles.reviewerSignature}>
-                Reviewed by <b>Platform Admin</b> · {selectedRequest.date}
+                Reviewed by <b>Platform Admin</b>
               </div>
             </div>
 
@@ -308,7 +349,9 @@ export const EarningsWallet = () => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>Submit Withdrawal Request</h3>
-                  <span className={styles.modalSubtitle}>Transfer unlocked earnings to your bank account</span>
+                  <span className={styles.modalSubtitle}>
+                    Transfer unlocked earnings to your bank account
+                  </span>
                 </div>
               </div>
               <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)}>
@@ -316,15 +359,18 @@ export const EarningsWallet = () => {
               </button>
             </div>
 
-            {/* Internal Metric Bar */}
             <div className={styles.modalMetricsBar}>
               <div className={styles.metricItem}>
                 <span className={styles.metricBarLabel}>Fully Unlocked Balance</span>
-                <span className={styles.metricBarVal}>{unlockedBalance.toLocaleString('vi-VN')} VND</span>
+                <span className={styles.metricBarVal}>
+                  {unlockedBalance.toLocaleString('vi-VN')} VND
+                </span>
               </div>
               <div className={styles.metricItem} style={{ borderLeft: '1px solid #cbd5e1', paddingLeft: '20px' }}>
                 <span className={styles.metricBarLabel} style={{ color: '#d97706' }}>Pending Escrow Holds</span>
-                <span className={styles.metricBarVal} style={{ color: '#d97706' }}>{pendingHolds.toLocaleString('vi-VN')} VND</span>
+                <span className={styles.metricBarVal} style={{ color: '#d97706' }}>
+                  {pendingHolds.toLocaleString('vi-VN')} VND
+                </span>
               </div>
             </div>
 
@@ -339,8 +385,21 @@ export const EarningsWallet = () => {
                 >
                   <option value="Vietcombank (VCB)">Vietcombank (VCB) - Joint Stock Commercial Bank for Foreign Trade of Vietnam</option>
                   <option value="BIDV">BIDV - Joint Stock Bank for Investment and Development of Vietnam</option>
-                  <option value="Techcombank (TCB)">Techcombank (TCB) - Vietnam Technological & Joint Stock Bank</option>
+                  <option value="Techcombank (TCB)">Techcombank (TCB) - Vietnam Technological &amp; Joint Stock Bank</option>
                 </select>
+              </div>
+
+              {/* Account Name */}
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>* Account Holder Name</label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="Enter account holder name"
+                  required
+                />
               </div>
 
               {/* Beneficiary bank account */}
@@ -353,15 +412,18 @@ export const EarningsWallet = () => {
                   onChange={(e) => setAccountNumber(e.target.value)}
                   required
                 />
-                {/* Account holder verification card */}
                 {isAccountVerified && (
                   <div className={styles.verificationCard}>
-                    <span className={styles.verifyIcon}><Check size={16} color="#099268" /></span>
+                    <span className={styles.verifyIcon}>
+                      <Check size={16} color="#099268" />
+                    </span>
                     <div className={styles.verifyMeta}>
                       <span className={styles.verifyTitle}>ACCOUNT HOLDER VERIFIED</span>
                       <span className={styles.verifyName}>NGUYEN VAN A</span>
                     </div>
-                    <span className={styles.confirmedBadge}><Check size={11} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Confirmed</span>
+                    <span className={styles.confirmedBadge}>
+                      <Check size={11} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Confirmed
+                    </span>
                   </div>
                 )}
               </div>
@@ -376,11 +438,14 @@ export const EarningsWallet = () => {
                     value={withdrawalAmount}
                     onChange={(e) => setWithdrawalAmount(e.target.value)}
                     max={unlockedBalance}
+                    min={1}
                     required
                   />
                   <span className={styles.amountSuffix}>VND</span>
                 </div>
-                <span className={styles.availableText}>Available: {unlockedBalance.toLocaleString('vi-VN')} VND</span>
+                <span className={styles.availableText}>
+                  Available: {unlockedBalance.toLocaleString('vi-VN')} VND
+                </span>
               </div>
 
               {/* Narrative */}
@@ -397,21 +462,33 @@ export const EarningsWallet = () => {
 
               {/* Footer buttons */}
               <div className={styles.modalFormFooter}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={styles.modalCancelBtn}
                   onClick={() => setShowCreateModal(false)}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
-                <button type="submit" className={styles.modalSubmitBtn}>
-                  Send Request
+                <button
+                  type="submit"
+                  className={styles.modalSubmitBtn}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Sending...' : 'Send Request'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* SUCCESS MODAL */}
+      <WithdrawalSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        requestId={successRequestId}
+      />
     </div>
   );
 };

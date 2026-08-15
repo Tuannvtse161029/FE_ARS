@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run src/tests/e2e/researcherUpload.e2e.test.ts",
+    "test:e2e:view": "vitest run src/tests/e2e/pdfRender.e2e.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

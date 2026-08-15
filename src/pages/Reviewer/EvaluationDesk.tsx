@@ -42,6 +42,7 @@ export const EvaluationDesk = () => {
   const reviewRequestId = reviewRequest?.id;
 
   const [paper, setPaper] = useState<Paper | null>(null);
+  const [paperLoadError, setPaperLoadError] = useState<string | null>(null);
   const [existingEvaluation, setExistingEvaluation] = useState<DetailedEvaluation | null>(null);
   const [isLoadingPaper, setIsLoadingPaper] = useState(false);
   const [, setIsLoadingEvaluation] = useState(false);
@@ -59,7 +60,12 @@ export const EvaluationDesk = () => {
     paperService
       .getById(String(reviewRequest.paperId))
       .then(setPaper)
-      .catch((err) => console.error('Failed to load paper:', err))
+      .catch((err) => {
+        console.error('Failed to load paper:', err);
+        setPaperLoadError(
+          (err as Error)?.message ?? 'Unable to load paper details. Please go back and try again.'
+        );
+      })
       .finally(() => setIsLoadingPaper(false));
   }, [reviewRequest?.paperId]);
 
@@ -225,14 +231,27 @@ export const EvaluationDesk = () => {
               </div>
             </div>
             <div className={styles.pdfBody}>
-              {fileUrl ? (
-                <PdfViewer url={fileUrl} />
-              ) : (
+              {isLoadingPaper ? (
+                <div className={styles.pdfNoFile}>Loading paper…</div>
+              ) : paperLoadError ? (
                 <div className={styles.pdfNoFile}>
-                  {isLoadingPaper
-                    ? 'Loading paper…'
-                    : 'No PDF file available for this paper.'}
+                  <strong>Failed to load paper</strong>
+                  <p>{paperLoadError}</p>
+                  <p>Paper ID: #{reviewRequest?.paperId}</p>
                 </div>
+              ) : !paper ? (
+                <div className={styles.pdfNoFile}>
+                  No paper data found for this review request. Please go back and try again.
+                </div>
+              ) : !fileUrl ? (
+                <div className={styles.pdfNoFile}>
+                  <strong>No PDF file attached to this paper</strong>
+                  <p>Paper title: <em>{paper.title}</em></p>
+                  <p>Paper ID: #{reviewRequest?.paperId}</p>
+                  <p>Contact the author or platform administrator to attach the document.</p>
+                </div>
+              ) : (
+                <PdfViewer url={fileUrl} />
               )}
             </div>
           </div>

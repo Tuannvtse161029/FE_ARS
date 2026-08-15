@@ -10,7 +10,6 @@ import {
   Search,
   Wallet,
   Bell,
-  Home,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
   Users as BrowseReviewersIcon,
@@ -244,15 +243,12 @@ export const MainLayout = () => {
     switch (activeRole) {
       case 'Reviewer':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home', icon: <Home size={20} /> },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon size={20} />, badge: '2' },
-          { to: ROUTES.EARNINGS_WALLET, label: 'Wallet', icon: <Wallet size={20} /> },
-          { to: ROUTES.EARNINGS_WALLET, label: 'Withdrawal Request', icon: <Wallet size={20} /> },
+          { to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> },
         ];
       case 'Lecturer':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home', icon: <Home size={20} /> },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon size={20} /> },
@@ -261,7 +257,6 @@ export const MainLayout = () => {
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home', icon: <Home size={20} /> },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon size={20} /> },
           { to: ROUTES.REVIEWERS, label: 'Browse Reviewers', icon: <BrowseReviewersIcon size={20} /> },
@@ -272,7 +267,6 @@ export const MainLayout = () => {
       case 'Researcher':
       default:
         return [
-          { to: ROUTES.DASHBOARD, label: 'Home Dashboard', icon: <Home size={20} /> },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
           { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon size={20} /> },
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon size={20} /> },

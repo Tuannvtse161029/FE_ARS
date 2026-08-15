@@ -12,6 +12,14 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { GoogleIcon } from '../../assets/icons/GoogleIcon';
 import { Eye, EyeOff } from 'lucide-react';
 
+const FAST_LOGIN_USERS = [
+  { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234' },
+  { label: 'Reviewer', email: 'reviewer1.ars@arsplatform.test', password: 'Reviewer1234' },
+  { label: 'Admin', email: 'admin@arsplatform.com', password: 'Password123' },
+  { label: 'Lecturer', email: 'lecturer@arsplatform.com', password: 'Lecturer1234' },
+  { label: 'Grad Student', email: 'gradstudent@arsplatform.com', password: 'Student1234' },
+] as const;
+
 const Login = () => {
   const { login, isLoading, error } = useAuth();
   const [rememberMe, setRememberMe] = useState(false);
@@ -20,6 +28,7 @@ const Login = () => {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
@@ -31,6 +40,11 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     await login(data);
+  };
+
+  const handleFastLogin = (email: string, password: string) => {
+    setValue('username', email);
+    setValue('password', password);
   };
 
   const handleGoogleSignIn = () => {
@@ -139,6 +153,26 @@ const Login = () => {
           <GoogleIcon />
           <span>Or sign in with Google</span>
         </Button>
+
+        <div className={styles.devDivider}>
+          <span className={styles.devDividerLine} />
+          <span className={styles.devDividerText}>Dev only</span>
+          <span className={styles.devDividerLine} />
+        </div>
+
+        <div className={styles.fastLoginGrid}>
+          {FAST_LOGIN_USERS.map((user) => (
+            <button
+              key={user.label}
+              type="button"
+              className={styles.fastLoginBtn}
+              onClick={() => handleFastLogin(user.email, user.password)}
+              disabled={isLoading}
+            >
+              {user.label}
+            </button>
+          ))}
+        </div>
 
         <div className={styles.footer}>
           <p className={styles.footerText}>

@@ -199,6 +199,58 @@
   flex-shrink: 0;
 }
 
+.devDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.devDividerLine {
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.devDividerText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.fastLoginGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.fastLoginBtn {
+  flex: 1;
+  min-width: 90px;
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: #f3f4f6;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fastLoginBtn:hover:not(:disabled) {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.fastLoginBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .footer {
   margin-top: var(--spacing-4);
   text-align: center;

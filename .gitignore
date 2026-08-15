@@ -11,7 +11,8 @@ coverage
 seed-reviewers.cjs
 *.seed.cjs
 
-# Local-only secrets & credentials — never commit
+# Documentation — auto-generated test cases, specs, and local-only docs
+docs/
 docs/local-only/
 secrets/
 *.pem

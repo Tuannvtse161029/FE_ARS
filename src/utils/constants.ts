@@ -51,6 +51,12 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/DetailedEvaluation/${id}`,
     UPDATE: (id: number) => `/api/DetailedEvaluation/${id}`,
   },
+  WITHDRAWAL_REQUEST: {
+    BASE: '/api/WithdrawalRequest',
+    GET_ALL: '/api/WithdrawalRequest',
+    CREATE: '/api/WithdrawalRequest',
+    GET_BY_ID: (id: number) => `/api/WithdrawalRequest/${id}`,
+  },
 } as const;
 
 export const STORAGE_KEYS = {

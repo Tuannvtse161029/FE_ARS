@@ -27,6 +27,7 @@ import * as http from 'http';
 import * as os from 'os';
 import { spawn, ChildProcess } from 'child_process';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { getRandomPdfPath } from '../../utils/getRandomPdf';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -80,63 +81,13 @@ async function stopServer(proc: ChildProcess) {
 
 // ── PDF generation with pdf-lib ────────────────────────────────────────────────
 
-async function generateTestPdf(tmpDir: string): Promise<string> {
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
-
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([400, 300]);
-
-  // Background (light blue fill)
-  page.drawRectangle({
-    x: 0, y: 0, width: 400, height: 300,
-    color: rgb(0.95, 0.97, 1.0),
-  });
-
-  // Blue border box
-  page.drawRectangle({
-    x: 15, y: 15, width: 370, height: 270,
-    borderColor: rgb(0.2, 0.4, 0.8),
-    borderWidth: 2,
-  });
-
-  // Red filled circle
-  page.drawCircle({
-    x: 100, y: 180, size: 50,
-    color: rgb(0.85, 0.15, 0.15),
-    borderColor: rgb(0.6, 0.05, 0.05),
-    borderWidth: 1,
-  });
-
-  // Green filled rectangle
-  page.drawRectangle({
-    x: 230, y: 140, width: 120, height: 80,
-    color: rgb(0.15, 0.75, 0.2),
-  });
-
-  // Orange filled rectangle
-  page.drawRectangle({
-    x: 30, y: 40, width: 90, height: 55,
-    color: rgb(0.95, 0.55, 0.1),
-  });
-
-  // Text heading
-  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  page.drawText('E2E Test Page', {
-    x: 140, y: 258, size: 13,
-    font, color: rgb(0.05, 0.15, 0.45),
-  });
-
-  // Subtext
-  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  page.drawText('Canvas should show colored shapes, not all-white.', {
-    x: 55, y: 50, size: 9,
-    font: helvetica, color: rgb(0.3, 0.3, 0.3),
-  });
-
-  const pdfBytes = await pdfDoc.save();
-  const filePath = path.join(tmpDir, 'test-e2e-pdf.pdf');
-  fs.writeFileSync(filePath, Buffer.from(pdfBytes));
-  return filePath;
+async function getTestPdfPath(tmpDir: string): Promise<string> {
+  // ── Random selection from src/assets/pdf_sample/ ──────────────────────────
+  const { filePath: samplePath, fileName } = getRandomPdfPath();
+  const destPath = path.join(tmpDir, `e2e-${Date.now()}-${fileName}`);
+  fs.copyFileSync(samplePath, destPath);
+  console.log(`[E2E] Using random PDF: "${fileName}" (scanned ${getRandomPdfPath().totalFound} PDF(s) total)`);
+  return destPath;
 }
 
 // ── Canvas pixel analysis ──────────────────────────────────────────────────────
@@ -247,8 +198,8 @@ describe('PdfViewer E2E — Canvas Pixel Analysis', () => {
     // Set timeout for this suite (60s)
     expect.getState().testTimeout = 60000;
 
-    // 1. Generate test PDF
-    const pdfPath = await generateTestPdf(tmpDir);
+    // 1. Pick a random PDF from src/assets/pdf_sample/
+    const pdfPath = await getTestPdfPath(tmpDir);
     expect(fs.existsSync(pdfPath)).toBe(true);
 
     // 2. Start Python HTTP server
@@ -301,8 +252,8 @@ describe('PdfViewer E2E — Canvas Pixel Analysis', () => {
     page.on('console', (msg) => consoleMessages.push({ type: msg.type(), text: msg.text() }));
     page.on('pageerror', (err) => consoleMessages.push({ type: 'pageerror', text: err.message }));
 
-    // Read PDF bytes for interception
-    const pdfBytes = fs.readFileSync(path.join(tmpDir, 'test-e2e-pdf.pdf'));
+    // Read the randomly-selected PDF bytes for interception
+    const pdfBytes = fs.readFileSync(pdfPath);
 
     // Intercept /sample.pdf and serve our test PDF
     await page.route('**/sample.pdf', (route) => {
