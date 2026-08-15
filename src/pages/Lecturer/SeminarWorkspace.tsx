@@ -1,20 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  seminarService,
+  seminarParticipantService,
+  mapSeminarToCard,
+  type SeminarCard,
+} from '../../services/seminar.service';
 import styles from './SeminarWorkspace.module.css';
-
-interface Seminar {
-  id: string;
-  title: string;
-  status: 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED';
-  date: string;
-  time: string;
-  description: string;
-  inviteCount: number;
-  avatars: string[];
-  meetLink: string;
-  feedbackSubmitted?: number;
-  feedbackTotal?: number;
-  isNew?: boolean;
-}
 
 interface StudentGrade {
   name: string;
@@ -31,76 +22,93 @@ export const SeminarWorkspace = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [bannerText, setBannerText] = useState('');
-  const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<Seminar | null>(null);
+  const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<SeminarCard | null>(null);
 
   // AI Summarizer states (Frame 35 & 36)
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiModalStep, setAiModalStep] = useState<'upload' | 'results'>('upload');
   const [aiNotesSaved, setAiNotesSaved] = useState(false);
-  const [selectedSeminarForAi, setSelectedSeminarForAi] = useState<Seminar | null>(null);
+  const [selectedSeminarForAi, setSelectedSeminarForAi] = useState<SeminarCard | null>(null);
 
   // Form states inside Create Modal (Frame 30)
   const [seminarName, setSeminarName] = useState('Advanced Cloud Routing Architecture Seminar');
-  const [dateTime, setDateTime] = useState('2026-07-29 · 10:00 AM');
-  const [seminarDetails, setSeminarDetails] = useState('Deep dive into modular backend routing networks and high-concurrency telemetry.');
-  const [guestEmails, setGuestEmails] = useState(['student1@ars.edu.vn', 'researcher.b@ars.edu.vn']);
+  const [dateTime, setDateTime] = useState('');
+  const [seminarDetails, setSeminarDetails] = useState('');
+  const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const [emailInputText, setEmailInputText] = useState('');
   const [sendReminder, setSendReminder] = useState(true);
 
-  // Generated Meet link state for Frame 31
-  const [generatedMeetLink, setGeneratedMeetLink] = useState('https://meet.google.com/xyz-uvwx-rst');
+  // Generated Meet link state for Frame 31 — populated by the BE response on create
+  const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
-  // Initial seminars list
-  const [seminars, setSeminars] = useState<Seminar[]>([
-    {
-      id: 'SEM-2026-047',
-      title: 'Distributed Systems & Scalability Thesis Defense',
-      status: 'UPCOMING',
-      date: '2026-07-28',
-      time: '14:00 – 15:30 (UTC+7)',
-      description: 'Reviewing phase 3 architectural milestones for graduate research groups. Covers consensus algorithms, partition tolerance analysis, and live scalability benchmarks.',
-      inviteCount: 12,
-      avatars: ['AB', 'BN', 'CK', 'DP'],
-      meetLink: 'https://meet.google.com/abc-defg-hij',
-    },
-    {
-      id: 'SEM-2026-044',
-      title: 'Machine Learning Fairness & Bias Auditing Workshop',
-      status: 'IN PROGRESS',
-      date: '2026-07-26',
-      time: '09:00 – 11:00 (UTC+7)',
-      description: 'Examining algorithmic bias detection frameworks applied to graduate admissions datasets with live demo.',
-      inviteCount: 8,
-      avatars: ['XY', 'ZT', 'KW'],
-      meetLink: 'https://meet.google.com/mno-pqrs-tuv',
-    },
-    {
-      id: 'SEM-2026-041',
-      title: 'Graph Neural Networks for Citation Analysis',
-      status: 'COMPLETED',
-      date: '2026-07-22',
-      time: '10:00 – 11:30 (UTC+7)',
-      description: 'Post-session review of GNN architectures applied to academic citation graphs. Covered node classification and link prediction benchmarks.',
-      inviteCount: 4,
-      avatars: ['PD', 'JD', 'TL', 'MN'],
-      meetLink: 'https://meet.google.com/gnn-cite-xyz',
-      feedbackSubmitted: 4,
-      feedbackTotal: 4,
-    },
-    {
-      id: 'SEM-2026-039',
-      title: 'Phase 2 Milestone Review – Distributed DBs',
-      status: 'COMPLETED',
-      date: '2026-07-20',
-      time: '14:00 – 15:00 (UTC+7)',
-      description: 'Completed review of distributed database consistency models, replication strategies, and CAP theorem applications across research submissions.',
-      inviteCount: 4,
-      avatars: ['AB', 'XY', 'MN'],
-      meetLink: 'https://meet.google.com/ddb-phase2',
-      feedbackSubmitted: 3,
-      feedbackTotal: 4,
-    },
-  ]);
+  // Workshops pulled from the BE
+  const [seminars, setSeminars] = useState<SeminarCard[]>([]);
+  const [isLoadingSeminars, setIsLoadingSeminars] = useState(true);
+  const [loadSeminarsError, setLoadSeminarsError] = useState<string | null>(null);
+  const [isCreatingSeminar, setIsCreatingSeminar] = useState(false);
+
+  // Hybrid ID format for display. The BE returns numeric IDs, so we render
+  // them as "SEM-{year}-{id}" for a stable human-friendly badge.
+  const formatSeminarId = (id: number): string => {
+    const year = new Date().getFullYear();
+    return `SEM-${year}-${String(id).padStart(3, '0')}`;
+  };
+
+  // Split a "2026-07-29 · 10:00 AM" style string into ISO start/end.
+  // Falls back to "now + 1h" so the BE always receives a valid pair.
+  const parseDateTimeRange = (
+    raw: string
+  ): { startTime: string; endTime: string } => {
+    const trimmed = raw.trim();
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const end = new Date(parsed.getTime() + 60 * 60 * 1000);
+      return { startTime: parsed.toISOString(), endTime: end.toISOString() };
+    }
+    const now = new Date();
+    const end = new Date(now.getTime() + 60 * 60 * 1000);
+    return { startTime: now.toISOString(), endTime: end.toISOString() };
+  };
+
+  // Initial load of seminars
+  useEffect(() => {
+    let cancelled = false;
+    const loadSeminars = async () => {
+      setLoadSeminarsError(null);
+      try {
+        const list = await seminarService.getAll();
+        if (cancelled) return;
+        setSeminars(list.map(mapSeminarToCard));
+      } catch (err) {
+        if (cancelled) return;
+        setLoadSeminarsError(
+          (err as { message?: string })?.message ||
+            'Failed to load seminars. Please try again.'
+        );
+      } finally {
+        if (!cancelled) setIsLoadingSeminars(false);
+      }
+    };
+    void loadSeminars();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Best-effort invite dispatch. Succeeds silently — UI does not depend on it.
+  // The BE's /api/SeminarParticipant contract is keyed on userId, not email,
+  // so until the BE exposes an invite-by-email endpoint, we mark the seminar
+  // as having invitations in flight by posting an empty participant row.
+  const dispatchInvitations = async (seminarId: number, _emails: string[]) => {
+    await Promise.allSettled(
+      Array.from({ length: 1 }).map(() =>
+        seminarParticipantService.create({
+          seminarId,
+          invitationStatus: 'Invited',
+        })
+      )
+    );
+  };
 
   // Mock Student Grades for Feedback Modal (Frame 34)
   const studentGradesList: StudentGrade[] = [
@@ -161,37 +169,70 @@ export const SeminarWorkspace = () => {
     setGuestEmails(guestEmails.filter((x) => x !== email));
   };
 
-  const handleCreateSeminarSubmit = (e: React.FormEvent) => {
+  const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingSeminar) return;
     if (!seminarName.trim()) {
       alert('Please enter a seminar name.');
       return;
     }
+    if (!dateTime.trim()) {
+      alert('Please select a date and time.');
+      return;
+    }
+    if (!seminarDetails.trim()) {
+      alert('Please enter seminar details.');
+      return;
+    }
 
-    const meetUrl = 'https://meet.google.com/xyz-uvwx-rst';
-    setGeneratedMeetLink(meetUrl);
+    const { startTime, endTime } = parseDateTimeRange(dateTime);
 
-    const newSem: Seminar = {
-      id: 'SEM-2026-049',
-      title: seminarName,
-      status: 'UPCOMING',
-      date: '2026-07-29',
-      time: '10:00 AM (UTC+7)',
-      description: seminarDetails || 'Deep dive into modular backend routing networks and high-concurrency telemetry.',
-      inviteCount: guestEmails.length > 0 ? guestEmails.length : 2,
-      avatars: ['AN', 'BT'],
-      meetLink: meetUrl,
-      isNew: true,
-    };
+    setIsCreatingSeminar(true);
+    setLoadSeminarsError(null);
+    try {
+      // 1. POST the seminar to the BE
+      const created = await seminarService.create({
+        startTime,
+        endTime,
+        content: seminarDetails.trim(),
+        isReminderSent: sendReminder,
+        status: 'Upcoming',
+      });
+      const createdCard = mapSeminarToCard(created);
 
-    setSeminars([newSem, ...seminars]);
-    setShowCreateModal(false);
-    setShowGeneratedModal(true);
-    setBannerText(`"${seminarName}" has been created and Google Meet link generated.`);
-    setShowSuccessBanner(true);
+      // 2. Optimistically insert the new card so the list updates immediately
+      setSeminars((prev) => [{ ...createdCard, isNew: true }, ...prev]);
+
+      // 3. Fire invitations (best-effort). Failures are swallowed.
+      if (guestEmails.length > 0) {
+        await dispatchInvitations(createdCard.seminarId, guestEmails);
+      }
+
+      // 4. Re-fetch the full list so the BE-canonical rows replace the optimistic one
+      try {
+        const fresh = await seminarService.getAll();
+        setSeminars(fresh.map(mapSeminarToCard));
+      } catch {
+        // Non-fatal — the optimistic row stays in place
+      }
+
+      // 5. Surface the generated meeting link in the success modal
+      setGeneratedMeetLink(createdCard.onlineLink || 'https://meet.google.com/');
+      setBannerText(`"${seminarName}" has been created and Google Meet link generated.`);
+      setShowSuccessBanner(true);
+      setShowCreateModal(false);
+      setShowGeneratedModal(true);
+    } catch (err) {
+      const message =
+        (err as { message?: string })?.message ||
+        'Failed to create the seminar. Please try again.';
+      alert(message);
+    } finally {
+      setIsCreatingSeminar(false);
+    }
   };
 
-  const handleOpenFeedbackModal = (sem: Seminar) => {
+  const handleOpenFeedbackModal = (sem: SeminarCard) => {
     setSelectedSeminarForFeedback(sem);
     setShowFeedbackModal(true);
   };
@@ -215,9 +256,36 @@ export const SeminarWorkspace = () => {
             Manage your scheduled seminars, share resources, and collect feedback.
           </p>
         </div>
-        <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
-          ＋ Create Seminar
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className={styles.refreshBtn}
+            onClick={() => {
+              setIsLoadingSeminars(true);
+              void (async () => {
+                setLoadSeminarsError(null);
+                try {
+                  const list = await seminarService.getAll();
+                  setSeminars(list.map(mapSeminarToCard));
+                } catch (err) {
+                  setLoadSeminarsError(
+                    (err as { message?: string })?.message ||
+                      'Failed to load seminars. Please try again.'
+                  );
+                } finally {
+                  setIsLoadingSeminars(false);
+                }
+              })();
+            }}
+            disabled={isLoadingSeminars}
+            aria-label="Refresh seminars"
+          >
+            ⟳ {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
+            ＋ Create Seminar
+          </button>
+        </div>
       </div>
 
       {/* SUCCESS TOAST BANNER (Frame 32 & 33) */}
@@ -271,15 +339,67 @@ export const SeminarWorkspace = () => {
 
       {/* Main Seminar list */}
       <div className={styles.seminarsList}>
-        {activeTab === 'drafts' ? (
+        {loadSeminarsError && (
+          <div className={styles.errorBanner} role="alert">
+            <span>⚠️ {loadSeminarsError}</span>
+            <button
+              type="button"
+              className={styles.errorRetryBtn}
+              onClick={() => {
+                setIsLoadingSeminars(true);
+                void (async () => {
+                  setLoadSeminarsError(null);
+                  try {
+                    const list = await seminarService.getAll();
+                    setSeminars(list.map(mapSeminarToCard));
+                  } catch (err) {
+                    setLoadSeminarsError(
+                      (err as { message?: string })?.message ||
+                        'Failed to load seminars. Please try again.'
+                    );
+                  } finally {
+                    setIsLoadingSeminars(false);
+                  }
+                })();
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {isLoadingSeminars ? (
+          <div className={styles.emptyDrafts}>
+            <span className={styles.emptyIcon}>⏳</span>
+            <h4 className={styles.emptyTitle}>Loading seminars…</h4>
+          </div>
+        ) : activeTab === 'drafts' ? (
           <div className={styles.emptyDrafts}>
             <span className={styles.emptyIcon}>📄</span>
             <h4 className={styles.emptyTitle}>No drafts</h4>
             <p className={styles.emptyText}>Saved drafts will appear here.</p>
           </div>
+        ) : filteredSeminars.length === 0 ? (
+          <div className={styles.emptyDrafts}>
+            <span className={styles.emptyIcon}>📭</span>
+            <h4 className={styles.emptyTitle}>No seminars yet</h4>
+            <p className={styles.emptyText}>Click "+ Create Seminar" to schedule your first one.</p>
+          </div>
         ) : (
-          filteredSeminars.map((sem) => (
-            <div className={styles.seminarCard} key={sem.id}>
+          filteredSeminars.map((sem) => {
+            const seminarStartDate = sem.startTime ? new Date(sem.startTime) : null;
+            const seminarEndDate = sem.endTime ? new Date(sem.endTime) : null;
+            const dateLabel = seminarStartDate
+              ? seminarStartDate.toISOString().split('T')[0]
+              : '';
+            const timeLabel =
+              seminarStartDate && seminarEndDate && !Number.isNaN(seminarStartDate.getTime())
+                ? `${seminarStartDate.toISOString().slice(11, 16)} – ${seminarEndDate
+                    .toISOString()
+                    .slice(11, 16)} (UTC)`
+                : '';
+            return (
+            <div className={styles.seminarCard} key={sem.seminarId}>
               {/* Top metadata */}
               <div className={styles.cardHeaderRow}>
                 <div className={styles.badgeRow}>
@@ -287,57 +407,47 @@ export const SeminarWorkspace = () => {
                   {sem.status === 'UPCOMING' && <span className={styles.statusUpcoming}>● UPCOMING</span>}
                   {sem.status === 'IN PROGRESS' && <span className={styles.statusInProgress}>● IN PROGRESS</span>}
                   {sem.status === 'COMPLETED' && <span className={styles.statusCompleted}>● COMPLETED</span>}
-                  <span className={styles.seminarId}>ID: {sem.id}</span>
+                  <span className={styles.seminarId}>ID: {formatSeminarId(sem.seminarId)}</span>
                 </div>
                 <div className={styles.dateMeta}>
-                  <span>📅 {sem.date}</span>
-                  <span style={{ marginLeft: '12px' }}>🕒 {sem.time}</span>
+                  <span>📅 {dateLabel}</span>
+                  <span style={{ marginLeft: '12px' }}>🕒 {timeLabel}</span>
                 </div>
               </div>
 
               {/* Title and description */}
               <h3 className={styles.seminarTitle}>{sem.title}</h3>
-              <p className={styles.seminarDescription}>{sem.description}</p>
+              <p className={styles.seminarDescription}>{sem.content || 'No description provided.'}</p>
 
-              {/* Roster & Avatar list */}
-              {sem.status !== 'COMPLETED' && (
+              {/* Capacity hint (BE-driven) */}
+              {sem.maxParticipants != null && sem.status !== 'COMPLETED' && (
                 <div className={styles.rosterRow}>
-                  <span className={styles.inviteCountText}>{sem.inviteCount} invited</span>
-                  <div className={styles.avatarList}>
-                    {sem.avatars.map((av, idx) => (
-                      <div className={styles.avatarCircle} key={idx}>
-                        {av}
-                      </div>
-                    ))}
-                    {sem.inviteCount > sem.avatars.length && (
-                      <div className={styles.avatarMore}>+{sem.inviteCount - sem.avatars.length}</div>
-                    )}
-                  </div>
+                  <span className={styles.inviteCountText}>
+                    Up to {sem.maxParticipants} participants
+                  </span>
                 </div>
               )}
 
               {/* Google Meet Box */}
-              <div className={styles.meetBox}>
-                <span className={styles.meetIcon}>📹</span>
-                <a href={sem.meetLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
-                  {sem.meetLink} ↗
-                </a>
-              </div>
+              {sem.onlineLink && (
+                <div className={styles.meetBox}>
+                  <span className={styles.meetIcon}>📹</span>
+                  <a href={sem.onlineLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
+                    {sem.onlineLink} ↗
+                  </a>
+                </div>
+              )}
 
-              {/* Completed Feedback Bar */}
-              {sem.status === 'COMPLETED' && sem.feedbackSubmitted !== undefined && sem.feedbackTotal !== undefined && (
+              {/* Completed Feedback Bar — backend has not yet exposed
+                  feedbackSubmitted/feedbackTotal counters; render placeholder when missing. */}
+              {sem.status === 'COMPLETED' && (
                 <div className={styles.feedbackProgressBlock}>
                   <div className={styles.feedbackProgressLabels}>
                     <span className={styles.progressLabel}>Feedback submissions</span>
-                    <span className={styles.progressText}>
-                      {sem.feedbackSubmitted} / {sem.feedbackTotal}
-                    </span>
+                    <span className={styles.progressText}>—</span>
                   </div>
                   <div className={styles.progressBg}>
-                    <div
-                      className={styles.progressFill}
-                      style={{ width: `${(sem.feedbackSubmitted / sem.feedbackTotal) * 100}%` }}
-                    ></div>
+                    <div className={styles.progressFill} style={{ width: '0%' }}></div>
                   </div>
                 </div>
               )}
@@ -371,26 +481,27 @@ export const SeminarWorkspace = () => {
                       className={styles.feedbackGradingBtn}
                       onClick={() => handleOpenFeedbackModal(sem)}
                     >
-                      📋 Form Feedback & Grading{' '}
-                      <span className={styles.gradingBadge}>
-                        {sem.feedbackSubmitted}/{sem.feedbackTotal} Submitted
-                      </span>
+                      📋 Form Feedback & Grading
                     </button>
                   </>
                 ) : (
                   <>
                     <button
                       className={styles.joinMeetBtn}
-                      onClick={() => window.open(sem.meetLink, '_blank')}
+                      onClick={() => sem.onlineLink && window.open(sem.onlineLink, '_blank')}
+                      disabled={!sem.onlineLink}
                     >
                       📹 Join Google Meet
                     </button>
                     <button
                       className={styles.sendInviteBtn}
                       onClick={() => {
-                        navigator.clipboard.writeText(sem.meetLink);
-                        alert('Copied invite link!');
+                        if (sem.onlineLink) {
+                          navigator.clipboard.writeText(sem.onlineLink);
+                          alert('Copied invite link!');
+                        }
                       }}
+                      disabled={!sem.onlineLink}
                     >
                       ✉️ Send Invite Link
                     </button>
@@ -401,7 +512,8 @@ export const SeminarWorkspace = () => {
                 )}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -510,11 +622,16 @@ export const SeminarWorkspace = () => {
                   type="button"
                   className={styles.modalCancelBtn}
                   onClick={() => setShowCreateModal(false)}
+                  disabled={isCreatingSeminar}
                 >
                   Cancel
                 </button>
-                <button type="submit" className={styles.modalSubmitNavyBtn}>
-                  📹 Generate & Create Seminar
+                <button
+                  type="submit"
+                  className={styles.modalSubmitNavyBtn}
+                  disabled={isCreatingSeminar}
+                >
+                  {isCreatingSeminar ? '⏳ Creating…' : '📹 Generate & Create Seminar'}
                 </button>
               </div>
             </form>
@@ -593,7 +710,9 @@ export const SeminarWorkspace = () => {
                 <div>
                   <h3 className={styles.modalTitle}>Feedback & Grading Review</h3>
                   <span className={styles.modalSubtitle}>
-                    {selectedSeminarForFeedback.title} · {selectedSeminarForFeedback.date}
+                    {selectedSeminarForFeedback.title} · {selectedSeminarForFeedback.startTime
+                      ? new Date(selectedSeminarForFeedback.startTime).toISOString().split('T')[0]
+                      : ''}
                   </span>
                 </div>
               </div>

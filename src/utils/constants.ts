@@ -63,6 +63,22 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/WithdrawalRequest/${id}`,
     UPDATE: (id: number) => `/api/WithdrawalRequest/${id}`,
   },
+  SEMINAR: {
+    BASE: '/api/Seminar',
+    GET_ALL: '/api/Seminar',
+    CREATE: '/api/Seminar',
+    GET_BY_ID: (id: number) => `/api/Seminar/${id}`,
+    UPDATE: (id: number) => `/api/Seminar/${id}`,
+    DELETE: (id: number) => `/api/Seminar/${id}`,
+  },
+  SEMINAR_PARTICIPANT: {
+    BASE: '/api/SeminarParticipant',
+    GET_ALL: '/api/SeminarParticipant',
+    CREATE: '/api/SeminarParticipant',
+    GET_BY_ID: (id: number) => `/api/SeminarParticipant/${id}`,
+    UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
+    DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
+  },
 } as const;
 
 export const STORAGE_KEYS = {
