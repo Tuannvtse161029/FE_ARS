@@ -127,10 +127,22 @@ export const EvaluationDesk = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewRequestId || !currentUserId) return;
+    if (!reviewRequestId || !currentUserId || isSubmitting) return;
+
+    // ── Validation ──────────────────────────────────────────────────────────
+    if (!form.generalComments.trim()) {
+      setSubmitError('Please provide qualitative comments before submitting.');
+      return;
+    }
+    if (!form.finalDecision) {
+      setSubmitError('Please select a final decision before submitting.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      // 1. Persist (or update) the evaluation payload
       if (existingEvaluation?.detailedEvaluationId) {
         await detailedEvaluationService.update(existingEvaluation.detailedEvaluationId, {
           ...form,
@@ -144,8 +156,15 @@ export const EvaluationDesk = () => {
           reviewerId: currentUserId,
         });
       }
-      // Mark review request as completed
+
+      // 2. Move review assignment out of Pending and into Completed
       await reviewRequestService.update(reviewRequestId, { status: 'Completed' });
+
+      // 3. Notify all live views (reviewer Pending → Completed tab, researcher My Review Requests)
+      window.dispatchEvent(new CustomEvent('review-update', {
+        detail: { reviewRequestId, status: 'Completed' },
+      }));
+
       setIsSubmitted(true);
     } catch (err) {
       setSubmitError(

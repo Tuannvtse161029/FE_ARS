@@ -29,7 +29,7 @@ import { getRandomPdfFile } from '../../utils/getRandomPdf';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
-const DEV_SERVER_URL = 'http://localhost:3000';
+const DEV_SERVER_URL = process.env.VITE_E2E_BASE_URL || 'http://localhost:3000';
 const PAPERS_PATH = '/papers';
 
 // ── Fake auth storage (Researcher role) ───────────────────────────────────────

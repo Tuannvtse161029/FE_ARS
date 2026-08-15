@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
+import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
@@ -22,6 +23,8 @@ import {
   RefreshCw as SwitchIcon,
   X,
   Check,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 const RoleSwitchModal = ({
@@ -159,7 +162,7 @@ const ProfileDropdown = ({
 };
 
 const ARSPlatformLogo = () => (
-  <img src={arsLogo} alt="ARS Platform Logo" width={120} height={120} style={{ borderRadius: 8 }} />
+  <img src={arsLogo} alt="ARS Platform Logo" style={{ borderRadius: 8 }} />
 );
 
 interface NavItem {
@@ -194,6 +197,69 @@ export const MainLayout = () => {
     const saved = localStorage.getItem('ars_wallet');
     return saved ? parseInt(saved, 10) : 1500000;
   });
+
+  // Reviewer availability toggle state
+  const [isReviewerAvailable, setIsReviewerAvailable] = useState(() => {
+    const saved = localStorage.getItem('ars_reviewer_available');
+    return saved ? saved === 'true' : true;
+  });
+  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-dismiss toast after 2 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  // Sync reviewer availability from BE when user logs in
+  useEffect(() => {
+    if (user?.userId && activeRole === 'Reviewer') {
+      reviewerService
+        .getById(user.userId)
+        .then((profile) => {
+          if (profile.reviewFee !== undefined && profile.reviewFee !== null) {
+            // BE returns availability as part of the profile; fall back to localStorage
+          }
+        })
+        .catch(() => {
+          // silently ignore — keep local state
+        });
+    }
+  }, [user?.userId, activeRole]);
+
+  const handleToggleAvailability = async () => {
+    if (!user?.userId || isUpdatingAvailability) {
+      if (!user?.userId) {
+        console.warn('[Availability] No logged-in user — toggle ignored.');
+      }
+      return;
+    }
+    const next = !isReviewerAvailable;
+    setIsUpdatingAvailability(true);
+    // Optimistic update
+    setIsReviewerAvailable(next);
+    localStorage.setItem('ars_reviewer_available', String(next));
+    // Also write per-user key so DiscoverReviewers can filter unavailable reviewers
+    localStorage.setItem(`ars_reviewer_available_${user.userId}`, String(next));
+    try {
+      await reviewerService.updateAvailability(user.userId, next);
+      setToastMessage({
+        text: next ? 'You are now accepting review requests.' : 'You are no longer accepting review requests.',
+        type: 'success',
+      });
+    } catch {
+      // Revert on failure
+      setIsReviewerAvailable(!next);
+      localStorage.setItem('ars_reviewer_available', String(!next));
+      localStorage.setItem(`ars_reviewer_available_${user.userId}`, String(!next));
+      setToastMessage({ text: 'Failed to update availability. Please try again.', type: 'error' });
+    } finally {
+      setIsUpdatingAvailability(false);
+    }
+  };
 
   // Role switch modal state
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -320,6 +386,21 @@ export const MainLayout = () => {
       <div className={styles.rightContentArea}>
         {/* Header */}
         <header className={styles.header}>
+          {/* Toast Notification */}
+          {toastMessage && (
+            <div className={`${styles.toast} ${toastMessage.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
+              {toastMessage.type === 'success' ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <AlertCircle size={16} />
+              )}
+              <span>{toastMessage.text}</span>
+              <button className={styles.toastClose} onClick={() => setToastMessage(null)}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {/* Search bar */}
           <div className={styles.searchContainer}>
             <span className={styles.searchIcon}><Search size={18} /></span>
@@ -332,6 +413,29 @@ export const MainLayout = () => {
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
+            {/* Reviewer availability toggle — only shown for Reviewer role */}
+            {activeRole === 'Reviewer' && (
+              <div className={styles.availabilityToggle}>
+                <button
+                  className={`${styles.toggleSwitch} ${isReviewerAvailable ? styles.toggleSwitchOn : styles.toggleSwitchOff}`}
+                  onClick={handleToggleAvailability}
+                  disabled={isUpdatingAvailability}
+                  aria-label={isReviewerAvailable ? 'Turn off availability' : 'Turn on availability'}
+                  aria-pressed={isReviewerAvailable}
+                  title={isReviewerAvailable ? 'Click to go unavailable' : 'Click to go available'}
+                >
+                  <span
+                    className={`${styles.toggleKnob} ${isReviewerAvailable ? styles.toggleKnobOn : styles.toggleKnobOff}`}
+                  />
+                </button>
+                <span
+                  className={`${styles.availabilityLabel} ${isReviewerAvailable ? styles.availabilityLabelAvailable : styles.availabilityLabelUnavailable}`}
+                >
+                  {isReviewerAvailable ? 'Available' : 'Unavailable'}
+                </span>
+              </div>
+            )}
+
             {/* Wallet Balance */}
             <div className={styles.walletBadge}>
               <span className={styles.walletIcon}><Wallet size={18} /></span>

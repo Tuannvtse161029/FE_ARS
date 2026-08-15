@@ -11,8 +11,11 @@ import {
 import styles from './EarningsWallet.module.css';
 import { withdrawalService, WithdrawalRequest } from '../../services/withdrawal.service';
 import { WithdrawalSuccessModal } from './components/WithdrawalSuccessModal';
+import { useAuthStore } from '../../store/authSlice';
 
 export const EarningsWallet = () => {
+  const currentUserId = useAuthStore((s) => s.user?.id);
+
   // Available balance state loaded from localStorage
   const [unlockedBalance] = useState(() => {
     const saved = localStorage.getItem('ars_reviewer_balance');
@@ -34,8 +37,8 @@ export const EarningsWallet = () => {
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
   // Form states inside modal
-  const [targetBank, setTargetBank] = useState('Vietcombank (VCB)');
-  const [accountNumber, setAccountNumber] = useState('101299482103');
+  const [targetBank, setTargetBank] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [narrative, setNarrative] = useState('');
@@ -65,8 +68,8 @@ export const EarningsWallet = () => {
   };
 
   const handleOpenCreateModal = () => {
-    setTargetBank('Vietcombank (VCB)');
-    setAccountNumber('101299482103');
+    setTargetBank('');
+    setAccountNumber('');
     setAccountName('');
     setWithdrawalAmount('');
     setNarrative('');
@@ -75,6 +78,10 @@ export const EarningsWallet = () => {
 
   const handleCreateWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!targetBank) {
+      alert('Please select a target bank.');
+      return;
+    }
     const amount = parseInt(withdrawalAmount, 10);
     if (isNaN(amount) || amount <= 0) {
       alert('Please enter a valid amount.');
@@ -88,6 +95,8 @@ export const EarningsWallet = () => {
     setSubmitting(true);
     try {
       const result = await withdrawalService.create({
+        userId: currentUserId ?? undefined,
+        walletId: 1, // primary wallet — replace with real walletId from auth/Wallet entity when available
         bankName: targetBank,
         accountNumber,
         accountName,
@@ -110,7 +119,6 @@ export const EarningsWallet = () => {
     }
   };
 
-  const isAccountVerified = accountNumber === '101299482103';
 
   const formatId = (req: WithdrawalRequest) => {
     const raw = req.id ?? req.withdrawalRequestId;
@@ -222,9 +230,9 @@ export const EarningsWallet = () => {
                       {req.amount != null ? `${req.amount.toLocaleString('vi-VN')} VND` : '——'}
                     </td>
                     <td>
-                      {req.status === 'Accepted' && (
+                      {req.status === 'Approved' && (
                         <span className={styles.statusAccepted}>
-                          <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Accepted
+                          <Check size={12} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Approved
                         </span>
                       )}
                       {req.status === 'Rejected' && (
@@ -383,6 +391,7 @@ export const EarningsWallet = () => {
                   value={targetBank}
                   onChange={(e) => setTargetBank(e.target.value)}
                 >
+                  <option value="" disabled>Select your bank</option>
                   <option value="Vietcombank (VCB)">Vietcombank (VCB) - Joint Stock Commercial Bank for Foreign Trade of Vietnam</option>
                   <option value="BIDV">BIDV - Joint Stock Bank for Investment and Development of Vietnam</option>
                   <option value="Techcombank (TCB)">Techcombank (TCB) - Vietnam Technological &amp; Joint Stock Bank</option>
@@ -410,22 +419,9 @@ export const EarningsWallet = () => {
                   className={styles.formInput}
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
+                  placeholder="Enter your bank account number"
                   required
                 />
-                {isAccountVerified && (
-                  <div className={styles.verificationCard}>
-                    <span className={styles.verifyIcon}>
-                      <Check size={16} color="#099268" />
-                    </span>
-                    <div className={styles.verifyMeta}>
-                      <span className={styles.verifyTitle}>ACCOUNT HOLDER VERIFIED</span>
-                      <span className={styles.verifyName}>NGUYEN VAN A</span>
-                    </div>
-                    <span className={styles.confirmedBadge}>
-                      <Check size={11} strokeWidth={3} style={{ verticalAlign: 'middle' }} /> Confirmed
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Withdrawal Amount */}

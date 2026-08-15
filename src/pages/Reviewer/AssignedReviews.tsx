@@ -94,7 +94,14 @@ export const AssignedReviews = () => {
     }
   };
 
-  // Initial load when the user id becomes available
+  // ── Event: re-fetch when a review is submitted from EvaluationDesk ────────────
+  useEffect(() => {
+    const handler = () => void load();
+    window.addEventListener('review-update', handler);
+    return () => window.removeEventListener('review-update', handler);
+  }, []); // intentionally empty — `load` is stable; event drives refreshes
+
+  // ── Initial load when the user id becomes available
   useEffect(() => {
     if (currentUserId == null) return;
     setIsLoading(true);

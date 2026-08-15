@@ -152,6 +152,13 @@ export const DiscoverReviewers = () => {
     return () => window.removeEventListener('wallet-update', handleWalletUpdate);
   }, []);
 
+  // ── Event: re-fetch My Review Requests when a review is submitted ───────────
+  useEffect(() => {
+    const handler = () => void loadRequests();
+    window.addEventListener('review-update', handler);
+    return () => window.removeEventListener('review-update', handler);
+  }, []);
+
   // Fetch papers for reviewer recommendation dropdown
   useEffect(() => {
     paperService.getAll().then((result) => {
@@ -174,7 +181,17 @@ export const DiscoverReviewers = () => {
       .finally(() => setIsLoadingReviewers(false));
   }, []);
 
-  // Hydrate My Review Requests when the user opens that tab for the first time,
+  // ── Availability helper ───────────────────────────────────────────────────
+  // Reads per-reviewer availability from localStorage.
+  // Once the BE exposes `isAvailable` on ReviewerProfile, replace this with
+  // a field read: `p.isAvailable ?? true`.
+  const isReviewerAvailable = (userId: number): boolean => {
+    const saved = localStorage.getItem(`ars_reviewer_available_${userId}`);
+    // Default: available (true) if never set.
+    return saved !== null ? saved === 'true' : true;
+  };
+
+  // ── Hydrate My Review Requests when the user opens that tab for the first time,
   // or when the tab is re-entered after a successful submission.
   useEffect(() => {
     if (activeTab === 'requests' && requests.length === 0 && !isLoadingRequests) {
@@ -190,6 +207,7 @@ export const DiscoverReviewers = () => {
   const SEEDED_USER_IDS = [34, 35, 36] as const;
   const reviewers: Reviewer[] = reviewerProfiles
     .filter((p) => SEEDED_USER_IDS.includes(p.userId as 34 | 35 | 36))
+    .filter((p) => isReviewerAvailable(p.userId))
     .map(mapProfileToReviewer);
 
   // Lookups for joining BE ReviewRequest rows → UI display fields.

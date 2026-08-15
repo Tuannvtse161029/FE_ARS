@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user: authStore.user
       ? {
           token: authStore.token || '',
+          userId: authStore.user.id,
           username: authStore.user.username,
           email: authStore.user.email,
           role: authStore.user.roleName,

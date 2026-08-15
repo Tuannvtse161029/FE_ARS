@@ -23,6 +23,7 @@ import { EarningsWallet } from './pages/Reviewer/EarningsWallet';
 import { AssignedReviews } from './pages/Reviewer/AssignedReviews';
 import { Profile } from './pages/Profile/Profile';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
+import { AdminWithdrawalRequests } from './pages/Admin/AdminWithdrawalRequests';
 import './styles/globals.css';
 
 const App = () => {
@@ -58,6 +59,7 @@ const App = () => {
               <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />
               <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
+              <Route path={ROUTES.ADMIN_WITHDRAWALS} element={<AdminWithdrawalRequests />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
             </Route>
           </Route>

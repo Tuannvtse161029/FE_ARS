@@ -38,6 +38,10 @@ export const reviewerService = {
     const response = await api.put<ReviewerProfile>(API_ENDPOINTS.PROFESSIONAL_PROFILE.UPDATE(userId), data);
     return response.data;
   },
+
+  updateAvailability: async (userId: number, isAvailable: boolean): Promise<void> => {
+    await api.patch(API_ENDPOINTS.PROFESSIONAL_PROFILE.UPDATE_AVAILABILITY(userId), { isAvailable });
+  },
 };
 
 export default reviewerService;

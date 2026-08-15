@@ -6,6 +6,10 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'https://arsplatform.onrender.com';
 
+// Frontend origin URL — used for OAuth callbacks, redirect URLs, and absolute links.
+// Override in .env.production with VITE_APP_URL=https://your-app.vercel.app
+export const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
+
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
@@ -37,6 +41,7 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/ProfessionalProfile',
     GET_BY_ID: (id: number) => `/api/ProfessionalProfile/${id}`,
     UPDATE: (id: number) => `/api/ProfessionalProfile/${id}`,
+    UPDATE_AVAILABILITY: (id: number) => `/api/ProfessionalProfile/${id}/availability`,
   },
   REVIEW_REQUEST: {
     BASE: '/api/ReviewRequest',
@@ -56,6 +61,7 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/WithdrawalRequest',
     CREATE: '/api/WithdrawalRequest',
     GET_BY_ID: (id: number) => `/api/WithdrawalRequest/${id}`,
+    UPDATE: (id: number) => `/api/WithdrawalRequest/${id}`,
   },
 } as const;
 

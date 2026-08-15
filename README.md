@@ -39,12 +39,30 @@ npm run preview
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the root directory for local development:
 
 ```env
+# Backend API — leave empty/blank to use the Vite proxy at http://localhost:5000
+# Or set to a deployed URL when pointing at a remote backend.
 VITE_API_BASE_URL=http://localhost:5000
+
+# Frontend origin — used for callbacks and absolute links
 VITE_APP_URL=http://localhost:3000
+
+# (optional) Override the URL E2E tests hit
+VITE_E2E_BASE_URL=http://localhost:3000
 ```
+
+For production deployments, define the equivalent variables in your hosting
+provider (e.g. Vercel project settings → Environment Variables):
+
+| Variable              | Local dev                            | Production (Vercel + Render)            |
+|-----------------------|--------------------------------------|-----------------------------------------|
+| `VITE_API_BASE_URL`   | `http://localhost:5000`              | `https://arsplatform.onrender.com`      |
+| `VITE_APP_URL`        | `http://localhost:3000`              | `https://your-app.vercel.app`           |
+
+The backend's CORS configuration must allow origins from the deployment
+domains listed above (e.g. `https://*.vercel.app` plus the local dev origins).
 
 ## Project Structure
 

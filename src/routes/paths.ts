@@ -21,6 +21,7 @@ export const ROUTES = {
   ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
   ADMIN: '/admin',
+  ADMIN_WITHDRAWALS: '/admin/withdrawals',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

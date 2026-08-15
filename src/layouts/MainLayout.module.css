@@ -7,23 +7,39 @@
 
 /* Sidebar Styling */
 .sidebar {
-  width: 260px;
+  width: 240px;
   background-color: #323964;
   color: #94a3b8;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   border-right: 1px solid #1e293b;
+  min-height: 100vh;
 }
 
 .sidebarHeader {
-  padding: var(--spacing-1);
+  height: 130px;
+  padding: 0 var(--spacing-4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .logoContainer {
   display: flex;
+  align-items: center;
   justify-content: center;
+  height: 100%;
+}
+
+.logoContainer img {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 
 .logoText {
@@ -49,10 +65,10 @@
 
 .sidebarNav {
   flex: 1;
-  padding: var(--spacing-6) var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-3);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--spacing-1);
 }
 
 .navItem {
@@ -583,6 +599,11 @@
     justify-content: center;
   }
 
+  .logoContainer img {
+    width: 40px;
+    height: 40px;
+  }
+
   .profileDropdownTrigger {
     padding: var(--spacing-1);
   }
@@ -590,4 +611,150 @@
   .userInfoText {
     display: none;
   }
+
+  .availabilityToggle {
+    display: none;
+  }
+}
+
+/* ── Availability Toggle ─────────────────────────────────── */
+
+.availabilityToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.availabilityToggle:hover {
+  background-color: rgba(255, 255, 255, 0.13);
+}
+
+.availabilityLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1;
+}
+
+.availabilityLabelAvailable {
+  color: #4ade80;
+}
+
+.availabilityLabelUnavailable {
+  color: #f87171;
+}
+
+.toggleSwitch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+  outline: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggleSwitch:focus-visible {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+}
+
+.toggleSwitch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleSwitchOn {
+  background-color: #22c55e;
+}
+
+.toggleSwitchOff {
+  background-color: #475569;
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggleKnobOn {
+  transform: translateX(26px);
+}
+
+.toggleKnobOff {
+  transform: translateX(2px);
+}
+
+/* ── Toast Notification ─────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideInRight 0.3s ease;
+  max-width: 380px;
+}
+
+.toastSuccess {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.toastError {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.toastClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: inherit;
+  opacity: 0.7;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+  margin-left: 4px;
+}
+
+.toastClose:hover {
+  opacity: 1;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
