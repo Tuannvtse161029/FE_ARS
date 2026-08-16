@@ -43,7 +43,7 @@ const ResetPassword = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await authService.resetPassword({ token: resetToken, newPassword: data.newPassword });
+      await authService.resetPassword({ resetToken, newPassword: data.newPassword });
       navigate(ROUTES.LOGIN, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unable to reset password. Please try again.';

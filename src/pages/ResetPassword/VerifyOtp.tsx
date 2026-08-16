@@ -103,7 +103,7 @@ const VerifyOtp = () => {
     if (resendCooldown > 0) return;
     setError(null);
     try {
-      await authService.forgotPassword(email);
+      await authService.forgotPassword({ email });
       setResendCooldown(RESEND_COOLDOWN);
       setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();

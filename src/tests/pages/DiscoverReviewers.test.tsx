@@ -27,6 +27,13 @@ const mockReviewerProfiles = [
     publicationCount: 45,
     syncStatus: 'synced',
     reviewFee: 500000,
+    fullName: 'Dr. Nguyen Van A',
+    title: 'Senior Lecturer',
+    avatarBg: '#1D2A4A',
+    reviews: 142,
+    tags: ['#ComputerScience', '#DistributedSystems'],
+    specializations: ['Machine Learning', 'Data Science'],
+    isAvailable: true,
   },
   {
     userId: 35,
@@ -36,6 +43,13 @@ const mockReviewerProfiles = [
     publicationCount: 78,
     syncStatus: 'synced',
     reviewFee: 750000,
+    fullName: 'Prof. Tran Minh B',
+    title: 'Associate Professor',
+    avatarBg: '#3b82f6',
+    reviews: 203,
+    tags: ['#SoftwareEngineering', '#CloudComputing'],
+    specializations: ['Distributed Systems', 'Cloud Computing'],
+    isAvailable: true,
   },
   {
     userId: 36,
@@ -45,6 +59,13 @@ const mockReviewerProfiles = [
     publicationCount: 22,
     syncStatus: 'synced',
     reviewFee: 400000,
+    fullName: 'Dr. Le Thi C',
+    title: 'Research Fellow',
+    avatarBg: '#f59e0b',
+    reviews: 89,
+    tags: ['#DistributedSystems', '#NetworkSystems'],
+    specializations: ['Mobile Networks', 'IoT Protocols'],
+    isAvailable: true,
   },
 ];
 
@@ -93,6 +114,23 @@ vi.mock('../../services/reviewRequest.service', () => ({
     getById: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+  },
+}));
+
+// The page now reads the wallet from BE — stub it to return a fixed balance.
+vi.mock('../../services/wallet.service', () => ({
+  walletService: {
+    getAll: vi.fn(() => Promise.resolve([{ id: 1, userId: 1, balance: 5000000 }])),
+    getById: vi.fn(),
+  },
+}));
+
+// Follow API is best-effort; the page swallows failures so a no-op is fine.
+vi.mock('../../services/follower.service', () => ({
+  followerService: {
+    getAll: vi.fn(() => Promise.resolve([])),
+    follow: vi.fn(() => Promise.resolve({ id: 1, followerId: 1, followedId: 34 })),
+    unfollow: vi.fn(() => Promise.resolve()),
   },
 }));
 
@@ -200,8 +238,11 @@ describe('DiscoverReviewers – reviewer cards', () => {
   });
 
   it('shows "Add Fund to Wallet" when wallet balance is below reviewer fee', async () => {
+    // Re-mock the wallet service to return balance 0 for this case.
+    const { walletService } = await import('../../services/wallet.service');
+    vi.mocked(walletService.getAll).mockResolvedValueOnce([{ id: 1, userId: 1, balance: 0 }]);
+
     const user = userEvent.setup();
-    localStorage.setItem('ars_wallet', '0');
     renderDiscover();
     const selects = await screen.findAllByRole('combobox');
     await user.selectOptions(selects[0], '1');
@@ -211,9 +252,15 @@ describe('DiscoverReviewers – reviewer cards', () => {
     expect(addFundButtons.length).toBe(3);
   });
 
-  it('hides unavailable reviewers when localStorage marks them unavailable', async () => {
+  it('hides reviewers flagged as unavailable by the BE', async () => {
+    // Re-mock reviewers with user 36 marked unavailable for this case.
+    const { reviewerService } = await import('../../services/reviewer.service');
+    vi.mocked(reviewerService.getAll).mockResolvedValueOnce([
+      ...mockReviewerProfiles.slice(0, 2),
+      { ...mockReviewerProfiles[2], isAvailable: false },
+    ]);
+
     const user = userEvent.setup();
-    localStorage.setItem('ars_reviewer_available_36', 'false');
     renderDiscover();
     const selects = await screen.findAllByRole('combobox');
     await user.selectOptions(selects[0], '1');
@@ -273,10 +320,10 @@ describe('DiscoverReviewers – create request screen', () => {
 describe('DiscoverReviewers – successful submission', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.setItem('ars_wallet', '5000000');
+    // Wallet balance is now server-driven; tests assume a 5,000,000 VND wallet.
   });
 
-  it('deducts wallet total (fee + 25k tax) and shows the success modal', async () => {
+  it('submits the request and shows the success modal', async () => {
     const user = userEvent.setup();
     renderDiscover();
 
@@ -296,7 +343,6 @@ describe('DiscoverReviewers – successful submission', () => {
     await user.click(screen.getByRole('button', { name: /confirm & submit request/i }));
 
     expect(await screen.findByText(/review request submitted successfully/i)).toBeInTheDocument();
-    expect(localStorage.getItem('ars_wallet')).toBe('4475000');
   });
 
   it('navigates to My Review Requests when "Go to My Review Requests" is clicked', async () => {

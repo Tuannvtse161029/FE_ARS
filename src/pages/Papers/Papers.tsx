@@ -4,6 +4,8 @@ import { ScorecardModal } from '../Reviewer/components/ScorecardModal';
 import { storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { paperService } from '../../services/paper.service';
+import { usePapers } from '../../hooks/usePapers';
+import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
 import {
   CheckCircle2,
   AlertCircle,
@@ -30,29 +32,6 @@ interface Paper {
 
 type UploadPhase = 'idle' | 'preview' | 'confirm' | 'delete';
 
-// Hardcoded research field options
-const RECOMMENDED_FIELDS = [
-  'Machine Learning',
-  'NLP',
-  'Computer Vision',
-  'Distributed Systems',
-  'Cybersecurity',
-  'Cloud Computing',
-];
-
-const SUBFIELD_OPTIONS = [
-  'Deep Learning',
-  'Reinforcement Learning',
-  'Graph Neural Networks',
-  'Federated Learning',
-  'Quantum Computing',
-  'Edge Computing',
-  'Blockchain',
-  'Computer Graphics',
-  'Human-Computer Interaction',
-  'Robotics',
-];
-
 export const Papers = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,18 +44,54 @@ export const Papers = () => {
   // Active filter tab state
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'accepted' | 'rejected' | 'draft'>('all');
 
-  // Papers local state for interactive uploads
-  const [papers, setPapers] = useState<Paper[]>([
-    { id: 'local-1', name: 'Framework_Design.pdf', date: '2026-07-22', status: 'Waiting for Review', hasNote: false },
-    { id: 'local-2', name: 'Cloud_Routing_v1.pdf', date: '2026-07-15', status: 'Draft', hasNote: false },
-    { id: 'local-3', name: 'Microservice_Consensus_v3.pdf', date: '2026-07-10', status: 'Accepted', hasNote: true },
-    { id: 'local-4', name: 'EdgeNet_Protocol_v2.pdf', date: '2026-07-03', status: 'Rejected', hasNote: true },
-  ]);
+  // Papers are loaded from the BE via usePapers (no hardcoded initial state).
+  const {
+    papers: fetchedPapers,
+    isLoading: isPapersLoading,
+    error: papersError,
+    refetch: refetchPapers,
+  } = usePapers({ pageNumber: 1, pageSize: 50 });
+
+  // Research field taxonomy is loaded from the BE via /api/MajorField and /api/SubField.
+  const { fields: majorFields } = useMajorFields();
+  const { subFields } = useSubFields();
+
+  // Local state mirrors the BE-loaded papers for interactive operations (upload/delete).
+  const [papers, setPapers] = useState<Paper[]>([]);
+
+  // Sync BE-loaded papers into local state (mapping API shape to UI shape).
+  useEffect(() => {
+    const mapped: Paper[] = fetchedPapers.map((p) => {
+      const created = p.createdAt ? new Date(p.createdAt) : null;
+      const updated = p.updatedAt ? new Date(p.updatedAt) : null;
+      const hasScorecard =
+        created !== null &&
+        updated !== null &&
+        updated.getTime() - created.getTime() > 1000;
+      const rawStatus = p.status ?? 'Waiting for Review';
+      const allowedStatuses: Paper['status'][] = ['Waiting for Review', 'Draft', 'Accepted', 'Rejected'];
+      const status: Paper['status'] = allowedStatuses.includes(rawStatus as Paper['status'])
+        ? (rawStatus as Paper['status'])
+        : 'Waiting for Review';
+      return {
+        id: String(p.id),
+        name: p.title || p.fileUrl?.split('/').pop() || 'Untitled',
+        date: p.createdAt ? p.createdAt.split('T')[0] : '',
+        status,
+        hasNote: hasScorecard,
+        fileUrl: p.fileUrl,
+      };
+    });
+    setPapers(mapped);
+  }, [fetchedPapers]);
+
+  const RECOMMENDED_FIELDS = majorFields.map((f) => f.name);
+  const SUBFIELD_OPTIONS = subFields.map((f) => f.name);
 
   // Upload flow state
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedFields, setSelectedFields] = useState<string[]>(['Machine Learning']);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showFieldDropdown, setShowFieldDropdown] = useState(false);
 
@@ -106,11 +121,14 @@ export const Papers = () => {
     fileInputRef.current?.click();
   };
 
+  const defaultSelectedField = (): string[] =>
+  majorFields.length > 0 ? [majorFields[0].name] : [];
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.pdf')) {
       setSelectedFile(file);
-      setSelectedFields(['Machine Learning']);
+      setSelectedFields(defaultSelectedField());
       setPaperTitle('');
       setPaperAbstract('');
       setUploadPhase('preview');
@@ -202,7 +220,7 @@ export const Papers = () => {
           setToastMessage({ text: 'Failed to upload paper. Please try again.', type: 'error' });
         } finally {
           setSelectedFile(null);
-          setSelectedFields(['Machine Learning']);
+          setSelectedFields(defaultSelectedField());
           setPaperTitle('');
           setPaperAbstract('');
           setIsUploading(false);
@@ -214,7 +232,7 @@ export const Papers = () => {
 
   const handleRemovePaper = () => {
     setSelectedFile(null);
-    setSelectedFields(['Machine Learning']);
+    setSelectedFields(defaultSelectedField());
     setPaperTitle('');
     setPaperAbstract('');
     setTitleError(false);
@@ -257,29 +275,7 @@ export const Papers = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const result = await paperService.getAll();
-      const mapped: Paper[] = result.items.map((p) => {
-        const created = p.createdAt ? new Date(p.createdAt) : null;
-        const updated = p.updatedAt ? new Date(p.updatedAt) : null;
-        const hasScorecard =
-          created !== null &&
-          updated !== null &&
-          updated.getTime() - created.getTime() > 1000;
-        const rawStatus = p.status ?? 'Waiting for Review';
-        const allowedStatuses: Paper['status'][] = ['Waiting for Review', 'Draft', 'Accepted', 'Rejected'];
-        const status: Paper['status'] = allowedStatuses.includes(rawStatus as Paper['status'])
-          ? (rawStatus as Paper['status'])
-          : 'Waiting for Review';
-        return {
-          id: String(p.id),
-          name: p.title || p.fileUrl?.split('/').pop() || 'Untitled',
-          date: p.createdAt ? p.createdAt.split('T')[0] : '',
-          status,
-          hasNote: hasScorecard,
-          fileUrl: p.fileUrl,
-        };
-      });
-      setPapers(mapped);
+      await refetchPapers();
     } catch {
       setToastMessage({ text: 'Failed to refresh papers.', type: 'error' });
     } finally {
@@ -384,6 +380,18 @@ export const Papers = () => {
         </div>
 
         <div className={styles.tableResponsive}>
+          {papersError && (
+            <div className={styles.formError} role="alert">
+              Could not load papers: {papersError.message}
+            </div>
+          )}
+          {isPapersLoading && papers.length === 0 ? (
+            <div className={styles.skeletonList} aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className={styles.skeletonRow} />
+              ))}
+            </div>
+          ) : (
           <table className={styles.table}>
             <thead>
               <tr>
@@ -450,6 +458,7 @@ export const Papers = () => {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

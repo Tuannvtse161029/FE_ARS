@@ -48,6 +48,96 @@ vi.mock('../../pages/Reviewer/components/ScorecardModal', () => ({
   ),
 }));
 
+// ─── Field + paper data fixtures (driven by hooks now) ────────────────────────
+
+const mockMajorFields = [
+  { id: 1, name: 'Machine Learning', description: null },
+  { id: 2, name: 'NLP', description: null },
+  { id: 3, name: 'Computer Vision', description: null },
+  { id: 4, name: 'Distributed Systems', description: null },
+  { id: 5, name: 'Cybersecurity', description: null },
+  { id: 6, name: 'Cloud Computing', description: null },
+];
+
+const mockSubFields = [
+  { id: 10, majorFieldId: 1, name: 'Deep Learning' },
+  { id: 11, majorFieldId: 1, name: 'Reinforcement Learning' },
+  { id: 12, majorFieldId: 1, name: 'Graph Neural Networks' },
+];
+
+const mockPapers = {
+  items: [
+    {
+      id: 1,
+      title: 'Framework_Design.pdf',
+      fileUrl: 'https://example.com/Framework_Design.pdf',
+      status: 'Waiting for Review',
+      createdAt: '2026-07-22T00:00:00Z',
+      updatedAt: '2026-07-22T00:00:00Z',
+    },
+    {
+      id: 2,
+      title: 'Cloud_Routing_v1.pdf',
+      fileUrl: 'https://example.com/Cloud_Routing_v1.pdf',
+      status: 'Draft',
+      createdAt: '2026-07-15T00:00:00Z',
+      updatedAt: '2026-07-15T00:00:00Z',
+    },
+    {
+      id: 3,
+      title: 'Microservice_Consensus_v3.pdf',
+      fileUrl: 'https://example.com/Microservice_Consensus_v3.pdf',
+      status: 'Accepted',
+      createdAt: '2026-07-10T00:00:00Z',
+      updatedAt: '2026-07-11T00:00:00Z',
+    },
+    {
+      id: 4,
+      title: 'EdgeNet_Protocol_v2.pdf',
+      fileUrl: 'https://example.com/EdgeNet_Protocol_v2.pdf',
+      status: 'Rejected',
+      createdAt: '2026-07-03T00:00:00Z',
+      updatedAt: '2026-07-04T00:00:00Z',
+    },
+  ],
+};
+
+// ─── Hook mocks (papers, fields) ──────────────────────────────────────────────
+
+vi.mock('../../hooks/usePapers', () => ({
+  usePapers: vi.fn(() => ({
+    papers: mockPapers.items,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+}));
+
+vi.mock('../../hooks/useMajorFields', () => ({
+  useMajorFields: vi.fn(() => ({
+    fields: mockMajorFields,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+  useSubFields: vi.fn(() => ({
+    subFields: mockSubFields,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+}));
+
+vi.mock('../../services/paper.service', () => ({
+  paperService: {
+    getAll: vi.fn(() => Promise.resolve(mockPapers)),
+    getById: vi.fn(),
+    create: vi.fn(() => Promise.resolve({ id: 99 })),
+    update: vi.fn(),
+    delete: vi.fn(() => Promise.resolve()),
+  },
+}));
+
 // ─── Fixture helpers ───────────────────────────────────────────────────────────
 
 const makePdfFile = (name = 'test-paper.pdf'): File =>
@@ -93,7 +183,7 @@ describe('Papers – idle state', () => {
     expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
-  it('renders the papers table with initial data', () => {
+  it('renders the papers table with BE-provided data', () => {
     renderPapers();
     expect(screen.getByText('Framework_Design.pdf')).toBeInTheDocument();
     expect(screen.getByText('Cloud_Routing_v1.pdf')).toBeInTheDocument();

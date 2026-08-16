@@ -2,7 +2,7 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 
 // Mirrors GET /api/ProfessionalProfile response shape:
-// { userId, orcidId, hindex, totalCitations, publicationCount, syncStatus, reviewFee, updatedAt }
+// { userId, orcidId, hindex, totalCitations, publicationCount, syncStatus, reviewFee, isAvailable, updatedAt }
 export interface ReviewerProfile {
   userId: number;
   orcidId: string | null;
@@ -11,6 +11,9 @@ export interface ReviewerProfile {
   publicationCount: number | null;
   syncStatus: string | null;
   reviewFee: number | null;
+  // Whether this reviewer is currently accepting review requests.
+  // May be missing on older API responses — treat as false in that case.
+  isAvailable?: boolean;
   updatedAt?: string;
 }
 
@@ -26,7 +29,7 @@ export interface ProfessionalProfileUpdateRequest {
 export const reviewerService = {
   getAll: async (): Promise<ReviewerProfile[]> => {
     const response = await api.get<ReviewerProfile[]>(API_ENDPOINTS.PROFESSIONAL_PROFILE.GET_ALL);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   getById: async (userId: number): Promise<ReviewerProfile> => {

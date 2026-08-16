@@ -33,7 +33,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await authService.forgotPassword(data.email);
+      await authService.forgotPassword({ email: data.email });
       setSubmittedEmail(data.email);
       navigate(ROUTES.VERIFY_OTP, { state: { email: data.email } });
     } catch (err: unknown) {

@@ -36,7 +36,6 @@ interface FormState {
   password: string;
   retypePassword: string;
   role: UserRole;
-  orcidId: string;
 }
 
 const initialForm: FormState = {
@@ -46,7 +45,6 @@ const initialForm: FormState = {
   password: '',
   retypePassword: '',
   role: 'Researcher',
-  orcidId: '',
 };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -115,10 +113,6 @@ export const Register = () => {
       next.role = 'Role is required';
     }
 
-    if (form.orcidId && !/^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/.test(form.orcidId)) {
-      next.orcidId = 'Invalid ORCID ID format';
-    }
-
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -164,7 +158,6 @@ export const Register = () => {
         phoneNumber: form.phoneNumber.trim(),
         role: form.role,
         pdfUrl,
-        ...(form.orcidId.trim() ? { orcidId: form.orcidId.trim() } : {}),
       };
 
       await authService.registerUser(payload);
@@ -388,24 +381,6 @@ export const Register = () => {
             pdfUrl={pdfUrl}
             uploadedFile={pdfFile}
           />
-        </div>
-
-        <div className={styles.fieldGroup}>
-          <label htmlFor="orcidId" className={styles.fieldLabel}>
-            ORCID iD <span style={{ color: 'var(--color-text-muted)' }}>(optional)</span>
-          </label>
-          <input
-            id="orcidId"
-            name="orcidId"
-            type="text"
-            className={`${styles.nativeInput} ${errors.orcidId ? styles['nativeInput--error'] : ''}`}
-            placeholder="0000-0000-0000-0000"
-            value={form.orcidId}
-            onChange={handleChange}
-            disabled={isSubmitting}
-            autoComplete="off"
-          />
-          {errors.orcidId && <p className={styles.errorText}>{errors.orcidId}</p>}
         </div>
 
         <Button

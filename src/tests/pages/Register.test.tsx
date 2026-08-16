@@ -24,7 +24,7 @@ describe('Register Page – smoke', () => {
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/retype password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/select your platform role/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/orcid iD/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/orcid iD/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 

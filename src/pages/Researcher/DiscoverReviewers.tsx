@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   RefreshCw,
   Wallet,
@@ -14,12 +14,15 @@ import {
 import { TopUpModal } from './components/TopUpModal';
 import { paperService } from '../../services/paper.service';
 import type { Paper } from '../../services/paper.service';
-import { reviewerService, type ReviewerProfile } from '../../services/reviewer.service';
+import type { ReviewerProfile } from '../../services/reviewer.service';
 import { reviewRequestService, type ReviewRequest } from '../../services/reviewRequest.service';
+import { useReviewerProfiles } from '../../hooks/useReviewerProfiles';
+import { useFollowReviewer } from '../../hooks/useFollowers';
+import { useWallet } from '../../hooks/useWallet';
 import styles from './DiscoverReviewers.module.css';
 
-// Domain shape used by the UI. Derived from ReviewerProfile + local-only fields
-// (fee, tags, initials, avatar color) until the BE exposes a reviewer endpoint.
+// Domain shape used by the UI. All values are derived from the BE
+// ReviewerProfile rows; previously they were hardcoded for seeded users.
 interface Reviewer {
   id: string;
   name: string;
@@ -35,43 +38,6 @@ interface Reviewer {
   specializations: string[];
 }
 
-// Map reviewer userId → full name (server returns only userId on the profile row,
-// so the FE keeps the names keyed by id — reviewer1.ars@arsplatform.test was seeded
-// to userId=34, reviewer2 → 35, reviewer3 → 36).
-const REVIEWER_NAME_BY_USER_ID: Record<number, string> = {
-  34: 'Dr. Nguyen Van A',
-  35: 'Prof. Tran Minh B',
-  36: 'Dr. Le Thi C',
-};
-
-// TODO: replace with BE-driven values once a dedicated reviewer endpoint exists.
-const REVIEWER_FALLBACK: Record<number, Pick<Reviewer, 'title' | 'avatarBg' | 'fee' | 'reviews' | 'tags' | 'specializations'>> = {
-  34: {
-    title: 'Senior Lecturer',
-    avatarBg: '#1D2A4A',
-    fee: 500000,
-    reviews: 142,
-    tags: ['#ComputerScience', '#DistributedSystems'],
-    specializations: ['Machine Learning', 'Data Science', 'NLP', 'HCI'],
-  },
-  35: {
-    title: 'Associate Professor',
-    avatarBg: '#3b82f6',
-    fee: 750000,
-    reviews: 203,
-    tags: ['#SoftwareEngineering', '#CloudComputing'],
-    specializations: ['Distributed Systems', 'Cloud Computing', 'Escrow Security'],
-  },
-  36: {
-    title: 'Research Fellow',
-    avatarBg: '#f59e0b',
-    fee: 400000,
-    reviews: 89,
-    tags: ['#DistributedSystems', '#NetworkSystems'],
-    specializations: ['Mobile Networks', 'IoT Protocols', 'Cyber Security'],
-  },
-};
-
 const COLD_PALETTE = ['#1D2A4A', '#3b82f6', '#f59e0b'];
 
 function initialsFromName(name: string): string {
@@ -85,26 +51,34 @@ function initialsFromName(name: string): string {
 }
 
 function avatarColorForUserId(userId: number): string {
-  // Deterministic — same userId always gets the same color
   return COLD_PALETTE[userId % COLD_PALETTE.length];
 }
 
-function mapProfileToReviewer(p: ReviewerProfile): Reviewer {
-  const fallback = REVIEWER_FALLBACK[p.userId];
-  const name = REVIEWER_NAME_BY_USER_ID[p.userId] ?? `Reviewer #${p.userId}`;
+interface EnrichedReviewer extends ReviewerProfile {
+  fullName?: string | null;
+  title?: string | null;
+  avatarBg?: string | null;
+  reviews?: number;
+  tags?: string[];
+  specializations?: string[];
+}
+
+function mapProfileToReviewer(p: EnrichedReviewer): Reviewer {
+  const userId = p.userId;
+  const name = p.fullName?.trim() || `Reviewer #${userId}`;
   return {
-    id: `rev-${p.userId}`,
+    id: `rev-${userId}`,
     name,
-    title: fallback?.title ?? 'Reviewer',
+    title: p.title?.trim() || 'Reviewer',
     initials: initialsFromName(name),
-    avatarBg: fallback?.avatarBg ?? avatarColorForUserId(p.userId),
+    avatarBg: p.avatarBg || avatarColorForUserId(userId),
     hIndex: p.hindex ?? 0,
     publications: p.publicationCount ?? 0,
-    reviews: fallback?.reviews ?? 0,
-    fee: p.reviewFee ?? fallback?.fee ?? 0,
-    tags: fallback?.tags ?? [],
+    reviews: p.reviews ?? 0,
+    fee: p.reviewFee ?? 0,
+    tags: Array.isArray(p.tags) ? p.tags : [],
     orcid: p.orcidId ?? '',
-    specializations: fallback?.specializations ?? [],
+    specializations: Array.isArray(p.specializations) ? p.specializations : [],
   };
 }
 
@@ -113,11 +87,8 @@ export const DiscoverReviewers = () => {
   const [activeTab, setActiveTab] = useState<'discover' | 'requests'>('discover');
   const [screenState, setScreenState] = useState<'list' | 'create-request'>('list');
 
-  // Wallet state
-  const [walletBalance, setWalletBalance] = useState(() => {
-    const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 1500000; // Default to 1,500,000 VND
-  });
+  // Wallet balance loaded from the BE (no hardcoded 1,500,000 fallback).
+  const { balance: walletBalance } = useWallet();
 
   // Selected reviewer for creating request
   const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
@@ -142,21 +113,22 @@ export const DiscoverReviewers = () => {
   const [requestsError, setRequestsError] = useState<string | null>(null);
   const [papers, setPapers] = useState<Paper[]>([]);
 
-  // Sync wallet balance
-  useEffect(() => {
-    const handleWalletUpdate = () => {
-      const saved = localStorage.getItem('ars_wallet');
-      setWalletBalance(saved ? parseInt(saved, 10) : 1500000);
-    };
-    window.addEventListener('wallet-update', handleWalletUpdate);
-    return () => window.removeEventListener('wallet-update', handleWalletUpdate);
-  }, []);
+  // Reviewer profiles loaded from /api/ProfessionalProfile via custom hook.
+  const {
+    profiles: reviewerProfiles,
+    isLoading: isLoadingReviewers,
+    refetch: refetchReviewers,
+  } = useReviewerProfiles();
+
+  // Follow mutation (wired to POST /api/Follower; UI button can use this).
+  const { follow, isLoading: isFollowing } = useFollowReviewer();
 
   // ── Event: re-fetch My Review Requests when a review is submitted ───────────
   useEffect(() => {
     const handler = () => void loadRequests();
     window.addEventListener('review-update', handler);
     return () => window.removeEventListener('review-update', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch papers for reviewer recommendation dropdown
@@ -168,28 +140,14 @@ export const DiscoverReviewers = () => {
     });
   }, []);
 
-  // Reviewer profiles pulled from BE (GET /api/ProfessionalProfile)
-  const [reviewerProfiles, setReviewerProfiles] = useState<ReviewerProfile[]>([]);
-  const [isLoadingReviewers, setIsLoadingReviewers] = useState(true);
-  const [isRefreshingReviewers, setIsRefreshingReviewers] = useState(false);
-
-  useEffect(() => {
-    reviewerService
-      .getAll()
-      .then((list) => setReviewerProfiles(list))
-      .catch(() => setReviewerProfiles([]))
-      .finally(() => setIsLoadingReviewers(false));
-  }, []);
-
-  // ── Availability helper ───────────────────────────────────────────────────
-  // Reads per-reviewer availability from localStorage.
-  // Once the BE exposes `isAvailable` on ReviewerProfile, replace this with
-  // a field read: `p.isAvailable ?? true`.
-  const isReviewerAvailable = (userId: number): boolean => {
-    const saved = localStorage.getItem(`ars_reviewer_available_${userId}`);
-    // Default: available (true) if never set.
-    return saved !== null ? saved === 'true' : true;
-  };
+  // Render reviewers — shows every reviewer the BE returned, ignoring the
+  // historical seed-user filter. Reviewers marked isAvailable !== false are kept;
+  // missing/undefined defaults to available (matches the previous dev default).
+  const reviewers: Reviewer[] = useMemo(() => {
+    return reviewerProfiles
+      .filter((p) => (p as { isAvailable?: boolean }).isAvailable !== false)
+      .map(mapProfileToReviewer);
+  }, [reviewerProfiles]);
 
   // ── Hydrate My Review Requests when the user opens that tab for the first time,
   // or when the tab is re-entered after a successful submission.
@@ -202,13 +160,6 @@ export const DiscoverReviewers = () => {
     // called explicitly after a successful POST and from the Refresh button.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
-
-  // Map BE shapes into UI-shape Reviewer (only the three seeded users we render)
-  const SEEDED_USER_IDS = [34, 35, 36] as const;
-  const reviewers: Reviewer[] = reviewerProfiles
-    .filter((p) => SEEDED_USER_IDS.includes(p.userId as 34 | 35 | 36))
-    .filter((p) => isReviewerAvailable(p.userId))
-    .map(mapProfileToReviewer);
 
   // Lookups for joining BE ReviewRequest rows → UI display fields.
   const paperTitleById = new Map<string | number, string>(
@@ -254,10 +205,10 @@ export const DiscoverReviewers = () => {
         status: 'Pending',
       });
 
-      // 2. Deduct from the wallet (only after a successful POST).
-      const newVal = walletBalance - totalDeductible;
-      localStorage.setItem('ars_wallet', newVal.toString());
-      window.dispatchEvent(new Event('wallet-update'));
+      // 2. Best-effort follow the reviewer (does not block submission).
+      if (Number.isFinite(reviewerUserId)) {
+        await follow(reviewerUserId).catch(() => false);
+      }
 
       // 3. Refetch the list so the new row shows up in My Review Requests.
       try {
@@ -309,47 +260,28 @@ export const DiscoverReviewers = () => {
     }
   };
 
-  // Refresh the Discover Reviewers list — re-fetches both papers and reviewer profiles.
+  // Refresh the Discover Reviewers list — re-fetches reviewer profiles.
   const handleRefreshReviewers = async () => {
-    setIsRefreshingReviewers(true);
-    try {
-      const [profiles] = await Promise.all([
-        reviewerService.getAll().catch(() => []),
-        paperService.getAll().catch(() => ({ items: [] }) as any),
-      ]);
-      setReviewerProfiles(profiles);
-    } finally {
-      setIsRefreshingReviewers(false);
-    }
+    await refetchReviewers();
   };
 
   return (
     <div className={styles.reviewersPage}>
-      {/* ─────────────────────────────────────────────────────────────────────────
-         LIST SCREEN
-         ─────────────────────────────────────────────────────────────────────── */}
+      {/* LIST SCREEN */}
       {screenState === 'list' && (
         <>
-          {/* Page Title */}
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>Reviewers List</h1>
             <button
               className={styles.refreshBtn}
               onClick={handleRefreshReviewers}
-              disabled={isRefreshingReviewers}
               aria-label="Refresh reviewer list"
             >
-              <RefreshCw
-                size={14}
-                style={{
-                  animation: isRefreshingReviewers ? 'spin 0.8s linear infinite' : 'none',
-                }}
-              />
-              {isRefreshingReviewers ? 'Refreshing…' : 'Refresh'}
+              <RefreshCw size={14} />
+              Refresh
             </button>
           </div>
 
-          {/* Navigation Tabs */}
           <div className={styles.tabsRow}>
             <button
               className={`${styles.tabBtn} ${activeTab === 'discover' ? styles.tabBtnActive : ''}`}
@@ -368,10 +300,8 @@ export const DiscoverReviewers = () => {
             </button>
           </div>
 
-          {/* TAB: Discover Reviewers */}
           {activeTab === 'discover' && (
             <div className={styles.discoverContainer}>
-              {/* Manuscript Selector */}
               <div className={styles.manuscriptSelectorCard}>
                 <span className={styles.selectorLabel}>Select Paper for Reviewer Recommendation</span>
                 <select
@@ -388,7 +318,6 @@ export const DiscoverReviewers = () => {
                 </select>
               </div>
 
-              {/* Reviewers Grid — hidden until a paper is selected */}
               {!selectedPaperId ? (
                 <div className={styles.emptyReviewersHint}>
                   Please select a paper above to discover reviewers.
@@ -397,17 +326,17 @@ export const DiscoverReviewers = () => {
                 <div className={styles.emptyReviewersHint}>Loading reviewers…</div>
               ) : reviewers.length === 0 ? (
                 <div className={styles.emptyReviewersHint}>
-                  No reviewers available yet. Confirm the seed script has been run.
+                  No reviewers available yet.
                 </div>
               ) : (
                 <div className={styles.reviewersGrid}>
                   {reviewers.map((reviewer) => {
-                    const hasSufficientFunds = walletBalance >= reviewer.fee;
-                    const shortfall = reviewer.fee - walletBalance;
+                    const balance = walletBalance ?? 0;
+                    const hasSufficientFunds = balance >= reviewer.fee;
+                    const shortfall = Math.max(0, reviewer.fee - balance);
 
                     return (
                     <div key={reviewer.id} className={styles.reviewerCard}>
-                      {/* Avatar, name, title */}
                       <div className={styles.reviewerHeader}>
                         <div
                           className={styles.avatarCircle}
@@ -421,7 +350,6 @@ export const DiscoverReviewers = () => {
                         </div>
                       </div>
 
-                      {/* Stats (H-Index, Pubs, Reviews) */}
                       <div className={styles.statsRow}>
                         <div className={styles.statCol}>
                           <span className={styles.statVal}>{reviewer.hIndex}</span>
@@ -437,24 +365,22 @@ export const DiscoverReviewers = () => {
                         </div>
                       </div>
 
-                      {/* Review Fee Banner */}
                       <div className={`${styles.feeBox} ${hasSufficientFunds ? styles.feeBoxBlue : styles.feeBoxRed}`}>
                         <span className={styles.feeLabel}>Base Review Fee</span>
                         <span className={styles.feeVal}>{reviewer.fee.toLocaleString('vi-VN')} VND</span>
                       </div>
 
-                      {/* Tags */}
                       <div className={styles.tagsRow}>
                         {reviewer.tags.map((tag, i) => (
                           <span key={i} className={styles.tagPill}>{tag}</span>
                         ))}
                       </div>
 
-                      {/* Action buttons */}
                       {hasSufficientFunds ? (
                         <button
                           className={styles.requestReviewBtn}
                           onClick={() => handleRequestClick(reviewer)}
+                          disabled={isFollowing}
                         >
                           Request Review
                         </button>
@@ -480,7 +406,6 @@ export const DiscoverReviewers = () => {
             </div>
           )}
 
-          {/* TAB: My Review Requests */}
           {activeTab === 'requests' && (
             <div className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
@@ -595,23 +520,17 @@ export const DiscoverReviewers = () => {
         </>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────────
-         CREATE PAID REVIEW REQUEST SCREEN (FRAME 1)
-         ─────────────────────────────────────────────────────────────────────── */}
       {screenState === 'create-request' && selectedReviewer && (
         <div className={styles.createRequestContainer}>
-          {/* Breadcrumbs */}
           <div className={styles.breadcrumbs}>
             Home &gt; Reviewer Directory &gt; Submit Manuscript Request
           </div>
 
-          {/* Header title */}
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>Create Peer Review Request</h1>
           </div>
 
           <div className={styles.formGrid}>
-            {/* Left Column: Reviewer Profile */}
             <div className={styles.reviewerSummaryCard}>
               <div className={styles.sectionHeaderLabel}>REVIEWER PROFILE</div>
               <div className={styles.avatarCircleLarge} style={{ backgroundColor: selectedReviewer.avatarBg }}>
@@ -620,7 +539,6 @@ export const DiscoverReviewers = () => {
               <h2 className={styles.formReviewerName}>{selectedReviewer.name}</h2>
               <span className={styles.formReviewerTitle}>{selectedReviewer.title}</span>
 
-              {/* Stats Grid */}
               <div className={styles.formStatsGrid}>
                 <div className={styles.formStatCol}>
                   <span className={styles.formStatVal}>{selectedReviewer.hIndex}</span>
@@ -636,13 +554,11 @@ export const DiscoverReviewers = () => {
                 </div>
               </div>
 
-              {/* Base Fee */}
               <div className={styles.formFeeBox}>
                 <span className={styles.formFeeLabel}>Base Review Fee</span>
                 <span className={styles.formFeeVal}>{selectedReviewer.fee.toLocaleString('vi-VN')} VND</span>
               </div>
 
-              {/* Specializations list */}
               <div className={styles.specializationsContainer}>
                 <span className={styles.specLabel}>Specializations</span>
                 <div className={styles.specTagsGrid}>
@@ -652,7 +568,6 @@ export const DiscoverReviewers = () => {
                 </div>
               </div>
 
-              {/* ORCID Banner (Blue-grey styling matching Frame 1) */}
               <div className={styles.orcidBanner}>
                 <span className={styles.orcidIcon}><Link size={16} /></span>
                 <span className={styles.orcidLabel}>ORCID:</span>
@@ -660,11 +575,9 @@ export const DiscoverReviewers = () => {
               </div>
             </div>
 
-            {/* Right Column: Manuscript Submission */}
             <div className={styles.formFieldsCard}>
               <div className={styles.sectionHeaderLabel}>MANUSCRIPT SUBMISSION</div>
 
-              {/* Select Paper */}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Select Paper</label>
                 <div className={styles.selectWrapper}>
@@ -685,7 +598,6 @@ export const DiscoverReviewers = () => {
                 <span className={styles.fieldHelper}>Choose the manuscript you wish to submit for peer review</span>
               </div>
 
-              {/* Notes to Reviewer */}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Notes to Reviewer</label>
                 <textarea
@@ -699,7 +611,6 @@ export const DiscoverReviewers = () => {
                 <span className={styles.charCounter}>{notes.length} / 500 characters</span>
               </div>
 
-              {/* Estimated completion alert banner */}
               <div className={styles.estimateBanner}>
                 <span className={styles.infoIcon}><Clock size={16} /></span>
                 <div className={styles.estimateTextWrapper}>
@@ -710,7 +621,6 @@ export const DiscoverReviewers = () => {
             </div>
           </div>
 
-          {/* Submit error banner — only renders when handleProceedToPayment failed */}
           {submitError && (
             <div className={styles.submitErrorBanner} role="alert">
               <span className={styles.submitErrorIcon} aria-hidden="true"><AlertTriangle size={16} /></span>
@@ -726,7 +636,6 @@ export const DiscoverReviewers = () => {
             </div>
           )}
 
-          {/* Escrow Policy block — researcher must accept before proceeding */}
           <div className={styles.policyCard}>
             <div className={styles.policyHeader}>
               <span className={styles.policyShieldIcon} aria-hidden="true"><Shield size={18} /></span>
@@ -769,7 +678,6 @@ export const DiscoverReviewers = () => {
             </label>
           </div>
 
-          {/* Bottom Confirmation status bar */}
           <div className={styles.confirmationStatusBar}>
             <span className={styles.confirmationText}>
               <Check size={14} style={{ verticalAlign: 'middle' }} /> Review request will be sent to {selectedReviewer.name} upon confirmation
@@ -797,18 +705,16 @@ export const DiscoverReviewers = () => {
         </div>
       )}
 
-      {/* Top Up Modal Overlay */}
       {topUpReviewer && (
         <TopUpModal
           isOpen={true}
           onClose={() => setTopUpReviewer(null)}
           onSuccess={handleTopUpSuccess}
-          shortfallAmount={topUpReviewer.fee - walletBalance}
+          shortfallAmount={topUpReviewer.fee - (walletBalance ?? 0)}
           reviewerName={topUpReviewer.name}
         />
       )}
 
-      {/* Success Modal Overlay */}
       {showSuccessModal && selectedReviewer && (
         <div className={styles.modalOverlay}>
           <div className={styles.successModalCard}>
@@ -821,7 +727,6 @@ export const DiscoverReviewers = () => {
               from your wallet and is held in escrow. Your request has been routed to {selectedReviewer.name}.
             </p>
 
-            {/* Info Box Details table */}
             <div className={styles.successDetailsTable}>
               <div className={styles.successTableRow}>
                 <span className={styles.successTableLabel}>Request ID</span>

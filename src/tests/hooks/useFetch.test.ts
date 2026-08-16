@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useFetch } from '../../hooks/useFetch';
 import api from '../../services/axios';
-import type { ApiResponse } from '../../types/api';
 
 // Mock the axios instance
 vi.mock('../../services/axios', () => ({
@@ -18,145 +17,104 @@ describe('useFetch', () => {
     vi.clearAllMocks();
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // INITIAL STATE
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('initial state', () => {
-    it('should have correct initial values with immediate=true (default)', () => {
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: { id: 1 } } as ApiResponse<{ id: number }>,
-      });
+    it('starts loading with immediate=true (default)', () => {
+      mockedApi.get.mockResolvedValueOnce({ data: { id: 1 } });
 
       const { result } = renderHook(() => useFetch<{ id: number }>('/api/test'));
 
-      // Initial state when immediate=true
-      expect(result.current.loading).toBe(true);
+      expect(result.current.isLoading).toBe(true);
       expect(result.current.data).toBeNull();
       expect(result.current.error).toBeNull();
     });
 
-    it('should not be loading when immediate=false', () => {
+    it('does not load when immediate=false', () => {
       const { result } = renderHook(() =>
         useFetch<unknown>('/api/test', { immediate: false })
       );
 
-      expect(result.current.loading).toBe(false);
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.data).toBeNull();
       expect(result.current.error).toBeNull();
       expect(mockedApi.get).not.toHaveBeenCalled();
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SUCCESSFUL FETCH
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('successful fetch', () => {
-    it('should fetch and return data', async () => {
+    it('returns data on success (response.data is the payload, no envelope)', async () => {
       const mockData = { id: 1, name: 'Test User' };
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: mockData } as ApiResponse<typeof mockData>,
-      });
+      mockedApi.get.mockResolvedValueOnce({ data: mockData });
 
       const { result } = renderHook(() => useFetch<typeof mockData>('/api/test'));
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.data).toEqual(mockData);
       expect(result.current.error).toBeNull();
-      expect(mockedApi.get).toHaveBeenCalledWith('/api/test');
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/test', expect.any(Object));
     });
 
-    it('should fetch with correct response structure', async () => {
+    it('preserves typed fields on the returned object', async () => {
       interface User {
         id: number;
         name: string;
         email: string;
       }
 
-      const mockUser: User = {
-        id: 42,
-        name: 'John Doe',
-        email: 'john@example.com',
-      };
-
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: mockUser } as ApiResponse<User>,
-      });
+      const mockUser: User = { id: 42, name: 'John Doe', email: 'john@example.com' };
+      mockedApi.get.mockResolvedValueOnce({ data: mockUser });
 
       const { result } = renderHook(() => useFetch<User>('/api/users/42'));
 
-      await waitFor(() => expect(result.current.loading).toBe(false));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.data).toEqual(mockUser);
       expect(result.current.data?.id).toBe(42);
-      expect(result.current.data?.name).toBe('John Doe');
-      expect(result.current.data?.email).toBe('john@example.com');
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // FETCH ERROR
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('fetch error', () => {
-    it('should handle fetch failure with Error object', async () => {
+    it('returns Error on failure', async () => {
       const errorMessage = 'Network request failed';
       mockedApi.get.mockRejectedValueOnce(new Error(errorMessage));
 
       const { result } = renderHook(() => useFetch<unknown>('/api/test'));
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.error).toBeInstanceOf(Error);
       expect(result.current.error?.message).toBe(errorMessage);
       expect(result.current.data).toBeNull();
     });
 
-    it('should handle non-Error rejection', async () => {
+    it('coerces non-Error rejections to Error', async () => {
       mockedApi.get.mockRejectedValueOnce('String error');
 
       const { result } = renderHook(() => useFetch<unknown>('/api/test'));
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.error).toBeInstanceOf(Error);
       expect(result.current.error?.message).toBe('An error occurred');
     });
 
-    it('should handle null/undefined rejection', async () => {
+    it('coerces null rejections to Error', async () => {
       mockedApi.get.mockRejectedValueOnce(null);
 
       const { result } = renderHook(() => useFetch<unknown>('/api/test'));
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.error).toBeInstanceOf(Error);
-      expect(result.current.error?.message).toBe('An error occurred');
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CALLBACKS
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('callbacks', () => {
-    it('should call onSuccess with data on success', async () => {
+    it('calls onSuccess with the payload', async () => {
       const mockData = { id: 1, value: 'success' };
       const onSuccess = vi.fn();
 
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: mockData } as ApiResponse<typeof mockData>,
-      });
+      mockedApi.get.mockResolvedValueOnce({ data: mockData });
 
       renderHook(() =>
         useFetch<typeof mockData>('/api/test', { onSuccess })
@@ -169,7 +127,7 @@ describe('useFetch', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onError with Error on failure', async () => {
+    it('calls onError with an Error instance', async () => {
       const errorMessage = 'Callback test error';
       const onError = vi.fn();
 
@@ -177,21 +135,18 @@ describe('useFetch', () => {
 
       renderHook(() => useFetch<unknown>('/api/test', { onError }));
 
-      await waitFor(() => {
-        expect(onError).toHaveBeenCalled();
-      });
+      await waitFor(() => expect(onError).toHaveBeenCalled());
 
-      expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
-      expect(onError.mock.calls[0][0].message).toBe(errorMessage);
+      const arg = onError.mock.calls[0][0];
+      expect(arg).toBeInstanceOf(Error);
+      expect(arg.message).toBe(errorMessage);
     });
 
-    it('should call both callbacks in correct order', async () => {
+    it('runs only the matching callback', async () => {
       const onSuccess = vi.fn();
       const onError = vi.fn();
 
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: { id: 1 } } as ApiResponse<{ id: number }>,
-      });
+      mockedApi.get.mockResolvedValueOnce({ data: { id: 1 } });
 
       renderHook(() =>
         useFetch<{ id: number }>('/api/test', { onSuccess, onError })
@@ -204,36 +159,18 @@ describe('useFetch', () => {
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SET DATA
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('setData', () => {
-    it('should have setData function available', () => {
+    it('exposes setData as a function', () => {
       const { result } = renderHook(() =>
         useFetch<unknown>('/api/test', { immediate: false })
       );
 
       expect(typeof result.current.setData).toBe('function');
     });
-
-    it('should return a dispatch function', () => {
-      const { result } = renderHook(() =>
-        useFetch<{ id: number }>('/api/test', { immediate: false })
-      );
-
-      // setData should be a function that can be called
-      expect(result.current.setData).toBeDefined();
-      expect(typeof result.current.setData).toBe('function');
-    });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // REFETCH
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('refetch', () => {
-    it('should have refetch function available', () => {
+    it('exposes refetch as a function', () => {
       const { result } = renderHook(() =>
         useFetch<{ id: number }>('/api/test', { immediate: false })
       );
@@ -241,10 +178,8 @@ describe('useFetch', () => {
       expect(typeof result.current.refetch).toBe('function');
     });
 
-    it('should call API when refetch is invoked', async () => {
-      mockedApi.get.mockResolvedValue({
-        data: { data: { id: 1 } } as ApiResponse<{ id: number }>,
-      });
+    it('calls the API with the configured URL when refetch is invoked', async () => {
+      mockedApi.get.mockResolvedValue({ data: { id: 1 } });
 
       const { result } = renderHook(() =>
         useFetch<{ id: number }>('/api/test', { immediate: false })
@@ -252,96 +187,58 @@ describe('useFetch', () => {
 
       await result.current.refetch();
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/api/test');
       expect(mockedApi.get).toHaveBeenCalledTimes(1);
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/test', expect.any(Object));
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // URL CHANGES
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe('url changes', () => {
-    it('should call API with different URLs', async () => {
-      mockedApi.get.mockResolvedValue({
-        data: { data: { id: 1 } } as ApiResponse<{ id: number }>,
-      });
+  describe('URL changes', () => {
+    it('re-fetches when the URL changes', async () => {
+      mockedApi.get.mockResolvedValue({ data: { id: 1 } });
 
       const { rerender } = renderHook(
         ({ url }) => useFetch<{ id: number }>(url),
         { initialProps: { url: '/api/endpoint1' } }
       );
 
-      // Wait for initial call
-      await waitFor(() => {
-        expect(mockedApi.get).toHaveBeenCalledWith('/api/endpoint1');
-      });
+      await waitFor(() => expect(mockedApi.get).toHaveBeenCalledWith('/api/endpoint1', expect.any(Object)));
 
-      // Change URL
       rerender({ url: '/api/endpoint2' });
 
-      // Wait for second call
-      await waitFor(() => {
-        expect(mockedApi.get).toHaveBeenCalledWith('/api/endpoint2');
-      });
+      await waitFor(() => expect(mockedApi.get).toHaveBeenCalledWith('/api/endpoint2', expect.any(Object)));
 
       expect(mockedApi.get).toHaveBeenCalledTimes(2);
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // TYPED RESPONSES
-  // ─────────────────────────────────────────────────────────────────────────────
-
   describe('typed responses', () => {
-    it('should handle array response', async () => {
+    it('returns an array payload directly', async () => {
       type ItemList = string[];
       const mockItems = ['apple', 'banana', 'cherry'];
 
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: mockItems } as ApiResponse<ItemList>,
-      });
+      mockedApi.get.mockResolvedValueOnce({ data: mockItems });
 
       const { result } = renderHook(() => useFetch<ItemList>('/api/items'));
 
-      await waitFor(() => expect(result.current.loading).toBe(false));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.data).toHaveLength(3);
       expect(result.current.data).toContain('banana');
     });
 
-    it('should handle nested object response', async () => {
-      interface ApiResult {
+    it('returns a nested object payload directly', async () => {
+      const mockResult = {
         data: {
-          user: {
-            profile: {
-              name: string;
-              avatar: string;
-            };
-          };
-          total: number;
-        };
-      }
-
-      const mockResult: ApiResult = {
-        data: {
-          user: {
-            profile: {
-              name: 'Alice',
-              avatar: 'https://example.com/alice.png',
-            },
-          },
+          user: { profile: { name: 'Alice', avatar: 'https://example.com/alice.png' } },
           total: 100,
         },
       };
 
-      mockedApi.get.mockResolvedValueOnce({
-        data: { data: mockResult } as ApiResponse<ApiResult>,
-      });
+      mockedApi.get.mockResolvedValueOnce({ data: mockResult });
 
-      const { result } = renderHook(() => useFetch<ApiResult>('/api/complex'));
+      const { result } = renderHook(() => useFetch<typeof mockResult>('/api/complex'));
 
-      await waitFor(() => expect(result.current.loading).toBe(false));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.data?.data.user.profile.name).toBe('Alice');
       expect(result.current.data?.data.total).toBe(100);

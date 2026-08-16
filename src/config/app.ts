@@ -4,7 +4,9 @@ export const AppConfig = {
   description: 'Academic Research System - Manage and share research papers',
   features: {
     enableRegistration: true,
-    enableORCID: true,
+    // ORCID collection is disabled in the registration flow per product spec;
+    // reviewer ORCID profiles remain available on the reviewer discovery page.
+    enableORCID: false,
     enablePaperSubmission: true,
   },
 };

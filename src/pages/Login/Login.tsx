@@ -7,6 +7,7 @@ import { Button } from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
 import { loginSchema, type LoginFormData } from '../../utils/validation';
 import { ROUTES } from '../../utils/constants';
+import RoleSelectionModal from './components/RoleSelectionModal';
 import styles from './Login.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { GoogleIcon } from '../../assets/icons/GoogleIcon';
@@ -21,7 +22,7 @@ const FAST_LOGIN_USERS = [
 ] as const;
 
 const Login = () => {
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, user, pendingRoleSelection, confirmRoleSelection, cancelRoleSelection } = useAuth();
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -183,6 +184,15 @@ const Login = () => {
           </p>
         </div>
       </form>
+
+      {/* Multi-role selection modal — appears after BE login returns > 1 role */}
+      <RoleSelectionModal
+        open={Boolean(pendingRoleSelection)}
+        username={user?.username ?? pendingRoleSelection?.authResponse.username}
+        roles={pendingRoleSelection?.roles ?? []}
+        onConfirm={confirmRoleSelection}
+        onCancel={cancelRoleSelection}
+      />
     </div>
   );
 };

@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../hooks/useWallet';
 import styles from './Profile.module.css';
 
 export const Profile = () => {
-  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>(() => {
-    const saved = localStorage.getItem('ars_active_role');
-    return (saved as any) || 'Researcher';
-  });
+  const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'wallet' | 'roles' | 'security'>('info');
+  // Active role is derived from the authenticated user — no in-app switching.
+  // Users with multiple assigned roles must log out and re-login to choose one.
+  const activeRole = (user?.role as 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student') ?? 'Researcher';
+
+  const [activeTab, setActiveTab] = useState<'info' | 'wallet' | 'security'>('info');
 
   // Personal Info Form State
   const [fullName, setFullName] = useState(
@@ -49,20 +52,8 @@ export const Profile = () => {
   const [newKeywordInput, setNewKeywordInput] = useState('');
   const [showSavedToast, setShowSavedToast] = useState(false);
 
-  // Wallet Sync State
-  const [walletBalance, setWalletBalance] = useState(() => {
-    const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 1500000;
-  });
-
-  useEffect(() => {
-    const handleWalletUpdate = () => {
-      const saved = localStorage.getItem('ars_wallet');
-      setWalletBalance(saved ? parseInt(saved, 10) : 1500000);
-    };
-    window.addEventListener('wallet-update', handleWalletUpdate);
-    return () => window.removeEventListener('wallet-update', handleWalletUpdate);
-  }, []);
+  // Wallet — read from the BE (no hardcoded 1,500,000 VND fallback).
+  const { balance: walletBalance, isLoading: isWalletLoading } = useWallet(user?.userId);
 
   const handleAddKeyword = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && newKeywordInput.trim()) {
@@ -138,12 +129,6 @@ export const Profile = () => {
           onClick={() => setActiveTab('wallet')}
         >
           💳 Wallet & Financials
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'roles' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('roles')}
-        >
-          ⚙️ Roles & Permissions
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'security' ? styles.activeTab : ''}`}
@@ -266,7 +251,11 @@ export const Profile = () => {
           <div className={styles.walletMetricsGrid}>
             <div className={styles.walletMetricCard}>
               <span className={styles.metricLabel}>PLATFORM WALLET BALANCE</span>
-              <span className={styles.metricValue}>{walletBalance.toLocaleString()} VND</span>
+              <span className={styles.metricValue}>
+                {isWalletLoading || walletBalance === null
+                  ? '—'
+                  : `${walletBalance.toLocaleString()} VND`}
+              </span>
               <span className={styles.metricSub}>Available for peer-review requests & services</span>
             </div>
 
@@ -287,14 +276,11 @@ export const Profile = () => {
             <button
               className={styles.actionNavyBtn}
               onClick={() => {
-                const newBal = walletBalance + 500000;
-                setWalletBalance(newBal);
-                localStorage.setItem('ars_wallet', newBal.toString());
-                window.dispatchEvent(new Event('wallet-update'));
-                alert('Successfully deposited 500,000 VND into your wallet!');
+                // Deposit flow now goes through the PayOS payment link (Phase 3.2).
+                alert('Use the Deposit flow on the Wallet page — it now goes through the PayOS payment link.');
               }}
             >
-              💵 Deposit 500,000 VND
+              💵 Deposit Funds
             </button>
 
             <button
@@ -307,40 +293,7 @@ export const Profile = () => {
         </div>
       )}
 
-      {/* TAB 3: ROLES & PERMISSIONS */}
-      {activeTab === 'roles' && (
-        <div className={styles.tabCard}>
-          <h3 className={styles.cardSectionTitle}>Roles & Platform Permissions</h3>
-          <p className={styles.cardSectionSubtitle}>Switch active workspace role or inspect role privileges.</p>
-
-          <div className={styles.rolesGrid}>
-            {(['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'] as const).map((role) => (
-              <div
-                key={role}
-                className={`${styles.roleOptionCard} ${activeRole === role ? styles.activeRoleCard : ''}`}
-                onClick={() => {
-                  setActiveRole(role);
-                  localStorage.setItem('ars_active_role', role);
-                  alert(`Switched active role to ${role}`);
-                }}
-              >
-                <div className={styles.roleCardHeader}>
-                  <span className={styles.roleCardTitle}>{role}</span>
-                  {activeRole === role && <span className={styles.currentActivePill}>Active Now</span>}
-                </div>
-                <p className={styles.roleCardDesc}>
-                  {role === 'Researcher' && 'Submit research papers, manage peer reviews, and deposit escrow funds.'}
-                  {role === 'Reviewer' && 'Review submitted academic papers, score evaluation scorecards, and earn escrow payouts.'}
-                  {role === 'Lecturer' && 'Manage research groups, schedule seminars with Meet links, and AI summarize recordings.'}
-                  {role === 'Graduate Student' && 'Join research cohorts, complete assigned topics, and submit PDF assignments.'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: SECURITY & PASSWORD */}
+      {/* TAB 3: SECURITY & PASSWORD */}
       {activeTab === 'security' && (
         <div className={styles.tabCard}>
           <h3 className={styles.cardSectionTitle}>Security & Account Authentication</h3>

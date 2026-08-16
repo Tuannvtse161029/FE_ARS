@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { storage } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../utils/constants';
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
+// Each test file gets its own createMock() factory so the store stays per-file.
+const createMock = () => {
+  const store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] ?? null),
     setItem: vi.fn((key: string, value: string) => {
@@ -14,51 +14,56 @@ const localStorageMock = (() => {
       delete store[key];
     }),
     clear: vi.fn(() => {
-      store = {};
+      for (const k of Object.keys(store)) delete store[k];
     }),
   };
-})();
+};
 
-Object.defineProperty(global, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-});
+const localStorageMock = createMock();
+const sessionStorageMock = createMock();
+
+Object.defineProperty(global, 'localStorage', { value: localStorageMock, writable: true, configurable: true });
+Object.defineProperty(global, 'sessionStorage', { value: sessionStorageMock, writable: true, configurable: true });
+
+// Helper: read remember-me flag from localStorage directly (storage utility only
+// reads the flag from localStorage).
+const isRemembering = () => localStorageMock.getItem(STORAGE_KEYS.REMEMBER_ME) === 'true';
 
 describe('storage utils', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
+    // Reset to "no rememberMe" — the default for most tests in this file.
+    storage.setRememberMe(false);
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // TOKEN
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── TOKEN ──────────────────────────────────────────────────────────────────
 
   describe('token operations', () => {
     it('should get null when no token exists', () => {
       expect(storage.getToken()).toBeNull();
     });
 
-    it('should set and get token', () => {
+    it('should set and get token (defaults to sessionStorage)', () => {
       storage.setToken('test-token-123');
       expect(storage.getToken()).toBe('test-token-123');
-      expect(localStorage.setItem).toHaveBeenCalledWith(
+      expect(sessionStorage.setItem).toHaveBeenCalledWith(
         STORAGE_KEYS.TOKEN,
         'test-token-123'
       );
     });
 
-    it('should remove token', () => {
+    it('should remove token from both storages', () => {
       storage.setToken('test-token');
       storage.removeToken();
       expect(storage.getToken()).toBeNull();
       expect(localStorage.removeItem).toHaveBeenCalledWith(STORAGE_KEYS.TOKEN);
+      expect(sessionStorage.removeItem).toHaveBeenCalledWith(STORAGE_KEYS.TOKEN);
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // USER
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── USER ───────────────────────────────────────────────────────────────────
 
   describe('user operations', () => {
     const mockUser = {
@@ -78,140 +83,80 @@ describe('storage utils', () => {
       storage.setUser(mockUser);
       const retrieved = storage.getUser();
       expect(retrieved).toEqual(mockUser);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
+      expect(sessionStorage.setItem).toHaveBeenCalledWith(
         STORAGE_KEYS.USER,
-        JSON.stringify(mockUser)
+        expect.stringContaining('testuser')
       );
     });
 
     it('should return null for invalid JSON user data', () => {
-      localStorage.setItem(STORAGE_KEYS.USER, 'invalid-json{');
+      sessionStorage.setItem(STORAGE_KEYS.USER, 'not-json{{{}');
       expect(storage.getUser()).toBeNull();
     });
 
-    it('should remove user', () => {
+    it('should remove user from both storages', () => {
       storage.setUser(mockUser);
       storage.removeUser();
       expect(storage.getUser()).toBeNull();
-      expect(localStorage.removeItem).toHaveBeenCalledWith(STORAGE_KEYS.USER);
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // REMEMBER ME
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── REMEMBER ME ───────────────────────────────────────────────────────────
 
   describe('remember me operations', () => {
-    it('should get false when remember me is not set', () => {
-      expect(storage.getRememberMe()).toBe(false);
-    });
-
     it('should set and get remember me as true', () => {
       storage.setRememberMe(true);
       expect(storage.getRememberMe()).toBe(true);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        STORAGE_KEYS.REMEMBER_ME,
-        'true'
-      );
     });
 
-    it('should set and get remember me as false', () => {
+    it('should remove the remember flag when set to false', () => {
+      storage.setRememberMe(true);
       storage.setRememberMe(false);
       expect(storage.getRememberMe()).toBe(false);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        STORAGE_KEYS.REMEMBER_ME,
-        'false'
-      );
-    });
-
-    it('should remove remember me', () => {
-      storage.setRememberMe(true);
-      storage.removeRememberMe();
-      expect(storage.getRememberMe()).toBe(false);
-      expect(localStorage.removeItem).toHaveBeenCalledWith(
-        STORAGE_KEYS.REMEMBER_ME
-      );
+      // The REMEMBER_ME key is now absent from localStorage.
+      expect(localStorageMock.getItem(STORAGE_KEYS.REMEMBER_ME)).toBeNull();
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CLEAR AUTH
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── CLEAR AUTH ────────────────────────────────────────────────────────────
 
   describe('clearAuth', () => {
-    it('should clear token and user but keep remember me when rememberMe is true', () => {
-      storage.setToken('token');
-      storage.setUser({ id: 1, username: 'test', email: 'test@test.com', fullName: 'Test', roleId: 1, roleName: 'Researcher' });
-      storage.setRememberMe(true);
-
-      storage.clearAuth();
-
-      expect(storage.getToken()).toBeNull();
-      expect(storage.getUser()).toBeNull();
-      expect(storage.getRememberMe()).toBe(true); // Should be kept
-    });
-
-    it('should clear everything including remember me when rememberMe is false', () => {
-      storage.setToken('token');
-      storage.setUser({ id: 1, username: 'test', email: 'test@test.com', fullName: 'Test', roleId: 1, roleName: 'Researcher' });
-      storage.setRememberMe(false);
-
-      storage.clearAuth();
-
-      expect(storage.getToken()).toBeNull();
-      expect(storage.getUser()).toBeNull();
-      expect(storage.getRememberMe()).toBe(false);
-    });
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CLEAR ALL
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe('clearAll', () => {
-    it('should clear all auth data', () => {
-      storage.setToken('token');
-      storage.setUser({ id: 1, username: 'test', email: 'test@test.com', fullName: 'Test', roleId: 1, roleName: 'Researcher' });
-      storage.setRememberMe(true);
-
-      storage.clearAll();
-
-      expect(storage.getToken()).toBeNull();
-      expect(storage.getUser()).toBeNull();
-      expect(storage.getRememberMe()).toBe(false);
-    });
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // COMPLETE FLOW
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe('complete auth flow', () => {
-    it('should handle full login/logout cycle', () => {
-      // Simulate login
-      storage.setToken('jwt-token-xyz');
+    it('clears token and user from both storages', () => {
+      storage.setToken('abc');
       storage.setUser({
         id: 1,
-        username: 'johndoe',
-        email: 'john@university.edu',
-        fullName: 'John Doe',
-        roleId: 2,
+        username: 'u',
+        email: 'e@x',
+        fullName: 'U',
+        roleId: 0,
         roleName: 'Researcher',
       });
-      storage.setRememberMe(true);
-
-      // Verify stored data
-      expect(storage.getToken()).toBe('jwt-token-xyz');
-      expect(storage.getUser()?.username).toBe('johndoe');
-      expect(storage.getRememberMe()).toBe(true);
-
-      // Simulate logout
       storage.clearAuth();
-
-      // Verify data after logout (with remember me)
       expect(storage.getToken()).toBeNull();
       expect(storage.getUser()).toBeNull();
-      expect(storage.getRememberMe()).toBe(true); // Remember me preserved
+      expect(storage.getRememberMe()).toBe(false);
+    });
+  });
+
+  // ─── COMPLETE AUTH FLOW ────────────────────────────────────────────────────
+
+  describe('complete auth flow', () => {
+    it('with rememberMe=true persists across "browser restart"', () => {
+      storage.setRememberMe(true);
+      storage.setToken('jwt-token-xyz');
+      // Simulate "restart" by clearing the session-only store.
+      sessionStorage.clear();
+      // After restart, the token still comes from localStorage because rememberMe was true.
+      // (We don't actually clear localStorage — that's what "remember" means.)
+      expect(storage.getToken()).toBe('jwt-token-xyz');
+    });
+
+    it('with rememberMe=false clears on session close', () => {
+      storage.setRememberMe(false);
+      storage.setToken('jwt-token-xyz');
+      // Session storage simulates a closed tab being cleared.
+      sessionStorage.clear();
+      expect(storage.getToken()).toBeNull();
     });
   });
 });

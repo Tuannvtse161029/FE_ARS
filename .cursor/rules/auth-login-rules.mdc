@@ -22,11 +22,13 @@ const loginData = { email, password };
 ## Session & "Remember Me" Behavior
 
 ### Default Behavior (Remember Me OFF)
+
 - Store auth data (token, user info) in **sessionStorage**
 - When the browser tab or window is closed, the session is **automatically cleared**
 - User must re-login on next visit
 
 ### Remember Me ON
+
 - Store auth data in **localStorage**
 - Session persists across browser restarts
 - User stays logged in until manually logged out

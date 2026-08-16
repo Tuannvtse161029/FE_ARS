@@ -79,6 +79,61 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
     DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
   },
+  PAYMENT: {
+    CREATE_LINK: '/api/Payment/create-link',
+    SUCCESS: '/api/Payment/success',
+    CANCEL: '/api/Payment/cancel',
+    CANCEL_ORDER: (orderCode: number | string) => `/api/Payment/cancel/${orderCode}`,
+    WEBHOOK: '/api/Payment/webhook',
+  },
+  FOLLOWER: {
+    BASE: '/api/Follower',
+    GET_ALL: '/api/Follower',
+    CREATE: '/api/Follower',
+    DELETE: (id: number) => `/api/Follower/${id}`,
+  },
+  NOTIFICATION: {
+    BASE: '/api/Notification',
+    GET_ALL: '/api/Notification',
+    CREATE: '/api/Notification',
+    GET_BY_ID: (id: number) => `/api/Notification/${id}`,
+    UPDATE: (id: number) => `/api/Notification/${id}`,
+    DELETE: (id: number) => `/api/Notification/${id}`,
+  },
+  USER_ROLE: {
+    BASE: '/api/UserRole',
+    GET_ALL: '/api/UserRole',
+    CREATE: '/api/UserRole',
+    GET_BY_ID: (id: number) => `/api/UserRole/${id}`,
+    UPDATE: (id: number) => `/api/UserRole/${id}`,
+    DELETE: (id: number) => `/api/UserRole/${id}`,
+  },
+  MAJOR_FIELD: {
+    BASE: '/api/MajorField',
+    GET_ALL: '/api/MajorField',
+    CREATE: '/api/MajorField',
+    GET_BY_ID: (id: number) => `/api/MajorField/${id}`,
+    UPDATE: (id: number) => `/api/MajorField/${id}`,
+    DELETE: (id: number) => `/api/MajorField/${id}`,
+  },
+  SUB_FIELD: {
+    BASE: '/api/SubField',
+    GET_ALL: '/api/SubField',
+    CREATE: '/api/SubField',
+    GET_BY_ID: (id: number) => `/api/SubField/${id}`,
+    UPDATE: (id: number) => `/api/SubField/${id}`,
+    DELETE: (id: number) => `/api/SubField/${id}`,
+  },
+  COMMENT_VOTE: {
+    BASE: '/api/CommentVote',
+    GET_ALL: '/api/CommentVote',
+    CREATE: '/api/CommentVote',
+  },
+  WALLET: {
+    BASE: '/api/Wallet',
+    GET_ALL: '/api/Wallet',
+    GET_BY_ID: (id: number) => `/api/Wallet/${id}`,
+  },
 } as const;
 
 export const STORAGE_KEYS = {

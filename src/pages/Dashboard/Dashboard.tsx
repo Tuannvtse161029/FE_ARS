@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../routes/paths';
 import styles from './Dashboard.module.css';
 import { Upload } from '../../assets/icons/UploadIcon';
@@ -8,28 +9,15 @@ import { Calendar } from '../../assets/icons/CalendarIcon';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Selected role for dashboard layout switching
-  const [activeRole, setActiveRole] = useState<'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'>('Researcher');
+  // Dashboard layout is keyed off the authenticated user's role from the JWT.
+  // No in-app role switching — users with multiple roles pick one at re-login.
+  const activeRole = (user?.role as 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student') ?? 'Researcher';
 
-  const [isFrameworkSubmitted, setIsFrameworkSubmitted] = useState(false);
-
-  useEffect(() => {
-    // Sync active role with layout
-    const checkRole = () => {
-      const saved = localStorage.getItem('ars_active_role');
-      if (saved) setActiveRole(saved as any);
-      setIsFrameworkSubmitted(localStorage.getItem('ars_framework_submitted') === 'true');
-    };
-    checkRole();
-    window.addEventListener('storage', checkRole);
-    // Poll to detect localstorage updates instantly
-    const interval = setInterval(checkRole, 500);
-    return () => {
-      window.removeEventListener('storage', checkRole);
-      clearInterval(interval);
-    };
-  }, []);
+  const [isFrameworkSubmitted] = useState(() => {
+    return typeof window !== 'undefined' && localStorage.getItem('ars_framework_submitted') === 'true';
+  });
 
   // Invitation tracking state for AI Match list
   const [invitedReviewers, setInvitedReviewers] = useState<{ [name: string]: boolean }>({});

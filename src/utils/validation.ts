@@ -46,10 +46,6 @@ export const registerSchema = yup.object({
   pdfUrl: yup
     .string()
     .required('Verification document is required'),
-  orcidId: yup
-    .string()
-    .optional()
-    .matches(/^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/, 'Invalid ORCID ID format'),
 });
 
 export type LoginFormData = yup.InferType<typeof loginSchema>;

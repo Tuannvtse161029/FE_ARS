@@ -6,6 +6,13 @@ import type {
   RegisterRequest,
   RegisterPayload,
   AuthResponse,
+  ForgotPasswordRequest,
+  VerifyOtpRequest,
+  VerifyOtpResponse,
+  ResetPasswordRequest,
+  VerifyEmailRequest,
+  SendApprovalEmailRequest,
+  UserRole,
 } from '../types/auth';
 
 export const authService = {
@@ -44,12 +51,42 @@ export const authService = {
         data?.user?.id ??
         undefined;
 
+      // Parse the assigned-role list from any of the common BE shapes.
+      // Falls back to a single-element array containing `role` when the BE
+      // does not yet expose the full list (older responses).
+      const KNOWN_ROLES: UserRole[] = ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'];
+      const isKnownRole = (r: unknown): r is UserRole =>
+        typeof r === 'string' && KNOWN_ROLES.includes(r as UserRole);
+
+      const rawRoles: unknown[] = Array.isArray(data?.roles)
+        ? data.roles
+        : Array.isArray(data?.userRoles)
+        ? data.userRoles
+        : Array.isArray(data?.user?.roles)
+        ? data.user.roles
+        : [];
+
+      // Accept either an array of strings, or an array of { name } / { roleName } objects.
+      const parsedRoles: UserRole[] = rawRoles
+        .map((r) => {
+          if (typeof r === 'string') return r;
+          if (r && typeof r === 'object') {
+            const obj = r as { name?: unknown; roleName?: unknown; role?: unknown };
+            return (obj.name ?? obj.roleName ?? obj.role) as unknown;
+          }
+          return undefined;
+        })
+        .filter(isKnownRole);
+
+      const roles: UserRole[] = parsedRoles.length > 0 ? parsedRoles : isKnownRole(role) ? [role] : ['Researcher'];
+
       return {
         token,
         username,
         email,
         role,
         userId,
+        roles,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);
@@ -106,6 +143,10 @@ export const authService = {
     // user "authenticated" and bounce PublicRoute → /dashboard.
     try {
       localStorage.removeItem('ars-auth-storage');
+      // Legacy role-switch preference key — no longer used after the role
+      // deprecation. Clean it up so users don't carry stale role data into
+      // a new session.
+      localStorage.removeItem('ars_active_role');
     } catch {
       /* ignore */
     }
@@ -142,24 +183,27 @@ export const authService = {
     return !!storage.getToken();
   },
 
-  // --- Reset Password flow (TEST MOCK — restore real BE calls before prod) ---
-  forgotPassword: async (_email: string): Promise<void> => {
-    // TODO (BE): Replace with real POST /api/auth/forgot-password
-    await new Promise((r) => setTimeout(r, 800)); // simulate network
-    console.log('[MOCK] forgotPassword called — replace with real BE call');
+  // --- Reset password flow (real BE calls) ---
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, data);
   },
 
-  verifyOtp: async (_payload: { email: string; otp: string }): Promise<{ resetToken: string }> => {
-    // TODO (BE): Replace with real POST /api/auth/verify-otp
-    await new Promise((r) => setTimeout(r, 800)); // simulate network
-    console.log('[MOCK] verifyOtp called — replace with real BE call');
-    return { resetToken: 'mock-reset-token-123456' };
+  verifyOtp: async (data: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
+    const response = await api.post<VerifyOtpResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
+    return response.data;
   },
 
-  resetPassword: async (_payload: { token: string; newPassword: string }): Promise<void> => {
-    // TODO (BE): Replace with real POST /api/auth/reset-password
-    await new Promise((r) => setTimeout(r, 800)); // simulate network
-    console.log('[MOCK] resetPassword called — replace with real BE call');
+  resetPassword: async (data: ResetPasswordRequest): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
+  },
+
+  // --- Email verification / admin approval trigger ---
+  verifyEmail: async (data: VerifyEmailRequest): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: data.token } });
+  },
+
+  sendApprovalEmail: async (data: SendApprovalEmailRequest): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email: data.email } });
   },
 };
 

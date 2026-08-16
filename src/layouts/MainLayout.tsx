@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
+import { useWallet } from '../hooks/useWallet';
+import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
+import { useNotifications } from '../hooks/useNotifications';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -20,88 +23,10 @@ import {
   User,
   ChevronDown,
   LogOut,
-  RefreshCw as SwitchIcon,
   X,
-  Check,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-
-const RoleSwitchModal = ({
-  isOpen,
-  onClose,
-  activeRole,
-  availableRoles,
-  onConfirm
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  activeRole: string;
-  availableRoles: { value: string; label: string }[];
-  onConfirm: (role: string) => void;
-}) => {
-  const [selectedRole, setSelectedRole] = useState(activeRole);
-
-  if (!isOpen) return null;
-
-  const handleConfirm = () => {
-    if (selectedRole !== activeRole) {
-      onConfirm(selectedRole);
-    }
-    onClose();
-  };
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Switch Role</h2>
-          <button className={styles.modalCloseBtn} onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-        <div className={styles.modalBody}>
-          <p className={styles.modalDescription}>Select a role to switch to:</p>
-          <div className={styles.roleOptionsList}>
-            {availableRoles.map((role) => (
-              <label
-                key={role.value}
-                className={`${styles.roleOption} ${selectedRole === role.value ? styles.roleOptionSelected : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="role"
-                  value={role.value}
-                  checked={selectedRole === role.value}
-                  onChange={() => setSelectedRole(role.value)}
-                  className={styles.roleOptionRadio}
-                />
-                <span className={styles.roleOptionLabel}>{role.label}</span>
-                {selectedRole === role.value && (
-                  <span className={styles.roleOptionCheck}>
-                    <Check size={16} strokeWidth={3} />
-                  </span>
-                )}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className={styles.modalFooter}>
-          <button className={styles.modalCancelBtn} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className={styles.modalConfirmBtn}
-            onClick={handleConfirm}
-            disabled={selectedRole === activeRole}
-          >
-            Continue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const ProfileDropdown = ({
   username,
@@ -110,7 +35,6 @@ const ProfileDropdown = ({
   onLogout,
   onProfileClick,
   onAccountSettingsClick,
-  onSwitchRoleClick
 }: {
   username: string;
   activeRole: string;
@@ -118,7 +42,6 @@ const ProfileDropdown = ({
   onLogout: () => void;
   onProfileClick: () => void;
   onAccountSettingsClick: () => void;
-  onSwitchRoleClick: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -145,10 +68,6 @@ const ProfileDropdown = ({
           <button className={styles.dropdownItem} onClick={() => { onAccountSettingsClick(); setIsOpen(false); }}>
             <Settings size={16} />
             <span>Account Settings</span>
-          </button>
-          <button className={styles.dropdownItem} onClick={() => { onSwitchRoleClick(); setIsOpen(false); }}>
-            <SwitchIcon size={16} />
-            <span>Switch Role</span>
           </button>
           <div className={styles.dropdownDivider}></div>
           <button className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
@@ -177,32 +96,20 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Selected role for mockup switching (excludes Admin - must login to access)
-  const [activeRole, setActiveRole] = useState<UserRole>(() => {
-    const saved = localStorage.getItem('ars_active_role');
-    return (saved as UserRole) || 'Researcher';
-  });
+  // Wallet balance comes from the BE — render placeholder until it loads.
+  const { balance: beBalance, isLoading: isBalanceLoading } = useWallet(user?.userId);
 
-  // Sync activeRole with user role from auth when user logs in
-  useEffect(() => {
-    if (user?.role) {
-      const userRole = user.role as UserRole;
-      setActiveRole(userRole);
-      localStorage.setItem('ars_active_role', userRole);
-    }
-  }, [user?.role]);
+  // Notifications come from the BE — feed the header bell badge.
+  const { unreadCount } = useNotifications(user?.userId);
 
-  // Wallet balance sync state
-  const [balance, setBalance] = useState(() => {
-    const saved = localStorage.getItem('ars_wallet');
-    return saved ? parseInt(saved, 10) : 1500000;
-  });
+  // Reviewer availability comes from the BE (read-only here; toggle still calls update).
+  const { isAvailable: beReviewerAvailable, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
 
-  // Reviewer availability toggle state
-  const [isReviewerAvailable, setIsReviewerAvailable] = useState(() => {
-    const saved = localStorage.getItem('ars_reviewer_available');
-    return saved ? saved === 'true' : true;
-  });
+  // Active role is derived solely from the authenticated user's role as set by the BE at login.
+  // Role switching is no longer performed in-app — users with multiple roles re-login
+  // (and pick a role on the new JWT) instead.
+  const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
+
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -214,21 +121,19 @@ export const MainLayout = () => {
     }
   }, [toastMessage]);
 
-  // Sync reviewer availability from BE when user logs in
+  // Mirror the BE reviewer availability into local state so the toggle works
+  // on the same source-of-truth that DiscoverReviewers reads from.
+  const [optimisticAvailability, setOptimisticAvailability] = useState<boolean | null>(null);
+  const isReviewerAvailable = optimisticAvailability ?? beReviewerAvailable;
+
+  // Refresh the cached availability whenever the BE tells us something changed.
   useEffect(() => {
-    if (user?.userId && activeRole === 'Reviewer') {
-      reviewerService
-        .getById(user.userId)
-        .then((profile) => {
-          if (profile.reviewFee !== undefined && profile.reviewFee !== null) {
-            // BE returns availability as part of the profile; fall back to localStorage
-          }
-        })
-        .catch(() => {
-          // silently ignore — keep local state
-        });
+    if (optimisticAvailability === null) return;
+    // Reset optimistic state once the BE catches up.
+    if (beReviewerAvailable === optimisticAvailability) {
+      setOptimisticAvailability(null);
     }
-  }, [user?.userId, activeRole]);
+  }, [beReviewerAvailable, optimisticAvailability]);
 
   const handleToggleAvailability = async () => {
     if (!user?.userId || isUpdatingAvailability) {
@@ -240,64 +145,30 @@ export const MainLayout = () => {
     const next = !isReviewerAvailable;
     setIsUpdatingAvailability(true);
     // Optimistic update
-    setIsReviewerAvailable(next);
-    localStorage.setItem('ars_reviewer_available', String(next));
-    // Also write per-user key so DiscoverReviewers can filter unavailable reviewers
-    localStorage.setItem(`ars_reviewer_available_${user.userId}`, String(next));
+    setOptimisticAvailability(next);
     try {
       await reviewerService.updateAvailability(user.userId, next);
+      await refetchAvailability();
       setToastMessage({
         text: next ? 'You are now accepting review requests.' : 'You are no longer accepting review requests.',
         type: 'success',
       });
     } catch {
-      // Revert on failure
-      setIsReviewerAvailable(!next);
-      localStorage.setItem('ars_reviewer_available', String(!next));
-      localStorage.setItem(`ars_reviewer_available_${user.userId}`, String(!next));
+      setOptimisticAvailability(!next);
       setToastMessage({ text: 'Failed to update availability. Please try again.', type: 'error' });
     } finally {
       setIsUpdatingAvailability(false);
     }
   };
 
-  // Role switch modal state
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-
-  // Available roles for the user
-  const availableRoles = [
-    { value: 'Researcher', label: 'Researcher' },
-    { value: 'Reviewer', label: 'Reviewer' },
-    { value: 'Lecturer', label: 'Lecturer (Seminar/Group)' },
-    { value: 'Graduate Student', label: 'Graduate Student' },
-  ];
-
-  useEffect(() => {
-    const handleWalletUpdate = () => {
-      const saved = localStorage.getItem('ars_wallet');
-      setBalance(saved ? parseInt(saved, 10) : 1500000);
-    };
-    window.addEventListener('wallet-update', handleWalletUpdate);
-    return () => window.removeEventListener('wallet-update', handleWalletUpdate);
-  }, []);
-
-  const handleRoleSwitch = (role: string) => {
-    setActiveRole(role as UserRole);
-    localStorage.setItem('ars_active_role', role);
-
-    // Redirect to default pages based on role selection
-    if (role === 'Researcher') {
-      navigate(ROUTES.FORUM);
-    } else {
-      navigate(ROUTES.DASHBOARD);
-    }
-  };
-
-  // Use real user data when available, fallback to mock data
-  const displayName = user?.username || (activeRole === 'Researcher' ? 'Prof. Dang Researcher' : activeRole === 'Reviewer' ? 'Dr. N. Ashford' : activeRole === 'Graduate Student' ? 'Dr. N. Ashford' : 'Lecturer Account');
-  const avatarInitials = user?.username
-    ? user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : (activeRole === 'Researcher' ? 'PD' : activeRole === 'Reviewer' ? 'NA' : activeRole === 'Graduate Student' ? 'NA' : 'LA');
+  // Display name and avatar initials are derived from the authenticated user.
+  const displayName = user?.username || user?.email || 'Account';
+  const avatarInitials = (user?.username || user?.email || 'U')
+    .split(/\s+/)
+    .map((n) => n[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U';
 
   const handleLogout = () => {
     logout();
@@ -439,13 +310,17 @@ export const MainLayout = () => {
             {/* Wallet Balance */}
             <div className={styles.walletBadge}>
               <span className={styles.walletIcon}><Wallet size={18} /></span>
-              <span className={styles.walletAmount}>{balance.toLocaleString('vi-VN')} VND</span>
+              <span className={styles.walletAmount}>
+                {isBalanceLoading || beBalance === null
+                  ? '—'
+                  : `${beBalance.toLocaleString('vi-VN')} VND`}
+              </span>
             </div>
 
-            {/* Notification bell */}
-            <button className={styles.notificationBtn}>
+            {/* Notification bell — badge count from BE unread count */}
+            <button className={styles.notificationBtn} aria-label={`Notifications (${unreadCount} unread)`}>
               <Bell size={18} />
-              <span className={styles.notificationBadge}>3</span>
+              {unreadCount > 0 && <span className={styles.notificationBadge}>{unreadCount}</span>}
             </button>
 
             {/* Profile Dropdown */}
@@ -456,19 +331,9 @@ export const MainLayout = () => {
               onLogout={handleLogout}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
               onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
-              onSwitchRoleClick={() => setIsRoleModalOpen(true)}
             />
           </div>
         </header>
-
-        {/* Role Switch Modal */}
-        <RoleSwitchModal
-          isOpen={isRoleModalOpen}
-          onClose={() => setIsRoleModalOpen(false)}
-          activeRole={activeRole}
-          availableRoles={availableRoles}
-          onConfirm={handleRoleSwitch}
-        />
 
         {/* Content Body */}
         <main className={styles.contentBody}>

@@ -20,3 +20,68 @@ secrets/
 *.pfx
 appsettings.Development.json
 appsettings.*.local.json
+
+# ==========================================
+# Local Scripts, Code Execution & Text Artifacts
+# ==========================================
+
+# Python scripts & bytecode
+*.py
+__pycache__/
+*.pyc
+*.pyo
+
+# PowerShell scripts & execution outputs
+*.ps1
+*.psm1
+*.psd1
+
+# XML dumps & sidecar outputs (*.xml.out)
+*.xml.out
+*.out
+
+# Text files & local logs
+*.txt
+*.log
+
+# Excel & CSV Test Case Artifacts
+*.xlsx
+*.xls
+*.csv
+# !src/**/*.csv # (Keep if you have essential database seed CSVs in src)
+
+# Word & Document Artifacts
+*.docx
+*.doc
+*.pdf
+
+# Specific Generator Outputs & Image Dumps
+test_out.xlsx
+input_file_*.png
+
+# ==========================================
+# QA Test Reports, Matrices & Documentation
+# ==========================================
+
+# Excel & CSV Test Case Artifacts
+*.xlsx
+*.xls
+*.csv
+# !src/**/*.csv # (Uncomment/keep if you have required seed data CSVs in src)
+
+# Word & Generated Documentation
+*.docx
+*.doc
+*.pdf
+
+# Specific Report File Patterns
+*Report5*
+*Test_Report*
+*Unit_Test*
+*System_Test*
+*ARS_Report*
+
+# Temporary & Python Generator Script Artifacts
+test_out.xlsx
+input_file_*.png
+*.log
