@@ -155,25 +155,29 @@ const Login = () => {
           <span>Or sign in with Google</span>
         </Button>
 
-        <div className={styles.devDivider}>
-          <span className={styles.devDividerLine} />
-          <span className={styles.devDividerText}>Dev only</span>
-          <span className={styles.devDividerLine} />
-        </div>
+        {import.meta.env.DEV && (
+          <>
+            <div className={styles.devDivider}>
+              <span className={styles.devDividerLine} />
+              <span className={styles.devDividerText}>Dev only</span>
+              <span className={styles.devDividerLine} />
+            </div>
 
-        <div className={styles.fastLoginGrid}>
-          {FAST_LOGIN_USERS.map((user) => (
-            <button
-              key={user.label}
-              type="button"
-              className={styles.fastLoginBtn}
-              onClick={() => handleFastLogin(user.email, user.password)}
-              disabled={isLoading}
-            >
-              {user.label}
-            </button>
-          ))}
-        </div>
+            <div className={styles.fastLoginGrid}>
+              {FAST_LOGIN_USERS.map((user) => (
+                <button
+                  key={user.label}
+                  type="button"
+                  className={styles.fastLoginBtn}
+                  onClick={() => handleFastLogin(user.email, user.password)}
+                  disabled={isLoading}
+                >
+                  {user.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
