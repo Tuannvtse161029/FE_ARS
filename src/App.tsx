@@ -23,7 +23,12 @@ import { EarningsWallet } from './pages/Reviewer/EarningsWallet';
 import { AssignedReviews } from './pages/Reviewer/AssignedReviews';
 import { Profile } from './pages/Profile/Profile';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
-import { AdminWithdrawalRequests } from './pages/Admin/AdminWithdrawalRequests';
+import { RoleRequests } from './pages/Admin/RoleRequests';
+import { AccountsManagement } from './pages/Admin/AccountsManagement';
+import { TransactionsManagement } from './pages/Admin/TransactionsManagement';
+import ContentReports from './pages/Admin/ContentReports';
+import PremiumPackages from './pages/Admin/PremiumPackages';
+import AuditLogs from './pages/Admin/AuditLogs';
 import CheckoutReturn from './pages/Payment/CheckoutReturn';
 import './styles/globals.css';
 
@@ -59,8 +64,13 @@ const App = () => {
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
               <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />
-              <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
-              <Route path={ROUTES.ADMIN_WITHDRAWALS} element={<AdminWithdrawalRequests />} />
+<Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
+              <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
+              <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />
+              <Route path={ROUTES.ADMIN_TRANSACTIONS} element={<TransactionsManagement />} />
+              <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
+              <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
+              <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
               <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
               <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
             </Route>

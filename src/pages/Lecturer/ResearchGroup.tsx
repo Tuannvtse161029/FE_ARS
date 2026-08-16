@@ -1,4 +1,17 @@
 import { useState } from 'react';
+import {
+  Plus,
+  Check,
+  X,
+  Users,
+  Clock,
+  Pencil,
+  Trash2,
+  BookOpen,
+  Settings,
+  Lightbulb,
+  FileText,
+} from 'lucide-react';
 import styles from './ResearchGroup.module.css';
 
 interface Group {
@@ -184,7 +197,8 @@ export const ResearchGroup = () => {
           className={styles.createGroupBtn}
           onClick={() => setShowCreateGroupModal(true)}
         >
-          ＋ Create Research Group
+          <Plus size={16} aria-hidden />
+          Create Research Group
         </button>
       </div>
 
@@ -192,7 +206,9 @@ export const ResearchGroup = () => {
       {showSuccessBanner && (
         <div className={styles.successToastBanner}>
           <div className={styles.toastLeft}>
-            <span className={styles.toastCheckIcon}>✓</span>
+            <span className={styles.toastCheckIcon}>
+              <Check size={14} strokeWidth={3} aria-hidden />
+            </span>
             <div>
               <span className={styles.toastTitle}>Action Successful</span>
               <p className={styles.toastSub}>{bannerText}</p>
@@ -200,7 +216,13 @@ export const ResearchGroup = () => {
           </div>
           <div className={styles.toastRight}>
             <span className={styles.justNowText}>Just now</span>
-            <button className={styles.toastCloseBtn} onClick={() => setShowSuccessBanner(false)}>✕</button>
+            <button
+              className={styles.toastCloseBtn}
+              onClick={() => setShowSuccessBanner(false)}
+              aria-label="Dismiss notification"
+            >
+              <X size={14} aria-hidden />
+            </button>
           </div>
         </div>
       )}
@@ -208,7 +230,7 @@ export const ResearchGroup = () => {
       {/* SECTION 1: Active Research Groups */}
       <div className={styles.sectionHeaderRow}>
         <div className={styles.sectionTitleBlock}>
-          <span className={styles.sectionIcon}>👥</span>
+          <Users size={18} className={styles.sectionIcon} aria-hidden />
           <h3 className={styles.sectionTitle}>Active Research Groups</h3>
           <span className={styles.countBadge}>{groups.length} Groups</span>
         </div>
@@ -227,7 +249,8 @@ export const ResearchGroup = () => {
               </div>
               {grp.dueDate && (
                 <span className={styles.dueDatePill}>
-                  🕒 Phase 3 Report Due: {grp.dueDate}
+                  <Clock size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                  Phase 3 Report Due: {grp.dueDate}
                 </span>
               )}
             </div>
@@ -261,14 +284,27 @@ export const ResearchGroup = () => {
             {/* Footer buttons */}
             <div className={styles.groupCardFooter}>
               <div className={styles.iconButtonsLeft}>
-                <button className={styles.actionIconBtn} title="Edit group">✏️</button>
-                <button className={styles.actionIconBtn} title="Delete group">🗑️</button>
+                <button
+                  className={styles.actionIconBtn}
+                  title="Edit group"
+                  aria-label="Edit group"
+                >
+                  <Pencil size={14} aria-hidden />
+                </button>
+                <button
+                  className={styles.actionIconBtn}
+                  title="Delete group"
+                  aria-label="Delete group"
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
               </div>
               <button
                 className={styles.viewGroupNavyBtn}
                 onClick={() => alert(`Opening workspace for group ${grp.name}`)}
               >
-                👥 View Group
+                <Users size={14} aria-hidden />
+                View Group
               </button>
             </div>
           </div>
@@ -278,8 +314,10 @@ export const ResearchGroup = () => {
         <div
           className={styles.createGroupDashedCard}
           onClick={() => setShowCreateGroupModal(true)}
+          role="button"
+          tabIndex={0}
         >
-          <span className={styles.plusIconLarge}>＋</span>
+          <Plus size={32} className={styles.plusIconLarge} aria-hidden />
           <span className={styles.createDashedText}>Create New Group</span>
         </div>
       </div>
@@ -287,7 +325,7 @@ export const ResearchGroup = () => {
       {/* SECTION 2: Research Topics Library */}
       <div className={styles.sectionHeaderRow} style={{ marginTop: '24px' }}>
         <div className={styles.sectionTitleBlock}>
-          <span className={styles.sectionIcon}>📖</span>
+          <BookOpen size={18} className={styles.sectionIcon} aria-hidden />
           <h3 className={styles.sectionTitle}>Research Topics Library</h3>
           <span className={styles.countBadge}>{topics.length} Topics</span>
         </div>
@@ -295,7 +333,8 @@ export const ResearchGroup = () => {
           className={styles.createTopicOutlineBtn}
           onClick={() => setShowCreateTopicModal(true)}
         >
-          ＋ Create Research Topic
+          <Plus size={14} aria-hidden />
+          Create Research Topic
         </button>
       </div>
 
@@ -337,7 +376,8 @@ export const ResearchGroup = () => {
                       className={styles.assignGroupBtn}
                       onClick={() => handleOpenAssignModal(topic)}
                     >
-                      ⚙️ Assign to Group
+                      <Settings size={14} aria-hidden />
+                      Assign to Group
                     </button>
                   </td>
                 </tr>
@@ -353,23 +393,40 @@ export const ResearchGroup = () => {
           <div className={styles.modalCard}>
             {/* Success alert banner inside modal */}
             <div className={styles.innerModalSuccessBanner}>
-              <span className={styles.innerCheckIcon}>✓</span>
+              <span className={styles.innerCheckIcon}>
+                <Check size={12} strokeWidth={3} aria-hidden />
+              </span>
               <div className={styles.innerBannerMeta}>
                 <b>Research Group Created Successfully!</b>
                 <span>Group ID: RG-2026-015 assigned.</span>
               </div>
-              <button className={styles.innerBannerClose} type="button" onClick={() => setShowCreateGroupModal(false)}>✕</button>
+              <button
+                className={styles.innerBannerClose}
+                type="button"
+                onClick={() => setShowCreateGroupModal(false)}
+                aria-label="Dismiss"
+              >
+                <X size={12} aria-hidden />
+              </button>
             </div>
 
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.modalIconCircle}>👥</span>
+                <span className={styles.modalIconCircle}>
+                  <Users size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Create New Research Group</h3>
                   <span className={styles.modalSubtitle}>Fill in the details below to create a new group</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowCreateGroupModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowCreateGroupModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             <form onSubmit={handleCreateGroupSubmit} className={styles.modalForm}>
@@ -423,13 +480,15 @@ export const ResearchGroup = () => {
                   <div className={styles.emailTagsContainer}>
                     {groupEmails.map((email) => (
                       <span key={email} className={styles.emailPill}>
-                        ✓ {email}
+                        <Check size={12} aria-hidden style={{ marginRight: 4 }} />
+                        {email}
                         <button
                           type="button"
                           className={styles.removeEmailCross}
                           onClick={() => handleRemoveEmail(email)}
+                          aria-label={`Remove ${email}`}
                         >
-                          ×
+                          <X size={12} aria-hidden />
                         </button>
                       </span>
                     ))}
@@ -446,7 +505,8 @@ export const ResearchGroup = () => {
                   Cancel
                 </button>
                 <button type="submit" className={styles.submitNavyBtn}>
-                  ✔ Create Research Group
+                  <Check size={14} aria-hidden />
+                  Create Research Group
                 </button>
               </div>
             </form>
@@ -460,23 +520,43 @@ export const ResearchGroup = () => {
           <div className={styles.modalCard}>
             {/* Success alert banner inside modal */}
             <div className={styles.innerModalSuccessBanner}>
-              <span className={styles.innerCheckIcon}>✓</span>
+              <span className={styles.innerCheckIcon}>
+                <Check size={12} strokeWidth={3} aria-hidden />
+              </span>
               <div className={styles.innerBannerMeta}>
                 <b>Research Topic Created Successfully!</b>
                 <span>Topic ID: RT-2026-009 added.</span>
               </div>
-              <button className={styles.innerBannerClose} type="button" onClick={() => setShowCreateTopicModal(false)}>✕</button>
+              <button
+                className={styles.innerBannerClose}
+                type="button"
+                onClick={() => setShowCreateTopicModal(false)}
+                aria-label="Dismiss"
+              >
+                <X size={12} aria-hidden />
+              </button>
             </div>
 
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.modalIconCircle} style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}>💡</span>
+                <span
+                  className={styles.modalIconCircle}
+                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
+                >
+                  <Lightbulb size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Create New Research Topic</h3>
                   <span className={styles.modalSubtitle}>Define a topic to be assigned to research groups</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowCreateTopicModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowCreateTopicModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             <form onSubmit={handleCreateTopicSubmit} className={styles.modalForm}>
@@ -511,13 +591,15 @@ export const ResearchGroup = () => {
                   <div className={styles.materialTagsList}>
                     {attachedMaterials.map((mat) => (
                       <span key={mat} className={styles.materialPillTag}>
-                        📄 [X] {mat}
+                        <FileText size={12} aria-hidden style={{ marginRight: 4 }} />
+                        {mat}
                         <button
                           type="button"
                           className={styles.removeMatCross}
                           onClick={() => handleRemoveMaterial(mat)}
+                          aria-label={`Remove ${mat}`}
                         >
-                          ×
+                          <X size={10} aria-hidden />
                         </button>
                       </span>
                     ))}
@@ -529,7 +611,8 @@ export const ResearchGroup = () => {
                         if (newDoc) setAttachedMaterials([...attachedMaterials, newDoc]);
                       }}
                     >
-                      + Add more...
+                      <Plus size={12} aria-hidden style={{ marginRight: 4 }} />
+                      Add more...
                     </button>
                   </div>
                 </div>
@@ -544,7 +627,8 @@ export const ResearchGroup = () => {
                   Cancel
                 </button>
                 <button type="submit" className={styles.submitNavyBtn}>
-                  ✔ Create Research Topic
+                  <Check size={14} aria-hidden />
+                  Create Research Topic
                 </button>
               </div>
             </form>
@@ -558,13 +642,24 @@ export const ResearchGroup = () => {
           <div className={styles.modalCard} style={{ maxWidth: '560px' }}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.modalIconCircle} style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>⚙️</span>
+                <span
+                  className={styles.modalIconCircle}
+                  style={{ backgroundColor: '#fffbeb', color: '#d97706' }}
+                >
+                  <Settings size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Assign Research Topic to Groups</h3>
                   <span className={styles.modalSubtitle}>Choose which groups receive this topic</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowAssignModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowAssignModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             {/* Purple Topic Info Box */}
@@ -596,7 +691,10 @@ export const ResearchGroup = () => {
                   />
                   <span className={styles.checkboxGroupId}>RG-2026-012</span>
                   <span className={styles.checkboxGroupName}>Scalable Routing Architecture Group</span>
-                  <span className={styles.checkboxMembersCount}>👥 3 Members</span>
+                  <span className={styles.checkboxMembersCount}>
+                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                    3 Members
+                  </span>
                 </div>
 
                 {/* Group 2 */}
@@ -614,7 +712,10 @@ export const ResearchGroup = () => {
                   />
                   <span className={styles.checkboxGroupId}>RG-2026-015</span>
                   <span className={styles.checkboxGroupName}>AI Speech-to-Text Research Team</span>
-                  <span className={styles.checkboxMembersCount}>👥 2 Members</span>
+                  <span className={styles.checkboxMembersCount}>
+                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                    2 Members
+                  </span>
                 </div>
 
                 {/* Group 3 */}
@@ -632,7 +733,10 @@ export const ResearchGroup = () => {
                   />
                   <span className={styles.checkboxGroupId}>RG-2026-009</span>
                   <span className={styles.checkboxGroupName}>Graph Neural Networks Team</span>
-                  <span className={styles.checkboxMembersCount}>👥 4 Members</span>
+                  <span className={styles.checkboxMembersCount}>
+                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                    4 Members
+                  </span>
                 </div>
               </div>
             </div>
@@ -648,12 +752,13 @@ export const ResearchGroup = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  className={styles.submitNavyBtn}
-                  onClick={handleConfirmAssignment}
-                >
-                  ✔ Confirm Assignment ({selectedGroupsCount} Groups Selected)
-                </button>
+<button
+                className={styles.submitNavyBtn}
+                onClick={handleConfirmAssignment}
+              >
+                <Check size={14} aria-hidden />
+                Confirm Assignment ({selectedGroupsCount} Groups Selected)
+              </button>
               </div>
             </div>
           </div>

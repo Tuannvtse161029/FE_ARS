@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/Button';
-import { ROUTES } from '../../../utils/constants';
 import type { UserRole } from '../../../types/auth';
 import styles from './RegisterSuccessModal.module.css';
 import { Check } from '../../../assets/icons/CheckIcon';
@@ -19,8 +17,6 @@ export const RegisterSuccessModal = ({
   role,
   onClose,
 }: RegisterSuccessModalProps) => {
-  const navigate = useNavigate();
-
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -37,8 +33,11 @@ export const RegisterSuccessModal = ({
   if (!isOpen) return null;
 
   const handleExploreForum = () => {
+    // The actual navigation is now handled by the parent (Register.tsx)
+    // via the `onClose` callback, which knows about the auth-state changes
+    // that just happened (the user is now authenticated but pending).
+    // Keep the button here for UX clarity — it just closes the modal.
     onClose();
-    navigate(ROUTES.FORUM);
   };
 
   return (

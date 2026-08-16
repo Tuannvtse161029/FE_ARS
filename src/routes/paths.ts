@@ -21,7 +21,12 @@ export const ROUTES = {
   ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
   ADMIN: '/admin',
-  ADMIN_WITHDRAWALS: '/admin/withdrawals',
+  ADMIN_ROLE_REQUESTS: '/admin/role-requests',
+  ADMIN_ACCOUNTS: '/admin/accounts',
+  ADMIN_TRANSACTIONS: '/admin/transactions',
+  ADMIN_REPORTS: '/admin/reports',
+  ADMIN_PACKAGES: '/admin/packages',
+  ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   PAYMENT_RETURN: '/payment/return',
 } as const;
 

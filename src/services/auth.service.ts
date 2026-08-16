@@ -51,10 +51,50 @@ export const authService = {
         data?.user?.id ??
         undefined;
 
+      // BE convention: 1 = Researcher, 2 = Admin, 3 = Reviewer, 4 = Lecturer,
+      // 5 = Graduate Student (see ROLE_IDS in src/types/auth.ts). Accept the
+      // integer from any of the common BE shapes; fall back to 0 (the
+      // "no role" sentinel) when the BE doesn't yet expose it.
+      const roleIdRaw =
+        data?.roleId ??
+        data?.user?.roleId ??
+        data?.user?.role?.id ??
+        undefined;
+      const roleId =
+        typeof roleIdRaw === 'number' && Number.isFinite(roleIdRaw)
+          ? roleIdRaw
+          : 0;
+
+      // `isActive` mirrors `dbo.Users.isActive`. New accounts start false
+      // until an Admin approves the role request. Accept the flag from any
+      // of the common BE shapes; coerce to a strict boolean; fall back to
+      // `true` for established logins where the BE hasn't shipped the field
+      // (older tokens / older BEs shouldn't get locked out of the dashboard).
+      const isActiveRaw =
+        data?.isActive ??
+        data?.user?.isActive ??
+        data?.user?.IsActive ??
+        undefined;
+      const isActive =
+        typeof isActiveRaw === 'boolean'
+          ? isActiveRaw
+          : true;
+
       // Parse the assigned-role list from any of the common BE shapes.
       // Falls back to a single-element array containing `role` when the BE
       // does not yet expose the full list (older responses).
-      const KNOWN_ROLES: UserRole[] = ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'];
+      //
+      // `Admin` is intentionally included in KNOWN_ROLES: a UserRole-typed
+      // picker modal is the right surface for an admin who's been provisioned
+      // by the DB. The self-registration UI blocks new Admin accounts; this
+      // is only relevant to login parsing.
+      const KNOWN_ROLES: UserRole[] = [
+        'Researcher',
+        'Reviewer',
+        'Lecturer',
+        'Graduate Student',
+        'Admin',
+      ];
       const isKnownRole = (r: unknown): r is UserRole =>
         typeof r === 'string' && KNOWN_ROLES.includes(r as UserRole);
 
@@ -86,7 +126,9 @@ export const authService = {
         email,
         role,
         userId,
+        roleId,
         roles,
+        isActive,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);
@@ -100,6 +142,10 @@ export const authService = {
         email: data.email,
         password: data.password,
         fullName: data.fullName,
+        // New registrations start pending until an Admin approves the role
+        // request; echo it on the payload so BE-side validation can re-emit
+        // it on the response and the FE doesn't have to guess.
+        isActive: false,
       });
 
       const resData = response.data;
@@ -107,12 +153,18 @@ export const authService = {
       const email = resData?.email || data.email;
       const username = resData?.fullName || data.fullName || data.email.split('@')[0];
       const role = resData?.role || 'Researcher';
+      // New registrations are always pending; trust the BE echo when it
+      // provides one, otherwise default to false. Falling back to true here
+      // would let an unapproved account reach the dashboard.
+      const isActive =
+        typeof resData?.isActive === 'boolean' ? resData.isActive : false;
 
       return {
         token,
         username,
         email,
         role,
+        isActive,
       };
     } catch (err: any) {
       console.warn('Backend register attempt failed:', err?.message || err);
@@ -122,13 +174,20 @@ export const authService = {
 
   registerUser: async (payload: RegisterPayload): Promise<AuthResponse> => {
     try {
-      const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, payload);
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, {
+        ...payload,
+        // Same as register(): new accounts start unverified.
+        isActive: false,
+      });
       const resData = response.data;
+      const isActive =
+        typeof resData?.isActive === 'boolean' ? resData.isActive : false;
       return {
         token: resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now(),
         username: resData?.fullName || payload.fullName || payload.username,
         email: resData?.email || payload.email,
         role: resData?.role || payload.role || 'Researcher',
+        isActive,
       };
     } catch (err: any) {
       console.warn('Backend registerUser attempt failed:', err?.message || err);
@@ -173,8 +232,14 @@ export const authService = {
       username: authResponse.username,
       email: authResponse.email,
       fullName: authResponse.username,
-      roleId: 0,
+      // Persist the BE's authoritative roleId so subsequent loads (which
+      // hydrate from storage before BE is reachable) can still detect admin.
+      // Falls back to 0 when the BE didn't supply one.
+      roleId: authResponse.roleId ?? 0,
       roleName: authResponse.role,
+      // Default to true when the BE didn't echo this — protects existing
+      // logins from being locked out while the BE ships the field.
+      isActive: authResponse.isActive ?? true,
     };
     storage.setUser(user);
   },

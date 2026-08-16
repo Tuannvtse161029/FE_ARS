@@ -259,6 +259,29 @@
   align-items: center;
 }
 
+.walletTopUpButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #10b981;
+  background: #ffffff;
+  color: #059669;
+  cursor: pointer;
+  margin-left: 2px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.walletTopUpButton:hover {
+  background: #059669;
+  color: #ffffff;
+}
+.walletTopUpButton:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 /* Notification Button */
 .notificationBtn {
   background: none;

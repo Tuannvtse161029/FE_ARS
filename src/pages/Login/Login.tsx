@@ -23,7 +23,6 @@ const FAST_LOGIN_USERS = [
 
 const Login = () => {
   const { login, isLoading, error, user, pendingRoleSelection, confirmRoleSelection, cancelRoleSelection } = useAuth();
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -36,10 +35,18 @@ const Login = () => {
     defaultValues: {
       username: '',
       password: '',
+      // rememberMe is now managed by react-hook-form (and forwarded to
+      // AuthContext.login()). Storage bucket selection happens in
+      // persistAuthAndNavigate, which calls storage.setRememberMe() BEFORE
+      // storage.setToken()/setUser() so the token lands in the correct store.
+      rememberMe: false,
     },
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    // Pass the full form payload (now including rememberMe) through to the
+    // AuthContext. Yup's default keeps rememberMe as a real boolean even
+    // when the user never touched the checkbox, so this is safe.
     await login(data);
   };
 
@@ -116,16 +123,26 @@ const Login = () => {
         </div>
 
         <div className={styles.rememberRow}>
-          <label className={styles.toggleWrapper}>
-            <input
-              type="checkbox"
-              className={styles.toggleInput}
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-            />
-            <span className={styles.toggleSlider}></span>
-            <span className={styles.toggleLabel}>Remember me</span>
-          </label>
+          <Controller
+            name="rememberMe"
+            control={control}
+            defaultValue={false}
+            render={({ field }) => (
+              <label className={styles.toggleWrapper}>
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  className={styles.toggleInput}
+                  checked={Boolean(field.value)}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                />
+                <span className={styles.toggleSlider}></span>
+                <span className={styles.toggleLabel}>Remember me</span>
+              </label>
+            )}
+          />
           <Link to={ROUTES.FORGOT_PASSWORD} className={styles.forgotLink}>
             Forgot password?
           </Link>

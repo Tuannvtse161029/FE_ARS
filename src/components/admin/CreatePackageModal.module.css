@@ -1,0 +1,237 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 24px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 640px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.closeButton {
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.closeButton:hover { color: #0f172a; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fieldRow,
+.fieldRowSplit,
+.toggleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldRowSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input,
+.select {
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  background: #ffffff;
+}
+.input:focus,
+.select:focus {
+  outline: 2px solid #007aff;
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.featuresList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.featureRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.featureRow .input {
+  flex: 1;
+}
+
+.removeFeatureButton {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.removeFeatureButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addFeatureButton {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px dashed #007aff;
+  background: transparent;
+  color: #007aff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.addFeatureButton:hover {
+  background: #eff6ff;
+}
+
+.toggleRow {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+}
+.toggleOn {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.toggleKnob {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: background 0.15s ease;
+}
+.toggleOn .toggleKnob {
+  background: #16a34a;
+}
+.toggleLabel {
+  font-size: 12.5px;
+}
+
+.error {
+  margin: 0 24px 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  border: 1px solid #fecaca;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.cancelButton {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cancelButton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.confirmButton {
+  background: #007aff;
+  border: 1px solid #007aff;
+  color: white;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.confirmButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .fieldRowSplit {
+    grid-template-columns: 1fr;
+  }
+}

@@ -458,7 +458,7 @@ export const EvaluationDesk = () => {
                 <Unlock size={22} color="#099268" />
               </span>
               <div className={styles.escrowAlertMeta}>
-                <h4 className={styles.escrowAlertTitle}>Escrow Funds Released!</h4>
+                <h4 className={styles.escrowAlertTitle}>Funds Released!</h4>
                 <p className={styles.escrowAlertText}>
                   <b>
                     {reviewRequest?.fee

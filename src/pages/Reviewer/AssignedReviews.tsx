@@ -270,7 +270,7 @@ export const AssignedReviews = () => {
                       </span>
                     ) : (
                       <span className={styles.feeLocked}>
-                        <Lock size={12} style={{ verticalAlign: 'middle' }} /> {feeText} (Escrow Locked)
+                        <Lock size={12} style={{ verticalAlign: 'middle' }} /> {feeText} (Locked)
                       </span>
                     )}
                   </div>

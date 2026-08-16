@@ -5,6 +5,29 @@ import {
   mapSeminarToCard,
   type SeminarCard,
 } from '../../services/seminar.service';
+import {
+  Plus,
+  RefreshCw,
+  Check,
+  CheckCircle2,
+  X,
+  Loader,
+  FileText,
+  Inbox,
+  Calendar,
+  Clock,
+  Video,
+  Eye,
+  Sparkles,
+  ClipboardList,
+  Mail,
+  AlertTriangle,
+  Film,
+  Upload,
+  Wand2,
+  RotateCcw,
+  Folder,
+} from 'lucide-react';
 import styles from './SeminarWorkspace.module.css';
 
 interface StudentGrade {
@@ -280,10 +303,16 @@ export const SeminarWorkspace = () => {
             disabled={isLoadingSeminars}
             aria-label="Refresh seminars"
           >
-            ⟳ {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
+            {isLoadingSeminars ? (
+              <Loader size={14} aria-hidden className={styles.spinningIcon} />
+            ) : (
+              <RefreshCw size={14} aria-hidden />
+            )}
+            {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
           </button>
           <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
-            ＋ Create Seminar
+            <Plus size={16} aria-hidden />
+            Create Seminar
           </button>
         </div>
       </div>
@@ -292,7 +321,9 @@ export const SeminarWorkspace = () => {
       {showSuccessBanner && (
         <div className={styles.successToastBanner}>
           <div className={styles.toastLeft}>
-            <span className={styles.toastCheckIcon}>✓</span>
+            <span className={styles.toastCheckIcon}>
+              <Check size={14} strokeWidth={3} aria-hidden />
+            </span>
             <div>
               <span className={styles.toastTitle}>Seminar Created Successfully</span>
               <p className={styles.toastSub}>{bannerText}</p>
@@ -300,7 +331,13 @@ export const SeminarWorkspace = () => {
           </div>
           <div className={styles.toastRight}>
             <span className={styles.justNowText}>Just now</span>
-            <button className={styles.toastCloseBtn} onClick={() => setShowSuccessBanner(false)}>✕</button>
+            <button
+              className={styles.toastCloseBtn}
+              onClick={() => setShowSuccessBanner(false)}
+              aria-label="Dismiss notification"
+            >
+              <X size={14} aria-hidden />
+            </button>
           </div>
         </div>
       )}
@@ -341,7 +378,10 @@ export const SeminarWorkspace = () => {
       <div className={styles.seminarsList}>
         {loadSeminarsError && (
           <div className={styles.errorBanner} role="alert">
-            <span>⚠️ {loadSeminarsError}</span>
+            <span className={styles.errorBannerIcon}>
+              <AlertTriangle size={14} aria-hidden />
+              {loadSeminarsError}
+            </span>
             <button
               type="button"
               className={styles.errorRetryBtn}
@@ -370,18 +410,18 @@ export const SeminarWorkspace = () => {
 
         {isLoadingSeminars ? (
           <div className={styles.emptyDrafts}>
-            <span className={styles.emptyIcon}>⏳</span>
+            <Loader size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>Loading seminars…</h4>
           </div>
         ) : activeTab === 'drafts' ? (
           <div className={styles.emptyDrafts}>
-            <span className={styles.emptyIcon}>📄</span>
+            <FileText size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>No drafts</h4>
             <p className={styles.emptyText}>Saved drafts will appear here.</p>
           </div>
         ) : filteredSeminars.length === 0 ? (
           <div className={styles.emptyDrafts}>
-            <span className={styles.emptyIcon}>📭</span>
+            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>No seminars yet</h4>
             <p className={styles.emptyText}>Click "+ Create Seminar" to schedule your first one.</p>
           </div>
@@ -401,19 +441,25 @@ export const SeminarWorkspace = () => {
             return (
             <div className={styles.seminarCard} key={sem.seminarId}>
               {/* Top metadata */}
-              <div className={styles.cardHeaderRow}>
-                <div className={styles.badgeRow}>
-                  {sem.isNew && <span className={styles.newBadgePill}>NEW Just created</span>}
-                  {sem.status === 'UPCOMING' && <span className={styles.statusUpcoming}>● UPCOMING</span>}
-                  {sem.status === 'IN PROGRESS' && <span className={styles.statusInProgress}>● IN PROGRESS</span>}
-                  {sem.status === 'COMPLETED' && <span className={styles.statusCompleted}>● COMPLETED</span>}
-                  <span className={styles.seminarId}>ID: {formatSeminarId(sem.seminarId)}</span>
-                </div>
-                <div className={styles.dateMeta}>
-                  <span>📅 {dateLabel}</span>
-                  <span style={{ marginLeft: '12px' }}>🕒 {timeLabel}</span>
-                </div>
+<div className={styles.cardHeaderRow}>
+              <div className={styles.badgeRow}>
+                {sem.isNew && <span className={styles.newBadgePill}>NEW Just created</span>}
+                {sem.status === 'UPCOMING' && <span className={styles.statusUpcoming}>● UPCOMING</span>}
+                {sem.status === 'IN PROGRESS' && <span className={styles.statusInProgress}>● IN PROGRESS</span>}
+                {sem.status === 'COMPLETED' && <span className={styles.statusCompleted}>● COMPLETED</span>}
+                <span className={styles.seminarId}>ID: {formatSeminarId(sem.seminarId)}</span>
               </div>
+              <div className={styles.dateMeta}>
+                <span>
+                  <Calendar size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                  {dateLabel}
+                </span>
+                <span style={{ marginLeft: '12px' }}>
+                  <Clock size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                  {timeLabel}
+                </span>
+              </div>
+            </div>
 
               {/* Title and description */}
               <h3 className={styles.seminarTitle}>{sem.title}</h3>
@@ -431,9 +477,9 @@ export const SeminarWorkspace = () => {
               {/* Google Meet Box */}
               {sem.onlineLink && (
                 <div className={styles.meetBox}>
-                  <span className={styles.meetIcon}>📹</span>
+                  <Video size={14} className={styles.meetIcon} aria-hidden />
                   <a href={sem.onlineLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
-                    {sem.onlineLink} ↗
+                    {sem.onlineLink}
                   </a>
                 </div>
               )}
@@ -468,20 +514,25 @@ export const SeminarWorkspace = () => {
                         setShowAiModal(true);
                       }}
                     >
+                      <Eye size={14} aria-hidden />
                       {aiNotesSaved ? (
                         <>
-                          👁️ View Notes (AI Generated){' '}
-                          <span className={styles.greenAiBadge}>✓ AI</span>
+                          View Notes (AI Generated){' '}
+                          <span className={styles.greenAiBadge}>
+                            <Sparkles size={12} aria-hidden style={{ verticalAlign: '-2px', marginRight: 3 }} />
+                            AI
+                          </span>
                         </>
                       ) : (
-                        '👁️ View Notes'
+                        'View Notes'
                       )}
                     </button>
                     <button
                       className={styles.feedbackGradingBtn}
                       onClick={() => handleOpenFeedbackModal(sem)}
                     >
-                      📋 Form Feedback & Grading
+                      <ClipboardList size={14} aria-hidden />
+                      Form Feedback & Grading
                     </button>
                   </>
                 ) : (
@@ -491,7 +542,8 @@ export const SeminarWorkspace = () => {
                       onClick={() => sem.onlineLink && window.open(sem.onlineLink, '_blank')}
                       disabled={!sem.onlineLink}
                     >
-                      📹 Join Google Meet
+                      <Video size={14} aria-hidden />
+                      Join Google Meet
                     </button>
                     <button
                       className={styles.sendInviteBtn}
@@ -503,7 +555,8 @@ export const SeminarWorkspace = () => {
                       }}
                       disabled={!sem.onlineLink}
                     >
-                      ✉️ Send Invite Link
+                      <Mail size={14} aria-hidden />
+                      Send Invite Link
                     </button>
                     <button className={styles.feedbackDisabledBtn} disabled>
                       Form Feedback (Available after completion)
@@ -523,13 +576,21 @@ export const SeminarWorkspace = () => {
           <div className={styles.createModalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.modalHeaderIcon}>＋</span>
+                <span className={styles.modalHeaderIcon}>
+                  <Plus size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Create New Academic Seminar</h3>
                   <span className={styles.modalSubtitle}>Fill in details — a Google Meet link will be auto-generated</span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowCreateModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             <form onSubmit={handleCreateSeminarSubmit} className={styles.modalForm}>
@@ -587,13 +648,15 @@ export const SeminarWorkspace = () => {
                   <div className={styles.emailTagsContainer}>
                     {guestEmails.map((email) => (
                       <span key={email} className={styles.emailPill}>
-                        ✉️ {email}
+                        <Mail size={12} aria-hidden style={{ marginRight: 4 }} />
+                        {email}
                         <button
                           type="button"
                           className={styles.removeEmailCross}
                           onClick={() => handleRemoveEmail(email)}
+                          aria-label={`Remove ${email}`}
                         >
-                          ×
+                          <X size={12} aria-hidden />
                         </button>
                       </span>
                     ))}
@@ -626,13 +689,18 @@ export const SeminarWorkspace = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className={styles.modalSubmitNavyBtn}
-                  disabled={isCreatingSeminar}
-                >
-                  {isCreatingSeminar ? '⏳ Creating…' : '📹 Generate & Create Seminar'}
-                </button>
+<button
+                type="submit"
+                className={styles.modalSubmitNavyBtn}
+                disabled={isCreatingSeminar}
+              >
+                {isCreatingSeminar ? (
+                  <Loader size={14} aria-hidden className={styles.spinningIcon} />
+                ) : (
+                  <Video size={14} aria-hidden />
+                )}
+                {isCreatingSeminar ? 'Creating…' : 'Generate & Create Seminar'}
+              </button>
               </div>
             </form>
           </div>
@@ -643,13 +711,18 @@ export const SeminarWorkspace = () => {
       {showGeneratedModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.generatedModalCard}>
-            <div className={styles.generatedIconCircle}>✓</div>
+            <div className={styles.generatedIconCircle}>
+              <Check size={28} strokeWidth={3} aria-hidden />
+            </div>
             <h3 className={styles.generatedTitle}>Seminar Created & Google Meet Link Generated!</h3>
             <p className={styles.generatedSub}>{seminarName}</p>
 
             {/* Meet Link copy box */}
             <div className={styles.generatedMeetCard}>
-              <div className={styles.generatedMeetLabel}>📹 Google Meet Link</div>
+              <div className={styles.generatedMeetLabel}>
+                <Video size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                Google Meet Link
+              </div>
               <div className={styles.generatedMeetInputRow}>
                 <input
                   type="text"
@@ -664,7 +737,8 @@ export const SeminarWorkspace = () => {
                     alert('Copied Google Meet link!');
                   }}
                 >
-                  📋 Copy Link
+                  <FileText size={14} aria-hidden />
+                  Copy Link
                 </button>
               </div>
             </div>
@@ -672,11 +746,12 @@ export const SeminarWorkspace = () => {
             {/* Yellow alert box */}
             <div className={styles.yellowAlertBox}>
               <div className={styles.yellowAlertTitleRow}>
-                <span className={styles.yellowAlertIcon}>⚠️</span>
+                <AlertTriangle size={14} className={styles.yellowAlertIcon} aria-hidden />
                 <span>Email invitations have been sent to invited guests. An automated reminder will be sent <b>1 day before</b> the seminar starts.</span>
               </div>
               <div className={styles.yellowSentText}>
-                ✉️ Sent to: {guestEmails.join(', ')}
+                <Mail size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                Sent to: {guestEmails.join(', ')}
               </div>
             </div>
 
@@ -692,7 +767,8 @@ export const SeminarWorkspace = () => {
                 className={styles.launchMeetGreenBtn}
                 onClick={() => window.open(generatedMeetLink, '_blank')}
               >
-                📹 Launch Google Meet
+                <Video size={14} aria-hidden />
+                Launch Google Meet
               </button>
             </div>
           </div>
@@ -706,7 +782,9 @@ export const SeminarWorkspace = () => {
             {/* Header */}
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.feedbackModalIcon}>📋</span>
+                <span className={styles.feedbackModalIcon}>
+                  <ClipboardList size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Feedback & Grading Review</h3>
                   <span className={styles.modalSubtitle}>
@@ -716,7 +794,13 @@ export const SeminarWorkspace = () => {
                   </span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowFeedbackModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowFeedbackModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             {/* Stats Metrics Bar */}
@@ -773,9 +857,15 @@ export const SeminarWorkspace = () => {
                       </td>
                       <td>
                         {st.status === 'SUBMITTED' ? (
-                          <span className={styles.submittedPill}>✓ SUBMITTED</span>
+                          <span className={styles.submittedPill}>
+                            <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
+                            SUBMITTED
+                          </span>
                         ) : (
-                          <span className={styles.pendingPill}>🕒 PENDING</span>
+                          <span className={styles.pendingPill}>
+                            <Clock size={12} aria-hidden style={{ marginRight: 4 }} />
+                            PENDING
+                          </span>
                         )}
                       </td>
                       <td className={styles.scoreValText}>{st.score}</td>
@@ -789,7 +879,8 @@ export const SeminarWorkspace = () => {
             {/* Footer */}
             <div className={styles.feedbackModalFooter}>
               <button className={styles.remindPendingBtn} onClick={handleRemindPending}>
-                ✉️ Remind Pending (1)
+                <Mail size={14} aria-hidden />
+                Remind Pending (1)
               </button>
               <button className={styles.modalCloseNavyBtn} onClick={() => setShowFeedbackModal(false)}>
                 Close
@@ -806,7 +897,9 @@ export const SeminarWorkspace = () => {
             {/* Header */}
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.aiIconCircle}>✨</span>
+                <span className={styles.aiIconCircle}>
+                  <Sparkles size={18} aria-hidden />
+                </span>
                 <div>
                   <h3 className={styles.modalTitle}>Seminar Recording AI Summarizer</h3>
                   <span className={styles.modalSubtitle}>
@@ -814,29 +907,39 @@ export const SeminarWorkspace = () => {
                   </span>
                 </div>
               </div>
-              <button className={styles.closeBtn} onClick={() => setShowAiModal(false)}>×</button>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowAiModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
             {/* Content for Step 1: Upload (Frame 35) or Step 2: Results (Frame 36) */}
             <div className={styles.aiModalContentArea}>
               {/* Media Dropzone */}
               <div className={styles.mediaDropzone}>
-                <span className={styles.dropzoneFilmIcon}>🎬</span>
+                <Film size={32} className={styles.dropzoneFilmIcon} aria-hidden />
                 <span className={styles.dropzoneMainText}>Drag & drop your meeting recording here or click to browse</span>
                 <span className={styles.dropzoneSubText}>Supported formats: .mp4, .wav · Maximum file size: Below 3 GB</span>
                 <button className={styles.browseFilesBtn} type="button">
-                  📤 Browse files
+                  <Upload size={14} aria-hidden />
+                  Browse files
                 </button>
               </div>
 
               {/* Attached file card */}
               <div className={styles.attachedFileCard}>
-                <span className={styles.attachedFilmIcon}>📼</span>
+                <Film size={20} className={styles.attachedFilmIcon} aria-hidden />
                 <div className={styles.attachedFileMeta}>
                   <span className={styles.attachedFileName}>Phase2_DB_Review_20260720.mp4</span>
                   <span className={styles.attachedFileSize}>1.2 GB · Ready to process</span>
                 </div>
-                <span className={styles.attachedPillBadge}>✓ Attached</span>
+                <span className={styles.attachedPillBadge}>
+                  <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
+                  Attached
+                </span>
               </div>
 
               {/* STEP 2 RESULTS PANEL (Frame 36) */}
@@ -844,10 +947,13 @@ export const SeminarWorkspace = () => {
                 <div className={styles.aiGeneratedResultsCard}>
                   <div className={styles.aiResultsHeaderRow}>
                     <div className={styles.aiResultsHeaderLeft}>
-                      <span className={styles.sparkleIcon}>✨</span>
+                      <Sparkles size={16} className={styles.sparkleIcon} aria-hidden />
                       <span className={styles.aiResultsTitle}>AI Generated Notes & Key Takeaways</span>
                     </div>
-                    <span className={styles.regenerationAttemptsPill}>🔄 Regeneration Attempts Left: 3/3</span>
+                    <span className={styles.regenerationAttemptsPill}>
+                      <RotateCcw size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                      Regeneration Attempts Left: 3/3
+                    </span>
                   </div>
 
                   <div className={styles.aiResultSection}>
@@ -874,12 +980,14 @@ export const SeminarWorkspace = () => {
                   <div className={styles.aiResultSection}>
                     <h5 className={styles.aiSectionLabel}>PARTICIPANT ENGAGEMENT</h5>
                     <div className={styles.engagementBadge}>
-                      🟢 <b>4/4 active</b> participants active in Q&A session.
+                      <CheckCircle2 size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px', color: '#10b981' }} />
+                      <b>4/4 active</b> participants active in Q&A session.
                     </div>
                   </div>
 
                   <div className={styles.aiDisclaimerFooter}>
-                    ⓘ AI-generated content. Review for accuracy before saving. Notes will be attached to the seminar record permanently.
+                    <AlertTriangle size={12} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                    AI-generated content. Review for accuracy before saving. Notes will be attached to the seminar record permanently.
                   </div>
                 </div>
               )}
@@ -889,7 +997,10 @@ export const SeminarWorkspace = () => {
             <div className={styles.aiModalFooter}>
               {aiModalStep === 'upload' ? (
                 <>
-                  <span className={styles.filesReadyText}>📁 1 file ready · 1.2 GB</span>
+                  <span className={styles.filesReadyText}>
+                    <Folder size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                    1 file ready · 1.2 GB
+                  </span>
                   <div className={styles.footerBtnsRight}>
                     <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
                       Cancel
@@ -898,14 +1009,16 @@ export const SeminarWorkspace = () => {
                       className={styles.summarizeMagicBtn}
                       onClick={() => setAiModalStep('results')}
                     >
-                      🪄 Click to Summarize
+                      <Wand2 size={14} aria-hidden />
+                      Click to Summarize
                     </button>
                   </div>
                 </>
               ) : (
                 <>
                   <button className={styles.regenerateBtn} onClick={() => alert('Regenerated AI notes!')}>
-                    🔄 Regenerate (3/3 Left)
+                    <RotateCcw size={14} aria-hidden />
+                    Regenerate (3/3 Left)
                   </button>
                   <div className={styles.footerBtnsRight}>
                     <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
@@ -922,7 +1035,8 @@ export const SeminarWorkspace = () => {
                         setShowAiModal(false);
                       }}
                     >
-                      ✔ Agree & Save Notes
+                      <Check size={14} aria-hidden />
+                      Agree & Save Notes
                     </button>
                   </div>
                 </>

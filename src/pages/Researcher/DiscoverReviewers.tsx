@@ -185,7 +185,7 @@ export const DiscoverReviewers = () => {
       return;
     }
     if (!acceptedPolicy) {
-      setSubmitError('Please read and accept the Escrow & Refund Policy before proceeding.');
+      setSubmitError('Please read and accept the Lock & Refund Policy before proceeding.');
       return;
     }
 
@@ -639,12 +639,12 @@ export const DiscoverReviewers = () => {
           <div className={styles.policyCard}>
             <div className={styles.policyHeader}>
               <span className={styles.policyShieldIcon} aria-hidden="true"><Shield size={18} /></span>
-              <span className={styles.policyHeaderTitle}>Escrow &amp; Refund Policy</span>
+              <span className={styles.policyHeaderTitle}>Lock &amp; Refund Policy</span>
             </div>
 
             <ul className={styles.policyList}>
               <li>
-                <strong>Funds will be locked in escrow</strong> when you confirm payment — the total amount
+                <strong>Funds will be locked safely</strong> when you confirm payment — the total amount
                 (<b>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</b>, including the 25,000 VND processing tax)
                 is deducted from your wallet and held by the platform.
               </li>
@@ -671,7 +671,7 @@ export const DiscoverReviewers = () => {
                 onChange={(e) => setAcceptedPolicy(e.target.checked)}
               />
               <span className={styles.policyCheckboxText}>
-                I have read and agree to the Escrow &amp; Refund Policy above. I understand that the total amount
+                I have read and agree to the Lock &amp; Refund Policy above. I understand that the total amount
                 (<b>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</b>) will be locked in my wallet
                 until the review is delivered and accepted (or a refund is triggered).
               </span>
@@ -724,7 +724,7 @@ export const DiscoverReviewers = () => {
             <h3 className={styles.successTitle}>Review Request Submitted Successfully!</h3>
             <p className={styles.successDescription}>
               <b>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</b> has been deducted
-              from your wallet and is held in escrow. Your request has been routed to {selectedReviewer.name}.
+              from your wallet and is held in hold. Your request has been routed to {selectedReviewer.name}.
             </p>
 
             <div className={styles.successDetailsTable}>

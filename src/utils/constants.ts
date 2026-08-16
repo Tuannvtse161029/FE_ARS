@@ -133,6 +133,54 @@ export const API_ENDPOINTS = {
     BASE: '/api/Wallet',
     GET_ALL: '/api/Wallet',
     GET_BY_ID: (id: number) => `/api/Wallet/${id}`,
+    // DEV-only shortcut: POST `/api/Wallet` with `{ userId, balance }` to
+    // fund a wallet instantly without going through VNPay. Hidden in
+    // production builds (see WalletTopUpModal). Documented in
+    // docs/local-only/admin-suite-be-gap-report.md (WALLET auto-fund).
+    AUTO_FUND: '/api/Wallet',
+  },
+  // Admin surface — see docs/local-only/admin-suite-be-gap-report.md.
+  // All paths here are written against the upcoming Swagger contract; until BE
+  // ships them, `adminService` short-circuits to mock data via USE_MOCK_DATA.
+  ADMIN: {
+    ROLE_REQUESTS: {
+      GET_ALL: '/api/RoleRequest',
+      GET_BY_ID: (id: number) => `/api/RoleRequest/${id}`,
+      APPROVE: (id: number) => `/api/RoleRequest/${id}/approve`,
+      DENY: (id: number) => `/api/RoleRequest/${id}/deny`,
+    },
+    ACCOUNTS: {
+      GET_ALL: '/api/Account',
+      GET_BY_ID: (id: number) => `/api/Account/${id}`,
+      SUSPEND: (id: number) => `/api/Account/${id}/suspend`,
+      UNSUSPEND: (id: number) => `/api/Account/${id}/unsuspend`,
+    },
+    WITHDRAWALS: {
+      GET_ALL: '/api/WithdrawalRequest',
+      ACCEPT: (id: number) => `/api/WithdrawalRequest/${id}/accept`,
+      COMPLETE: (id: number) => `/api/WithdrawalRequest/${id}/complete`,
+      DENY: (id: number) => `/api/WithdrawalRequest/${id}/deny`,
+    },
+    REPORTS: {
+      GET_ALL: '/api/ViolationReport',
+      GET_BY_ID: (id: number) => `/api/ViolationReport/${id}`,
+      RESOLVE: (id: number) => `/api/ViolationReport/${id}/resolve`,
+    },
+    PACKAGES: {
+      GET_ALL: '/api/PremiumPackage',
+      CREATE: '/api/PremiumPackage',
+      UPDATE: (id: number) => `/api/PremiumPackage/${id}`,
+      DELETE: (id: number) => `/api/PremiumPackage/${id}`,
+      TOGGLE: (id: number) => `/api/PremiumPackage/${id}/toggle`,
+    },
+    AUDIT_LOGS: {
+      GET_ALL: '/api/AuditLog',
+      EXPORT: '/api/AuditLog/export',
+    },
+  },
+  ANALYTICS: {
+    SUMMARY: '/api/Analytics/summary',
+    TIMESERIES: '/api/Analytics/timeseries',
   },
 } as const;
 

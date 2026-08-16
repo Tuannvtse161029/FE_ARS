@@ -171,7 +171,7 @@ export const EarningsWallet = () => {
           </div>
 
           <div className={styles.metricBlock}>
-            <span className={styles.metricLabel} style={{ color: '#d97706' }}>Pending Escrow Holds</span>
+            <span className={styles.metricLabel} style={{ color: '#d97706' }}>Pending Holds</span>
             <div className={styles.metricValRow}>
               <span className={styles.metricVal} style={{ color: '#d97706' }}>
                 {pendingHolds.toLocaleString('vi-VN')}
@@ -375,7 +375,7 @@ export const EarningsWallet = () => {
                 </span>
               </div>
               <div className={styles.metricItem} style={{ borderLeft: '1px solid #cbd5e1', paddingLeft: '20px' }}>
-                <span className={styles.metricBarLabel} style={{ color: '#d97706' }}>Pending Escrow Holds</span>
+                <span className={styles.metricBarLabel} style={{ color: '#d97706' }}>Pending Holds</span>
                 <span className={styles.metricBarVal} style={{ color: '#d97706' }}>
                   {pendingHolds.toLocaleString('vi-VN')} VND
                 </span>

@@ -17,6 +17,7 @@ const ROLES: RoleKey[] = [
   'Reviewer',
   'Lecturer',
   'Graduate Student',
+  'Admin',
 ];
 
 interface DocumentProfile {
@@ -125,6 +126,19 @@ const PROFILES: Record<RoleKey, DocumentProfile> = {
         title: 'Research Internship at VinAI Research',
         meta: 'Summer 2023 - Computer Vision Lab',
       },
+    ],
+  },
+  Admin: {
+    fullName: 'System Administrator',
+    affiliation: 'ARS Platform Operations',
+    orcidId: '—',
+    metrics: [
+      { value: 'N/A', label: 'Publications' },
+      { value: 'N/A', label: 'Reviews' },
+      { value: 'N/A', label: 'Program' },
+    ],
+    records: [
+      { title: 'Admin accounts are provisioned by the database.', meta: 'No sample document applies.' },
     ],
   },
 };

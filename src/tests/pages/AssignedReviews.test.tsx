@@ -160,10 +160,10 @@ describe('AssignedReviews – Pending tab', () => {
     expect(screen.getByRole('button', { name: /evaluate paper/i })).toBeInTheDocument();
   });
 
-  it('shows the Escrow Locked badge with the fee', async () => {
+  it('shows the Locked badge with the fee', async () => {
     renderAssigned();
     await waitFor(() => {
-      expect(screen.getByText(/500\.000 VND \(Escrow Locked\)/)).toBeInTheDocument();
+      expect(screen.getByText(/500\.000 VND \(Locked\)/)).toBeInTheDocument();
     });
   });
 
@@ -201,7 +201,7 @@ describe('AssignedReviews – Completed tab', () => {
     expect(screen.getByText('Compiler Optimizations')).toBeInTheDocument();
   });
 
-  it('shows the "Fee Released" badge instead of "Escrow Locked"', async () => {
+  it('shows the "Fee Released" badge instead of "Locked"', async () => {
     const user = userEvent.setup();
     renderAssigned();
 

@@ -10,3 +10,7 @@ export { useNotifications, useMarkNotificationRead } from './useNotifications';
 export { useUserRoles, useAssignRole } from './useUserRoles';
 export { useCommentVotes, useVoteOnComment } from './useCommentVotes';
 export { useCreatePaymentLink, useCancelPayment } from './useCreatePaymentLink';
+export { useReceiptUpload } from './useReceiptUpload';
+export { useAdminGuard } from './useAdminGuard';
+export { useVerifiedGuard } from './useVerifiedGuard';
+export { usePermissions } from './usePermissions';

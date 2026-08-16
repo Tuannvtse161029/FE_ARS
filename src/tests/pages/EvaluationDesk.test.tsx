@@ -253,7 +253,7 @@ describe('EvaluationDesk – Submit validation + success', () => {
     });
 
     expect(await screen.findByText(/evaluation submitted successfully/i)).toBeInTheDocument();
-    expect(screen.getByText(/escrow funds released/i)).toBeInTheDocument();
+    expect(screen.getByText(/funds released/i)).toBeInTheDocument();
     expect(screen.getByText(/500\.000 VND/)).toBeInTheDocument();
   });
 

@@ -1,9 +1,10 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
+import { useAuthStore } from '../../store';
 import { ROUTES } from '../../utils/constants';
-import type { UserRole, RegisterPayload } from '../../types/auth';
+import type { AuthResponse, UserRole, RegisterPayload } from '../../types/auth';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
 import { RegisterSuccessModal } from './components/RegisterSuccessModal';
@@ -27,6 +28,8 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
     'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. This supports verification of your Lecturer role.',
   'Graduate Student':
     'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
+  Admin:
+    'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
 };
 
 interface FormState {
@@ -55,6 +58,8 @@ const passwordRegex = {
 };
 
 export const Register = () => {
+  const navigate = useNavigate();
+  const authStore = useAuthStore();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
     {}
@@ -158,9 +163,34 @@ export const Register = () => {
         phoneNumber: form.phoneNumber.trim(),
         role: form.role,
         pdfUrl,
+        // Mirror the auth-service payload contract: new accounts start
+        // pending (isActive: false) until an Admin approves the role
+        // request. The BE echoes this on the response.
+        isActive: false,
       };
 
-      await authService.registerUser(payload);
+      const response: AuthResponse = await authService.registerUser(payload);
+
+      // Persist the auth state so the user is recognised as authenticated
+      // when they land on /forum. The Zustand store + storage both need
+      // updating so route guards (which read from storage during rehydrate)
+      // and the React tree (which reads from the store) see the same data.
+      // `isActive` defaults to false here because the spec says new
+      // registrations stay pending until an Admin approves the role request.
+      authService.setAuthData(response);
+      authStore.login(
+        {
+          id: 0,
+          username: response.username,
+          email: response.email,
+          fullName: response.username,
+          roleId: response.roleId ?? 0,
+          roleName: response.role,
+          isActive: response.isActive ?? false,
+        },
+        response.token
+      );
+
       setIsSuccessOpen(true);
     } catch (err) {
       const message =
@@ -422,6 +452,11 @@ export const Register = () => {
           setForm(initialForm);
           setPdfFile(null);
           setPdfUrl(null);
+          // The user is now authenticated but pending (isActive: false).
+          // /forum is the only route they can access; the verified-guard
+          // in MainLayout will bounce them back here if they try anything
+          // else, and the Forum page shows the pending banner.
+          navigate(ROUTES.FORUM, { replace: true });
         }}
       />
     </div>

@@ -97,7 +97,7 @@ export const Dashboard = () => {
               <div className={styles.activityRow}>
                 <span className={styles.activityDot}>●</span>
                 <div className={styles.activityMeta}>
-                  <p className={styles.activityDesc}>Manuscript v2 review funds are safely held in escrow</p>
+                  <p className={styles.activityDesc}>Manuscript v2 review funds are safely held in hold</p>
                   <span className={styles.activityTime}>2h ago</span>
                 </div>
               </div>
@@ -260,7 +260,7 @@ export const Dashboard = () => {
 
           <div className={styles.redesignMetricCard}>
             <div className={styles.redesignCardHeader}>
-              <span className={styles.redesignMetricTitle}>HELD IN ESCROW</span>
+              <span className={styles.redesignMetricTitle}>HELD IN HOLD</span>
               <span className={styles.lockedBadge}>Locked</span>
             </div>
             <div className={styles.escrowValRow}>

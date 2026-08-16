@@ -18,13 +18,15 @@ const ROLE_LABELS: Record<UserRole, string> = {
   Reviewer: 'Reviewer',
   Lecturer: 'Lecturer (Seminar / Research Groups)',
   'Graduate Student': 'Graduate Student',
+  Admin: 'Administrator',
 };
 
 const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  Researcher: 'Submit manuscripts, manage peer reviews, and deposit escrow funds.',
-  Reviewer: 'Review submitted papers, score evaluation scorecards, and earn escrow payouts.',
+  Researcher: 'Submit manuscripts, manage peer reviews, and deposit locked funds.',
+  Reviewer: 'Review submitted papers, score evaluation scorecards, and earn held funds payouts.',
   Lecturer: 'Manage research groups, schedule seminars, and AI-summarize recordings.',
   'Graduate Student': 'Join research cohorts, complete assigned topics, and submit PDF assignments.',
+  Admin: 'System administrator (assigned only via the database).',
 };
 
 /**

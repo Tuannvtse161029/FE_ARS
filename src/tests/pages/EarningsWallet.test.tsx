@@ -102,11 +102,11 @@ describe('EarningsWallet – page shell', () => {
     expect(screen.getByRole('button', { name: /create new request/i })).toBeInTheDocument();
   });
 
-  it('displays Unlocked Balance + Pending Escrow metrics', () => {
+  it('displays Unlocked Balance + Pending Holds metrics', () => {
     renderWallet();
     expect(screen.getByText(/4\.200\.000/)).toBeInTheDocument();
     expect(screen.getByText('Fully Unlocked Balance')).toBeInTheDocument();
-    expect(screen.getByText('Pending Escrow Holds')).toBeInTheDocument();
+    expect(screen.getByText('Pending Holds')).toBeInTheDocument();
   });
 });
 

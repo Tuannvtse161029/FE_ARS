@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import styles from './Forum.module.css';
 import { Heart } from '../../assets/icons/HeartIcon';
 import { Eye } from '../../assets/icons/ViewsIcon';
-import { MessageSquare, X, Tag, FileText, Image as ImageIcon, LayoutList, PenLine, UserCheck } from 'lucide-react';
+import { MessageSquare, X, Tag, FileText, Image as ImageIcon, LayoutList, PenLine, UserCheck, AlertTriangle } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
@@ -95,6 +96,12 @@ const ALL_POSTS: Post[] = [
 ];
 
 export const Forum = () => {
+  const { canCreatePost } = usePermissions();
+  // The Forum page is the only place unverified users can land. `canCreatePost`
+  // is sourced from `usePermissions().isVerified` which mirrors
+  // `dbo.Users.isActive`. Verified users see the full UI; pending users see
+  // a banner and a disabled Create Post button.
+  const isVerified = canCreatePost;
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -160,14 +167,43 @@ export const Forum = () => {
 
         {/* ─── RIGHT FEED ─── */}
         <div className={styles.feed}>
+          {/* Pending-state banner — shown only to unverified users */}
+          {!isVerified && (
+            <div className={styles.pendingBanner} role="status" aria-live="polite">
+              <span className={styles.pendingBannerIcon}>
+                <AlertTriangle size={18} />
+              </span>
+              <div className={styles.pendingBannerText}>
+                <p className={styles.pendingBannerTitle}>
+                  Your account is pending Admin verification.
+                </p>
+                <p className={styles.pendingBannerHint}>
+                  You currently have read-only access to public forum posts. Once
+                  an Administrator approves your role request, posting, comments,
+                  and reactions will unlock automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Feed Header */}
           <div className={styles.feedHeader}>
             <div className={styles.feedTitleRow}>
               <h2 className={styles.feedTitle}>PUBLIC FORUM</h2>
               <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
               <button
-                className={styles.createPostBtn}
-                onClick={() => setIsCreateModalOpen(true)}
+                className={`${styles.createPostBtn} ${!canCreatePost ? styles.createPostBtnDisabled : ''}`}
+                onClick={() => {
+                  if (!canCreatePost) return;
+                  setIsCreateModalOpen(true);
+                }}
+                disabled={!canCreatePost}
+                aria-disabled={!canCreatePost}
+                title={
+                  canCreatePost
+                    ? undefined
+                    : 'Posting is disabled until your account is approved by an Administrator.'
+                }
               >
                 + Create Post
               </button>

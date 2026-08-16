@@ -286,13 +286,13 @@ describe('DiscoverReviewers – create request screen', () => {
     expect(screen.getByText('ORCID:')).toBeInTheDocument();
   });
 
-  it('shows the Escrow & Refund Policy card', async () => {
+  it('shows the Lock & Refund Policy card', async () => {
     const user = userEvent.setup();
     renderDiscover();
     await goToCreateRequest(user, 'Dr. Nguyen Van A');
 
-    expect(screen.getAllByText(/escrow & refund policy/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/funds will be locked in escrow/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/lock & refund policy/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/funds will be locked safely/i)).toBeInTheDocument();
   });
 
   it('disables Submit until the policy is accepted', async () => {

@@ -47,6 +47,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .createGroupBtn:hover {
@@ -115,6 +118,9 @@
   font-size: 1rem;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Section Header Row */
@@ -131,7 +137,9 @@
 }
 
 .sectionIcon {
-  font-size: 1.1rem;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
 }
 
 .sectionTitle {
@@ -161,6 +169,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .createTopicOutlineBtn:hover {
@@ -327,6 +338,9 @@
   padding: 4px 8px;
   font-size: 0.75rem;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .actionIconBtn:hover {
@@ -343,6 +357,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .viewGroupNavyBtn:hover {
@@ -370,8 +387,9 @@
 }
 
 .plusIconLarge {
-  font-size: 2rem;
   color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
 }
 
 .createDashedText {
@@ -473,6 +491,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .assignGroupBtn:hover {
@@ -550,6 +571,9 @@
   font-size: 0.9rem;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modalHeaderRow {
@@ -598,6 +622,9 @@
   color: #94a3b8;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modalForm {
@@ -688,6 +715,9 @@
   font-size: 1rem;
   line-height: 1;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Materials Box (Frame 41) */
@@ -725,6 +755,9 @@
   cursor: pointer;
   font-size: 0.9rem;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .addMoreMatBtn {
@@ -734,6 +767,8 @@
   font-size: 0.75rem;
   cursor: pointer;
   padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Purple Topic Box (Frame 42) */
@@ -882,6 +917,10 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .submitNavyBtn:hover {

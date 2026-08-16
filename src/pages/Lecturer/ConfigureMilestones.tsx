@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Circle, Upload, FileText, X, Check } from 'lucide-react';
 import styles from './ConfigureMilestones.module.css';
 
 export const ConfigureMilestones = () => {
@@ -39,7 +40,10 @@ export const ConfigureMilestones = () => {
             <span className={styles.headerLabel}>MILESTONE CONFIGURATION</span>
             <h1 className={styles.pageTitle}>CONFIGURE MILESTONE TARGETS</h1>
           </div>
-          <span className={styles.draftBadge}>● DRAFT</span>
+          <span className={styles.draftBadge}>
+            <Circle size={8} fill="currentColor" aria-hidden style={{ marginRight: 4 }} />
+            DRAFT
+          </span>
         </div>
 
         <form onSubmit={handlePublish} className={styles.form}>
@@ -98,7 +102,7 @@ export const ConfigureMilestones = () => {
 
             {/* Warning days remaining box */}
             <div className={styles.remainingBox}>
-              <span className={styles.remainingDot}>●</span>
+              <Circle size={8} fill="currentColor" className={styles.remainingDot} aria-hidden />
               <div className={styles.remainingTexts}>
                 <span className={styles.remainingTitle}>38 days remaining</span>
                 <span className={styles.remainingSub}>Deadline - Aug 1, 2026 - 23:59 UTC</span>
@@ -110,7 +114,7 @@ export const ConfigureMilestones = () => {
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Reference Materials / Supporting Instructions Template</label>
             <div className={styles.uploadZone}>
-              <div className={styles.uploadIcon}>⬆️</div>
+              <Upload size={28} className={styles.uploadIcon} aria-hidden />
               <p className={styles.uploadTitle}>[Drag & Drop reference PDFs or template DOCX documents here]</p>
               <p className={styles.uploadSub}>or <span className={styles.browseLink}>browse files</span> - PDF, DOCX supported - Max 25 MB per file</p>
             </div>
@@ -120,14 +124,15 @@ export const ConfigureMilestones = () => {
               <div className={styles.filesList}>
                 {uploadedFiles.map((file) => (
                   <div key={file} className={styles.fileRow}>
-                    <span className={styles.fileIcon}>📄</span>
+                    <FileText size={16} className={styles.fileIcon} aria-hidden />
                     <span className={styles.fileName}>{file}</span>
                     <button
                       type="button"
                       className={styles.removeFileBtn}
                       onClick={() => handleRemoveFile(file)}
+                      aria-label={`Remove ${file}`}
                     >
-                      &times;
+                      <X size={14} aria-hidden />
                     </button>
                   </div>
                 ))}
@@ -152,7 +157,9 @@ export const ConfigureMilestones = () => {
       {isSuccess && (
         <div className={styles.modalOverlay}>
           <div className={styles.successModalCard}>
-            <div className={styles.successIconCircle}>✓</div>
+            <div className={styles.successIconCircle}>
+            <Check size={28} strokeWidth={3} aria-hidden />
+          </div>
             <h3 className={styles.successModalTitle}>Milestone Requirements Published!</h3>
             <p className={styles.successModalText}>
               The milestone "<b>{phase}</b>" is now live. Team members have been alerted and the submission deadline is active.

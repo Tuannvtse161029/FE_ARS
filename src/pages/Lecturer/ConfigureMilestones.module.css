@@ -65,6 +65,8 @@
   border: 1px solid #a7f3d0;
   padding: 3px 10px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Form */
@@ -159,7 +161,9 @@
 
 .remainingDot {
   color: #10b981;
-  font-size: 0.8rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 .remainingTexts {
@@ -198,8 +202,10 @@
 }
 
 .uploadIcon {
-  font-size: 1.5rem;
+  color: #64748b;
   margin-bottom: var(--spacing-2);
+  display: inline-flex;
+  align-items: center;
 }
 
 .uploadTitle {
@@ -252,6 +258,9 @@
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .removeFileBtn:hover {
@@ -326,8 +335,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
 }
 
 .successModalTitle {

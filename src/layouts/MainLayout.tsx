@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
@@ -7,6 +7,8 @@ import type { UserRole } from '../types/auth';
 import { useWallet } from '../hooks/useWallet';
 import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
 import { useNotifications } from '../hooks/useNotifications';
+import { isAdminUser } from '../utils/roleNormalizer';
+import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -14,6 +16,7 @@ import {
   Search,
   Wallet,
   Bell,
+  Plus,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
   Users as BrowseReviewersIcon,
@@ -26,6 +29,13 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  LayoutDashboard as DashboardIcon,
+  UserCheck as RoleRequestsIcon,
+  UserCog as AccountsIcon,
+  Banknote as TransactionsIcon,
+  Flag as ReportsIcon,
+  Package as PackagesIcon,
+  ScrollText as AuditLogsIcon,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -95,9 +105,13 @@ interface NavItem {
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Wallet balance comes from the BE — render placeholder until it loads.
-  const { balance: beBalance, isLoading: isBalanceLoading } = useWallet(user?.userId);
+  // We also pull the full `wallet` object so we can pass the `walletId`
+  // through to WalletTopUpModal (which posts it as `walletId` on
+  // `POST /api/Payment/create-link`).
+  const { wallet: beWallet, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
 
   // Notifications come from the BE — feed the header bell badge.
   const { unreadCount } = useNotifications(user?.userId);
@@ -110,8 +124,58 @@ export const MainLayout = () => {
   // (and pick a role on the new JWT) instead.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
+  // Admin accounts do not use the in-app wallet or top-up flow — incoming
+  // payments go to the central Admin VNPay account and outgoing payouts are
+  // handled manually via direct bank transfers. Hide the wallet badge (and
+  // its + button) entirely for Admins. Mirrors the dual-signal check used by
+  // useAdminGuard until the BE's off-by-one roleId mapping is fixed.
+  const isAdmin = (() => {
+    const stored = (() => {
+      try {
+        const raw =
+          localStorage.getItem('ars_user') || sessionStorage.getItem('ars_user');
+        return raw ? (JSON.parse(raw) as { roleId?: number; roleName?: string }) : null;
+      } catch {
+        return null;
+      }
+    })();
+    return isAdminUser({
+      roleName: activeRole,
+      roleId: stored?.roleId ?? null,
+    });
+  })();
+
+  // Pending-state route guard: unverified users (isActive !== true) only
+  // get read-only access to /forum. Any other private route bounces them
+  // back to /forum with the pending banner.
+  //
+  // Admins are exempt because they are provisioned directly in the DB and
+  // bypass the role-request lifecycle.
+  // See src/hooks/useVerifiedGuard.ts and the per-page useAdminGuard.
+  useEffect(() => {
+    if (isAdmin) return;
+    if (location.pathname === ROUTES.FORUM) return;
+
+    // Read isActive from storage so the guard works during the brief
+    // rehydration window before AuthContext has rehydrated the store.
+    const stored = (() => {
+      try {
+        const raw =
+          localStorage.getItem('ars_user') || sessionStorage.getItem('ars_user');
+        return raw ? (JSON.parse(raw) as { isActive?: boolean }) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const isActive = user?.isActive ?? stored?.isActive ?? true;
+    if (!isActive) {
+      navigate(ROUTES.FORUM, { replace: true });
+    }
+  }, [isAdmin, location.pathname, navigate, user?.isActive]);
+
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
   // Auto-dismiss toast after 2 seconds
   useEffect(() => {
@@ -178,6 +242,16 @@ export const MainLayout = () => {
   // Nav items filtered dynamically based on active role
   const getNavItemsByRole = (): NavItem[] => {
     switch (activeRole) {
+      case 'Admin':
+        return [
+          { to: ROUTES.ADMIN, label: 'Dashboard', icon: <DashboardIcon size={20} /> },
+          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'Role Requests', icon: <RoleRequestsIcon size={20} /> },
+          { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts', icon: <AccountsIcon size={20} /> },
+          { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
+          { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
+          { to: ROUTES.ADMIN_PACKAGES, label: 'Packages', icon: <PackagesIcon size={20} /> },
+          { to: ROUTES.ADMIN_AUDIT_LOGS, label: 'Audit Logs', icon: <AuditLogsIcon size={20} /> },
+        ];
       case 'Reviewer':
         return [
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
@@ -307,15 +381,26 @@ export const MainLayout = () => {
               </div>
             )}
 
-            {/* Wallet Balance */}
-            <div className={styles.walletBadge}>
-              <span className={styles.walletIcon}><Wallet size={18} /></span>
-              <span className={styles.walletAmount}>
-                {isBalanceLoading || beBalance === null
-                  ? '—'
-                  : `${beBalance.toLocaleString('vi-VN')} VND`}
-              </span>
-            </div>
+            {/* Wallet Balance — hidden for Admins (no in-app wallet). */}
+            {!isAdmin && (
+              <div className={styles.walletBadge}>
+                <span className={styles.walletIcon}><Wallet size={18} /></span>
+                <span className={styles.walletAmount}>
+                  {isBalanceLoading || beBalance === null
+                    ? '—'
+                    : `${beBalance.toLocaleString('vi-VN')} VND`}
+                </span>
+                <button
+                  type="button"
+                  className={styles.walletTopUpButton}
+                  aria-label="Top up wallet"
+                  onClick={() => setIsTopUpOpen(true)}
+                  data-testid="wallet-topup-trigger"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            )}
 
             {/* Notification bell — badge count from BE unread count */}
             <button className={styles.notificationBtn} aria-label={`Notifications (${unreadCount} unread)`}>
@@ -340,6 +425,25 @@ export const MainLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Wallet Top-Up Modal — only mounted for non-Admin users (Admins have
+          no wallet; see the header wallet badge conditional). */}
+      {!isAdmin && (
+        <WalletTopUpModal
+          isOpen={isTopUpOpen}
+          currentUserId={user?.userId ?? null}
+          currentWalletId={beWallet?.id ?? null}
+          currentBalance={beBalance}
+          onSuccess={async () => {
+            // Re-fetch the wallet so the header pill reflects the new balance
+            // immediately (works for both the mock-VNPay "Simulate Success"
+            // path and the DEV auto-fund path).
+            await refetchWallet();
+          }}
+          onMessage={(text, type) => setToastMessage({ text, type })}
+          onClose={() => setIsTopUpOpen(false)}
+        />
+      )}
     </div>
   );
 };

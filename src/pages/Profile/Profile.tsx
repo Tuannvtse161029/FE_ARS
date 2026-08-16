@@ -246,7 +246,7 @@ export const Profile = () => {
       {activeTab === 'wallet' && (
         <div className={styles.tabCard}>
           <h3 className={styles.cardSectionTitle}>Wallet & Financial Overview</h3>
-          <p className={styles.cardSectionSubtitle}>Manage your balance, escrow funds, and verified bank account.</p>
+          <p className={styles.cardSectionSubtitle}>Manage your balance, locked funds, and verified bank account.</p>
 
           <div className={styles.walletMetricsGrid}>
             <div className={styles.walletMetricCard}>
@@ -260,7 +260,7 @@ export const Profile = () => {
             </div>
 
             <div className={styles.walletMetricCard}>
-              <span className={styles.metricLabel}>ESCROW HELD FUNDS</span>
+              <span className={styles.metricLabel}>LOCKED FUNDS</span>
               <span className={styles.metricValue}>500,000 VND</span>
               <span className={styles.metricSub}>Locked in active peer-review contracts</span>
             </div>

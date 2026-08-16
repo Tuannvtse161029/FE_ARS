@@ -47,6 +47,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .createSeminarBtn:hover {
@@ -115,6 +118,18 @@
   font-size: 1rem;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spinning loader keyframes for the loading-state Loader icon */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinningIcon {
+  animation: spin 1s linear infinite;
 }
 
 /* Tabs */
@@ -177,8 +192,9 @@
 }
 
 .emptyIcon {
-  font-size: 2.5rem;
   color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
 }
 
 .emptyTitle {
@@ -353,7 +369,9 @@
 }
 
 .meetIcon {
-  font-size: var(--font-size-base);
+  color: #15803d;
+  display: inline-flex;
+  align-items: center;
 }
 
 .meetLinkText {
@@ -432,6 +450,9 @@
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sendInviteBtn:hover {
@@ -448,6 +469,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .viewNotesBtn:hover {
@@ -545,8 +569,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  font-weight: 700;
 }
 
 .modalTitle {
@@ -569,6 +591,9 @@
   color: #94a3b8;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Modal Form */
@@ -662,6 +687,9 @@
   font-size: 1rem;
   line-height: 1;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Checkbox Row */
@@ -727,6 +755,10 @@
   font-weight: 700;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .modalSubmitNavyBtn:hover {
@@ -757,8 +789,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 800;
 }
 
 .generatedTitle {
@@ -791,6 +821,8 @@
   font-weight: 800;
   color: #1d4ed8;
   letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .generatedMeetInputRow {
@@ -821,6 +853,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .copyLinkBlueBtn:hover {
@@ -850,7 +885,10 @@
 }
 
 .yellowAlertIcon {
-  font-size: 1rem;
+  color: #92400e;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .yellowSentText {
@@ -858,6 +896,8 @@
   color: #b45309;
   border-top: 1px dashed #fcd34d;
   padding-top: var(--spacing-1.5);
+  display: inline-flex;
+  align-items: center;
 }
 
 .generatedModalFooter {
@@ -888,6 +928,10 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .launchMeetGreenBtn:hover {
@@ -1034,6 +1078,8 @@
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .pendingPill {
@@ -1044,6 +1090,8 @@
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .scoreValText {
@@ -1073,6 +1121,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .remindPendingBtn:hover {
@@ -1104,6 +1155,8 @@
   padding: 1px 5px;
   border-radius: 4px;
   margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiSummarizerModalCard {
@@ -1128,7 +1181,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
 }
 
 .aiModalContentArea {
@@ -1153,8 +1205,9 @@
 }
 
 .dropzoneFilmIcon {
-  font-size: 2.2rem;
   color: #3b82f6;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dropzoneMainText {
@@ -1178,6 +1231,9 @@
   font-weight: 700;
   cursor: pointer;
   margin-top: var(--spacing-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .attachedFileCard {
@@ -1191,8 +1247,10 @@
 }
 
 .attachedFilmIcon {
-  font-size: 1.25rem;
   color: #3b82f6;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .attachedFileMeta {
@@ -1220,6 +1278,8 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiGeneratedResultsCard {
@@ -1245,7 +1305,9 @@
 }
 
 .sparkleIcon {
-  font-size: 1.1rem;
+  color: #1e40af;
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiResultsTitle {
@@ -1263,6 +1325,8 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiResultSection {
@@ -1320,6 +1384,8 @@
   padding: 8px 12px;
   font-size: 0.75rem;
   color: #1e293b;
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiDisclaimerFooter {
@@ -1327,6 +1393,8 @@
   color: #3b82f6;
   border-top: 1px dashed #93c5fd;
   padding-top: var(--spacing-2);
+  display: inline-flex;
+  align-items: center;
 }
 
 .aiModalFooter {
@@ -1341,6 +1409,8 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: #64748b;
+  display: inline-flex;
+  align-items: center;
 }
 
 .footerBtnsRight {
@@ -1357,6 +1427,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .summarizeMagicBtn:hover {
@@ -1372,6 +1445,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .agreeSaveNavyBtn {
@@ -1383,6 +1459,9 @@
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .agreeSaveNavyBtn:hover {
