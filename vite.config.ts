@@ -42,12 +42,15 @@ export default defineConfig({
             if (id.includes('zustand')) {
               return 'vendor-state';
             }
+            if (id.includes('lucide-react') || id.includes('@heroicons') || id.includes('react-icons')) {
+              return 'vendor-icons';
+            }
             return 'vendor-misc';
           }
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 1600,
   },
   test: {
     globals: true,
