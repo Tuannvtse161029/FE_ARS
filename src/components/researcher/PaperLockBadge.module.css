@@ -1,0 +1,35 @@
+.pBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  /* The badge color itself never carries the meaning alone — text + icon do. */
+  background-color: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+.pFull {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.pCompact {
+  padding: 3px 8px;
+  font-size: 0.7rem;
+}
+
+.pIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #c2410c;
+}
+
+.pLabel {
+  letter-spacing: 0.01em;
+}

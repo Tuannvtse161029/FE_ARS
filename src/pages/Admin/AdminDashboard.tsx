@@ -234,7 +234,7 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
                       <span className={styles.userEmail}>{r.email}</span>
                     </div>
                   </td>
-                  <td>{r.requestedRoles.join(', ')}</td>
+                  <td>{r.requestedAdditionalRoles?.join(', ') || 'Unavailable'}</td>
                   <td>{new Date(r.submissionDate).toLocaleDateString('vi-VN')}</td>
                   <td>
                     <span className={`${styles.statusPill} ${styles[`status${r.status}`]}`}>

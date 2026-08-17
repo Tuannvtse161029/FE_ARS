@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw,
@@ -12,16 +12,13 @@ import { ROUTES } from '../../routes/paths';
 import { useAuthStore } from '../../store/authSlice';
 import { reviewRequestService, type ReviewRequest } from '../../services/reviewRequest.service';
 import { paperService, type Paper } from '../../services/paper.service';
+import {
+  getReviewRequestTab,
+  normalizeReviewRequestStatus,
+} from '../../utils/reviewRequestPolicy';
 import styles from './AssignedReviews.module.css';
 
 type StatusTab = 'pending' | 'inprogress' | 'completed';
-
-const statusOf = (req: ReviewRequest): StatusTab => {
-  const s = (req.status ?? 'Pending').toLowerCase();
-  if (s === 'inprogress' || s === 'in progress' || s === 'in-progress') return 'inprogress';
-  if (s === 'completed' || s === 'complete' || s === 'done') return 'completed';
-  return 'pending';
-};
 
 const formatDeadline = (req: ReviewRequest): { text: string; tone: 'orange' | 'gray' } => {
   if (!req.deadline) return { text: 'No deadline set', tone: 'gray' };
@@ -43,6 +40,21 @@ const formatFee = (req: ReviewRequest): string => {
   return `${fee.toLocaleString('vi-VN')} VND`;
 };
 
+/**
+ * Defect 2A item 5 — type-tolerant reviewer filter. `currentUserId` is
+ * `number` (per `types/auth.ts`) but the BE may emit `reviewerId` as a
+ * numeric string. We coerce both sides to a string before comparing so a
+ * mixed-type row still matches.
+ */
+const matchesCurrentReviewer = (
+  req: Pick<ReviewRequest, 'reviewerId'>,
+  currentUserId: number | undefined,
+): boolean => {
+  if (currentUserId == null) return false;
+  if (req.reviewerId == null) return false;
+  return String(req.reviewerId) === String(currentUserId);
+};
+
 export const AssignedReviews = () => {
   const navigate = useNavigate();
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -54,35 +66,50 @@ export const AssignedReviews = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError(null);
     try {
       const list = await reviewRequestService.getAll();
-      const assigned = list.filter((r) => r.reviewerId === currentUserId);
+      // Defect 2A items 1, 2, 5 — type-tolerant filter (`String(...)` on both
+      // sides), centralized user-id comparator. Drops nothing on a mixed
+      // string/number `reviewerId` payload.
+      const assigned = list.filter((r) => matchesCurrentReviewer(r, currentUserId));
       setItems(assigned);
 
-      // Hydrate papers for titles — only the ones we don't already have
-      const missingIds = Array.from(
-        new Set(
-          assigned
-            .map((r) => r.paperId)
-            .filter((id): id is number => typeof id === 'number')
-            .map((id) => String(id))
-            .filter((id) => !paperById[id])
-        )
-      );
-      if (missingIds.length > 0) {
-        const results = await Promise.allSettled(
-          missingIds.map((id) => paperService.getById(id))
+      // Hydrate papers for titles — only the ones we don't already have.
+      // Defect 2A item 1 (paper-id type): keys are normalized strings so a
+      // numeric `paperId` finds the same map entry as the stringified form.
+      setPaperById((prevPaperById) => {
+        const missingIds = Array.from(
+          new Set(
+            assigned
+              .map((r) => r.paperId)
+              .filter((id): id is number => typeof id === 'number' || typeof id === 'string')
+              .map((id) => String(id))
+              .filter((id) => !prevPaperById[id])
+          )
         );
-        const next: Record<string, Paper> = { ...paperById };
-        results.forEach((res, i) => {
-          if (res.status === 'fulfilled') {
-            next[missingIds[i]] = res.value;
-          }
-        });
-        setPaperById(next);
-      }
+        if (missingIds.length === 0) return prevPaperById;
+        // Fire-and-forget — caller doesn't await the paper cache. The UI
+        // reads `paperById[String(req.paperId)]` which is undefined until the
+        // fetch settles, and the surrounding code already falls back to
+        // `Paper #${id}` in that case (defect 1B progressive hydration).
+        void (async () => {
+          const results = await Promise.allSettled(
+            missingIds.map((id) => paperService.getById(id))
+          );
+          setPaperById((curr) => {
+            const next: Record<string, Paper> = { ...curr };
+            results.forEach((res, i) => {
+              if (res.status === 'fulfilled') {
+                next[missingIds[i]] = res.value;
+              }
+            });
+            return next;
+          });
+        })();
+        return prevPaperById;
+      });
     } catch (err) {
       const message =
         (err as { message?: string })?.message ||
@@ -92,39 +119,46 @@ export const AssignedReviews = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [currentUserId]);
 
   // ── Event: re-fetch when a review is submitted from EvaluationDesk ────────────
   useEffect(() => {
     const handler = () => void load();
     window.addEventListener('review-update', handler);
     return () => window.removeEventListener('review-update', handler);
-  }, []); // intentionally empty — `load` is stable; event drives refreshes
+  }, [load]);
 
   // ── Initial load when the user id becomes available
   useEffect(() => {
     if (currentUserId == null) return;
     setIsLoading(true);
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
+  }, [currentUserId, load]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await load();
   };
 
+  // Defect 2A item 6 — filter and counts go through the same centralized
+  // `getReviewRequestTab` so they cannot drift apart. Replaces the prior
+  // local lowercase `statusOf` switch which would miss whitespace / casing.
   const visible = useMemo(
-    () => items.filter((r) => statusOf(r) === activeTab),
+    () => items.filter((r) => getReviewRequestTab(r.status) === activeTab),
     [items, activeTab]
   );
 
   const counts = useMemo(() => {
-    return {
-      pending: items.filter((r) => statusOf(r) === 'pending').length,
-      inprogress: items.filter((r) => statusOf(r) === 'inprogress').length,
-      completed: items.filter((r) => statusOf(r) === 'completed').length,
-    };
+    let pending = 0;
+    let inprogress = 0;
+    let completed = 0;
+    for (const r of items) {
+      const tab = getReviewRequestTab(r.status);
+      if (tab === 'pending') pending += 1;
+      else if (tab === 'inprogress') inprogress += 1;
+      else completed += 1;
+    }
+    return { pending, inprogress, completed };
   }, [items]);
 
   const paperTitle = (req: ReviewRequest): string => {
@@ -133,7 +167,8 @@ export const AssignedReviews = () => {
     return paper?.title || `Paper #${req.paperId}`;
   };
 
-  const isCompleted = (req: ReviewRequest) => statusOf(req) === 'completed';
+  const isCompleted = (req: ReviewRequest) =>
+    normalizeReviewRequestStatus(req.status) === 'COMPLETED';
 
   return (
     <div className={styles.tasksPage}>
@@ -231,11 +266,19 @@ export const AssignedReviews = () => {
                       </div>
                     </div>
                     {completed ? (
+                      // Defect 2B — View Scorecard is refresh-safe: pass the
+                      // request id in the URL so a hard refresh (which loses
+                      // `location.state`) still lands on the correct scorecard.
+                      // `state` is also passed for the fast-path in-tab nav.
                       <button
                         className={styles.viewScorecardBtn}
-                        onClick={() =>
-                          navigate(ROUTES.EVALUATION, { state: { reviewRequest: req } })
-                        }
+                        onClick={() => {
+                          const id = req.id != null ? `?reviewRequestId=${req.id}` : '';
+                          navigate(
+                            `${ROUTES.EVALUATION}${id}`,
+                            { state: { reviewRequest: req } }
+                          );
+                        }}
                       >
                         View Scorecard
                       </button>

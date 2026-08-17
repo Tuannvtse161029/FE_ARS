@@ -91,6 +91,12 @@
   border: 1px solid #ffe3e3;
 }
 
+.badgeNeutral {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
 .closeBtn {
   background: none;
   border: none;
@@ -192,6 +198,10 @@
   color: #e03131;
 }
 
+.textNeutral {
+  color: #475569;
+}
+
 /* Footer Section */
 .footer {
   display: flex;
@@ -226,4 +236,49 @@
 
 .footerCloseBtn:hover {
   background-color: #323964;
+}
+
+/* Defect 2B — Loading / error / empty states for the live-data version. */
+.loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.spinner {
+  animation: spinModal 0.9s linear infinite;
+}
+
+@keyframes spinModal {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #991b1b;
+  font-size: 0.85rem;
+}
+
+.emptyHint {
+  padding: 12px 14px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-style: italic;
 }

@@ -14,3 +14,16 @@ export { useReceiptUpload } from './useReceiptUpload';
 export { useAdminGuard } from './useAdminGuard';
 export { useVerifiedGuard } from './useVerifiedGuard';
 export { usePermissions } from './usePermissions';
+// Lecturer ↔ Graduate Student workflow hooks (Agent 2 / GradStudent):
+export { usePhasedReports } from './usePhasedReports';
+export { useSubmitPhasedReport } from './useSubmitPhasedReport';
+export { useStudentGroups } from './useStudentGroups';
+export { useGuidanceProjects } from './useGuidanceProjects';
+export { useResearchTopics } from './useResearchTopics';
+export { useResearchGroups } from './useResearchGroups';
+export { useEvaluatePhasedReport } from './useEvaluatePhasedReport';
+export { useLearningMaterials } from './useLearningMaterials';
+// useLecturerProfile — opt-in real-name lookup hook for Lecturer detail
+// panels. Added in Phase C (Lead, lead-phase-c-contract.md S-8). Internally
+// calls userService.getById and caches per id.
+export { useLecturerProfile } from './useLecturerProfile';

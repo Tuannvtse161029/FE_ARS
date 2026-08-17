@@ -3,7 +3,6 @@ import {
   RefreshCw,
   Wallet,
   FileText,
-  Circle,
   Link,
   Clock,
   AlertTriangle,
@@ -12,6 +11,8 @@ import {
   Check,
 } from 'lucide-react';
 import { TopUpModal } from './components/TopUpModal';
+import { ReviewRequestDetailsModal } from '../../components/reviewer/ReviewRequestDetailsModal';
+import { ReviewRequestStatusBadge } from '../../components/reviewer/ReviewRequestStatusBadge';
 import { paperService } from '../../services/paper.service';
 import type { Paper } from '../../services/paper.service';
 import type { ReviewerProfile } from '../../services/reviewer.service';
@@ -19,6 +20,10 @@ import { reviewRequestService, type ReviewRequest } from '../../services/reviewR
 import { useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { useFollowReviewer } from '../../hooks/useFollowers';
 import { useWallet } from '../../hooks/useWallet';
+import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import {
+  resolvePaperTitle,
+} from '../../utils/reviewRequestDisplay';
 import styles from './DiscoverReviewers.module.css';
 
 // Domain shape used by the UI. All values are derived from the BE
@@ -65,7 +70,10 @@ interface EnrichedReviewer extends ReviewerProfile {
 
 function mapProfileToReviewer(p: EnrichedReviewer): Reviewer {
   const userId = p.userId;
-  const name = p.fullName?.trim() || `Reviewer #${userId}`;
+  // Real name only — never invent one. Until the BE populates `fullName`,
+  // show an honest, transparent placeholder so users see that the data
+  // simply isn't there yet (was: `Reviewer #${userId}`).
+  const name = p.fullName?.trim() || 'Reviewer (profile not yet completed)';
   return {
     id: `rev-${userId}`,
     name,
@@ -107,10 +115,20 @@ export const DiscoverReviewers = () => {
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Review requests history state — hydrated from BE
-  const [requests, setRequests] = useState<ReviewRequest[]>([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-  const [requestsError, setRequestsError] = useState<string | null>(null);
+  // View-Details modal state (defect 1C). Single state object — null = closed.
+  const [detailsRequest, setDetailsRequest] = useState<ReviewRequest | null>(null);
+
+  // Review requests history state — hydrated from the shared paper-review-locks hook
+  // so the policy decisions in this page and the lock decisions in /papers use the
+  // same source of truth. The hook keeps its own loading/error/refetch lifecycle.
+  const {
+    requests,
+    isLoading: isLoadingRequests,
+    error: requestsErrorRaw,
+    refetch: refetchReviewRequests,
+    mergePendingRequest,
+  } = usePaperReviewLocks();
+  const requestsError = requestsErrorRaw?.message ?? null;
   const [papers, setPapers] = useState<Paper[]>([]);
 
   // Reviewer profiles loaded from /api/ProfessionalProfile via custom hook.
@@ -125,11 +143,10 @@ export const DiscoverReviewers = () => {
 
   // ── Event: re-fetch My Review Requests when a review is submitted ───────────
   useEffect(() => {
-    const handler = () => void loadRequests();
+    const handler = () => void refetchReviewRequests();
     window.addEventListener('review-update', handler);
     return () => window.removeEventListener('review-update', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refetchReviewRequests]);
 
   // Fetch papers for reviewer recommendation dropdown
   useEffect(() => {
@@ -149,29 +166,133 @@ export const DiscoverReviewers = () => {
       .map(mapProfileToReviewer);
   }, [reviewerProfiles]);
 
-  // ── Hydrate My Review Requests when the user opens that tab for the first time,
-  // or when the tab is re-entered after a successful submission.
+  // ── Hydrate My Review Requests from the BE when the tab is first opened.
+  // The hook handles its own fetch lifecycle; we only guard against an
+  // empty array that the hook has not yet resolved.
   useEffect(() => {
     if (activeTab === 'requests' && requests.length === 0 && !isLoadingRequests) {
-      setIsLoadingRequests(true);
-      loadRequests();
+      void refetchReviewRequests();
     }
-    // We intentionally only watch activeTab — the in-component loadRequests() is
-    // called explicitly after a successful POST and from the Refresh button.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, requests.length, isLoadingRequests, refetchReviewRequests]);
 
   // Lookups for joining BE ReviewRequest rows → UI display fields.
-  const paperTitleById = new Map<string | number, string>(
-    papers.map((p) => [p.id as unknown as number, p.title || 'Untitled'])
-  );
-  const reviewerNameByUserId = new Map<number, { name: string; initials: string; avatarBg: string }>();
-  reviewers.forEach((r) => {
-    const uid = parseInt(r.id.replace('rev-', ''), 10);
-    if (Number.isFinite(uid)) {
-      reviewerNameByUserId.set(uid, { name: r.name, initials: r.initials, avatarBg: r.avatarBg });
+
+  // Papers keyed by normalized string id — `Paper.id` is `string` but
+  // `ReviewRequest.paperId` is `number`, so a number-keyed Map misses. We
+  // normalize via `String(...)` here AND when comparing on the lookup side
+  // (defect 1B item 1).
+  const papersById = useMemo(() => {
+    const m = new Map<string, Paper>();
+    for (const p of papers) {
+      const id = p.id != null ? String(p.id) : '';
+      if (id) m.set(id, p);
     }
-  });
+    return m;
+  }, [papers]);
+
+  // Out-of-band paper cache: populated by `paperService.getById(...)` when a
+  // row's paper is missing from the first page of `paperService.getAll()`.
+  // See defect 1B — historical papers on later pages must still display.
+  const [extraPapersById, setExtraPapersById] = useState<Map<string, Paper>>(
+    () => new Map<string, Paper>(),
+  );
+  // Tracks which ids are currently being fetched so we don't fire duplicate
+  // GETs for the same paper when many rows reference it.
+  const [loadingPaperIds, setLoadingPaperIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+
+  // ── Progressive paper hydration (defect 1B) ────────────────────────────────
+  // For every request whose paper is NOT in the page list AND NOT in the
+  // extra cache AND NOT currently being fetched, fire one `paperService.getById`
+  // and cache the result. Skips a request when `paperId` is null/undefined.
+  useEffect(() => {
+    if (activeTab !== 'requests') return;
+    if (requests.length === 0) return;
+    const toFetch: string[] = [];
+    for (const req of requests) {
+      const pid = req.paperId;
+      if (pid == null) continue;
+      const normId = String(pid);
+      if (papersById.has(normId)) continue;
+      if (extraPapersById.has(normId)) continue;
+      if (loadingPaperIds.has(normId)) continue;
+      toFetch.push(normId);
+    }
+    if (toFetch.length === 0) return;
+    setLoadingPaperIds((prev) => {
+      const next = new Set(prev);
+      for (const id of toFetch) next.add(id);
+      return next;
+    });
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.allSettled(
+        toFetch.map((id) => paperService.getById(id))
+      );
+      if (cancelled) return;
+      setExtraPapersById((prev) => {
+        const next = new Map(prev);
+        for (let i = 0; i < results.length; i += 1) {
+          const r = results[i];
+          if (r.status === 'fulfilled') {
+            const id = toFetch[i];
+            next.set(String(id), r.value);
+          }
+        }
+        return next;
+      });
+      setLoadingPaperIds((prev) => {
+        const next = new Set(prev);
+        for (const id of toFetch) next.delete(id);
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally exclude extraPapersById / papersById from deps — they
+    // are mutated by this effect and would otherwise re-fire the fetch loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, requests]);
+
+  // Reviewer lookup uses ALL profiles (not just currently-available ones).
+  // Availability affects discovery / assignment, not historical display —
+  // a Reviewer who completed a request and later flipped availability off
+  // must still appear on the row (defect 1B item 2). `fullName` may be
+  // missing on the BE payload — fall back to an honest placeholder so we
+  // never invent a name.
+  const reviewerNameByUserId = useMemo(() => {
+    const m = new Map<string, { name: string; initials: string; avatarBg: string }>();
+    for (const p of reviewerProfiles) {
+      const name =
+        ((p as { fullName?: string }).fullName ?? '').trim() ||
+        'Reviewer (profile not yet completed)';
+      const initials = initialsFromName(name);
+      const avatarBg = (p as { avatarBg?: string }).avatarBg ?? avatarColorForUserId(p.userId);
+      m.set(String(p.userId), { name, initials, avatarBg });
+    }
+    return m;
+  }, [reviewerProfiles]);
+
+  // Resolve a Reviewer's display info with type-tolerant `reviewerId`
+  // matching (defect 1B item 5 — strict equality drops rows).
+  const lookupReviewer = (req: Pick<ReviewRequest, 'reviewerId' | 'reviewerName'>) => {
+    if (req.reviewerName && req.reviewerName.trim()) {
+      const trimmed = req.reviewerName.trim();
+      return {
+        name: trimmed,
+        initials: initialsFromName(trimmed),
+        avatarBg: '#1D2A4A',
+      };
+    }
+    if (req.reviewerId == null) return null;
+    return (
+      reviewerNameByUserId.get(String(req.reviewerId)) ??
+      reviewerNameByUserId.get(String(Number(req.reviewerId))) ??
+      null
+    );
+  };
 
   const handleRequestClick = (reviewer: Reviewer) => {
     setSelectedReviewer(reviewer);
@@ -210,15 +331,42 @@ export const DiscoverReviewers = () => {
         await follow(reviewerUserId).catch(() => false);
       }
 
-      // 3. Refetch the list so the new row shows up in My Review Requests.
+      // 3. Optimistically mark the new request in the hook state so the
+      //    paper lock updates in /papers BEFORE the BE roundtrip resolves.
+      //    The BE create response is documented only as `200: OK`; historically
+      //    the persisted row came back under the BE field `reviewRequestId`,
+      //    while the service getter normalizes it to `id`. Accept both.
+      const createdAsAny = created as ReviewRequest & { reviewRequestId?: number | null };
+      const normalizedCreated: ReviewRequest = {
+        id: created.id ?? (typeof createdAsAny.reviewRequestId === 'number' ? createdAsAny.reviewRequestId : undefined),
+        paperId: created.paperId ?? (Number.isFinite(paperNumericId) ? paperNumericId : null),
+        reviewerId: created.reviewerId ?? (Number.isFinite(reviewerUserId) ? reviewerUserId : null),
+        fee: created.fee ?? totalDeductible,
+        status: created.status ?? 'Pending',
+        deadline: created.deadline ?? null,
+        airecommended: created.airecommended ?? null,
+        type: created.type ?? null,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+        paperTitle: created.paperTitle,
+        reviewerName: created.reviewerName ?? selectedReviewer.name,
+      };
+      mergePendingRequest(normalizedCreated);
+
+      // 4. Refetch the list so the new row is confirmed by the BE.
       try {
-        const fresh = await reviewRequestService.getAll();
-        setRequests(fresh);
+        await refetchReviewRequests();
       } catch {
         // Non-fatal — the table will just miss this row until next refresh.
       }
 
-      setLastSubmittedRequest(created);
+      // 5. Notify other live views (Papers page, other Researcher windows)
+      //    that the request list has changed so they re-evaluate paper locks.
+      window.dispatchEvent(new CustomEvent('review-update', {
+        detail: { reviewRequestId: normalizedCreated.id, status: normalizedCreated.status },
+      }));
+
+      setLastSubmittedRequest(normalizedCreated);
       setShowSuccessModal(true);
       setIsSubmittingRequest(false);
     } catch (err) {
@@ -246,23 +394,18 @@ export const DiscoverReviewers = () => {
     console.log(`Successfully topped up ${amount} VND`);
   };
 
-  // Hydrate My Review Requests from the BE.
-  const loadRequests = async () => {
-    setRequestsError(null);
-    try {
-      const list = await reviewRequestService.getAll();
-      setRequests(list);
-    } catch (err) {
-      const message = (err as { message?: string })?.message || 'Failed to load review requests.';
-      setRequestsError(message);
-    } finally {
-      setIsLoadingRequests(false);
-    }
-  };
+  // Hydration is owned by the usePaperReviewLocks hook; this page no longer
+  // calls /api/ReviewRequest directly. The Refresh button in the request
+  // table now simply calls the hook's refetch helper.
 
   // Refresh the Discover Reviewers list — re-fetches reviewer profiles.
   const handleRefreshReviewers = async () => {
     await refetchReviewers();
+  };
+
+  // Refresh the My Review Requests table — re-fetches via the shared hook.
+  const handleRefreshRequests = async () => {
+    await refetchReviewRequests();
   };
 
   return (
@@ -410,6 +553,15 @@ export const DiscoverReviewers = () => {
             <div className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <h3 className={styles.sectionTitle}>My Review Request</h3>
+                <button
+                  className={styles.refreshBtn}
+                  onClick={handleRefreshRequests}
+                  disabled={isLoadingRequests}
+                  aria-label="Refresh review requests"
+                >
+                  <RefreshCw size={14} />
+                  Refresh
+                </button>
               </div>
 
               <div className={styles.tableResponsive}>
@@ -439,28 +591,38 @@ export const DiscoverReviewers = () => {
                       </tr>
                     ) : requests.length > 0 ? (
                       requests.map((req) => {
+                        // Progressive paper-title hydration (defect 1B).
+                        const resolution = resolvePaperTitle({
+                          req,
+                          papersById,
+                          extraPapersById,
+                        });
+                        const isPaperLoading =
+                          resolution.kind === 'id' &&
+                          req.paperId != null &&
+                          loadingPaperIds.has(String(req.paperId));
                         const manuscriptTitle =
-                          req.paperTitle && req.paperTitle.trim()
-                            ? req.paperTitle
-                            : req.paperId != null
-                              ? (paperTitleById.get(req.paperId) ?? `Paper #${req.paperId}`)
-                              : 'Manuscript details unavailable';
-                        const reviewerInfo =
-                          req.reviewerId != null
-                            ? reviewerNameByUserId.get(req.reviewerId)
-                            : undefined;
-                        const reviewerName = req.reviewerName?.trim()
-                          ? req.reviewerName
-                          : req.reviewerId != null
-                            ? (reviewerInfo?.name ?? `Reviewer #${req.reviewerId}`)
-                            : 'Reviewer details unavailable';
+                          resolution.kind === 'title'
+                            ? resolution.title
+                            : resolution.kind === 'loading' ||
+                              isPaperLoading
+                              ? 'Loading manuscript…'
+                              : resolution.kind === 'id'
+                                ? `Paper #${resolution.paperId}`
+                                : 'Manuscript details unavailable';
+                        // Reviewer lookup with type-tolerant string/number
+                        // comparison (defect 1B item 5).
+                        const reviewerInfo = lookupReviewer(req);
+                        const reviewerName = reviewerInfo?.name ??
+                          (req.reviewerId != null
+                            ? 'Reviewer (profile not yet completed)'
+                            : 'Reviewer details unavailable');
                         const reviewerInitials = reviewerInfo?.initials ?? initialsFromName(reviewerName);
                         const reviewerAvatarBg = reviewerInfo?.avatarBg ?? '#1D2A4A';
                         const feeValue = req.fee ?? 0;
                         const dateValue = req.createdAt
                           ? new Date(req.createdAt).toISOString().split('T')[0]
                           : '';
-                        const status = (req.status ?? 'Pending') as string;
                         const rowKey = req.id ?? `${req.paperId}-${req.reviewerId}-${dateValue}`;
                         return (
                           <tr key={rowKey}>
@@ -482,12 +644,17 @@ export const DiscoverReviewers = () => {
                             <td className={styles.dateCell}>{dateValue}</td>
                             <td className={styles.feeCell}>{feeValue.toLocaleString('vi-VN')} VND</td>
                             <td>
-                              <span className={`${styles.statusDotLabel} ${styles.statusPending}`}>
-                                <Circle size={8} fill="currentColor" style={{ verticalAlign: 'middle' }} /> {status}
-                              </span>
+                              <ReviewRequestStatusBadge status={req.status} />
                             </td>
                             <td>
-                              <button className={styles.btnActionDetails}>View Details</button>
+                              <button
+                                type="button"
+                                className={styles.btnActionDetails}
+                                onClick={() => setDetailsRequest(req)}
+                                aria-label="View Details"
+                              >
+                                View Details
+                              </button>
                             </td>
                           </tr>
                         );
@@ -661,6 +828,12 @@ export const DiscoverReviewers = () => {
                 <strong>If you reject the delivered review</strong> on valid grounds (per our dispute policy),
                 the full amount is refunded.
               </li>
+              <li>
+                <strong>Once this review request is submitted, you cannot delete or cancel the
+                active request or delete the related manuscript while the Reviewer is processing it.</strong>
+                {' '}This protects the Reviewer&apos;s access, evaluation record, and payment/refund history.
+                Deletion becomes available only when allowed by the final request state and platform policy.
+              </li>
             </ul>
 
             <label className={styles.policyCheckboxRow}>
@@ -673,7 +846,9 @@ export const DiscoverReviewers = () => {
               <span className={styles.policyCheckboxText}>
                 I have read and agree to the Lock &amp; Refund Policy above. I understand that the total amount
                 (<b>{(selectedReviewer.fee + 25000).toLocaleString('vi-VN')} VND</b>) will be locked in my wallet
-                until the review is delivered and accepted (or a refund is triggered).
+                until the review is delivered and accepted (or a refund is triggered). I also acknowledge I will
+                not be able to delete this active review request or its manuscript while the Reviewer is
+                processing it.
               </span>
             </label>
           </div>
@@ -754,6 +929,16 @@ export const DiscoverReviewers = () => {
           </div>
         </div>
       )}
+
+      {/* Researcher View Details modal (defect 1C). */}
+      <ReviewRequestDetailsModal
+        isOpen={!!detailsRequest}
+        request={detailsRequest}
+        papersById={papersById}
+        extraPapersById={extraPapersById}
+        reviewerLookup={lookupReviewer}
+        onClose={() => setDetailsRequest(null)}
+      />
     </div>
   );
 };

@@ -1,182 +1,348 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Plus,
   Check,
   X,
   Users,
-  Clock,
   Pencil,
   Trash2,
   BookOpen,
   Settings,
   Lightbulb,
   FileText,
+  Loader,
+  AlertTriangle,
+  RefreshCw,
+  Inbox,
+  ToggleRight,
+  ToggleLeft,
+  CheckCircle2,
+  Library,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useResearchGroups } from '../../hooks/useResearchGroups';
+import { useResearchTopics } from '../../hooks/useResearchTopics';
+import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
+import { researchGroupService, deriveGroupStatus } from '../../services/researchGroup.service';
+import { researchTopicService, type ResearchTopic } from '../../services/researchTopic.service';
+import { canTransitionResearchTopic } from '../../utils/researchStatus';
+import type { ResearchTopicStatus } from '../../types/research';
+import { groupMemberService, indexGroupMembersByGroupId } from '../../services/groupMember.service';
+import type { GroupMember } from '../../services/groupMember.service';
+import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
+import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
+import { ROUTES } from '../../routes/paths';
 import styles from './ResearchGroup.module.css';
 
-interface Group {
-  id: string;
-  name: string;
-  topic: string;
-  description: string;
-  dueDate: string;
-  status: 'Active' | 'Pending';
-  members: string[];
-  isNew?: boolean;
+interface BannerState {
+  visible: boolean;
+  text: string;
 }
 
-interface Topic {
-  id: string;
-  name: string;
-  description: string;
-  assignedGroups: string[];
-}
+const formatGroupId = (id: number): string =>
+  `RG-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
+const formatTopicId = (id: number): string =>
+  `RT-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
+
+const initialsOf = (raw: string): string =>
+  raw
+    .split(/\s+/)
+    .map((n) => n[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?';
+
+const avatarColors = ['#10b981', '#f59e0b', '#3b82f6', '#7c3aed', '#ef4444'];
 
 export const ResearchGroup = () => {
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const { user } = useAuth();
+  const lecturerId = user?.userId ?? null;
 
-  // Success Toast Banner State (Frame 43)
-  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-  const [bannerText, setBannerText] = useState('');
+  const {
+    groups,
+    isLoading: isLoadingGroups,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useResearchGroups({ lecturerId });
 
-  // Groups list
-  const [groups, setGroups] = useState<Group[]>([
-    {
-      id: 'RG-2026-012',
-      name: 'Scalable Routing Architecture Group',
-      topic: 'Distributed Systems Scalability',
-      description: 'Focusing on WebRTC media streaming optimization and horizontal backend scaling.',
-      dueDate: '2026-08-05',
-      status: 'Active',
-      members: ['student1@ars.edu.vn', 'student2@ars.edu.vn', 'student3@ars.edu.vn'],
-    },
-  ]);
+  const {
+    topics,
+    isLoading: isLoadingTopics,
+    error: topicsError,
+    refetch: refetchTopics,
+  } = useResearchTopics();
 
-  // Topics list
-  const [topics, setTopics] = useState<Topic[]>([
-    {
-      id: 'RT-2026-004',
-      name: 'Consensus Protocols in Distributed Databases',
-      description: 'Evaluating Raft vs Paxos performance under network partition conditions.',
-      assignedGroups: ['RG-2026-008'],
-    },
-  ]);
+  const { refetch: refetchProjects } = useGuidanceProjects();
 
-  // Create Group Modal Form (Frame 40)
-  const [groupName, setGroupName] = useState('AI Speech-to-Text Research Team');
-  const [groupTopic, setGroupTopic] = useState('NLP Audio Transcription Benchmarks');
-  const [groupDesc, setGroupDesc] = useState('Investigating Whisper AI model accuracy across regional dialects.');
-  const [groupEmails, setGroupEmails] = useState(['student4@ars.edu.vn', 'student5@ars.edu.vn']);
-  const [emailInput, setEmailInput] = useState('');
+  // Members are loaded separately (no server-side filter — see groupMember.service.ts).
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+  const [membersError, setMembersError] = useState<string | null>(null);
 
-  // Create Topic Modal Form (Frame 41)
-  const [topicName, setTopicName] = useState('High-Concurrency Load Balancing in Microservices');
-  const [topicDesc, setTopicDesc] = useState('Architectural strategies for decoupling routing logic from orchestration layers.');
-  const [attachedMaterials, setAttachedMaterials] = useState([
-    'Distributed_Systems_Syllabus.pdf',
-    'Raft_Paper_v2.pdf',
-  ]);
-
-  // Assign Topic Modal State (Frame 42)
-  const [selectedTopicForAssign, setSelectedTopicForAssign] = useState<Topic | null>(null);
-  const [selectedGroupCheckboxes, setSelectedGroupCheckboxes] = useState<{ [id: string]: boolean }>({
-    'RG-2026-012': true,
-    'RG-2026-015': true,
-    'RG-2026-009': false,
-  });
-
-  const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && emailInput.trim()) {
-      if (!groupEmails.includes(emailInput.trim())) {
-        setGroupEmails([...groupEmails, emailInput.trim()]);
-      }
-      setEmailInput('');
+  const loadMembers = async () => {
+    setIsLoadingMembers(true);
+    setMembersError(null);
+    try {
+      const list = await groupMemberService.getAll();
+      setMembers(list);
+    } catch (err) {
+      setMembersError(
+        err instanceof Error ? err.message : 'Failed to load group members.',
+      );
+      setMembers([]);
+    } finally {
+      setIsLoadingMembers(false);
     }
   };
 
-  const handleRemoveEmail = (email: string) => {
-    setGroupEmails(groupEmails.filter((x) => x !== email));
+  useEffect(() => {
+    void loadMembers();
+  }, []);
+
+  const memberIndex = useMemo(
+    () => indexGroupMembersByGroupId(members),
+    [members],
+  );
+
+  const topicById = useMemo(() => {
+    const map = new Map<number, ResearchTopic>();
+    for (const t of topics) {
+      if (typeof t.id === 'number') map.set(t.id, t);
+    }
+    return map;
+  }, [topics]);
+
+  // ── Modal state ────────────────────────────────────────────────────────
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [topicForAssign, setTopicForAssign] = useState<ResearchTopic | null>(null);
+  // Edit topic modal (L3.a)
+  const [topicForEdit, setTopicForEdit] = useState<ResearchTopic | null>(null);
+  // Manage materials modal (L3.c)
+  const [topicForMaterials, setTopicForMaterials] = useState<ResearchTopic | null>(
+    null,
+  );
+
+  // ── Banner state ────────────────────────────────────────────────────────
+  const [banner, setBanner] = useState<BannerState>({ visible: false, text: '' });
+
+  // ── Create Group form state ────────────────────────────────────────────
+  const [groupName, setGroupName] = useState('');
+  const [groupDesc, setGroupDesc] = useState('');
+  const [groupDeadline, setGroupDeadline] = useState('');
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [createGroupError, setCreateGroupError] = useState<string | null>(null);
+
+  // ── Create Topic form state ────────────────────────────────────────────
+  const [topicName, setTopicName] = useState('');
+  const [topicDesc, setTopicDesc] = useState('');
+  const [topicMaterialsUrl, setTopicMaterialsUrl] = useState('');
+  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+  const [createTopicError, setCreateTopicError] = useState<string | null>(null);
+
+  // ── Edit Topic form state (L3.a) ─────────────────────────────────────
+  const [editTopicTitle, setEditTopicTitle] = useState('');
+  const [editTopicDesc, setEditTopicDesc] = useState('');
+  const [editTopicMaterialsUrl, setEditTopicMaterialsUrl] = useState('');
+  const [isEditingTopic, setIsEditingTopic] = useState(false);
+  const [editTopicError, setEditTopicError] = useState<string | null>(null);
+
+  // Per-row status-transition inflight (L3.a open/close/complete).
+  const [topicTransition, setTopicTransition] = useState<{
+    id: number;
+    to: ResearchTopicStatus;
+  } | null>(null);
+
+  const showBanner = (text: string) => {
+    setBanner({ visible: true, text });
+    // Auto-dismiss after 4s (matches existing SeminarWorkspace behaviour).
+    window.setTimeout(() => setBanner({ visible: false, text: '' }), 4000);
   };
 
-  const handleRemoveMaterial = (fileName: string) => {
-    setAttachedMaterials(attachedMaterials.filter((x) => x !== fileName));
-  };
-
-  const handleCreateGroupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupName.trim()) return;
-
-    const newGroup: Group = {
-      id: 'RG-2026-015',
-      name: groupName,
-      topic: groupTopic || 'NLP Audio Transcription Benchmarks',
-      description: groupDesc || 'Investigating Whisper AI model accuracy across regional dialects.',
-      dueDate: '2026-08-15',
-      status: 'Active',
-      members: groupEmails.length > 0 ? groupEmails : ['student4@ars.edu.vn', 'student5@ars.edu.vn'],
-      isNew: true,
-    };
-
-    setGroups([...groups, newGroup]);
-    setShowCreateGroupModal(false);
-    setBannerText(`Research Group ${newGroup.id} ("${groupName}") created successfully.`);
-    setShowSuccessBanner(true);
-  };
-
-  const handleCreateTopicSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topicName.trim()) return;
-
-    const newTopic: Topic = {
-      id: 'RT-2026-009',
-      name: topicName,
-      description: topicDesc || 'Architectural strategies for decoupling routing logic from orchestration layers.',
-      assignedGroups: [],
-    };
-
-    setTopics([...topics, newTopic]);
-    setShowCreateTopicModal(false);
-    setBannerText(`Research Topic ${newTopic.id} ("${topicName}") created successfully.`);
-    setShowSuccessBanner(true);
-  };
-
-  const handleOpenAssignModal = (topic: Topic) => {
-    setSelectedTopicForAssign(topic);
+  const handleOpenAssignModal = (topic: ResearchTopic) => {
+    setTopicForAssign(topic);
     setShowAssignModal(true);
   };
 
-  const handleConfirmAssignment = () => {
-    if (!selectedTopicForAssign) return;
-
-    const assignedIds = Object.keys(selectedGroupCheckboxes).filter(
-      (id) => selectedGroupCheckboxes[id]
+  const handleDeleteGroup = async (groupId: number, name: string) => {
+    const ok = window.confirm(
+      `Delete "${name}"? This action cannot be undone.`,
     );
-
-    setTopics(
-      topics.map((t) =>
-        t.id === selectedTopicForAssign.id
-          ? { ...t, assignedGroups: assignedIds.length > 0 ? assignedIds : ['Unassigned'] }
-          : t
-      )
-    );
-
-    setShowAssignModal(false);
-    setBannerText(
-      `Topic ${selectedTopicForAssign.id} successfully assigned to ${assignedIds.length} Research Groups.\n${assignedIds.join(' and ')} have been updated with the new topic assignment.`
-    );
-    setShowSuccessBanner(true);
+    if (!ok) return;
+    try {
+      await researchGroupService.delete(groupId);
+      showBanner(`Research Group "${name}" deleted.`);
+      await refetchGroups();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete the group.';
+      showBanner(`Delete failed: ${message}`);
+    }
   };
 
-  const toggleGroupCheckbox = (id: string) => {
-    setSelectedGroupCheckboxes({
-      ...selectedGroupCheckboxes,
-      [id]: !selectedGroupCheckboxes[id],
-    });
+  const handleCreateGroupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lecturerId) {
+      setCreateGroupError('No lecturer session — please sign in again.');
+      return;
+    }
+    if (!groupName.trim()) {
+      setCreateGroupError('Group name is required.');
+      return;
+    }
+    setIsCreatingGroup(true);
+    setCreateGroupError(null);
+    try {
+      const created = await researchGroupService.create({
+        lecturerId,
+        name: groupName.trim(),
+        description: groupDesc.trim() || null,
+        deadline: groupDeadline ? new Date(groupDeadline).toISOString() : null,
+        assignedAt: null,
+      });
+      setShowCreateGroupModal(false);
+      setGroupName('');
+      setGroupDesc('');
+      setGroupDeadline('');
+      const idLabel = typeof created.id === 'number' ? formatGroupId(created.id) : '';
+      showBanner(`Research Group ${idLabel} ("${created.name ?? groupName}") created successfully.`);
+      await refetchGroups();
+    } catch (err) {
+      setCreateGroupError(
+        err instanceof Error ? err.message : 'Failed to create the group.',
+      );
+    } finally {
+      setIsCreatingGroup(false);
+    }
   };
 
-  const selectedGroupsCount = Object.values(selectedGroupCheckboxes).filter(Boolean).length;
+  const handleCreateTopicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topicName.trim()) {
+      setCreateTopicError('Topic name is required.');
+      return;
+    }
+    setIsCreatingTopic(true);
+    setCreateTopicError(null);
+    try {
+      const created = await researchTopicService.create({
+        title: topicName.trim(),
+        description: topicDesc.trim() || null,
+        materialsUrl: topicMaterialsUrl.trim() || null,
+        status: 'OPEN',
+      });
+      setShowCreateTopicModal(false);
+      setTopicName('');
+      setTopicDesc('');
+      setTopicMaterialsUrl('');
+      const idLabel = typeof created.id === 'number' ? formatTopicId(created.id) : '';
+      showBanner(`Research Topic ${idLabel} ("${created.title ?? topicName}") created successfully.`);
+      await refetchTopics();
+    } catch (err) {
+      setCreateTopicError(
+        err instanceof Error ? err.message : 'Failed to create the topic.',
+      );
+    } finally {
+      setIsCreatingTopic(false);
+    }
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([refetchGroups(), refetchTopics(), refetchProjects(), loadMembers()]);
+  };
+
+  // Open the edit-topic modal and seed its form with the current row.
+  const handleOpenEditTopic = (topic: ResearchTopic) => {
+    setTopicForEdit(topic);
+    setEditTopicTitle(typeof topic.title === 'string' ? topic.title : '');
+    setEditTopicDesc(typeof topic.description === 'string' ? topic.description : '');
+    setEditTopicMaterialsUrl(
+      typeof topic.materialsUrl === 'string' ? topic.materialsUrl : '',
+    );
+    setEditTopicError(null);
+  };
+
+  const handleCloseEditTopic = () => {
+    if (isEditingTopic) return;
+    setTopicForEdit(null);
+  };
+
+  const handleEditTopicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topicForEdit || typeof topicForEdit.id !== 'number') {
+      setEditTopicError('Topic has no id; cannot be saved.');
+      return;
+    }
+    const title = editTopicTitle.trim();
+    if (!title) {
+      setEditTopicError('Title is required.');
+      return;
+    }
+    setIsEditingTopic(true);
+    setEditTopicError(null);
+    try {
+      await researchTopicService.update(topicForEdit.id, {
+        title,
+        description: editTopicDesc.trim() || null,
+        materialsUrl: editTopicMaterialsUrl.trim() || null,
+      });
+      setTopicForEdit(null);
+      showBanner(`Research Topic RT-${formatTopicId(topicForEdit.id).slice(3)} ("${title}") updated successfully.`);
+      await refetchTopics();
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Server rejected the topic update.';
+      setEditTopicError(message);
+    } finally {
+      setIsEditingTopic(false);
+    }
+  };
+
+  // L3.a — Open/Close/Mark Completed transitions, all gated by
+  // `canTransitionResearchTopic`.
+  const handleTopicTransition = async (
+    topic: ResearchTopic,
+    to: ResearchTopicStatus,
+  ) => {
+    if (typeof topic.id !== 'number') return;
+    const fromStatus = (topic.status ?? 'OPEN') as ResearchTopicStatus;
+    if (!canTransitionResearchTopic(fromStatus, to)) {
+      showBanner(
+        `Cannot transition this topic from ${fromStatus} to ${to} — not allowed by the workflow contract.`,
+      );
+      return;
+    }
+    setTopicTransition({ id: topic.id, to });
+    try {
+      await researchTopicService.update(topic.id, { status: to });
+      showBanner(
+        `Topic "${topic.title ?? `RT-${topic.id}`}" marked as ${to}.`,
+      );
+      await refetchTopics();
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'The transition was rejected by the server.';
+      showBanner(`Transition failed: ${message}`);
+    } finally {
+      setTopicTransition(null);
+    }
+  };
+
+  // L3.c — opens the per-topic materials manager.
+  const handleOpenMaterials = (topic: ResearchTopic) => {
+    setTopicForMaterials(topic);
+  };
+
+  const handleCloseMaterials = () => {
+    setTopicForMaterials(null);
+  };
 
   return (
     <div className={styles.researchGroupPage}>
@@ -188,22 +354,35 @@ export const ResearchGroup = () => {
       {/* Page Header */}
       <div className={styles.pageHeader}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Research Groups & Topics Management</h1>
+          <h1 className={styles.pageTitle}>Research Groups &amp; Topics Management</h1>
           <p className={styles.pageSubtitle}>
             Manage active research groups, assign topics, and track member progress.
           </p>
         </div>
-        <button
-          className={styles.createGroupBtn}
-          onClick={() => setShowCreateGroupModal(true)}
-        >
-          <Plus size={16} aria-hidden />
-          Create Research Group
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className={styles.createGroupBtn}
+            onClick={() => void refreshAll()}
+            disabled={isLoadingGroups || isLoadingTopics || isLoadingMembers}
+            aria-label="Refresh"
+          >
+            <RefreshCw size={14} aria-hidden />
+            Refresh
+          </button>
+          <button
+            type="button"
+            className={styles.createGroupBtn}
+            onClick={() => setShowCreateGroupModal(true)}
+          >
+            <Plus size={16} aria-hidden />
+            Create Research Group
+          </button>
+        </div>
       </div>
 
-      {/* SUCCESS TOAST BANNER (Frame 43) */}
-      {showSuccessBanner && (
+      {/* SUCCESS TOAST BANNER */}
+      {banner.visible && (
         <div className={styles.successToastBanner}>
           <div className={styles.toastLeft}>
             <span className={styles.toastCheckIcon}>
@@ -211,19 +390,38 @@ export const ResearchGroup = () => {
             </span>
             <div>
               <span className={styles.toastTitle}>Action Successful</span>
-              <p className={styles.toastSub}>{bannerText}</p>
+              <p className={styles.toastSub}>{banner.text}</p>
             </div>
           </div>
           <div className={styles.toastRight}>
-            <span className={styles.justNowText}>Just now</span>
             <button
+              type="button"
               className={styles.toastCloseBtn}
-              onClick={() => setShowSuccessBanner(false)}
-              aria-label="Dismiss notification"
+              onClick={() => setBanner({ visible: false, text: '' })}
+              aria-label="Dismiss"
             >
               <X size={14} aria-hidden />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* GLOBAL ERROR BANNER (any list failed to load) */}
+      {(groupsError || topicsError || membersError) && (
+        <div className={styles.errorBanner} role="alert">
+          <span className={styles.errorBannerIcon}>
+            <AlertTriangle size={14} aria-hidden />
+            <span>
+              {groupsError?.message ?? topicsError?.message ?? membersError ?? 'Failed to load data. Please retry.'}
+            </span>
+          </span>
+          <button
+            type="button"
+            className={styles.errorRetryBtn}
+            onClick={() => void refreshAll()}
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -238,77 +436,133 @@ export const ResearchGroup = () => {
 
       {/* Groups Grid */}
       <div className={styles.groupsGrid}>
-        {groups.map((grp) => (
-          <div className={styles.groupCard} key={grp.id}>
-            {/* Header badges */}
-            <div className={styles.cardTopRow}>
-              <div className={styles.leftPills}>
-                <span className={styles.groupIdPill}>{grp.id}</span>
-                <span className={styles.activePill}>● Active</span>
-                {grp.isNew && <span className={styles.newBadgePill}>NEW</span>}
-              </div>
-              {grp.dueDate && (
-                <span className={styles.dueDatePill}>
-                  <Clock size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                  Phase 3 Report Due: {grp.dueDate}
-                </span>
-              )}
-            </div>
-
-            {/* Title & Topic */}
-            <h4 className={styles.groupCardTitle}>{grp.name}</h4>
-            <div className={styles.groupTopicText}>Topic: {grp.topic}</div>
-            <p className={styles.groupDescText}>{grp.description}</p>
-
-            {/* Roster Members */}
-            <div className={styles.membersSection}>
-              <span className={styles.membersLabel}>MEMBERS ({grp.members.length})</span>
-              <div className={styles.memberPillsRow}>
-                {grp.members.map((email, idx) => (
-                  <span key={email} className={styles.memberPillTag}>
-                    <span
-                      className={styles.memberAvatarIcon}
-                      style={{
-                        backgroundColor:
-                          idx === 0 ? '#10b981' : idx === 1 ? '#f59e0b' : '#3b82f6',
-                      }}
-                    >
-                      {email.slice(0, 2).toUpperCase()}
-                    </span>
-                    {email}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Footer buttons */}
-            <div className={styles.groupCardFooter}>
-              <div className={styles.iconButtonsLeft}>
-                <button
-                  className={styles.actionIconBtn}
-                  title="Edit group"
-                  aria-label="Edit group"
-                >
-                  <Pencil size={14} aria-hidden />
-                </button>
-                <button
-                  className={styles.actionIconBtn}
-                  title="Delete group"
-                  aria-label="Delete group"
-                >
-                  <Trash2 size={14} aria-hidden />
-                </button>
-              </div>
-              <button
-                className={styles.viewGroupNavyBtn}
-                onClick={() => alert(`Opening workspace for group ${grp.name}`)}
-              >
-                <Users size={14} aria-hidden />
-                View Group
-              </button>
-            </div>
+        {isLoadingGroups ? (
+          <div className={styles.loadingCard}>
+            <Loader size={20} className={styles.spinningIcon} aria-hidden />
+            <span>Loading research groups…</span>
           </div>
-        ))}
+        ) : groups.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
+            <h4 className={styles.emptyTitle}>No research groups yet</h4>
+            <p className={styles.emptyText}>
+              Click "Create Research Group" to start a new one.
+            </p>
+          </div>
+        ) : (
+          groups.map((grp) => {
+            const gid = typeof grp.id === 'number' ? grp.id : -1;
+            const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
+            const topic = grp.topicId ? topicById.get(grp.topicId) : null;
+            const status = deriveGroupStatus(grp, topic?.status ?? null);
+            const deadlineLabel = grp.deadline
+              ? new Date(grp.deadline).toISOString().split('T')[0]
+              : '';
+            const roster = gid >= 0 ? memberIndex[gid] ?? [] : [];
+            return (
+              <div className={styles.groupCard} key={gid}>
+                {/* Header badges */}
+                <div className={styles.cardTopRow}>
+                  <div className={styles.leftPills}>
+                    <span className={styles.groupIdPill}>{idLabel}</span>
+                    <StatusBadge status={status} />
+                  </div>
+                  {deadlineLabel && (
+                    <span className={styles.dueDatePill}>
+                      Deadline: {deadlineLabel}
+                    </span>
+                  )}
+                </div>
+
+                <h4 className={styles.groupCardTitle}>{grp.name ?? '(untitled group)'}</h4>
+                <div className={styles.groupTopicText}>
+                  Topic: {topic ? topic.title ?? `RT-${grp.topicId}` : 'Unassigned'}
+                </div>
+                <p className={styles.groupDescText}>
+                  {grp.description?.trim() ||
+                    'No description provided for this group yet.'}
+                </p>
+
+                {/* Roster Members */}
+                <div className={styles.membersSection}>
+                  <span className={styles.membersLabel}>
+                    MEMBERS ({roster.length})
+                  </span>
+                  <div className={styles.memberPillsRow}>
+                    {isLoadingMembers && roster.length === 0 ? (
+                      <span className={styles.memberPillTag}>Loading…</span>
+                    ) : roster.length === 0 ? (
+                      <span className={styles.memberPillTag}>No members yet</span>
+                    ) : (
+                      roster.map((m, idx) => {
+                        const label = m.studentId ? `student #${m.studentId}` : `member #${m.id ?? idx}`;
+                        return (
+                          <span key={String(m.id ?? idx)} className={styles.memberPillTag}>
+                            <span
+                              className={styles.memberAvatarIcon}
+                              style={{
+                                backgroundColor:
+                                  avatarColors[idx % avatarColors.length] ?? '#94a3b8',
+                              }}
+                            >
+                              {initialsOf(label)}
+                            </span>
+                            {label}
+                            {m.activityStatus && (
+                              <span className={styles.activityTag}>
+                                {' '}
+                                · {m.activityStatus}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className={styles.groupCardFooter}>
+                  <div className={styles.iconButtonsLeft}>
+                    <button
+                      type="button"
+                      className={styles.actionIconBtn}
+                      title="Edit group (coming soon)"
+                      aria-label="Edit group"
+                      disabled
+                    >
+                      <Pencil size={14} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.actionIconBtn}
+                      title="Delete group"
+                      aria-label="Delete group"
+                      onClick={() => handleDeleteGroup(gid, grp.name ?? idLabel)}
+                    >
+                      <Trash2 size={14} aria-hidden />
+                    </button>
+                  </div>
+                  <Link
+                    to={
+                      typeof grp.id === 'number'
+                        ? ROUTES.LECTURER_GROUP_DETAIL.replace(
+                            ':groupId',
+                            String(grp.id),
+                          )
+                        : ROUTES.RESEARCH_GROUP
+                    }
+                    className={styles.viewGroupNavyBtn}
+                    title="Open this group's detail page"
+                  >
+                    <Users size={14} aria-hidden />
+                    View Group
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        )}
 
         {/* Create New Group Card */}
         <div
@@ -316,6 +570,12 @@ export const ResearchGroup = () => {
           onClick={() => setShowCreateGroupModal(true)}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowCreateGroupModal(true);
+            }
+          }}
         >
           <Plus size={32} className={styles.plusIconLarge} aria-hidden />
           <span className={styles.createDashedText}>Create New Group</span>
@@ -330,6 +590,7 @@ export const ResearchGroup = () => {
           <span className={styles.countBadge}>{topics.length} Topics</span>
         </div>
         <button
+          type="button"
           className={styles.createTopicOutlineBtn}
           onClick={() => setShowCreateTopicModal(true)}
         >
@@ -344,72 +605,194 @@ export const ResearchGroup = () => {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>TOPIC ID & NAME</th>
+                <th>TOPIC ID &amp; NAME</th>
                 <th>DESCRIPTION</th>
-                <th>ASSIGNED GROUP(S)</th>
+                <th>STATUS</th>
                 <th>ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {topics.map((topic) => (
-                <tr key={topic.id}>
-                  <td>
-                    <span className={styles.topicIdBadge}>{topic.id}</span>
-                    <span className={styles.topicNameText}>{topic.name}</span>
-                  </td>
-                  <td className={styles.topicDescText}>{topic.description}</td>
-                  <td>
-                    <div className={styles.assignedPillsRow}>
-                      {topic.assignedGroups.length === 0 || topic.assignedGroups.includes('Unassigned') ? (
-                        <span className={styles.unassignedPill}>Unassigned</span>
-                      ) : (
-                        topic.assignedGroups.map((gId) => (
-                          <span key={gId} className={styles.assignedGroupPill}>
-                            {gId}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <button
-                      className={styles.assignGroupBtn}
-                      onClick={() => handleOpenAssignModal(topic)}
-                    >
-                      <Settings size={14} aria-hidden />
-                      Assign to Group
-                    </button>
+              {isLoadingTopics ? (
+                <tr>
+                  <td colSpan={4} className={styles.tableEmpty}>
+                    <Loader size={16} className={styles.spinningIcon} aria-hidden />
+                    Loading topics…
                   </td>
                 </tr>
-              ))}
+              ) : topics.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className={styles.tableEmpty}>
+                    No topics yet. Click "Create Research Topic" to add one.
+                  </td>
+                </tr>
+              ) : (
+                topics.map((topic) => {
+                  const tid = typeof topic.id === 'number' ? topic.id : -1;
+                  const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
+                  const topicStatus =
+                    (topic.status ?? 'OPEN') as ResearchTopicStatus;
+                  const canOpen = canTransitionResearchTopic(
+                    topicStatus,
+                    'OPEN',
+                  );
+                  const canClose = canTransitionResearchTopic(
+                    topicStatus,
+                    'CLOSED',
+                  );
+                  const canComplete = canTransitionResearchTopic(
+                    topicStatus,
+                    'COMPLETED',
+                  );
+                  const inflight =
+                    topicTransition && topicTransition.id === tid
+                      ? topicTransition.to
+                      : null;
+                  return (
+                    <tr key={tid}>
+                      <td>
+                        <span className={styles.topicIdBadge}>{idLabel}</span>
+                        <span className={styles.topicNameText}>
+                          {topic.title ?? '(untitled topic)'}
+                        </span>
+                      </td>
+                      <td className={styles.topicDescText}>
+                        {topic.description?.trim() || '—'}
+                      </td>
+                      <td>
+                        <StatusBadge status={topicStatus} />
+                      </td>
+                      <td>
+                        <div className={styles.topicActionStack}>
+                          <button
+                            type="button"
+                            className={styles.assignGroupBtn}
+                            onClick={() => handleOpenAssignModal(topic)}
+                            disabled={!topic.id}
+                            title={
+                              !topic.id
+                                ? 'Topic has no id; cannot be assigned.'
+                                : undefined
+                            }
+                          >
+                            <Settings size={14} aria-hidden />
+                            Assign to Group
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.editTopicBtn}
+                            onClick={() => handleOpenEditTopic(topic)}
+                            disabled={!topic.id}
+                            title="Edit title / description / materials URL"
+                          >
+                            <Pencil size={14} aria-hidden />
+                            Edit
+                          </button>
+                          {topicStatus === 'OPEN' ? (
+                            <button
+                              type="button"
+                              className={styles.closeTopicBtn}
+                              onClick={() =>
+                                void handleTopicTransition(topic, 'CLOSED')
+                              }
+                              disabled={
+                                !topic.id || !canClose || inflight !== null
+                              }
+                              title={
+                                canClose
+                                  ? 'Close this topic — students will no longer be able to join.'
+                                  : 'Closing is not allowed in the current status.'
+                              }
+                            >
+                              {inflight === 'CLOSED' ? (
+                                <Loader
+                                  size={14}
+                                  className={styles.spinningIcon}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <ToggleRight size={14} aria-hidden />
+                              )}
+                              Close
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.openTopicBtn}
+                              onClick={() =>
+                                void handleTopicTransition(topic, 'OPEN')
+                              }
+                              disabled={
+                                !topic.id || !canOpen || inflight !== null
+                              }
+                              title={
+                                canOpen
+                                  ? 'Re-open this topic.'
+                                  : 'Re-opening is not allowed in the current status.'
+                              }
+                            >
+                              {inflight === 'OPEN' ? (
+                                <Loader
+                                  size={14}
+                                  className={styles.spinningIcon}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <ToggleLeft size={14} aria-hidden />
+                              )}
+                              Reopen
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.completeTopicBtn}
+                            onClick={() =>
+                              void handleTopicTransition(topic, 'COMPLETED')
+                            }
+                            disabled={
+                              !topic.id || !canComplete || inflight !== null
+                            }
+                            title={
+                              canComplete
+                                ? 'Mark this topic as completed — archival step.'
+                                : 'Topic must be in ASSIGNED status to be marked as completed.'
+                            }
+                          >
+                            {inflight === 'COMPLETED' ? (
+                              <Loader
+                                size={14}
+                                className={styles.spinningIcon}
+                                aria-hidden
+                              />
+                            ) : (
+                              <CheckCircle2 size={14} aria-hidden />
+                            )}
+                            Mark Completed
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.materialsTopicBtn}
+                            onClick={() => handleOpenMaterials(topic)}
+                            disabled={!topic.id}
+                            title="Manage the learning materials scoped to this topic"
+                          >
+                            <Library size={14} aria-hidden />
+                            Manage Materials
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* FRAME 40: CREATE NEW RESEARCH GROUP MODAL */}
+      {/* CREATE GROUP MODAL */}
       {showCreateGroupModal && (
-        <div className={styles.modalOverlay}>
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalCard}>
-            {/* Success alert banner inside modal */}
-            <div className={styles.innerModalSuccessBanner}>
-              <span className={styles.innerCheckIcon}>
-                <Check size={12} strokeWidth={3} aria-hidden />
-              </span>
-              <div className={styles.innerBannerMeta}>
-                <b>Research Group Created Successfully!</b>
-                <span>Group ID: RG-2026-015 assigned.</span>
-              </div>
-              <button
-                className={styles.innerBannerClose}
-                type="button"
-                onClick={() => setShowCreateGroupModal(false)}
-                aria-label="Dismiss"
-              >
-                <X size={12} aria-hidden />
-              </button>
-            </div>
-
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
                 <span className={styles.modalIconCircle}>
@@ -417,10 +800,13 @@ export const ResearchGroup = () => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>Create New Research Group</h3>
-                  <span className={styles.modalSubtitle}>Fill in the details below to create a new group</span>
+                  <span className={styles.modalSubtitle}>
+                    Fill in the details below to create a new group
+                  </span>
                 </div>
               </div>
               <button
+                type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCreateGroupModal(false)}
                 aria-label="Close"
@@ -431,8 +817,11 @@ export const ResearchGroup = () => {
 
             <form onSubmit={handleCreateGroupSubmit} className={styles.modalForm}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Research Group Name</label>
+                <label className={styles.formLabel} htmlFor="groupName">
+                  * Research Group Name
+                </label>
                 <input
+                  id="groupName"
                   type="text"
                   className={styles.formInput}
                   value={groupName}
@@ -443,70 +832,62 @@ export const ResearchGroup = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Topic Name</label>
-                <input
-                  type="text"
-                  className={styles.formInput}
-                  value={groupTopic}
-                  onChange={(e) => setGroupTopic(e.target.value)}
-                  placeholder="NLP Audio Transcription Benchmarks"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* RG Description</label>
+                <label className={styles.formLabel} htmlFor="groupDesc">
+                  Description
+                </label>
                 <textarea
+                  id="groupDesc"
                   className={styles.formTextarea}
                   value={groupDesc}
                   onChange={(e) => setGroupDesc(e.target.value)}
                   placeholder="Investigating Whisper AI model accuracy across regional dialects."
                   rows={3}
-                  required
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Member Invitations (Emails)</label>
-                <div className={styles.emailsInputBox}>
-                  <input
-                    type="text"
-                    className={styles.emailRawInput}
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    onKeyDown={handleAddEmail}
-                    placeholder="Type email and press Enter..."
-                  />
-                  <div className={styles.emailTagsContainer}>
-                    {groupEmails.map((email) => (
-                      <span key={email} className={styles.emailPill}>
-                        <Check size={12} aria-hidden style={{ marginRight: 4 }} />
-                        {email}
-                        <button
-                          type="button"
-                          className={styles.removeEmailCross}
-                          onClick={() => handleRemoveEmail(email)}
-                          aria-label={`Remove ${email}`}
-                        >
-                          <X size={12} aria-hidden />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                <label className={styles.formLabel} htmlFor="groupDeadline">
+                  Deadline (optional)
+                </label>
+                <input
+                  id="groupDeadline"
+                  type="date"
+                  className={styles.formInput}
+                  value={groupDeadline}
+                  onChange={(e) => setGroupDeadline(e.target.value)}
+                />
+                <span className={styles.helperText}>
+                  ISO timestamp is sent to the BE. Leave blank if not yet decided.
+                </span>
               </div>
+
+              {createGroupError && (
+                <div className={styles.errorBanner} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{createGroupError}</span>
+                </div>
+              )}
 
               <div className={styles.modalFooter}>
                 <button
                   type="button"
                   className={styles.cancelBtn}
                   onClick={() => setShowCreateGroupModal(false)}
+                  disabled={isCreatingGroup}
                 >
                   Cancel
                 </button>
-                <button type="submit" className={styles.submitNavyBtn}>
-                  <Check size={14} aria-hidden />
-                  Create Research Group
+                <button
+                  type="submit"
+                  className={styles.submitNavyBtn}
+                  disabled={isCreatingGroup}
+                >
+                  {isCreatingGroup ? (
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  ) : (
+                    <Check size={14} aria-hidden />
+                  )}
+                  {isCreatingGroup ? 'Creating…' : 'Create Research Group'}
                 </button>
               </div>
             </form>
@@ -514,29 +895,10 @@ export const ResearchGroup = () => {
         </div>
       )}
 
-      {/* FRAME 41: CREATE NEW RESEARCH TOPIC MODAL */}
+      {/* CREATE TOPIC MODAL */}
       {showCreateTopicModal && (
-        <div className={styles.modalOverlay}>
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalCard}>
-            {/* Success alert banner inside modal */}
-            <div className={styles.innerModalSuccessBanner}>
-              <span className={styles.innerCheckIcon}>
-                <Check size={12} strokeWidth={3} aria-hidden />
-              </span>
-              <div className={styles.innerBannerMeta}>
-                <b>Research Topic Created Successfully!</b>
-                <span>Topic ID: RT-2026-009 added.</span>
-              </div>
-              <button
-                className={styles.innerBannerClose}
-                type="button"
-                onClick={() => setShowCreateTopicModal(false)}
-                aria-label="Dismiss"
-              >
-                <X size={12} aria-hidden />
-              </button>
-            </div>
-
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
                 <span
@@ -547,10 +909,13 @@ export const ResearchGroup = () => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>Create New Research Topic</h3>
-                  <span className={styles.modalSubtitle}>Define a topic to be assigned to research groups</span>
+                  <span className={styles.modalSubtitle}>
+                    Define a topic to be assigned to research groups
+                  </span>
                 </div>
               </div>
               <button
+                type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCreateTopicModal(false)}
                 aria-label="Close"
@@ -561,8 +926,11 @@ export const ResearchGroup = () => {
 
             <form onSubmit={handleCreateTopicSubmit} className={styles.modalForm}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Topic Name</label>
+                <label className={styles.formLabel} htmlFor="topicName">
+                  * Topic Name
+                </label>
                 <input
+                  id="topicName"
                   type="text"
                   className={styles.formInput}
                   value={topicName}
@@ -573,62 +941,67 @@ export const ResearchGroup = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Topic Description</label>
+                <label className={styles.formLabel} htmlFor="topicDesc">
+                  Description
+                </label>
                 <textarea
+                  id="topicDesc"
                   className={styles.formTextarea}
                   value={topicDesc}
                   onChange={(e) => setTopicDesc(e.target.value)}
                   placeholder="Architectural strategies for decoupling routing logic from orchestration layers."
                   rows={3}
-                  required
                 />
               </div>
 
-              {/* Material Addition */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Material Addition (Optional)</label>
+                <label className={styles.formLabel} htmlFor="topicMaterialsUrl">
+                  Reference Materials URL
+                </label>
                 <div className={styles.materialsBox}>
-                  <div className={styles.materialTagsList}>
-                    {attachedMaterials.map((mat) => (
-                      <span key={mat} className={styles.materialPillTag}>
-                        <FileText size={12} aria-hidden style={{ marginRight: 4 }} />
-                        {mat}
-                        <button
-                          type="button"
-                          className={styles.removeMatCross}
-                          onClick={() => handleRemoveMaterial(mat)}
-                          aria-label={`Remove ${mat}`}
-                        >
-                          <X size={10} aria-hidden />
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className={styles.addMoreMatBtn}
-                      onClick={() => {
-                        const newDoc = prompt('Enter document name:');
-                        if (newDoc) setAttachedMaterials([...attachedMaterials, newDoc]);
-                      }}
-                    >
-                      <Plus size={12} aria-hidden style={{ marginRight: 4 }} />
-                      Add more...
-                    </button>
+                  <input
+                    id="topicMaterialsUrl"
+                    type="url"
+                    className={styles.materialsInput}
+                    value={topicMaterialsUrl}
+                    onChange={(e) => setTopicMaterialsUrl(e.target.value)}
+                    placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
+                  />
+                  <div className={styles.materialsHint}>
+                    <FileText size={12} aria-hidden style={{ marginRight: 4 }} />
+                    Paste a single Firebase Storage URL. Multiple-file uploads land
+                    in a future sprint — for now, link to a single canonical PDF.
                   </div>
                 </div>
               </div>
+
+              {createTopicError && (
+                <div className={styles.errorBanner} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{createTopicError}</span>
+                </div>
+              )}
 
               <div className={styles.modalFooter}>
                 <button
                   type="button"
                   className={styles.cancelBtn}
                   onClick={() => setShowCreateTopicModal(false)}
+                  disabled={isCreatingTopic}
                 >
                   Cancel
                 </button>
-                <button type="submit" className={styles.submitNavyBtn}>
-                  <Check size={14} aria-hidden />
-                  Create Research Topic
+                <button
+                  type="submit"
+                  className={styles.submitNavyBtn}
+                  disabled={isCreatingTopic}
+                >
+                  {isCreatingTopic ? (
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  ) : (
+                    <Check size={14} aria-hidden />
+                  )}
+                  {isCreatingTopic ? 'Creating…' : 'Create Research Topic'}
                 </button>
               </div>
             </form>
@@ -636,134 +1009,141 @@ export const ResearchGroup = () => {
         </div>
       )}
 
-      {/* FRAME 42: ASSIGN RESEARCH TOPIC TO GROUPS MODAL */}
-      {showAssignModal && selectedTopicForAssign && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCard} style={{ maxWidth: '560px' }}>
+      {/* ASSIGN TOPIC MODAL */}
+      <AssignTopicModal
+        isOpen={showAssignModal}
+        topic={topicForAssign}
+        groups={groups}
+        onClose={() => setShowAssignModal(false)}
+        onSuccess={(outcomes) => {
+          const ok = outcomes.filter((o) => o.ok).length;
+          showBanner(`Topic assigned to ${ok} group(s).`);
+          void refreshAll();
+        }}
+      />
+
+      {/* EDIT TOPIC MODAL (L3.a) — reuses the same shell as Create Topic */}
+      {topicForEdit && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
                 <span
                   className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#fffbeb', color: '#d97706' }}
+                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
                 >
-                  <Settings size={18} aria-hidden />
+                  <Lightbulb size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Assign Research Topic to Groups</h3>
-                  <span className={styles.modalSubtitle}>Choose which groups receive this topic</span>
+                  <h3 className={styles.modalTitle}>Edit Research Topic</h3>
+                  <span className={styles.modalSubtitle}>
+                    Topic #{topicForEdit.id ?? '—'} — title, description and reference URL
+                  </span>
                 </div>
               </div>
               <button
+                type="button"
                 className={styles.closeBtn}
-                onClick={() => setShowAssignModal(false)}
-                aria-label="Close"
+                onClick={handleCloseEditTopic}
+                aria-label="Close edit topic modal"
+                disabled={isEditingTopic}
               >
                 <X size={18} aria-hidden />
               </button>
             </div>
 
-            {/* Purple Topic Info Box */}
-            <div className={styles.purpleTopicBox}>
-              <span className={styles.topicBeingAssignedLabel}>TOPIC BEING ASSIGNED</span>
-              <h4 className={styles.purpleTopicTitle}>
-                [{selectedTopicForAssign.id}] {selectedTopicForAssign.name}
-              </h4>
-              <p className={styles.purpleTopicDesc}>{selectedTopicForAssign.description}</p>
-            </div>
+            <form onSubmit={handleEditTopicSubmit} className={styles.modalForm}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="editTopicTitle">
+                  * Topic Name
+                </label>
+                <input
+                  id="editTopicTitle"
+                  type="text"
+                  className={styles.formInput}
+                  value={editTopicTitle}
+                  onChange={(e) => setEditTopicTitle(e.target.value)}
+                  placeholder="Topic title"
+                  required
+                />
+              </div>
 
-            {/* Select Research Groups */}
-            <div className={styles.selectGroupsSection}>
-              <span className={styles.selectGroupsLabel}>SELECT RESEARCH GROUPS</span>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="editTopicDesc">
+                  Description
+                </label>
+                <textarea
+                  id="editTopicDesc"
+                  className={styles.formTextarea}
+                  value={editTopicDesc}
+                  onChange={(e) => setEditTopicDesc(e.target.value)}
+                  rows={3}
+                />
+              </div>
 
-              <div className={styles.groupsCheckboxList}>
-                {/* Group 1 */}
-                <div
-                  className={`${styles.groupCheckboxRow} ${
-                    selectedGroupCheckboxes['RG-2026-012'] ? styles.selectedRow : ''
-                  }`}
-                  onClick={() => toggleGroupCheckbox('RG-2026-012')}
-                >
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="editTopicMaterialsUrl">
+                  Reference Materials URL
+                </label>
+                <div className={styles.materialsBox}>
                   <input
-                    type="checkbox"
-                    className={styles.checkboxInput}
-                    checked={!!selectedGroupCheckboxes['RG-2026-012']}
-                    readOnly
+                    id="editTopicMaterialsUrl"
+                    type="url"
+                    className={styles.materialsInput}
+                    value={editTopicMaterialsUrl}
+                    onChange={(e) =>
+                      setEditTopicMaterialsUrl(e.target.value)
+                    }
+                    placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
                   />
-                  <span className={styles.checkboxGroupId}>RG-2026-012</span>
-                  <span className={styles.checkboxGroupName}>Scalable Routing Architecture Group</span>
-                  <span className={styles.checkboxMembersCount}>
-                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                    3 Members
-                  </span>
-                </div>
-
-                {/* Group 2 */}
-                <div
-                  className={`${styles.groupCheckboxRow} ${
-                    selectedGroupCheckboxes['RG-2026-015'] ? styles.selectedRow : ''
-                  }`}
-                  onClick={() => toggleGroupCheckbox('RG-2026-015')}
-                >
-                  <input
-                    type="checkbox"
-                    className={styles.checkboxInput}
-                    checked={!!selectedGroupCheckboxes['RG-2026-015']}
-                    readOnly
-                  />
-                  <span className={styles.checkboxGroupId}>RG-2026-015</span>
-                  <span className={styles.checkboxGroupName}>AI Speech-to-Text Research Team</span>
-                  <span className={styles.checkboxMembersCount}>
-                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                    2 Members
-                  </span>
-                </div>
-
-                {/* Group 3 */}
-                <div
-                  className={`${styles.groupCheckboxRow} ${
-                    selectedGroupCheckboxes['RG-2026-009'] ? styles.selectedRow : ''
-                  }`}
-                  onClick={() => toggleGroupCheckbox('RG-2026-009')}
-                >
-                  <input
-                    type="checkbox"
-                    className={styles.checkboxInput}
-                    checked={!!selectedGroupCheckboxes['RG-2026-009']}
-                    readOnly
-                  />
-                  <span className={styles.checkboxGroupId}>RG-2026-009</span>
-                  <span className={styles.checkboxGroupName}>Graph Neural Networks Team</span>
-                  <span className={styles.checkboxMembersCount}>
-                    <Users size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                    4 Members
-                  </span>
                 </div>
               </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div className={styles.assignModalFooter}>
-              <span className={styles.selectedCountText}>{selectedGroupsCount} groups selected</span>
-              <div className={styles.assignFooterBtnsRight}>
+              {editTopicError && (
+                <div className={styles.errorBanner} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{editTopicError}</span>
+                </div>
+              )}
+
+              <div className={styles.modalFooter}>
                 <button
                   type="button"
                   className={styles.cancelBtn}
-                  onClick={() => setShowAssignModal(false)}
+                  onClick={handleCloseEditTopic}
+                  disabled={isEditingTopic}
                 >
                   Cancel
                 </button>
-<button
-                className={styles.submitNavyBtn}
-                onClick={handleConfirmAssignment}
-              >
-                <Check size={14} aria-hidden />
-                Confirm Assignment ({selectedGroupsCount} Groups Selected)
-              </button>
+                <button
+                  type="submit"
+                  className={styles.submitNavyBtn}
+                  disabled={isEditingTopic}
+                >
+                  {isEditingTopic ? (
+                    <Loader
+                      size={14}
+                      className={styles.spinningIcon}
+                      aria-hidden
+                    />
+                  ) : (
+                    <Check size={14} aria-hidden />
+                  )}
+                  {isEditingTopic ? 'Saving…' : 'Save Topic'}
+                </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
+
+      {/* MANAGE TOPIC MATERIALS MODAL (L3.c) */}
+      <LearningMaterialModal
+        isOpen={topicForMaterials !== null}
+        topic={topicForMaterials}
+        onClose={handleCloseMaterials}
+        onSuccess={() => void refetchTopics()}
+      />
     </div>
   );
 };

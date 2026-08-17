@@ -187,6 +187,43 @@
   border-radius: var(--radius-full);
 }
 
+/* Status cell layout — hosts the status pill and the lock badge so that
+   both fit on a single row when the paper is locked. */
+.statusCellInner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+/* Locked-paper reason panel inside the delete-confirmation modal. */
+.lockedReason {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.lockedReason svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Blue-tinted icon variant for the delete-confirmation modal when the paper
+   is locked. Differentiates it visually from the red destructive variant. */
+.popupIconLock {
+  background-color: #eff6ff;
+}
+
 .statusWaiting {
   background-color: #fffbeb;
   color: #d97706;

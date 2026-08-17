@@ -20,6 +20,10 @@ export const ROUTES = {
   PROFILE: '/profile',
   ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
+  GRADUATE_STUDENT_DASHBOARD: '/student/dashboard',
+  LECTURER_EVALUATE_REPORTS: '/lecturer/evaluate-reports',
+  LECTURER_GROUP_DETAIL: '/lecturer/groups/:groupId',
+  LECTURER_GUIDANCE_PROJECTS: '/lecturer/guidance-projects',
   ADMIN: '/admin',
   ADMIN_ROLE_REQUESTS: '/admin/role-requests',
   ADMIN_ACCOUNTS: '/admin/accounts',
@@ -28,6 +32,7 @@ export const ROUTES = {
   ADMIN_PACKAGES: '/admin/packages',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   PAYMENT_RETURN: '/payment/return',
+  PREMIUM_PACKAGES: '/premium-packages',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

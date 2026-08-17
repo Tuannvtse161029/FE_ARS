@@ -6,6 +6,7 @@
 
 // ── Role requests (Figma screen 2) ─────────────────────────────────────────
 export type RoleRequestStatus = 'PENDING' | 'APPROVED' | 'DENIED';
+export type RoleRequestType = 'INITIAL_REGISTRATION' | 'ADDITIONAL_ROLE';
 
 export interface RoleRequest {
   id: number;
@@ -15,10 +16,14 @@ export interface RoleRequest {
   phone?: string;
   affiliation: string;
   department: string;
-  // Figma screen 2 shows single-role labels, but the BE may return multi-role
-  // arrays (e.g. ['RESEARCHER', 'REVIEWER']). Single-role requests arrive as
-  // 1-element arrays. Excludes GRADUATE_STUDENT for non-initial requests.
-  requestedRoles: string[];
+  /** Roles already assigned when the request was submitted. */
+  currentRoles?: string[];
+  /** Roles requested by this specific verification request. */
+  requestedAdditionalRoles?: string[];
+  /** Must be supplied explicitly by BE; FE never derives this from array order. */
+  requestType?: RoleRequestType;
+  /** Legacy contract field retained only for compatibility; never used to infer role intent. */
+  requestedRoles?: string[];
   proofDocumentUrl: string;
   submissionDate: string;
   status: RoleRequestStatus;
@@ -83,13 +88,36 @@ export interface WithdrawalRequestItem {
   userId: number;
   reviewerName: string;
   amountVnd: number;
+  currency?: string;
   bankName: string;
   accountNumber: string;
   accountName: string;
   requestDate: string;
   status: WithdrawalStatus;
   proofReceiptUrl: string | null;
+  /**
+   * Reason the reviewer supplied when creating the withdrawal request
+   * (mirrors `dbo.WithdrawalRequest.Note`).
+   *
+   * The BE returns this as `Note`; `adminService.getReviewerWithdrawals`
+   * normalizes `note → requestReason` at the service boundary so downstream
+   * consumers (modals, tests, audit log) never have to handle both spellings.
+   *
+   * Distinct from `rejectionReason` (the Admin's denial justification).
+   * Distinct from any internal Admin note (not modelled yet).
+   */
+  requestReason?: string | null;
+  /**
+   * Wire-shape alias for `requestReason`. The BE surfaces this as `Note` on
+   * `dbo.WithdrawalRequest`. Optional on the type so consumers that only
+   * care about the normalized Admin-facing shape can ignore it; the
+   * `adminService.normalizeWithdrawalItem` helper always strips it before
+   * returning.
+   */
+  note?: string | null;
   rejectionReason?: string;
+  processingAt?: string | null;
+  completedAt?: string | null;
 }
 
 // ── Analytics (Figma screen 1) ────────────────────────────────────────────

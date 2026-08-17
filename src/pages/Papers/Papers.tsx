@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { PdfViewer } from '../../components/PdfViewer';
 import { ScorecardModal } from '../Reviewer/components/ScorecardModal';
 import { storage } from '../../firebase';
@@ -6,6 +7,8 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { paperService } from '../../services/paper.service';
 import { usePapers } from '../../hooks/usePapers';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
+import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import { PaperLockBadge } from '../../components/researcher/PaperLockBadge';
 import {
   CheckCircle2,
   AlertCircle,
@@ -18,6 +21,7 @@ import {
   Check,
   Trash2,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import styles from './Papers.module.css';
 
@@ -31,6 +35,53 @@ interface Paper {
 }
 
 type UploadPhase = 'idle' | 'preview' | 'confirm' | 'delete';
+
+// Domain error codes the BE may emit when rejecting a paper delete. We treat
+// any of these (or a 409 Conflict in general) as the "active review request"
+// case. Anything else (network, 5xx, auth) keeps its normal meaning.
+const PAPER_LOCK_ERROR_CODES = new Set<string>([
+  'PAPER_HAS_ACTIVE_REVIEW_REQUEST',
+  'PAPER_HAS_ACTIVE_REVIEW_REQUESTS',
+  'REVIEW_REQUEST_ACTIVE',
+]);
+
+/**
+ * Inspects a thrown error from `paperService.delete` and decides whether it
+ * looks like a "this paper is locked because of an active review request"
+ * rejection. Uses the HTTP status (409 Conflict) as the primary signal and
+ * falls back to known domain-error codes. We deliberately do NOT inspect the
+ * English message text: network / auth / 500 errors must keep their original
+ * meaning even if their strings happen to contain the word "review".
+ */
+function isPaperDeleteLockError(err: unknown): boolean {
+  if (!axios.isAxiosError(err)) return false;
+  const status = err.response?.status;
+  if (status === 409) return true;
+  const data = (err.response?.data ?? {}) as {
+    code?: unknown;
+    error?: unknown;
+  };
+  const candidate = (data.code ?? data.error) as unknown;
+  if (typeof candidate === 'string' && PAPER_LOCK_ERROR_CODES.has(candidate.toUpperCase())) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Returns a domain-specific user-facing message for a paper delete rejection.
+ * Prefers the BE message when it is safe + human-friendly; otherwise falls
+ * back to the canonical lock explanation. This is the ONLY place where the
+ * canonical phrasing is defined for paper locks.
+ */
+function paperDeleteLockMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const data = (err.response?.data ?? {}) as { message?: unknown };
+    const beMessage = typeof data.message === 'string' ? data.message.trim() : '';
+    if (beMessage.length > 0) return beMessage;
+  }
+  return 'This paper cannot be deleted because it has an active review request. The paper must remain available until the request reaches a final state.';
+}
 
 export const Papers = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,8 +107,28 @@ export const Papers = () => {
   const { fields: majorFields } = useMajorFields();
   const { subFields } = useSubFields();
 
+  // Review requests + per-paper lock state. The hook is the single source
+  // of truth shared with DiscoverReviewers so a successful submission there
+  // immediately re-evaluates the lock here.
+  const {
+    getLockForPaper,
+    isLoading: isReviewRequestsLoading,
+    error: reviewRequestsLoadError,
+    refetch: refetchReviewRequests,
+  } = usePaperReviewLocks();
+
   // Local state mirrors the BE-loaded papers for interactive operations (upload/delete).
   const [papers, setPapers] = useState<Paper[]>([]);
+
+  // Keep this page in sync with submissions / terminal transitions from the
+  // DiscoverReviewers flow. The event also triggers a paper-list refetch so
+  // terminal states (e.g. a Completed request) release the lock in this view
+  // without a manual page reload.
+  useEffect(() => {
+    const handler = () => void refetchReviewRequests();
+    window.addEventListener('review-update', handler);
+    return () => window.removeEventListener('review-update', handler);
+  }, [refetchReviewRequests]);
 
   // Sync BE-loaded papers into local state (mapping API shape to UI shape).
   useEffect(() => {
@@ -241,11 +312,37 @@ export const Papers = () => {
   };
 
   const handleDeleteTablePaper = (paper: Paper) => {
+    // Defensive: refuse to open the confirmation modal when we already know
+    // the paper is locked by an active review request. The button is already
+    // disabled in this state, but this catches keyboard / programmatic paths.
+    const lock = getLockForPaper(paper.id);
+    if (lock.isLocked) {
+      setToastMessage({
+        text: paperDeleteLockMessage({ response: { data: {} } }),
+        type: 'error',
+      });
+      return;
+    }
     setPaperToDelete(paper);
   };
 
   const handleConfirmDelete = async () => {
     if (!paperToDelete) return;
+
+    // Re-check the lock before destructive action. This handles the case
+    // where the user opened the modal while the request list was loading
+    // and the lock only became known after the modal opened.
+    const lock = getLockForPaper(paperToDelete.id);
+    if (lock.isLocked) {
+      setIsDeleting(false);
+      setPaperToDelete(null);
+      setToastMessage({
+        text: paperDeleteLockMessage({ response: { data: {} } }),
+        type: 'error',
+      });
+      return;
+    }
+
     setIsDeleting(true);
     try {
       await paperService.delete(paperToDelete.id);
@@ -253,10 +350,20 @@ export const Papers = () => {
       setToastMessage({ text: 'Paper deleted successfully', type: 'success' });
     } catch (err) {
       console.error('Failed to delete paper:', err);
-      setToastMessage({
-        text: `Failed to delete paper: ${(err as Error)?.message ?? 'Unknown error'}`,
-        type: 'error',
-      });
+      if (isPaperDeleteLockError(err)) {
+        // BE confirmed an active review request at the last mile.
+        // Keep the paper in local state and surface a domain-specific message.
+        setToastMessage({
+          text: paperDeleteLockMessage(err),
+          type: 'error',
+        });
+      } else {
+        const fallback = (err as Error)?.message ?? 'Unknown error';
+        setToastMessage({
+          text: `Failed to delete paper: ${fallback}`,
+          type: 'error',
+        });
+      }
     } finally {
       setIsDeleting(false);
       setPaperToDelete(null);
@@ -403,52 +510,81 @@ export const Papers = () => {
             </thead>
             <tbody>
               {filteredPapers.length > 0 ? (
-                filteredPapers.map((paper) => (
-                  <tr key={paper.id}>
-                    <td className={styles.manuscriptCell}>
-                      <FileText size={16} className={styles.fileIcon} />
-                      <span className={styles.fileNameText}>{paper.name}</span>
-                    </td>
-                    <td className={styles.dateCell}>{paper.date}</td>
-                    <td>
-                      <span className={`${styles.statusDotLabel} ${getStatusClass(paper.status)}`}>
-                        ● {paper.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.actionCellBtns}>
-                        <button
-                          className={styles.btnActionView}
-                          onClick={() => {
-                            if (!paper.fileUrl) return;
-                            setPdfViewerUrl(paper.fileUrl);
-                          }}
-                          disabled={!paper.fileUrl}
-                        >
-                          <Eye size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                          View
-                        </button>
-                        {paper.status !== 'Waiting for Review' && (
+                filteredPapers.map((paper) => {
+                  const lock = getLockForPaper(paper.id);
+                  const isLocked = lock.isLocked;
+                  const primaryReviewer = lock.reviewerNames[0] ?? null;
+                  const deleteTitle = isLocked
+                    ? `This paper cannot be deleted because it has an active review request${primaryReviewer ? ` assigned to ${primaryReviewer}` : ''}.`
+                    : reviewRequestsLoadError
+                      ? 'We could not verify whether this paper has an active review request. Refresh the page and try again.'
+                      : isReviewRequestsLoading
+                        ? 'Checking review request status…'
+                        : `Delete "${paper.name}"`;
+                  return (
+                    <tr key={paper.id} data-testid="papers-row" data-locked={isLocked ? 'true' : 'false'}>
+                      <td className={styles.manuscriptCell}>
+                        <FileText size={16} className={styles.fileIcon} />
+                        <span className={styles.fileNameText}>{paper.name}</span>
+                      </td>
+                      <td className={styles.dateCell}>{paper.date}</td>
+                      <td>
+                        <div className={styles.statusCellInner}>
+                          <span className={`${styles.statusDotLabel} ${getStatusClass(paper.status)}`}>
+                            ● {paper.status}
+                          </span>
+                          <PaperLockBadge
+                            isLocked={isLocked}
+                            reviewerName={primaryReviewer}
+                            activeRequestCount={lock.activeRequestCount}
+                            variant="compact"
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.actionCellBtns}>
                           <button
-                            className={`${styles.btnActionNote} ${paper.status === 'Accepted' ? styles.btnActionNoteAccept : styles.btnActionNoteReject}`}
-                            onClick={() => setSelectedPaperForScorecard(paper.name)}
+                            className={styles.btnActionView}
+                            onClick={() => {
+                              if (!paper.fileUrl) return;
+                              setPdfViewerUrl(paper.fileUrl);
+                            }}
+                            disabled={!paper.fileUrl}
                           >
-                            <FileText size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                            Reviewer Note
+                            <Eye size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                            View
                           </button>
-                        )}
-                        <button
-                          className={styles.btnActionDelete}
-                          onClick={() => handleDeleteTablePaper(paper)}
-                          title={`Delete "${paper.name}"`}
-                        >
-                          <Trash2 size={12} style={{ verticalAlign: 'middle' }} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {paper.status !== 'Waiting for Review' && (
+                            <button
+                              className={`${styles.btnActionNote} ${paper.status === 'Accepted' ? styles.btnActionNoteAccept : styles.btnActionNoteReject}`}
+                              onClick={() => setSelectedPaperForScorecard(paper.name)}
+                            >
+                              <FileText size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                              Reviewer Note
+                            </button>
+                          )}
+                          <button
+                            className={styles.btnActionDelete}
+                            onClick={() => handleDeleteTablePaper(paper)}
+                            disabled={isLocked || isReviewRequestsLoading || !!reviewRequestsLoadError}
+                            title={deleteTitle}
+                            aria-label={deleteTitle}
+                            aria-disabled={isLocked || isReviewRequestsLoading || !!reviewRequestsLoadError}
+                            data-testid="papers-delete-btn"
+                            data-locked={isLocked ? 'true' : 'false'}
+                          >
+                            {isLocked ? (
+                              <Lock size={12} style={{ verticalAlign: 'middle' }} />
+                            ) : (
+                              <Trash2 size={12} style={{ verticalAlign: 'middle' }} />
+                            )}
+                            {isLocked ? 'Locked' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={4} className={styles.emptyRow}>
@@ -488,12 +624,16 @@ export const Papers = () => {
         </div>
       </div>
 
-      {/* Scorecard Modal */}
+      {/* Scorecard Modal — live data via reviewRequest/paper. The previous
+          version of this modal was mock-only; Agent 9's Phase 2 re-implements
+          it with live `evaluation` + `paper` props. Caller (Papers.tsx) does
+          not yet have the review-request context, so we pass `null`s — the
+          modal renders an empty hint rather than fabricated scores. */}
       {selectedPaperForScorecard && (
         <ScorecardModal
           isOpen={true}
           onClose={() => setSelectedPaperForScorecard(null)}
-          fileName={selectedPaperForScorecard}
+          reviewRequest={null}
         />
       )}
 
@@ -750,46 +890,78 @@ export const Papers = () => {
       )}
 
       {/* Delete Confirmation Modal */}
-      {paperToDelete && (
-        <div className={styles.popupOverlay}>
-          <div className={styles.popupCard}>
-            <div className={`${styles.popupIcon} ${styles.popupIconDanger}`}>
-              <AlertCircle size={32} color="#ef4444" />
-            </div>
-            <h3 className={styles.popupTitle}>Delete Paper?</h3>
-            <p className={styles.popupSubtitle}>
-              Are you sure you want to delete <strong>"{paperToDelete.name}"</strong>?
-              This action cannot be undone.
-            </p>
-            <div className={styles.popupActions}>
-              <button
-                className={styles.popupCancelBtn}
-                onClick={handleCancelDelete}
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.popupDangerBtn}
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 size={14} className={styles.spinningIcon} />
-                    Deleting…
-                  </>
+      {paperToDelete && (() => {
+        const modalLock = getLockForPaper(paperToDelete.id);
+        const modalPrimaryReviewer = modalLock.reviewerNames[0] ?? null;
+        const modalExplanation = modalLock.isLocked
+          ? modalPrimaryReviewer
+            ? `This paper cannot be deleted because it has an active review request assigned to ${modalPrimaryReviewer}. The paper must remain available until the request reaches a final state.`
+            : 'This paper cannot be deleted because it has an active review request. The paper must remain available until the request reaches a final state.'
+          : null;
+        return (
+          <div className={styles.popupOverlay}>
+            <div className={styles.popupCard}>
+              <div className={`${styles.popupIcon} ${modalLock.isLocked ? styles.popupIconLock : styles.popupIconDanger}`}>
+                {modalLock.isLocked ? (
+                  <Lock size={32} color="#007AFF" aria-hidden="true" />
                 ) : (
-                  <>
-                    <Trash2 size={14} />
-                    Delete Paper
-                  </>
+                  <AlertCircle size={32} color="#ef4444" />
                 )}
-              </button>
+              </div>
+              <h3 className={styles.popupTitle}>
+                {modalLock.isLocked ? 'Paper Locked' : 'Delete Paper?'}
+              </h3>
+              {modalLock.isLocked ? (
+                <>
+                  <p className={styles.popupSubtitle}>
+                    You can&apos;t delete <strong>&quot;{paperToDelete.name}&quot;</strong> right now.
+                  </p>
+                  <div className={styles.lockedReason} role="alert">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>{modalExplanation}</span>
+                  </div>
+                </>
+              ) : (
+                <p className={styles.popupSubtitle}>
+                  Are you sure you want to delete <strong>&quot;{paperToDelete.name}&quot;</strong>?
+                  This action cannot be undone.
+                </p>
+              )}
+              <div className={styles.popupActions}>
+                <button
+                  className={styles.popupCancelBtn}
+                  onClick={handleCancelDelete}
+                  disabled={isDeleting}
+                >
+                  {modalLock.isLocked ? 'Close' : 'Cancel'}
+                </button>
+                <button
+                  className={styles.popupDangerBtn}
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting || modalLock.isLocked || isReviewRequestsLoading || !!reviewRequestsLoadError}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 size={14} className={styles.spinningIcon} />
+                      Deleting…
+                    </>
+                  ) : modalLock.isLocked ? (
+                    <>
+                      <Lock size={14} />
+                      Locked — Cannot Delete
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      Delete Paper
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

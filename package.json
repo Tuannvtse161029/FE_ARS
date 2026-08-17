@@ -15,7 +15,13 @@
     "test:e2e:view": "vitest run src/tests/e2e/pdfRender.e2e.test.ts",
     "e2e:production": "playwright test src/tests/e2e/researcherProduction.spec.ts --reporter=list",
     "e2e:production:ui": "playwright test src/tests/e2e/researcherProduction.spec.ts --ui",
-    "e2e:production:list": "playwright test src/tests/e2e/researcherProduction.spec.ts --list"
+    "e2e:production:list": "playwright test src/tests/e2e/researcherProduction.spec.ts --list",
+    "e2e:researcher-reviewer": "playwright test --config=playwright.reviewer-flow.config.ts",
+    "e2e:researcher-reviewer:list": "playwright test --config=playwright.reviewer-flow.config.ts --list",
+    "e2e:researcher-reviewer:ui": "playwright test --config=playwright.reviewer-flow.config.ts --ui",
+    "e2e:reviewer-withdrawal": "playwright test --config=playwright.withdrawal-flow.config.ts",
+    "e2e:reviewer-withdrawal:list": "playwright test --config=playwright.withdrawal-flow.config.ts --list",
+    "e2e:reviewer-withdrawal:ui": "playwright test --config=playwright.withdrawal-flow.config.ts --ui"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -1,0 +1,105 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sizeSm {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+}
+
+.sizeMd {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+/* PhasedReport variants */
+.waiting {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.submitted {
+  background-color: #fffbeb;
+  color: #d97706;
+  border-color: #fde68a;
+}
+
+.evaluated {
+  background-color: #ecfdf5;
+  color: #10b981;
+  border-color: #a7f3d0;
+}
+
+.rejected {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+/* ResearchTopic variants */
+.open {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.assigned {
+  background-color: #faf5ff;
+  color: #7c3aed;
+  border-color: #e9d5ff;
+}
+
+.completed {
+  background-color: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.closed {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+/* GuidanceProject variants */
+.proposed {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.ongoing {
+  background-color: #ecfdf5;
+  color: #10b981;
+  border-color: #a7f3d0;
+}
+
+.cancelled {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.unknown {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}

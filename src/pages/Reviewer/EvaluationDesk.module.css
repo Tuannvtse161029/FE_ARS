@@ -280,6 +280,17 @@
   color: #ffffff !important;
 }
 
+/* Defect 2B — read-only rating pill: a non-interactive span styled to match
+   the editable button so the scorecard view stays visually consistent. */
+.ratingBtnStatic {
+  cursor: default;
+}
+
+.ratingBtnStatic:hover {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+}
+
 .criteriaFeedbackText {
   font-size: 0.75rem;
   line-height: var(--line-height-relaxed);

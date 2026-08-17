@@ -25,7 +25,8 @@
 }
 
 .navGroup,
-.zoomGroup {
+.zoomGroup,
+.toolbarActions {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -76,6 +77,26 @@
 }
 
 .zoomPercent:hover {
+  background: #e2e8f0;
+}
+
+.toolbarOpenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toolbarOpenBtn:hover {
   background: #e2e8f0;
 }
 
@@ -308,4 +329,158 @@
 .errorBox p {
   color: #991b1b;
   margin: 0;
+}
+
+/* ── Error card (replaces errorBox for typed errors) ───────────── */
+.errorCard {
+  position: absolute;
+  inset: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff7f7;
+  color: #991b1b;
+  text-align: left;
+  overflow: auto;
+}
+
+.errorCard[data-reason='forbidden'] {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.errorCard[data-reason='server'] {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.errorCard[data-reason='network'] {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.errorIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  flex-shrink: 0;
+}
+
+.errorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.errorTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.errorHint {
+  margin: 0;
+  font-size: 12px;
+  color: #7f1d1d;
+  font-weight: 400;
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.errorRetry,
+.errorOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.errorRetry {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.errorRetry:hover {
+  background: #1d4ed8;
+}
+
+.errorOpen {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.errorOpen:hover {
+  background: #f1f5f9;
+}
+
+/* ── Empty card (no document supplied) ─────────────────────────── */
+.emptyCard {
+  position: absolute;
+  inset: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.emptyCard strong {
+  font-size: 14px;
+  color: #334155;
+}
+
+/* ── Responsive: stack error card on narrow panes ──────────────── */
+@media (max-width: 640px) {
+  .errorCard {
+    flex-direction: column;
+    inset: 8px;
+    padding: 16px;
+  }
+  .errorActions {
+    width: 100%;
+  }
 }

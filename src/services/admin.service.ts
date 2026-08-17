@@ -27,6 +27,27 @@ import type {
 // Flip this to `false` (or remove it entirely) to start hitting axios.
 const USE_MOCK_DATA = true;
 
+// Withdrawal-only narrow toggle (E2E override point). Defaults to true so
+// the existing Admin UX continues to render against the in-memory mock store
+// when no env is set. E2E suites can force the live axios path via either:
+//   1. Build-time: export `VITE_USE_ADMIN_WITHDRAWAL_MOCK=false` before the
+//      Vite build (works for locally-hosted dev runs).
+//   2. Runtime shim: set `window.__USE_ADMIN_WITHDRAWAL_MOCK__ = 'false'`
+//      from a Playwright `addInitScript` (works against the Vercel-built
+//      bundle where the env var was inlined at build time and we cannot
+//      change it without a redeploy).
+// The runtime shim takes precedence so E2E overrides always win.
+// See docs/local-only/agent-7-e2e-findings.md.
+const runtimeOverride =
+  typeof window !== 'undefined'
+    ? (window as unknown as { __USE_ADMIN_WITHDRAWAL_MOCK__?: string })
+        .__USE_ADMIN_WITHDRAWAL_MOCK__
+    : undefined;
+const USE_WITHDRAWAL_MOCK =
+  runtimeOverride !== undefined
+    ? runtimeOverride !== 'false'
+    : import.meta.env.VITE_USE_ADMIN_WITHDRAWAL_MOCK !== 'false';
+
 // Simulated latency so loading skeletons actually render.
 const MOCK_LATENCY_MS = 450;
 
@@ -209,25 +230,56 @@ async function mutateAccount(
 }
 
 // ── Withdrawals (3-state manual flow) ─────────────────────────────────────
+// Normalize a raw withdrawal row from either the mock fixture or the live BE
+// into the Admin-facing shape. The BE returns the reviewer's submission
+// reason as `Note`; the Admin modal reads `requestReason`. We do the mapping
+// once here so downstream code never has to handle both spellings. (Phase C
+// defect 5 — see WithdrawalRequestItem.requestReason in src/types/admin.ts.)
+//
+// Exported so tests can verify the normalization in isolation without going
+// through the full mock store.
+export const normalizeWithdrawalItem = (
+  raw: WithdrawalRequestItem,
+): WithdrawalRequestItem => {
+  const { note, ...rest } = raw;
+  void note; // explicit "we intentionally discard `note` after extraction"
+  const requestReason =
+    raw.requestReason !== undefined && raw.requestReason !== null
+      ? raw.requestReason
+      : raw.note !== undefined && raw.note !== null
+        ? raw.note
+        : null;
+  return { ...rest, requestReason };
+};
+
 async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
-  if (USE_MOCK_DATA) return delay(clone(withdrawalStore));
+  if (USE_WITHDRAWAL_MOCK) {
+    return delay(clone(withdrawalStore).map(normalizeWithdrawalItem));
+  }
   // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.get<WithdrawalRequestItem[]>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.GET_ALL,
   );
-  return response.data ?? [];
+  return (response.data ?? []).map(normalizeWithdrawalItem);
 }
 
 async function markWithdrawalProcessing(id: number): Promise<WithdrawalRequestItem> {
-  if (USE_MOCK_DATA) {
-    return delay(updateWithdrawal(id, { status: 'ACCEPTED_PROCESSING' }));
+  if (USE_WITHDRAWAL_MOCK) {
+    return delay(
+      normalizeWithdrawalItem(
+        updateWithdrawal(id, {
+          status: 'ACCEPTED_PROCESSING',
+          processingAt: new Date().toISOString(),
+        }),
+      ),
+    );
   }
   // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.ACCEPT(id),
     {},
   );
-  return response.data;
+  return normalizeWithdrawalItem(response.data);
 }
 
 /**
@@ -243,8 +295,12 @@ async function completeWithdrawal(
   reviewerName: string,
   amountVnd: number,
 ): Promise<WithdrawalRequestItem> {
-  if (USE_MOCK_DATA) {
-    const updated = updateWithdrawal(id, { status: 'COMPLETED', proofReceiptUrl });
+  if (USE_WITHDRAWAL_MOCK) {
+    const updated = updateWithdrawal(id, {
+      status: 'COMPLETED',
+      proofReceiptUrl,
+      completedAt: new Date().toISOString(),
+    });
     auditLog.append({
       adminId: 0,
       adminName: 'Admin User',
@@ -254,7 +310,7 @@ async function completeWithdrawal(
       details: `${updated.amountVnd.toLocaleString('vi-VN')} VND — receipt uploaded`,
     });
     await notifyReviewer(reviewerId, reviewerName, amountVnd).catch(() => undefined);
-    return delay(updated);
+    return delay(normalizeWithdrawalItem(updated));
   }
   // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
@@ -262,12 +318,15 @@ async function completeWithdrawal(
     { proofReceiptUrl },
   );
   await notifyReviewer(reviewerId, reviewerName, amountVnd).catch(() => undefined);
-  return response.data;
+  return normalizeWithdrawalItem(response.data);
 }
 
 async function denyWithdrawal(id: number, reason: string): Promise<WithdrawalRequestItem> {
-  if (USE_MOCK_DATA) {
-    const updated = updateWithdrawal(id, { status: 'DENIED', rejectionReason: reason });
+  if (USE_WITHDRAWAL_MOCK) {
+    const updated = updateWithdrawal(id, {
+      status: 'DENIED',
+      rejectionReason: reason,
+    });
     auditLog.append({
       adminId: 0,
       adminName: 'Admin User',
@@ -276,14 +335,14 @@ async function denyWithdrawal(id: number, reason: string): Promise<WithdrawalReq
       targetId: updated.txId,
       details: reason,
     });
-    return delay(updated);
+    return delay(normalizeWithdrawalItem(updated));
   }
   // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.DENY(id),
     { reason },
   );
-  return response.data;
+  return normalizeWithdrawalItem(response.data);
 }
 
 function updateWithdrawal(

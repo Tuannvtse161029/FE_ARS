@@ -1,0 +1,84 @@
+/* CSS Module for the shared MilestoneProgress component. */
+/* Visual treatment must remain identical across Lecturer and Graduate */
+/* Student surfaces (lead-phase-c-contract.md §3.3 / SH1). */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a202c;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #2d3561; /* matches design system Header Background per ars-project-context.mdc */
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4a5568;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.countRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.countLabel {
+  font-size: 0.85rem;
+  color: #4a5568;
+}
+
+.countValue {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #2d3561;
+}
+
+.countRow[data-status='evaluated'] .countValue {
+  color: #2f855a; /* calm positive green for academic tone */
+}
+
+.countRow[data-status='submitted'] .countValue {
+  color: #007aff; /* matches design system Primary Accent */
+}
+
+.countRow[data-status='rejected'] .countValue {
+  color: #c05621; /* warm but not loud */
+}
+
+.countRow[data-status='waiting'] .countValue {
+  color: #718096; /* neutral for not-started */
+}
+
+@media (max-width: 480px) {
+  .counts {
+    grid-template-columns: 1fr;
+  }
+}

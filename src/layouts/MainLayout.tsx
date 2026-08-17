@@ -36,6 +36,9 @@ import {
   Flag as ReportsIcon,
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
+  Crown as PremiumIcon,
+  ClipboardCheck,
+  Upload,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -100,6 +103,12 @@ interface NavItem {
   icon: React.ReactNode;
   showDot?: boolean;
   badge?: string;
+  // When `true`, the NavLink uses React Router's "exact" match so the link
+  // only highlights on its own path (and not on any nested child route).
+  // Required for Admin items because they all share the `/admin` prefix and
+  // NavLink's default prefix matching would otherwise mark every Admin child
+  // route as "Dashboard" (Phase C defect 3B).
+  end?: boolean;
 }
 
 export const MainLayout = () => {
@@ -187,8 +196,13 @@ export const MainLayout = () => {
 
   // Mirror the BE reviewer availability into local state so the toggle works
   // on the same source-of-truth that DiscoverReviewers reads from.
+  // `null` here means "indeterminate / loading / error" — we must never render
+  // a confirmed `Available` label during that window (see useReviewerProfiles
+  // addendum §C). Until the BE answers, treat the toggle as off so the
+  // Researcher cannot act on a false-positive state.
   const [optimisticAvailability, setOptimisticAvailability] = useState<boolean | null>(null);
-  const isReviewerAvailable = optimisticAvailability ?? beReviewerAvailable;
+  const isReviewerAvailable: boolean =
+    optimisticAvailability ?? beReviewerAvailable ?? false;
 
   // Refresh the cached availability whenever the BE tells us something changed.
   useEffect(() => {
@@ -204,6 +218,12 @@ export const MainLayout = () => {
       if (!user?.userId) {
         console.warn('[Availability] No logged-in user — toggle ignored.');
       }
+      return;
+    }
+    // Block the click while the BE answer is still indeterminate so the
+    // Reviewer never flips a state we have not confirmed.
+    if (beReviewerAvailable === null) {
+      console.warn('[Availability] Backend state not yet known — toggle ignored.');
       return;
     }
     const next = !isReviewerAvailable;
@@ -244,7 +264,12 @@ export const MainLayout = () => {
     switch (activeRole) {
       case 'Admin':
         return [
-          { to: ROUTES.ADMIN, label: 'Dashboard', icon: <DashboardIcon size={20} /> },
+          // The Dashboard item is the only admin nav entry that requires
+          // exact match — every other admin route starts with `/admin`, so
+          // React Router's NavLink default prefix matching would otherwise
+          // keep Dashboard highlighted on every admin page (Phase C
+          // defect 3B).
+          { to: ROUTES.ADMIN, label: 'Dashboard', icon: <DashboardIcon size={20} />, end: true },
           { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'Role Requests', icon: <RoleRequestsIcon size={20} /> },
           { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts', icon: <AccountsIcon size={20} /> },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
@@ -257,23 +282,33 @@ export const MainLayout = () => {
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon size={20} />, badge: '2' },
           { to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> },
+          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];
       case 'Lecturer':
         return [
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon size={20} /> },
+          { to: ROUTES.LECTURER_EVALUATE_REPORTS, label: 'Evaluate Reports', icon: <ClipboardCheck size={20} /> },
+          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Configure Milestones', icon: <Settings size={20} /> },
+          // Lecturer nav (added in Phase C, Lead, lead-phase-c-contract.md §3.1 / L1).
+          // "Guidance Projects" is wired to the real Lecturer route now that
+          // Agent-1 has built the page (L1 of Phase C).
+          // The disabled placeholders below remain until the matching BE
+          // resources ship (gap ticket §C.2 / §D.2 / §E).
+          { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
           { to: '#shared-material', label: 'Shared Material', icon: <PapersIcon size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
+          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];
       case 'Graduate Student':
         return [
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon size={20} /> },
-          { to: ROUTES.REVIEWERS, label: 'Browse Reviewers', icon: <BrowseReviewersIcon size={20} /> },
+          { to: ROUTES.GRADUATE_STUDENT_DASHBOARD, label: 'Dashboard', icon: <DashboardIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
+          { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          { to: '#premium-packages', label: 'Premium Packages', icon: <BrowseReviewersIcon size={20} /> },
+          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];
       case 'Researcher':
       default:
@@ -283,6 +318,7 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon size={20} /> },
           { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
+          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];
     }
   };
@@ -313,6 +349,7 @@ export const MainLayout = () => {
               <NavLink
                 key={index}
                 to={item.to}
+                end={item.end ?? false}
                 className={({ isActive }) =>
                   `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
                 }

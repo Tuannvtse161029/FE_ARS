@@ -139,6 +139,42 @@
 }
 .viewBtn:hover { background: #eff6ff; }
 
+.filterIcon { color: #94a3b8; }
+.filterLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.requestTypeBadge {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.requestTypeUnknown { background: #f1f5f9; color: #64748b; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; min-width: 285px; }
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.inspectButton { border: 1px solid #cbd5e1; background: #ffffff; color: #2563eb; }
+.inspectButton:hover { background: #eff6ff; }
+.approveButton { border: 1px solid #15803d; background: #15803d; color: #ffffff; }
+.approveButton:hover { background: #166534; }
+.denyButton { border: 1px solid #dc2626; background: #ffffff; color: #b91c1c; }
+.denyButton:hover { background: #fef2f2; }
+
 .emptyState,
 .loadingState,
 .errorState {

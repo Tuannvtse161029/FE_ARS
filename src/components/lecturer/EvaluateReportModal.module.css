@@ -1,0 +1,330 @@
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalCard {
+  background-color: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 680px;
+  box-shadow: var(--shadow-2xl);
+  padding: var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  text-align: left;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: var(--spacing-3);
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalTitle {
+  font-size: var(--font-size-base);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.modalSubtitle {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.viewPdfBtn,
+.openExternalBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.viewPdfBtn:hover,
+.openExternalBtn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.pdfViewerBox {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 420px;
+  background-color: #f8fafc;
+}
+
+.modeSwitcher {
+  display: flex;
+  gap: var(--spacing-2);
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.modeBtn {
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #64748b;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.modeBtn:hover {
+  background-color: #ffffff;
+  color: #1e293b;
+}
+
+.modeBtnActiveApprove {
+  background-color: #ecfdf5 !important;
+  color: #059669 !important;
+  border: 1px solid #a7f3d0;
+}
+
+.modeBtnActiveReject {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1.5);
+}
+
+.formLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.5px;
+}
+
+.formInput,
+.formTextarea {
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  font-family: var(--font-family-primary);
+  line-height: var(--line-height-relaxed);
+  resize: vertical;
+}
+
+.formInput {
+  height: 44px;
+  padding: 0 var(--spacing-4);
+}
+
+.formInput:focus,
+.formTextarea:focus {
+  border-color: #2563eb;
+  background-color: #ffffff;
+}
+
+.helperText {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.helperText code {
+  background-color: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #475569;
+}
+
+.requiredStar {
+  color: #ef4444;
+}
+
+.existingFeedbackBlock {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.existingFeedbackLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.existingRow {
+  font-size: var(--font-size-xs);
+  color: #334155;
+  line-height: var(--line-height-relaxed);
+}
+
+.errorBanner {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.modalFooter {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.cancelBtn {
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) var(--spacing-5);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submitApproveBtn {
+  flex: 1;
+  background-color: #10b981;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.submitApproveBtn:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.submitApproveBtn:disabled,
+.submitRejectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submitRejectBtn {
+  flex: 1;
+  background-color: #ef4444;
+  border: none;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.submitRejectBtn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.spinningIcon {
+  animation: spin 1s linear infinite;
+}

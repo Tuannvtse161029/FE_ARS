@@ -1,70 +1,107 @@
 /**
- * Tests for the ScorecardModal (Reviewer) component.
+ * Tests for the ScorecardModal (Reviewer) component — live-data version.
  *
  * Covers:
  *   1. Returns null when isOpen is false
- *   2. Renders the Accept branch when fileName contains "consensus"
- *   3. Renders the Reject branch for other fileNames
- *   4. Renders all 5 criteria + Final Decision
- *   5. Active score pill matches the score
- *   6. Closes modal when Close button is clicked
+ *   2. Renders the Accept branch when evaluation.finalDecision === 'Accept'
+ *   3. Renders the Reject branch when evaluation.finalDecision === 'Reject'
+ *   4. Renders all 5 criteria + Final Decision when `evaluation` is supplied
+ *   5. Closes modal when Close button is clicked
+ *   6. Loading / error / empty states when caller does NOT supply `evaluation`
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
+
+const { getByReviewRequestIdMock } = vi.hoisted(() => ({
+  getByReviewRequestIdMock: vi.fn(),
+}));
+
+vi.mock('../../services/detailedEvaluation.service', () => ({
+  detailedEvaluationService: {
+    getByReviewRequestId: getByReviewRequestIdMock,
+  },
+}));
+
 import { ScorecardModal } from '../../pages/Reviewer/components/ScorecardModal';
+import type { DetailedEvaluation } from '../../services/detailedEvaluation.service';
+import type { ReviewRequest } from '../../services/reviewRequest.service';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const acceptEval: DetailedEvaluation = {
+  detailedEvaluationId: 1,
+  reviewRequestId: 1,
+  reviewerId: 7,
+  scoreOriginality: 5,
+  notesOriginality: 'novel',
+  scoreLiterature: 4,
+  notesLiterature: 'thorough',
+  scoreMethodology: 5,
+  notesMethodology: 'solid',
+  scoreResults: 4,
+  notesResults: 'good',
+  scoreFormatting: 5,
+  notesFormatting: 'clean',
+  finalDecision: 'Accept',
+  generalComments: 'Great paper.',
+  createdAt: '2026-07-20T00:00:00Z',
+};
 
-const renderModal = (props: { isOpen?: boolean; fileName?: string; onClose?: () => void }) =>
-  render(
-    <ScorecardModal
-      isOpen={props.isOpen ?? true}
-      onClose={props.onClose ?? (() => {})}
-      fileName={props.fileName ?? 'Microservice_Consensus_v3.pdf'}
-    />
-  );
+const rejectEval: DetailedEvaluation = {
+  ...acceptEval,
+  finalDecision: 'Reject',
+  generalComments: 'Significant methodological issues.',
+};
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-describe('ScorecardModal – visibility', () => {
+describe('ScorecardModal – live data', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getByReviewRequestIdMock.mockReset();
   });
 
   it('renders nothing when isOpen is false', () => {
-    render(<ScorecardModal isOpen={false} onClose={() => {}} fileName="anything.pdf" />);
+    render(
+      <ScorecardModal
+        isOpen={false}
+        onClose={() => undefined}
+        evaluation={acceptEval}
+      />
+    );
     expect(screen.queryByText(/criteria evaluation scorecard/i)).not.toBeInTheDocument();
   });
-});
 
-describe('ScorecardModal – Accept branch', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('shows Accept badge for files containing "consensus"', () => {
-    renderModal({ fileName: 'Microservice_Consensus_v3.pdf' });
-
+  it('renders the Accept branch when the supplied evaluation has finalDecision = Accept', () => {
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        evaluation={acceptEval}
+      />
+    );
     expect(screen.getByText('Accept')).toBeInTheDocument();
-    expect(screen.getByText('ACCEPTED')).toBeInTheDocument();
+    expect(screen.getByText('ACCEPT')).toBeInTheDocument();
   });
 
-  it('shows the seeded file name in the header', () => {
-    renderModal({ fileName: 'Microservice_Consensus_v3.pdf' });
-    expect(screen.getByText('Microservice_Consensus_v3.pdf')).toBeInTheDocument();
+  it('renders the Reject branch when the supplied evaluation has finalDecision = Reject', () => {
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        evaluation={rejectEval}
+      />
+    );
+    expect(screen.getByText('Reject')).toBeInTheDocument();
+    expect(screen.getByText('REJECT')).toBeInTheDocument();
   });
 
-  it('shows the reviewer and date in the footer', () => {
-    renderModal({ fileName: 'Microservice_Consensus_v3.pdf' });
-    expect(screen.getByText(/Reviewer: Dr\. Nguyen Van A/)).toBeInTheDocument();
-    expect(screen.getByText(/Submitted 2026-07-20/)).toBeInTheDocument();
-  });
-
-  it('renders all 5 numbered criteria', () => {
-    renderModal({ fileName: 'Microservice_Consensus_v3.pdf' });
-
+  it('renders all 5 numbered criteria + Final Decision row', () => {
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        evaluation={acceptEval}
+      />
+    );
     expect(screen.getByText('1. ORIGINALITY')).toBeInTheDocument();
     expect(screen.getByText('2. LITERATURE REVIEW')).toBeInTheDocument();
     expect(screen.getByText('3. METHODOLOGY')).toBeInTheDocument();
@@ -72,72 +109,77 @@ describe('ScorecardModal – Accept branch', () => {
     expect(screen.getByText('5. FORMATTING & STRUCTURE')).toBeInTheDocument();
     expect(screen.getByText('6. FINAL DECISION')).toBeInTheDocument();
   });
-});
 
-describe('ScorecardModal – Reject branch', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('shows Reject badge for non-consensus file names', () => {
-    renderModal({ fileName: 'EdgeNet_Protocol_v2.pdf' });
-
-    expect(screen.getByText('Reject')).toBeInTheDocument();
-    expect(screen.getByText('REJECTED')).toBeInTheDocument();
-  });
-
-  it('shows the EdgeNet paper name in the header', () => {
-    renderModal({ fileName: 'EdgeNet_Protocol_v2.pdf' });
-    expect(screen.getByText('EdgeNet_Protocol_v2.pdf')).toBeInTheDocument();
-  });
-
-  it('still renders all 5 criteria in the Reject branch', () => {
-    renderModal({ fileName: 'EdgeNet_Protocol_v2.pdf' });
-
-    expect(screen.getByText('1. ORIGINALITY')).toBeInTheDocument();
-    expect(screen.getByText('5. FORMATTING & STRUCTURE')).toBeInTheDocument();
-  });
-});
-
-describe('ScorecardModal – close behavior', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('calls onClose when the X close button is clicked', async () => {
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-
-    render(<ScorecardModal isOpen={true} onClose={onClose} fileName="Microservice_Consensus_v3.pdf" />);
-
-    // The X close button is in the header
-    const closeButtons = screen.getAllByRole('button');
-    // The first close button is the header X
-    await user.click(closeButtons[closeButtons.length - 2]);
-
-    expect(onClose).toHaveBeenCalledTimes(1);
+  it('renders the submission date in the footer', () => {
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        evaluation={acceptEval}
+      />
+    );
+    expect(screen.getByText(/2026-07-20/)).toBeInTheDocument();
   });
 
   it('calls onClose when the footer Close button is clicked', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-
-    render(<ScorecardModal isOpen={true} onClose={onClose} fileName="Microservice_Consensus_v3.pdf" />);
-
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={onClose}
+        evaluation={acceptEval}
+      />
+    );
     await user.click(screen.getByRole('button', { name: /^close$/i }));
-
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('ScorecardModal – accessibility', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('renders the empty state when reviewRequest is provided but no evaluation exists', async () => {
+    const req: Pick<ReviewRequest, 'id' | 'paperId'> = { id: 11, paperId: 100 };
+    getByReviewRequestIdMock.mockResolvedValueOnce(null);
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        reviewRequest={req}
+      />
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/has not submitted an evaluation/i)).toBeInTheDocument()
+    );
   });
 
-  it('the modal title is the H2 header', () => {
-    renderModal({ fileName: 'Microservice_Consensus_v3.pdf' });
-    const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings[0]).toHaveTextContent(/criteria evaluation scorecard/i);
+  it('renders the loading state when the evaluation is in flight', async () => {
+    const req: Pick<ReviewRequest, 'id' | 'paperId'> = { id: 12, paperId: 100 };
+    let resolve!: (eval_: DetailedEvaluation) => void;
+    getByReviewRequestIdMock.mockReturnValueOnce(
+      new Promise<DetailedEvaluation>((r) => {
+        resolve = r;
+      })
+    );
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        reviewRequest={req}
+      />
+    );
+    expect(screen.getByText(/Loading evaluation/i)).toBeInTheDocument();
+    resolve(acceptEval);
+    await waitFor(() => expect(screen.getByText('Accept')).toBeInTheDocument());
+  });
+
+  it('renders the error banner when the BE call rejects', async () => {
+    const req: Pick<ReviewRequest, 'id' | 'paperId'> = { id: 13, paperId: 100 };
+    getByReviewRequestIdMock.mockRejectedValueOnce(new Error('Network 500'));
+    render(
+      <ScorecardModal
+        isOpen
+        onClose={() => undefined}
+        reviewRequest={req}
+      />
+    );
+    await waitFor(() => expect(screen.getByText('Network 500')).toBeInTheDocument());
   });
 });

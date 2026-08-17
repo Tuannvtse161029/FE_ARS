@@ -182,6 +182,47 @@ export const API_ENDPOINTS = {
     SUMMARY: '/api/Analytics/summary',
     TIMESERIES: '/api/Analytics/timeseries',
   },
+  // Lecturer ↔ Graduate Student workflow surface — see
+  // docs/local-only/research-workflow-contract.md §1. Agent 1 and Agent 2
+  // both write to these paths; the contract is the single source of truth.
+  RESEARCH_WORKFLOW: {
+    GUIDANCE_PROJECT: {
+      GET_ALL: '/api/GuidanceProject',
+      GET_BY_ID: (id: number) => `/api/GuidanceProject/${id}`,
+      CREATE: '/api/GuidanceProject',
+      UPDATE: (id: number) => `/api/GuidanceProject/${id}`,
+    },
+    RESEARCH_TOPIC: {
+      GET_ALL: '/api/ResearchTopic',
+      GET_BY_ID: (id: number) => `/api/ResearchTopic/${id}`,
+      CREATE: '/api/ResearchTopic',
+      UPDATE: (id: number) => `/api/ResearchTopic/${id}`,
+    },
+    RESEARCH_GROUP: {
+      GET_ALL: '/api/ResearchGroup',
+      GET_BY_ID: (id: number) => `/api/ResearchGroup/${id}`,
+      CREATE: '/api/ResearchGroup',
+      UPDATE: (id: number) => `/api/ResearchGroup/${id}`,
+    },
+    GROUP_MEMBER: {
+      GET_ALL: '/api/GroupMember',
+      GET_BY_ID: (id: number) => `/api/GroupMember/${id}`,
+      CREATE: '/api/GroupMember',
+      UPDATE: (id: number) => `/api/GroupMember/${id}`,
+    },
+    PHASED_REPORT: {
+      GET_ALL: '/api/PhasedReport',
+      GET_BY_ID: (id: number) => `/api/PhasedReport/${id}`,
+      CREATE: '/api/PhasedReport',
+      UPDATE: (id: number) => `/api/PhasedReport/${id}`,
+    },
+    LEARNING_MATERIAL: {
+      GET_ALL: '/api/LearningMaterial',
+      GET_BY_ID: (id: number) => `/api/LearningMaterial/${id}`,
+      CREATE: '/api/LearningMaterial',
+      UPDATE: (id: number) => `/api/LearningMaterial/${id}`,
+    },
+  },
 } as const;
 
 export const STORAGE_KEYS = {

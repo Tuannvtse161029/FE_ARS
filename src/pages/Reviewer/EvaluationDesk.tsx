@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   FileText,
   Unlock,
@@ -13,9 +13,15 @@ import {
 import { ROUTES } from '../../routes/paths';
 import { PdfViewer } from '../../components/PdfViewer';
 import { reviewRequestService } from '../../services/reviewRequest.service';
+import type { ReviewRequest } from '../../services/reviewRequest.service';
 import { paperService, type Paper } from '../../services/paper.service';
-import { detailedEvaluationService, type DetailedEvaluation } from '../../services/detailedEvaluation.service';
+import {
+  detailedEvaluationService,
+  type DetailedEvaluation,
+} from '../../services/detailedEvaluation.service';
 import { useAuthStore } from '../../store/authSlice';
+import { normalizeReviewRequestStatus } from '../../utils/reviewRequestPolicy';
+import { ReviewRequestStatusBadge } from '../../components/reviewer/ReviewRequestStatusBadge';
 import styles from './EvaluationDesk.module.css';
 
 const EMPTY_FORM = {
@@ -36,10 +42,24 @@ const EMPTY_FORM = {
 export const EvaluationDesk = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const reviewRequest = (location.state as { reviewRequest?: { id?: number; paperId?: number; fee?: number } })?.reviewRequest;
-  const reviewRequestId = reviewRequest?.id;
+  const reviewRequestFromState = (location.state as { reviewRequest?: ReviewRequest } | null)?.reviewRequest;
+  const reviewRequestIdFromQueryRaw = searchParams.get('reviewRequestId');
+  const reviewRequestIdFromQuery =
+    reviewRequestIdFromQueryRaw != null && reviewRequestIdFromQueryRaw !== ''
+      ? Number(reviewRequestIdFromQueryRaw)
+      : null;
+
+  // Defect 2B refresh-safety: the request can come from EITHER `location.state`
+  // (fast path) OR `?reviewRequestId=…` URL param (survives a hard refresh).
+  // If only the query is present, we refetch the request via the BE so the
+  // scorecard view can hydrate after a page reload.
+  const [requestFromQuery, setRequestFromQuery] = useState<ReviewRequest | null>(null);
+  const reviewRequest: ReviewRequest | null =
+    reviewRequestFromState ?? requestFromQuery;
+  const reviewRequestId = reviewRequest?.id ?? reviewRequestIdFromQuery ?? null;
 
   const [paper, setPaper] = useState<Paper | null>(null);
   const [paperLoadError, setPaperLoadError] = useState<string | null>(null);
@@ -51,7 +71,40 @@ export const EvaluationDesk = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
+  // Defect 2B — read-only when the request is already Completed.
+  const isReadOnly =
+    normalizeReviewRequestStatus(reviewRequest?.status) === 'COMPLETED';
+
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // ── URL-param fallback: if the user arrives via `?reviewRequestId=…`
+  // without `location.state`, refetch the request via the BE so the page
+  // still renders correctly after a hard refresh (defect 2B).
+  useEffect(() => {
+    if (reviewRequestFromState) {
+      setRequestFromQuery(null);
+      return;
+    }
+    if (!reviewRequestIdFromQuery) {
+      setRequestFromQuery(null);
+      return;
+    }
+    let cancelled = false;
+    reviewRequestService
+      .getById(reviewRequestIdFromQuery)
+      .then((row) => {
+        if (!cancelled) setRequestFromQuery(row);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to refetch review request by id:', err);
+          setRequestFromQuery(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewRequestFromState, reviewRequestIdFromQuery]);
 
   // ── Load paper ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,6 +181,13 @@ export const EvaluationDesk = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewRequestId || !currentUserId || isSubmitting) return;
+    // Defect 2B — never submit through the read-only scorecard view. The
+    // Completed tab uses this same surface; we don't want a stray click to
+    // re-write a finalized evaluation.
+    if (isReadOnly) {
+      setSubmitError('This review is already completed. The scorecard is read-only.');
+      return;
+    }
 
     // ── Validation ──────────────────────────────────────────────────────────
     if (!form.generalComments.trim()) {
@@ -142,25 +202,56 @@ export const EvaluationDesk = () => {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // 1. Persist (or update) the evaluation payload
+      // Defect 2A — persist evaluation FIRST, assert a non-empty id, THEN
+      // mark the request Completed. If the evaluation persistence fails the
+      // request MUST stay in its current state — never mark Completed without
+      // an evaluation record (defect 1C's inconsistency message).
+      let persistedEvaluationId: number | undefined;
       if (existingEvaluation?.detailedEvaluationId) {
-        await detailedEvaluationService.update(existingEvaluation.detailedEvaluationId, {
-          ...form,
-          reviewRequestId,
-          reviewerId: currentUserId,
-        });
+        const updated = await detailedEvaluationService.update(
+          existingEvaluation.detailedEvaluationId,
+          {
+            ...form,
+            reviewRequestId,
+            reviewerId: currentUserId,
+          }
+        );
+        persistedEvaluationId = updated.detailedEvaluationId ?? existingEvaluation.detailedEvaluationId;
       } else {
-        await detailedEvaluationService.create({
+        const created = await detailedEvaluationService.create({
           ...form,
           reviewRequestId,
           reviewerId: currentUserId,
         });
+        persistedEvaluationId = created.detailedEvaluationId;
       }
 
-      // 2. Move review assignment out of Pending and into Completed
-      await reviewRequestService.update(reviewRequestId, { status: 'Completed' });
+      if (!persistedEvaluationId) {
+        // Defensive: BE accepted the request but didn't echo an id. Treat
+        // as a failed persistence — do NOT mark Completed.
+        throw new Error('Failed to persist evaluation (no id returned).');
+      }
 
-      // 3. Notify all live views (reviewer Pending → Completed tab, researcher My Review Requests)
+      // Defect 2A — request status update AFTER evaluation is persisted.
+      const updatedReq = await reviewRequestService.update(reviewRequestId, {
+        status: 'Completed',
+      });
+
+      // Defect 2A item 6 — only mark completed locally when the BE response
+      // echoes `Completed`. If the BE returns the previous status (stale
+      // propagation), the event-driven refetch will catch up shortly.
+      const confirmedStatus = normalizeReviewRequestStatus(updatedReq.status);
+      if (confirmedStatus !== 'COMPLETED') {
+        console.warn(
+          'reviewRequestService.update did not echo Completed; relying on refetch',
+          updatedReq
+        );
+      }
+
+      // Notify all live views (reviewer Pending → Completed tab, researcher
+      // My Review Requests). The Researcher side listens for this and
+      // refetches; the Reviewer AssignedReviews side also refetches on this
+      // event (defect 2A — counts and tab filter both update).
       window.dispatchEvent(new CustomEvent('review-update', {
         detail: { reviewRequestId, status: 'Completed' },
       }));
@@ -176,20 +267,43 @@ export const EvaluationDesk = () => {
   };
 
   // ── Render helpers ───────────────────────────────────────────────────────
-  const renderRatingButtons = (field: keyof typeof EMPTY_FORM, currentVal: number) => (
-    <div className={styles.ratingRow}>
-      {[1, 2, 3, 4, 5].map((num) => (
-        <button
-          key={num}
-          type="button"
-          className={`${styles.ratingBtn} ${currentVal === num ? styles.activeRatingBtn : ''}`}
-          onClick={() => setScore(field, num)}
-        >
-          {num}
-        </button>
-      ))}
-    </div>
-  );
+  // Defect 2B — in read-only mode, all textareas become non-editable and the
+  // final-decision select is disabled. We keep them in the DOM (rather than
+  // hiding) so a screen reader still receives the persisted values.
+  const textAreaReadOnlyProps = isReadOnly
+    ? ({ readOnly: true, tabIndex: -1 } as const)
+    : ({} as const);
+  const renderRatingButtons = (field: keyof typeof EMPTY_FORM, currentVal: number) => {
+    if (isReadOnly) {
+      // Static score pills (defect 2B read-only mode — no editable controls).
+      return (
+        <div className={styles.ratingRow} aria-label={`Score: ${currentVal}`}>
+          {[1, 2, 3, 4, 5].map((num) => (
+            <span
+              key={num}
+              className={`${styles.ratingBtn} ${styles.ratingBtnStatic} ${currentVal === num ? styles.activeRatingBtn : ''}`}
+            >
+              {num}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className={styles.ratingRow}>
+        {[1, 2, 3, 4, 5].map((num) => (
+          <button
+            key={num}
+            type="button"
+            className={`${styles.ratingBtn} ${currentVal === num ? styles.activeRatingBtn : ''}`}
+            onClick={() => setScore(field, num)}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   const fileUrl = paper?.fileUrl ?? null;
 
@@ -218,7 +332,13 @@ export const EvaluationDesk = () => {
             )}
           </div>
         </div>
-        <span className={styles.inReviewBadge}>● IN REVIEW</span>
+        <span className={styles.inReviewBadge}>
+          {reviewRequest && isReadOnly ? (
+            <ReviewRequestStatusBadge status={reviewRequest.status} size="md" />
+          ) : (
+            '● IN REVIEW'
+          )}
+        </span>
       </div>
 
       {/* No review request passed */}
@@ -299,6 +419,7 @@ export const EvaluationDesk = () => {
                   value={form.notesOriginality}
                   onChange={(e) => setScore('notesOriginality', e.target.value)}
                   rows={2}
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -314,6 +435,7 @@ export const EvaluationDesk = () => {
                   value={form.notesLiterature}
                   onChange={(e) => setScore('notesLiterature', e.target.value)}
                   rows={2}
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -329,6 +451,7 @@ export const EvaluationDesk = () => {
                   value={form.notesMethodology}
                   onChange={(e) => setScore('notesMethodology', e.target.value)}
                   rows={2}
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -344,6 +467,7 @@ export const EvaluationDesk = () => {
                   value={form.notesResults}
                   onChange={(e) => setScore('notesResults', e.target.value)}
                   rows={2}
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -359,6 +483,7 @@ export const EvaluationDesk = () => {
                   value={form.notesFormatting}
                   onChange={(e) => setScore('notesFormatting', e.target.value)}
                   rows={2}
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -370,6 +495,7 @@ export const EvaluationDesk = () => {
                     className={styles.finalDecisionSelect}
                     value={form.finalDecision}
                     onChange={(e) => setScore('finalDecision', e.target.value)}
+                    disabled={isReadOnly}
                   >
                     <option value="Accept">Accept</option>
                     <option value="Minor Revision">Minor Revision</option>
@@ -389,6 +515,7 @@ export const EvaluationDesk = () => {
                   onChange={(e) => setScore('generalComments', e.target.value)}
                   rows={6}
                   required
+                  {...textAreaReadOnlyProps}
                 />
               </div>
 
@@ -397,23 +524,36 @@ export const EvaluationDesk = () => {
                 <div className={styles.submitError}>{submitError}</div>
               )}
 
-              {/* Actions Footer */}
-              <div className={styles.actionsFooter}>
-                <button
-                  type="button"
-                  className={styles.saveDraftBtn}
-                  onClick={handleSaveDraft}
-                >
-                  <Save size={14} style={{ verticalAlign: 'middle' }} /> {isSaved ? 'Draft Saved!' : 'Save Draft'}
-                </button>
-                <button
-                  type="submit"
-                  className={styles.submitBtn}
-                  disabled={isSubmitting}
-                >
-                  <SendHorizontal size={14} style={{ verticalAlign: 'middle' }} /> {isSubmitting ? 'Submitting…' : 'Submit Final Feedback to Author'}
-                </button>
-              </div>
+              {/* Actions Footer — defect 2B read-only mode hides Save/Submit and
+                  shows a Back-to-tasks CTA instead. */}
+              {isReadOnly ? (
+                <div className={styles.actionsFooter}>
+                  <button
+                    type="button"
+                    className={styles.submitBtn}
+                    onClick={() => navigate(ROUTES.REVIEW_TASKS)}
+                  >
+                    Back to Review Tasks
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.actionsFooter}>
+                  <button
+                    type="button"
+                    className={styles.saveDraftBtn}
+                    onClick={handleSaveDraft}
+                  >
+                    <Save size={14} style={{ verticalAlign: 'middle' }} /> {isSaved ? 'Draft Saved!' : 'Save Draft'}
+                  </button>
+                  <button
+                    type="submit"
+                    className={styles.submitBtn}
+                    disabled={isSubmitting}
+                  >
+                    <SendHorizontal size={14} style={{ verticalAlign: 'middle' }} /> {isSubmitting ? 'Submitting…' : 'Submit Final Feedback to Author'}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

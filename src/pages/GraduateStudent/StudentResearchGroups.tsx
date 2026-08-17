@@ -1,477 +1,710 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  FileText,
+  Filter,
+  Inbox,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Search,
+  Users,
+} from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { useStudentGroups } from '../../hooks/useStudentGroups';
+import { usePhasedReports } from '../../hooks/usePhasedReports';
+import { useLearningMaterials } from '../../hooks/useLearningMaterials';
+import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
+import {
+  lecturerLookupService,
+} from '../../services/lecturerLookup.service';
+import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
+import InvitationBanner from '../../components/gradstudent/InvitationBanner';
+import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
+import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
+import MilestoneProgress from '../../components/research/MilestoneProgress';
+import type { PhasedReportStatus } from '../../types/research';
+import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
+import type { LearningMaterial } from '../../services/learningMaterial.service';
 import styles from './StudentResearchGroups.module.css';
 
-interface AssignedTopic {
-  id: string;
-  title: string;
-  dueDate: string;
-  lecturer: string;
-  status: 'Pending upload' | 'Submitted' | 'Reviewed';
-  submittedFile?: string;
-  fileSize?: string;
-  notes?: string;
-  grade?: string;
-  feedbackComment?: string;
-  annotatedFile?: string;
-}
+// Workspace that lists the Graduate Student's joined groups and per-group
+// PhasedReports. Phase C contract §3.2 G5:
+//
+//   - Group members list via `groupMemberService.getMembersForGroup(groupId)`
+//   - Learning materials list via `useLearningMaterials({ lecturerId })`
+//     filtered by group/topic (BE has no group FK).
+//   - `<MilestoneProgress />` consumes Grad-side reports.
+//   - Lecturer name resolution via silent-failure `lecturerLookup.service.ts`.
+//   - Invitation banner stays read-only with status field.
+//   - All Bearer-auth-only read paths (no Bearer is forced here — the global
+//     `axios` interceptor handles it for every request).
 
-export const StudentResearchGroups = () => {
-  const [viewMode, setViewMode] = useState<'overview' | 'workspace'>('overview');
-  const [showInvitationBanner, setShowInvitationBanner] = useState(true);
+const DEFAULT_FOLDER_KEY = 'milestone';
 
-  // Filters state
-  const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
 
-  // Modals state
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showGradeModal, setShowGradeModal] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<AssignedTopic | null>(null);
+const STATUS_PALETTE: Record<PhasedReportStatus, string> = {
+  WAITING: styles.statusWaiting,
+  SUBMITTED: styles.statusSubmitted,
+  EVALUATED: styles.statusEvaluated,
+  REJECTED: styles.statusRejected,
+};
 
-  // Submit Modal File Upload State (Frame 3 & 4)
-  const [attachedFile, setAttachedFile] = useState<{ name: string; size: string } | null>(null);
-  const [lecturerNotes, setLecturerNotes] = useState('');
+export const StudentResearchGroups = (): JSX.Element => {
+  const { user } = useAuth();
+  const studentId = user?.userId ?? null;
 
-  // Topics state
-  const [topics, setTopics] = useState<AssignedTopic[]>([
-    {
-      id: 'TOPIC-001',
-      title: 'Telemetry Data Optimization',
-      dueDate: 'Aug 15, 2026',
-      lecturer: 'Prof. Tran Minh B',
-      status: 'Pending upload',
-    },
-    {
-      id: 'TOPIC-002',
-      title: 'Consensus Protocols Benchmark',
-      dueDate: 'Aug 01, 2026',
-      lecturer: 'Prof. Tran Minh B',
-      status: 'Submitted',
-      submittedFile: 'file.pdf',
-      fileSize: '2.1 MB',
-    },
-    {
-      id: 'TOPIC-003',
-      title: 'Microservice Topology Review',
-      dueDate: 'Jul 20, 2026',
-      lecturer: 'Prof. Tran Minh B',
-      status: 'Reviewed',
-      submittedFile: 'Microservice_Topology_Submission.pdf',
-      grade: '9.5 / 10',
-      feedbackComment:
-        'Excellent analysis of stateful vs stateless microservices. The telemetry benchmark results are clear and well-documented. Approved for final group report.',
-      annotatedFile: 'Microservice_Topology_Annotated.pdf',
-    },
-  ]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [searchText, setSearchText] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [resubmitting, setResubmitting] = useState<SubmittedPhasedReport | null>(null);
+  const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
+  // Cache of resolved lecturer display names. Populated lazily by the
+  // fire-and-forget probe in `lecturerLookupService.ensureLecturerDisplayName`.
+  // We mirror the service cache into local state so a successful lookup
+  // re-renders the workspace without making the helper React-aware.
+  const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
-  const handleAcceptInvitation = () => {
-    alert('You have accepted the group invitation from Prof. Tran Minh B for "Distributed Systems Lab 2026".');
-    setShowInvitationBanner(false);
-  };
+  const { joinedGroups, guidanceProject, isLoading, error, refetch } =
+    useStudentGroups(studentId);
+  const {
+    reports,
+    isLoading: reportsLoading,
+    refetch: refetchReports,
+  } = usePhasedReports(selectedGroupId);
 
-  const handleDeclineInvitation = () => {
-    setShowInvitationBanner(false);
-  };
+  const selectedGroup = useMemo(() => {
+    if (selectedGroupId === null) return null;
+    return joinedGroups.find((g) => g.id === selectedGroupId) ?? null;
+  }, [joinedGroups, selectedGroupId]);
 
-  const handleOpenSubmitModal = (topic: AssignedTopic) => {
-    setSelectedTopic(topic);
-    if (topic.submittedFile) {
-      setAttachedFile({ name: topic.submittedFile, size: topic.fileSize || '2.1 MB' });
-    } else {
-      setAttachedFile(null);
+  // Subscribe to the lecturerLookup service's resolution event so any
+  // successful `userService.getById` probe re-renders the workspace.
+  useEffect(() => {
+    const handler = (event: Event): void => {
+      const detail = (event as CustomEvent<{ lecturerId: number }>).detail;
+      if (!detail) return;
+      const name = lecturerLookupService.getLecturerDisplayName(detail.lecturerId);
+      setLecturerNames((prev) => ({ ...prev, [detail.lecturerId]: name }));
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener(
+        'ars:lecturer-name-resolved',
+        handler as EventListener,
+      );
+      return () => {
+        window.removeEventListener(
+          'ars:lecturer-name-resolved',
+          handler as EventListener,
+        );
+      };
     }
-    setLecturerNotes('');
-    setShowSubmitModal(true);
+    return undefined;
+  }, []);
+
+  // Trigger fire-and-forget probes for every lecturer id we surface. Safe to
+  // re-run on every render — the helper dedupes.
+  const uniqueLecturerIds = useMemo(() => {
+    const ids = new Set<number>();
+    joinedGroups.forEach((g) => {
+      if (typeof g.lecturerId === 'number' && g.lecturerId > 0) {
+        ids.add(g.lecturerId);
+      }
+    });
+    if (selectedGroup && typeof selectedGroup.lecturerId === 'number') {
+      ids.add(selectedGroup.lecturerId);
+    }
+    if (guidanceProject && typeof guidanceProject.lecturerId === 'number') {
+      ids.add(guidanceProject.lecturerId);
+    }
+    return Array.from(ids);
+  }, [joinedGroups, selectedGroup, guidanceProject]);
+
+  useEffect(() => {
+    uniqueLecturerIds.forEach((id) => {
+      lecturerLookupService.ensureLecturerDisplayName(id);
+    });
+  }, [uniqueLecturerIds]);
+
+  const lecturerNameFor = (lecturerId: number | null | undefined): string => {
+    if (typeof lecturerId !== 'number' || lecturerId <= 0) {
+      return 'Lecturer';
+    }
+    const cached = lecturerNames[lecturerId];
+    if (cached) return cached;
+    // Fallback: synchronous read of the service's own module-scoped cache.
+    // When the probe is still in flight this returns the `Lecturer #<id>`
+    // fallback and the resolution event will re-render later.
+    return lecturerLookupService.getLecturerDisplayName(lecturerId);
   };
 
-  const handleOpenGradeModal = (topic: AssignedTopic) => {
-    setSelectedTopic(topic);
-    setShowGradeModal(true);
+  const filteredReports = useMemo(() => {
+    const lowered = searchText.trim().toLowerCase();
+    return reports
+      .filter((r) => {
+        if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+        if (lowered.length === 0) return true;
+        const haystack = [
+          `Report #${r.id}`,
+          r.status,
+          r.finalOutcomeEvaluation ?? '',
+          r.capacityEvaluation ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(lowered);
+      })
+      .sort((a, b) => {
+        const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+        const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [reports, searchText, statusFilter]);
+
+  const handleRefresh = async (): Promise<void> => {
+    await refetch();
+    await refetchReports();
   };
 
-  const handleConfirmSubmitPDF = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTopic) return;
+  const handleSelectGroup = (groupId: number): void => {
+    setSelectedGroupId(groupId);
+    setSubmitting(false);
+    setResubmitting(null);
+    setLastSubmitted(null);
+  };
 
-    const fileToSubmit = attachedFile ? attachedFile.name : 'file.pdf';
-    setTopics(
-      topics.map((t) =>
-        t.id === selectedTopic.id
-          ? {
-              ...t,
-              status: 'Submitted',
-              submittedFile: fileToSubmit,
-              fileSize: attachedFile ? attachedFile.size : '2.1 MB',
-              notes: lecturerNotes,
-            }
-          : t
-      )
+  const handleOpenSubmit = (report?: SubmittedPhasedReport): void => {
+    if (!selectedGroup) return;
+    setResubmitting(report ?? null);
+    setSubmitting(true);
+  };
+
+  const handleSubmitted = async (report: SubmittedPhasedReport): Promise<void> => {
+    setLastSubmitted(report);
+    await refetchReports();
+  };
+
+  const handleCloseSubmit = (): void => {
+    setSubmitting(false);
+    setResubmitting(null);
+  };
+
+  if (!user) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.errorBanner}>
+          Please sign in to view your research groups.
+        </div>
+      </div>
     );
+  }
 
-    setShowSubmitModal(false);
-    alert(`Successfully submitted assignment for ${selectedTopic.title}!`);
-  };
+  // ----- Workspace view -----
+  if (selectedGroup) {
+    const lecturerId = selectedGroup.lecturerId;
+    return (
+      <WorkspaceView
+        group={selectedGroup}
+        lecturerName={lecturerNameFor(lecturerId)}
+        reports={filteredReports}
+        reportsLoading={reportsLoading}
+        searchText={searchText}
+        onSearchChange={setSearchText}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onBack={() => setSelectedGroupId(null)}
+        onOpenSubmit={handleOpenSubmit}
+        isSubmitting={submitting}
+        submittingReport={submitting}
+        resubmittingReport={resubmitting}
+        lastSubmitted={lastSubmitted}
+        onCloseSubmit={handleCloseSubmit}
+        onSubmitted={handleSubmitted}
+        joinedGroups={joinedGroups}
+        phaseKey={
+          selectedGroup.name
+            ? selectedGroup.name.toLowerCase().replace(/\s+/g, '-')
+            : DEFAULT_FOLDER_KEY
+        }
+        phaseTitle={selectedGroup.name}
+      />
+    );
+  }
 
-  const filteredTopics = topics.filter((t) => {
-    const matchesSearch = t.title.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'All' || statusFilter === '' || t.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
-
+  // ----- Overview view -----
   return (
-    <div className={styles.studentResearchPage}>
-      {/* Overview Mode (Frame 1) */}
-      {viewMode === 'overview' && (
-        <div className={styles.overviewContainer}>
-          {/* New Group Invitation Notification Box */}
-          {showInvitationBanner && (
-            <div className={styles.invitationBox}>
-              <div className={styles.invitationLeft}>
-                <div className={styles.mailIconCircle}>✉️</div>
-                <div>
-                  <h4 className={styles.invitationTitle}>New Group Invitation</h4>
-                  <p className={styles.invitationSub}>
-                    You have a new group invitation from <b>Prof. Tran Minh B</b> for <b>"Distributed Systems Lab 2026"</b>.
-                  </p>
-                </div>
-              </div>
-              <div className={styles.invitationActions}>
-                <button className={styles.acceptBtn} onClick={handleAcceptInvitation}>
-                  Accept Invitation
-                </button>
-                <button className={styles.declineBtn} onClick={handleDeclineInvitation}>
-                  Decline
-                </button>
-              </div>
-            </div>
+    <div className={styles.page}>
+      <header className={styles.overviewHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Research Groups</h1>
+          <p className={styles.pageSubtitle}>
+            {guidanceProject
+              ? `Active guidance project: ${guidanceProject.title}`
+              : 'You have not yet started a guidance project.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className={styles.refreshBtn}
+          onClick={handleRefresh}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 size={14} className={styles.spin} />
+          ) : (
+            <RefreshCw size={14} />
           )}
+          <span>Refresh</span>
+        </button>
+      </header>
 
-          {/* Section: My Joined Research Groups */}
-          <div className={styles.joinedGroupsSection}>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionTitle}>My Joined Research Groups</h3>
-              <p className={styles.sectionSubtitle}>
-                Collaborate with lecturers and complete assigned topics.
-              </p>
-            </div>
+      {/* Read-only invitation banner. Renders nothing when no invitation is
+          present; the BE has no /api/GroupInvitation so we cannot pre-load
+          this from the server. The banner is an honest UI surface that
+          documents the gap. */}
+      <InvitationBanner
+        invitation={null}
+        onAccept={() => undefined}
+        onDecline={() => undefined}
+      />
 
-            {/* Joined Group Card */}
-            <div className={styles.joinedGroupCard}>
-              <div className={styles.groupCardLeft}>
-                <div className={styles.groupIconCircle}>👥</div>
-                <div className={styles.groupInfoBlock}>
-                  <div className={styles.groupTitleRow}>
-                    <h4 className={styles.groupName}>AI & Edge Computing Lab</h4>
-                    <span className={styles.activeStatusPill}>Active</span>
-                  </div>
-                  <div className={styles.groupMetaRow}>
-                    <span><b>Lecturer:</b> Prof. Tran Minh B</span>
-                    <span className={styles.metaDivider}>|</span>
-                    <span><b>Members:</b> 5 Students</span>
-                    <span className={styles.metaDivider}>|</span>
-                    <span><b>Active Topics:</b> 3 Assigned</span>
+      {error ? (
+        <div className={styles.errorBanner} role="alert">
+          {error.message}
+        </div>
+      ) : null}
+
+      <section className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>My Joined Research Groups</h2>
+          <p className={styles.sectionSubtitle}>
+            Collaborate with lecturers and complete assigned topics.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className={styles.emptyCard}>
+            <Loader2 size={18} className={styles.spin} />
+            <span>Loading your groups…</span>
+          </div>
+        ) : joinedGroups.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <Inbox size={18} />
+            <span>
+              You haven&apos;t joined any research group yet. Once a lecturer
+              adds you to one, it will appear here.
+            </span>
+          </div>
+        ) : (
+          <ul className={styles.groupList}>
+            {joinedGroups.map((g) => (
+              <li key={g.id} className={styles.groupCard}>
+                <div className={styles.groupCardLeft}>
+                  <span className={styles.groupIconCircle} aria-hidden>
+                    <Users size={22} />
+                  </span>
+                  <div className={styles.groupInfo}>
+                    <div className={styles.groupTitleRow}>
+                      <h3 className={styles.groupName}>{g.name}</h3>
+                      <span className={styles.activityPill}>
+                        {g.activityStatus ?? 'ACTIVE'}
+                      </span>
+                    </div>
+                    <div className={styles.groupMetaRow}>
+                      <span>
+                        <Mail size={12} />
+                        Supervised by {lecturerNameFor(g.lecturerId)}
+                      </span>
+                      <span>
+                        <Calendar size={12} />
+                        {g.joinedAt
+                          ? `Joined ${new Date(g.joinedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}`
+                          : 'Recently joined'}
+                      </span>
+                    </div>
+                    {g.description ? (
+                      <p className={styles.groupDescription}>{g.description}</p>
+                    ) : null}
                   </div>
                 </div>
-              </div>
-
-              <div className={styles.groupCardRight}>
                 <button
-                  className={styles.openWorkspaceBlueBtn}
-                  onClick={() => setViewMode('workspace')}
+                  type="button"
+                  className={styles.openWorkspaceBtn}
+                  onClick={() => handleSelectGroup(g.id)}
                 >
                   Open Group Workspace
                 </button>
-                <button
-                  className={styles.leaveGroupRedBtn}
-                  onClick={() => alert('Leaving group...')}
-                >
-                  Leave Group
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Workspace Mode (Frame 2) */}
-      {viewMode === 'workspace' && (
-        <div className={styles.workspaceContainer}>
-          {/* Back to Research Groups link */}
-          <button className={styles.backLinkBtn} onClick={() => setViewMode('overview')}>
-            ← Back to Research Groups
-          </button>
-
-          {/* Group Header Banner */}
-          <div className={styles.workspaceHeaderCard}>
-            <div className={styles.workspaceHeaderLeft}>
-              <div className={styles.workspaceIconCircle}>👥</div>
-              <div>
-                <h2 className={styles.workspaceTitle}>AI & Edge Computing Lab</h2>
-                <p className={styles.workspaceSubtitle}>
-                  Supervised by Prof. Tran Minh B · Department of Computer Science
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.workspaceHeaderRight}>
-              <div className={styles.membersAvatarGroup}>
-                <span className={styles.avatarPill} style={{ backgroundColor: '#2563eb' }}>S1</span>
-                <span className={styles.avatarPill} style={{ backgroundColor: '#10b981' }}>S2</span>
-                <span className={styles.avatarPill} style={{ backgroundColor: '#f59e0b' }}>S3</span>
-                <span className={styles.avatarPill} style={{ backgroundColor: '#ef4444' }}>S4</span>
-                <span className={styles.avatarPill} style={{ backgroundColor: '#8b5cf6' }}>PT</span>
-              </div>
-              <button
-                className={styles.leaveGroupRedBtn}
-                onClick={() => {
-                  alert('Left research group');
-                  setViewMode('overview');
-                }}
-              >
-                Leave Group
-              </button>
-            </div>
-          </div>
-
-          {/* Assigned Topics Section */}
-          <div className={styles.topicsTableCard}>
-            <div className={styles.topicsTableHeader}>
-              <h3 className={styles.assignedTopicsTitle}>Assigned Topics</h3>
-
-              <div className={styles.filterControls}>
-                <input
-                  type="text"
-                  className={styles.topicSearchInput}
-                  placeholder="Search topics..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-                <select
-                  className={styles.statusFilterSelect}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Pending upload">Pending upload</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="Reviewed">Reviewed</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className={styles.tableResponsive}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>TOPIC TITLE</th>
-                    <th>DUE DATE</th>
-                    <th>LECTURER</th>
-                    <th>STATUS</th>
-                    <th style={{ textTransform: 'uppercase' }}>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTopics.map((tp) => (
-                    <tr key={tp.id}>
-                      <td className={styles.topicTitleText}>{tp.title}</td>
-                      <td className={styles.dueDateText}>{tp.dueDate}</td>
-                      <td className={styles.lecturerText}>{tp.lecturer}</td>
-                      <td>
-                        {tp.status === 'Pending upload' && (
-                          <span className={styles.pendingUploadPill}>Pending upload</span>
-                        )}
-                        {tp.status === 'Submitted' && (
-                          <span className={styles.submittedPill}>Submitted</span>
-                        )}
-                        {tp.status === 'Reviewed' && (
-                          <span className={styles.reviewedPill}>Reviewed</span>
-                        )}
-                      </td>
-                      <td>
-                        {tp.status === 'Pending upload' && (
-                          <button
-                            className={styles.submitAssignmentBlueBtn}
-                            onClick={() => handleOpenSubmitModal(tp)}
-                          >
-                            Submit Assignment
-                          </button>
-                        )}
-                        {tp.status === 'Submitted' && (
-                          <button
-                            className={styles.reuploadOutlineBtn}
-                            onClick={() => handleOpenSubmitModal(tp)}
-                          >
-                            Re-upload Assignment
-                          </button>
-                        )}
-                        {tp.status === 'Reviewed' && (
-                          <button
-                            className={styles.viewReviewOutlineBtn}
-                            onClick={() => handleOpenGradeModal(tp)}
-                          >
-                            View Review & Grade
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FRAMES 3 & 4: SUBMIT TOPIC ASSIGNMENT MODAL */}
-      {showSubmitModal && selectedTopic && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.submitModalCard}>
-            <div className={styles.modalHeaderRow}>
-              <h3 className={styles.modalTitle}>
-                Submit Topic Assignment &mdash; {selectedTopic.title}
-              </h3>
-              <button className={styles.closeBtn} onClick={() => setShowSubmitModal(false)}>×</button>
-            </div>
-
-            <p className={styles.modalSubtitleText}>
-              Upload or update your completed research assignment in PDF format for lecturer evaluation.
-            </p>
-
-            <form onSubmit={handleConfirmSubmitPDF} className={styles.modalForm}>
-              {/* Dropzone Area (Frame 3) or Attached Card (Frame 4) */}
-              {!attachedFile ? (
-                <div
-                  className={styles.pdfDropzone}
-                  onClick={() => setAttachedFile({ name: 'file.pdf', size: '2.1 MB' })}
-                >
-                  <span className={styles.cloudIcon}>☁️</span>
-                  <span className={styles.dropzoneMainText}>
-                    Drag & drop verification document here, or <span className={styles.browseBlueText}>browse files</span>
-                  </span>
-                  <span className={styles.dropzoneSubText}>PDF format only · Max 10MB</span>
-                </div>
-              ) : (
-                <div className={styles.attachedPdfCard}>
-                  <div className={styles.pdfCardLeft}>
-                    <span className={styles.pdfIcon}>📄</span>
-                    <div>
-                      <span className={styles.pdfFileName}>{attachedFile.name}</span>
-                      <span className={styles.pdfFileSize}>{attachedFile.size}</span>
-                    </div>
-                  </div>
-                  <div className={styles.pdfCardRight}>
-                    <span className={styles.checkCircleGreenIcon}>✓</span>
-                    <button
-                      type="button"
-                      className={styles.removePdfBtn}
-                      onClick={() => setAttachedFile(null)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Notes for Lecturer (Optional) */}
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Notes for Lecturer (Optional)</label>
-                <textarea
-                  className={styles.formTextarea}
-                  value={lecturerNotes}
-                  onChange={(e) => setLecturerNotes(e.target.value)}
-                  placeholder="Add any notes or context about your submission..."
-                  rows={3}
-                />
-              </div>
-
-              {/* Footer */}
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.modalCancelBtn}
-                  onClick={() => setShowSubmitModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className={styles.confirmSubmitBlueBtn}>
-                  Confirm & Submit PDF
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* FRAME 5: LECTURER REVIEW & GRADE MODAL */}
-      {showGradeModal && selectedTopic && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.gradeModalCard}>
-            <div className={styles.modalHeaderRow}>
-              <h3 className={styles.modalTitle}>
-                Lecturer Review & Grade &mdash; {selectedTopic.title}
-              </h3>
-              <button className={styles.closeBtn} onClick={() => setShowGradeModal(false)}>×</button>
-            </div>
-
-            {/* Green Header Banner */}
-            <div className={styles.gradeStatusBanner}>
-              <div className={styles.gradeStatusLeft}>
-                <span className={styles.gradeCheckIcon}>✓</span>
-                <span className={styles.gradeStatusText}>Status: Reviewed & Approved</span>
-              </div>
-              <span className={styles.gradeScoreBadge}>Grade: {selectedTopic.grade || '9.5 / 10'}</span>
-            </div>
-
-            {/* Lecturer Comment Box */}
-            <div className={styles.lecturerCommentCard}>
-              <div className={styles.lecturerInfoRow}>
-                <div className={styles.lecturerAvatarCircle}>PT</div>
-                <div>
-                  <span className={styles.lecturerNameText}>{selectedTopic.lecturer}</span>
-                  <span className={styles.commentDateText}>Jul 22, 2026</span>
-                </div>
-              </div>
-              <p className={styles.commentBodyText}>
-                {selectedTopic.feedbackComment ||
-                  'Excellent analysis of stateful vs stateless microservices. The telemetry benchmark results are clear and well-documented. Approved for final group report.'}
-              </p>
-            </div>
-
-            {/* Annotated File Box */}
-            <div className={styles.annotatedFileCard}>
-              <div className={styles.annotatedLeft}>
-                <span className={styles.annotatedPdfIcon}>📄</span>
-                <div>
-                  <span className={styles.annotatedFileName}>
-                    {selectedTopic.annotatedFile || 'Microservice_Topology_Annotated.pdf'}
-                  </span>
-                  <span className={styles.annotatedSubText}>Annotated by lecturer</span>
-                </div>
-              </div>
-              <button
-                className={styles.downloadBlueBtn}
-                onClick={() => alert(`Downloading ${selectedTopic.annotatedFile || 'Microservice_Topology_Annotated.pdf'}`)}
-              >
-                📥 Download
-              </button>
-            </div>
-
-            {/* Footer */}
-            <div className={styles.gradeModalFooter}>
-              <button
-                className={styles.closeReviewNavyBtn}
-                onClick={() => setShowGradeModal(false)}
-              >
-                Close Review
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 };
+
+// ---------- WorkspaceView (split-out for readability) ----------
+
+interface WorkspaceViewProps {
+  group: import('../../services/groupMembership.service').StudentGroupView;
+  lecturerName: string;
+  reports: SubmittedPhasedReport[];
+  reportsLoading: boolean;
+  searchText: string;
+  onSearchChange: (next: string) => void;
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (next: StatusFilter) => void;
+  onBack: () => void;
+  onOpenSubmit: (report?: SubmittedPhasedReport) => void;
+  isSubmitting: boolean;
+  submittingReport: boolean;
+  resubmittingReport: SubmittedPhasedReport | null;
+  lastSubmitted: SubmittedPhasedReport | null;
+  onCloseSubmit: () => void;
+  onSubmitted: (report: SubmittedPhasedReport) => Promise<void> | void;
+  joinedGroups: ReadonlyArray<import('../../services/groupMembership.service').StudentGroupView>;
+  phaseKey: string;
+  phaseTitle: string;
+}
+
+function WorkspaceView({
+  group,
+  lecturerName,
+  reports,
+  reportsLoading,
+  searchText,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  onBack,
+  onOpenSubmit,
+  isSubmitting,
+  submittingReport,
+  resubmittingReport,
+  lastSubmitted,
+  onCloseSubmit,
+  onSubmitted,
+  joinedGroups,
+  phaseKey,
+  phaseTitle,
+}: WorkspaceViewProps): JSX.Element {
+  const lecturerId = group.lecturerId;
+
+  // G5(a) — group members via shared helper.
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState<boolean>(true);
+  useEffect(() => {
+    let cancelled = false;
+    setMembersLoading(true);
+void groupMemberService
+    .getMembersForGroup(group.id)
+      .then((rows) => {
+        if (!cancelled) setMembers(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMembersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [group.id]);
+
+  // G5(b) — learning materials scoped by lecturerId; no server-side group FK.
+  const { materials, isLoading: materialsLoading } = useLearningMaterials({
+    lecturerId,
+  });
+  const visibleMaterials = useMemo<LearningMaterial[]>(() => {
+    if (materials.length === 0) return [];
+    if (typeof group.topicId === 'number' && group.topicId > 0) {
+      const filtered = materials.filter(
+        (m) => m.subFieldId === group.topicId || m.subFieldId === null,
+      );
+      return filtered.length > 0 ? filtered : materials;
+    }
+    return materials;
+  }, [materials, group.topicId]);
+
+  const latestRejected = useMemo<SubmittedPhasedReport | null>(
+    () => reports.find((r) => r.status === 'REJECTED') ?? null,
+    [reports],
+  );
+
+  return (
+    <div className={styles.page}>
+      <button
+        type="button"
+        className={styles.backLinkBtn}
+        onClick={onBack}
+      >
+        <ArrowLeft size={14} />
+        <span>Back to Research Groups</span>
+      </button>
+
+      <header className={styles.workspaceHeaderCard}>
+        <div className={styles.workspaceHeaderLeft}>
+          <span className={styles.workspaceIconCircle} aria-hidden>
+            <Users size={24} />
+          </span>
+          <div>
+            <h2 className={styles.workspaceTitle}>{group.name}</h2>
+            <p className={styles.workspaceSubtitle}>
+              Supervised by {lecturerName}
+              {group.description ? ` · ${group.description}` : ''}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className={styles.primaryBtn}
+          onClick={() => onOpenSubmit()}
+        >
+          <FileText size={14} />
+          <span>Submit milestone report</span>
+        </button>
+      </header>
+
+      {/* If the latest report is REJECTED, surface the banner. */}
+      {latestRejected ? (
+        <RejectionFeedbackBanner
+          report={latestRejected}
+          lecturerName={lecturerName}
+          onResubmit={onOpenSubmit}
+        />
+      ) : null}
+
+      {/* G5(c) — shared MilestoneProgress card. */}
+      <section className={styles.card}>
+        <MilestoneProgress reports={reports} />
+      </section>
+
+      {/* G5(b) — learning materials scoped by group. */}
+      <section className={styles.card}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Learning materials</h3>
+          <p className={styles.sectionSubtitle}>
+            Shared by your lecturer. Files appear here once published.
+          </p>
+        </div>
+        {materialsLoading ? (
+          <div className={styles.emptyCard}>
+            <Loader2 size={14} className={styles.spin} />
+            <span>Loading materials…</span>
+          </div>
+        ) : visibleMaterials.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <BookOpen size={14} />
+            <span>No learning materials published for this group yet.</span>
+          </div>
+        ) : (
+          <ul className={styles.materialList}>
+            {visibleMaterials.map((m) => (
+              <li key={m.id ?? m.learningMaterialId ?? m.title} className={styles.materialItem}>
+                <span className={styles.materialTitle}>{m.title ?? 'Untitled material'}</span>
+                {m.fileUrl ? (
+                  <a
+                    href={m.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.linkBtn}
+                  >
+                    Open PDF
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* G5(a) — fellow group members. */}
+      <section className={styles.card}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Group members</h3>
+          <p className={styles.sectionSubtitle}>
+            Other students assigned to this group. The list is filtered
+            client-side because BE does not expose `?researchGroupId=`.
+          </p>
+        </div>
+        {membersLoading ? (
+          <div className={styles.emptyCard}>
+            <Loader2 size={14} className={styles.spin} />
+            <span>Loading members…</span>
+          </div>
+        ) : members.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <Users size={14} />
+            <span>No fellow members yet.</span>
+          </div>
+        ) : (
+          <ul className={styles.memberList}>
+            {members.map((m) => (
+              <li key={m.id ?? m.groupMemberId} className={styles.memberItem}>
+                <span className={styles.memberLabel}>
+                  Student #{m.studentId ?? '?'}
+                </span>
+                <span className={styles.activityPill}>
+                  {m.activityStatus ?? 'ACTIVE'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className={styles.tableCard}>
+        <div className={styles.tableHeader}>
+          <h3 className={styles.tableTitle}>Milestone Reports</h3>
+          <div className={styles.tableFilters}>
+            <label className={styles.searchField}>
+              <Search size={14} />
+              <input
+                type="search"
+                placeholder="Search reports…"
+                value={searchText}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </label>
+            <label className={styles.filterField}>
+              <Filter size={14} />
+              <select
+                value={statusFilter}
+                onChange={(e) =>
+                  onStatusFilterChange(e.target.value as StatusFilter)
+                }
+              >
+                <option value="all">All statuses</option>
+                <option value="WAITING">Waiting</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="EVALUATED">Evaluated</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {reportsLoading ? (
+          <div className={styles.emptyCard}>
+            <Loader2 size={18} className={styles.spin} />
+            <span>Loading reports…</span>
+          </div>
+        ) : reports.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <Inbox size={18} />
+            <span>
+              No reports match your filters yet. Use{' '}
+              <strong>Submit milestone report</strong> to upload one.
+            </span>
+          </div>
+        ) : (
+          <div className={styles.tableResponsive}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Report</th>
+                  <th>Submitted</th>
+                  <th>Status</th>
+                  <th>Lecturer Feedback</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.map((report) => (
+                  <tr key={report.id}>
+                    <td>
+                      <span className={styles.reportIdPill}>
+                        #{report.id}
+                      </span>
+                    </td>
+                    <td>
+                      {report.submittedAt ? (
+                        <span className={styles.dateText}>
+                          <Calendar size={12} />
+                          {new Date(report.submittedAt).toLocaleDateString(
+                            'en-US',
+                            { dateStyle: 'medium' },
+                          )}
+                        </span>
+                      ) : (
+                        <span className={styles.mutedText}>Unknown</span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`${styles.statusBadge} ${STATUS_PALETTE[report.status]}`}
+                      >
+                        {report.status}
+                      </span>
+                    </td>
+                    <td>
+                      {report.finalOutcomeEvaluation ? (
+                        <span className={styles.feedbackText}>
+                          {report.finalOutcomeEvaluation.length > 80
+                            ? `${report.finalOutcomeEvaluation.slice(0, 80)}…`
+                            : report.finalOutcomeEvaluation}
+                        </span>
+                      ) : (
+                        <span className={styles.mutedText}>
+                          {report.status === 'EVALUATED'
+                            ? `Grade: ${report.lectureFeedback ?? '—'}/10`
+                            : '—'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className={styles.rowActions}>
+                        {report.reportFileUrl ? (
+                          <a
+                            href={report.reportFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.linkBtn}
+                          >
+                            Open PDF
+                          </a>
+                        ) : null}
+                        {report.status === 'REJECTED' ? (
+                          <button
+                            type="button"
+                            className={styles.resubmitBtn}
+                            onClick={() => onOpenSubmit(report)}
+                          >
+                            Resubmit
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {submittingReport ? (
+        <SubmitReportModal
+          isOpen={submittingReport}
+          researchGroupId={group.id}
+          groupMemberId={getPrimaryMembershipId(joinedGroups) ?? undefined}
+          phaseKey={phaseKey}
+          phaseTitle={phaseTitle}
+          lecturerName={lecturerName}
+          resubmittingReport={resubmittingReport}
+          isSubmitting={isSubmitting}
+          lastSubmitted={lastSubmitted}
+          onClose={onCloseSubmit}
+          onSubmitted={onSubmitted}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 export default StudentResearchGroups;

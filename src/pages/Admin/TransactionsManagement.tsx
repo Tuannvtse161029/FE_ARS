@@ -1,35 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  RefreshCw,
-  AlertTriangle,
-  Banknote,
-  CheckCircle2,
-  X,
-  Building2,
-} from 'lucide-react';
+import { AlertTriangle, Banknote, Building2, CheckCircle2, Eye, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { adminService } from '../../services/admin.service';
 import type { WithdrawalRequestItem } from '../../types/admin';
 import ApprovePayoutModal from './ApprovePayoutModal';
+import DenyWithdrawalModal from './DenyWithdrawalModal';
+import WithdrawalDetailsModal from './WithdrawalDetailsModal';
 import styles from './TransactionsManagement.module.css';
 
 type Tab = 'revenue' | 'withdrawals';
+type ModalKind = 'details' | 'payout' | 'deny' | null;
 
-const formatAmount = (amount: number) =>
-  new Intl.NumberFormat('vi-VN').format(amount);
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-
-const STATUS_CLASS: Record<WithdrawalRequestItem['status'], string> = {
-  PENDING: styles.statusPENDING,
-  ACCEPTED_PROCESSING: styles.statusACCEPTED_PROCESSING,
-  COMPLETED: styles.statusCOMPLETED,
-  DENIED: styles.statusDENIED,
+const formatAmount = (amount: number) => new Intl.NumberFormat('vi-VN').format(amount);
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
+const isValidReceiptUrl = (value?: string | null) => {
+  if (!value) return false;
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
 };
 
 const STATUS_LABEL: Record<WithdrawalRequestItem['status'], string> = {
@@ -41,261 +27,84 @@ const STATUS_LABEL: Record<WithdrawalRequestItem['status'], string> = {
 
 export const TransactionsManagement = () => {
   useAdminGuard();
-
   const [tab, setTab] = useState<Tab>('withdrawals');
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeWithdrawal, setActiveWithdrawal] = useState<WithdrawalRequestItem | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modal, setModal] = useState<ModalKind>(null);
 
   const load = useCallback(async () => {
     setError(null);
-    try {
-      const data = await adminService.getReviewerWithdrawals();
-      setWithdrawals(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load withdrawals.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    try { setWithdrawals(await adminService.getReviewerWithdrawals()); }
+    catch (loadError) { setError(loadError instanceof Error ? loadError.message : 'Failed to load withdrawals.'); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const pendingCount = withdrawals.filter((w) => w.status === 'PENDING').length;
-
-  const openPayout = (w: WithdrawalRequestItem) => {
-    setActiveWithdrawal(w);
-    setModalOpen(true);
+  const pendingCount = withdrawals.filter((withdrawal) => withdrawal.status === 'PENDING').length;
+  const openModal = (withdrawal: WithdrawalRequestItem, kind: Exclude<ModalKind, null>) => {
+    setActiveWithdrawal(withdrawal);
+    setModal(kind);
+  };
+  const handleUpdated = (updated: WithdrawalRequestItem) => {
+    setWithdrawals((previous) => previous.map((withdrawal) => withdrawal.txId === updated.txId ? updated : withdrawal));
+    setActiveWithdrawal(updated);
   };
 
-  const handleCompleted = (updated: WithdrawalRequestItem) => {
-    setWithdrawals((prev) =>
-      prev.map((w) => (w.txId === updated.txId ? updated : w)),
-    );
-  };
-
-  const quickApprove = async (w: WithdrawalRequestItem) => {
-    try {
-      const updated = await adminService.markWithdrawalProcessing(w.txId);
-      setWithdrawals((prev) =>
-        prev.map((item) => (item.txId === updated.txId ? updated : item)),
-      );
-      setActiveWithdrawal(updated);
-      setModalOpen(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to start payout.');
-    }
-  };
-
-  const quickDeny = async (w: WithdrawalRequestItem) => {
-    const reason = window.prompt(
-      `Reason for denying withdrawal #${String(w.txId).padStart(4, '0')}?`,
-    );
-    if (!reason || reason.trim().length < 10) {
-      if (reason !== null) {
-        alert('Denial reason must be at least 10 characters.');
-      }
-      return;
-    }
-    try {
-      const updated = await adminService.denyWithdrawal(w.txId, reason.trim());
-      setWithdrawals((prev) =>
-        prev.map((item) => (item.txId === updated.txId ? updated : item)),
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to deny withdrawal.');
-    }
-  };
+  const renderActions = (withdrawal: WithdrawalRequestItem) => (
+    <div className={styles.actions}>
+      <button className={`${styles.actionBtn} ${styles.actionBtnSecondary}`} onClick={() => openModal(withdrawal, 'details')} type="button"><Eye size={13} />View Details</button>
+      {withdrawal.status === 'PENDING' ? (
+        <>
+          <button className={styles.actionBtn} onClick={() => openModal(withdrawal, 'payout')} type="button"><CheckCircle2 size={13} />Approve &amp; Pay</button>
+          <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={() => openModal(withdrawal, 'deny')} type="button"><X size={13} />Deny</button>
+        </>
+      ) : null}
+      {withdrawal.status === 'ACCEPTED_PROCESSING' ? <button className={styles.actionBtn} onClick={() => openModal(withdrawal, 'payout')} type="button"><CheckCircle2 size={13} />Complete Transfer</button> : null}
+      {withdrawal.status === 'COMPLETED' && isValidReceiptUrl(withdrawal.proofReceiptUrl) ? <a href={withdrawal.proofReceiptUrl!} target="_blank" rel="noreferrer noopener" className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}><ExternalLink size={13} />View Receipt</a> : null}
+    </div>
+  );
 
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; Admin &gt; <span className={styles.activeBreadcrumb}>Transactions</span>
-      </div>
-
+      <div className={styles.breadcrumbs}>Home &gt; Admin &gt; <span className={styles.activeBreadcrumb}>Transactions</span></div>
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Transactions</h1>
-          <p className={styles.pageSubtitle}>
-            Platform revenue and reviewer payout clearance.
-          </p>
-        </div>
-        <button
-          className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
-          onClick={() => {
-            setRefreshing(true);
-            void load();
-          }}
-          disabled={refreshing}
-          type="button"
-        >
-          <RefreshCw size={13} className={refreshing ? styles.spinning : ''} />
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className={styles.headerLeft}><h1 className={styles.pageTitle}>Transactions</h1><p className={styles.pageSubtitle}>Platform revenue and reviewer payout clearance.</p></div>
+        <button className={`${styles.actionBtn} ${styles.actionBtnSecondary}`} onClick={() => { setRefreshing(true); void load(); }} disabled={refreshing} type="button"><RefreshCw size={13} className={refreshing ? styles.spinning : ''} />{refreshing ? 'Refreshing…' : 'Refresh'}</button>
       </div>
 
-      <div className={styles.tabs} role="tablist">
-        <button
-          className={`${styles.tab} ${tab === 'revenue' ? styles.tabActive : ''}`}
-          onClick={() => setTab('revenue')}
-          role="tab"
-          aria-selected={tab === 'revenue'}
-          type="button"
-        >
-          <Banknote size={16} />
-          Platform Revenue &amp; Transactions
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'withdrawals' ? styles.tabActive : ''}`}
-          onClick={() => setTab('withdrawals')}
-          role="tab"
-          aria-selected={tab === 'withdrawals'}
-          type="button"
-        >
-          <Building2 size={16} />
-          Reviewer Withdrawal Requests
-          {pendingCount > 0 && (
-            <span className={styles.tabBadge}>{pendingCount}</span>
-          )}
-        </button>
+      <div className={styles.tabs} role="tablist" aria-label="Transaction sections">
+        <button className={`${styles.tab} ${tab === 'revenue' ? styles.tabActive : ''}`} onClick={() => setTab('revenue')} role="tab" aria-selected={tab === 'revenue'} type="button"><Banknote size={16} />Platform Revenue &amp; Transactions</button>
+        <button className={`${styles.tab} ${tab === 'withdrawals' ? styles.tabActive : ''}`} onClick={() => setTab('withdrawals')} role="tab" aria-selected={tab === 'withdrawals'} type="button"><Building2 size={16} />Reviewer Withdrawal Requests{pendingCount > 0 ? <span className={styles.tabBadge}>{pendingCount}</span> : null}</button>
       </div>
 
-      {tab === 'revenue' && (
+      {tab === 'revenue' ? <div className={styles.tableCard}><div className={styles.emptyState}><Banknote size={32} /><span>Platform revenue is unavailable until the backend analytics contract is implemented.</span></div></div> : null}
+      {tab === 'withdrawals' ? (
         <div className={styles.tableCard}>
-          <div className={styles.emptyState}>
-            <Banknote size={32} color="#94a3b8" />
-            <span>
-              Platform Revenue &amp; Transactions will appear here once the BE
-              ships the analytics endpoint described in
-              <code style={{ padding: '0 4px' }}>docs/local-only/admin-suite-be-gap-report.md</code>.
-            </span>
-          </div>
+          {loading ? <div className={styles.loadingState}><RefreshCw size={20} className={styles.spinning} /><span>Loading withdrawals…</span></div>
+            : error ? <div className={styles.errorState}><AlertTriangle size={20} /><span>{error}</span><button className={styles.retryBtn} onClick={() => void load()} type="button">Retry</button></div>
+              : withdrawals.length === 0 ? <div className={styles.emptyState}><Building2 size={32} /><span>No withdrawal requests yet.</span></div>
+                : <div className={styles.tableResponsive}><table className={styles.table}>
+                  <thead><tr><th>TX ID</th><th>Reviewer</th><th>Amount</th><th>Bank</th><th>Account</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody>{withdrawals.map((withdrawal) => <tr key={withdrawal.txId}>
+                    <td className={styles.txId}>#{String(withdrawal.txId).padStart(4, '0')}</td>
+                    <td>{withdrawal.reviewerName}<span className={styles.secondaryText}>ID #{withdrawal.userId}</span></td>
+                    <td className={`${styles.amount} ${withdrawal.status === 'PENDING' ? styles.amountPending : ''}`}>{formatAmount(withdrawal.amountVnd)} {withdrawal.currency ?? 'VND'}</td>
+                    <td>{withdrawal.bankName}<span className={styles.secondaryText}>{withdrawal.accountName}</span></td>
+                    <td>{withdrawal.accountNumber}</td><td>{formatDate(withdrawal.requestDate)}</td>
+                    <td><span className={`${styles.statusPill} ${styles[`status${withdrawal.status}`]}`}>{STATUS_LABEL[withdrawal.status]}</span></td>
+                    <td>{renderActions(withdrawal)}</td>
+                  </tr>)}</tbody>
+                </table></div>}
         </div>
-      )}
+      ) : null}
 
-      {tab === 'withdrawals' && (
-        <div className={styles.tableCard}>
-          {loading ? (
-            <div className={styles.loadingState}>
-              <RefreshCw size={20} className={styles.spinning} />
-              <span>Loading withdrawals…</span>
-            </div>
-          ) : error ? (
-            <div className={styles.errorState}>
-              <AlertTriangle size={20} color="#ef4444" />
-              <span>{error}</span>
-              <button className={styles.retryBtn} onClick={() => void load()}>Retry</button>
-            </div>
-          ) : withdrawals.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Building2 size={32} color="#94a3b8" />
-              <span>No withdrawal requests yet.</span>
-            </div>
-          ) : (
-            <div className={styles.tableResponsive}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>TX ID</th>
-                    <th>REVIEWER</th>
-                    <th>AMOUNT (VND)</th>
-                    <th>BANK</th>
-                    <th>ACCOUNT</th>
-                    <th>DATE</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {withdrawals.map((w) => (
-                    <tr key={w.txId}>
-                      <td className={styles.txId}>
-                        #{String(w.txId).padStart(4, '0')}
-                      </td>
-                      <td>{w.reviewerName}</td>
-                      <td className={`${styles.amount} ${w.status === 'PENDING' ? styles.amountPending : ''}`}>
-                        {formatAmount(w.amountVnd)} VND
-                      </td>
-                      <td>
-                        {w.bankName}
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                          {w.accountName}
-                        </div>
-                      </td>
-                      <td>{w.accountNumber}</td>
-                      <td>{formatDate(w.requestDate)}</td>
-                      <td>
-                        <span className={`${styles.statusPill} ${STATUS_CLASS[w.status]}`}>
-                          {STATUS_LABEL[w.status]}
-                        </span>
-                      </td>
-                      <td>
-                        {w.status === 'PENDING' && (
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              className={styles.actionBtn}
-                              onClick={() => quickApprove(w)}
-                              type="button"
-                            >
-                              <CheckCircle2 size={13} />
-                              Approve &amp; Pay
-                            </button>
-                            <button
-                              className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
-                              onClick={() => quickDeny(w)}
-                              type="button"
-                            >
-                              <X size={13} />
-                              Deny
-                            </button>
-                          </div>
-                        )}
-                        {w.status === 'ACCEPTED_PROCESSING' && (
-                          <button
-                            className={styles.actionBtn}
-                            onClick={() => openPayout(w)}
-                            type="button"
-                          >
-                            Complete Transfer
-                          </button>
-                        )}
-                        {w.status === 'COMPLETED' && (
-                          <a
-                            href={w.proofReceiptUrl ?? '#'}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
-                          >
-                            View Receipt
-                          </a>
-                        )}
-                        {w.status === 'DENIED' && (
-                          <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
-                            {w.rejectionReason || 'Denied'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      <ApprovePayoutModal
-        withdrawal={activeWithdrawal}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCompleted={handleCompleted}
-      />
+      <WithdrawalDetailsModal withdrawal={activeWithdrawal} open={modal === 'details'} onClose={() => setModal(null)} />
+      <DenyWithdrawalModal withdrawal={activeWithdrawal} open={modal === 'deny'} onClose={() => setModal(null)} onDenied={handleUpdated} />
+      <ApprovePayoutModal withdrawal={activeWithdrawal} open={modal === 'payout'} onClose={() => setModal(null)} onCompleted={handleUpdated} />
     </div>
   );
 };

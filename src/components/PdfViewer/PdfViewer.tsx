@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.js?raw';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../firebase';
+import { RefreshCw, ExternalLink, FileText } from 'lucide-react';
+import {
+  resolvePdfSource,
+  classifyPdfSource,
+  isRecoverablePdfError,
+  PdfSourceError,
+  type PdfSourceReason,
+  type PdfSourceCategory,
+} from '../../utils/pdfSource';
 import styles from './PdfViewer.module.css';
 
 // Create a Blob URL from the worker source at module init.
@@ -24,35 +31,73 @@ interface ThumbnailEntry {
   height: number;
 }
 
+interface ErrorState {
+  category: PdfSourceCategory;
+  reason: PdfSourceReason;
+  message: string;
+  httpStatus: number | undefined;
+  recoverable: boolean;
+  rawInputUrl: string | null;
+}
+
+/** Stable object URL lifecycle helper — revoke previous URL before replacing. */
+function swapObjectUrl(prev: string | null, next: string | null): string | null {
+  if (prev && prev !== next) URL.revokeObjectURL(prev);
+  return next;
+}
+
 const THUMBNAIL_SCALE = 0.2;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3.0;
 const SCALE_STEP = 0.25;
 
-async function fetchViaFirebaseStorage(url: string): Promise<Blob> {
-  if (!storage) {
-    throw new Error('Firebase is not configured. Cannot fetch PDF from Firebase Storage.');
+function isOpenableAbsoluteUrl(value: string | null): value is string {
+  if (!value) return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
   }
-  const storageRef = ref(storage, url);
-  const downloadUrl = await getDownloadURL(storageRef);
-  const response = await fetch(downloadUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
-  }
-  return await response.blob();
 }
 
-/** True when `url` is already a resolved Firebase download URL (full HTTPS with alt=media). */
-function isFirebaseDownloadUrl(url: string): boolean {
-  return url.includes('firebasestorage.googleapis.com') && url.includes('alt=media');
+function safeLabelForCategory(category: PdfSourceCategory): string {
+  switch (category) {
+    case 'firebaseDownloadUrl':
+    case 'gsUri':
+    case 'firebaseObjectPath':
+      return 'the storage location';
+    case 'httpUrl':
+    case 'relativeUrl':
+      return 'the document URL';
+    case 'blob':
+      return 'the file';
+    default:
+      return 'the document';
+  }
 }
 
-async function fetchBlobFromUrl(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+function buildErrorState(err: unknown, rawInput: string | File | Blob | null): ErrorState {
+  if (err instanceof PdfSourceError) {
+    return {
+      category: err.category,
+      reason: err.reason,
+      message: err.message,
+      httpStatus: err.httpStatus,
+      recoverable: isRecoverablePdfError(err),
+      rawInputUrl: null,
+    };
   }
-  return response.arrayBuffer();
+  // Unknown error. Don't expose err.message — it may contain URLs or stack traces.
+  const category = classifyPdfSource(rawInput);
+  return {
+    category,
+    reason: 'invalid',
+    message: 'Unable to load proof document.',
+    httpStatus: undefined,
+    recoverable: false,
+    rawInputUrl: null,
+  };
 }
 
 export const PdfViewer = ({
@@ -65,18 +110,23 @@ export const PdfViewer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
+  const abortRef = useRef<AbortController | null>(null);
+  const lastResolvedUrlRef = useRef<{ absolute: string | null } | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.5);
   const [thumbnails, setThumbnails] = useState<Map<number, ThumbnailEntry>>(new Map());
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [loading, setLoading] = useState(false);
   const [renderingPages, setRenderingPages] = useState<Set<number>>(new Set());
+  const [retryNonce, setRetryNonce] = useState(0);
 
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
   const thumbCanvasCache = useRef<Map<number, HTMLCanvasElement>>(new Map());
+  /** Object URL of the resolved PDF blob, kept so the toolbar can open it in a new tab. */
+  const pdfObjectUrlRef = useRef<string | null>(null);
 
   // ── Render a single page to a canvas ───────────────────────────────
   const renderToCanvas = async (
@@ -111,7 +161,8 @@ export const PdfViewer = ({
     } catch (err: unknown) {
       const name = (err as { name?: string })?.name;
       if (name !== 'RenderingCancelledException') {
-        console.error('Render error:', err);
+        // Silent — the actual document-level error is already surfaced in `error` state.
+        void err;
       }
     } finally {
       renderTaskRef.current = null;
@@ -129,7 +180,6 @@ export const PdfViewer = ({
   const renderThumbnail = async (pageNum: number) => {
     if (thumbnails.has(pageNum) || renderingPages.has(pageNum)) return;
 
-    // Reuse a hidden offscreen canvas from cache
     let offscreen = thumbCanvasCache.current.get(pageNum);
     if (!offscreen) {
       offscreen = document.createElement('canvas');
@@ -161,7 +211,7 @@ export const PdfViewer = ({
         return next;
       });
     } catch (err) {
-      console.error(`Thumbnail error page ${pageNum}:`, err);
+      void err;
     } finally {
       setRenderingPages((prev) => {
         const next = new Set(prev);
@@ -173,44 +223,64 @@ export const PdfViewer = ({
 
   // ── Load PDF ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!url) return;
-    setLoading(true);
-    setError(null);
-    setTotalPages(0);
-    setThumbnails(new Map());
-    setCurrentPage(1);
-    thumbCanvasCache.current.clear();
+    // Cancel any in-flight load before starting a new one.
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    let cancelled = false;
+    const resetState = () => {
+      setLoading(true);
+      setError(null);
+      setTotalPages(0);
+      setThumbnails(new Map());
+      setCurrentPage(1);
+      thumbCanvasCache.current.clear();
+      pdfObjectUrlRef.current = swapObjectUrl(pdfObjectUrlRef.current, null);
+    };
+
+    // Empty input → show empty state, no work.
+    if (url == null || (typeof url === 'string' && url.trim().length === 0)) {
+      setLoading(false);
+      setError(null);
+      setTotalPages(0);
+      setThumbnails(new Map());
+      setCurrentPage(1);
+      thumbCanvasCache.current.clear();
+      pdfObjectUrlRef.current = swapObjectUrl(pdfObjectUrlRef.current, null);
+      pdfDocRef.current = null;
+      return;
+    }
+
+    resetState();
+
+    const rawInput = url;
+    const rawInputUrl = typeof url === 'string' ? url : null;
 
     const loadPdf = async () => {
       try {
-        let source: string | { data: ArrayBuffer };
+        const source = await resolvePdfSource(url, { signal: controller.signal });
+        if (controller.signal.aborted) return;
 
-        if (typeof url === 'string') {
-          if (isFirebaseDownloadUrl(url)) {
-            // Already a resolved Firebase download URL — fetch it directly
-            source = { data: await fetchBlobFromUrl(url) };
-          } else if (
-            storage &&
-            url.includes('firebasestorage.googleapis.com')
-          ) {
-            // Firebase storage path — resolve via Firebase SDK then fetch
-            const blob = await fetchViaFirebaseStorage(url);
-            source = { data: await blob.arrayBuffer() };
-          } else {
-            // Absolute URL or relative path — pass directly to pdf.js
-            source = url;
-          }
+        let buffer: ArrayBuffer;
+        if (source.resolved instanceof Blob) {
+          buffer = await source.resolved.arrayBuffer();
         } else {
-          const buffer = await url.arrayBuffer();
-          source = { data: buffer };
+          buffer = source.resolved;
         }
+        if (controller.signal.aborted) return;
 
-        const loadingTask = pdfjsLib.getDocument(source);
+        // Cache an object URL for the resolved bytes so the toolbar can
+        // open the PDF in a new tab without forcing a Chrome "save as" dialog.
+        const blob = new Blob([buffer], { type: 'application/pdf' });
+        pdfObjectUrlRef.current = swapObjectUrl(
+          pdfObjectUrlRef.current,
+          URL.createObjectURL(blob),
+        );
+
+        const loadingTask = pdfjsLib.getDocument({ data: buffer });
         const doc = await loadingTask.promise;
 
-        if (cancelled) {
+        if (controller.signal.aborted) {
           doc.destroy();
           return;
         }
@@ -219,36 +289,46 @@ export const PdfViewer = ({
         setTotalPages(doc.numPages);
         onTotalPages?.(doc.numPages);
 
-        // Render the first page immediately
         renderMainPage(1, 1.5);
 
-        // Render thumbnails for first few pages
         for (let i = 1; i <= Math.min(5, doc.numPages); i++) {
           renderThumbnail(i);
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load PDF document.');
-        } else {
-          setError(`Failed to load PDF: the URL may be invalid or inaccessible. (URL: ${url})`);
+        if (controller.signal.aborted) return;
+        // Loading failed — drop any partial object URL so the toolbar
+        // does not expose a "Download" for an unreadable document.
+        pdfObjectUrlRef.current = swapObjectUrl(pdfObjectUrlRef.current, null);
+        setError(buildErrorState(err, rawInput));
+        setTotalPages(0);
+        if (typeof rawInputUrl === 'string') {
+          lastResolvedUrlRef.current = { absolute: rawInputUrl };
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
-    loadPdf();
+    void loadPdf();
 
     return () => {
-      cancelled = true;
+      controller.abort();
       pdfDocRef.current = null;
     };
-  }, [url, onTotalPages]);
+    // retryNonce forces a retry-driven reload without depending on identity of `url`.
+  }, [url, onTotalPages, retryNonce]);
+
+  // Revoke the cached object URL when the component unmounts.
+  useEffect(() => {
+    return () => {
+      pdfObjectUrlRef.current = swapObjectUrl(pdfObjectUrlRef.current, null);
+    };
+  }, []);
 
   // Re-render main canvas when current page or scale changes
   useEffect(() => {
-    renderMainPage(currentPage, scale);
-  }, [currentPage, scale]);
+    if (totalPages > 0) renderMainPage(currentPage, scale);
+  }, [currentPage, scale, totalPages]);
 
   // ── Scroll thumbnail into view when page changes externally ─────────
   const scrollThumbIntoView = (pageNum: number) => {
@@ -263,6 +343,7 @@ export const PdfViewer = ({
 
   // ── Page navigation ───────────────────────────────────────────────
   const goToPage = (pageNum: number) => {
+    if (totalPages <= 0) return;
     const clamped = Math.max(1, Math.min(pageNum, totalPages));
     setCurrentPage(clamped);
     onPageChange?.(clamped);
@@ -318,92 +399,214 @@ export const PdfViewer = ({
     return () => observer.disconnect();
   }, [totalPages]);
 
+  // ── Error UI helpers ─────────────────────────────────────────────
+  const showToolbar = !error;
+  const showPagination = !error && totalPages > 0;
+  const showSidebarThumbs = !error && totalPages > 0;
+
+  const handleRetry = () => setRetryNonce((n) => n + 1);
+
+  const openTarget = (() => {
+    if (!error) return null;
+    if (isOpenableAbsoluteUrl(error.rawInputUrl)) return error.rawInputUrl;
+    if (typeof url === 'string' && isOpenableAbsoluteUrl(url)) return url;
+    return null;
+  })();
+
+  // Open the resolved PDF in a new tab without forcing a "save as" dialog.
+  // The toolbar action only ever exists while a successful PDF is loaded.
+  const openResolvedInNewTab = () => {
+    const objectUrl = pdfObjectUrlRef.current;
+    if (!objectUrl) return;
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const renderErrorReasonExtra = () => {
+    if (!error) return null;
+    if (error.reason === 'notFound') {
+      return <span>The document was not found at {safeLabelForCategory(error.category)}.</span>;
+    }
+    if (error.reason === 'forbidden') {
+      return <span>Access is restricted. Try reloading or requesting a new link.</span>;
+    }
+    if (error.reason === 'server') {
+      return <span>The document server reported an error. Please try again shortly.</span>;
+    }
+    if (error.reason === 'network') {
+      return <span>Check your connection and try again.</span>;
+    }
+    if (error.reason === 'htmlResponse') {
+      return <span>The link responded with a non-PDF document instead of a PDF.</span>;
+    }
+    if (error.reason === 'invalid') {
+      return <span>The document link is not in a recognized format.</span>;
+    }
+    if (error.reason === 'firebaseNotConfigured') {
+      return <span>Document storage is not configured for this environment.</span>;
+    }
+    return null;
+  };
+
+  const renderError = () => {
+    if (!error) return null;
+    return (
+      <div
+        className={styles.errorCard}
+        role="alert"
+        data-testid="pdf-error"
+        data-reason={error.reason}
+      >
+        <div className={styles.errorIcon} aria-hidden="true">
+          <FileText size={28} />
+        </div>
+        <div className={styles.errorBody}>
+          <strong className={styles.errorTitle}>Unable to load proof document</strong>
+          <p className={styles.errorMessage} data-testid="pdf-error-message">{error.message}</p>
+          <p className={styles.errorHint}>{renderErrorReasonExtra()}</p>
+        </div>
+        <div className={styles.errorActions}>
+          {error.recoverable ? (
+            <button
+              type="button"
+              className={styles.errorRetry}
+              onClick={handleRetry}
+              data-testid="pdf-error-retry"
+            >
+              <RefreshCw size={14} /> Retry
+            </button>
+          ) : null}
+          {openTarget ? (
+            <a
+              href={openTarget}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={styles.errorOpen}
+              data-testid="pdf-error-open"
+            >
+              <ExternalLink size={14} /> Open in new tab
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEmpty = () => (
+    <div className={styles.emptyCard} role="status" data-testid="pdf-empty">
+      <FileText size={28} aria-hidden="true" />
+      <strong>No proof document supplied</strong>
+      <span>This request did not include an attached document.</span>
+    </div>
+  );
+
+  const inputIsEmpty =
+    url == null || (typeof url === 'string' && url.trim().length === 0);
+
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div className={styles.viewerWrapper} data-testid="pdf-viewer">
-      {/* Toolbar */}
-      <div className={styles.toolbar} role="toolbar" aria-label="PDF viewer controls">
-        <div className={styles.navGroup}>
-          <button
-            className={styles.navBtn}
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage <= 1}
-            aria-label="Previous page"
-            data-testid="pdf-prev-btn"
-          >
-            ‹
-          </button>
+      {showToolbar ? (
+        <div className={styles.toolbar} role="toolbar" aria-label="PDF viewer controls">
+          <div className={styles.navGroup}>
+            <button
+              className={styles.navBtn}
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              aria-label="Previous page"
+              data-testid="pdf-prev-btn"
+            >
+              ‹
+            </button>
 
-          <span className={styles.pageIndicator} data-testid="pdf-page-indicator">
-            <input
-              type="number"
-              className={styles.pageInput}
-              value={currentPage}
-              min={1}
-              max={totalPages}
-              aria-label="Current page"
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                if (!isNaN(v)) goToPage(v);
-              }}
-              data-testid="pdf-page-input"
-            />
-            <span className={styles.pageTotal}>/ {totalPages}</span>
-          </span>
+            <span className={styles.pageIndicator} data-testid="pdf-page-indicator">
+              <input
+                type="number"
+                className={styles.pageInput}
+                value={currentPage}
+                min={1}
+                max={totalPages}
+                aria-label="Current page"
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v)) goToPage(v);
+                }}
+                data-testid="pdf-page-input"
+              />
+              <span className={styles.pageTotal}>/ {totalPages}</span>
+            </span>
 
-          <button
-            className={styles.navBtn}
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            aria-label="Next page"
-            data-testid="pdf-next-btn"
-          >
-            ›
-          </button>
+            <button
+              className={styles.navBtn}
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              aria-label="Next page"
+              data-testid="pdf-next-btn"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className={styles.zoomGroup}>
+            <button
+              className={styles.zoomBtn}
+              onClick={zoomOut}
+              disabled={scale <= MIN_SCALE}
+              aria-label="Zoom out"
+              data-testid="pdf-zoom-out-btn"
+            >
+              −
+            </button>
+
+            <button
+              className={styles.zoomPercent}
+              onClick={zoomReset}
+              aria-label="Reset zoom"
+              title="Reset zoom"
+              data-testid="pdf-zoom-percent"
+            >
+              {Math.round(scale * 100)}%
+            </button>
+
+            <button
+              className={styles.zoomBtn}
+              onClick={zoomIn}
+              disabled={scale >= MAX_SCALE}
+              aria-label="Zoom in"
+              data-testid="pdf-zoom-in-btn"
+            >
+              +
+            </button>
+          </div>
+
+          {/* Top-right action: open the loaded PDF in a new tab. Uses
+              `window.open(URL.createObjectURL(blob), ...)` so Chrome does
+              not treat the response as a forced "save as" download — the
+              user already sees the PDF inline and just wants a new tab. */}
+          {totalPages > 0 ? (
+            <div className={styles.toolbarActions}>
+              <button
+                type="button"
+                className={styles.toolbarOpenBtn}
+                onClick={openResolvedInNewTab}
+                aria-label="Open PDF in new tab"
+                title="Open in new tab"
+                data-testid="pdf-open-newtab-btn"
+              >
+                <ExternalLink size={14} /> Open in new tab
+              </button>
+            </div>
+          ) : null}
         </div>
-
-        <div className={styles.zoomGroup}>
-          <button
-            className={styles.zoomBtn}
-            onClick={zoomOut}
-            disabled={scale <= MIN_SCALE}
-            aria-label="Zoom out"
-            data-testid="pdf-zoom-out-btn"
-          >
-            −
-          </button>
-
-          <button
-            className={styles.zoomPercent}
-            onClick={zoomReset}
-            aria-label="Reset zoom"
-            title="Reset zoom"
-            data-testid="pdf-zoom-percent"
-          >
-            {Math.round(scale * 100)}%
-          </button>
-
-          <button
-            className={styles.zoomBtn}
-            onClick={zoomIn}
-            disabled={scale >= MAX_SCALE}
-            aria-label="Zoom in"
-            data-testid="pdf-zoom-in-btn"
-          >
-            +
-          </button>
-        </div>
-      </div>
+      ) : null}
 
       {/* Body: sidebar + main canvas */}
       <div className={styles.viewerBody}>
-        {/* Sidebar: thumbnail strip */}
         <aside className={styles.sidebar} ref={sidebarRef} aria-label="Page thumbnails">
           <div className={styles.sidebarHeader}>
             <span className={styles.sidebarTitle}>Pages</span>
           </div>
           <div className={styles.thumbList}>
-            {totalPages > 0 ? (
+            {showSidebarThumbs ? (
               Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
                 const thumb = thumbnails.get(pageNum);
                 const isActive = pageNum === currentPage;
@@ -439,12 +642,11 @@ export const PdfViewer = ({
                 );
               })
             ) : (
-              <div className={styles.sidebarEmpty}>No pages</div>
+              <div className={styles.sidebarEmpty}>{showPagination ? 'No pages' : '0 pages'}</div>
             )}
           </div>
         </aside>
 
-        {/* Main canvas area */}
         <div
           className={styles.canvasContainer}
           ref={containerRef}
@@ -453,19 +655,15 @@ export const PdfViewer = ({
           aria-label="PDF page viewer"
           data-testid="pdf-canvas-container"
         >
-          {loading && (
+          {loading ? (
             <div className={styles.overlay} data-testid="pdf-loading">
               <div className={styles.spinner} aria-label="Loading PDF" />
               <span>Loading PDF...</span>
             </div>
-          )}
+          ) : null}
 
-          {error && (
-            <div className={styles.errorBox} role="alert" data-testid="pdf-error">
-              <strong>Failed to load PDF</strong>
-              <p>{error}</p>
-            </div>
-          )}
+          {inputIsEmpty && !loading ? renderEmpty() : null}
+          {error && !loading ? renderError() : null}
 
           <canvas
             ref={mainCanvasRef}

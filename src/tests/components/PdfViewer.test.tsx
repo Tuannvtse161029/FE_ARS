@@ -1,10 +1,17 @@
 /**
  * Unit tests for the PdfViewer component.
  * Uses vi.hoisted for mock factory variables and vi.fn() for render spies.
+ *
+ * Tests cover:
+ *   - Initial render / toolbar / loading
+ *   - Page navigation and zoom
+ *   - Callbacks
+ *   - Error UI (Defect 4D): empty, invalid, 404, htmlResponse, recoverable
+ *   - Safety: no Firebase secret leakage, no `1 / 0` pagination on failure
  */
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import React from 'react';
 import { PdfViewer } from '../../components/PdfViewer';
 
@@ -13,7 +20,6 @@ const mockObserve = vi.fn();
 const mockUnobserve = vi.fn();
 const mockDisconnect = vi.fn();
 
-// Define as a regular class to allow `new` to work correctly
 class MockIntersectionObserver {
   observe = mockObserve;
   unobserve = mockUnobserve;
@@ -64,8 +70,9 @@ vi.mock('pdfjs-dist', () => ({
   version: '3.11.174',
 }));
 
-// Mock canvas.getContext so renderPage can actually run
+// ── Mock canvas.getContext so renderToCanvas can actually run ───────────────
 const originalGetContext = HTMLCanvasElement.prototype.getContext;
+const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = function (
     _contextType: string,
@@ -73,14 +80,60 @@ beforeAll(() => {
   ) {
     return mockCanvasContext;
   } as typeof HTMLCanvasElement.prototype.getContext;
+  // JSDOM doesn't ship canvas implementation; stub toDataURL so the
+  // thumbnail renderer doesn't spam console warnings during tests.
+  HTMLCanvasElement.prototype.toDataURL = function (..._args: unknown[]) {
+    return 'data:image/png;base64,';
+  } as typeof HTMLCanvasElement.prototype.toDataURL;
 });
 
 afterAll(() => {
   HTMLCanvasElement.prototype.getContext = originalGetContext;
+  HTMLCanvasElement.prototype.toDataURL = originalToDataURL;
+});
+
+// ── Fake fetch (default: returns a valid PDF body so existing tests pass) ──
+const SAMPLE_PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]).buffer;
+let nextFetchBehavior:
+  | { kind: 'ok'; status?: number; contentType?: string; body?: ArrayBuffer }
+  | { kind: 'reject'; error: Error }
+  | { kind: 'custom'; fn: (input: RequestInfo | URL) => Promise<Response> } = {
+  kind: 'ok',
+  status: 200,
+  contentType: 'application/pdf',
+  body: SAMPLE_PDF_BYTES,
+};
+
+const originalFetch = globalThis.fetch;
+beforeEach(() => {
+  nextFetchBehavior = {
+    kind: 'ok',
+    status: 200,
+    contentType: 'application/pdf',
+    body: SAMPLE_PDF_BYTES,
+  };
+  globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    if (nextFetchBehavior.kind === 'reject') throw nextFetchBehavior.error;
+    if (nextFetchBehavior.kind === 'custom') return nextFetchBehavior.fn(input);
+    const { status = 200, contentType = 'application/pdf', body = SAMPLE_PDF_BYTES } = nextFetchBehavior;
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      headers: {
+        get: (key: string) =>
+          key.toLowerCase() === 'content-type' ? contentType : null,
+      },
+      arrayBuffer: async () => body,
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
 });
 
 // ── Render helper ──────────────────────────────────────────────────────────────
-const renderViewer = (url = 'https://example.com/doc.pdf') =>
+const renderViewer = (url: string | File | Blob | null = 'https://example.com/doc.pdf') =>
   render(<PdfViewer url={url} />);
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -138,60 +191,350 @@ describe('PdfViewer', () => {
       expect(screen.getByTestId('pdf-loading')).toBeInTheDocument();
     });
 
-    it('does not render error initially', () => {
+    it('does not render error or empty initially', () => {
       renderViewer();
       expect(screen.queryByTestId('pdf-error')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('pdf-empty')).not.toBeInTheDocument();
     });
   });
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
   describe('loading', () => {
-    it('calls getDocument with the given URL', async () => {
+    it('calls getDocument with array-buffer source (resolver pipeline)', async () => {
       renderViewer('https://storage.example.com/paper.pdf');
-      await act(async () => { /* flush initial load */ });
-      expect(getDocumentMock).toHaveBeenCalledWith('https://storage.example.com/paper.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(getDocumentMock).toHaveBeenCalledTimes(1);
+      // getDocument must be invoked with an object (data: ArrayBuffer) per the resolver contract.
+      const arg = getDocumentMock.mock.calls[0][0];
+      expect(arg).toBeTypeOf('object');
+      expect(arg).toHaveProperty('data');
+      expect(arg.data).toBeInstanceOf(ArrayBuffer);
     });
 
     it('hides loading spinner after PDF loads', async () => {
       renderViewer();
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       expect(screen.queryByTestId('pdf-loading')).not.toBeInTheDocument();
     });
 
     it('calls getPage for page 1 after load', async () => {
       renderViewer();
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       expect(mockDoc.getPage).toHaveBeenCalledWith(1);
     });
 
     it('renders page with default scale (1.5)', async () => {
       renderViewer();
-      await act(async () => { /* flush initial load */ });
-      // Verify the zoom percent shows the default scale
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
     });
 
     it('renders with correct canvas dimensions', async () => {
-      // Set mock BEFORE render so the useEffect sees it when it starts loading
       mockPage.getViewport.mockReturnValue({ width: 892, height: 1263, scale: 1 });
       renderViewer();
-      await act(async () => { /* flush initial load + async renderPage */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       const canvas = screen.getByTestId('pdf-canvas') as HTMLCanvasElement;
       expect(canvas.style.width).toBe('892px');
       expect(canvas.style.height).toBe('1263px');
     });
 
-    it('shows error when getDocument rejects', async () => {
+    it('shows error when getDocument rejects (downstream render failure)', async () => {
       getDocumentMock.mockReturnValue({
         promise: Promise.reject(new Error('403 Forbidden')),
         on: vi.fn(),
         destroy: vi.fn(),
       });
       renderViewer('https://example.com/restricted.pdf');
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
-      expect(screen.getByText(/403 forbidden/i)).toBeInTheDocument();
+    });
+  });
+
+  // ── File / Blob inputs (Defect 4B requirement) ─────────────────────────────
+
+  describe('blob inputs', () => {
+    it('renders File input directly without hitting fetch', async () => {
+      const file = new File(['%PDF-1.4'], 'doc.pdf', { type: 'application/pdf' });
+      renderViewer(file);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(getDocumentMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('pdf-error')).not.toBeInTheDocument();
+    });
+
+    it('renders Blob input directly without hitting fetch', async () => {
+      const blob = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+      renderViewer(blob);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(getDocumentMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Error UI states (Defect 4D) ────────────────────────────────────────────
+
+  describe('error states', () => {
+    it('shows the empty card when url is null', async () => {
+      renderViewer(null);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-empty')).toBeInTheDocument();
+      expect(screen.queryByTestId('pdf-error')).not.toBeInTheDocument();
+    });
+
+    it('shows the empty card when url is an empty string', async () => {
+      renderViewer('');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-empty')).toBeInTheDocument();
+    });
+
+    it('shows typed error with "File not found" message for 404 responses', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
+      expect(screen.getByTestId('pdf-error')).toHaveAttribute('data-reason', 'notFound');
+      expect(screen.getByTestId('pdf-error-message')).toHaveTextContent(/file not found/i);
+    });
+
+    it('does NOT show Retry button for 404 (non-recoverable)', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-error-retry')).not.toBeInTheDocument();
+    });
+
+    it('shows htmlResponse error when content-type is HTML', async () => {
+      nextFetchBehavior = {
+        kind: 'ok',
+        status: 200,
+        contentType: 'text/html; charset=utf-8',
+        body: new TextEncoder().encode('<html>oops</html>').buffer,
+      };
+      renderViewer('https://example.com/page');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
+      expect(screen.getByTestId('pdf-error')).toHaveAttribute('data-reason', 'htmlResponse');
+    });
+
+    it('does NOT pass HTML bytes to PDF.js (getDocument never called)', async () => {
+      nextFetchBehavior = {
+        kind: 'ok',
+        status: 200,
+        contentType: 'text/html',
+        body: new TextEncoder().encode('<!DOCTYPE html>').buffer,
+      };
+      renderViewer('https://example.com/page');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(getDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('shows server error for 5xx and offers Retry (recoverable)', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 502, contentType: null, body: null };
+      renderViewer('https://example.com/down.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
+      expect(screen.getByTestId('pdf-error')).toHaveAttribute('data-reason', 'server');
+      expect(screen.getByTestId('pdf-error-retry')).toBeInTheDocument();
+    });
+
+    it('shows network error and offers Retry (recoverable)', async () => {
+      nextFetchBehavior = { kind: 'reject', error: new TypeError('Failed to fetch') };
+      renderViewer('https://example.com/x.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
+      expect(screen.getByTestId('pdf-error')).toHaveAttribute('data-reason', 'network');
+      expect(screen.getByTestId('pdf-error-retry')).toBeInTheDocument();
+    });
+
+    it('shows invalid error for malformed URL and does NOT offer Retry', async () => {
+      renderViewer(':::not a url');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-error')).toBeInTheDocument();
+      expect(screen.getByTestId('pdf-error')).toHaveAttribute('data-reason', 'invalid');
+      expect(screen.queryByTestId('pdf-error-retry')).not.toBeInTheDocument();
+    });
+
+    it('never shows "1 / 0" page pagination on failure', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      // Toolbar is hidden when error is present — no "1 / 0" indicator visible.
+      expect(screen.queryByTestId('pdf-page-indicator')).not.toBeInTheDocument();
+    });
+
+    it('sidebar shows "0 pages" placeholder on failure (no empty iteration)', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByText(/0 pages/i)).toBeInTheDocument();
+    });
+
+    it('does NOT expose the source URL in the visible error message', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      const secretUrl = 'https://firebasestorage.googleapis.com/v0/b/SECRET_BUCKET/o/file.pdf?alt=media&token=SECRET_TOKEN';
+      renderViewer(secretUrl);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const node = screen.getByTestId('pdf-error');
+      expect(node.textContent).not.toContain('SECRET_BUCKET');
+      expect(node.textContent).not.toContain('SECRET_TOKEN');
+      expect(node.textContent).not.toContain('firebasestorage.googleapis.com');
+    });
+
+    // Agent 13 fix: the error card must NEVER expose a Download button.
+    // A forced "save as" dialog on an unreadable document is bad UX.
+    it('does NOT render a Download button on the error card for notFound', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-error-download')).not.toBeInTheDocument();
+      const errorNode = screen.getByTestId('pdf-error');
+      expect(errorNode.querySelector('a[download]')).toBeNull();
+    });
+
+    it('does NOT render a Download button on the error card for htmlResponse', async () => {
+      nextFetchBehavior = {
+        kind: 'ok',
+        status: 200,
+        contentType: 'text/html; charset=utf-8',
+        body: new TextEncoder().encode('<html>oops</html>').buffer,
+      };
+      renderViewer('https://example.com/page');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-error-download')).not.toBeInTheDocument();
+      const errorNode = screen.getByTestId('pdf-error');
+      expect(errorNode.querySelector('a[download]')).toBeNull();
+    });
+
+    it('does NOT render a Download button on the error card for invalid input', async () => {
+      renderViewer(':::not a url');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-error-download')).not.toBeInTheDocument();
+    });
+
+    it('does NOT render a Download button on the error card for server 5xx', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 502, contentType: null, body: null };
+      renderViewer('https://example.com/down.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-error-download')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Toolbar "Open in new tab" action (Agent 13 fix) ────────────────────
+
+  describe('toolbar open-in-new-tab action', () => {
+    it('does NOT render the toolbar open button while loading or on error', async () => {
+      nextFetchBehavior = { kind: 'ok', status: 404, contentType: null, body: null };
+      renderViewer('https://example.com/missing.pdf');
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('pdf-open-newtab-btn')).not.toBeInTheDocument();
+    });
+
+    it('renders the toolbar open button once a PDF is successfully loaded', async () => {
+      renderViewer();
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pdf-open-newtab-btn')).toBeInTheDocument();
+    });
+
+    it('uses window.open with the resolved blob URL, never an anchor with the download attribute', async () => {
+      const openSpy = vi
+        .spyOn(window, 'open')
+        .mockImplementation(() => null);
+      renderViewer();
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const btn = screen.getByTestId('pdf-open-newtab-btn');
+      // The toolbar action must be a <button>, never an <a download>.
+      expect(btn.tagName).toBe('BUTTON');
+      await userEvent.click(btn);
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      const [arg, target, features] = openSpy.mock.calls[0] as [string, string, string];
+      expect(target).toBe('_blank');
+      expect(features).toContain('noopener');
+      expect(features).toContain('noreferrer');
+      // Arg must be an object URL, not a real network URL with Content-Disposition: attachment.
+      expect(arg.startsWith('blob:')).toBe(true);
+      openSpy.mockRestore();
     });
   });
 
@@ -200,7 +543,10 @@ describe('PdfViewer', () => {
   describe('page navigation', () => {
     beforeEach(async () => {
       renderViewer();
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
     });
 
     it('defaults to page 1', () => {
@@ -218,16 +564,22 @@ describe('PdfViewer', () => {
     it('renders next page when next button is clicked', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
-      await act(async () => { /* flush page change */ });
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(mockDoc.getPage).toHaveBeenCalledWith(2);
     });
 
     it('renders previous page when prev button is clicked', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
-      await act(async () => { /* flush page change */ });
+      await act(async () => {
+        await Promise.resolve();
+      });
       await user.click(screen.getByTestId('pdf-prev-btn'));
-      await act(async () => { /* flush page change */ });
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(mockDoc.getPage).toHaveBeenLastCalledWith(1);
     });
 
@@ -235,7 +587,9 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 4; i++) {
         await user.click(screen.getByTestId('pdf-next-btn'));
-        await act(async () => { /* flush */ });
+        await act(async () => {
+          await Promise.resolve();
+        });
       }
       expect(screen.getByTestId('pdf-next-btn')).toBeDisabled();
     });
@@ -244,7 +598,9 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 10; i++) {
         await user.click(screen.getByTestId('pdf-next-btn'));
-        await act(async () => { /* flush */ });
+        await act(async () => {
+          await Promise.resolve();
+        });
       }
       expect(mockDoc.getPage).toHaveBeenLastCalledWith(5);
     });
@@ -261,7 +617,10 @@ describe('PdfViewer', () => {
   describe('zoom', () => {
     beforeEach(async () => {
       renderViewer();
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
     });
 
     it('shows initial zoom as 150%', () => {
@@ -271,14 +630,12 @@ describe('PdfViewer', () => {
     it('increases scale on zoom in', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-in-btn'));
-      // Zoom goes from 150% to 175%
       expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('175%');
     });
 
     it('decreases scale on zoom out', async () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
-      // Zoom goes from 150% to 125%
       expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('125%');
     });
 
@@ -286,7 +643,6 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-zoom-out-btn'));
       await user.click(screen.getByTestId('pdf-zoom-percent'));
-      // Resets back to 150%
       expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
     });
 
@@ -295,7 +651,9 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 6; i++) {
         await user.click(screen.getByTestId('pdf-zoom-out-btn'));
-        await act(async () => { /* flush */ });
+        await act(async () => {
+          await Promise.resolve();
+        });
       }
       expect(screen.getByTestId('pdf-zoom-out-btn')).toBeDisabled();
     });
@@ -305,7 +663,9 @@ describe('PdfViewer', () => {
       const user = userEvent.setup();
       for (let i = 0; i < 7; i++) {
         await user.click(screen.getByTestId('pdf-zoom-in-btn'));
-        await act(async () => { /* flush */ });
+        await act(async () => {
+          await Promise.resolve();
+        });
       }
       expect(screen.getByTestId('pdf-zoom-in-btn')).toBeDisabled();
     });
@@ -317,17 +677,25 @@ describe('PdfViewer', () => {
     it('calls onTotalPages after PDF loads', async () => {
       const onTotal = vi.fn();
       render(<PdfViewer url="https://example.com/doc.pdf" onTotalPages={onTotal} />);
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       expect(onTotal).toHaveBeenCalledWith(5);
     });
 
     it('calls onPageChange when page changes', async () => {
       const onPage = vi.fn();
       render(<PdfViewer url="https://example.com/doc.pdf" onPageChange={onPage} />);
-      await act(async () => { /* flush initial load */ });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       const user = userEvent.setup();
       await user.click(screen.getByTestId('pdf-next-btn'));
-      await act(async () => { /* flush page change */ });
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(onPage).toHaveBeenCalledWith(2);
     });
   });

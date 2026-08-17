@@ -57,12 +57,21 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
  * → /forum, everyone else → /dashboard. This is the only place that decides
  * where to send a freshly-logged-in user; both `landingRouteForRole` in
  * AuthContext and `useAdminGuard` route through here.
+ *
+ * Admin detection is dual-signal: when an explicit `isAdminOverride` is passed
+ * (the BE bug-state path where the response roleId is 0 but roleName is
+ * 'Admin'), we honour it. Otherwise we delegate to `isAdminUser` so the
+ * helper is internally consistent — i.e. callers don't have to remember to
+ * pass `isAdminOverride` for the Admin case to be honoured. The single
+ * `signals` parameter carries both roleName and roleId; pass `null` or
+ * `undefined` when only a roleName is known.
  */
 export function landingRouteForRoleName(
   role: string | null | undefined,
   options?: { isAdminOverride?: boolean },
 ): '/admin' | '/forum' | '/dashboard' {
   if (options?.isAdminOverride) return '/admin';
+  if (isAdminUser({ roleName: role ?? null })) return '/admin';
   const normalized = (role ?? '').trim().toLowerCase();
   if (normalized === 'admin') return '/admin';
   if (normalized === 'researcher') return '/forum';

@@ -103,4 +103,24 @@ describe('roleNormalizer – landingRouteForRoleName', () => {
     expect(landingRouteForRoleName('')).toBe('/dashboard');
     expect(landingRouteForRoleName('   ')).toBe('/dashboard');
   });
+
+  it('honours the Admin roleName signal on its own (no isAdminOverride required)', () => {
+    // Previously the helper required `isAdminOverride` to route Admin → /admin.
+    // After Phase C defect 3A the helper delegates to `isAdminUser(roleName)`,
+    // so the Admin → /admin path is honoured by the roleName signal alone.
+    // This keeps PublicRoute (which calls the helper without an override) in
+    // sync with AuthContext.
+    expect(landingRouteForRoleName('Admin')).toBe('/admin');
+    expect(landingRouteForRoleName('admin')).toBe('/admin');
+    expect(landingRouteForRoleName('  Admin  ')).toBe('/admin');
+  });
+
+  it('still respects isAdminOverride as a hard short-circuit', () => {
+    // The override path remains authoritative even for non-canonical role
+    // names — covers the documented BE-bug sentinel where a real Admin
+    // comes back with roleName: 'Researcher'.
+    expect(
+      landingRouteForRoleName('Researcher', { isAdminOverride: true }),
+    ).toBe('/admin');
+  });
 });

@@ -34,8 +34,8 @@ export function useReviewerProfiles(): UseReviewerProfilesResult {
   return { profiles, isLoading, error, refetch };
 }
 
-interface UseReviewerAvailabilityResult {
-  isAvailable: boolean;
+export interface UseReviewerAvailabilityResult {
+  isAvailable: boolean | null;
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
@@ -43,18 +43,26 @@ interface UseReviewerAvailabilityResult {
 
 /**
  * Reads the current user's reviewer availability from their ProfessionalProfile.
- * Returns `isAvailable: false` (and null profile) until the profile loads, so
- * callers never show a hardcoded "true" during first paint.
+ *
+ * Distinguishes the four cases the addendum requires:
+ *   - Explicit `false` → return `false` (Reviewer intentionally disabled).
+ *   - Explicit `true`  → return `true`.
+ *   - Field genuinely missing on a valid profile → default `true` so a brand
+ *     new Reviewer is discoverable. We use `?? true` (NOT `|| true`) so an
+ *     explicit `false` is never clobbered.
+ *   - Loading / no profile / API failure → leave `isAvailable` null so the
+ *     caller can render an indeterminate / error state instead of falsely
+ *     confirming a value.
  */
 export function useReviewerAvailability(userId?: number): UseReviewerAvailabilityResult {
-  const [isAvailable, setIsAvailable] = useState<boolean>(false);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = async () => {
     if (userId === undefined) {
       setIsLoading(false);
-      setIsAvailable(false);
+      setIsAvailable(null);
       return;
     }
     setIsLoading(true);
@@ -63,10 +71,20 @@ export function useReviewerAvailability(userId?: number): UseReviewerAvailabilit
       const profile = await reviewerService
         .getAll()
         .then((list) => list.find((p) => p.userId === userId) ?? null);
-      setIsAvailable(Boolean(profile?.isAvailable));
+      if (profile === null) {
+        // No profile row at all — treat as unknown so the UI can show
+        // "loading" / an indeterminate state. Never silently claim available.
+        setIsAvailable(null);
+      } else if (typeof profile.isAvailable === 'boolean') {
+        setIsAvailable(profile.isAvailable);
+      } else {
+        // Field genuinely missing on a valid profile → default available.
+        // Narrow fallback per addendum §C — does NOT overwrite explicit false.
+        setIsAvailable(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load availability'));
-      setIsAvailable(false);
+      setIsAvailable(null);
     } finally {
       setIsLoading(false);
     }

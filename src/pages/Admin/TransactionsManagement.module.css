@@ -135,6 +135,15 @@
 }
 .actionBtnSecondary:hover { background: #f1f5f9; color: #0f172a; }
 
+.actionBtnDanger {
+  background: #ffffff;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+.actionBtnDanger:hover { background: #fef2f2; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; min-width: 330px; }
+.secondaryText { display: block; margin-top: 2px; color: #94a3b8; font-size: 0.7rem; }
+
 .emptyState,
 .loadingState,
 .errorState {

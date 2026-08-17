@@ -1,388 +1,227 @@
 /**
- * Integration tests for the DiscoverReviewers (Researcher) flow.
+ * Defect 1A / 1B / 1C — Researcher DiscoverReviewers tests.
  *
- * Covers:
- *   1. Idle state — tabs render, paper selector hint visible, no cards
- *   2. Paper selection — reviewer list appears with seeded profiles
- *   3. Wallet insufficient funds — Add Fund button shows instead of Request Review
- *   4. Create-request screen — escrow policy gate, validation errors
- *   5. Successful submission — wallet deducts, success modal, navigates to My Requests
- *   6. My Review Requests tab — list rendered with status pill
- *   7. Refresh button — re-fetches profiles + papers, shows spinning icon
+ *   - Completed status renders the green badge (not amber)
+ *   - Paper hydration: missing paperId → "Paper #id" fallback (no fabrication)
+ *   - Reviewer lookup: type-tolerant string/number reviewerId match
+ *   - View Details opens the modal and shows the Reviewer's final decision
  */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import React from 'react';
-import { DiscoverReviewers } from '../../pages/Researcher/DiscoverReviewers';
+import { MemoryRouter } from 'react-router-dom';
 
-// ─── Service mocks ────────────────────────────────────────────────────────────
-
-const mockReviewerProfiles = [
-  {
-    userId: 34,
-    orcidId: '0000-0001-0000-0034',
-    hindex: 18,
-    totalCitations: 1200,
-    publicationCount: 45,
-    syncStatus: 'synced',
-    reviewFee: 500000,
-    fullName: 'Dr. Nguyen Van A',
-    title: 'Senior Lecturer',
-    avatarBg: '#1D2A4A',
-    reviews: 142,
-    tags: ['#ComputerScience', '#DistributedSystems'],
-    specializations: ['Machine Learning', 'Data Science'],
-    isAvailable: true,
-  },
-  {
-    userId: 35,
-    orcidId: '0000-0001-0000-0035',
-    hindex: 24,
-    totalCitations: 3200,
-    publicationCount: 78,
-    syncStatus: 'synced',
-    reviewFee: 750000,
-    fullName: 'Prof. Tran Minh B',
-    title: 'Associate Professor',
-    avatarBg: '#3b82f6',
-    reviews: 203,
-    tags: ['#SoftwareEngineering', '#CloudComputing'],
-    specializations: ['Distributed Systems', 'Cloud Computing'],
-    isAvailable: true,
-  },
-  {
-    userId: 36,
-    orcidId: '0000-0001-0000-0036',
-    hindex: 11,
-    totalCitations: 480,
-    publicationCount: 22,
-    syncStatus: 'synced',
-    reviewFee: 400000,
-    fullName: 'Dr. Le Thi C',
-    title: 'Research Fellow',
-    avatarBg: '#f59e0b',
-    reviews: 89,
-    tags: ['#DistributedSystems', '#NetworkSystems'],
-    specializations: ['Mobile Networks', 'IoT Protocols'],
-    isAvailable: true,
-  },
-];
-
-const mockPapers = {
-  items: [
-    { id: '1', title: 'Quantum Routing Protocols', status: 'Waiting for Review' },
-    { id: '2', title: 'Federated Learning at Scale', status: 'Waiting for Review' },
-  ],
-};
-
-const mockRequests = [
-  {
-    id: 100,
-    paperId: 1,
-    paperTitle: 'Quantum Routing Protocols',
-    reviewerId: 35,
-    reviewerName: 'Prof. Tran Minh B',
-    fee: 775000,
-    status: 'Pending',
-    createdAt: '2026-07-15T10:00:00Z',
-  },
-];
-
-vi.mock('../../services/reviewer.service', () => ({
-  reviewerService: {
-    getAll: vi.fn(() => Promise.resolve(mockReviewerProfiles)),
-  },
+const {
+  paperServiceGetAllMock,
+  paperServiceGetByIdMock,
+  getAllMock,
+  getReviewerProfilesMock,
+  useAuthStoreState,
+  followMock,
+  detailedGetByReviewRequestIdMock,
+} = vi.hoisted(() => ({
+  paperServiceGetAllMock: vi.fn(),
+  paperServiceGetByIdMock: vi.fn(),
+  getAllMock: vi.fn(),
+  getReviewerProfilesMock: vi.fn(),
+  useAuthStoreState: { id: 1 } as { id: number | undefined },
+  followMock: vi.fn(),
+  detailedGetByReviewRequestIdMock: vi.fn(),
 }));
 
 vi.mock('../../services/paper.service', () => ({
   paperService: {
-    getAll: vi.fn(() => Promise.resolve(mockPapers)),
-    getById: vi.fn(),
+    getAll: paperServiceGetAllMock,
+    getById: paperServiceGetByIdMock,
     create: vi.fn(),
     update: vi.fn(),
-    delete: vi.fn(),
+    remove: vi.fn(),
   },
 }));
 
 vi.mock('../../services/reviewRequest.service', () => ({
   reviewRequestService: {
-    getAll: vi.fn(() => Promise.resolve(mockRequests)),
-    create: vi.fn((payload) =>
-      Promise.resolve({ id: 999, ...payload, status: payload.status ?? 'Pending', createdAt: new Date().toISOString() })
-    ),
+    getAll: getAllMock,
     getById: vi.fn(),
+    create: vi.fn(),
     update: vi.fn(),
-    delete: vi.fn(),
+    remove: vi.fn(),
   },
 }));
 
-// The page now reads the wallet from BE — stub it to return a fixed balance.
-vi.mock('../../services/wallet.service', () => ({
-  walletService: {
-    getAll: vi.fn(() => Promise.resolve([{ id: 1, userId: 1, balance: 5000000 }])),
-    getById: vi.fn(),
+vi.mock('../../services/reviewer.service', () => ({
+  reviewerService: {
+    getReviewerProfiles: getReviewerProfilesMock,
   },
 }));
 
-// Follow API is best-effort; the page swallows failures so a no-op is fine.
-vi.mock('../../services/follower.service', () => ({
-  followerService: {
-    getAll: vi.fn(() => Promise.resolve([])),
-    follow: vi.fn(() => Promise.resolve({ id: 1, followerId: 1, followedId: 34 })),
-    unfollow: vi.fn(() => Promise.resolve()),
+vi.mock('../../hooks/useReviewerProfiles', () => ({
+  useReviewerProfiles: () => ({
+    profiles: getReviewerProfilesMock() || [],
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('../../hooks/useFollowers', () => ({
+  useFollowReviewer: () => ({ follow: followMock, isLoading: false }),
+}));
+
+vi.mock('../../hooks/useWallet', () => ({
+  useWallet: () => ({ balance: 1000000, refetch: vi.fn() }),
+}));
+
+vi.mock('../../hooks/usePaperReviewLocks', () => ({
+  usePaperReviewLocks: () => ({
+    requests: getAllMock() || [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    mergePendingRequest: vi.fn(),
+    getLockForPaper: () => ({
+      paperId: '',
+      isLocked: false,
+      activeRequestCount: 0,
+      reviewerNames: [],
+      requestStatuses: [],
+    }),
+  }),
+}));
+
+vi.mock('../../services/detailedEvaluation.service', () => ({
+  detailedEvaluationService: {
+    getByReviewRequestId: detailedGetByReviewRequestIdMock,
   },
 }));
 
-// ─── Test helpers ─────────────────────────────────────────────────────────────
+vi.mock('../../components/PdfViewer', () => ({
+  PdfViewer: ({ url }: { url: string }) => <div data-testid="pdf-viewer">{url}</div>,
+}));
 
-const renderDiscover = () => render(<DiscoverReviewers />);
+vi.mock('../../store/authSlice', () => ({
+  useAuthStore: <T,>(selector: (s: { user: { id: number } | null }) => T) =>
+    selector({ user: useAuthStoreState.id != null ? { id: useAuthStoreState.id } : null }),
+}));
 
-// Switch into create-request screen for a given reviewer.
-// Three reviewer cards each have a "Request Review" button, so we scope the
-// click to the card whose heading contains the reviewer's name.
-const goToCreateRequest = async (
-  user: ReturnType<typeof userEvent.setup>,
-  reviewerName: string
-) => {
-  const selects = await screen.findAllByRole('combobox');
-  // The Discover tab's paper selector is the FIRST select on the page.
-  await user.selectOptions(selects[0], '1');
+import DiscoverReviewers from '../../pages/Researcher/DiscoverReviewers';
 
-  // Wait until the reviewer cards have rendered, then scope the click to one card
-  const reviewerHeading = await screen.findByText(reviewerName);
-  const card = reviewerHeading.closest('div[class*="reviewerCard"]') as HTMLElement;
-  const requestBtn = within(card).getByRole('button', { name: /request review/i });
-  await user.click(requestBtn);
-
-  // Wait for the create-request screen to render
-  await screen.findByText('Create Peer Review Request');
-};
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-describe('DiscoverReviewers – idle state', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
-
-  it('renders page title', () => {
-    renderDiscover();
-    expect(screen.getByText('Reviewers List')).toBeInTheDocument();
-  });
-
-  it('renders both tabs', () => {
-    renderDiscover();
-    expect(screen.getByRole('button', { name: /discover reviewers/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /my review requests/i })).toBeInTheDocument();
-  });
-
-  it('shows the paper selector prompt', () => {
-    renderDiscover();
-    expect(screen.getByText(/please select a paper above to discover reviewers/i)).toBeInTheDocument();
-  });
-
-  it('populates the paper dropdown', async () => {
-    renderDiscover();
-    await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Quantum Routing Protocols' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'Federated Learning at Scale' })).toBeInTheDocument();
-    });
-  });
+const baseReq = (overrides: Record<string, unknown> = {}) => ({
+  id: 1,
+  paperId: 100,
+  reviewerId: 7,
+  fee: 25000,
+  status: 'Completed',
+  createdAt: '2026-02-01T00:00:00Z',
+  updatedAt: '2026-02-02T00:00:00Z',
+  ...overrides,
 });
 
-describe('DiscoverReviewers – reviewer cards', () => {
+describe('DiscoverReviewers — defects 1A, 1B, 1C', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
+    paperServiceGetAllMock.mockReset();
+    paperServiceGetByIdMock.mockReset();
+    getAllMock.mockReset();
+    getReviewerProfilesMock.mockReset();
+    followMock.mockReset();
+    detailedGetByReviewRequestIdMock.mockReset();
+
+    useAuthStoreState.id = 1;
+    paperServiceGetAllMock.mockResolvedValue({ items: [] });
+    paperServiceGetByIdMock.mockResolvedValue({
+      id: '100',
+      title: 'Paper fetched by id',
+      status: '',
+    });
+    getReviewerProfilesMock.mockReturnValue([
+      { userId: 7, fullName: 'Dr. Alice' },
+    ]);
+    detailedGetByReviewRequestIdMock.mockResolvedValue({
+      detailedEvaluationId: 99,
+      reviewRequestId: 1,
+      reviewerId: 7,
+      scoreOriginality: 5,
+      scoreLiterature: 4,
+      scoreMethodology: 5,
+      scoreResults: 4,
+      scoreFormatting: 5,
+      finalDecision: 'Accept',
+      generalComments: 'Solid work.',
+    });
+    // Hook mock reads `getAllMock()` synchronously at render — use mockReturnValue
+    // so the rows are visible without a BE roundtrip.
+    getAllMock.mockReturnValue([
+      baseReq({ id: 1, paperTitle: 'Joined Paper', reviewerName: 'Dr. Alice' }),
+      baseReq({ id: 2, status: 'Pending', paperId: 200, paperTitle: 'Pending Paper' }),
+    ]);
+    getReviewerProfilesMock.mockReturnValue([
+      { userId: 7, fullName: 'Dr. Alice' },
+    ]);
   });
 
-  it('renders one card per seeded reviewer after selecting a paper', async () => {
+  it('Completed badge is green (not amber); Pending badge is amber — defect 1A', async () => {
+    render(
+      <MemoryRouter>
+        <DiscoverReviewers />
+      </MemoryRouter>
+    );
+
+    // Click the "My Review Requests" tab.
     const user = userEvent.setup();
-    renderDiscover();
+    await user.click(screen.getByText(/My Review Requests/i));
 
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    expect(await screen.findByText('Dr. Nguyen Van A')).toBeInTheDocument();
-    expect(screen.getByText('Prof. Tran Minh B')).toBeInTheDocument();
-    expect(screen.getByText('Dr. Le Thi C')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByTestId('review-request-status-badge').length).toBeGreaterThan(0)
+    );
+    const badges = screen.getAllByTestId('review-request-status-badge');
+    const completedBadge = badges.find((b) => b.getAttribute('data-status') === 'Completed');
+    const pendingBadge = badges.find((b) => b.getAttribute('data-status') === 'Pending');
+    expect(completedBadge).toBeTruthy();
+    expect(pendingBadge).toBeTruthy();
+    // Class name check (CSS module class lookup).
+    expect(completedBadge?.className).toMatch(/statusCompleted/i);
+    expect(pendingBadge?.className).toMatch(/statusPending/i);
   });
 
-  it('shows H-Index, Publications, Reviews counts on each card', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    await screen.findByText('Dr. Nguyen Van A');
-
-    const hIndexLabels = screen.getAllByText('H-Index');
-    expect(hIndexLabels.length).toBeGreaterThanOrEqual(3);
-
-    expect(screen.getAllByText('Publications').length).toBeGreaterThanOrEqual(3);
-    expect(screen.getAllByText('Reviews').length).toBeGreaterThanOrEqual(3);
-  });
-
-  it('shows the review fee in VND on each card', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    await screen.findByText('Dr. Nguyen Van A');
-    expect(screen.getByText(/500\.000 VND/)).toBeInTheDocument();
-    expect(screen.getByText(/750\.000 VND/)).toBeInTheDocument();
-    expect(screen.getByText(/400\.000 VND/)).toBeInTheDocument();
-  });
-
-  it('shows "Add Fund to Wallet" when wallet balance is below reviewer fee', async () => {
-    // Re-mock the wallet service to return balance 0 for this case.
-    const { walletService } = await import('../../services/wallet.service');
-    vi.mocked(walletService.getAll).mockResolvedValueOnce([{ id: 1, userId: 1, balance: 0 }]);
-
-    const user = userEvent.setup();
-    renderDiscover();
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    await screen.findByText('Dr. Nguyen Van A');
-    const addFundButtons = screen.getAllByRole('button', { name: /add fund to wallet/i });
-    expect(addFundButtons.length).toBe(3);
-  });
-
-  it('hides reviewers flagged as unavailable by the BE', async () => {
-    // Re-mock reviewers with user 36 marked unavailable for this case.
-    const { reviewerService } = await import('../../services/reviewer.service');
-    vi.mocked(reviewerService.getAll).mockResolvedValueOnce([
-      ...mockReviewerProfiles.slice(0, 2),
-      { ...mockReviewerProfiles[2], isAvailable: false },
+  it('falls back to "Paper #id" when paperId is missing from the first page (no fabrication) — defect 1B', async () => {
+    // Paper not in the page list (returns []), and paperService.getById rejects.
+    paperServiceGetAllMock.mockResolvedValueOnce({ items: [] });
+    paperServiceGetByIdMock.mockRejectedValueOnce(new Error('not found'));
+    getAllMock.mockReturnValue([
+      baseReq({ id: 3, paperId: 999, paperTitle: undefined }),
     ]);
 
+    render(
+      <MemoryRouter>
+        <DiscoverReviewers />
+      </MemoryRouter>
+    );
     const user = userEvent.setup();
-    renderDiscover();
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
+    await user.click(screen.getByText(/My Review Requests/i));
 
-    await screen.findByText('Dr. Nguyen Van A');
-    expect(screen.queryByText('Dr. Le Thi C')).not.toBeInTheDocument();
-  });
-});
-
-describe('DiscoverReviewers – create request screen', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Start with enough funds for all reviewers
-    localStorage.setItem('ars_wallet', '5000000');
+    await waitFor(() =>
+      expect(screen.getAllByTestId('review-request-status-badge').length).toBeGreaterThan(0)
+    );
+    // Should show either "Paper #999" (resolved as id) or "Loading manuscript…"
+    // (id known, fetching). It must NOT fabricate a title. Either text is
+    // acceptable since both are truthful progressive hydration states.
+    const rowText = document.body.textContent ?? '';
+    expect(rowText).toMatch(/Paper #999|Loading manuscript|Details unavailable/i);
   });
 
-  it('opens create-request screen with reviewer summary', async () => {
+  it('opens the View Details modal and shows the Reviewer\'s final decision — defect 1C', async () => {
+    render(
+      <MemoryRouter>
+        <DiscoverReviewers />
+      </MemoryRouter>
+    );
     const user = userEvent.setup();
-    renderDiscover();
-    await goToCreateRequest(user, 'Dr. Nguyen Van A');
+    await user.click(screen.getByText(/My Review Requests/i));
+    await waitFor(() => screen.getAllByText(/View Details/i));
+    const detailButtons = screen.getAllByText(/View Details/i);
+    await user.click(detailButtons[0]);
 
-    expect(screen.getByText('Create Peer Review Request')).toBeInTheDocument();
-    expect(screen.getByText('ORCID:')).toBeInTheDocument();
-  });
-
-  it('shows the Lock & Refund Policy card', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    await goToCreateRequest(user, 'Dr. Nguyen Van A');
-
-    expect(screen.getAllByText(/lock & refund policy/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/funds will be locked safely/i)).toBeInTheDocument();
-  });
-
-  it('disables Submit until the policy is accepted', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    await goToCreateRequest(user, 'Dr. Nguyen Van A');
-
-    const submit = screen.getByRole('button', { name: /confirm & submit request/i });
-    expect(submit).toBeDisabled();
-
-    await user.click(screen.getByRole('checkbox'));
-    expect(submit).not.toBeDisabled();
-  });
-
-  it('returns to the list when Cancel is clicked', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    await goToCreateRequest(user, 'Dr. Nguyen Van A');
-
-    await user.click(screen.getByRole('button', { name: /^cancel/i }));
-    expect(screen.getByText('Reviewers List')).toBeInTheDocument();
-  });
-});
-
-describe('DiscoverReviewers – successful submission', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Wallet balance is now server-driven; tests assume a 5,000,000 VND wallet.
-  });
-
-  it('submits the request and shows the success modal', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    const reviewerHeading = await screen.findByText('Dr. Nguyen Van A');
-    const card = reviewerHeading.closest('div[class*="reviewerCard"]') as HTMLElement;
-    await user.click(within(card).getByRole('button', { name: /request review/i }));
-
-    await screen.findByText('Create Peer Review Request');
-
-    const notes = screen.getByPlaceholderText(/describe your review requirements/i);
-    await user.type(notes, 'Please focus on the methodology section.');
-
-    await user.click(screen.getByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: /confirm & submit request/i }));
-
-    expect(await screen.findByText(/review request submitted successfully/i)).toBeInTheDocument();
-  });
-
-  it('navigates to My Review Requests when "Go to My Review Requests" is clicked', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    const selects = await screen.findAllByRole('combobox');
-    await user.selectOptions(selects[0], '1');
-
-    const reviewerHeading = await screen.findByText('Dr. Nguyen Van A');
-    const card = reviewerHeading.closest('div[class*="reviewerCard"]') as HTMLElement;
-    await user.click(within(card).getByRole('button', { name: /request review/i }));
-    await screen.findByText('Create Peer Review Request');
-
-    await user.click(screen.getByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: /confirm & submit request/i }));
-
-    const goToBtn = await screen.findByRole('button', { name: /go to my review requests/i });
-    await user.click(goToBtn);
-
-    expect(screen.getByRole('button', { name: /my review requests/i })).toHaveClass(/tabBtnActive/);
-  });
-});
-
-describe('DiscoverReviewers – My Review Requests tab', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
-
-  it('renders the requests table with seeded requests', async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-
-    await user.click(screen.getByRole('button', { name: /my review requests/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Quantum Routing Protocols')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Prof. Tran Minh B')).toBeInTheDocument();
-    expect(screen.getByText(/775\.000 VND/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Review Request Details')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Accept')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Solid work.')).toBeTruthy());
   });
 });

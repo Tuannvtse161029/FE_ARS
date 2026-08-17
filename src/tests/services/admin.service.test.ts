@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { adminService } from '../../services/admin.service';
 import { notificationService } from '../../services/notification.service';
+import type { WithdrawalRequestItem } from '../../types/admin';
 
 vi.mock('../../services/axios', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 vi.mock('../../services/notification.service', () => ({
@@ -102,6 +103,45 @@ describe('adminService (mock data path)', () => {
     it('lists reviewer withdrawals', async () => {
       const list = await adminService.getReviewerWithdrawals();
       expect(list.length).toBeGreaterThan(0);
+    });
+
+    it('normalizes API `note` → requestReason at the service boundary', async () => {
+      // Defect 5: the wire shape uses `note`; the Admin UI reads
+      // `requestReason`. The normalization happens once inside
+      // adminService so downstream code never sees both spellings.
+      const list = await adminService.getReviewerWithdrawals();
+      // No row should carry the `note` alias on its public surface.
+      list.forEach((row) => {
+        expect((row as WithdrawalRequestItem & { note?: unknown }).note).toBeUndefined();
+        // requestReason is either a non-empty string or null/undefined —
+        // never the bare wire alias.
+        if (row.requestReason !== undefined && row.requestReason !== null) {
+          expect(typeof row.requestReason).toBe('string');
+        }
+      });
+      // At least one row carries a non-null requestReason (fixtures
+      // include 2001, 2003, 2004 — only 2002 has none).
+      const withReason = list.filter((w) => typeof w.requestReason === 'string' && w.requestReason.length > 0);
+      expect(withReason.length).toBeGreaterThan(0);
+    });
+
+    it('exports a normalizeWithdrawalItem helper that maps note → requestReason', async () => {
+      const { normalizeWithdrawalItem } = await import('../../services/admin.service');
+      const normalized = normalizeWithdrawalItem({
+        txId: 9001,
+        userId: 1,
+        reviewerName: 'Tester',
+        amountVnd: 100_000,
+        bankName: 'VCB',
+        accountNumber: '1',
+        accountName: 'TESTER',
+        requestDate: '2026-08-01T00:00:00Z',
+        status: 'PENDING',
+        proofReceiptUrl: null,
+        note: 'Test reason',
+      });
+      expect(normalized.requestReason).toBe('Test reason');
+      expect((normalized as { note?: unknown }).note).toBeUndefined();
     });
 
     it('moves a PENDING request to ACCEPTED_PROCESSING', async () => {

@@ -1,0 +1,137 @@
+// Status enums and transition tables — single source of truth.
+// Source of truth: docs/local-only/research-workflow-contract.md §3.
+//
+// Agent 2 (GradStudent) ONLY uses PhasedReportStatus transitions; the
+// GuidanceProject and ResearchTopic transition tables are exported for
+// Agent 1 and the dashboard to share.
+
+import type {
+  GuidanceProjectStatus,
+  PhasedReportStatus,
+  ResearchTopicStatus,
+} from '../types/research';
+
+// ---------- GuidanceProject ----------
+
+const GUIDANCE_PROJECT_TRANSITIONS: Record<
+  GuidanceProjectStatus,
+  ReadonlyArray<GuidanceProjectStatus>
+> = {
+  PROPOSED: ['ONGOING', 'CANCELLED'],
+  ONGOING: ['COMPLETED', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
+export const canTransitionGuidanceProject = (
+  from: GuidanceProjectStatus,
+  to: GuidanceProjectStatus,
+): boolean => GUIDANCE_PROJECT_TRANSITIONS[from].includes(to);
+
+// ---------- ResearchTopic ----------
+
+const RESEARCH_TOPIC_TRANSITIONS: Record<
+  ResearchTopicStatus,
+  ReadonlyArray<ResearchTopicStatus>
+> = {
+  OPEN: ['ASSIGNED', 'CLOSED'],
+  ASSIGNED: ['COMPLETED', 'CLOSED'],
+  COMPLETED: [],
+  CLOSED: [],
+};
+
+export const canTransitionResearchTopic = (
+  from: ResearchTopicStatus,
+  to: ResearchTopicStatus,
+): boolean => RESEARCH_TOPIC_TRANSITIONS[from].includes(to);
+
+// ---------- PhasedReport ----------
+
+const PHASED_REPORT_TRANSITIONS: Record<
+  PhasedReportStatus,
+  ReadonlyArray<PhasedReportStatus>
+> = {
+  WAITING: ['SUBMITTED'],
+  SUBMITTED: ['EVALUATED', 'REJECTED'],
+  EVALUATED: [],
+  REJECTED: ['SUBMITTED'],
+};
+
+export const canTransitionPhasedReport = (
+  from: PhasedReportStatus,
+  to: PhasedReportStatus,
+): boolean => PHASED_REPORT_TRANSITIONS[from].includes(to);
+
+// Defensive normalization — the BE stores status as a free-form string
+// (Swagger contract §1) so anything unknown is coerced to WAITING (the safe
+// default for a fresh milestone).
+export const normalizePhasedReportStatus = (
+  raw: string | null | undefined,
+): PhasedReportStatus => {
+  if (!raw) return 'WAITING';
+  const v = raw.toUpperCase().trim();
+  if (v === 'WAITING') return 'WAITING';
+  if (v === 'SUBMITTED') return 'SUBMITTED';
+  if (v === 'EVALUATED' || v === 'APPROVED' || v === 'REVIEWED') return 'EVALUATED';
+  if (v === 'REJECTED') return 'REJECTED';
+  return 'WAITING';
+};
+
+export const normalizeGuidanceProjectStatus = (
+  raw: string | null | undefined,
+): GuidanceProjectStatus => {
+  if (!raw) return 'PROPOSED';
+  const v = raw.toUpperCase().trim();
+  if (v === 'PROPOSED') return 'PROPOSED';
+  if (v === 'ONGOING') return 'ONGOING';
+  if (v === 'COMPLETED' || v === 'DONE') return 'COMPLETED';
+  if (v === 'CANCELLED' || v === 'CANCELED') return 'CANCELLED';
+  return 'PROPOSED';
+};
+
+export const normalizeResearchTopicStatus = (
+  raw: string | null | undefined,
+): ResearchTopicStatus => {
+  if (!raw) return 'OPEN';
+  const v = raw.toUpperCase().trim();
+  if (v === 'OPEN') return 'OPEN';
+  if (v === 'ASSIGNED') return 'ASSIGNED';
+  if (v === 'COMPLETED' || v === 'DONE') return 'COMPLETED';
+  if (v === 'CLOSED') return 'CLOSED';
+  return 'OPEN';
+};
+
+// ---------- PhasedReport counts ----------
+//
+// Pure helper for both Lecturer (GroupDetail) and Graduate Student (workspace /
+// dashboard) surfaces — counts submitted reports by status so each side can
+// render a milestone summary card. Defensively normalises free-form BE strings
+// via `normalizePhasedReportStatus` so the counts are stable even if the BE
+// emits an unrecognised variant.
+//
+// Added in Phase C (Lead, lead-phase-c-contract.md S-2).
+export interface PhasedReportCounts {
+  waiting: number;
+  submitted: number;
+  rejected: number;
+  evaluated: number;
+}
+
+export const countPhasedReportsByStatus = (
+  reports: ReadonlyArray<{ status?: string | null }>,
+): PhasedReportCounts => {
+  const counts: PhasedReportCounts = {
+    waiting: 0,
+    submitted: 0,
+    rejected: 0,
+    evaluated: 0,
+  };
+  for (const report of reports) {
+    const normalized = normalizePhasedReportStatus(report?.status ?? null);
+    if (normalized === 'WAITING') counts.waiting += 1;
+    else if (normalized === 'SUBMITTED') counts.submitted += 1;
+    else if (normalized === 'REJECTED') counts.rejected += 1;
+    else if (normalized === 'EVALUATED') counts.evaluated += 1;
+  }
+  return counts;
+};

@@ -1,0 +1,450 @@
+import api from './axios';
+
+// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
+// under `API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.*` per the contract.
+//
+// SHARED FILE — submission methods (`submit`, `resubmit`, `getByGroup`) are
+// owned by Agent-2 (GradStudent). Evaluation methods (`evaluate`, `reject`,
+// `getByLecturer`) are owned by Agent-1 (Lecturer). The split is by function
+// name, not by file. Both agents may extend this file; do not duplicate the
+// HTTP wrappers — import them.
+const PHASED_REPORT_ENDPOINTS = {
+  GET_ALL: '/api/PhasedReport',
+  GET_BY_ID: (id: number) => `/api/PhasedReport/${id}`,
+  CREATE: '/api/PhasedReport',
+  UPDATE: (id: number) => `/api/PhasedReport/${id}`,
+  DELETE: (id: number) => `/api/PhasedReport/${id}`,
+} as const;
+
+// Status enums per contract §3 — the BE stores these as a free-form string,
+// the FE normalises to the canonical labels.
+export type PhasedReportStatus =
+  | 'WAITING'
+  | 'SUBMITTED'
+  | 'EVALUATED'
+  | 'REJECTED';
+
+export const PHASED_REPORT_STATUSES: readonly PhasedReportStatus[] = [
+  'WAITING',
+  'SUBMITTED',
+  'EVALUATED',
+  'REJECTED',
+] as const;
+
+const PHASED_REPORT_TRANSITIONS: Record<
+  PhasedReportStatus,
+  readonly PhasedReportStatus[]
+> = {
+  WAITING: ['SUBMITTED'],
+  SUBMITTED: ['EVALUATED', 'REJECTED'],
+  EVALUATED: [],
+  REJECTED: ['SUBMITTED'],
+};
+
+export const canTransitionPhasedReport = (
+  from: PhasedReportStatus,
+  to: PhasedReportStatus,
+): boolean => PHASED_REPORT_TRANSITIONS[from].includes(to);
+
+// Defensive status normaliser — the BE returns a free-form string so we map
+// the obvious synonyms to the canonical labels and pass through unknowns.
+export const normalizePhasedReportStatus = (
+  raw: string | null | undefined,
+): PhasedReportStatus => {
+  if (!raw) return 'WAITING';
+  const v = raw.toLowerCase().trim();
+  if (v === 'waiting' || v === 'pending' || v === 'awaiting') return 'WAITING';
+  if (v === 'submitted' || v === 'pending_review' || v === 'submitted_for_review') {
+    return 'SUBMITTED';
+  }
+  if (
+    v === 'evaluated' ||
+    v === 'approved' ||
+    v === 'graded' ||
+    v === 'complete'
+  ) {
+    return 'EVALUATED';
+  }
+  if (v === 'rejected' || v === 'denied' || v === 'declined') return 'REJECTED';
+  return 'WAITING';
+};
+
+export interface PhasedReport {
+  id?: number;
+  phasedReportId?: number;
+  researchGroupId?: number | null;
+  groupMemberId?: number | null;
+  reportFileUrl?: string | null;
+  capacityEvaluation?: string | null;
+  finalOutcomeEvaluation?: string | null;
+  lectureFeedback?: number | null;
+  submittedAt?: string | null;
+  status?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PhasedReportCreateRequest {
+  researchGroupId?: number | null;
+  groupMemberId?: number | null;
+  reportFileUrl?: string | null;
+  submittedAt?: string | null;
+  status?: PhasedReportStatus | string | null;
+  // Used by Agent-2's resubmission flow to thread `previousReportId` into the
+  // existing column until BE ships a structured lineage field (gap ticket §E.5).
+  capacityEvaluation?: string | null;
+}
+
+// Submission-owned payload (Agent-2) — kept here so both agents share the
+// type but the writer helpers (`submit`, `resubmit`) live in the Grad
+// Student file (`src/services/phasedReport.submit.ts` — to be added by
+// Agent-2 in their area). The same shape is used by `evaluate` / `reject`.
+export interface PhasedReportUpdateRequest {
+  capacityEvaluation?: string | null;
+  finalOutcomeEvaluation?: string | null;
+  lectureFeedback?: number | null;
+  status?: PhasedReportStatus | string | null;
+}
+
+const normalizePhasedReport = (raw: PhasedReport): PhasedReport => ({
+  ...raw,
+  id: raw.phasedReportId ?? raw.id ?? undefined,
+  status: normalizePhasedReportStatus(raw.status ?? null),
+});
+
+const normalizePhasedReportList = (data: unknown): PhasedReport[] => {
+  const raw = Array.isArray(data) ? (data as PhasedReport[]) : [];
+  return raw.map(normalizePhasedReport);
+};
+
+// Raw CRUD (shared between both agents).
+export const phasedReportService = {
+  getAll: async (): Promise<PhasedReport[]> => {
+    const response = await api.get<PhasedReport[]>(
+      PHASED_REPORT_ENDPOINTS.GET_ALL,
+    );
+    return normalizePhasedReportList(response.data);
+  },
+
+  getById: async (id: number): Promise<PhasedReport> => {
+    const response = await api.get<PhasedReport>(
+      PHASED_REPORT_ENDPOINTS.GET_BY_ID(id),
+    );
+    return normalizePhasedReport(response.data);
+  },
+
+  create: async (
+    payload: PhasedReportCreateRequest,
+  ): Promise<PhasedReport> => {
+    const response = await api.post<PhasedReport>(
+      PHASED_REPORT_ENDPOINTS.CREATE,
+      payload,
+    );
+    return normalizePhasedReport(response.data);
+  },
+
+  update: async (
+    id: number,
+    payload: PhasedReportUpdateRequest,
+  ): Promise<PhasedReport> => {
+    const response = await api.put<PhasedReport>(
+      PHASED_REPORT_ENDPOINTS.UPDATE(id),
+      payload,
+    );
+    return normalizePhasedReport(response.data);
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(PHASED_REPORT_ENDPOINTS.DELETE(id));
+  },
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lecturer-owned helpers (Agent-1)
+// ────────────────────────────────────────────────────────────────────────────
+
+// Lecturer review payload. The BE lacks structured feedback columns per the
+// gap ticket §E.5, so the FE embeds:
+//   - numeric grade            → `lectureFeedback` (0..10)
+//   - free-text feedback        → `finalOutcomeEvaluation`
+//   - rejection reason (REJECTED only) → `capacityEvaluation` (until BE ships
+//     a structured `FeedbackComment` column).
+export interface LecturerEvaluationRequest {
+  lectureFeedback?: number;
+  finalOutcomeEvaluation: string;
+  rejectionReason?: string;
+}
+
+// Evaluate (approve) a report. Transitions SUBMITTED → EVALUATED.
+export const evaluatePhasedReport = async (
+  id: number,
+  payload: LecturerEvaluationRequest,
+): Promise<PhasedReport> => {
+  const body: PhasedReportUpdateRequest = {
+    status: 'EVALUATED',
+    lectureFeedback: payload.lectureFeedback ?? null,
+    finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
+  };
+  return phasedReportService.update(id, body);
+};
+
+// Reject a report. Transitions SUBMITTED → REJECTED. Requires non-empty
+// rejectionReason OR non-empty finalOutcomeEvaluation per contract §7.
+export const rejectPhasedReport = async (
+  id: number,
+  payload: LecturerEvaluationRequest,
+): Promise<PhasedReport> => {
+  const trimmedReason = (payload.rejectionReason ?? '').trim();
+  const trimmedOutcome = payload.finalOutcomeEvaluation.trim();
+  if (!trimmedReason && !trimmedOutcome) {
+    throw new Error(
+      'A rejection reason or feedback note is required when rejecting a report.',
+    );
+  }
+  const body: PhasedReportUpdateRequest = {
+    status: 'REJECTED',
+    lectureFeedback: payload.lectureFeedback ?? null,
+    finalOutcomeEvaluation: trimmedOutcome,
+    // Until BE adds a structured `FeedbackComment` column we put the rejection
+    // reason in `capacityEvaluation`. See api-gap-ticket-for-be.md §E.5.
+    capacityEvaluation: trimmedReason || trimmedOutcome,
+  };
+  return phasedReportService.update(id, body);
+};
+
+// Filter helper used by the Lecturer review console. We don't have a
+// server-side `?lecturerId=` filter on PhasedReport (the column doesn't exist
+// on the BE per the gap ticket §E.5), so the consumer does the join:
+//   1. GET /api/ResearchGroup (filter by lecturerId client-side)
+//   2. GET /api/PhasedReport (defensive list)
+//   3. Keep reports whose `researchGroupId` is in the lecturer's group set
+export const filterPhasedReportsByGroupIds = (
+  reports: readonly PhasedReport[],
+  groupIds: readonly number[],
+): PhasedReport[] => {
+  const set = new Set(groupIds.filter((id): id is number => typeof id === 'number'));
+  return reports.filter((r) => {
+    const gid = r.researchGroupId;
+    return gid !== null && gid !== undefined && set.has(gid);
+  });
+};
+
+// Narrow a list to the statuses the Lecturer review console shows by default.
+// WAITING reports have no student submission yet, but we still surface them so
+// the lecturer can pre-create a milestone row if they want to.
+export const filterPhasedReportsAwaitingReview = (
+  reports: readonly PhasedReport[],
+): PhasedReport[] =>
+  reports.filter(
+    (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED' || r.status === 'WAITING',
+  );
+
+// ────────────────────────────────────────────────────────────────────────────
+// Graduate-Student-owned helpers (Agent-2)
+// ────────────────────────────────────────────────────────────────────────────
+//
+// These functions share the file with the Lecturer-owned evaluate/reject
+// helpers per the contract §8 "split by function name, not file". Agent 1
+// does NOT edit this section; Agent 2 does NOT edit the section above.
+// If a name collision appears, request a rename from the lead.
+
+import { API_ENDPOINTS } from '../utils/constants';
+
+// Submission-owned request bodies. The BE contract is permissive (per
+// docs/local-only/research-workflow-contract.md §1) so these accept the
+// optional fields documented on PhasedReportCreateRequest plus a
+// `previousReportId` for resubmission lineage.
+export interface PhasedReportSubmitRequest {
+  researchGroupId: number;
+  groupMemberId?: number;
+  reportFileUrl: string;
+  submittedAt?: string;
+}
+
+export interface PhasedReportResubmitRequest extends PhasedReportSubmitRequest {
+  previousReportId?: number;
+}
+
+// Strict type returned to the FE — narrows PhasedReport so callers don't
+// have to deal with the nullable fields Agent 1's service tolerates.
+export interface SubmittedPhasedReport {
+  id: number;
+  researchGroupId: number;
+  groupMemberId?: number;
+  reportFileUrl?: string;
+  capacityEvaluation?: string;
+  finalOutcomeEvaluation?: string;
+  lectureFeedback?: number;
+  submittedAt?: string;
+  status: PhasedReportStatus;
+  // Forward-compatible lineage pointer — populated by `resubmitPhasedReport`
+  // when the BE echoes the structured `PreviousReportId` column back. Until
+  // BE ships that column the sentinel-based detection in
+  // `parsePhasedReportLineage` is the primary signal.
+  previousReportId?: number;
+}
+
+const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
+  const id = typeof raw.id === 'number' && raw.id > 0
+    ? raw.id
+    : typeof raw.phasedReportId === 'number' && raw.phasedReportId > 0
+    ? raw.phasedReportId
+    : 0;
+  const researchGroupId =
+    typeof raw.researchGroupId === 'number' && raw.researchGroupId > 0
+      ? raw.researchGroupId
+      : 0;
+  if (id === 0 || researchGroupId === 0) {
+    throw new Error(
+      'PhasedReport: missing required id/researchGroupId in BE response',
+    );
+  }
+  const status = normalizePhasedReportStatus(raw.status ?? null);
+  const base: SubmittedPhasedReport = {
+    id,
+    researchGroupId,
+    ...(typeof raw.groupMemberId === 'number'
+      ? { groupMemberId: raw.groupMemberId }
+      : {}),
+    ...(typeof raw.reportFileUrl === 'string' && raw.reportFileUrl.length > 0
+      ? { reportFileUrl: raw.reportFileUrl }
+      : {}),
+    ...(typeof raw.capacityEvaluation === 'string'
+      ? { capacityEvaluation: raw.capacityEvaluation }
+      : {}),
+    ...(typeof raw.finalOutcomeEvaluation === 'string'
+      ? { finalOutcomeEvaluation: raw.finalOutcomeEvaluation }
+      : {}),
+    ...(typeof raw.lectureFeedback === 'number'
+      ? { lectureFeedback: raw.lectureFeedback }
+      : {}),
+    ...(typeof raw.submittedAt === 'string'
+      ? { submittedAt: raw.submittedAt }
+      : {}),
+    status,
+  };
+  // BE echoes `previousReportId` (preferred over sentinel detection) when the
+  // structured lineage column ships — see api-gap-ticket-for-be.md §E.5.1.
+  // We accept either the camelCase or the snake_case variant.
+  const rawPrev =
+    (raw as { previousReportId?: unknown }).previousReportId ??
+    (raw as { PreviousReportId?: unknown }).PreviousReportId;
+  if (typeof rawPrev === 'number' && rawPrev > 0) {
+    return { ...base, previousReportId: rawPrev };
+  }
+  return base;
+};
+
+// List PhasedReports scoped to one group. The BE has no server-side filter
+// (contract §2), so we GET /api/PhasedReport and filter client-side as a
+// fallback if the server returns a 200 with the full list anyway.
+export const listReportsForGroup = async (
+  researchGroupId: number,
+): Promise<SubmittedPhasedReport[]> => {
+  const response = await api.get<unknown>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
+    { params: { researchGroupId } },
+  );
+  const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
+  return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
+};
+
+// Sentinel used by `resubmitPhasedReport` to thread the lineage pointer
+// through the existing `capacityEvaluation` BE column until BE ships the
+// structured `PreviousReportId` column (api-gap-ticket-for-be.md §E.5.1).
+// Format (no spaces around `:`) per lead-phase-c-contract.md G2(a):
+//   __LINEAGE__:Resubmitted from report #<id>
+export const PHASED_REPORT_LINEAGE_SENTINEL = '__LINEAGE__:';
+
+export interface PhasedReportLineage {
+  previousReportId: number | null;
+  remainder: string;
+}
+
+/**
+ * Parse the lineage sentinel from a `capacityEvaluation` blob. Detects the
+ * `__LINEAGE__:` prefix and extracts `Resubmitted from report #N` into
+ * `previousReportId`. Returns the remainder of the string (everything that
+ * followed the parsed lineage pointer, or the original input if no prefix
+ * was present) so callers can render the actual lecturer rejection reason
+ * without showing the lineage as part of it.
+ *
+ * Backward-compatible: rows that pre-date the sentinel round-trip cleanly
+ * with `previousReportId: null` and `remainder: <original raw>`.
+ */
+export const parsePhasedReportLineage = (
+  raw: string | undefined,
+): PhasedReportLineage => {
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return { previousReportId: null, remainder: '' };
+  }
+  if (!raw.startsWith(PHASED_REPORT_LINEAGE_SENTINEL)) {
+    return { previousReportId: null, remainder: raw };
+  }
+  const body = raw.slice(PHASED_REPORT_LINEAGE_SENTINEL.length);
+  const match = body.match(/^Resubmitted from report #(\d+)(?:[\s\u00A0]*(.*))?$/s);
+  if (!match) {
+    // Sentinel prefix present but body malformed — keep the raw string in
+    // `remainder` so a human-readable warning can render without crashing.
+    return { previousReportId: null, remainder: raw };
+  }
+  const id = Number(match[1]);
+  const rest = typeof match[2] === 'string' ? match[2] : '';
+  return {
+    previousReportId: Number.isFinite(id) && id > 0 ? id : null,
+    remainder: rest,
+  };
+};
+
+// POST /api/PhasedReport — fresh submission.
+export const submitPhasedReport = async (
+  payload: PhasedReportSubmitRequest,
+): Promise<SubmittedPhasedReport> => {
+  const body: PhasedReportCreateRequest = {
+    researchGroupId: payload.researchGroupId,
+    reportFileUrl: payload.reportFileUrl,
+    submittedAt: payload.submittedAt ?? new Date().toISOString(),
+    status: 'SUBMITTED',
+  };
+  if (typeof payload.groupMemberId === 'number') {
+    body.groupMemberId = payload.groupMemberId;
+  }
+  const response = await api.post<PhasedReport>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
+    body,
+  );
+  return toStrict(response.data);
+};
+
+// Resubmission of a previously REJECTED report. The BE has no dedicated
+// resubmit endpoint; we POST a fresh row, threading `previousReportId` via
+// a stable sentinel `__LINEAGE__:Resubmitted from report #N` written into
+// `capacityEvaluation`. The sentinel is the primary signal that both sides
+// (Lecturer EvaluateReportModal, Grad RejectionFeedbackBanner) detect via
+// `parsePhasedReportLineage`. Until BE ships the structured
+// `PreviousReportId` column (gap ticket §E.5.1) this round-trip is how
+// lineage is preserved.
+export const resubmitPhasedReport = async (
+  payload: PhasedReportResubmitRequest,
+): Promise<SubmittedPhasedReport> => {
+  const body: PhasedReportCreateRequest = {
+    researchGroupId: payload.researchGroupId,
+    reportFileUrl: payload.reportFileUrl,
+    submittedAt: payload.submittedAt ?? new Date().toISOString(),
+    status: 'SUBMITTED',
+  };
+  if (typeof payload.groupMemberId === 'number') {
+    body.groupMemberId = payload.groupMemberId;
+  }
+  if (typeof payload.previousReportId === 'number') {
+    // Sentinel has no spaces around `:` per lead-phase-c-contract.md G2(a).
+    body.capacityEvaluation = `__LINEAGE__:Resubmitted from report #${payload.previousReportId}`;
+  }
+  const response = await api.post<PhasedReport>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
+    body,
+  );
+  return toStrict(response.data);
+};
+
+export default phasedReportService;
