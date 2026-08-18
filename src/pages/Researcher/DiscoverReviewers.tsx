@@ -6,6 +6,8 @@ import {
   X,
   Shield,
   Check,
+  Link,
+  Clock,
 } from 'lucide-react';
 import { TopUpModal } from './components/TopUpModal';
 import { ReviewRequestDetailsModal } from '../../components/reviewer/ReviewRequestDetailsModal';
@@ -344,7 +346,7 @@ export const DiscoverReviewers = () => {
 
   const filteredRequests = useMemo(() => {
     const q = requestSearch.trim().toLowerCase();
-    if (!q) return requests;
+    if (!q) return [...requests]; // spread to create mutable copy
     return requests.filter((req) => {
       const title = resolvePaperTitle({ req, papersById, extraPapersById });
       const titleText =

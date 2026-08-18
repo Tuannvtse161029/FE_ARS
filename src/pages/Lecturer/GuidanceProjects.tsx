@@ -14,7 +14,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   X,
-  RefreshCw,
   Loader,
   AlertTriangle,
   Check,

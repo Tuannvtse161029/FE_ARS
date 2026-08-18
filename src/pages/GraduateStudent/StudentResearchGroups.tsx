@@ -226,6 +226,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         lastSubmitted={lastSubmitted}
         onCloseSubmit={handleCloseSubmit}
         onSubmitted={handleSubmitted}
+        onRefresh={handleRefresh}
         joinedGroups={joinedGroups}
         phaseKey={
           selectedGroup.name
@@ -368,6 +369,7 @@ interface WorkspaceViewProps {
   lastSubmitted: SubmittedPhasedReport | null;
   onCloseSubmit: () => void;
   onSubmitted: (report: SubmittedPhasedReport) => Promise<void> | void;
+  onRefresh: () => Promise<void>;
   joinedGroups: ReadonlyArray<import('../../services/groupMembership.service').StudentGroupView>;
   phaseKey: string;
   phaseTitle: string;
@@ -390,6 +392,7 @@ function WorkspaceView({
   lastSubmitted,
   onCloseSubmit,
   onSubmitted,
+  onRefresh,
   joinedGroups,
   phaseKey,
   phaseTitle,
@@ -586,10 +589,7 @@ void groupMemberService
         <TableToolbar
           search={searchText}
           onSearchChange={onSearchChange}
-          onRefresh={async () => {
-            await refetch();
-            await refetchReports();
-          }}
+          onRefresh={onRefresh}
           isRefreshing={reportsLoading}
           searchPlaceholder="Search by report id, status, or feedback…"
           refreshLabel="Refresh"
