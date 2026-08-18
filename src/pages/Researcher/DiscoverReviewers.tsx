@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  RefreshCw,
   Wallet,
   FileText,
-  Link,
-  Clock,
   AlertTriangle,
   X,
   Shield,
@@ -21,6 +18,10 @@ import { useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { useFollowReviewer } from '../../hooks/useFollowers';
 import { useWallet } from '../../hooks/useWallet';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE, REVIEWER_GRID_PAGE_SIZE } from '../../utils/tableConstants';
 import {
   resolvePaperTitle,
 } from '../../utils/reviewRequestDisplay';
@@ -166,6 +167,51 @@ export const DiscoverReviewers = () => {
       .map(mapProfileToReviewer);
   }, [reviewerProfiles]);
 
+  // Reviewer grid search + refresh state
+  const [reviewerSearch, setReviewerSearch] = useState('');
+  const [isRefreshingReviewers, setIsRefreshingReviewers] = useState(false);
+
+  const filteredReviewers = useMemo(() => {
+    const q = reviewerSearch.trim().toLowerCase();
+    if (!q) return reviewers;
+    return reviewers.filter((r) =>
+      [r.name, r.title, r.orcid, ...(r.tags ?? []), ...(r.specializations ?? [])]
+        .join(' ')
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [reviewers, reviewerSearch]);
+
+  const {
+    page: reviewerPage,
+    totalPages: reviewerTotalPages,
+    totalItems: reviewerTotalItems,
+    startIndex: reviewerStartIndex,
+    endIndex: reviewerEndIndex,
+    pageItems: pagedReviewers,
+    setPage: setReviewerPage,
+    next: nextReviewerPage,
+    prev: prevReviewerPage,
+    resetPage: resetReviewerPage,
+  } = usePagination<Reviewer>(filteredReviewers, REVIEWER_GRID_PAGE_SIZE);
+
+  useEffect(() => {
+    resetReviewerPage();
+  }, [reviewerSearch, resetReviewerPage]);
+
+  const handleRefreshReviewers = async () => {
+    if (isRefreshingReviewers) return;
+    setIsRefreshingReviewers(true);
+    try {
+      await refetchReviewers();
+    } finally {
+      setIsRefreshingReviewers(false);
+    }
+  };
+
+  // My Review Requests table — search + pagination
+  const [requestSearch, setRequestSearch] = useState('');
+
   // ── Hydrate My Review Requests from the BE when the tab is first opened.
   // The hook handles its own fetch lifecycle; we only guard against an
   // empty array that the hook has not yet resolved.
@@ -294,6 +340,46 @@ export const DiscoverReviewers = () => {
     );
   };
 
+  // My Review Requests table — search + pagination
+
+  const filteredRequests = useMemo(() => {
+    const q = requestSearch.trim().toLowerCase();
+    if (!q) return requests;
+    return requests.filter((req) => {
+      const title = resolvePaperTitle({ req, papersById, extraPapersById });
+      const titleText =
+        title.kind === 'title'
+          ? title.title
+          : title.kind === 'id'
+            ? `Paper #${title.paperId}`
+            : '';
+      const reviewerInfo = lookupReviewer(req);
+      const reviewerName = reviewerInfo?.name ?? '';
+      return (
+        titleText.toLowerCase().includes(q) ||
+        reviewerName.toLowerCase().includes(q) ||
+        (req.status ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [requests, requestSearch, papersById, extraPapersById]);
+
+  const {
+    page: reqPage,
+    totalPages: reqTotalPages,
+    totalItems: reqTotalItems,
+    startIndex: reqStartIndex,
+    endIndex: reqEndIndex,
+    pageItems: pagedRequests,
+    setPage: setReqPage,
+    next: nextReqPage,
+    prev: prevReqPage,
+    resetPage: resetReqPage,
+  } = usePagination<ReviewRequest>(filteredRequests, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetReqPage();
+  }, [requestSearch, resetReqPage]);
+
   const handleRequestClick = (reviewer: Reviewer) => {
     setSelectedReviewer(reviewer);
     setScreenState('create-request');
@@ -398,11 +484,6 @@ export const DiscoverReviewers = () => {
   // calls /api/ReviewRequest directly. The Refresh button in the request
   // table now simply calls the hook's refetch helper.
 
-  // Refresh the Discover Reviewers list — re-fetches reviewer profiles.
-  const handleRefreshReviewers = async () => {
-    await refetchReviewers();
-  };
-
   // Refresh the My Review Requests table — re-fetches via the shared hook.
   const handleRefreshRequests = async () => {
     await refetchReviewRequests();
@@ -415,14 +496,6 @@ export const DiscoverReviewers = () => {
         <>
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>Reviewers List</h1>
-            <button
-              className={styles.refreshBtn}
-              onClick={handleRefreshReviewers}
-              aria-label="Refresh reviewer list"
-            >
-              <RefreshCw size={14} />
-              Refresh
-            </button>
           </div>
 
           <div className={styles.tabsRow}>
@@ -466,85 +539,124 @@ export const DiscoverReviewers = () => {
                   Please select a paper above to discover reviewers.
                 </div>
               ) : isLoadingReviewers ? (
-                <div className={styles.emptyReviewersHint}>Loading reviewers…</div>
+                <div className={styles.emptyReviewersHint} data-testid="reviewers-loading">
+                  Loading reviewers…
+                </div>
               ) : reviewers.length === 0 ? (
-                <div className={styles.emptyReviewersHint}>
+                <div className={styles.emptyReviewersHint} data-testid="reviewers-empty">
                   No reviewers available yet.
                 </div>
               ) : (
-                <div className={styles.reviewersGrid}>
-                  {reviewers.map((reviewer) => {
-                    const balance = walletBalance ?? 0;
-                    const hasSufficientFunds = balance >= reviewer.fee;
-                    const shortfall = Math.max(0, reviewer.fee - balance);
-
-                    return (
-                    <div key={reviewer.id} className={styles.reviewerCard}>
-                      <div className={styles.reviewerHeader}>
-                        <div
-                          className={styles.avatarCircle}
-                          style={{ backgroundColor: reviewer.avatarBg }}
-                        >
-                          {reviewer.initials}
-                        </div>
-                        <div className={styles.authorMeta}>
-                          <span className={styles.reviewerName}>{reviewer.name}</span>
-                          <span className={styles.reviewerTitle}>{reviewer.title}</span>
-                        </div>
-                      </div>
-
-                      <div className={styles.statsRow}>
-                        <div className={styles.statCol}>
-                          <span className={styles.statVal}>{reviewer.hIndex}</span>
-                          <span className={styles.statLabel}>H-Index</span>
-                        </div>
-                        <div className={styles.statCol}>
-                          <span className={styles.statVal}>{reviewer.publications}</span>
-                          <span className={styles.statLabel}>Publications</span>
-                        </div>
-                        <div className={styles.statCol}>
-                          <span className={styles.statVal}>{reviewer.reviews}</span>
-                          <span className={styles.statLabel}>Reviews</span>
-                        </div>
-                      </div>
-
-                      <div className={`${styles.feeBox} ${hasSufficientFunds ? styles.feeBoxBlue : styles.feeBoxRed}`}>
-                        <span className={styles.feeLabel}>Base Review Fee</span>
-                        <span className={styles.feeVal}>{reviewer.fee.toLocaleString('vi-VN')} VND</span>
-                      </div>
-
-                      <div className={styles.tagsRow}>
-                        {reviewer.tags.map((tag, i) => (
-                          <span key={i} className={styles.tagPill}>{tag}</span>
-                        ))}
-                      </div>
-
-                      {hasSufficientFunds ? (
-                        <button
-                          className={styles.requestReviewBtn}
-                          onClick={() => handleRequestClick(reviewer)}
-                          disabled={isFollowing}
-                        >
-                          Request Review
-                        </button>
-                      ) : (
-                        <div className={styles.insufficientContainer}>
-                          <button
-                            className={styles.addFundBtn}
-                            onClick={() => setTopUpReviewer(reviewer)}
-                          >
-                            <Wallet size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                            Add Fund to Wallet
-                          </button>
-                          <span className={styles.shortfallText}>
-                            Need {shortfall.toLocaleString('vi-VN')} VND more to request
-                          </span>
-                        </div>
-                      )}
+                <>
+                  <TableToolbar
+                    search={reviewerSearch}
+                    onSearchChange={setReviewerSearch}
+                    onRefresh={handleRefreshReviewers}
+                    isRefreshing={isRefreshingReviewers}
+                    searchPlaceholder="Search reviewers by name, title, expertise, or ORCID…"
+                    refreshLabel="Refresh"
+                  />
+                  {reviewerTotalItems === 0 ? (
+                    <div className={styles.emptyReviewersHint} data-testid="reviewers-empty-search">
+                      No reviewers match "{reviewerSearch.trim()}".
                     </div>
-                    );
-                  })}
-                </div>
+                  ) : (
+                    <>
+                      <div
+                        className={styles.reviewersGrid}
+                        data-testid="reviewers-grid"
+                        data-page={reviewerPage}
+                      >
+                        {pagedReviewers.map((reviewer) => {
+                          const balance = walletBalance ?? 0;
+                          const hasSufficientFunds = balance >= reviewer.fee;
+                          const shortfall = Math.max(0, reviewer.fee - balance);
+
+                          return (
+                          <div
+                            key={reviewer.id}
+                            className={styles.reviewerCard}
+                            data-testid="reviewer-card"
+                          >
+                            <div className={styles.reviewerHeader}>
+                              <div
+                                className={styles.avatarCircle}
+                                style={{ backgroundColor: reviewer.avatarBg }}
+                              >
+                                {reviewer.initials}
+                              </div>
+                              <div className={styles.authorMeta}>
+                                <span className={styles.reviewerName}>{reviewer.name}</span>
+                                <span className={styles.reviewerTitle}>{reviewer.title}</span>
+                              </div>
+                            </div>
+
+                            <div className={styles.statsRow}>
+                              <div className={styles.statCol}>
+                                <span className={styles.statVal}>{reviewer.hIndex}</span>
+                                <span className={styles.statLabel}>H-Index</span>
+                              </div>
+                              <div className={styles.statCol}>
+                                <span className={styles.statVal}>{reviewer.publications}</span>
+                                <span className={styles.statLabel}>Publications</span>
+                              </div>
+                              <div className={styles.statCol}>
+                                <span className={styles.statVal}>{reviewer.reviews}</span>
+                                <span className={styles.statLabel}>Reviews</span>
+                              </div>
+                            </div>
+
+                            <div className={`${styles.feeBox} ${hasSufficientFunds ? styles.feeBoxBlue : styles.feeBoxRed}`}>
+                              <span className={styles.feeLabel}>Base Review Fee</span>
+                              <span className={styles.feeVal}>{reviewer.fee.toLocaleString('vi-VN')} VND</span>
+                            </div>
+
+                            <div className={styles.tagsRow}>
+                              {reviewer.tags.map((tag, i) => (
+                                <span key={i} className={styles.tagPill}>{tag}</span>
+                              ))}
+                            </div>
+
+                            {hasSufficientFunds ? (
+                              <button
+                                className={styles.requestReviewBtn}
+                                onClick={() => handleRequestClick(reviewer)}
+                                disabled={isFollowing}
+                              >
+                                Request Review
+                              </button>
+                            ) : (
+                              <div className={styles.insufficientContainer}>
+                                <button
+                                  className={styles.addFundBtn}
+                                  onClick={() => setTopUpReviewer(reviewer)}
+                                >
+                                  <Wallet size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                  Add Fund to Wallet
+                                </button>
+                                <span className={styles.shortfallText}>
+                                  Need {shortfall.toLocaleString('vi-VN')} VND more to request
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                      <TablePagination
+                        page={reviewerPage}
+                        totalPages={reviewerTotalPages}
+                        totalItems={reviewerTotalItems}
+                        startIndex={reviewerStartIndex}
+                        endIndex={reviewerEndIndex}
+                        onPrev={prevReviewerPage}
+                        onNext={nextReviewerPage}
+                        onPage={setReviewerPage}
+                        itemLabel="reviewers"
+                      />
+                    </>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -553,16 +665,16 @@ export const DiscoverReviewers = () => {
             <div className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <h3 className={styles.sectionTitle}>My Review Request</h3>
-                <button
-                  className={styles.refreshBtn}
-                  onClick={handleRefreshRequests}
-                  disabled={isLoadingRequests}
-                  aria-label="Refresh review requests"
-                >
-                  <RefreshCw size={14} />
-                  Refresh
-                </button>
               </div>
+
+              <TableToolbar
+                search={requestSearch}
+                onSearchChange={setRequestSearch}
+                onRefresh={handleRefreshRequests}
+                isRefreshing={isLoadingRequests}
+                searchPlaceholder="Search by manuscript, reviewer, or status…"
+                refreshLabel="Refresh"
+              />
 
               <div className={styles.tableResponsive}>
                 <table className={styles.table}>
@@ -579,18 +691,30 @@ export const DiscoverReviewers = () => {
                   <tbody>
                     {isLoadingRequests ? (
                       <tr>
-                        <td colSpan={6} className={styles.emptyRow}>
+                        <td colSpan={6} className={styles.emptyRow} data-testid="requests-loading">
                           Loading review requests…
                         </td>
                       </tr>
                     ) : requestsError ? (
                       <tr>
-                        <td colSpan={6} className={styles.emptyRow}>
+                        <td colSpan={6} className={styles.emptyRow} data-testid="requests-error" role="alert">
                           {requestsError}
                         </td>
                       </tr>
-                    ) : requests.length > 0 ? (
-                      requests.map((req) => {
+                    ) : requests.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyRow} data-testid="requests-empty">
+                          No review requests submitted yet.
+                        </td>
+                      </tr>
+                    ) : reqTotalItems === 0 ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyRow} data-testid="requests-empty-search">
+                          No review requests match "{requestSearch.trim()}".
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedRequests.map((req) => {
                         // Progressive paper-title hydration (defect 1B).
                         const resolution = resolvePaperTitle({
                           req,
@@ -625,7 +749,7 @@ export const DiscoverReviewers = () => {
                           : '';
                         const rowKey = req.id ?? `${req.paperId}-${req.reviewerId}-${dateValue}`;
                         return (
-                          <tr key={rowKey}>
+                          <tr key={rowKey} data-testid="requests-row">
                             <td className={styles.manuscriptCell}>
                               <FileText size={16} className={styles.fileIcon} />
                               <span className={styles.fileNameText}>{manuscriptTitle}</span>
@@ -659,28 +783,23 @@ export const DiscoverReviewers = () => {
                           </tr>
                         );
                       })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className={styles.emptyRow}>
-                          No review requests submitted yet.
-                        </td>
-                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {requests.length > 0 && (
-                <div className={styles.tableFooter}>
-                  <span>Showing {requests.length} of {requests.length} requests</span>
-                  <span className={styles.footerTime}>
-                    Last updated:{' '}
-                    {requests[0].createdAt
-                      ? new Date(requests[0].createdAt).toISOString().split('T')[0]
-                      : '—'}{' '}
-                    at {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ICT
-                  </span>
-                </div>
+              {!isLoadingRequests && requests.length > 0 && (
+                <TablePagination
+                  page={reqPage}
+                  totalPages={reqTotalPages}
+                  totalItems={reqTotalItems}
+                  startIndex={reqStartIndex}
+                  endIndex={reqEndIndex}
+                  onPrev={prevReqPage}
+                  onNext={nextReqPage}
+                  onPage={setReqPage}
+                  itemLabel="requests"
+                />
               )}
             </div>
           )}

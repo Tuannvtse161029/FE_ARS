@@ -14,9 +14,9 @@ export const walletService = {
     return response.data;
   },
 
-  // DEV-ONLY: instant wallet top-up bypassing VNPay. Only callable from
-  // WalletTopUpModal which gates the UI behind `import.meta.env.DEV`.
-  // Production builds never expose this codepath.
+  // DEV-ONLY: instant wallet top-up bypassing the PayOS redirect flow. Only
+  // callable from WalletTopUpModal which gates the UI behind
+  // `import.meta.env.DEV`. Production builds never expose this codepath.
   autoFund: async (payload: WalletCreateRequest): Promise<Wallet> => {
     const response = await api.post<Wallet>(API_ENDPOINTS.WALLET.AUTO_FUND, payload);
     return response.data;

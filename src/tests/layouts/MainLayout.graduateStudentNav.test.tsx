@@ -1,158 +1,87 @@
 /**
  * Sidebar regression for the Graduate Student role.
  *
- * Contract (Agent-12, AGENT_12_GS_NAV_READY):
+ * Contract (Agent-12, AGENT_12_GS_NAV_READY, updated for Forum-as-landing):
  *   - Graduate Student sidebar MUST NOT expose `Paper` or `Browse Reviewers`
  *     — those routes are Researcher-only (see App.tsx RoleRouteGuard).
- *   - Graduate Student sidebar MUST retain `Dashboard`, `Research Groups`,
+ *   - Graduate Student sidebar MUST retain `Research Groups`,
  *     `Submit Report`, and `Premium Package`.
+ *   - Graduate Student sidebar MUST NOT expose a top-level `Dashboard`
+ *     item — the role-based landing page is the Forum now (per
+ *     landingRouteForRoleName), so the Graduate Student's dedicated
+ *     `/student/dashboard` workspace is reached via Research Groups
+ *     rather than a sidebar shortcut.
  *   - Researcher sidebar still exposes Paper + Reviewers items.
  *   - Lecturer, Reviewer, Admin sidebars are unchanged by Agent-12.
  *
- * Renders MainLayout behind a MemoryRouter after mocking the hooks it
- * touches (wallet / notifications / reviewer-availability). The hook-mock
- * pattern is borrowed from MainLayout.premiumRoute.test.tsx so the two
- * files share conventions.
+ * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
+ * aren't duplicated from the other MainLayout tests.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
+import { describe, it, expect } from 'vitest';
+import {
+  setupMainLayoutMocks,
+  setMockAuth,
+  renderMainLayout,
+  findSidebarLinkByHref,
+  findSidebarLinkByText,
+} from '../utils/renderMainLayout';
 import { ROUTES } from '../../routes/paths';
 
-// ── Hook mocks (avoid hitting wallet / notifications / reviewer BE) ────────
-vi.mock('../../hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
-vi.mock('../../hooks/useNotifications', () => ({
-  useNotifications: () => ({ unreadCount: 0 }),
-}));
-
-vi.mock('../../hooks/useReviewerProfiles', () => ({
-  useReviewerAvailability: () => ({
-    isAvailable: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
-vi.mock('../../services/reviewer.service', () => ({
-  reviewerService: {
-    updateAvailability: () => Promise.resolve(),
-  },
-}));
-
-// ── Auth mock — swap role per test ──────────────────────────────────────────
-const useAuthMock = vi.fn();
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => useAuthMock(),
-}));
-
-// Stub the wallet top-up modal so we don't pull its real implementation.
-vi.mock('../../components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
-}));
-
-// Authenticated active user helper.
-const setupRole = (role: string) => {
-  useAuthMock.mockReturnValue({
-    user: {
-      token: 'mock-token',
-      username: 'tester',
-      email: 'tester@example.com',
-      role,
-      userId: 99,
-      isActive: true,
-    },
-    isAuthenticated: true,
-    isLoading: false,
-    error: null,
-    login: () => Promise.resolve(),
-    logout: () => undefined,
-    clearError: () => undefined,
-    pendingRoleSelection: null,
-    confirmRoleSelection: () => undefined,
-    cancelRoleSelection: () => undefined,
-  });
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  // Clear any persisted ars_user so the admin dual-signal check in
-  // MainLayout can't accidentally flip the role to Admin.
-  window.localStorage.clear();
-  window.sessionStorage.clear();
-});
-
-const renderMainLayout = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <MainLayout />
-    </MemoryRouter>,
-  );
-
-const findSidebarLinkByHref = (href: string): HTMLAnchorElement | null =>
-  document.querySelector(`aside a[href="${href}"]`);
-
-const findSidebarLinkByText = (label: string): HTMLAnchorElement | null => {
-  const aside = document.querySelector('aside');
-  if (!aside) return null;
-  const anchors = Array.from(aside.querySelectorAll('a'));
-  return (
-    anchors.find((a) => (a.textContent ?? '').trim().includes(label)) ??
-    null
-  );
-};
+setupMainLayoutMocks();
 
 describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () => {
   it('Graduate Student sidebar does NOT expose /papers', () => {
-    setupRole('Graduate Student');
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
-    const link = findSidebarLinkByHref(ROUTES.PAPERS);
-    expect(link).toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.PAPERS)).toBeNull();
   });
 
   it('Graduate Student sidebar does NOT expose /reviewers', () => {
-    setupRole('Graduate Student');
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
-    const link = findSidebarLinkByHref(ROUTES.REVIEWERS);
-    expect(link).toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.REVIEWERS)).toBeNull();
   });
 
   it('Graduate Student sidebar does NOT show "Paper" or "Browse Reviewers" labels anywhere', () => {
-    setupRole('Graduate Student');
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByText('Paper')).toBeNull();
     expect(findSidebarLinkByText('Browse Reviewers')).toBeNull();
   });
 
-  it('Graduate Student sidebar retains Dashboard, Research Groups, Submit Report, and Premium Package', () => {
-    setupRole('Graduate Student');
+  it('Graduate Student sidebar retains Research Groups, Submit Report, and Premium Package', () => {
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
-    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).not.toBeNull();
     expect(findSidebarLinkByHref(ROUTES.STUDENT_RESEARCH_GROUPS)).not.toBeNull();
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).not.toBeNull();
     expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).not.toBeNull();
   });
 
+  it('Graduate Student sidebar does NOT expose a top-level Dashboard shortcut', () => {
+    setMockAuth({ role: 'Graduate Student' });
+    renderMainLayout(ROUTES.FORUM);
+
+    // Forum is now the post-login landing page for every non-Admin role
+    // (per landingRouteForRoleName in roleNormalizer), so the Graduate
+    // Student sidebar must not carry a Dashboard item pointing at the
+    // role-specific workspace.
+    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).toBeNull();
+    expect(findSidebarLinkByText('Dashboard')).toBeNull();
+  });
+
   it('Graduate Student sidebar still shows Forums', () => {
-    setupRole('Graduate Student');
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByHref(ROUTES.FORUM)).not.toBeNull();
   });
 
   it('Researcher sidebar still exposes /papers and /reviewers links', () => {
-    setupRole('Researcher');
+    setMockAuth({ role: 'Researcher' });
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByHref(ROUTES.PAPERS)).not.toBeNull();
@@ -163,7 +92,7 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
   });
 
   it('Lecturer sidebar is unchanged — does not expose /papers or /reviewers', () => {
-    setupRole('Lecturer');
+    setMockAuth({ role: 'Lecturer' });
     renderMainLayout(ROUTES.FORUM);
 
     // Lecturer never owned Paper/Reviewers; the nav did not add them, and
@@ -173,7 +102,7 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
   });
 
   it('Reviewer sidebar is unchanged — does not expose /papers or /reviewers', () => {
-    setupRole('Reviewer');
+    setMockAuth({ role: 'Reviewer' });
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByHref(ROUTES.PAPERS)).toBeNull();
@@ -181,7 +110,7 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
   });
 
   it('Admin sidebar is unchanged — does not expose /papers or /reviewers', () => {
-    setupRole('Admin');
+    setMockAuth({ role: 'Admin', roleId: 2 });
     renderMainLayout(ROUTES.ADMIN);
 
     expect(findSidebarLinkByHref(ROUTES.PAPERS)).toBeNull();

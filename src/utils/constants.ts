@@ -134,8 +134,8 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/Wallet',
     GET_BY_ID: (id: number) => `/api/Wallet/${id}`,
     // DEV-only shortcut: POST `/api/Wallet` with `{ userId, balance }` to
-    // fund a wallet instantly without going through VNPay. Hidden in
-    // production builds (see WalletTopUpModal). Documented in
+    // fund a wallet instantly without going through the PayOS redirect flow.
+    // Hidden in production builds (see WalletTopUpModal). Documented in
     // docs/local-only/admin-suite-be-gap-report.md (WALLET auto-fund).
     AUTO_FUND: '/api/Wallet',
   },
@@ -246,7 +246,6 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   FORUM: '/forum',
-  DASHBOARD: '/dashboard',
   USERS: '/users',
   PAPERS: '/papers',
   PROFILE: '/profile',

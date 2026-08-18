@@ -7,17 +7,19 @@ import { X } from '../../../assets/icons/XIcon';
 interface SamplePdfModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialRole?: UserRole;
+  initialRole?: RequestableRole;
 }
 
-type RoleKey = UserRole;
+// Admin is provisioned directly in the DB and never goes through the
+// registration flow, so there is no sample verification document for it.
+// Tighten the modal's type so the compiler refuses to add Admin back.
+type RequestableRole = Exclude<UserRole, 'Admin'>;
 
-const ROLES: RoleKey[] = [
+const ROLES: readonly RequestableRole[] = [
   'Researcher',
   'Reviewer',
   'Lecturer',
   'Graduate Student',
-  'Admin',
 ];
 
 interface DocumentProfile {
@@ -28,7 +30,7 @@ interface DocumentProfile {
   records: { title: string; meta: string }[];
 }
 
-const PROFILES: Record<RoleKey, DocumentProfile> = {
+const PROFILES: Record<RequestableRole, DocumentProfile> = {
   Researcher: {
     fullName: 'Dr. Nguyen Van A',
     affiliation: 'Vietnam National University, Ho Chi Minh City',
@@ -128,19 +130,6 @@ const PROFILES: Record<RoleKey, DocumentProfile> = {
       },
     ],
   },
-  Admin: {
-    fullName: 'System Administrator',
-    affiliation: 'ARS Platform Operations',
-    orcidId: '—',
-    metrics: [
-      { value: 'N/A', label: 'Publications' },
-      { value: 'N/A', label: 'Reviews' },
-      { value: 'N/A', label: 'Program' },
-    ],
-    records: [
-      { title: 'Admin accounts are provisioned by the database.', meta: 'No sample document applies.' },
-    ],
-  },
 };
 
 export const SamplePdfModal = ({
@@ -148,7 +137,7 @@ export const SamplePdfModal = ({
   onClose,
   initialRole = 'Researcher',
 }: SamplePdfModalProps) => {
-  const [activeRole, setActiveRole] = useState<RoleKey>(initialRole);
+  const [activeRole, setActiveRole] = useState<RequestableRole>(initialRole);
 
   useEffect(() => {
     if (isOpen) {

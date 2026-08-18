@@ -127,7 +127,7 @@ describe('<GuidanceProjects> page', () => {
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText(/Speech to Text/)).toBeInTheDocument());
-    const search = screen.getByLabelText(/Search guidance projects/i);
+    const search = screen.getByTestId('table-search-input');
     await userEvent.setup().type(search, 'Translation');
     await waitFor(() => expect(screen.queryByText(/Speech to Text/)).not.toBeInTheDocument());
     expect(screen.getByText(/Translation/)).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('<GuidanceProjects> page', () => {
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText(/Alpha/)).toBeInTheDocument());
-    const search = screen.getByLabelText(/Search guidance projects/i);
+    const search = screen.getByTestId('table-search-input');
     await userEvent.setup().type(search, '99');
     await waitFor(() => expect(screen.queryByText(/Alpha/)).not.toBeInTheDocument());
     expect(screen.getByText(/Beta/)).toBeInTheDocument();

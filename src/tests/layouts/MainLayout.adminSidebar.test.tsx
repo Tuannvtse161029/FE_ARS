@@ -6,103 +6,21 @@
  * item (to === /admin) must use `end` matching so it activates only at the
  * exact `/admin` path and NOT on `/admin/role-requests` etc.
  *
- * We reuse the same hook-mock scaffolding as the existing Premium Route test
- * to keep the harness close to production.
+ * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
+ * aren't duplicated from the other MainLayout tests.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  setupMainLayoutMocks,
+  setMockAuth,
+  renderMainLayout,
+} from '../utils/renderMainLayout';
 import { MainLayout } from '../../layouts/MainLayout';
 import { ROUTES } from '../../routes/paths';
 
-// ── Hook mocks (avoid hitting wallet / notifications / reviewer BE) ─────────
-vi.mock('../../hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-vi.mock('../../hooks/useNotifications', () => ({
-  useNotifications: () => ({ unreadCount: 0 }),
-}));
-vi.mock('../../hooks/useReviewerProfiles', () => ({
-  useReviewerAvailability: () => ({
-    isAvailable: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-vi.mock('../../services/reviewer.service', () => ({
-  reviewerService: { updateAvailability: () => Promise.resolve() },
-}));
-vi.mock('../../components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
-}));
-
-const useAuthMock = vi.fn();
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => useAuthMock(),
-}));
-
-const setupAdmin = () => {
-  useAuthMock.mockReturnValue({
-    user: {
-      token: 'mock-token',
-      username: 'admin',
-      email: 'admin@example.com',
-      role: 'Admin',
-      userId: 1,
-      isActive: true,
-    },
-    isAuthenticated: true,
-    isLoading: false,
-    error: null,
-    login: () => Promise.resolve(),
-    logout: () => undefined,
-    clearError: () => undefined,
-    pendingRoleSelection: null,
-    confirmRoleSelection: () => undefined,
-    cancelRoleSelection: () => undefined,
-  });
-};
-
-const setupNonAdmin = (role: string) => {
-  useAuthMock.mockReturnValue({
-    user: {
-      token: 'mock-token',
-      username: 'tester',
-      email: 'tester@example.com',
-      role,
-      userId: 99,
-      isActive: true,
-    },
-    isAuthenticated: true,
-    isLoading: false,
-    error: null,
-    login: () => Promise.resolve(),
-    logout: () => undefined,
-    clearError: () => undefined,
-    pendingRoleSelection: null,
-    confirmRoleSelection: () => undefined,
-    cancelRoleSelection: () => undefined,
-  });
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  window.localStorage.clear();
-  window.sessionStorage.clear();
-});
-
-const renderAdminLayout = (initialPath: string) => {
-  setupAdmin();
-  return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <MainLayout />
-    </MemoryRouter>,
-  );
-};
+setupMainLayoutMocks();
 
 const findAdminLink = (href: string): HTMLAnchorElement | null =>
   document.querySelector(`aside a[href="${href}"]`);
@@ -123,6 +41,11 @@ const assertActiveOnly = (activeHref: string) => {
   ).filter((a) => (a.className ?? '').includes('navItemActive'));
   expect(activeLinks).toHaveLength(1);
   expect(activeLinks[0]?.getAttribute('href')).toBe(activeHref);
+};
+
+const renderAdminLayout = (initialPath: string) => {
+  setMockAuth({ role: 'Admin', roleId: 2 });
+  return renderMainLayout(initialPath);
 };
 
 describe('Admin sidebar — active item per route (defect 3B)', () => {
@@ -193,7 +116,7 @@ describe('Non-Admin roles — sidebar untouched (defect 3B scope)', () => {
     ['Lecturer', ROUTES.RESEARCH_GROUP],
     ['Graduate Student', ROUTES.STUDENT_RESEARCH_GROUPS],
   ])('%s on its landing path renders zero admin links', (role, _landing) => {
-    setupNonAdmin(role);
+    setMockAuth({ role });
     render(
       <MemoryRouter initialEntries={['/forum']}>
         <MainLayout />

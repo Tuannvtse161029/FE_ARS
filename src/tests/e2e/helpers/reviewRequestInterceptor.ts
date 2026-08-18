@@ -14,7 +14,7 @@
  * It is ONLY used so the FE flow can complete when the Researcher test wallet
  * cannot cover the 25,000 VND system processing fee and the BE cannot accept
  * the request. We do NOT alter `localStorage` to fake funds, do NOT open
- * VNPay, and do NOT bypass real authentication.
+ * PayOS, and do NOT bypass real authentication.
  *
  * Callers pass a single `scenario` object — the interceptor mutates shared
  * ids in-place so subsequent phases see consistent state.

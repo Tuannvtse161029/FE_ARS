@@ -99,7 +99,7 @@ export const TopUpModal = ({
           <div className={styles.infoAlert}>
             <span className={styles.infoIcon}><Info size={16} /></span>
             <p className={styles.infoText}>
-              Funds will be added via VNPay and automatically applied to your review request for {reviewerName}.
+              Funds will be added via PayOS and automatically applied to your review request for {reviewerName}.
             </p>
           </div>
         </div>

@@ -53,10 +53,12 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
 }
 
 /**
- * Landing route per the post-login routing rules. Admin → /admin, Researcher
- * → /forum, everyone else → /dashboard. This is the only place that decides
- * where to send a freshly-logged-in user; both `landingRouteForRole` in
- * AuthContext and `useAdminGuard` route through here.
+ * Landing route per the post-login routing rules. Admin → `/admin`, every
+ * other role → `/forum`. This is the only place that decides where to send a
+ * freshly-logged-in user; `landingRouteForRole` in AuthContext, the
+ * authenticated-user branch of `PublicRoute`, and the per-route
+ * `RoleRouteGuard` fallback all route through here so the three surfaces
+ * stay in lock-step.
  *
  * Admin detection is dual-signal: when an explicit `isAdminOverride` is passed
  * (the BE bug-state path where the response roleId is 0 but roleName is
@@ -69,11 +71,8 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
 export function landingRouteForRoleName(
   role: string | null | undefined,
   options?: { isAdminOverride?: boolean },
-): '/admin' | '/forum' | '/dashboard' {
+): '/admin' | '/forum' {
   if (options?.isAdminOverride) return '/admin';
   if (isAdminUser({ roleName: role ?? null })) return '/admin';
-  const normalized = (role ?? '').trim().toLowerCase();
-  if (normalized === 'admin') return '/admin';
-  if (normalized === 'researcher') return '/forum';
-  return '/dashboard';
+  return '/forum';
 }

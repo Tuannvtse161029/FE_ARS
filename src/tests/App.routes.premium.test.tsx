@@ -34,7 +34,21 @@ vi.mock('../hooks/useWallet', () => ({
   }),
 }));
 vi.mock('../hooks/useNotifications', () => ({
-  useNotifications: () => ({ unreadCount: 0 }),
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+    markRead: () => Promise.resolve(true),
+    markAllRead: () => Promise.resolve([]),
+    reset: () => undefined,
+  }),
+  useMarkNotificationRead: () => ({
+    markRead: () => Promise.resolve(true),
+    isLoading: false,
+    error: null,
+  }),
 }));
 vi.mock('../hooks/useReviewerProfiles', () => ({
   useReviewerAvailability: () => ({

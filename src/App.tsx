@@ -9,7 +9,6 @@ import { Register } from './pages/Register';
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
-import { Dashboard } from './pages/Dashboard';
 import { MainLayout } from './layouts/MainLayout';
 import { Forum } from './pages/Forum/Forum';
 import { Papers } from './pages/Papers/Papers';
@@ -82,7 +81,6 @@ const App = () => {
               </Route>
 
               {/* Shared / cross-role routes */}
-              <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
               <Route path={ROUTES.FORUM} element={<Forum />} />
               <Route path={ROUTES.EVALUATION} element={<EvaluationDesk />} />
               <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />

@@ -10,11 +10,10 @@
 // on the FE because the BE has no `POST /api/GuidanceProject/{id}/invite`
 // endpoint yet. This is documented inline below.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   X,
-  Search,
   RefreshCw,
   Loader,
   AlertTriangle,
@@ -33,6 +32,10 @@ import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
 import { canTransitionGuidanceProject } from '../../utils/researchStatus';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import type {
   GuidanceProject,
   GuidanceProjectStatus,
@@ -111,7 +114,7 @@ export const GuidanceProjects = () => {
   // GuidanceProject (documented gap §2 / docs/local-only/research-workflow-contract.md).
   const myProjects = useMemo<GuidanceProject[]>(
     () =>
-      lecturerId
+      lecturerId && Array.isArray(projects)
         ? projects.filter((p) => p.lecturerId === lecturerId)
         : [],
     [projects, lecturerId],
@@ -154,6 +157,25 @@ export const GuidanceProjects = () => {
     }
     return acc;
   }, [myProjects]);
+
+  const {
+    page,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageItems,
+    setPage,
+    next,
+    prev,
+    resetPage,
+  } = usePagination<GuidanceProject>(filtered, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetPage();
+  }, [search, statusFilter, resetPage]);
+
+  const isRefreshing = isLoading && myProjects.length > 0;
 
   // ── Modal: Create Proposal ────────────────────────────────────────────
   const [showCreate, setShowCreate] = useState(false);
@@ -302,20 +324,6 @@ export const GuidanceProjects = () => {
         <div className={styles.headerActions}>
           <button
             type="button"
-            className={styles.refreshBtn}
-            onClick={() => void refetch()}
-            disabled={isLoading}
-            aria-label="Refresh guidance projects"
-          >
-            {isLoading ? (
-              <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            ) : (
-              <RefreshCw size={14} aria-hidden />
-            )}
-            Refresh
-          </button>
-          <button
-            type="button"
             className={styles.primaryBtn}
             onClick={handleOpenCreate}
             disabled={lecturerId === null}
@@ -414,160 +422,170 @@ export const GuidanceProjects = () => {
             );
           })}
         </div>
-        <div className={styles.searchBox}>
-          <span className={styles.searchIcon}>
-            <Search size={14} aria-hidden />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or student id…"
-            className={styles.searchInput}
-            aria-label="Search guidance projects"
-          />
-        </div>
+        <TableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          onRefresh={() => void refetch()}
+          isRefreshing={isRefreshing}
+          searchPlaceholder="Search by title or student id…"
+          refreshLabel="Refresh"
+        />
       </div>
 
       {/* Table */}
       <div className={styles.tableCard}>
-        <div className={styles.tableResponsive}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>PROJECT</th>
-                <th>STUDENT</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={4} className={styles.tableEmpty}>
-                    <Loader size={16} className={styles.spinningIcon} aria-hidden />
-                    Loading guidance projects…
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className={styles.tableEmpty}>
-                    {myProjects.length === 0
-                      ? 'You haven\'t created any guidance projects yet. Click "Create Proposal" to start one.'
-                      : 'No guidance projects match the current filter.'}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((project) => {
-                  const canCancel = canTransitionGuidanceProject(
-                    project.status,
-                    'CANCELLED',
-                  );
-                  const canComplete = canTransitionGuidanceProject(
-                    project.status,
-                    'COMPLETED',
-                  );
-                  const inFlight =
-                    pendingTransition?.id === project.id
-                      ? pendingTransition.to
-                      : null;
-                  return (
-                    <tr key={project.id}>
-                      <td>
-                        <div className={styles.titleCell}>
-                          <span className={styles.titlePill}>GP-{project.id}</span>
-                          <div className={styles.titleText}>{project.title}</div>
-                          {project.description?.trim() && (
-                            <div className={styles.titleDescription}>
-                              {project.description}
-                            </div>
+        {isLoading ? (
+          <div className={styles.tableEmpty} role="status" data-testid="gp-loading">
+            <Loader size={16} className={styles.spinningIcon} aria-hidden />
+            Loading guidance projects…
+          </div>
+        ) : listError ? (
+          <div className={styles.tableEmpty} role="alert" data-testid="gp-error">
+            <AlertTriangle size={16} aria-hidden /> {listError.message}
+          </div>
+        ) : myProjects.length === 0 ? (
+          <div className={styles.tableEmpty} data-testid="gp-empty">
+            You haven&apos;t created any guidance projects yet. Click &quot;Create Proposal&quot; to start one.
+          </div>
+        ) : totalItems === 0 ? (
+          <div className={styles.tableEmpty} data-testid="gp-empty-search">
+            No guidance projects match the current filter.
+          </div>
+        ) : (
+          <>
+            <div className={styles.tableResponsive}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>PROJECT</th>
+                    <th>STUDENT</th>
+                    <th>STATUS</th>
+                    <th>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((project) => {
+                    const canCancel = canTransitionGuidanceProject(
+                      project.status,
+                      'CANCELLED',
+                    );
+                    const canComplete = canTransitionGuidanceProject(
+                      project.status,
+                      'COMPLETED',
+                    );
+                    const inFlight =
+                      pendingTransition?.id === project.id
+                        ? pendingTransition.to
+                        : null;
+                    return (
+                      <tr key={project.id} data-testid="gp-row">
+                        <td>
+                          <div className={styles.titleCell}>
+                            <span className={styles.titlePill}>GP-{project.id}</span>
+                            <div className={styles.titleText}>{project.title}</div>
+                            {project.description?.trim() && (
+                              <div className={styles.titleDescription}>
+                                {project.description}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {project.studentId ? (
+                            <span className={styles.studentPill}>
+                              student #{project.studentId}
+                            </span>
+                          ) : (
+                            <span className={styles.studentEmpty}>
+                              Unassigned (gap §D.2)
+                            </span>
                           )}
-                        </div>
-                      </td>
-                      <td>
-                        {project.studentId ? (
-                          <span className={styles.studentPill}>
-                            student #{project.studentId}
-                          </span>
-                        ) : (
-                          <span className={styles.studentEmpty}>
-                            Unassigned (gap §D.2)
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <StatusBadge status={project.status} />
-                      </td>
-                      <td>
-                        <div className={styles.actionRow}>
-                          <RouterLink
-                            to={ROUTES.LECTURER_EVALUATE_REPORTS}
-                            className={styles.viewLink}
-                            title="Open the review console (link to all supervision tasks)."
-                          >
-                            <FileText size={14} aria-hidden />
-                            View
-                            <ChevronRight size={14} aria-hidden />
-                          </RouterLink>
-                          <button
-                            type="button"
-                            className={styles.cancelBtn}
-                            onClick={() =>
-                              void handleTransition(project, 'CANCELLED')
-                            }
-                            disabled={!canCancel || inFlight !== null}
-                            title={
-                              canCancel
-                                ? 'Mark project as CANCELLED.'
-                                : `Cannot transition from ${project.status} to CANCELLED.`
-                            }
-                            aria-label="Cancel project"
-                          >
-                            {inFlight === 'CANCELLED' ? (
-                              <Loader
-                                size={14}
-                                className={styles.spinningIcon}
-                                aria-hidden
-                              />
-                            ) : (
-                              <Ban size={14} aria-hidden />
-                            )}
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.completeBtn}
-                            onClick={() =>
-                              void handleTransition(project, 'COMPLETED')
-                            }
-                            disabled={!canComplete || inFlight !== null}
-                            title={
-                              canComplete
-                                ? 'Mark project as COMPLETED.'
-                                : `Cannot transition from ${project.status} to COMPLETED.`
-                            }
-                            aria-label="Mark complete"
-                          >
-                            {inFlight === 'COMPLETED' ? (
-                              <Loader
-                                size={14}
-                                className={styles.spinningIcon}
-                                aria-hidden
-                              />
-                            ) : (
-                              <ClipboardCheck size={14} aria-hidden />
-                            )}
-                            Complete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                        <td>
+                          <StatusBadge status={project.status} />
+                        </td>
+                        <td>
+                          <div className={styles.actionRow}>
+                            <RouterLink
+                              to={ROUTES.LECTURER_EVALUATE_REPORTS}
+                              className={styles.viewLink}
+                              title="Open the review console (link to all supervision tasks)."
+                            >
+                              <FileText size={14} aria-hidden />
+                              View
+                              <ChevronRight size={14} aria-hidden />
+                            </RouterLink>
+                            <button
+                              type="button"
+                              className={styles.cancelBtn}
+                              onClick={() =>
+                                void handleTransition(project, 'CANCELLED')
+                              }
+                              disabled={!canCancel || inFlight !== null}
+                              title={
+                                canCancel
+                                  ? 'Mark project as CANCELLED.'
+                                  : `Cannot transition from ${project.status} to CANCELLED.`
+                              }
+                              aria-label="Cancel project"
+                            >
+                              {inFlight === 'CANCELLED' ? (
+                                <Loader
+                                  size={14}
+                                  className={styles.spinningIcon}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <Ban size={14} aria-hidden />
+                              )}
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.completeBtn}
+                              onClick={() =>
+                                void handleTransition(project, 'COMPLETED')
+                              }
+                              disabled={!canComplete || inFlight !== null}
+                              title={
+                                canComplete
+                                  ? 'Mark project as COMPLETED.'
+                                  : `Cannot transition from ${project.status} to COMPLETED.`
+                              }
+                              aria-label="Mark complete"
+                            >
+                              {inFlight === 'COMPLETED' ? (
+                                <Loader
+                                  size={14}
+                                  className={styles.spinningIcon}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <ClipboardCheck size={14} aria-hidden />
+                              )}
+                              Complete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPrev={prev}
+              onNext={next}
+              onPage={setPage}
+              itemLabel="guidance projects"
+            />
+          </>
+        )}
       </div>
 
       {/* CREATE PROPOSAL MODAL */}
@@ -678,7 +696,7 @@ export const GuidanceProjects = () => {
       {/* Hint card — view existing groups from this Proposal. The link is to
           a stable Lecturer page (Research Group) so power users can drill
           in. The card is intentionally minimal — no fake data. */}
-      {filtered.length > 0 && (
+      {totalItems > 0 && (
         <div className={styles.hintCard}>
           <Link
             to={ROUTES.RESEARCH_GROUP}

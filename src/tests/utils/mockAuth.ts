@@ -17,6 +17,10 @@ export interface MockUseAuthOptions {
   email?: string;
   isAuthenticated?: boolean;
   token?: string;
+  /** Mirrors `dbo.Users.isActive`. `undefined` → defaults to `true` (verified). */
+  isActive?: boolean;
+  /** Role id used by the dual-signal admin check. */
+  roleId?: number;
 }
 
 export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
@@ -29,6 +33,8 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
         email: opts.email ?? 'student@example.com',
         role: role as string,
         userId: opts.userId ?? 42,
+        isActive: opts.isActive ?? true,
+        roleId: opts.roleId ?? 0,
       }
     : null;
 

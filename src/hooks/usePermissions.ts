@@ -1,31 +1,27 @@
 import { useAuth } from '../context/AuthContext';
-import { ROUTES } from '../routes/paths';
 import { isAdminUser } from '../utils/roleNormalizer';
+import { readStoredUser } from '../utils/storedUser';
 
 // Centralised permission flags derived from the auth store.
 //
 // `usePermissions()` is the single source of truth for feature gating based
-// on the unverified-user flow:
-//   - `isVerified`        — the user has been activated by an Admin
-//                            (mirrors `dbo.Users.isActive`).
-//   - `canCreatePost`     — verified user can author forum content.
-//   - `canAccessWorkspace`— verified user with a non-zero roleId (i.e. an
-//                            Admin-approved role) can use researcher /
-//                            reviewer / lecturer / graduate-student tools.
-//   - `canViewAdminPanel` — admin-only escape hatch for the route guard
-//                            (useAdminGuard uses its own isAdminUser, this
-//                            helper is for non-route UI like nav menus).
+// on the unverified-user flow. The four flags cover everything the FE needs
+// to know about a user before deciding whether to render a workspace, a CTA,
+// or the pending-state banner.
 //
 // All flags default to `false` when there's no authenticated user. This
 // keeps unverified / anonymous users on the same restrictive code path so
-// the FE only needs to branch on the positive case.
+// the FE only branches on the positive case.
 
 export interface Permissions {
+  /** User has been activated by an Admin (mirrors `dbo.Users.isActive`). */
   isVerified: boolean;
+  /** Verified user can author forum content. */
   canCreatePost: boolean;
-  canAccessWorkspace: boolean;
+  /** Admin-only flag for the route guard and admin nav menus. */
   canViewAdminPanel: boolean;
-  landingRoute: string;
+  /** Whether the user has a personal wallet row. Admins and Guests do not. */
+  hasWallet: boolean;
 }
 
 export const usePermissions = (): Permissions => {
@@ -35,35 +31,34 @@ export const usePermissions = (): Permissions => {
   // request. Until that happens they only get read-only access to /forum.
   const isVerified = Boolean(user?.isActive);
 
-  // Workspace access additionally requires the user to actually have a role
-  // assigned (roleId > 0). A user with `isActive: true` but `roleId: 0`
-  // would be a stale account in some other state — refuse by default.
-  const canAccessWorkspace = isVerified && Boolean(user?.roleId && user.roleId > 0);
-
   // All verified users may post in the forum. (If a future ticket restricts
   // specific roles from posting, gate here on roleName/roleId.)
   const canCreatePost = isVerified;
 
   // Admin is a separate signal; we don't gate it on isActive because admins
   // are provisioned directly in the DB (per the schema reference) and
-  // bypass the role-request flow entirely. We delegate to the same helper
-  // useAdminGuard uses so the two stay in lock-step.
+  // bypass the role-request flow entirely. We read `roleId` from the
+  // persisted blob (not the auth store) because the BE's off-by-one mapping
+  // bug means the auth response may carry `roleId: 0` for real admin users
+  // — see docs/local-only/admin-suite-be-gap-report.md. This matches what
+  // useAdminGuard / useVerifiedGuard do, so the three stay in lock-step.
+  const stored = readStoredUser();
   const canViewAdminPanel = isAdminUser({
-    roleName: user?.role ?? null,
-    roleId: user?.roleId ?? null,
+    roleName: user?.role ?? stored?.roleName ?? null,
+    roleId: stored?.roleId ?? null,
   });
 
-  // Default landing target — unverified users always bounce to /forum.
-  // (After verification, the route is left to the existing post-login
-  // routing logic in AuthContext; usePermissions just guards the redirect.)
-  const landingRoute = ROUTES.FORUM;
+  // Wallet row exists for verified, non-Admin users. Admins do not hold a
+  // personal wallet; Guests haven't been approved yet, so they have no
+  // row. This collapses what used to be a `!isAdmin && !isGuest` check at
+  // every header / modal site into a single derivation.
+  const hasWallet = isVerified && !canViewAdminPanel;
 
   return {
     isVerified,
     canCreatePost,
-    canAccessWorkspace,
     canViewAdminPanel,
-    landingRoute,
+    hasWallet,
   };
 };
 

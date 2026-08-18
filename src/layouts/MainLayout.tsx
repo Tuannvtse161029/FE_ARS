@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
 import { useWallet } from '../hooks/useWallet';
 import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
-import { useNotifications } from '../hooks/useNotifications';
-import { isAdminUser } from '../utils/roleNormalizer';
+import { usePermissions } from '../hooks/usePermissions';
+import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
+import { NotificationCenter } from '../components/notification/NotificationCenter';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
 import {
   Search,
   Wallet,
-  Bell,
   Plus,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
@@ -114,7 +114,6 @@ interface NavItem {
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Wallet balance comes from the BE — render placeholder until it loads.
   // We also pull the full `wallet` object so we can pass the `walletId`
@@ -122,8 +121,10 @@ export const MainLayout = () => {
   // `POST /api/Payment/create-link`).
   const { wallet: beWallet, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
 
-  // Notifications come from the BE — feed the header bell badge.
-  const { unreadCount } = useNotifications(user?.userId);
+  // Notifications are owned by <NotificationCenter /> below. The header
+  // bell button now renders the dropdown directly, so we no longer read
+  // `unreadCount` here — keeping a stale local copy would create two
+  // sources of truth for the same BE row.
 
   // Reviewer availability comes from the BE (read-only here; toggle still calls update).
   const { isAvailable: beReviewerAvailable, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
@@ -133,54 +134,19 @@ export const MainLayout = () => {
   // (and pick a role on the new JWT) instead.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Admin accounts do not use the in-app wallet or top-up flow — incoming
-  // payments go to the central Admin VNPay account and outgoing payouts are
-  // handled manually via direct bank transfers. Hide the wallet badge (and
-  // its + button) entirely for Admins. Mirrors the dual-signal check used by
-  // useAdminGuard until the BE's off-by-one roleId mapping is fixed.
-  const isAdmin = (() => {
-    const stored = (() => {
-      try {
-        const raw =
-          localStorage.getItem('ars_user') || sessionStorage.getItem('ars_user');
-        return raw ? (JSON.parse(raw) as { roleId?: number; roleName?: string }) : null;
-      } catch {
-        return null;
-      }
-    })();
-    return isAdminUser({
-      roleName: activeRole,
-      roleId: stored?.roleId ?? null,
-    });
-  })();
+  // Single source of truth for unverified-user gating. `isVerified` mirrors
+  // `dbo.Users.isActive`. `canViewAdminPanel` collapses the dual-signal
+  // admin check (roleName OR roleId) that the Admin guards used to repeat.
+  // `hasWallet` collapses what used to be a `!isAdmin && !isGuest` check at
+  // every header / modal site into one derivation. `isGuest` is the local
+  // short-hand we need for the sidebar fallback and the role pill.
+  const { isVerified, canViewAdminPanel: isAdmin, hasWallet } = usePermissions();
+  const isGuest = !isVerified && !isAdmin;
+  const displayedRole: string = isGuest ? 'Guest' : activeRole;
 
-  // Pending-state route guard: unverified users (isActive !== true) only
-  // get read-only access to /forum. Any other private route bounces them
-  // back to /forum with the pending banner.
-  //
-  // Admins are exempt because they are provisioned directly in the DB and
-  // bypass the role-request lifecycle.
-  // See src/hooks/useVerifiedGuard.ts and the per-page useAdminGuard.
-  useEffect(() => {
-    if (isAdmin) return;
-    if (location.pathname === ROUTES.FORUM) return;
-
-    // Read isActive from storage so the guard works during the brief
-    // rehydration window before AuthContext has rehydrated the store.
-    const stored = (() => {
-      try {
-        const raw =
-          localStorage.getItem('ars_user') || sessionStorage.getItem('ars_user');
-        return raw ? (JSON.parse(raw) as { isActive?: boolean }) : null;
-      } catch {
-        return null;
-      }
-    })();
-    const isActive = user?.isActive ?? stored?.isActive ?? true;
-    if (!isActive) {
-      navigate(ROUTES.FORUM, { replace: true });
-    }
-  }, [isAdmin, location.pathname, navigate, user?.isActive]);
+  // Bounce unverified users off every private route except /forum. Lives in
+  // its own hook so the verification rule has one definition site.
+  useVerifiedGuard();
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -261,6 +227,14 @@ export const MainLayout = () => {
 
   // Nav items filtered dynamically based on active role
   const getNavItemsByRole = (): NavItem[] => {
+    // Unverified users (Guest) only get read-only access to /forum. Show only
+    // the Forums link in the sidebar so they can't see (let alone click)
+    // workspace shortcuts the verified-guard would bounce them from anyway.
+    if (isGuest) {
+      return [
+        { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+      ];
+    }
     switch (activeRole) {
       case 'Admin':
         return [
@@ -304,7 +278,6 @@ export const MainLayout = () => {
       case 'Graduate Student':
         return [
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.GRADUATE_STUDENT_DASHBOARD, label: 'Dashboard', icon: <DashboardIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
@@ -418,8 +391,10 @@ export const MainLayout = () => {
               </div>
             )}
 
-            {/* Wallet Balance — hidden for Admins (no in-app wallet). */}
-            {!isAdmin && (
+            {/* Wallet Balance — hidden for users who don't have a wallet row.
+                Admins do not hold a personal wallet; unverified users (Guest)
+                have no row until an Admin approves their role request. */}
+            {hasWallet && (
               <div className={styles.walletBadge}>
                 <span className={styles.walletIcon}><Wallet size={18} /></span>
                 <span className={styles.walletAmount}>
@@ -439,16 +414,16 @@ export const MainLayout = () => {
               </div>
             )}
 
-            {/* Notification bell — badge count from BE unread count */}
-            <button className={styles.notificationBtn} aria-label={`Notifications (${unreadCount} unread)`}>
-              <Bell size={18} />
-              {unreadCount > 0 && <span className={styles.notificationBadge}>{unreadCount}</span>}
-            </button>
+            {/* Notification bell — Agent-16: replaced the static badge with
+                the full NotificationCenter dropdown. Reads the same BE
+                notifications list, but also drives the dropdown panel,
+                mark-read mutations, and route resolution. */}
+            <NotificationCenter onNavigate={(path) => navigate(path)} />
 
             {/* Profile Dropdown */}
             <ProfileDropdown
               username={displayName}
-              activeRole={activeRole}
+              activeRole={displayedRole}
               avatarInitials={avatarInitials}
               onLogout={handleLogout}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
@@ -463,9 +438,9 @@ export const MainLayout = () => {
         </main>
       </div>
 
-      {/* Wallet Top-Up Modal — only mounted for non-Admin users (Admins have
-          no wallet; see the header wallet badge conditional). */}
-      {!isAdmin && (
+      {/* Wallet Top-Up Modal — only mounted for users who actually have a
+          wallet row (see the header wallet badge above for the rule). */}
+      {hasWallet && (
         <WalletTopUpModal
           isOpen={isTopUpOpen}
           currentUserId={user?.userId ?? null}
@@ -473,8 +448,8 @@ export const MainLayout = () => {
           currentBalance={beBalance}
           onSuccess={async () => {
             // Re-fetch the wallet so the header pill reflects the new balance
-            // immediately (works for both the mock-VNPay "Simulate Success"
-            // path and the DEV auto-fund path).
+            // immediately (works for both the PayOS redirect path and the DEV
+            // auto-fund path).
             await refetchWallet();
           }}
           onMessage={(text, type) => setToastMessage({ text, type })}

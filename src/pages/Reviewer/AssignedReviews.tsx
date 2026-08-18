@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  RefreshCw,
   FileText,
   Check,
   Clock,
@@ -16,6 +15,10 @@ import {
   getReviewRequestTab,
   normalizeReviewRequestStatus,
 } from '../../utils/reviewRequestPolicy';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import styles from './AssignedReviews.module.css';
 
 type StatusTab = 'pending' | 'inprogress' | 'completed';
@@ -148,6 +151,45 @@ export const AssignedReviews = () => {
     [items, activeTab]
   );
 
+  // Search + pagination for the active tab.
+  const [search, setSearch] = useState('');
+
+  const paperTitle = (req: ReviewRequest): string => {
+    if (req.paperId == null) return 'Untitled Paper';
+    const paper = paperById[String(req.paperId)];
+    return paper?.title || `Paper #${req.paperId}`;
+  };
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return visible;
+    return visible.filter((r) => {
+      const title = paperTitle(r).toLowerCase();
+      return (
+        title.includes(q) ||
+        (r.status ?? '').toLowerCase().includes(q) ||
+        (r.type ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [visible, search]);
+
+  const {
+    page,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageItems,
+    setPage,
+    next,
+    prev,
+    resetPage,
+  } = usePagination<ReviewRequest>(filtered, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetPage();
+  }, [search, activeTab, resetPage]);
+
   const counts = useMemo(() => {
     let pending = 0;
     let inprogress = 0;
@@ -160,12 +202,6 @@ export const AssignedReviews = () => {
     }
     return { pending, inprogress, completed };
   }, [items]);
-
-  const paperTitle = (req: ReviewRequest): string => {
-    if (req.paperId == null) return 'Untitled Paper';
-    const paper = paperById[String(req.paperId)];
-    return paper?.title || `Paper #${req.paperId}`;
-  };
 
   const isCompleted = (req: ReviewRequest) =>
     normalizeReviewRequestStatus(req.status) === 'COMPLETED';
@@ -185,23 +221,6 @@ export const AssignedReviews = () => {
             Manage your review assignments and track evaluation progress.
           </p>
         </div>
-        <button
-          className={styles.refreshBtn}
-          onClick={handleRefresh}
-          disabled={isRefreshing || isLoading}
-          title="Refresh assigned papers"
-          aria-label="Refresh assigned papers"
-        >
-          <RefreshCw
-            size={14}
-            style={{
-              marginRight: '6px',
-              verticalAlign: 'middle',
-              animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
-            }}
-          />
-          {isRefreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
       </div>
 
       {/* Tabs list */}
@@ -226,21 +245,35 @@ export const AssignedReviews = () => {
         </button>
       </div>
 
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        searchPlaceholder="Search by paper title, status, or type…"
+        refreshLabel="Refresh"
+      />
+
       {/* Tab content */}
       <div className={styles.tabContent}>
         {isLoading ? (
-          <div className={styles.emptyState}>Loading assigned papers…</div>
+          <div className={styles.emptyState} data-testid="ar-loading" role="status">Loading assigned papers…</div>
         ) : error ? (
-          <div className={styles.emptyState}>{error}</div>
+          <div className={styles.emptyState} data-testid="ar-error" role="alert">{error}</div>
         ) : visible.length === 0 ? (
-          <div className={styles.emptyState}>
+          <div className={styles.emptyState} data-testid="ar-empty">
             {activeTab === 'pending' && 'No pending review tasks right now.'}
             {activeTab === 'inprogress' && 'No review tasks in progress.'}
             {activeTab === 'completed' && 'No completed reviews yet.'}
           </div>
+        ) : totalItems === 0 ? (
+          <div className={styles.emptyState} data-testid="ar-empty-search">
+            No review tasks match "{search.trim()}".
+          </div>
         ) : (
+          <>
           <div className={styles.cardsList}>
-            {visible.map((req) => {
+            {pageItems.map((req) => {
               const deadline = formatDeadline(req);
               const feeText = formatFee(req);
               const completed = isCompleted(req);
@@ -321,6 +354,18 @@ export const AssignedReviews = () => {
               );
             })}
           </div>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            onPrev={prev}
+            onNext={next}
+            onPage={setPage}
+            itemLabel="review tasks"
+          />
+          </>
         )}
       </div>
     </div>

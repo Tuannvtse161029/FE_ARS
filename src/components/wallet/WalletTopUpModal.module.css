@@ -264,7 +264,7 @@
   border-radius: 999px;
 }
 
-/* Click-through link surfaced when the BE returns a VNPay checkout URL.
+/* Click-through link surfaced when the BE returns a PayOS checkout URL.
    Sits between the QR image and the summary block. */
 .checkoutLink {
   display: inline-flex;

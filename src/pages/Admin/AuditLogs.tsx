@@ -7,6 +7,10 @@ import type {
   AuditLogQuery,
   AuditLogRange,
 } from '../../types/adminAuxiliary';
+import { usePagination } from '../../hooks/usePagination';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
 const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
   { value: 'past_24h', label: 'Past 24 hours' },
@@ -16,7 +20,10 @@ const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
 ];
 
 // Color tag mapping per the Figma screen (green / red / blue / gray).
-const ACTION_COLOR: Record<AuditLogAction, 'green' | 'red' | 'blue' | 'gray' | 'amber'> = {
+const ACTION_COLOR: Record<
+  AuditLogAction,
+  'green' | 'red' | 'blue' | 'gray' | 'amber'
+> = {
   APPROVED_ROLE_REQUEST: 'green',
   APPROVED_WITHDRAWAL: 'green',
   COMPLETED_WITHDRAWAL: 'green',
@@ -53,6 +60,7 @@ const ACTION_LABEL: Record<AuditLogAction, string> = {
 export default function AuditLogs(): JSX.Element {
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
@@ -74,6 +82,7 @@ export default function AuditLogs(): JSX.Element {
       setError(e instanceof Error ? e.message : 'Failed to load audit logs.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [search, range, adminId]);
 
@@ -88,6 +97,23 @@ export default function AuditLogs(): JSX.Element {
     entries.forEach((e) => seen.set(e.adminId, e.adminName));
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [entries]);
+
+  const {
+    page,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageItems,
+    setPage,
+    next,
+    prev,
+    resetPage,
+  } = usePagination<AuditLogEntry>(entries, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetPage();
+  }, [search, range, adminId, resetPage]);
 
   const handleExport = async (): Promise<void> => {
     setExporting(true);
@@ -133,90 +159,127 @@ export default function AuditLogs(): JSX.Element {
         </button>
       </header>
 
-      <div className={styles.toolbar}>
-        <div className={styles.searchWrapper}>
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search by Log ID, Admin ID, Target or details…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className={styles.filterSelect}
-          value={range}
-          onChange={(e) => setRange(e.target.value as AuditLogRange)}
-        >
-          {RANGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={styles.filterSelect}
-          value={adminId === 'ALL' ? 'ALL' : String(adminId)}
-          onChange={(e) => {
-            const v = e.target.value;
-            setAdminId(v === 'ALL' ? 'ALL' : Number(v));
-          }}
-        >
-          <option value="ALL">All Admins</option>
-          {adminOptions.map((opt) => (
-            <option key={opt.id} value={String(opt.id)}>
-              {opt.name} (#{opt.id})
-            </option>
-          ))}
-        </select>
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onRefresh={() => {
+          setRefreshing(true);
+          void load();
+        }}
+        isRefreshing={refreshing}
+        searchPlaceholder="Search by Log ID, Admin ID, Target or details…"
+        refreshLabel="Refresh"
+        filters={
+          <>
+            <select
+              className={styles.filterSelect}
+              value={range}
+              onChange={(e) => setRange(e.target.value as AuditLogRange)}
+              aria-label="Filter by range"
+              data-testid="audit-range-filter"
+            >
+              {RANGE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={adminId === 'ALL' ? 'ALL' : String(adminId)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setAdminId(v === 'ALL' ? 'ALL' : Number(v));
+              }}
+              aria-label="Filter by admin"
+              data-testid="audit-admin-filter"
+            >
+              <option value="ALL">All Admins</option>
+              {adminOptions.map((opt) => (
+                <option key={opt.id} value={String(opt.id)}>
+                  {opt.name} (#{opt.id})
+                </option>
+              ))}
+            </select>
+          </>
+        }
+      />
 
       {loading ? (
-        <div className={styles.placeholder}>Loading audit logs…</div>
+        <div
+          className={styles.placeholder}
+          data-testid="audit-loading"
+          role="status"
+        >
+          Loading audit logs…
+        </div>
       ) : error ? (
-        <div className={styles.errorState}>Failed to load: {error}</div>
-      ) : entries.length === 0 ? (
-        <div className={styles.placeholder}>
+        <div
+          className={styles.errorState}
+          data-testid="audit-error"
+          role="alert"
+        >
+          Failed to load: {error}
+        </div>
+      ) : totalItems === 0 ? (
+        <div
+          className={styles.placeholder}
+          data-testid="audit-empty"
+          role="status"
+        >
           No audit entries match these filters.
         </div>
       ) : (
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Log ID</th>
-                <th>Admin</th>
-                <th>Action</th>
-                <th>Target</th>
-                <th>Timestamp</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.logId}>
-                  <td className={styles.monoCell}>#{entry.logId}</td>
-                  <td>
-                    <span className={styles.adminId}>#{entry.adminId}</span>{' '}
-                    {entry.adminName}
-                  </td>
-                  <td>
-                    <span
-                      className={`${styles.actionBadge} ${
-                        styles[`action_${ACTION_COLOR[entry.action]}`] ?? ''
-                      }`}
-                    >
-                      {ACTION_LABEL[entry.action]}
-                    </span>
-                  </td>
-                  <td>{entry.target}</td>
-                  <td>{new Date(entry.timestamp).toLocaleString('vi-VN')}</td>
-                  <td className={styles.detailsCell}>{entry.details}</td>
+        <>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Log ID</th>
+                  <th>Admin</th>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>Timestamp</th>
+                  <th>Details</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pageItems.map((entry) => (
+                  <tr key={entry.logId}>
+                    <td className={styles.monoCell}>#{entry.logId}</td>
+                    <td>
+                      <span className={styles.adminId}>#{entry.adminId}</span>{' '}
+                      {entry.adminName}
+                    </td>
+                    <td>
+                      <span
+                        className={`${styles.actionBadge} ${
+                          styles[`action_${ACTION_COLOR[entry.action]}`] ?? ''
+                        }`}
+                      >
+                        {ACTION_LABEL[entry.action]}
+                      </span>
+                    </td>
+                    <td>{entry.target}</td>
+                    <td>{new Date(entry.timestamp).toLocaleString('vi-VN')}</td>
+                    <td className={styles.detailsCell}>{entry.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            onPrev={prev}
+            onNext={next}
+            onPage={setPage}
+            itemLabel="audit entries"
+          />
+        </>
       )}
     </section>
   );

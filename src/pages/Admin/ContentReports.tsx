@@ -8,8 +8,15 @@ import type {
   ViolationResolutionAction,
   ViolationReportStatus,
 } from '../../types/adminAuxiliary';
+import { usePagination } from '../../hooks/usePagination';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
-const STATUS_OPTIONS: Array<{ value: ViolationReportStatus | 'ALL'; label: string }> = [
+const STATUS_OPTIONS: Array<{
+  value: ViolationReportStatus | 'ALL';
+  label: string;
+}> = [
   { value: 'ALL', label: 'All Statuses' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'RESOLVED', label: 'Resolved' },
@@ -19,10 +26,13 @@ const STATUS_OPTIONS: Array<{ value: ViolationReportStatus | 'ALL'; label: strin
 export default function ContentReports(): JSX.Element {
   const [reports, setReports] = useState<ViolationReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ViolationReportsQuery['status']>('PENDING');
+  const [statusFilter, setStatusFilter] = useState<
+    ViolationReportsQuery['status']
+  >('PENDING');
 
   const [activeReport, setActiveReport] = useState<ViolationReport | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -39,9 +49,12 @@ export default function ContentReports(): JSX.Element {
       });
       setReports(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load violation reports.');
+      setError(
+        e instanceof Error ? e.message : 'Failed to load violation reports.',
+      );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [search, statusFilter]);
 
@@ -53,6 +66,23 @@ export default function ContentReports(): JSX.Element {
     () => reports.filter((r) => r.status === 'PENDING').length,
     [reports],
   );
+
+  const {
+    page,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageItems,
+    setPage,
+    next,
+    prev,
+    resetPage,
+  } = usePagination<ViolationReport>(reports, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetPage();
+  }, [search, statusFilter, resetPage]);
 
   const openReport = (report: ViolationReport): void => {
     setActiveReport(report);
@@ -83,7 +113,9 @@ export default function ContentReports(): JSX.Element {
       setActiveReport(null);
       await loadReports();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Failed to resolve report.');
+      setSubmitError(
+        e instanceof Error ? e.message : 'Failed to resolve report.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -101,93 +133,138 @@ export default function ContentReports(): JSX.Element {
         </div>
       </header>
 
-      <div className={styles.toolbar}>
-        <div className={styles.searchWrapper}>
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search by reason, author or reporter…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className={styles.filterSelect}
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value as ViolationReportStatus | 'ALL')
-          }
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onRefresh={() => {
+          setRefreshing(true);
+          void loadReports();
+        }}
+        isRefreshing={refreshing}
+        searchPlaceholder="Search by reason, author or reporter…"
+        refreshLabel="Refresh"
+        filters={
+          <select
+            className={styles.filterSelect}
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as ViolationReportStatus | 'ALL')
+            }
+            aria-label="Filter by status"
+            data-testid="violations-status-filter"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
       {loading ? (
-        <div className={styles.placeholder}>Loading violation reports…</div>
-      ) : error ? (
-        <div className={styles.errorState}>Failed to load: {error}</div>
-      ) : reports.length === 0 ? (
-        <div className={styles.placeholder}>No violation reports match these filters.</div>
-      ) : (
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Report ID</th>
-                <th>Type</th>
-                <th>Target Author</th>
-                <th>Reason</th>
-                <th>Reported By</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r) => (
-                <tr key={r.reportId}>
-                  <td className={styles.monoCell}>#{r.reportId}</td>
-                  <td>
-                    <span
-                      className={`${styles.typeBadge} ${
-                        r.type === 'FORUM_COMMENT'
-                          ? styles.typeBadgeForum
-                          : styles.typeBadgePaper
-                      }`}
-                    >
-                      {r.type === 'FORUM_COMMENT' ? 'Forum Comment' : 'Research Paper'}
-                    </span>
-                  </td>
-                  <td>{r.targetAuthorName}</td>
-                  <td className={styles.reasonCell} title={r.reason}>
-                    {r.reason}
-                  </td>
-                  <td>{r.reportedByName}</td>
-                  <td>{new Date(r.date).toLocaleString('vi-VN')}</td>
-                  <td>
-                    <span className={`${styles.statusBadge} ${styles[`status_${r.status}`] ?? ''}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className={styles.actionCell}>
-                    <button
-                      type="button"
-                      className={styles.reviewButton}
-                      onClick={() => openReport(r)}
-                      disabled={r.status !== 'PENDING'}
-                    >
-                      {r.status === 'PENDING' ? 'Review Violation' : 'View Details'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div
+          className={styles.placeholder}
+          data-testid="violations-loading"
+          role="status"
+        >
+          Loading violation reports…
         </div>
+      ) : error ? (
+        <div
+          className={styles.errorState}
+          data-testid="violations-error"
+          role="alert"
+        >
+          Failed to load: {error}
+        </div>
+      ) : totalItems === 0 ? (
+        <div
+          className={styles.placeholder}
+          data-testid="violations-empty"
+          role="status"
+        >
+          {search.trim().length > 0
+            ? `No violation reports match "${search.trim()}".`
+            : 'No violation reports match these filters.'}
+        </div>
+      ) : (
+        <>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Report ID</th>
+                  <th>Type</th>
+                  <th>Target Author</th>
+                  <th>Reason</th>
+                  <th>Reported By</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((r) => (
+                  <tr key={r.reportId}>
+                    <td className={styles.monoCell}>#{r.reportId}</td>
+                    <td>
+                      <span
+                        className={`${styles.typeBadge} ${
+                          r.type === 'FORUM_COMMENT'
+                            ? styles.typeBadgeForum
+                            : styles.typeBadgePaper
+                        }`}
+                      >
+                        {r.type === 'FORUM_COMMENT'
+                          ? 'Forum Comment'
+                          : 'Research Paper'}
+                      </span>
+                    </td>
+                    <td>{r.targetAuthorName}</td>
+                    <td className={styles.reasonCell} title={r.reason}>
+                      {r.reason}
+                    </td>
+                    <td>{r.reportedByName}</td>
+                    <td>{new Date(r.date).toLocaleString('vi-VN')}</td>
+                    <td>
+                      <span
+                        className={`${styles.statusBadge} ${
+                          styles[`status_${r.status}`] ?? ''
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className={styles.actionCell}>
+                      <button
+                        type="button"
+                        className={styles.reviewButton}
+                        onClick={() => openReport(r)}
+                        disabled={r.status !== 'PENDING'}
+                      >
+                        {r.status === 'PENDING'
+                          ? 'Review Violation'
+                          : 'View Details'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            onPrev={prev}
+            onNext={next}
+            onPage={setPage}
+            itemLabel="violation reports"
+          />
+        </>
       )}
 
       <ResolveReportModal

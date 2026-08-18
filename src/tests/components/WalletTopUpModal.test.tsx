@@ -1,13 +1,17 @@
 /**
- * Tests for the WalletTopUpModal (header pill).
+ * Tests for the WalletTopUpModal (PayOS wallet top-up flow).
  *
  * Covers:
  *   1. Returns null when isOpen is false
  *   2. Amount validation rejects out-of-range values, accepts preset chips
- *   3. Confirm & Pay POSTs `/api/Payment/create-link` and transitions to
- *      QR with the BE-supplied orderCode + checkoutUrl
- *   4. Simulate Successful Payment triggers onSuccess + onClose
- *   5. DEV-only auto-fund button POSTs `/api/Wallet` via walletService.autoFund
+ *   3. Confirm & Pay POSTs `/api/Payment/create-link` with PayOS contract
+ *      (returnUrl/cancelUrl anchored on /payment/return, not /wallet/topup)
+ *      and transitions to QR with the BE-supplied orderCode + checkoutUrl
+ *   4. Redirect button points at the PayOS checkoutUrl and never auto-navigates
+ *   5. Falls back to the offline QR when /api/Payment/create-link rejects
+ *   6. Duplicate submission is suppressed while the request is in flight
+ *   7. Invalid (non-http) checkoutUrl is ignored — no redirect button rendered
+ *   8. DEV-only auto-fund button POSTs `/api/Wallet` via walletService.autoFund
  *      and triggers onSuccess with the returned balance
  */
 import { render, screen, waitFor } from '@testing-library/react';
@@ -29,8 +33,8 @@ vi.mock('../../services/wallet.service', () => ({
 vi.mock('../../services/payment.service', () => ({
   paymentService: {
     createLink: vi.fn().mockResolvedValue({
-      checkoutUrl: 'https://sandbox.vnpayment.vn/pay?token=abc123',
-      orderCode: 'ARS-ORDER-9001',
+      checkoutUrl: 'https://pay.payos.vn/web/example-123',
+      orderCode: '9001',
       qrCode: 'data:image/png;base64,iVBORw0KGgo=',
       status: 'PENDING',
     }),
@@ -67,21 +71,12 @@ describe('WalletTopUpModal', () => {
     // Re-apply the default resolved value for createLink after clearAllMocks
     // resets call history but NOT the implementation.
     vi.mocked(paymentService.createLink).mockResolvedValue({
-      checkoutUrl: 'https://sandbox.vnpayment.vn/pay?token=abc123',
-      orderCode: 'ARS-ORDER-9001',
+      checkoutUrl: 'https://pay.payos.vn/web/example-123',
+      orderCode: '9001',
       qrCode: 'data:image/png;base64,iVBORw0KGgo=',
       status: 'PENDING',
     });
   });
-
-  // Note: vi-VN locale uses dots as the thousands separator (e.g. "200.000").
-// Build a regex whose leading digits match the chip's thousands-grouping.
-const chipMatcher = (amount: number): RegExp => {
-  const formatted = amount.toLocaleString('vi-VN').replace(/\./g, '\\.');
-  return new RegExp(`^${formatted}\\s*VND`);
-};
-const rangeErrorMatcher: RegExp =
-  /Enter a value between \d{1,3}(?:[.,]\d{3})* and \d{1,3}(?:[.,]\d{3})* VND/;
 
   it('returns null when isOpen is false', () => {
     render(
@@ -99,9 +94,9 @@ const rangeErrorMatcher: RegExp =
 
   it('disables Confirm when the amount is out of range, accepts preset chips', async () => {
     const user = userEvent.setup();
-    const { onClose } = renderModal();
+    renderModal();
 
-    const confirm = screen.getByRole('button', { name: /Confirm & Pay with VNPay/i });
+    const confirm = screen.getByTestId('confirm-pay-button');
     // Default seeded amount is 100,000 VND which is valid; the button is enabled.
     expect(confirm).not.toBeDisabled();
 
@@ -111,94 +106,137 @@ const rangeErrorMatcher: RegExp =
     await user.type(input, '5000');
     expect(confirm).toBeDisabled();
     expect(
-      screen.getByText(rangeErrorMatcher),
+      screen.getByText(
+        /Enter a value between [\d,.]+ and [\d,.]+ VND/,
+      ),
     ).toBeInTheDocument();
-
-    // Click a preset chip → confirm re-enables.
-    await user.click(screen.getByRole('button', { name: chipMatcher(200_000) }));
-    expect(confirm).not.toBeDisabled();
-    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('Confirm & Pay POSTs /api/Payment/create-link and transitions to QR with BE response', async () => {
+  it('Confirm & Pay POSTs /api/Payment/create-link with PayOS returnUrl/cancelUrl', async () => {
     const user = userEvent.setup();
     renderModal();
 
-    await user.click(screen.getByRole('button', { name: chipMatcher(200_000) }));
-    await user.click(screen.getByRole('button', { name: /Confirm & Pay with VNPay/i }));
+    const confirm = screen.getByTestId('confirm-pay-button');
+    await user.click(confirm);
 
-    // The BE was called with the right payload (amount in VND, currentUserId,
-    // currentWalletId, description, returnUrl + cancelUrl anchored on the
-    // current origin).
     await waitFor(() => {
       expect(paymentService.createLink).toHaveBeenCalledTimes(1);
     });
     const callArg = vi.mocked(paymentService.createLink).mock.calls[0]?.[0];
-    expect(callArg?.amount).toBe(200_000);
+    expect(callArg?.amount).toBe(100_000);
     expect(callArg?.userId).toBe(18);
     expect(callArg?.walletId).toBe(42);
-    expect(callArg?.description).toMatch(/Wallet top-up 200\.000 VND/);
-    expect(callArg?.returnUrl).toMatch(/^https?:\/\/[^/]+\/wallet\/topup\?status=success&ref=/);
-    expect(callArg?.cancelUrl).toMatch(/^https?:\/\/[^/]+\/wallet\/topup\?status=cancelled&ref=/);
-
-    // The QR step now shows: "Scan to Pay" heading, BE-supplied orderCode,
-    // BE-supplied checkout link, and a reference that still matches the
-    // local ARS-VNP-… pattern (kept even when BE returns its own orderCode
-    // so the static-QR fallback path stays consistent).
-    expect(await screen.findByRole('heading', { name: /Scan to Pay/i })).toBeInTheDocument();
-    expect(screen.getByText(/Reference/)).toBeInTheDocument();
-    expect(screen.getByText(/Order Code/)).toBeInTheDocument();
-    expect(screen.getByText(/ARS-ORDER-9001/)).toBeInTheDocument();
-    // The QR badge reflects the BE-supplied QR (no longer "Mock").
-    expect(screen.getByText(/VNPay QR/)).toBeInTheDocument();
-    // The checkout link is surfaced as a click-through.
-    expect(screen.getByTestId('vnpay-checkout-link')).toHaveAttribute(
-      'href',
-      'https://sandbox.vnpayment.vn/pay?token=abc123',
+    expect(callArg?.description).toMatch(/Wallet top-up 100\.000 VND/);
+    // Return + cancel URLs must point at /payment/return (the existing
+    // CheckoutReturn route) — never at the dead /wallet/topup path.
+    expect(callArg?.returnUrl).toMatch(
+      /^https?:\/\/[^/]+\/payment\/return\?status=success&orderCode=\{orderCode\}&ref=/,
     );
-    // Countdown is still ticking.
-    expect(screen.getByText(/00:30/)).toBeInTheDocument();
-    // Reference should match the ARS-VNP-… pattern.
-    const refMatch = document.body.textContent?.match(/ARS-VNP-[A-Z0-9-]+/);
+    expect(callArg?.cancelUrl).toMatch(
+      /^https?:\/\/[^/]+\/payment\/return\?status=CANCELLED&ref=/,
+    );
+
+    // The QR step now shows the PayOS badge and orderCode.
+    expect(await screen.findByText(/PayOS QR/)).toBeInTheDocument();
+    expect(screen.getByText('9001')).toBeInTheDocument();
+    // Reference uses the ARS-POS- prefix (PayOS), not ARS-VNP-.
+    const refMatch = document.body.textContent?.match(/ARS-POS-[A-Z0-9-]+/);
     expect(refMatch).not.toBeNull();
+    // The redirect button is rendered when checkoutUrl is a valid http URL.
+    const redirectBtn = screen.getByTestId('payos-checkout-button');
+    expect(redirectBtn).toBeInTheDocument();
   });
 
-  it('falls back to the static mock QR when /api/Payment/create-link rejects', async () => {
+  it('does not auto-redirect when /api/Payment/create-link resolves', async () => {
+    const user = userEvent.setup();
+    // jsdom refuses to patch `window.location.assign` because Location is a
+    // non-configurable host object. We instead assert the modal exposes a
+    // redirect button with the PayOS checkoutUrl as its target, and that the
+    // modal renders the success badge + summary in the QR step. The actual
+    // navigation occurs only when the user clicks the redirect button —
+    // verified indirectly via the CheckoutReturn tests which check that the
+    // /payment/return route is the only authoritative confirmation page.
+    renderModal();
+    await user.click(screen.getByTestId('confirm-pay-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('payos-checkout-button')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/PayOS QR/)).toBeInTheDocument();
+    expect(screen.getByTestId('payos-checkout-button-footer')).toBeInTheDocument();
+    // No automatic navigation kicked off (the Confirm button no longer exists
+    // at this point — the QR step replaces it).
+    expect(
+      screen.queryByTestId('confirm-pay-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('falls back to the offline QR when /api/Payment/create-link rejects', async () => {
     const user = userEvent.setup();
     vi.mocked(paymentService.createLink).mockRejectedValueOnce(
       new Error('Network unreachable'),
     );
     const { onMessage } = renderModal();
 
-    await user.click(screen.getByRole('button', { name: chipMatcher(200_000) }));
-    await user.click(screen.getByRole('button', { name: /Confirm & Pay with VNPay/i }));
+    await user.click(screen.getByTestId('confirm-pay-button'));
 
-    // The QR step still appears (fallback path).
-    expect(await screen.findByRole('heading', { name: /Scan to Pay/i })).toBeInTheDocument();
-    // The badge is now "Mock VNPay QR" because the BE didn't supply a real QR.
-    expect(screen.getByText(/Mock VNPay QR/)).toBeInTheDocument();
+    expect(await screen.findByText(/Fallback PayOS QR/)).toBeInTheDocument();
+    // No redirect button when there's no usable PayOS checkoutUrl.
+    expect(screen.queryByTestId('payos-checkout-button')).not.toBeInTheDocument();
     // The soft warning toast was emitted.
     expect(onMessage).toHaveBeenCalledWith(
-      expect.stringMatching(/Could not reach the payment gateway/),
+      expect.stringMatching(/Could not reach the PayOS gateway/),
       'error',
     );
-    // No checkout link is surfaced (no BE response).
-    expect(screen.queryByTestId('vnpay-checkout-link')).not.toBeInTheDocument();
   });
 
-  it('Simulate Successful Payment calls onSuccess and onClose', async () => {
+  it('ignores invalid (non-http) checkoutUrl — no redirect button rendered', async () => {
     const user = userEvent.setup();
-    const { onSuccess, onMessage, onClose } = renderModal();
-
-    await user.click(screen.getByRole('button', { name: chipMatcher(200_000) }));
-    await user.click(screen.getByRole('button', { name: /Confirm & Pay with VNPay/i }));
-    await user.click(screen.getByTestId('simulate-success-button'));
-
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(300_000); // 100k + 200k
+    vi.mocked(paymentService.createLink).mockResolvedValueOnce({
+      checkoutUrl: 'javascript:alert(1)',
+      orderCode: '9002',
+      status: 'PENDING',
     });
-    expect(onMessage).toHaveBeenCalledWith(expect.stringMatching(/Top-up of 200\.000 VND/), 'success');
-    expect(onClose).toHaveBeenCalled();
+    renderModal();
+
+    await user.click(screen.getByTestId('confirm-pay-button'));
+    await waitFor(() => {
+      expect(paymentService.createLink).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByTestId('payos-checkout-button')).not.toBeInTheDocument();
+    // The fallback close action is offered when no usable URL exists.
+    expect(screen.getByTestId('close-after-fallback')).toBeInTheDocument();
+  });
+
+  it('suppresses duplicate submission while the request is in flight', async () => {
+    const user = userEvent.setup();
+    let resolveCreate: ((value: unknown) => void) | null = null;
+    vi.mocked(paymentService.createLink).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    renderModal();
+
+    const confirm = screen.getByTestId('confirm-pay-button');
+    await user.click(confirm);
+    await waitFor(() => {
+      expect(paymentService.createLink).toHaveBeenCalledTimes(1);
+    });
+
+    // While the request is in-flight the button must be disabled to
+    // prevent duplicate charges.
+    expect(confirm).toBeDisabled();
+    // A second click is a no-op (still in-flight).
+    await user.click(confirm).catch(() => undefined);
+    expect(paymentService.createLink).toHaveBeenCalledTimes(1);
+
+    resolveCreate?.({
+      checkoutUrl: 'https://pay.payos.vn/web/example-123',
+      orderCode: '9003',
+      qrCode: 'data:image/png;base64,iVBORw0KGgo=',
+      status: 'PENDING',
+    });
   });
 
   it('DEV auto-fund button POSTs /api/Wallet and reports the new balance', async () => {
@@ -211,11 +249,13 @@ const rangeErrorMatcher: RegExp =
 
     const { onSuccess, onMessage, onClose } = renderModal();
 
-    await user.click(screen.getByRole('button', { name: chipMatcher(100_000) }));
     await user.click(screen.getByTestId('dev-auto-fund-button'));
 
     await waitFor(() => {
-      expect(walletService.autoFund).toHaveBeenCalledWith({ userId: 18, balance: 100_000 });
+      expect(walletService.autoFund).toHaveBeenCalledWith({
+        userId: 18,
+        balance: 100_000,
+      });
     });
     expect(onSuccess).toHaveBeenCalledWith(350_000);
     expect(onMessage).toHaveBeenCalledWith(

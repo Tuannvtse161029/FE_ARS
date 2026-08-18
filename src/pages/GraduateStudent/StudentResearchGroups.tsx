@@ -4,12 +4,10 @@ import {
   BookOpen,
   Calendar,
   FileText,
-  Filter,
   Inbox,
   Loader2,
   Mail,
   RefreshCw,
-  Search,
   Users,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -25,6 +23,10 @@ import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import MilestoneProgress from '../../components/research/MilestoneProgress';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import type { PhasedReportStatus } from '../../types/research';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
@@ -394,6 +396,24 @@ function WorkspaceView({
 }: WorkspaceViewProps): JSX.Element {
   const lecturerId = group.lecturerId;
 
+  // Pagination for the milestone reports table.
+  const {
+    page: reportsTablePage,
+    totalPages: reportsTotalPages,
+    totalItems: reportsTotalItems,
+    startIndex: reportsStartIndex,
+    endIndex: reportsEndIndex,
+    pageItems: pagedReports,
+    setPage: setReportsPage,
+    next: nextReportsPage,
+    prev: prevReportsPage,
+    resetPage: resetReportsPage,
+  } = usePagination<SubmittedPhasedReport>(reports, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetReportsPage();
+  }, [searchText, statusFilter, resetReportsPage]);
+
   // G5(a) — group members via shared helper.
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
@@ -561,23 +581,26 @@ void groupMemberService
       <section className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h3 className={styles.tableTitle}>Milestone Reports</h3>
-          <div className={styles.tableFilters}>
-            <label className={styles.searchField}>
-              <Search size={14} />
-              <input
-                type="search"
-                placeholder="Search reports…"
-                value={searchText}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
-            </label>
+        </div>
+
+        <TableToolbar
+          search={searchText}
+          onSearchChange={onSearchChange}
+          onRefresh={async () => {
+            await refetch();
+            await refetchReports();
+          }}
+          isRefreshing={reportsLoading}
+          searchPlaceholder="Search by report id, status, or feedback…"
+          refreshLabel="Refresh"
+          filters={
             <label className={styles.filterField}>
-              <Filter size={14} />
               <select
                 value={statusFilter}
                 onChange={(e) =>
                   onStatusFilterChange(e.target.value as StatusFilter)
                 }
+                aria-label="Filter reports by status"
               >
                 <option value="all">All statuses</option>
                 <option value="WAITING">Waiting</option>
@@ -586,105 +609,123 @@ void groupMemberService
                 <option value="REJECTED">Rejected</option>
               </select>
             </label>
-          </div>
-        </div>
+          }
+        />
 
         {reportsLoading ? (
-          <div className={styles.emptyCard}>
+          <div className={styles.emptyCard} data-testid="srg-loading" role="status">
             <Loader2 size={18} className={styles.spin} />
             <span>Loading reports…</span>
           </div>
         ) : reports.length === 0 ? (
-          <div className={styles.emptyCard}>
+          <div className={styles.emptyCard} data-testid="srg-empty">
             <Inbox size={18} />
             <span>
               No reports match your filters yet. Use{' '}
               <strong>Submit milestone report</strong> to upload one.
             </span>
           </div>
-        ) : (
-          <div className={styles.tableResponsive}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Report</th>
-                  <th>Submitted</th>
-                  <th>Status</th>
-                  <th>Lecturer Feedback</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td>
-                      <span className={styles.reportIdPill}>
-                        #{report.id}
-                      </span>
-                    </td>
-                    <td>
-                      {report.submittedAt ? (
-                        <span className={styles.dateText}>
-                          <Calendar size={12} />
-                          {new Date(report.submittedAt).toLocaleDateString(
-                            'en-US',
-                            { dateStyle: 'medium' },
-                          )}
-                        </span>
-                      ) : (
-                        <span className={styles.mutedText}>Unknown</span>
-                      )}
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${STATUS_PALETTE[report.status]}`}
-                      >
-                        {report.status}
-                      </span>
-                    </td>
-                    <td>
-                      {report.finalOutcomeEvaluation ? (
-                        <span className={styles.feedbackText}>
-                          {report.finalOutcomeEvaluation.length > 80
-                            ? `${report.finalOutcomeEvaluation.slice(0, 80)}…`
-                            : report.finalOutcomeEvaluation}
-                        </span>
-                      ) : (
-                        <span className={styles.mutedText}>
-                          {report.status === 'EVALUATED'
-                            ? `Grade: ${report.lectureFeedback ?? '—'}/10`
-                            : '—'}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div className={styles.rowActions}>
-                        {report.reportFileUrl ? (
-                          <a
-                            href={report.reportFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={styles.linkBtn}
-                          >
-                            Open PDF
-                          </a>
-                        ) : null}
-                        {report.status === 'REJECTED' ? (
-                          <button
-                            type="button"
-                            className={styles.resubmitBtn}
-                            onClick={() => onOpenSubmit(report)}
-                          >
-                            Resubmit
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        ) : reportsTotalItems === 0 ? (
+          <div className={styles.emptyCard} data-testid="srg-empty-search">
+            <Inbox size={18} />
+            <span>No reports match the current filters.</span>
           </div>
+        ) : (
+          <>
+            <div className={styles.tableResponsive}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Report</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th>Lecturer Feedback</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedReports.map((report) => (
+                    <tr key={report.id} data-testid="srg-row">
+                      <td>
+                        <span className={styles.reportIdPill}>
+                          #{report.id}
+                        </span>
+                      </td>
+                      <td>
+                        {report.submittedAt ? (
+                          <span className={styles.dateText}>
+                            <Calendar size={12} />
+                            {new Date(report.submittedAt).toLocaleDateString(
+                              'en-US',
+                              { dateStyle: 'medium' },
+                            )}
+                          </span>
+                        ) : (
+                          <span className={styles.mutedText}>Unknown</span>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.statusBadge} ${STATUS_PALETTE[report.status]}`}
+                        >
+                          {report.status}
+                        </span>
+                      </td>
+                      <td>
+                        {report.finalOutcomeEvaluation ? (
+                          <span className={styles.feedbackText}>
+                            {report.finalOutcomeEvaluation.length > 80
+                              ? `${report.finalOutcomeEvaluation.slice(0, 80)}…`
+                              : report.finalOutcomeEvaluation}
+                          </span>
+                        ) : (
+                          <span className={styles.mutedText}>
+                            {report.status === 'EVALUATED'
+                              ? `Grade: ${report.lectureFeedback ?? '—'}/10`
+                              : '—'}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div className={styles.rowActions}>
+                          {report.reportFileUrl ? (
+                            <a
+                              href={report.reportFileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.linkBtn}
+                            >
+                              Open PDF
+                            </a>
+                          ) : null}
+                          {report.status === 'REJECTED' ? (
+                            <button
+                              type="button"
+                              className={styles.resubmitBtn}
+                              onClick={() => onOpenSubmit(report)}
+                            >
+                              Resubmit
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              page={reportsTablePage}
+              totalPages={reportsTotalPages}
+              totalItems={reportsTotalItems}
+              startIndex={reportsStartIndex}
+              endIndex={reportsEndIndex}
+              onPrev={prevReportsPage}
+              onNext={nextReportsPage}
+              onPage={setReportsPage}
+              itemLabel="reports"
+            />
+          </>
         )}
       </section>
 

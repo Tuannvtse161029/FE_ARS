@@ -33,6 +33,10 @@ import type { GroupMember } from '../../services/groupMember.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
 import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import styles from './ResearchGroup.module.css';
 
@@ -149,6 +153,48 @@ export const ResearchGroup = () => {
   const [editTopicMaterialsUrl, setEditTopicMaterialsUrl] = useState('');
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [editTopicError, setEditTopicError] = useState<string | null>(null);
+
+  // Toolbar: search + refresh state for the topics table
+  const [topicSearch, setTopicSearch] = useState('');
+  const [isRefreshingTopics, setIsRefreshingTopics] = useState(false);
+
+  const filteredTopics = useMemo(() => {
+    const query = topicSearch.trim().toLowerCase();
+    if (!query) return topics;
+    return topics.filter((t) =>
+      [t.title ?? '', t.description ?? '', t.status ?? '']
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [topics, topicSearch]);
+
+  const {
+    page: topicPage,
+    totalPages: topicTotalPages,
+    totalItems: topicTotalItems,
+    startIndex: topicStartIndex,
+    endIndex: topicEndIndex,
+    pageItems: pagedTopics,
+    setPage: setTopicPage,
+    next: nextTopicPage,
+    prev: prevTopicPage,
+    resetPage: resetTopicPage,
+  } = usePagination<ResearchTopic>(filteredTopics, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetTopicPage();
+  }, [topicSearch, resetTopicPage]);
+
+  const handleRefreshTopics = async () => {
+    if (isRefreshingTopics) return;
+    setIsRefreshingTopics(true);
+    try {
+      await refetchTopics();
+    } finally {
+      setIsRefreshingTopics(false);
+    }
+  };
 
   // Per-row status-transition inflight (L3.a open/close/complete).
   const [topicTransition, setTopicTransition] = useState<{
@@ -587,7 +633,9 @@ export const ResearchGroup = () => {
         <div className={styles.sectionTitleBlock}>
           <BookOpen size={18} className={styles.sectionIcon} aria-hidden />
           <h3 className={styles.sectionTitle}>Research Topics Library</h3>
-          <span className={styles.countBadge}>{topics.length} Topics</span>
+          <span className={styles.countBadge}>
+            {topicSearch.trim() ? `${topicTotalItems} / ${topics.length} Topics` : `${topics.length} Topics`}
+          </span>
         </div>
         <button
           type="button"
@@ -600,33 +648,46 @@ export const ResearchGroup = () => {
       </div>
 
       {/* Topics Table Card */}
+      <TableToolbar
+        search={topicSearch}
+        onSearchChange={setTopicSearch}
+        onRefresh={handleRefreshTopics}
+        isRefreshing={isRefreshingTopics}
+        searchPlaceholder="Search topics by title, description, or status"
+        refreshLabel="Refresh"
+      />
       <div className={styles.tableCard}>
-        <div className={styles.tableResponsive}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>TOPIC ID &amp; NAME</th>
-                <th>DESCRIPTION</th>
-                <th>STATUS</th>
-                <th>ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingTopics ? (
-                <tr>
-                  <td colSpan={4} className={styles.tableEmpty}>
-                    <Loader size={16} className={styles.spinningIcon} aria-hidden />
-                    Loading topics…
-                  </td>
-                </tr>
-              ) : topics.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className={styles.tableEmpty}>
-                    No topics yet. Click "Create Research Topic" to add one.
-                  </td>
-                </tr>
-              ) : (
-                topics.map((topic) => {
+        {topicsError ? (
+          <div className={styles.tableEmpty} role="alert" data-testid="topics-error">
+            <AlertTriangle size={16} aria-hidden /> {topicsError.message}
+          </div>
+        ) : isLoadingTopics ? (
+          <div className={styles.tableEmpty} role="status" data-testid="topics-loading">
+            <Loader size={16} className={styles.spinningIcon} aria-hidden />
+            Loading topics…
+          </div>
+        ) : topics.length === 0 ? (
+          <div className={styles.tableEmpty} data-testid="topics-empty">
+            No topics yet. Click "Create Research Topic" to add one.
+          </div>
+        ) : topicTotalItems === 0 ? (
+          <div className={styles.tableEmpty} data-testid="topics-empty-search">
+            No topics match "{topicSearch.trim()}".
+          </div>
+        ) : (
+          <>
+            <div className={styles.tableResponsive}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>TOPIC ID &amp; NAME</th>
+                    <th>DESCRIPTION</th>
+                    <th>STATUS</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedTopics.map((topic) => {
                   const tid = typeof topic.id === 'number' ? topic.id : -1;
                   const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
                   const topicStatus =
@@ -782,11 +843,23 @@ export const ResearchGroup = () => {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+            </div>
+            <TablePagination
+              page={topicPage}
+              totalPages={topicTotalPages}
+              totalItems={topicTotalItems}
+              startIndex={topicStartIndex}
+              endIndex={topicEndIndex}
+              onPrev={prevTopicPage}
+              onNext={nextTopicPage}
+              onPage={setTopicPage}
+              itemLabel="topics"
+            />
+          </>
+        )}
       </div>
 
       {/* CREATE GROUP MODAL */}

@@ -12,7 +12,7 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
 
-const ROLE_OPTIONS: UserRole[] = [
+const ROLE_OPTIONS: RequestableRole[] = [
   'Researcher',
   'Reviewer',
   'Lecturer',
@@ -32,13 +32,18 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
     'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
 };
 
+// Admin is provisioned directly in the DB and never appears in the
+// self-registration dropdown, so the form only ever carries the requestable
+// subset. The sample-modal copy and BE payload use the same type.
+type RequestableRole = Exclude<UserRole, 'Admin'>;
+
 interface FormState {
   fullName: string;
   email: string;
   phoneNumber: string;
   password: string;
   retypePassword: string;
-  role: UserRole;
+  role: RequestableRole;
 }
 
 const initialForm: FormState = {

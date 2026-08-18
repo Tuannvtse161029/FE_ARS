@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { PdfViewer } from '../../components/PdfViewer';
 import { ScorecardModal } from '../Reviewer/components/ScorecardModal';
@@ -9,11 +9,14 @@ import { usePapers } from '../../hooks/usePapers';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
 import { PaperLockBadge } from '../../components/researcher/PaperLockBadge';
+import { TableToolbar } from '../../components/table/TableToolbar';
+import { TablePagination } from '../../components/table/TablePagination';
+import { usePagination } from '../../hooks/usePagination';
+import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import {
   CheckCircle2,
   AlertCircle,
   X,
-  RefreshCw,
   FileText,
   Eye,
   Upload,
@@ -391,14 +394,45 @@ export const Papers = () => {
   };
 
   // Filter papers based on active tab
-  const filteredPapers = papers.filter((paper) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'waiting') return paper.status === 'Waiting for Review';
-    if (activeTab === 'accepted') return paper.status === 'Accepted';
-    if (activeTab === 'rejected') return paper.status === 'Rejected';
-    if (activeTab === 'draft') return paper.status === 'Draft';
-    return true;
-  });
+  const [search, setSearch] = useState('');
+
+  const tabFiltered = useMemo(
+    () =>
+      papers.filter((paper) => {
+        if (activeTab === 'all') return true;
+        if (activeTab === 'waiting') return paper.status === 'Waiting for Review';
+        if (activeTab === 'accepted') return paper.status === 'Accepted';
+        if (activeTab === 'rejected') return paper.status === 'Rejected';
+        if (activeTab === 'draft') return paper.status === 'Draft';
+        return true;
+      }),
+    [papers, activeTab],
+  );
+
+  const filteredPapers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return tabFiltered;
+    return tabFiltered.filter((p) =>
+      [p.name, p.status, p.date].join(' ').toLowerCase().includes(query),
+    );
+  }, [tabFiltered, search]);
+
+  const {
+    page,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageItems: pagedPapers,
+    setPage,
+    next,
+    prev,
+    resetPage,
+  } = usePagination<Paper>(filteredPapers, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    resetPage();
+  }, [search, activeTab, resetPage]);
 
   const getStatusClass = (status: string) => {
     switch (status) {
@@ -472,31 +506,37 @@ export const Papers = () => {
           <h3 className={styles.sectionTitle}>My Papers</h3>
           <div className={styles.sectionHeaderRight}>
             <span className={styles.manuscriptCount}>{filteredPapers.length} manuscripts</span>
-            <button className={styles.refreshBtn} onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw
-                size={14}
-                style={{
-                  marginRight: '6px',
-                  verticalAlign: 'middle',
-                  animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
-                }}
-              />
-              {isRefreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
           </div>
         </div>
 
+        <TableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          searchPlaceholder="Search manuscripts by name, status, or date…"
+          refreshLabel="Refresh"
+        />
+
         <div className={styles.tableResponsive}>
           {papersError && (
-            <div className={styles.formError} role="alert">
+            <div className={styles.formError} role="alert" data-testid="papers-error">
               Could not load papers: {papersError.message}
             </div>
           )}
           {isPapersLoading && papers.length === 0 ? (
-            <div className={styles.skeletonList} aria-busy="true">
+            <div className={styles.skeletonList} aria-busy="true" data-testid="papers-loading">
               {[0, 1, 2].map((i) => (
                 <div key={i} className={styles.skeletonRow} />
               ))}
+            </div>
+          ) : papers.length === 0 ? (
+            <div className={styles.emptyRow} data-testid="papers-empty">
+              No manuscripts uploaded yet.
+            </div>
+          ) : totalItems === 0 ? (
+            <div className={styles.emptyRow} data-testid="papers-empty-search">
+              No manuscripts match "{search.trim()}".
             </div>
           ) : (
           <table className={styles.table}>
@@ -509,8 +549,7 @@ export const Papers = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPapers.length > 0 ? (
-                filteredPapers.map((paper) => {
+              {pagedPapers.map((paper) => {
                   const lock = getLockForPaper(paper.id);
                   const isLocked = lock.isLocked;
                   const primaryReviewer = lock.reviewerNames[0] ?? null;
@@ -584,18 +623,24 @@ export const Papers = () => {
                       </td>
                     </tr>
                   );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={4} className={styles.emptyRow}>
-                    No manuscripts found under this category.
-                  </td>
-                </tr>
-              )}
+                })}
             </tbody>
           </table>
           )}
         </div>
+        {!isPapersLoading && papers.length > 0 ? (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            onPrev={prev}
+            onNext={next}
+            onPage={setPage}
+            itemLabel="manuscripts"
+          />
+        ) : null}
       </div>
 
       {/* Upload Box Container */}

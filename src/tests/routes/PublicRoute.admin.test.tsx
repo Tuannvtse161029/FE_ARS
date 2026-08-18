@@ -23,7 +23,6 @@ vi.mock('../../context/AuthContext', () => ({
 // Sentinel routes that prove the redirect actually fired.
 const AdminLanding = () => <div data-testid="admin-landing" />;
 const ForumLanding = () => <div data-testid="forum-landing" />;
-const DashboardLanding = () => <div data-testid="dashboard-landing" />;
 const LoginSurface = () => <div data-testid="login-surface" />;
 
 beforeEach(() => {
@@ -46,7 +45,6 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
           </Route>
           <Route path={ROUTES.ADMIN} element={<AdminLanding />} />
           <Route path={ROUTES.FORUM} element={<ForumLanding />} />
-          <Route path={ROUTES.DASHBOARD} element={<DashboardLanding />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -71,7 +69,6 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
           </Route>
           <Route path={ROUTES.ADMIN} element={<AdminLanding />} />
           <Route path={ROUTES.FORUM} element={<ForumLanding />} />
-          <Route path={ROUTES.DASHBOARD} element={<DashboardLanding />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -82,7 +79,7 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
     expect(screen.queryByTestId('admin-landing')).not.toBeInTheDocument();
   });
 
-  it('redirects Reviewer from /login to /dashboard', async () => {
+  it('redirects Reviewer from /login to /forum', async () => {
     useAuthMock.mockReturnValue(
       buildMockAuth({ role: 'Reviewer', isAuthenticated: true }),
     );
@@ -95,17 +92,16 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
           </Route>
           <Route path={ROUTES.ADMIN} element={<AdminLanding />} />
           <Route path={ROUTES.FORUM} element={<ForumLanding />} />
-          <Route path={ROUTES.DASHBOARD} element={<DashboardLanding />} />
         </Routes>
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('dashboard-landing')).toBeInTheDocument();
+      expect(screen.getByTestId('forum-landing')).toBeInTheDocument();
     });
   });
 
-  it('redirects Lecturer from /register to /dashboard', async () => {
+  it('redirects Lecturer from /register to /forum', async () => {
     useAuthMock.mockReturnValue(
       buildMockAuth({ role: 'Lecturer', isAuthenticated: true }),
     );
@@ -116,13 +112,13 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
           <Route element={<PublicRoute />}>
             <Route path={ROUTES.REGISTER} element={<div data-testid="register-surface" />} />
           </Route>
-          <Route path={ROUTES.DASHBOARD} element={<DashboardLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
         </Routes>
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('dashboard-landing')).toBeInTheDocument();
+      expect(screen.getByTestId('forum-landing')).toBeInTheDocument();
     });
   });
 

@@ -23,16 +23,10 @@ vi.mock('../../store/authSlice', () => ({
 
 const mockNavigate = vi.fn();
 
-vi.mock('react-router-dom', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-// Provide a mock location.state per scenario
+// Mock location.state per scenario (the component also reads useSearchParams,
+// so the mock must re-export that hook — see EvaluationDesk.tsx line 45)
 let mockReviewRequest: any = null;
+let mockQueryString = '';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<any>('react-router-dom');
@@ -40,6 +34,7 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useLocation: () => ({ state: mockReviewRequest ? { reviewRequest: mockReviewRequest } : {} }),
+    useSearchParams: () => [new URLSearchParams(mockQueryString)],
   };
 });
 

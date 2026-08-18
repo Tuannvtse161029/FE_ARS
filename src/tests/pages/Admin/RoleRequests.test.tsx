@@ -326,7 +326,7 @@ describe('<RoleRequests> page', () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText(/Tran Van Khanh/);
-    const search = screen.getByLabelText(/Search requests/i);
+    const search = screen.getByTestId('table-search-input') as HTMLInputElement;
     await user.type(search, 'khanh');
     expect(screen.getByText(/Tran Van Khanh/)).toBeInTheDocument();
     expect(screen.queryByText(/Le Thi Lan/)).not.toBeInTheDocument();

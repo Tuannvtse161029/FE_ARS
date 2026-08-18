@@ -90,10 +90,6 @@ const ProtectedRoutes = (
       />
     </Route>
     <Route
-      path="/dashboard"
-      element={<div data-testid="dashboard-landing">dashboard-landing</div>}
-    />
-    <Route
       path="/forum"
       element={<div data-testid="forum-landing">forum-landing</div>}
     />
@@ -128,15 +124,13 @@ describe('RoleRouteGuard — /papers and /reviewers (AGENT_12_GS_NAV_READY)', ()
       ).not.toBeInTheDocument();
     });
 
-    // The current `landingRouteForRoleName('Graduate Student')` returns
-    // `/dashboard` per roleNormalizer. This test pins that contract; if the
-    // team changes the landing route (per Agent-12 defect report) only the
-    // target test-id will need updating.
+    // `landingRouteForRoleName('Graduate Student')` now returns `/forum` —
+    // every non-Admin role lands on the Forum as the post-login landing page.
     const landing = landingRouteForRoleName('Graduate Student');
-    expect(landing).toBe('/dashboard');
+    expect(landing).toBe('/forum');
     await waitFor(() => {
       expect(
-        screen.queryByTestId('dashboard-landing'),
+        screen.queryByTestId('forum-landing'),
       ).toBeInTheDocument();
     });
   });
@@ -152,7 +146,7 @@ describe('RoleRouteGuard — /papers and /reviewers (AGENT_12_GS_NAV_READY)', ()
     });
     await waitFor(() => {
       expect(
-        screen.queryByTestId('dashboard-landing'),
+        screen.queryByTestId('forum-landing'),
       ).toBeInTheDocument();
     });
   });
@@ -185,10 +179,10 @@ describe('RoleRouteGuard — /papers and /reviewers (AGENT_12_GS_NAV_READY)', ()
       ).not.toBeInTheDocument();
     });
     const landing = landingRouteForRoleName('Lecturer');
-    expect(landing).toBe('/dashboard');
+    expect(landing).toBe('/forum');
     await waitFor(() => {
       expect(
-        screen.queryByTestId('dashboard-landing'),
+        screen.queryByTestId('forum-landing'),
       ).toBeInTheDocument();
     });
   });
@@ -204,7 +198,7 @@ describe('RoleRouteGuard — /papers and /reviewers (AGENT_12_GS_NAV_READY)', ()
     });
     await waitFor(() => {
       expect(
-        screen.queryByTestId('dashboard-landing'),
+        screen.queryByTestId('forum-landing'),
       ).toBeInTheDocument();
     });
   });

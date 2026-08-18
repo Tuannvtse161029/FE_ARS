@@ -1,12 +1,24 @@
 import { useState, useRef } from 'react';
 import styles from './Forum.module.css';
-import { Heart } from '../../assets/icons/HeartIcon';
-import { Eye } from '../../assets/icons/ViewsIcon';
-import { MessageSquare, X, Tag, FileText, Image as ImageIcon, LayoutList, PenLine, UserCheck, AlertTriangle } from 'lucide-react';
+import {
+  Heart,
+  Eye,
+  MessageSquare,
+  X,
+  Tag,
+  FileText,
+  Image as ImageIcon,
+  LayoutList,
+  PenLine,
+  UserCheck,
+  AlertTriangle,
+} from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
+
+const ALL_CATEGORIES: readonly Category[] = ['All Posts', 'My Posts', 'Following'];
 
 interface Post {
   id: string;
@@ -96,12 +108,7 @@ const ALL_POSTS: Post[] = [
 ];
 
 export const Forum = () => {
-  const { canCreatePost } = usePermissions();
-  // The Forum page is the only place unverified users can land. `canCreatePost`
-  // is sourced from `usePermissions().isVerified` which mirrors
-  // `dbo.Users.isActive`. Verified users see the full UI; pending users see
-  // a banner and a disabled Create Post button.
-  const isVerified = canCreatePost;
+  const { isVerified, canCreatePost } = usePermissions();
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -114,12 +121,26 @@ export const Forum = () => {
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const categories: Category[] = ['All Posts', 'My Posts', 'Following'];
+  // Unverified (Guest) accounts only get read-only access to /forum, so we
+  // hide the per-user categories. The "Following" category can also be
+  // empty for guests because they can't follow authors — see the same
+  // `isVerified` gate on the Follow button below.
+  const visibleCategories: readonly Category[] = isVerified
+    ? ALL_CATEGORIES
+    : ['All Posts'] as const;
+
+  // If a stale `activeCategory` survives a verification flip (e.g. the
+  // BE returns a fresh token with isActive: true), the visible-list filter
+  // will silently empty out the post list. Coerce the state in render so
+  // we never show an empty list with a category button still highlighted.
+  const effectiveCategory: Category = visibleCategories.includes(activeCategory)
+    ? activeCategory
+    : 'All Posts';
 
   const filteredPosts = ALL_POSTS.filter((post) => {
-    if (activeCategory === 'All Posts') return true;
-    if (activeCategory === 'My Posts') return post.author === 'Dr. Nguyen Van A';
-    if (activeCategory === 'Following') return followingAuthors.has(post.author);
+    if (effectiveCategory === 'All Posts') return true;
+    if (effectiveCategory === 'My Posts') return post.author === 'Dr. Nguyen Van A';
+    if (effectiveCategory === 'Following') return followingAuthors.has(post.author);
     return true;
   });
 
@@ -134,10 +155,10 @@ export const Forum = () => {
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Categories</div>
             <div className={styles.categoryList}>
-              {categories.map((cat) => (
+              {visibleCategories.map((cat) => (
                 <button
                   key={cat}
-                  className={`${styles.categoryItem} ${activeCategory === cat ? styles.categoryItemActive : ''}`}
+                  className={`${styles.categoryItem} ${effectiveCategory === cat ? styles.categoryItemActive : ''}`}
                   onClick={() => setActiveCategory(cat)}
                 >
                   {cat === 'All Posts' && <LayoutList size={14} className={styles.catIcon} />}
@@ -239,7 +260,7 @@ export const Forum = () => {
                     <span className={styles.postAuthorName}>{post.author}</span>
                     <span className={styles.postTimestamp}>{post.timestamp}</span>
                   </div>
-                  {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && (
+                  {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && isVerified && (
                     <button
                       className={`${styles.cardFollowBtn} ${followingAuthors.has(post.author) ? styles.following : ''}`}
                       onClick={() => {

@@ -15,7 +15,9 @@
  *   - `isAdminUser({ roleId: 0 })`                       → false (BE bug sentinel)
  *   - `landingRouteForRoleName('Admin', { isAdminOverride: true })` → '/admin'
  *   - `landingRouteForRoleName('Researcher')`            → '/forum'
- *   - `landingRouteForRoleName('Reviewer')`              → '/dashboard'
+ *   - `landingRouteForRoleName('Reviewer')`              → '/forum'
+ *   - `landingRouteForRoleName('Lecturer')`              → '/forum'
+ *   - `landingRouteForRoleName('Graduate Student')`      → '/forum'
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -91,17 +93,18 @@ describe('roleNormalizer – landingRouteForRoleName', () => {
     expect(landingRouteForRoleName('Researcher')).toBe('/forum');
   });
 
-  it('routes every other role → /dashboard', () => {
-    expect(landingRouteForRoleName('Reviewer')).toBe('/dashboard');
-    expect(landingRouteForRoleName('Lecturer')).toBe('/dashboard');
-    expect(landingRouteForRoleName('Graduate Student')).toBe('/dashboard');
+  it('routes every non-Admin role → /forum', () => {
+    expect(landingRouteForRoleName('Researcher')).toBe('/forum');
+    expect(landingRouteForRoleName('Reviewer')).toBe('/forum');
+    expect(landingRouteForRoleName('Lecturer')).toBe('/forum');
+    expect(landingRouteForRoleName('Graduate Student')).toBe('/forum');
   });
 
-  it('handles null / undefined / empty roleName as /dashboard', () => {
-    expect(landingRouteForRoleName(null)).toBe('/dashboard');
-    expect(landingRouteForRoleName(undefined)).toBe('/dashboard');
-    expect(landingRouteForRoleName('')).toBe('/dashboard');
-    expect(landingRouteForRoleName('   ')).toBe('/dashboard');
+  it('handles null / undefined / empty roleName as /forum', () => {
+    expect(landingRouteForRoleName(null)).toBe('/forum');
+    expect(landingRouteForRoleName(undefined)).toBe('/forum');
+    expect(landingRouteForRoleName('')).toBe('/forum');
+    expect(landingRouteForRoleName('   ')).toBe('/forum');
   });
 
   it('honours the Admin roleName signal on its own (no isAdminOverride required)', () => {

@@ -32,18 +32,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Routes a freshly-chosen role to the landing page it should open.
-//
-// We delegate to `landingRouteForRoleName` from utils/roleNormalizer so the
-// post-login redirect and the admin guard stay in sync. The roleId signal is
-// only meaningful on the BE auth response (before the user is persisted), so
-// callers also pass an explicit `isAdminOverride` when the parsed BE response
-// confirms admin via roleId === 2.
-const landingRouteForRole = (
-  role: string | UserRole,
-  options?: { isAdminOverride?: boolean },
-): string => landingRouteForRoleName(role, options);
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const authStore = useAuthStore();
@@ -81,10 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // this BEFORE the setAuthData call below.
       storage.setRememberMe(rememberMe);
       authService.setAuthData(responseWithChosenRole);
-      // Whether the user is treated as an admin for routing depends on BOTH
-      // the chosen roleName AND the BE's roleId. Until the BE off-by-one
-      // mapping is fixed, the route decision can't rely on roleName alone —
-      // see docs/local-only/admin-suite-be-gap-report.md.
+      // We delegate to `landingRouteForRoleName` from utils/roleNormalizer so
+      // the post-login redirect and the admin guard stay in sync. The
+      // `isAdminOverride` flag covers the BE-bug sentinel where roleName
+      // comes back as 'Researcher' but the dual-signal check above proves
+      // the user is actually an Admin.
       const adminOverride = isAdminUser({
         roleName: roleToUse,
         roleId: responseWithChosenRole.roleId ?? 0,
@@ -104,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         response.token
       );
-      navigate(landingRouteForRole(roleToUse, { isAdminOverride: adminOverride }));
+      navigate(landingRouteForRoleName(roleToUse, { isAdminOverride: adminOverride }));
     },
     [authStore, navigate]
   );

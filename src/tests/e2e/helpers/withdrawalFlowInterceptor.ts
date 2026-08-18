@@ -33,7 +33,7 @@
  *   - The Admin surface reads from a separate in-memory mock store
  *     (`src/services/admin.service.ts:28` USE_MOCK_DATA = true) that does
  *     NOT share state with the Reviewer endpoint.
- * We do NOT alter `localStorage` to fake funds, do NOT open VNPay, do NOT
+ * We do NOT alter `localStorage` to fake funds, do NOT open PayOS, do NOT
  * upload a real receipt to Firebase, and do NOT bypass real authentication.
  *
  * `__E2E_SCENARIO_FLAGS__` on `window` exposes the current scenario's

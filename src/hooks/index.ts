@@ -7,6 +7,7 @@ export { useWallet } from './useWallet';
 export { useReviewerProfiles, useReviewerAvailability } from './useReviewerProfiles';
 export { useFollowers, useFollowReviewer } from './useFollowers';
 export { useNotifications, useMarkNotificationRead } from './useNotifications';
+export type { UseNotificationsResult } from './useNotifications';
 export { useUserRoles, useAssignRole } from './useUserRoles';
 export { useCommentVotes, useVoteOnComment } from './useCommentVotes';
 export { useCreatePaymentLink, useCancelPayment } from './useCreatePaymentLink';
@@ -27,3 +28,6 @@ export { useLearningMaterials } from './useLearningMaterials';
 // panels. Added in Phase C (Lead, lead-phase-c-contract.md S-8). Internally
 // calls userService.getById and caches per id.
 export { useLecturerProfile } from './useLecturerProfile';
+// Agent 15 — Table pagination helper.
+export { usePagination } from './usePagination';
+export type { UsePaginationResult } from './usePagination';

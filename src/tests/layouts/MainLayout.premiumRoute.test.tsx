@@ -3,97 +3,24 @@
  * `/premium-packages` link (singular label), Admin does NOT expose that
  * link, and Admin still owns the legacy `/admin/packages` route.
  *
- * We don't mount the full MainLayout (it pulls wallet / notifications /
- * reviewer-availability hooks). Instead we drive MainLayout's nav via the
- * public `getNavItemsByRole`-shaped return. To stay close to the shipped
- * behavior we render the sidebar in isolation using the actual component:
- * to do that without a backend, we mock every hook MainLayout consumes.
+ * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
+ * aren't duplicated from the other MainLayout tests.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import {
+  setupMainLayoutMocks,
+  setMockAuth,
+  renderMainLayout,
+  findSidebarLinkByHref,
+} from '../utils/renderMainLayout';
 import { MainLayout } from '../../layouts/MainLayout';
 import { ROUTES } from '../../routes/paths';
 
-// ── Hook mocks (avoid hitting wallet / notifications / reviewer BE) ─────────
-vi.mock('../../hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
+setupMainLayoutMocks();
 
-vi.mock('../../hooks/useNotifications', () => ({
-  useNotifications: () => ({ unreadCount: 0 }),
-}));
-
-vi.mock('../../hooks/useReviewerProfiles', () => ({
-  useReviewerAvailability: () => ({
-    isAvailable: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
-vi.mock('../../services/reviewer.service', () => ({
-  reviewerService: {
-    updateAvailability: () => Promise.resolve(),
-  },
-}));
-
-// ── Auth mock — swap role per test ──────────────────────────────────────────
-const useAuthMock = vi.fn();
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => useAuthMock(),
-}));
-
-// Stub the wallet top-up modal so we don't pull its real implementation.
-vi.mock('../../components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
-}));
-
-// Authenticated active user helper.
-const setupRole = (role: string) => {
-  useAuthMock.mockReturnValue({
-    user: {
-      token: 'mock-token',
-      username: 'tester',
-      email: 'tester@example.com',
-      role,
-      userId: 99,
-      isActive: true,
-    },
-    isAuthenticated: true,
-    isLoading: false,
-    error: null,
-    login: () => Promise.resolve(),
-    logout: () => undefined,
-    clearError: () => undefined,
-    pendingRoleSelection: null,
-    confirmRoleSelection: () => undefined,
-    cancelRoleSelection: () => undefined,
-  });
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  // Clear any persisted ars_user so the admin dual-signal check in
-  // MainLayout can't accidentally flip the role to Admin.
-  window.localStorage.clear();
-  window.sessionStorage.clear();
-});
-
-const renderMainLayout = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <MainLayout />
-    </MemoryRouter>,
-  );
-
-// Renders MainLayout and a sentinel route at /premium-packages so we can
-// assert that the MemoryRouter actually advanced the URL after the click.
 const renderMainLayoutWithSentinel = (initialPath: string) =>
   render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -107,9 +34,6 @@ const renderMainLayoutWithSentinel = (initialPath: string) =>
     </MemoryRouter>,
   );
 
-const findSidebarLinkByHref = (href: string): HTMLAnchorElement | null =>
-  document.querySelector(`aside a[href="${href}"]`);
-
 describe('MainLayout — Premium Package sidebar item', () => {
   it.each([
     'Researcher',
@@ -117,7 +41,7 @@ describe('MainLayout — Premium Package sidebar item', () => {
     'Lecturer',
     'Graduate Student',
   ])('%s sidebar contains a real-path /premium-packages link', (role) => {
-    setupRole(role);
+    setMockAuth({ role });
     renderMainLayout('/premium-packages');
 
     const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
@@ -137,7 +61,7 @@ describe('MainLayout — Premium Package sidebar item', () => {
   ])(
     '%s sidebar does NOT expose a #premium-packages hash placeholder',
     (role) => {
-      setupRole(role);
+      setMockAuth({ role });
       renderMainLayout('/forum');
 
       const hashLink = document.querySelector(
@@ -155,7 +79,7 @@ describe('MainLayout — Premium Package sidebar item', () => {
   );
 
   it('Admin sidebar still has /admin/packages and NOT /premium-packages', () => {
-    setupRole('Admin');
+    setMockAuth({ role: 'Admin', roleId: 2 });
     renderMainLayout(ROUTES.ADMIN_PACKAGES);
 
     // Admin legacy packages link still present.
@@ -170,7 +94,7 @@ describe('MainLayout — Premium Package sidebar item', () => {
 
   it('clicking the sidebar link navigates to /premium-packages and applies the active class', async () => {
     const user = userEvent.setup();
-    setupRole('Researcher');
+    setMockAuth({ role: 'Researcher' });
     renderMainLayoutWithSentinel('/forum');
 
     const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
@@ -187,7 +111,7 @@ describe('MainLayout — Premium Package sidebar item', () => {
   });
 
   it('renders an accessible label "Premium Package" on the sidebar link', () => {
-    setupRole('Graduate Student');
+    setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
     const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);

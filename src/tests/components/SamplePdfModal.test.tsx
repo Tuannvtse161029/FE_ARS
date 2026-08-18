@@ -61,6 +61,10 @@ describe('SamplePdfModal', () => {
       expect(screen.getByRole('tab', { name: /reviewer/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /lecturer/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /graduate student/i })).toBeInTheDocument();
+      // Admin is provisioned directly in the DB and bypasses the role-
+      // request lifecycle — there's no sample verification document for it,
+      // so it must NOT appear as a tab.
+      expect(screen.queryByRole('tab', { name: /^admin$/i })).not.toBeInTheDocument();
     });
 
     test('defaults to Researcher tab (initialRole)', () => {

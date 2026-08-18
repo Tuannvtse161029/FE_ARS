@@ -67,3 +67,26 @@
 .btn:hover {
   background: #162039;
 }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btnSecondary {
+  margin-top: 16px;
+  background: #ffffff;
+  color: #1d2a4a;
+  border: 1px solid #1d2a4a;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btnSecondary:hover {
+  background: #f1f5f9;
+}
