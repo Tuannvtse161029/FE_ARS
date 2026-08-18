@@ -22,9 +22,20 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Split node_modules into separate chunks
+          // Split node_modules into separate chunks. IMPORTANT: `react-router`
+          // (the core) must share a chunk with `react-router-dom`, otherwise
+          // `react-router` lands in `vendor-misc` and creates a circular
+          // dep with `vendor-react` (vendor-misc -> vendor-react ->
+          // vendor-misc) which breaks at runtime with `Cannot set properties
+          // of undefined (setting 'Children')` on the React init object.
           if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('react-router-dom')) {
+            if (
+              id.includes('react-dom') ||
+              id.includes('/react/') ||
+              id.includes('react-router') ||
+              id.includes('scheduler') ||
+              id.includes('use-sync-external-store')
+            ) {
               return 'vendor-react';
             }
             if (id.includes('firebase')) {
