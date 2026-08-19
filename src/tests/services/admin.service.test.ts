@@ -385,9 +385,12 @@ describe('adminService (mock data path)', () => {
       await adminService.getRoleRequests();
 
       // The live path in admin.service.ts is:
-      //   api.get<RoleRequest[]>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL)
+      //   api.get<RoleRequest[]>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL, { signal? })
       // which equals '/api/RoleRequest'.
-      expect(axiosGetSpy).toHaveBeenCalledWith('/api/RoleRequest');
+      expect(axiosGetSpy).toHaveBeenCalledWith(
+        '/api/RoleRequest',
+        expect.objectContaining({}),
+      );
     });
 
     it('decideRoleRequest calls POST /api/RoleRequest/{id}/approve for APPROVED', async () => {

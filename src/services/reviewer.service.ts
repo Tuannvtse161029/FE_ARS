@@ -10,6 +10,7 @@ export interface ReviewerProfile {
   totalCitations: number | null;
   publicationCount: number | null;
   syncStatus: string | null;
+  subFieldId?: number | null;
   reviewFee: number | null;
   // Whether this reviewer is currently accepting review requests.
   // May be missing on older API responses — treat as false in that case.
@@ -18,11 +19,13 @@ export interface ReviewerProfile {
 }
 
 export interface ProfessionalProfileUpdateRequest {
+  userId?: number;
   orcidId?: string | null;
   hindex?: number | null;
   totalCitations?: number | null;
   publicationCount?: number | null;
   syncStatus?: string | null;
+  subFieldId?: number | null;
   reviewFee?: number | null;
 }
 
@@ -37,7 +40,8 @@ export const reviewerService = {
     return response.data;
   },
 
-  update: async (userId: number, data: Partial<ProfessionalProfileUpdateRequest>): Promise<ReviewerProfile> => {
+  // Use the authenticated user ID as the path identity; never expose a caller-selected fee target.
+  update: async (userId: number, data: ProfessionalProfileUpdateRequest): Promise<ReviewerProfile> => {
     const response = await api.put<ReviewerProfile>(API_ENDPOINTS.PROFESSIONAL_PROFILE.UPDATE(userId), data);
     return response.data;
   },

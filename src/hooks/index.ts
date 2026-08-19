@@ -6,12 +6,18 @@ export { useMajorFields, useSubFields } from './useMajorFields';
 export { useWallet } from './useWallet';
 export { useReviewerProfiles, useReviewerAvailability } from './useReviewerProfiles';
 export { useFollowers, useFollowReviewer } from './useFollowers';
+// useFollow — Agent 34: forum follow / unfollow hook with optimistic UI
+// updates, self-follow guard, and auth-transition-driven refetch.
+export { useFollow } from './useFollow';
 export { useNotifications, useMarkNotificationRead } from './useNotifications';
 export type { UseNotificationsResult } from './useNotifications';
 export { useUserRoles, useAssignRole } from './useUserRoles';
 export { useCommentVotes, useVoteOnComment } from './useCommentVotes';
+export { useForumPosts, useCreateForumPost } from './useForumPosts';
+export { useForumComments, useForumCommentMutations } from './useForumComments';
 export { useCreatePaymentLink, useCancelPayment } from './useCreatePaymentLink';
 export { useReceiptUpload } from './useReceiptUpload';
+export { useImageUpload } from './useImageUpload';
 export { useAdminGuard } from './useAdminGuard';
 export { useVerifiedGuard } from './useVerifiedGuard';
 export { usePermissions } from './usePermissions';

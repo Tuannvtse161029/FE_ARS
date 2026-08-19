@@ -133,4 +133,26 @@ describe('MainLayout — Guest (unverified) sidebar', () => {
 
     expect(screen.queryByTestId('wallet-topup-trigger')).not.toBeNull();
   });
+
+  // Agent 39 — explicit effectiveRole: 'Guest' source variant. The user is
+  // verified (isActive=true) but the BE-derived effectiveRole is 'Guest' —
+  // e.g. a freshly-approved user whose role-request is still propagating.
+  // The derived heuristic would NOT catch this; the new `isGuestUser` helper
+  // must.
+  it('Guest sidebar is shown when effectiveRole is explicitly "Guest" even if isActive is true', () => {
+    setMockAuth({
+      role: 'Researcher',
+      isActive: true,
+      effectiveRole: 'Guest',
+      userId: 99,
+    });
+    renderMainLayout(ROUTES.FORUM);
+
+    // Forums-only sidebar.
+    expect(findSidebarLinkByHref(ROUTES.PAPERS)).toBeNull();
+    expect(findSidebarLinkByText('Paper')).toBeNull();
+    // Header pill reads Guest.
+    expect(screen.getByText('Guest')).toBeTruthy();
+    expect(screen.queryByText('Researcher')).toBeNull();
+  });
 });

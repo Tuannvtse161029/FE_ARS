@@ -1,0 +1,134 @@
+.page {
+  min-height: 100%;
+  padding: 32px 40px 48px;
+  color: #1f2937;
+  background: #f8fafc;
+}
+
+.breadcrumbs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+  color: #718096;
+  font-size: 13px;
+}
+
+.breadcrumbs span { color: #a0aec0; }
+
+.pageHeader,
+.sectionHeading,
+.feeCard,
+.profileCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pageHeader { margin-bottom: 24px; }
+.pageHeader h1,
+.sectionHeading h2,
+.feeCard h2 { margin: 4px 0 8px; color: #2d3561; font-size: 28px; }
+.subtitle { margin: 0; color: #718096; }
+
+.eyebrow {
+  margin: 0;
+  color: #007aff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+
+.secondaryButton,
+.primaryButton {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s ease, opacity .2s ease;
+}
+.secondaryButton { color: #2d3561; background: #e9edf7; }
+.secondaryButton:hover:not(:disabled) { background: #dce3f3; }
+.primaryButton { color: #fff; background: #007aff; }
+.primaryButton:hover:not(:disabled) { background: #0069d9; }
+.secondaryButton:disabled,
+.primaryButton:disabled { cursor: not-allowed; opacity: .5; }
+
+.state { min-height: 320px; padding: 48px; text-align: center; color: #4a5568; }
+.state p { margin: 12px auto 24px; }
+
+.profileCard,
+.metricCard,
+.feeCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(45 53 97 / 5%);
+}
+.profileCard { padding: 28px; margin-bottom: 24px; }
+.identity { display: flex; align-items: center; gap: 16px; min-width: 280px; }
+.avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #2d3561;
+  font-size: 22px;
+  font-weight: 700;
+}
+.identity h2 { margin: 0 0 4px; color: #2d3561; font-size: 22px; }
+.identity p { margin: 0 0 8px; color: #718096; font-size: 14px; }
+.reviewerBadge { display: inline-block; border-radius: 999px; padding: 4px 10px; color: #2d3561; background: #e9edf7; font-size: 12px; font-weight: 600; }
+.profileDetails { display: grid; flex: 1; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 18px 28px; margin: 0; }
+.profileDetails div { min-width: 0; }
+.profileDetails dt { margin-bottom: 5px; color: #718096; font-size: 12px; }
+.profileDetails dd { margin: 0; overflow-wrap: anywhere; color: #2d3748; font-size: 14px; font-weight: 600; }
+.statusAvailable { color: #087f5b; }
+.statusUnavailable { color: #c05621; }
+
+.metricSection { margin-bottom: 24px; }
+.sectionHeading { align-items: end; margin-bottom: 14px; }
+.sectionHeading h2 { margin-bottom: 0; font-size: 20px; }
+.lockLabel { color: #718096; font-size: 12px; }
+.metricGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.metricCard { display: flex; flex-direction: column; gap: 12px; padding: 20px; }
+.metricCard span { color: #718096; font-size: 13px; }
+.metricCard strong { color: #2d3561; font-size: 28px; }
+
+.feeCard { align-items: center; padding: 28px; }
+.feeCard > div:first-child { max-width: 510px; }
+.feeCard h2 { margin-top: 2px; font-size: 22px; }
+.feeCard p:not(.eyebrow) { margin: 0; color: #718096; font-size: 14px; line-height: 1.5; }
+.feeForm { width: min(500px, 100%); }
+.feeForm label { display: block; margin-bottom: 8px; color: #2d3748; font-size: 13px; font-weight: 600; }
+.feeControls { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.feeControls input { min-width: 0; flex: 1; border: 1px solid #cbd5e0; border-radius: 7px; padding: 10px 12px; color: #2d3748; font: inherit; }
+.feeControls input:focus { border-color: #007aff; outline: 3px solid rgb(0 122 255 / 15%); }
+.feeControls span { color: #718096; font-size: 13px; font-weight: 600; }
+.feeForm small { color: #718096; font-size: 12px; }
+.successFeedback,
+.errorFeedback { margin-top: 14px; border-radius: 7px; padding: 10px 12px; font-size: 13px; }
+.successFeedback { color: #087f5b; background: #e6fffa; }
+.errorFeedback { color: #c53030; background: #fff5f5; }
+
+@media (max-width: 900px) {
+  .page { padding: 24px; }
+  .profileCard,
+  .pageHeader,
+  .feeCard { flex-direction: column; }
+  .profileDetails { width: 100%; }
+  .feeForm { width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .profileDetails,
+  .metricGrid { grid-template-columns: 1fr; }
+  .sectionHeading { align-items: flex-start; flex-direction: column; }
+  .feeControls { flex-wrap: wrap; }
+  .feeControls input { flex-basis: 65%; }
+}

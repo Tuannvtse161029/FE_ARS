@@ -26,6 +26,7 @@ import { GraduateStudentDashboard } from './pages/GraduateStudent/GraduateStuden
 import { EarningsWallet } from './pages/Reviewer/EarningsWallet';
 import { AssignedReviews } from './pages/Reviewer/AssignedReviews';
 import { Profile } from './pages/Profile/Profile';
+import { ProfessionalProfile } from './pages/Reviewer/ProfessionalProfile';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
 import { RoleRequests } from './pages/Admin/RoleRequests';
 import { AccountsManagement } from './pages/Admin/AccountsManagement';
@@ -78,6 +79,11 @@ const App = () => {
               <Route element={<RoleRouteGuard allow={['Researcher']} />}>
                 <Route path={ROUTES.PAPERS} element={<Papers />} />
                 <Route path={ROUTES.REVIEWERS} element={<DiscoverReviewers />} />
+              </Route>
+
+              {/* Reviewer-only routes */}
+              <Route element={<RoleRouteGuard allow={['Reviewer']} />}>
+                <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
               </Route>
 
               {/* Shared / cross-role routes */}

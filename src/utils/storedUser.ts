@@ -20,6 +20,13 @@ export interface StoredUserShape {
   roleName?: string;
   verificationStatus?: string;
   accountTier?: string;
+  /**
+   * Effective role — Agent 39. Mirrors `User.effectiveRole`. Optional for
+   * backwards compatibility with pre-migration persisted blobs (the
+   * `usePermissions` helper derives Guest from `!isActive && !isAdmin` in
+   * that window).
+   */
+  effectiveRole?: string;
 }
 
 export const readStoredUser = <T extends StoredUserShape = StoredUserShape>(): T | null => {

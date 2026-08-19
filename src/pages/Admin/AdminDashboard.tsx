@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Users as UsersIcon, FileText as PapersIcon } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Users as UsersIcon, FileText as PapersIcon } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -30,6 +30,13 @@ const RANGE_LABEL: Record<Range, string> = {
   yearly: 'Yearly',
 };
 
+// Surface-level messages: NEVER leak raw axios messages to admins.
+const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
+// Recent role-requests widget uses the role-requests-specific copy so the
+// dashboard widget text matches the dedicated RoleRequests page.
+const RECENT_REQUESTS_UNAVAILABLE =
+  'Role requests could not be loaded. The Admin API contract may have changed.';
+
 const formatNumber = (n: number) =>
   new Intl.NumberFormat('vi-VN').format(n);
 
@@ -43,6 +50,14 @@ const formatDate = (iso: string) => {
   if (iso.length === 7) return iso; // YYYY-MM (monthly)
   if (iso.length === 4) return iso; // YYYY (yearly)
   return iso.slice(5); // YYYY-MM-DD -> MM-DD
+};
+
+// DEV-only diagnostic — keeps the technical detail out of the UI.
+const logDiag = (label: string, err: unknown) => {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(`[AdminDashboard] ${label}:`, err);
+  }
 };
 
 const MetricCard = ({
@@ -66,27 +81,64 @@ const MetricCard = ({
   </div>
 );
 
+const WidgetErrorState = ({
+  message,
+  onRetry,
+  testId,
+}: {
+  message: string;
+  onRetry: () => void;
+  testId: string;
+}) => (
+  <div
+    className={styles.widgetError}
+    role="alert"
+    data-testid={testId}
+  >
+    <AlertTriangle size={16} />
+    <span>{message}</span>
+    <button type="button" className={styles.retryBtn} onClick={onRetry}>
+      Retry
+    </button>
+  </div>
+);
+
 const ChartCard = ({
   title,
   metric,
   series,
   loading,
+  error,
+  onRetry,
 }: {
   title: string;
   metric: Metric;
   series: AnalyticsTimeSeries | null;
   loading: boolean;
+  error: string | null;
+  onRetry: () => void;
 }) => (
   <div className={styles.chartSection}>
     <div className={styles.chartHeader}>
       <span className={styles.chartTitle}>{title}</span>
     </div>
-    {loading || !series ? (
-      <div className={styles.chartSkeleton}>Loading chart data…</div>
+    {error ? (
+      <WidgetErrorState
+        message={error}
+        onRetry={onRetry}
+        testId={`chart-error-${metric}`}
+      />
+    ) : loading || !series ? (
+      <div className={styles.chartSkeleton} role="status">
+        Loading chart data…
+      </div>
     ) : (
       <div className={styles.chartWrapper}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={series.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <BarChart
+            data={series.points}
+            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis
               dataKey="date"
@@ -122,37 +174,140 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => {
+  // Each widget owns its loading + error flag. A failure in one widget must
+  // NOT leave the others loading forever or convert them to fake `0` values.
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
-  const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
-  const [range, setRange] = useState<Range>('monthly');
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const [loadingSeries, setLoadingSeries] = useState(true);
-  const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
 
-  const load = useCallback(async (current: Range) => {
+  const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
+  const [registrationsError, setRegistrationsError] = useState<string | null>(null);
+  const [loadingRegistrations, setLoadingRegistrations] = useState(true);
+
+  const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
+  const [revenueError, setRevenueError] = useState<string | null>(null);
+  const [loadingRevenue, setLoadingRevenue] = useState(true);
+
+  const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
+  const [recentRequestsError, setRecentRequestsError] = useState<string | null>(null);
+  const [loadingRecentRequests, setLoadingRecentRequests] = useState(true);
+
+  const [range, setRange] = useState<Range>('monthly');
+
+  // Stale-response guard: only the latest request id may commit results.
+  const requestIdRef = useRef(0);
+  // Track the in-flight load so unmount/period-changes can cancel via AbortController.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const loadSummary = useCallback(async (signal: AbortSignal) => {
     setLoadingSummary(true);
-    setLoadingSeries(true);
+    setSummaryError(null);
     try {
-      const [summaryData, regData, revData, roleData] = await Promise.all([
-        adminService.getAnalyticsSummary(),
-        adminService.getAnalyticsTimeseries(current, 'user_registrations'),
-        adminService.getAnalyticsTimeseries(current, 'revenue'),
-        adminService.getRoleRequests(),
-      ]);
-      setSummary(summaryData);
-      setRegistrations(regData);
-      setRevenue(revData);
-      setRecentRequests(roleData.slice(0, 5));
+      const data = await adminService.getAnalyticsSummary(signal);
+      if (!signal.aborted) setSummary(data);
+    } catch (err) {
+      logDiag('summary failed', err);
+      if (!signal.aborted) setSummaryError(DASHBOARD_UNAVAILABLE);
     } finally {
-      setLoadingSummary(false);
-      setLoadingSeries(false);
+      if (!signal.aborted) setLoadingSummary(false);
     }
   }, []);
 
+  const loadSeries = useCallback(
+    async (metric: Metric, signal: AbortSignal) => {
+      const isRevenue = metric === 'revenue';
+      if (isRevenue) {
+        setLoadingRevenue(true);
+        setRevenueError(null);
+      } else {
+        setLoadingRegistrations(true);
+        setRegistrationsError(null);
+      }
+      try {
+        const data = await adminService.getAnalyticsTimeseries(range, metric, signal);
+        if (signal.aborted) return;
+        if (isRevenue) setRevenue(data);
+        else setRegistrations(data);
+      } catch (err) {
+        logDiag(`timeseries(${metric}) failed`, err);
+        if (signal.aborted) return;
+        if (isRevenue) setRevenueError(DASHBOARD_UNAVAILABLE);
+        else setRegistrationsError(DASHBOARD_UNAVAILABLE);
+      } finally {
+        if (signal.aborted) return;
+        if (isRevenue) setLoadingRevenue(false);
+        else setLoadingRegistrations(false);
+      }
+    },
+    [range],
+  );
+
+  const loadRecentRequests = useCallback(async (signal: AbortSignal) => {
+    setLoadingRecentRequests(true);
+    setRecentRequestsError(null);
+    try {
+      const data = await adminService.getRoleRequests(signal);
+      if (!signal.aborted) setRecentRequests(data.slice(0, 5));
+    } catch (err) {
+      logDiag('recent role requests failed', err);
+      if (!signal.aborted) {
+        setRecentRequests([]);
+        setRecentRequestsError(RECENT_REQUESTS_UNAVAILABLE);
+      }
+    } finally {
+      if (!signal.aborted) setLoadingRecentRequests(false);
+    }
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    // Cancel any in-flight load and start a fresh one.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    // Bump the request id guard as a belt-and-braces fallback in case
+    // AbortController isn't honored by an upstream mock.
+    const myRequestId = ++requestIdRef.current;
+
+    // Fire all four independently with their own loading flags so a
+    // rejection in one does NOT block the others from settling.
+    await Promise.allSettled([
+      loadSummary(signal),
+      loadSeries('user_registrations', signal),
+      loadSeries('revenue', signal),
+      loadRecentRequests(signal),
+    ]);
+    // If a newer load started, do nothing — the new load owns the state.
+    if (myRequestId !== requestIdRef.current) return;
+  }, [loadRecentRequests, loadSeries, loadSummary]);
+
+  // Initial mount: load every widget once. We deliberately omit `loadAll`
+  // from the deps because `loadSeries` is range-dependent and would change
+  // identity on every period change, causing a full summary + recent-requests
+  // refetch. The range-specific effect below owns series refetches.
   useEffect(() => {
-    void load(range);
-  }, [load, range]);
+    void loadAll();
+    return () => {
+      abortRef.current?.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Period pills only re-trigger the period-dependent data. Summary and
+  // recent-requests don't depend on `range`, so they aren't refetched.
+  useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = controller;
+    const myRequestId = ++requestIdRef.current;
+    void Promise.allSettled([
+      loadSeries('user_registrations', controller.signal),
+      loadSeries('revenue', controller.signal),
+    ]).then(() => {
+      if (myRequestId !== requestIdRef.current) return;
+    });
+  }, [range, loadSeries]);
 
   return (
     <div className={styles.page}>
@@ -182,37 +337,59 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
       </div>
 
       <div className={styles.metricRow}>
-        <MetricCard
-          icon={<UsersIcon size={22} />}
-          label="Total Members"
-          value={loadingSummary ? '—' : formatNumber(summary?.totalMembers ?? 0)}
-          hint={loadingSummary ? 'Loading…' : 'Cumulative registered users'}
-        />
-        <MetricCard
-          icon={<PapersIcon size={22} />}
-          label="Scientific Papers"
-          value={loadingSummary ? '—' : formatNumber(summary?.totalPapers ?? 0)}
-          hint={loadingSummary ? 'Loading…' : 'Across all majors & sub-fields'}
-        />
+        {summaryError ? (
+          <WidgetErrorState
+            message={summaryError}
+            onRetry={() => void loadAll()}
+            testId="summary-error"
+          />
+        ) : (
+          <>
+            <MetricCard
+              icon={<UsersIcon size={22} />}
+              label="Total Members"
+              value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)}
+              hint={loadingSummary ? 'Loading…' : 'Cumulative registered users'}
+            />
+            <MetricCard
+              icon={<PapersIcon size={22} />}
+              label="Scientific Papers"
+              value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)}
+              hint={loadingSummary ? 'Loading…' : 'Across all majors & sub-fields'}
+            />
+          </>
+        )}
       </div>
 
       <ChartCard
         title="User Newly Register"
         metric="user_registrations"
         series={registrations}
-        loading={loadingSeries}
+        loading={loadingRegistrations}
+        error={registrationsError}
+        onRetry={() => void loadAll()}
       />
 
       <ChartCard
         title="Revenue"
         metric="revenue"
         series={revenue}
-        loading={loadingSeries}
+        loading={loadingRevenue}
+        error={revenueError}
+        onRetry={() => void loadAll()}
       />
 
       <div className={styles.recentSection}>
         <span className={styles.sectionTitle}>Recent Role Requests</span>
-        {recentRequests.length === 0 ? (
+        {recentRequestsError ? (
+          <WidgetErrorState
+            message={recentRequestsError}
+            onRetry={() => void loadAll()}
+            testId="recent-requests-error"
+          />
+        ) : loadingRecentRequests && recentRequests.length === 0 ? (
+          <div className={styles.emptyState}>Loading role requests…</div>
+        ) : recentRequests.length === 0 ? (
           <div className={styles.emptyState}>No role requests yet.</div>
         ) : (
           <table className={styles.recentTable}>

@@ -274,6 +274,15 @@
   flex-direction: column;
 }
 
+/* Pinned-to-the-right slot for the per-card FollowButton. The author
+ * avatar + byline block doesn't have margin-left:auto so we push the
+ * action container out with margin-left:auto. */
+.postAuthorActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
 .postAuthorName {
   font-size: var(--font-size-sm);
   font-weight: 700;
@@ -722,6 +731,53 @@
   background-color: #fecaca;
 }
 
+/* ─── UPLOAD PROGRESS ─── */
+.uploadProgressWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) 0;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.uploadProgressItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: #64748b;
+}
+
+.uploadProgressLabel {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uploadProgressBarTrack {
+  flex: 1;
+  height: 4px;
+  background-color: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.uploadProgressBarFill {
+  height: 100%;
+  background-color: var(--color-primary, #007aff);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.uploadProgressPct {
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
 /* ─── MODAL FOOTER ─── */
 .modalFooter {
   display: flex;
@@ -939,4 +995,184 @@
 
 .menuItemReport .menuIcon {
   color: #dc2626;
+}
+
+/* ─── ERROR / STATE MESSAGES (added for live API integration) ─── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #991b1b;
+  font-size: var(--font-size-sm);
+}
+
+.errorBannerRetry {
+  margin-left: auto;
+  padding: 4px 12px;
+  background-color: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #991b1b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.errorBannerRetry:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.stateMessage {
+  font-size: var(--font-size-sm);
+  color: #64748b;
+  padding: var(--spacing-4);
+  background-color: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refreshIconSpin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-4);
+}
+
+.paginationBtn {
+  padding: 6px 14px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.paginationBtn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.paginationBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationLabel {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.attachmentLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  border: 1px solid #bfdbfe;
+  background-color: #eff6ff;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+}
+
+.attachmentLink:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+
+/* ─── CREATE POST MODAL — title / abstract fields ─── */
+.titleInput {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 10px var(--spacing-3);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+
+.titleInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.titleInput::placeholder {
+  color: #94a3b8;
+}
+
+.abstractTextarea {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  font-size: var(--font-size-sm);
+  color: #0f172a;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+
+.abstractTextarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.abstractTextarea::placeholder {
+  color: #94a3b8;
 }

@@ -1,9 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import styles from './Forum.module.css';
 import {
-  Heart,
-  Eye,
-  MessageSquare,
   X,
   Tag,
   FileText,
@@ -14,146 +11,148 @@ import {
   AlertTriangle,
   MoreHorizontal,
   Flag,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
+import { useForumPosts, useCreateForumPost } from '../../hooks/useForumPosts';
+import { useFollow } from '../../hooks/useFollow';
+import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
+import { useImageUpload } from '../../hooks/useImageUpload';
 import { ReportModal } from '../../components/forum/ReportModal';
+import { CommentSection } from '../../components/forum/CommentSection';
+import { FollowButton } from '../../components/forum/FollowButton';
+import type { ForumPost } from '../../types/forum.types';
+import { storage } from '../../utils/storage';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
 
 const ALL_CATEGORIES: readonly Category[] = ['All Posts', 'My Posts', 'Following'];
 
-interface Post {
-  id: number;
-  title: string;
-  author: string;
-  avatarInitials: string;
-  avatarColor: string;
-  timestamp: string;
-  abstract: string;
-  tags: string[];
-  likes: number;
-  comments: number;
-  views: number;
-}
+// Page size for client-side pagination. The Swagger `GET /api/ForumPost`
+// endpoint doesn't declare a pageNumber/pageSize parameter, so we cap the
+// rendered list at 10 posts per page to keep the UI snappy.
+const POSTS_PER_PAGE = 10;
 
-const ALL_POSTS: Post[] = [
-  {
-    id: 1,
-    title: 'A Modular Backend Network Protocol for High-Throughput Storage',
-    author: 'Dr. Nguyen Van A',
-    avatarInitials: 'NA',
-    avatarColor: '#eff6ff',
-    timestamp: '2h ago',
-    abstract:
-      'This paper presents a modular backend network protocol engineered specifically for high-throughput distributed storage environments. The proposed framework decouples data ingestion, routing, and persistence layers into independently scalable service units.',
-    tags: ['#SoftwareEngineering', '#Networks'],
-    likes: 24,
-    comments: 8,
-    views: 312,
-  },
-  {
-    id: 2,
-    title: 'Transformer-Based Models for Low-Resource Languages',
-    author: 'Prof. Le Thi B',
-    avatarInitials: 'LB',
-    avatarColor: '#f0fdf4',
-    timestamp: '5h ago',
-    abstract:
-      'We explore transfer learning strategies using transformer architectures adapted for low-resource languages. Our approach achieves competitive results with 60% less labeled data compared to baseline models trained from scratch.',
-    tags: ['#NLP', '#MachineLearning'],
-    likes: 41,
-    comments: 15,
-    views: 589,
-  },
-  {
-    id: 3,
-    title: 'Quantum Computing Applications in Cryptography',
-    author: 'Researcher_XYZ',
-    avatarInitials: 'RX',
-    avatarColor: '#fef9c3',
-    timestamp: '1d ago',
-    abstract:
-      'An investigation into post-quantum cryptographic algorithms suitable for deployment in financial systems. We evaluate lattice-based and hash-based schemes under simulated quantum attack scenarios.',
-    tags: ['#QuantumComputing', '#Cryptography'],
-    likes: 17,
-    comments: 4,
-    views: 203,
-  },
-  {
-    id: 4,
-    title: 'Advances in Federated Learning for Privacy-Preserving AI',
-    author: 'Researcher_DV',
-    avatarInitials: 'RD',
-    avatarColor: '#fdf4ff',
-    timestamp: '2d ago',
-    abstract:
-      'We introduce a novel differential privacy mechanism integrated into the federated averaging algorithm, enabling stronger privacy guarantees without significant accuracy trade-offs in healthcare data applications.',
-    tags: ['#MachineLearning', '#Privacy'],
-    likes: 56,
-    comments: 22,
-    views: 941,
-  },
-  {
-    id: 5,
-    title: 'Energy-Efficient Routing Protocols for IoT Networks',
-    author: 'Dr. Tran Van C',
-    avatarInitials: 'TC',
-    avatarColor: '#fff7ed',
-    timestamp: '3d ago',
-    abstract:
-      'This work proposes a cluster-based routing protocol that dynamically adjusts transmission power based on residual energy levels, extending network lifetime by up to 40% compared to LEACH in large-scale IoT deployments.',
-    tags: ['#IoT', '#Networks'],
-    likes: 33,
-    comments: 11,
-    views: 478,
-  },
+// Constants for client-side sort options. The BE only declares a `sort`
+// query param as a string; we send these values through verbatim so a
+// future BE-side sort handler can map them.
+const SORT_QUERY_VALUE: Record<SortBy, string> = {
+  Newest: 'newest',
+  'Most Discussed': 'most-discussed',
+  'Most Viewed': 'most-viewed',
+};
+
+const PALETTE = [
+  '#eff6ff',
+  '#f0fdf4',
+  '#fef9c3',
+  '#fdf4ff',
+  '#fff7ed',
+  '#ecfeff',
+  '#f5f3ff',
+  '#fef2f2',
 ];
+
+const initialsFromName = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const formatRelativeTime = (iso?: string): string => {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffMs = Date.now() - then;
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
 
 export const Forum = () => {
   const { isVerified, canCreatePost } = usePermissions();
   const { user } = useAuth();
+  const stored = storage.getUser();
+  const currentUserId = user?.userId ?? stored?.id ?? null;
+  const currentUserName =
+    stored?.fullName ?? stored?.username ?? user?.username ?? 'You';
+
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [postContent, setPostContent] = useState('');
-  const [postTags, setPostTags] = useState('');
-  const [followingAuthors, setFollowingAuthors] = useState<Set<string>>(new Set());
-  const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
-  const [attachedImage, setAttachedImage] = useState<File | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [reportTarget, setReportTarget] = useState<{
-    targetType: 'ForumPost' | 'ForumComment';
-    targetId: number;
-    targetPreview: string;
-  } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
 
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  // Build the filter object passed to useForumPosts. search is trimmed so
+  // whitespace-only inputs don't trigger an unnecessary refetch.
+  const filters = useMemo(
+    () => ({
+      search: searchTerm.trim() || undefined,
+      sort: SORT_QUERY_VALUE[sortBy],
+    }),
+    [searchTerm, sortBy],
+  );
 
-  // Unverified (Guest) accounts only get read-only access to /forum, so we
-  // hide the per-user categories. The "Following" category can also be
-  // empty for guests because they can't follow authors — see the same
-  // `isVerified` gate on the Follow button below.
+  const { posts, isLoading, error, refetch } = useForumPosts(filters);
+
+  // Followers — drives the "Following" category AND the per-card follow
+  // button. useFollow is the canonical hook: it owns the GET /api/Follower
+  // fetch, filters to the current viewer's follow rows, and exposes an
+  // optimistic `toggleFollow` for the button.
+  const { followingIds } = useFollow();
+
+  // Reset to page 1 whenever the user changes search or sort — otherwise
+  // they could end up on a page that no longer exists in the result set.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, sortBy, activeCategory]);
+
+  // Visible categories: unverified (guest) users only see "All Posts" —
+  // they have no verified identity to filter by and can't follow authors.
   const visibleCategories: readonly Category[] = isVerified
     ? ALL_CATEGORIES
     : ['All Posts'] as const;
 
-  // If a stale `activeCategory` survives a verification flip (e.g. the
-  // BE returns a fresh token with isActive: true), the visible-list filter
-  // will silently empty out the post list. Coerce the state in render so
-  // we never show an empty list with a category button still highlighted.
+  // Coerce a stale activeCategory (e.g. "My Posts" survives a verification
+  // flip back to false) to "All Posts" so the list never silently empties.
   const effectiveCategory: Category = visibleCategories.includes(activeCategory)
     ? activeCategory
     : 'All Posts';
 
-  const filteredPosts = ALL_POSTS.filter((post) => {
-    if (effectiveCategory === 'All Posts') return true;
-    if (effectiveCategory === 'My Posts') return post.author === 'Dr. Nguyen Van A';
-    if (effectiveCategory === 'Following') return followingAuthors.has(post.author);
-    return true;
-  });
+  // Client-side category filter — the BE doesn't know about "My Posts" /
+  // "Following"; those are user-relative views so we apply them locally
+  // using the resolved authorId and the follow set.
+  const filteredPosts = useMemo(() => {
+    return posts.filter((post) => {
+      if (effectiveCategory === 'All Posts') return true;
+      if (effectiveCategory === 'My Posts') {
+        return currentUserId != null && post.authorId === currentUserId;
+      }
+      if (effectiveCategory === 'Following') {
+        return post.authorId != null && followingIds.has(post.authorId);
+      }
+      return true;
+    });
+  }, [posts, effectiveCategory, currentUserId, followingIds]);
+
+  const paginatedPosts = useMemo(() => {
+    const start = (page - 1) * POSTS_PER_PAGE;
+    return filteredPosts.slice(start, start + POSTS_PER_PAGE);
+  }, [filteredPosts, page]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
+  );
 
   return (
     <div className={styles.forumPage}>
@@ -186,11 +185,13 @@ export const Forum = () => {
             <div className={styles.sidebarSectionLabel}>Filters</div>
             <div className={styles.filterInputs}>
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Author</label>
+                <label className={styles.filterLabel}>Search</label>
                 <input
                   type="text"
                   className={styles.filterInput}
-                  placeholder="Search author..."
+                  placeholder="Search posts..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
@@ -222,7 +223,17 @@ export const Forum = () => {
           <div className={styles.feedHeader}>
             <div className={styles.feedTitleRow}>
               <h2 className={styles.feedTitle}>PUBLIC FORUM</h2>
-              <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
+              {error ? (
+                <span
+                  className={styles.postCountBadge}
+                  aria-label="Post count unavailable"
+                  title="Post count unavailable while the forum is unreachable"
+                >
+                  —
+                </span>
+              ) : (
+                <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
+              )}
               <button
                 className={`${styles.createPostBtn} ${!canCreatePost ? styles.createPostBtnDisabled : ''}`}
                 onClick={() => {
@@ -252,275 +263,605 @@ export const Forum = () => {
                 <option>Most Discussed</option>
                 <option>Most Viewed</option>
               </select>
+              <button
+                type="button"
+                className={styles.refreshBtn}
+                onClick={() => void refetch()}
+                disabled={isLoading}
+                aria-label="Refresh posts"
+                title="Refresh posts"
+              >
+                <RefreshCw size={14} className={isLoading ? styles.refreshIconSpin : ''} />
+              </button>
             </div>
           </div>
 
+          {/* API error banner */}
+          {error && (
+            <div className={styles.errorBanner} role="alert">
+              <AlertCircle size={16} />
+              <span>{error.message || 'Failed to load posts.'}</span>
+              <button
+                type="button"
+                className={styles.errorBannerRetry}
+                onClick={() => void refetch()}
+                disabled={isLoading}
+                aria-label="Retry loading forum posts"
+              >
+                {isLoading ? 'Retrying…' : 'Retry'}
+              </button>
+            </div>
+          )}
+
           {/* Post Cards */}
           <div className={styles.postList}>
-            {filteredPosts.map((post) => (
-              <div key={post.id} className={styles.postCardWrapper}>
-                <div className={styles.postCard}>
-                  {/* Author row */}
-                  <div className={styles.postAuthorRow}>
-                    <div
-                      className={styles.postAvatar}
-                      style={{ backgroundColor: post.avatarColor, color: '#0f172a' }}
-                    >
-                      {post.avatarInitials}
-                    </div>
-                    <div className={styles.postAuthorInfo}>
-                      <span className={styles.postAuthorName}>{post.author}</span>
-                      <span className={styles.postTimestamp}>{post.timestamp}</span>
-                    </div>
-                    {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && isVerified && (
-                      <button
-                        className={`${styles.cardFollowBtn} ${followingAuthors.has(post.author) ? styles.following : ''}`}
-                        onClick={() => {
-                          setFollowingAuthors(prev => {
-                            const next = new Set(prev);
-                            if (next.has(post.author)) {
-                              next.delete(post.author);
-                            } else {
-                              next.add(post.author);
-                            }
-                            return next;
-                          });
-                        }}
-                      >
-                        {followingAuthors.has(post.author) ? 'Following' : 'Follow'}
-                      </button>
-                    )}
-                  </div>
+            {isLoading && posts.length === 0 && (
+              <div className={styles.stateMessage}>Loading posts…</div>
+            )}
 
-                  {/* Title */}
-                  <h3 className={styles.postTitle}>{post.title}</h3>
-
-                  {/* Abstract */}
-                  <p className={styles.postAbstract}>{post.abstract}</p>
-
-                  {/* Tags */}
-                  <div className={styles.postTags}>
-                    {post.tags.map((tag) => (
-                      <span key={tag} className={styles.postTag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Stats row */}
-                  <div className={styles.postStats}>
-                    <span className={styles.postStatItem}>
-                      <Heart size={14} />
-                      {post.likes}
-                    </span>
-                    <span className={styles.postStatItem}>
-                      <MessageSquare size={14} />
-                      {post.comments}
-                    </span>
-                    <span className={styles.postStatItem}>
-                      <Eye size={14} />
-                      {post.views}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Overflow Menu - only for verified users */}
-                {isVerified && (
-                  <div className={styles.postCardActions}>
-                    <button
-                      className={styles.menuTrigger}
-                      onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
-                      aria-label="More options"
-                      aria-haspopup="menu"
-                      aria-expanded={openMenuId === post.id}
-                    >
-                      <MoreHorizontal size={18} />
-                    </button>
-
-                    {openMenuId === post.id && (
-                      <div className={styles.menuDropdown} role="menu">
-                        <button
-                          className={`${styles.menuItem} ${styles.menuItemReport}`}
-                          onClick={() => {
-                            setReportTarget({
-                              targetType: 'ForumPost',
-                              targetId: post.id,
-                              targetPreview: post.title,
-                            });
-                            setOpenMenuId(null);
-                          }}
-                          role="menuitem"
-                        >
-                          <Flag size={16} className={styles.menuIcon} />
-                          Report this post
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+            {!isLoading && !error && filteredPosts.length === 0 && (
+              <div className={styles.stateMessage}>
+                {effectiveCategory === 'Following'
+                  ? 'You are not following any authors yet.'
+                  : effectiveCategory === 'My Posts'
+                    ? 'You have not published any posts yet.'
+                    : 'No posts match your filters.'}
               </div>
+            )}
+
+            {paginatedPosts.map((post) => (
+              <ForumPostCard
+                key={post.id}
+                post={post}
+                isVerified={isVerified}
+                currentUserId={currentUserId}
+                currentUserName={currentUserName}
+              />
             ))}
           </div>
+
+          {/* Pagination — client-side, 10 per page */}
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              <button
+                type="button"
+                className={styles.paginationBtn}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Previous
+              </button>
+              <span className={styles.paginationLabel}>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className={styles.paginationBtn}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Create Post Modal */}
-      {isCreateModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => setIsCreateModalOpen(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Create Forum Post</h2>
-            </div>
+      {isCreateModalOpen && canCreatePost && currentUserId != null && (
+        <CreatePostModal
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          onClose={() => setIsCreateModalOpen(false)}
+          onPublished={() => {
+            setIsCreateModalOpen(false);
+            void refetch();
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
-            {/* Author Header */}
-            <div className={styles.modalAuthorHeader}>
-              <div
-                className={styles.modalAuthorAvatar}
-                style={{ backgroundColor: '#eff6ff', color: '#0f172a' }}
-              >
-                NA
-              </div>
-              <div className={styles.modalAuthorInfo}>
-                <span className={styles.modalAuthorName}>Dr. Nguyen Van A</span>
-                <span className={styles.modalPostingTo}>Posting to Forums</span>
-              </div>
-            </div>
+// ─── ForumPostCard ───────────────────────────────────────────────────────────
+// One row of the feed. Owns the "more options" overflow menu and the
+// per-card report-target state. Renders the CommentSection below the card.
+interface ForumPostCardProps {
+  post: ForumPost;
+  isVerified: boolean;
+  currentUserId: number | null;
+  currentUserName: string;
+}
 
-            <div className={styles.modalBody}>
-              {/* Plain Textarea - no label */}
-              <textarea
-                className={styles.modalTextarea}
-                placeholder="Share your thoughts..."
-                rows={8}
-                value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
-              />
+const ForumPostCard = ({
+  post,
+  isVerified,
+  currentUserId,
+  currentUserName,
+}: ForumPostCardProps) => {
+  const [openMenuId, setOpenMenuId] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{
+    id: number;
+    preview: string;
+  } | null>(null);
 
-              {/* Tag Input with # prefix display */}
-              <div className={styles.tagInputRow}>
-                <label className={styles.tagLabel}>
-                  <Tag size={14} />
-                  Tags
-                </label>
-                <div className={styles.tagInputWrapper}>
-                  <span className={styles.tagHashPrefix}>#</span>
-                  <input
-                    type="text"
-                    className={styles.tagInputField}
-                    placeholder="Add tags..."
-                    value={postTags}
-                    onChange={(e) => setPostTags(e.target.value)}
-                  />
-                </div>
-              </div>
+  // Build a stable avatar color from the post id so each card picks a
+  // distinct background. We use the mod palette length so any id maps
+  // to a valid color.
+  const avatarColor = PALETTE[post.id % PALETTE.length];
 
-              {/* Attachment Buttons */}
-              <div className={styles.attachmentRow}>
-                <button
-                  className={styles.attachPdfBtn}
-                  onClick={() => pdfInputRef.current?.click()}
-                >
-                  <FileText size={16} />
-                  Attach PDF Paper
-                </button>
-                <input
-                  type="file"
-                  ref={pdfInputRef}
-                  accept=".pdf"
-                  className={styles.hiddenInput}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setAttachedPdf(file);
-                  }}
-                />
+  // Author label — Swagger doesn't return fullName on the post, only
+  // authorId. Until the BE ships it we render "Author #{id}" or, if the
+  // post belongs to the current user, fall back to their own name.
+  const authorLabel =
+    post.authorId != null && currentUserId != null && post.authorId === currentUserId
+      ? currentUserName
+      : post.authorId != null
+        ? `Author #${post.authorId}`
+        : 'Unknown author';
 
-                <button
-                  className={styles.uploadImgBtn}
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  <ImageIcon size={16} />
-                  Upload Image
-                </button>
-                <input
-                  type="file"
-                  ref={imageInputRef}
-                  accept="image/*"
-                  className={styles.hiddenInput}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setAttachedImage(file);
-                  }}
-                />
-              </div>
+  const authorInitials = initialsFromName(authorLabel);
 
-              {/* Show attached files */}
-              {(attachedPdf || attachedImage) && (
-                <div className={styles.attachedFilesList}>
-                  {attachedPdf && (
-                    <div className={styles.attachedFile}>
-                      <FileText size={14} />
-                      <span>{attachedPdf.name}</span>
-                      <button
-                        className={styles.removeFileBtn}
-                        onClick={() => setAttachedPdf(null)}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {attachedImage && (
-                    <div className={styles.attachedFile}>
-                      <ImageIcon size={14} />
-                      <span>{attachedImage.name}</span>
-                      <button
-                        className={styles.removeFileBtn}
-                        onClick={() => setAttachedImage(null)}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button
-                className={styles.cancelBtn}
-                onClick={() => setIsCreateModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.publishBtn}
-                disabled={!postContent.trim()}
-                onClick={() => {
-                  console.log('Post published:', { content: postContent, tags: postTags, pdf: attachedPdf?.name, image: attachedImage?.name });
-                  setIsCreateModalOpen(false);
-                  setPostContent('');
-                  setPostTags('');
-                  setAttachedPdf(null);
-                  setAttachedImage(null);
-                }}
-              >
-                Publish Post
-              </button>
-            </div>
+  return (
+    <div className={styles.postCardWrapper}>
+      <div className={styles.postCard}>
+        {/* Author row */}
+        <div className={styles.postAuthorRow}>
+          <div
+            className={styles.postAvatar}
+            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
+          >
+            {authorInitials}
           </div>
+          <div className={styles.postAuthorInfo}>
+            <span className={styles.postAuthorName}>{authorLabel}</span>
+            <span className={styles.postTimestamp}>
+              {formatRelativeTime(post.createdAt)}
+            </span>
+          </div>
+          {/* FollowButton — only for verified viewers, only when we know
+              the authorId, and never on the viewer's own posts. The
+              component itself enforces these guards; we just gate the
+              render so the button doesn't appear at all for guests. */}
+          {isVerified &&
+            post.authorId != null &&
+            post.authorId !== currentUserId && (
+              <div className={styles.postAuthorActions}>
+                <FollowButton authorId={post.authorId} size="sm" />
+              </div>
+            )}
+        </div>
+
+        {/* Title */}
+        {post.title && <h3 className={styles.postTitle}>{post.title}</h3>}
+
+        {/* Abstract / content */}
+        {(post.abstract ?? post.content) && (
+          <p className={styles.postAbstract}>
+            {post.abstract ?? post.content}
+          </p>
+        )}
+
+        {/* Attachments (if any) */}
+        {(post.attachedImageUrl || post.attachedPdfUrl) && (
+          <div className={styles.attachmentRow}>
+            {post.attachedImageUrl && (
+              <a
+                href={post.attachedImageUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={styles.attachmentLink}
+              >
+                <ImageIcon size={14} />
+                Attached image
+              </a>
+            )}
+            {post.attachedPdfUrl && (
+              <a
+                href={post.attachedPdfUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={styles.attachmentLink}
+              >
+                <FileText size={14} />
+                Attached PDF
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className={styles.postTags}>
+            {post.tags.map((tag, idx) => (
+              <span key={`${tag}-${idx}`} className={styles.postTag}>
+                {tag.startsWith('#') ? tag : `#${tag}`}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Comments thread */}
+        <CommentSection postId={post.id} />
+      </div>
+
+      {/* Overflow Menu - only for verified users */}
+      {isVerified && (
+        <div className={styles.postCardActions}>
+          <button
+            className={styles.menuTrigger}
+            onClick={() => setOpenMenuId((prev) => !prev)}
+            aria-label="More options"
+            aria-haspopup="menu"
+            aria-expanded={openMenuId}
+          >
+            <MoreHorizontal size={18} />
+          </button>
+
+          {openMenuId && (
+            <div className={styles.menuDropdown} role="menu">
+              <button
+                className={`${styles.menuItem} ${styles.menuItemReport}`}
+                onClick={() => {
+                  setReportTarget({
+                    id: post.id,
+                    preview: post.title ?? '(untitled post)',
+                  });
+                  setOpenMenuId(false);
+                }}
+                role="menuitem"
+              >
+                <Flag size={16} className={styles.menuIcon} />
+                Report this post
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Report Modal */}
-      {reportTarget && user && (
+      {reportTarget && currentUserId != null && (
         <ReportModal
           isOpen={true}
           onClose={() => setReportTarget(null)}
-          targetType={reportTarget.targetType}
-          targetPreview={reportTarget.targetPreview}
-          targetId={reportTarget.targetId}
-          reporterId={user.userId ?? 0}
+          targetType="ForumPost"
+          targetId={reportTarget.id}
+          targetPreview={reportTarget.preview}
+          reporterId={currentUserId}
         />
       )}
+    </div>
+  );
+};
+
+// ─── CreatePostModal ─────────────────────────────────────────────────────────
+// Owns the create-form local state and the actual POST /api/ForumPost call.
+// Closes itself on successful publish and asks the parent to refetch.
+interface CreatePostModalProps {
+  currentUserId: number;
+  currentUserName: string;
+  onClose: () => void;
+  onPublished: () => void;
+}
+
+const CreatePostModal = ({
+  currentUserId,
+  currentUserName,
+  onClose,
+  onPublished,
+}: CreatePostModalProps) => {
+  const { create, error: createError } = useCreateForumPost();
+
+  // Firebase upload hooks — one per attachment type
+  const pdfUpload = useFirebaseUpload('forum_pdfs/');
+  const imageUpload = useImageUpload('forum_images/');
+
+  const [title, setTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [abstract, setAbstract] = useState('');
+  const [category, setCategory] = useState('');
+  const [postTags, setPostTags] = useState('');
+  const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  // Local submitError captures synchronous failures (e.g. attachment upload
+  // errors). The hook's `error` already handles BE failures with a sanitized
+  // 5xx message — we surface whichever is more relevant.
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset both upload hooks when the modal closes so stale URLs don't bleed
+  // into the next open session.
+  const reset = useCallback(() => {
+    setTitle('');
+    setPostContent('');
+    setAbstract('');
+    setCategory('');
+    setPostTags('');
+    setAttachedPdf(null);
+    setAttachedImage(null);
+    setSubmitError(null);
+    setSubmitting(false);
+    pdfUpload.resetUpload();
+    imageUpload.resetUpload();
+  }, [pdfUpload, imageUpload]);
+
+  const handlePublish = async () => {
+    const trimmedContent = postContent.trim();
+    if (!trimmedContent || submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // 1. Upload attachments to Firebase (if any), in parallel
+      const [pdfUrl, imageUrl] = await Promise.all([
+        attachedPdf ? pdfUpload.uploadPdf(attachedPdf).then(() => pdfUpload.pdfUrl) : Promise.resolve(null),
+        attachedImage ? imageUpload.uploadImage(attachedImage).then(() => imageUpload.imageUrl) : Promise.resolve(null),
+      ]);
+
+      // 2. Create the post with the resolved public URLs
+      const tags = postTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
+      const result = await create({
+        title: title.trim() || null,
+        content: trimmedContent,
+        abstract: abstract.trim() || null,
+        category: category.trim() || null,
+        tags: tags.length > 0 ? tags : null,
+        attachedPdfUrl: pdfUrl,
+        attachedImageUrl: imageUrl,
+      });
+
+      setSubmitting(false);
+      if (result) {
+        reset();
+        onPublished();
+      } else {
+        // The hook already sanitizes the message; prefer it over a hardcoded
+        // string so the user sees the same "temporarily unavailable" copy
+        // as the list banner.
+        setSubmitError(createError?.message ?? 'Failed to publish post. Please try again.');
+      }
+    } catch (err) {
+      setSubmitting(false);
+      setSubmitError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+    }
+  };
+
+  const avatarInitials = initialsFromName(currentUserName);
+  const avatarColor = PALETTE[currentUserId % PALETTE.length];
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Create Forum Post</h2>
+        </div>
+
+        {/* Author Header */}
+        <div className={styles.modalAuthorHeader}>
+          <div
+            className={styles.modalAuthorAvatar}
+            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
+          >
+            {avatarInitials}
+          </div>
+          <div className={styles.modalAuthorInfo}>
+            <span className={styles.modalAuthorName}>{currentUserName}</span>
+            <span className={styles.modalPostingTo}>Posting to Forums</span>
+          </div>
+        </div>
+
+        <div className={styles.modalBody}>
+          {/* Title */}
+          <input
+            type="text"
+            className={styles.titleInput}
+            placeholder="Post title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={140}
+          />
+
+          {/* Category (optional, free-text until BE ships category list) */}
+          <input
+            type="text"
+            className={styles.titleInput}
+            placeholder="Category (optional)"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+
+          {/* Abstract (optional) */}
+          <textarea
+            className={styles.abstractTextarea}
+            placeholder="Brief abstract (optional)"
+            rows={2}
+            value={abstract}
+            onChange={(e) => setAbstract(e.target.value)}
+          />
+
+          {/* Plain Textarea - content */}
+          <textarea
+            className={styles.modalTextarea}
+            placeholder="Share your thoughts..."
+            rows={8}
+            value={postContent}
+            onChange={(e) => setPostContent(e.target.value)}
+          />
+
+          {/* Tag Input with # prefix display */}
+          <div className={styles.tagInputRow}>
+            <label className={styles.tagLabel}>
+              <Tag size={14} />
+              Tags
+            </label>
+            <div className={styles.tagInputWrapper}>
+              <span className={styles.tagHashPrefix}>#</span>
+              <input
+                type="text"
+                className={styles.tagInputField}
+                placeholder="Add tags, comma separated..."
+                value={postTags}
+                onChange={(e) => setPostTags(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Attachment Buttons — UI only for now, see report */}
+          <div className={styles.attachmentRow}>
+            <button
+              type="button"
+              className={styles.attachPdfBtn}
+              onClick={() => pdfInputRef.current?.click()}
+            >
+              <FileText size={16} />
+              Attach PDF Paper
+            </button>
+            <input
+              type="file"
+              ref={pdfInputRef}
+              accept=".pdf"
+              className={styles.hiddenInput}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setAttachedPdf(file);
+              }}
+            />
+
+            <button
+              type="button"
+              className={styles.uploadImgBtn}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <ImageIcon size={16} />
+              Upload Image
+            </button>
+            <input
+              type="file"
+              ref={imageInputRef}
+              accept="image/*"
+              className={styles.hiddenInput}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setAttachedImage(file);
+              }}
+            />
+          </div>
+
+          {/* Show attached files (UI-only preview; not yet uploaded) */}
+          {(attachedPdf || attachedImage) && (
+            <div className={styles.attachedFilesList}>
+              {attachedPdf && (
+                <div className={styles.attachedFile}>
+                  <FileText size={14} />
+                  <span>{attachedPdf.name}</span>
+                  <button
+                    type="button"
+                    className={styles.removeFileBtn}
+                    onClick={() => setAttachedPdf(null)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              {attachedImage && (
+                <div className={styles.attachedFile}>
+                  <ImageIcon size={14} />
+                  <span>{attachedImage.name}</span>
+                  <button
+                    type="button"
+                    className={styles.removeFileBtn}
+                    onClick={() => setAttachedImage(null)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Upload progress indicators — shown while Firebase is transferring */}
+          {(pdfUpload.isUploading || imageUpload.isUploading) && (
+            <div className={styles.uploadProgressWrapper}>
+              {pdfUpload.isUploading && (
+                <div className={styles.uploadProgressItem}>
+                  <span className={styles.uploadProgressLabel}>
+                    <FileText size={12} />
+                    PDF
+                  </span>
+                  <div className={styles.uploadProgressBarTrack}>
+                    <div
+                      className={styles.uploadProgressBarFill}
+                      style={{ width: `${pdfUpload.progress}%` }}
+                    />
+                  </div>
+                  <span className={styles.uploadProgressPct}>{pdfUpload.progress}%</span>
+                </div>
+              )}
+              {imageUpload.isUploading && (
+                <div className={styles.uploadProgressItem}>
+                  <span className={styles.uploadProgressLabel}>
+                    <ImageIcon size={12} />
+                    Image
+                  </span>
+                  <div className={styles.uploadProgressBarTrack}>
+                    <div
+                      className={styles.uploadProgressBarFill}
+                      style={{ width: `${imageUpload.progress}%` }}
+                    />
+                  </div>
+                  <span className={styles.uploadProgressPct}>{imageUpload.progress}%</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Per-upload errors shown once the upload has finished with an error */}
+          {pdfUpload.error && !pdfUpload.isUploading && (
+            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
+              <AlertCircle size={14} />
+              PDF upload: {pdfUpload.error}
+            </div>
+          )}
+          {imageUpload.error && !imageUpload.isUploading && (
+            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
+              <AlertCircle size={14} />
+              Image upload: {imageUpload.error}
+            </div>
+          )}
+
+          {submitError && (
+            <div className={styles.errorBanner} role="alert">
+              <AlertCircle size={14} />
+              {submitError}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.publishBtn}
+            disabled={!postContent.trim() || submitting || pdfUpload.isUploading || imageUpload.isUploading}
+            onClick={handlePublish}
+          >
+            {submitting ? 'Publishing…' : 'Publish Post'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

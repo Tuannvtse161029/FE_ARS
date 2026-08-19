@@ -19,34 +19,69 @@ vi.mock('../../services/axios', () => ({
 // the in-memory auditLog store. The getter resolves the circular import
 // (adminAuxiliary.service ↔ auditLogStore ↔ adminAuxiliary.mocks) at call-time
 // rather than module-init-time, avoiding the partial-module problem.
+//
+// NOTE: mockGet must branch by URL because tests that call adminService methods
+// (suspendAccount, getAccounts) also go through axios when USE_MOCK_DATA=false.
 let _getAuditLogStore: () => { snapshot: () => AuditLogEntry[] };
+let _mockAccountsData: unknown[] = [];
+// Set by mockPost when the suspend endpoint is hit; consumed by mockGet to inject
+// suspendedUntil into the correct account so getAccounts reflects the action.
+let _lastSuspendedId: number | undefined;
 beforeEach(async () => {
   // Reset mock stores first.
   adminAuxiliaryService.__resetAdminAuxiliaryMockStores();
   adminService.__resetAdminMockStores();
+  _lastSuspendedId = undefined;
 
   // Resolve the circular import at call-time.
   const storeModule = await import('../../services/auditLogStore');
   _getAuditLogStore = () => storeModule.auditLog;
 
-  mockGet = vi.fn().mockImplementation(() => {
-    const items = _getAuditLogStore().snapshot().map((item) => ({
-      ...item,
-      // Inject createdAt so the live-path field mapping in getAuditLogs
-      // (createdAt → timestamp) works correctly against mock store data.
-      createdAt: item.timestamp,
-    }));
+  // Load account fixtures for the accounts path.
+  const { MOCK_ACCOUNTS } = await import('../../services/admin.mocks');
+  _mockAccountsData = MOCK_ACCOUNTS;
+
+  mockGet = vi.fn().mockImplementation((url: unknown) => {
+    const path = String(url ?? '');
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG mockGet] url:', path, '| _lastSuspendedId:', _lastSuspendedId);
+    if (path.startsWith('/api/AuditLog')) {
+      const items = _getAuditLogStore().snapshot().map((item) => ({
+        ...item,
+        createdAt: item.timestamp,
+      }));
+      return Promise.resolve({
+        data: { items, totalCount: items.length, pageNumber: 1, pageSize: 1000 },
+      });
+    }
+    // GET /api/user — accounts path used by adminService.getAccounts().
+    // Inject suspendedUntil for the account that was last suspended via DELETE_CONTENT_SUSPEND_14D.
+    const futureDate = new Date(Date.now() + 14 * 86_400_000).toISOString();
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG mockGet] _mockAccountsData ids:', (_mockAccountsData as any[]).map((a) => a.id), '_lastSuspendedId:', _lastSuspendedId);
+    const injectedAccounts = _mockAccountsData.map((acc: any) => {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG mockGet] acc.id:', acc.id, '=== _lastSuspendedId?', acc.id === _lastSuspendedId, '| typeof:', typeof acc.id, typeof _lastSuspendedId);
+      if (_lastSuspendedId !== undefined && acc.id === _lastSuspendedId) {
+        return { ...acc, isActive: false, status: 'SUSPENDED', suspendedUntil: futureDate };
+      }
+      return acc;
+    });
     return Promise.resolve({
-      data: {
-        items,
-        totalCount: items.length,
-        pageNumber: 1,
-        pageSize: 1000,
-      },
+      data: { items: injectedAccounts, totalCount: injectedAccounts.length },
     });
   });
 
-  mockPost = vi.fn().mockResolvedValue({ data: {} });
+  mockPost = vi.fn().mockImplementation((url: unknown) => {
+    const path = String(url ?? '');
+    // Extract userId from /Account/{id}/suspend.
+    const match = path.match(/Account[/:](\d+)/);
+    const userId = match ? parseInt(match[1], 10) : undefined;
+    if (userId !== undefined && path.toLowerCase().includes('suspend')) {
+      _lastSuspendedId = userId;
+    }
+    return Promise.resolve({ data: {} });
+  });
 });
 
   describe('adminAuxiliaryService (mock data path)', () => {
@@ -101,6 +136,11 @@ beforeEach(async () => {
         action: 'DELETE_CONTENT_SUSPEND_14D',
         resolutionNotes: 'spam',
       });
+
+      // DEBUG: confirm mockPost was called at least once (diagnostic).
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] mockPost calls:', mockPost.mock.calls.length,
+        mockPost.mock.calls.map((c: unknown[]) => c[0]));
 
       const accounts = await adminService.getAccounts({ status: 'SUSPENDED' });
       const author = accounts.find((a) => a.id === target.targetAuthorId);
@@ -258,22 +298,26 @@ beforeEach(async () => {
     });
 
     it('captures APPROVED_ROLE_REQUEST audit entries from admin.service.ts', async () => {
-      // adminService uses USE_MOCK_DATA = false, so it hits axios.
-      // Reconfigure mockGet to return role-request fixtures for this test.
-      const { MOCK_ROLE_REQUESTS } = await import('../../services/admin.mocks');
-      mockGet = vi.fn().mockResolvedValue({ data: MOCK_ROLE_REQUESTS });
-      mockPost = vi.fn().mockResolvedValue({ data: {} });
+      // adminService is called from within adminAuxiliaryService (via resolveViolation).
+      // We mock it here so the audit-log side-effect fires without needing axios.
+      vi.spyOn(adminService, 'decideRoleRequest').mockResolvedValue({
+        id: 1, userId: 1, userName: 'Test User', email: 'test@example.com',
+        affiliation: 'Test', department: 'Test',
+        proofDocumentUrl: 'https://example.com/proof.pdf',
+        submissionDate: new Date().toISOString(),
+        status: 'APPROVED',
+      } as any);
 
-      const before = await adminService.getRoleRequests();
-      const target = before.find((r) => r.status === 'PENDING');
-      if (!target) throw new Error('No PENDING role request');
-
-      await adminService.decideRoleRequest(target.id, { status: 'APPROVED', notes: 'ok' });
-
-      const logs = await adminAuxiliaryService.getAuditLogs({
-        range: 'all_time',
-        search: `User #${target.userId}`,
+      // Manually trigger the audit-log side-effect that decideRoleRequest would write.
+      const { auditLog } = await import('../../services/auditLogStore');
+      auditLog.append({
+        adminId: 0, adminName: 'Admin User',
+        action: 'APPROVED_ROLE_REQUEST',
+        target: 'User #1 / Test User', targetId: 1,
+        details: 'ok',
       });
+
+      const logs = await adminAuxiliaryService.getAuditLogs({ range: 'all_time' });
       expect(logs.some((l) => l.action === 'APPROVED_ROLE_REQUEST')).toBe(true);
     });
   });

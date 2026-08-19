@@ -130,6 +130,20 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/CommentVote',
     CREATE: '/api/CommentVote',
   },
+  FORUM_POST: {
+    BASE: '/api/ForumPost',
+    GET_ALL: '/api/ForumPost',
+    GET_BY_ID: (id: number) => `/api/ForumPost/${id}`,
+    CREATE: '/api/ForumPost',
+  },
+  FORUM_COMMENT: {
+    BASE: '/api/ForumComment',
+    GET_ALL: '/api/ForumComment',
+    GET_BY_ID: (id: number) => `/api/ForumComment/${id}`,
+    CREATE: '/api/ForumComment',
+    UPDATE: (id: number) => `/api/ForumComment/${id}`,
+    DELETE: (id: number) => `/api/ForumComment/${id}`,
+  },
   WALLET: {
     BASE: '/api/Wallet',
     GET_ALL: '/api/Wallet',

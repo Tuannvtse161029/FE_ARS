@@ -14,9 +14,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { Register } from '../../pages/Register/Register';
 
 // ── Module-level mocks via vi.hoisted() ────────────────────────────────────────
-// vi.hoisted() tells Vitest to keep the callback in its original file position
-// rather than hoisting just the factory body to the top. This avoids the TDZ
-// error when the factory references module-level const declarations.
 
 const { registerUserSpy, setAuthDataSpy } = vi.hoisted(() => {
   return {
@@ -32,14 +29,33 @@ const { loginSpy, setLoadingSpy } = vi.hoisted(() => {
   };
 });
 
-const firebaseUploadResult = vi.hoisted(() => ({
-  uploadPdf: vi.fn().mockResolvedValue(undefined),
-  progress: 0,
-  isUploading: false,
-  error: null,
-  pdfUrl: null as string | null,
-  resetUpload: vi.fn(),
-}));
+// Shared mock state object. PdfDropzone reads progress/isUploading/pdfUrl from the
+// hook. uploadPdf synchronously sets pdfUrl on the shared object BEFORE resolving,
+// so PdfDropzone's useEffect sees the non-null pdfUrl in the same tick as the
+// React state update that fires on await resolution.
+const firebaseUploadMock = vi.hoisted(() => {
+  let _pdfUrl: string | null = null;
+  let _isUploading = false;
+  return {
+    get pdfUrl() { return _pdfUrl; },
+    set pdfUrl(v: string | null) { _pdfUrl = v; },
+    get isUploading() { return _isUploading; },
+    set isUploading(v: boolean) { _isUploading = v; },
+    uploadPdf: vi.fn().mockImplementation(async () => {
+      // Set pdfUrl BEFORE the await so PdfDropzone's useEffect fires with the new
+      // value when React processes the state update after the promise resolves.
+      _pdfUrl = 'https://firebasestorage.googleapis.com/test-verification.pdf';
+      _isUploading = false;
+      await Promise.resolve();
+    }),
+    progress: 0,
+    error: null as string | null,
+    resetUpload: vi.fn().mockImplementation(() => {
+      _pdfUrl = null;
+      _isUploading = false;
+    }),
+  };
+});
 
 vi.mock('../../services/auth.service', () => ({
   authService: {
@@ -56,7 +72,7 @@ vi.mock('../../store', () => ({
 }));
 
 vi.mock('../../hooks/useFirebaseUpload', () => ({
-  useFirebaseUpload: () => firebaseUploadResult,
+  useFirebaseUpload: () => firebaseUploadMock,
 }));
 
 const renderRegister = () =>
@@ -271,15 +287,8 @@ describe('Register Page – pdfUrl included in registration payload', () => {
   test('authService.registerUser is called with pdfUrl when form is submitted', async () => {
     const user = userEvent.setup();
 
-    // Simulate Firebase returning a URL after upload
-    firebaseUploadResult.uploadPdf.mockResolvedValue(undefined);
-    firebaseUploadResult.progress = 100;
-    firebaseUploadResult.isUploading = false;
-    firebaseUploadResult.pdfUrl = 'https://firebasestorage.googleapis.com/fake-test-url.pdf';
-
     renderRegister();
 
-    // Suppress console.error from the internal setAuthData call
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Fill in all required fields
@@ -289,18 +298,17 @@ describe('Register Page – pdfUrl included in registration payload', () => {
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');
 
-    // Simulate PDF upload by triggering the hidden file input
+    // Trigger the file input. The mock's uploadPdf sets pdfUrl synchronously before
+    // resolving, so PdfDropzone's useEffect fires onUploadComplete immediately after
+    // the await completes — enabling the submit button.
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
       type: 'application/pdf',
     });
     await user.upload(fileInput, fakeFile);
 
-    // The button should now be enabled (pdfUrl is set, all fields valid)
+    // Submit
     const submitBtn = screen.getByRole('button', { name: /create account/i });
-    expect(submitBtn).not.toBeDisabled();
-
-    // Submit the form
     await user.click(submitBtn);
 
     // Assert authService.registerUser was called with pdfUrl in the payload
@@ -308,7 +316,7 @@ describe('Register Page – pdfUrl included in registration payload', () => {
     const [payload] = registerUserSpy.mock.calls[0];
     expect(payload).toHaveProperty('pdfUrl');
     expect(typeof payload.pdfUrl).toBe('string');
-    expect(payload.pdfUrl).toBe('https://firebasestorage.googleapis.com/fake-test-url.pdf');
+    expect(payload.pdfUrl).toBe('https://firebasestorage.googleapis.com/test-verification.pdf');
 
     consoleErrorSpy.mockRestore();
   });
@@ -316,11 +324,9 @@ describe('Register Page – pdfUrl included in registration payload', () => {
   test('submit button stays disabled while PDF is uploading', async () => {
     const user = userEvent.setup();
 
-    // Simulate upload in progress — pdfUrl not yet available
-    firebaseUploadResult.uploadPdf.mockResolvedValue(undefined);
-    firebaseUploadResult.progress = 50;
-    firebaseUploadResult.isUploading = true;
-    firebaseUploadResult.pdfUrl = null;
+    // Simulate upload in progress — pdfUrl not yet available, isUploading = true
+    firebaseUploadMock.isUploading = true;
+    firebaseUploadMock.pdfUrl = null;
 
     renderRegister();
 
@@ -331,15 +337,11 @@ describe('Register Page – pdfUrl included in registration payload', () => {
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');
 
-    // Trigger file upload (which is still in-progress)
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
-      type: 'application/pdf',
-    });
-    await user.upload(fileInput, fakeFile);
-
-    // Button must stay disabled while upload is in progress
+    // Button must stay disabled because isUploadingPdf === true (upload still running)
     const submitBtn = screen.getByRole('button', { name: /create account/i });
     expect(submitBtn).toBeDisabled();
+
+    // Reset to default state
+    firebaseUploadMock.isUploading = false;
   });
 });

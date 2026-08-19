@@ -53,6 +53,28 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
 }
 
 /**
+ * Agent 39 — returns true when the auth snapshot represents a Guest user.
+ * Prefers the BE-derived `effectiveRole` field; falls back to the derived
+ * `!isActive && !isAdmin` heuristic for pre-migration persisted blobs (when
+ * the FE hasn't yet received a fresh `effectiveRole` from the BE).
+ *
+ * Never coerces an unknown role string to 'Guest' — only `'Guest'` (the
+ * documented literal), or the derived fallback, establishes a Guest session.
+ */
+export function isGuestUser(snapshot: {
+  effectiveRole?: string | null;
+  isActive?: boolean;
+  canViewAdminPanel?: boolean;
+}): boolean {
+  if (snapshot.effectiveRole === 'Guest') return true;
+  if (snapshot.effectiveRole) return false;
+  // Derived fallback: pre-migration persisted blobs lack effectiveRole.
+  return (
+    snapshot.isActive === false && snapshot.canViewAdminPanel === false
+  );
+}
+
+/**
  * Landing route per the post-login routing rules. Admin → `/admin`, every
  * other role → `/forum`. This is the only place that decides where to send a
  * freshly-logged-in user; `landingRouteForRole` in AuthContext, the

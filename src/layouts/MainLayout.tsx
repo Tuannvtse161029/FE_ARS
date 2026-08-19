@@ -39,6 +39,7 @@ import {
   Crown as PremiumIcon,
   ClipboardCheck,
   Upload,
+  BriefcaseBusiness,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -150,14 +151,14 @@ export const MainLayout = () => {
   // (and pick a role on the new JWT) instead.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Single source of truth for unverified-user gating. `isVerified` mirrors
-  // `dbo.Users.isActive`. `canViewAdminPanel` collapses the dual-signal
-  // admin check (roleName OR roleId) that the Admin guards used to repeat.
-  // `hasWallet` collapses what used to be a `!isAdmin && !isGuest` check at
-  // every header / modal site into one derivation. `isGuest` is the local
-  // short-hand we need for the sidebar fallback and the role pill.
-  const { isVerified, canViewAdminPanel: isAdmin, hasWallet } = usePermissions();
-  const isGuest = !isVerified && !isAdmin;
+  // Single source of truth for unverified-user gating. `canViewAdminPanel`
+  // collapses the dual-signal admin check (roleName OR roleId) that the
+  // Admin guards used to repeat. `hasWallet` collapses what used to be a
+  // `!isAdmin && !isGuest` check at every header / modal site into one
+  // derivation. `isGuest` is sourced from the BE-derived `effectiveRole`
+  // field (Agent 39) with the old `!isActive && !isAdmin` derivation as a
+  // fallback for pre-migration persisted blobs.
+  const { hasWallet, isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
 
   // Bounce unverified users off every private route except /forum. Lives in
@@ -227,9 +228,9 @@ export const MainLayout = () => {
     }
   };
 
-  // Derive accountTier from the persisted user blob so the profile badge
-  // stays correct even when BE hasn't been reached yet.
-  const accountTier = user?.accountTier ?? stored?.accountTier ?? 'Free';
+  // Display-only normalization for R5: treat null/missing accountTier as 'Free'.
+  // We never persist this — the BE-side default remains a backend ticket (BE-R5).
+  const accountTier = user?.accountTier ?? 'Free';
 
   // Display name and avatar initials are derived from the authenticated user.
   const displayName = user?.username || user?.email || 'Account';
@@ -275,6 +276,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon size={20} />, badge: '2' },
+          { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
           { to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> },
           { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];

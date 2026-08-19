@@ -8,7 +8,7 @@
  *
  *   mockUseAuth({ role: 'Graduate Student', userId: 42 });
  */
-import type { AuthResponse, UserRole, VerificationStatus } from '../../types/auth';
+import type { AuthResponse, UserRole, VerificationStatus, EffectiveRole } from '../../types/auth';
 
 export interface MockUseAuthOptions {
   role?: UserRole | string | null;
@@ -27,11 +27,25 @@ export interface MockUseAuthOptions {
   verificationStatus?: VerificationStatus;
   /** Role id used by the dual-signal admin check. */
   roleId?: number;
+  /**
+   * Agent 39 — authoritative role the user holds *right now*. Overrides the
+   * derived `!isActive && !isAdmin` heuristic when present. Defaults to
+   * `'Guest'` when `isActive === false` and the caller didn't supply an
+   * explicit value (matches the BE-derived state for unapproved users).
+   */
+  effectiveRole?: EffectiveRole;
 }
 
 export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
   const role = opts.role ?? 'Graduate Student';
   const isAuthenticated = opts.isAuthenticated ?? true;
+  const isActive = opts.isActive ?? true;
+  // Agent 39 — derive effectiveRole when not supplied: unverified ⇒ 'Guest';
+  // verified ⇒ the requested role. Callers can override for explicit scenarios.
+  const derivedEffectiveRole: EffectiveRole =
+    isActive === false ? 'Guest' : (role as EffectiveRole);
+  const effectiveRole: EffectiveRole =
+    opts.effectiveRole ?? derivedEffectiveRole;
   const user: AuthResponse | null = isAuthenticated
     ? {
         token: opts.token ?? 'mock-token',
@@ -41,14 +55,15 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
         userId: opts.userId ?? 42,
         // Default to true (verified) for backward compatibility with existing tests.
         // When isActive is explicitly false, verificationStatus defaults to 'Pending'.
-        isActive: opts.isActive ?? true,
+        isActive,
         // Agent 26: verificationStatus is now required for the complete state machine.
         // Default to 'Accepted' when isActive is true (the real BE sets both together).
         // Explicitly set opts.verificationStatus in tests that verify specific states.
         verificationStatus: opts.verificationStatus ??
-          (opts.isActive === false ? 'Pending' : 'Accepted'),
+          (isActive === false ? 'Pending' : 'Accepted'),
         accountTier: 'Free',
         roleId: opts.roleId ?? 0,
+        effectiveRole,
       }
     : null;
 
@@ -63,5 +78,6 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
     pendingRoleSelection: null,
     confirmRoleSelection: () => undefined,
     cancelRoleSelection: () => undefined,
+    effectiveRole,
   };
 };

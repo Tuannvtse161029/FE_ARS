@@ -1,0 +1,110 @@
+/* ─── FollowButton ──────────────────────────────────────────────────────────
+ * Pill-shaped toggle used on forum post cards to follow / unfollow the
+ * post author. Two visual states ("Follow" outlined, "Following" filled)
+ * plus a transient loading state and a permanent disabled state.
+ *
+ * Colors intentionally mirror the existing `.cardFollowBtn` rules in
+ * Forum.module.css so the inline ad-hoc styles there can be removed later
+ * without leaving the design system in two places.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-family: var(--font-family-primary);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
+}
+
+/* Sizes ────────────────────────────────────────────────────────────────── */
+
+.sizeSm {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  min-height: 28px;
+}
+
+.sizeMd {
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  min-height: 34px;
+}
+
+/* "Not following" state — outlined blue ────────────────────────────────── */
+
+.follow {
+  background-color: transparent;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+.follow:hover:not(:disabled) {
+  background-color: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.follow:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* "Following" state — filled blue ──────────────────────────────────────── */
+
+.following {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+}
+
+.following:hover:not(:disabled) {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.following:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Disabled (unauthenticated / unverified / self / mid-request) ────────── */
+
+.disabled,
+.button:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading spinner ──────────────────────────────────────────────────────── */
+
+.spinner {
+  animation: followBtnSpin 0.85s linear infinite;
+}
+
+.label {
+  /* keeps the label from wrapping when the icon swaps for a spinner */
+  display: inline-block;
+}
+
+@keyframes followBtnSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

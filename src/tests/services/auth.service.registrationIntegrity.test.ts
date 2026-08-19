@@ -239,6 +239,47 @@ describe('authService.setAuthData — persists all state fields', () => {
     expect(storedUser.verificationStatus).toBe('Accepted');
     expect(storedUser.accountTier).toBe('Free');
   });
+
+  // Agent 39 — effectiveRole is persisted in the user blob so the rehydrate
+  // path (storage.getUser → authService.getCurrentUser) returns the
+  // BE-derived value on the next page load.
+  it('persists explicit effectiveRole: "Guest" into the user blob (Agent 39)', async () => {
+    await authService.setAuthData({
+      token: 'jwt-test',
+      username: 'Pending User',
+      email: 'pending@ars.com',
+      role: 'Researcher',
+      isActive: false,
+      verificationStatus: 'Pending',
+      accountTier: 'Free',
+      effectiveRole: 'Guest',
+    });
+
+    const { storage } = await import('../../utils/storage');
+    const setUserCall = (storage.setUser as ReturnType<typeof vi.fn>).mock.calls[0];
+    const storedUser = setUserCall[0];
+
+    expect(storedUser.effectiveRole).toBe('Guest');
+  });
+
+  it('derives effectiveRole: "Guest" when the AuthResponse omits the field and isActive is false', async () => {
+    await authService.setAuthData({
+      token: 'jwt-test',
+      username: 'Pending User',
+      email: 'pending@ars.com',
+      role: 'Researcher',
+      isActive: false,
+      verificationStatus: 'Pending',
+      accountTier: 'Free',
+      // effectiveRole intentionally absent
+    });
+
+    const { storage } = await import('../../utils/storage');
+    const setUserCall = (storage.setUser as ReturnType<typeof vi.fn>).mock.calls[0];
+    const storedUser = setUserCall[0];
+
+    expect(storedUser.effectiveRole).toBe('Guest');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +299,8 @@ vi.mock('../../context/AuthContext', () => ({
     isAuthenticated: true,
     isLoading: false,
     error: null,
+    // Agent 39 — explicit effectiveRole overrides the derived heuristic.
+    effectiveRole: 'Guest',
   }),
 }));
 
@@ -275,6 +318,13 @@ describe('usePermissions — isVerified false for unapproved users', () => {
   it('hasWallet is false for unverified users', () => {
     const { result } = renderHook(() => usePermissions());
     expect(result.current.hasWallet).toBe(false);
+  });
+
+  // Agent 39 — isGuest surfaces from the BE-derived effectiveRole field, not
+  // the derived `!isActive && !isAdmin` heuristic.
+  it('isGuest is true when effectiveRole is "Guest" (Agent 39 BE-derived state)', () => {
+    const { result } = renderHook(() => usePermissions());
+    expect(result.current.isGuest).toBe(true);
   });
 });
 

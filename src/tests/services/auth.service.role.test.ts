@@ -106,4 +106,102 @@ describe('auth.service.login – roleId plumbing', () => {
     expect(result.roleId).toBe(0);
     expect(result.role).toBe('Researcher');
   });
+
+  // Agent 39 — effectiveRole explicit-Guest scenario
+  it('forwards explicit effectiveRole: "Guest" from the BE (pending Admin approval)', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        token: 'jwt-token',
+        username: 'pending@arsplatform.com',
+        email: 'pending@arsplatform.com',
+        userId: 7,
+        roleName: 'Researcher',
+        roles: ['Researcher'],
+        isActive: false,
+        verificationStatus: 'Pending',
+        // The BE-derived authoritative role, distinct from `role`.
+        effectiveRole: 'Guest',
+      },
+    });
+
+    const result = await authService.login({
+      username: 'pending@arsplatform.com',
+      password: 'password',
+    });
+
+    expect(result.effectiveRole).toBe('Guest');
+    expect(result.role).toBe('Researcher');
+  });
+
+  // Agent 39 — derived fallback when the BE does not surface effectiveRole
+  it('derives effectiveRole: "Guest" when isActive is false and the BE does not surface the field', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        token: 'jwt-token',
+        username: 'pending@arsplatform.com',
+        email: 'pending@arsplatform.com',
+        userId: 7,
+        roleName: 'Researcher',
+        roles: ['Researcher'],
+        isActive: false,
+        verificationStatus: 'Pending',
+        // effectiveRole intentionally absent
+      },
+    });
+
+    const result = await authService.login({
+      username: 'pending@arsplatform.com',
+      password: 'password',
+    });
+
+    expect(result.effectiveRole).toBe('Guest');
+  });
+
+  // Agent 39 — verified user keeps the assigned role
+  it('mirrors effectiveRole to the assigned role when isActive is true and the BE does not surface the field', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        token: 'jwt-token',
+        username: 'researcher@arsplatform.com',
+        email: 'researcher@arsplatform.com',
+        userId: 4,
+        roleName: 'Researcher',
+        roles: ['Researcher'],
+        isActive: true,
+        verificationStatus: 'Accepted',
+      },
+    });
+
+    const result = await authService.login({
+      username: 'researcher@arsplatform.com',
+      password: 'password',
+    });
+
+    expect(result.effectiveRole).toBe('Researcher');
+  });
+
+  // Agent 39 — never coerce an unknown string to 'Guest'
+  it('falls back to the derived role when effectiveRole is an unknown string', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        token: 'jwt-token',
+        username: 'researcher@arsplatform.com',
+        email: 'researcher@arsplatform.com',
+        userId: 4,
+        roleName: 'Researcher',
+        roles: ['Researcher'],
+        isActive: true,
+        verificationStatus: 'Accepted',
+        effectiveRole: 'Foo', // unknown — must NOT be coerced to 'Guest'
+      },
+    });
+
+    const result = await authService.login({
+      username: 'researcher@arsplatform.com',
+      password: 'password',
+    });
+
+    // Derived from isActive=true ⇒ the assigned role, not 'Guest'.
+    expect(result.effectiveRole).toBe('Researcher');
+  });
 });

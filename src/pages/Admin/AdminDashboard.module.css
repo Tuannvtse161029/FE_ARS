@@ -183,6 +183,33 @@
 .statusAPPROVED { background: #d1fae5; color: #065f46; }
 .statusDENIED { background: #fee2e2; color: #991b1b; }
 
+.widgetError {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  background: #ffffff;
+  border: 1px solid #fee2e2;
+  border-radius: var(--radius-xl);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-sm);
+}
+.widgetError > svg { flex-shrink: 0; }
+.widgetError > span { flex: 1; }
+.retryBtn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  color: #2563eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.retryBtn:hover { background: #eff6ff; }
+.retryBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
 .emptyState {
   padding: var(--spacing-5);
   text-align: center;

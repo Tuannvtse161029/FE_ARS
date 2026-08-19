@@ -4,7 +4,7 @@ import { useAuthStore } from '../store';
 import authService from '../services/auth.service';
 import { userService } from '../services/user.service';
 import { ROUTES } from '../utils/constants';
-import type { LoginRequest, AuthResponse, User, UserRole } from '../types/auth';
+import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
 import { isAdminUser, landingRouteForRoleName } from '../utils/roleNormalizer';
 import { storage } from '../utils/storage';
 
@@ -29,9 +29,35 @@ interface AuthContextType {
   } | null;
   confirmRoleSelection: (role: UserRole) => void;
   cancelRoleSelection: () => void;
+  /**
+   * Agent 39 — authoritative role the user holds *right now*. Mirrors
+   * `AuthResponse.effectiveRole` (BE-derived) or the persisted value after
+   * page reload. `null` until the next successful login or while a
+   * pre-migration blob is being rehydrated.
+   */
+  effectiveRole: EffectiveRole | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/**
+ * Agent 39 — derive the authoritative effective role for the just-logged-in
+ * user. Trust the BE value (from `GET /api/user/{id}` or the login response)
+ * when present; fall back to the derived value (unverified ⇒ 'Guest').
+ * Never coerce an unknown string to 'Guest'.
+ */
+function resolveEffectiveRole(
+  freshUser: User | null,
+  response: AuthResponse,
+  roleToUse: string,
+): EffectiveRole {
+  const fromFresh = freshUser?.effectiveRole;
+  if (fromFresh) return fromFresh;
+  const fromResponse = response.effectiveRole;
+  if (fromResponse) return fromResponse;
+  const isActive = freshUser?.isActive ?? response.isActive ?? false;
+  return isActive ? (roleToUse as EffectiveRole) : 'Guest';
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -120,8 +146,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Use the BE's authoritative verificationStatus value.
           verificationStatus: freshUser?.verificationStatus ?? response.verificationStatus ?? 'Pending',
           accountTier: freshUser?.accountTier ?? response.accountTier ?? 'Free',
+          // Forward the BE-derived effective role so the verified-guard and
+          // MainLayout can render the unverified-state UI without re-deriving
+          // from `isActive`. Falls back to the derived value when the BE
+          // doesn't surface the field (lockout-safe).
+          effectiveRole: resolveEffectiveRole(freshUser, response, roleToUse),
         },
-        response.token
+        response.token,
+        resolveEffectiveRole(freshUser, response, roleToUse)
       );
       navigate(landingRouteForRoleName(roleToUse, { isAdminOverride: adminOverride }));
     },
@@ -225,10 +257,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         storage.setUser(freshUser);
 
         // Sync the Zustand store too so the in-memory view matches storage.
+        // Agent 39 — also forward `effectiveRole` so the verified-guard and
+        // MainLayout reflect the BE's authoritative role without reloading.
         authStore.updateUser({
           isActive: freshUser.isActive,
           verificationStatus: freshUser.verificationStatus,
           accountTier: freshUser.accountTier,
+          effectiveRole:
+            freshUser.effectiveRole ??
+            (freshUser.isActive
+              ? (freshUser.roleName as EffectiveRole)
+              : 'Guest'),
         });
       } catch {
         // GET failed (401 = expired token, 404 = user deleted, 5xx = BE down).
@@ -254,6 +293,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role: authStore.user.roleName,
           isActive: authStore.user.isActive ?? false,
           verificationStatus: authStore.user.verificationStatus ?? 'Pending',
+          effectiveRole: authStore.user.effectiveRole,
         }
       : null,
     isAuthenticated: authStore.isAuthenticated,
@@ -265,6 +305,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pendingRoleSelection,
     confirmRoleSelection,
     cancelRoleSelection,
+    effectiveRole: authStore.effectiveRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -79,12 +79,53 @@ export const __resetAdminMockStores = () => {
   withdrawalStore.splice(0, withdrawalStore.length, ...clone(MOCK_WITHDRAWALS));
 };
 
+// Surface-level messages: NEVER leak raw axios messages to admins.
+const ROLE_REQUESTS_UNAVAILABLE =
+  'Role requests could not be loaded. The Admin API contract may have changed.';
+const ACTION_FAILED_MESSAGE =
+  'The action could not be completed. Please try again.';
+
+// Returns true when the error message looks like an axios boilerplate line
+// (e.g. "Request failed with status code 404") that the FE should NEVER
+// surface verbatim. Domain messages like "Role request 99999 not found" pass
+// through so callers/tests can still inspect them.
+const isAxiosBoilerplate = (message: string): boolean =>
+  /request failed with status code/i.test(message) ||
+  /^network error$/i.test(message) ||
+  /^timeout of \d+ms exceeded$/i.test(message);
+
+const logDiag = (label: string, err: unknown) => {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(`[adminService] ${label}:`, err);
+  }
+};
+
+const sanitize = (fallback: string, err: unknown): Error => {
+  if (err instanceof Error) {
+    if (!isAxiosBoilerplate(err.message)) return err;
+    const wrapped = new Error(fallback);
+    (wrapped as Error & { cause?: unknown }).cause = err;
+    return wrapped;
+  }
+  return new Error(fallback);
+};
+
 // ── Role requests ──────────────────────────────────────────────────────────
-async function getRoleRequests(): Promise<RoleRequest[]> {
+async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
   if (USE_MOCK_DATA) return delay(clone(roleRequestStore));
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const response = await api.get<RoleRequest[]>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL);
-  return response.data ?? [];
+  try {
+    // TODO: Replace mock data with live endpoint once backend is updated.
+    const response = await api.get<RoleRequest[]>(
+      API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL,
+      { signal },
+    );
+    return response.data ?? [];
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag('getRoleRequests failed', err);
+    throw sanitize(ROLE_REQUESTS_UNAVAILABLE, err);
+  }
 }
 
 async function getRoleRequest(id: number): Promise<RoleRequest | null> {
@@ -92,9 +133,15 @@ async function getRoleRequest(id: number): Promise<RoleRequest | null> {
     const hit = roleRequestStore.find((r) => r.id === id);
     return delay(hit ? clone(hit) : null);
   }
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const response = await api.get<RoleRequest>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_BY_ID(id));
-  return response.data ?? null;
+  try {
+    // TODO: Replace mock data with live endpoint once backend is updated.
+    const response = await api.get<RoleRequest>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_BY_ID(id));
+    return response.data ?? null;
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag(`getRoleRequest(${id}) failed`, err);
+    throw sanitize(ACTION_FAILED_MESSAGE, err);
+  }
 }
 
 async function decideRoleRequest(
@@ -146,13 +193,19 @@ async function decideRoleRequest(
 
     return delay(clone(updated));
   }
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const path =
-    decision.status === 'APPROVED'
-      ? API_ENDPOINTS.ADMIN.ROLE_REQUESTS.APPROVE(id)
-      : API_ENDPOINTS.ADMIN.ROLE_REQUESTS.DENY(id);
-  const response = await api.post<RoleRequest>(path, { notes: decision.notes ?? '' });
-  return response.data;
+  try {
+    // TODO: Replace mock data with live endpoint once backend is updated.
+    const path =
+      decision.status === 'APPROVED'
+        ? API_ENDPOINTS.ADMIN.ROLE_REQUESTS.APPROVE(id)
+        : API_ENDPOINTS.ADMIN.ROLE_REQUESTS.DENY(id);
+    const response = await api.post<RoleRequest>(path, { notes: decision.notes ?? '' });
+    return response.data;
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag(`decideRoleRequest(${id}) failed`, err);
+    throw sanitize(ACTION_FAILED_MESSAGE, err);
+  }
 }
 
 // ── Accounts ───────────────────────────────────────────────────────────────
@@ -172,6 +225,11 @@ function userToAccountItem(user: User): AccountItem {
     status: user.isActive ? 'ACTIVE' : 'SUSPENDED',
     joinedDate: user.createdAt ?? new Date().toISOString(),
     isActive: user.isActive,
+    // Carry through the BE-reported suspension deadline so the
+    // AccountsManagement page can render the "Suspended until …" pill.
+    // The mock store synthesizes its own value via the violation-resolution
+    // path; live responses surface whatever `dbo.Users.suspendedUntil` holds.
+    suspendedUntil: user.suspendedUntil ?? null,
   };
 }
 
@@ -397,21 +455,38 @@ async function notifyReviewer(
 }
 
 // ── Analytics ──────────────────────────────────────────────────────────────
-async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
+async function getAnalyticsSummary(signal?: AbortSignal): Promise<AnalyticsSummary> {
   if (USE_ANALYTICS_MOCK) return delay(MOCK_ANALYTICS_SUMMARY);
-  const response = await api.get<AnalyticsSummary>(API_ENDPOINTS.ANALYTICS.SUMMARY);
-  return response.data;
+  try {
+    const response = await api.get<AnalyticsSummary>(
+      API_ENDPOINTS.ANALYTICS.SUMMARY,
+      { signal },
+    );
+    return response.data;
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag('getAnalyticsSummary failed', err);
+    throw sanitize('Data unavailable. Please retry.', err);
+  }
 }
 
 async function getAnalyticsTimeseries(
   range: AnalyticsRange,
   metric: AnalyticsMetric,
+  signal?: AbortSignal,
 ): Promise<AnalyticsTimeSeries> {
   if (USE_ANALYTICS_MOCK) return delay(buildMockTimeseries(range, metric));
-  const response = await api.get<AnalyticsTimeSeries>(API_ENDPOINTS.ANALYTICS.TIMESERIES, {
-    params: { range, metric },
-  });
-  return response.data;
+  try {
+    const response = await api.get<AnalyticsTimeSeries>(
+      API_ENDPOINTS.ANALYTICS.TIMESERIES,
+      { params: { range, metric }, signal },
+    );
+    return response.data;
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag(`getAnalyticsTimeseries(${range},${metric}) failed`, err);
+    throw sanitize('Data unavailable. Please retry.', err);
+  }
 }
 
 export const adminService = {

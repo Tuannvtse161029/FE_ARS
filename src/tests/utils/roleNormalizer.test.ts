@@ -24,6 +24,7 @@ import {
   isAdminUser,
   landingRouteForRoleName,
   resolveRoleName,
+  isGuestUser,
 } from '../../utils/roleNormalizer';
 
 describe('roleNormalizer – isAdminUser', () => {
@@ -125,5 +126,33 @@ describe('roleNormalizer – landingRouteForRoleName', () => {
     expect(
       landingRouteForRoleName('Researcher', { isAdminOverride: true }),
     ).toBe('/admin');
+  });
+});
+
+describe('isGuestUser (Agent 39)', () => {
+  it('returns true when effectiveRole is explicitly "Guest"', () => {
+    expect(isGuestUser({ effectiveRole: 'Guest' })).toBe(true);
+  });
+
+  it('returns false when effectiveRole is any business role', () => {
+    expect(isGuestUser({ effectiveRole: 'Researcher' })).toBe(false);
+    expect(isGuestUser({ effectiveRole: 'Reviewer' })).toBe(false);
+    expect(isGuestUser({ effectiveRole: 'Lecturer' })).toBe(false);
+    expect(isGuestUser({ effectiveRole: 'Graduate Student' })).toBe(false);
+    expect(isGuestUser({ effectiveRole: 'Admin' })).toBe(false);
+  });
+
+  it('falls back to the derived heuristic when effectiveRole is null/undefined', () => {
+    // Unverified + non-admin ⇒ Guest
+    expect(isGuestUser({ effectiveRole: null, isActive: false, canViewAdminPanel: false })).toBe(true);
+    // Verified + non-admin ⇒ not Guest
+    expect(isGuestUser({ effectiveRole: null, isActive: true, canViewAdminPanel: false })).toBe(false);
+    // Unverified + admin ⇒ not Guest (admin bypasses the role-request flow)
+    expect(isGuestUser({ effectiveRole: null, isActive: false, canViewAdminPanel: true })).toBe(false);
+  });
+
+  it('prefers the BE-derived effectiveRole over the derived heuristic', () => {
+    // Even though isActive is true and not admin, an explicit 'Guest' wins.
+    expect(isGuestUser({ effectiveRole: 'Guest', isActive: true, canViewAdminPanel: false })).toBe(true);
   });
 });

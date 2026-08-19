@@ -15,15 +15,23 @@ export interface LoginRequest {
   rememberMe?: boolean;
 }
 
-// UserRole - only for self-registration (excludes Admin which is DB-only)
-export type UserRole = 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student' | 'Admin';
-
-// BE convention per docs/local-only/erd-schema-reference.md:
-// 1 = Researcher, 2 = Admin, 3 = Reviewer, 4 = Lecturer, 5 = Graduate Student.
-// Until the BE AuthController fixes the zero-based/one-based mismatch, the FE
-// has to accept either `roleId` OR `roleName` as the source of truth. This is
-// documented in docs/local-only/admin-suite-be-gap-report.md and intentionally
-// re-validated by src/tests/utils/role.normalizer.test.ts.
+// BusinessRole — the persisted role set (renamed from UserRole for clarity
+// when paired with the effective role) used by the BE's /api/UserRole
+// subsystem. The string literal 'Graduate Student' (with a space) is the
+// existing convention; do not normalise to 'GraduateStudent'.
+//
+// UserRole is kept as the public alias to preserve every existing call site
+// (`src/pages/Register/Register.tsx`, `src/pages/Login/components/RoleSelectionModal.tsx`,
+// the `ROLE_IDS` keys, the role guard allow lists, the admin `currentRoles`
+// mock, etc.). We do NOT add 'Guest' here — Guest is an effective-time
+// variant, not a persisted role.
+export type BusinessRole =
+  | 'Researcher'
+  | 'Admin'
+  | 'Reviewer'
+  | 'Lecturer'
+  | 'Graduate Student';
+export type UserRole = BusinessRole;
 export const ROLE_IDS = {
   Researcher: 1,
   Admin: 2,
@@ -32,6 +40,16 @@ export const ROLE_IDS = {
   GraduateStudent: 5,
 } as const;
 export type RoleIdValue = (typeof ROLE_IDS)[keyof typeof ROLE_IDS];
+
+// EffectiveRole — the role the user holds *right now* during authentication.
+// Mirrors what the BE returns from the login response (per
+// BTR-AGENT39-01) and what the role-request state machine implies. The
+// 'Guest' variant is the effective-time state for users awaiting Admin
+// approval of their RoleRequest — see
+// docs/local-only/be-requests/guest-role-request.md. It is NOT a persisted
+// role, does NOT have a numeric RoleId, and does NOT appear in
+// `GET /api/Role`.
+export type EffectiveRole = BusinessRole | 'Guest';
 
 export interface RegisterPayload {
   username: string;
@@ -83,6 +101,19 @@ export interface AuthResponse {
   verificationStatus?: VerificationStatus;
   // Mirrors `dbo.Users.accountTier`. Must default to 'Free' on registration.
   accountTier?: AccountTier;
+  /**
+   * Authoritative role the user holds *right now*. Differs from `role` only
+   * for users awaiting Admin approval of their RoleRequest — in that case
+   * the BE returns `effectiveRole: 'Guest'` while `role` remains the
+   * requested future role. The FE must trust this field over the derived
+   * `!isActive && !isAdmin` heuristic when present (BTR-AGENT39-01).
+   *
+   * When the BE does not surface this field, the FE falls back to the
+   * derived value (unverified ⇒ 'Guest'). Never coerce an unknown string
+   * to 'Guest' — only the documented BE value (or the derived fallback)
+   * establishes a Guest session.
+   */
+  effectiveRole?: EffectiveRole;
 }
 
 export interface User {
@@ -104,6 +135,16 @@ export interface User {
   accountTier?: AccountTier;
   createdAt?: string;
   updatedAt?: string;
+  /** ISO timestamp; present when an admin has suspended the account. Null when unsuspended. */
+  suspendedUntil?: string | null;
+  /**
+   * Authoritative role the user holds *right now* — carried through from
+   * the BE's `GET /api/user/{id}` response when present. The FE mirrors it
+   * here so MainLayout / Forum / verified-guard can render the unverified
+   * state without re-deriving from `isActive && verificationStatus`. See
+   * `EffectiveRole` and BTR-AGENT39-01.
+   */
+  effectiveRole?: EffectiveRole;
 }
 
 export interface AuthState {
@@ -111,6 +152,14 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /**
+   * Effective role resolved at login time. Mirrors `AuthResponse.effectiveRole`
+   * and the BE-derived login payload. `null` until the first successful login
+   * or while a pre-migration persisted blob is being rehydrated (the
+   * verified-guard derives Guest from `!isActive && !isAdmin` in that
+   * window — see `isGuestUser` in `src/hooks/usePermissions.ts`).
+   */
+  effectiveRole: EffectiveRole | null;
 }
 
 export interface ForgotPasswordRequest {

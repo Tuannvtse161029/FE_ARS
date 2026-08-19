@@ -40,10 +40,12 @@ export const RoleRequests = () => {
     try {
       setRequests(await adminService.getRoleRequests());
     } catch (loadError) {
+      // Service already sanitizes the message; keep the copy verbatim so the
+      // page never surfaces a raw axios 404.
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Failed to load role requests.',
+          : 'Role requests could not be loaded. The Admin API contract may have changed.',
       );
     } finally {
       setLoading(false);
@@ -135,7 +137,7 @@ export const RoleRequests = () => {
 
       <TableToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={error ? () => undefined : setSearch}
         onRefresh={() => {
           setRefreshing(true);
           void load();
@@ -154,6 +156,7 @@ export const RoleRequests = () => {
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
               aria-label="Filter by status"
               data-testid="role-requests-status-filter"
+              disabled={Boolean(error)}
             >
               {STATUS_FILTERS.map((filterStatus) => (
                 <option key={filterStatus} value={filterStatus}>
@@ -183,8 +186,9 @@ export const RoleRequests = () => {
               className={styles.retryBtn}
               onClick={() => void load()}
               type="button"
+              disabled={loading || refreshing}
             >
-              Retry
+              {loading || refreshing ? 'Retrying…' : 'Retry'}
             </button>
           </div>
         ) : hasNoMatch ? (

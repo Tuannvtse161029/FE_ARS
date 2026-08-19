@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { isAdminUser } from '../utils/roleNormalizer';
+import { isAdminUser, isGuestUser } from '../utils/roleNormalizer';
 import { readStoredUser } from '../utils/storedUser';
 import type { VerificationStatus } from '../types/auth';
 
@@ -23,10 +23,17 @@ export interface Permissions {
   canViewAdminPanel: boolean;
   /** Whether the user has a personal wallet row. Admins and Guests do not. */
   hasWallet: boolean;
+  /**
+   * Agent 39 — true when the effective role is 'Guest' (pending Admin
+   * approval of a RoleRequest). Sourced from the auth store when present,
+   * falling back to the derived `!isActive && !isAdmin` heuristic for
+   * pre-migration persisted blobs.
+   */
+  isGuest: boolean;
 }
 
 export const usePermissions = (): Permissions => {
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const stored = readStoredUser();
 
   const isActive = user?.isActive ?? stored?.isActive ?? false;
@@ -58,17 +65,27 @@ export const usePermissions = (): Permissions => {
     roleId: stored?.roleId ?? null,
   });
 
+  // Agent 39 — single source of truth for the Guest display. Prefers the
+  // `effectiveRole` field from the auth store; falls back to the derived
+  // `!isActive && !isAdmin` heuristic when the BE hasn't surfaced the field.
+  const isGuest = isGuestUser({
+    effectiveRole: effectiveRole ?? null,
+    isActive,
+    canViewAdminPanel,
+  });
+
   // Wallet row exists for verified, non-Admin users. Admins do not hold a
   // personal wallet; Guests haven't been approved yet, so they have no
-  // row. This collapses what used to be a `!isAdmin && !isGuest` check at
-  // every header / modal site into a single derivation.
-  const hasWallet = isVerified && !canViewAdminPanel;
+  // row. Single derivation collapses the old `!isAdmin && !isGuest` check
+  // at every header / modal site.
+  const hasWallet = isVerified && !canViewAdminPanel && !isGuest;
 
   return {
     isVerified,
     canCreatePost,
     canViewAdminPanel,
     hasWallet,
+    isGuest,
   };
 };
 

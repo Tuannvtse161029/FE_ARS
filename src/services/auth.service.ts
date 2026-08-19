@@ -15,6 +15,7 @@ import type {
   UserRole,
   VerificationStatus,
   AccountTier,
+  EffectiveRole,
 } from '../types/auth';
 
 export const authService = {
@@ -137,6 +138,46 @@ export const authService = {
           ? accountTierRaw
           : 'Free';
 
+      // `effectiveRole` is the BE's authoritative "role the user holds right
+      // now" — Differs from `role` only for users awaiting Admin approval of
+      // their RoleRequest. Accept the field from any of the common BE shapes;
+      // validate it against the EffectiveRole union; fall back to the derived
+      // value (Pending/unverified → 'Guest') when the BE does not surface it.
+      // Never coerce an unknown string to 'Guest' — only the documented BE
+      // value (or the derived fallback) establishes a Guest session.
+      // Dev-only warning lets us notice when the BE is missing the field so
+      // we can escalate to BTR-AGENT39-01.
+      const effectiveRoleRaw =
+        data?.effectiveRole ??
+        data?.user?.effectiveRole ??
+        undefined;
+      const KNOWN_EFFECTIVE_ROLES: EffectiveRole[] = [
+        'Researcher',
+        'Reviewer',
+        'Lecturer',
+        'Graduate Student',
+        'Admin',
+        'Guest',
+      ];
+      const isKnownEffectiveRole = (r: unknown): r is EffectiveRole =>
+        typeof r === 'string' && (KNOWN_EFFECTIVE_ROLES as string[]).includes(r);
+      let effectiveRole: EffectiveRole;
+      if (isKnownEffectiveRole(effectiveRoleRaw)) {
+        effectiveRole = effectiveRoleRaw;
+      } else {
+        if (typeof effectiveRoleRaw === 'string' && import.meta.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[auth] unknown effectiveRole string from BE:', effectiveRoleRaw);
+        }
+        if (effectiveRoleRaw === undefined && import.meta.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[auth] login response missing effectiveRole field — falling back to derived');
+        }
+        // Derived fallback: BE doesn't expose the field yet. Unverified users
+        // are Guests; verified users keep their assigned role.
+        effectiveRole = isActive ? (role as EffectiveRole) : 'Guest';
+      }
+
       return {
         token,
         username,
@@ -148,6 +189,7 @@ export const authService = {
         isActive,
         verificationStatus,
         accountTier,
+        effectiveRole,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);
@@ -184,6 +226,24 @@ export const authService = {
         resData?.accountTier === 'Premium' || resData?.accountTier === 'Enterprise'
           ? resData.accountTier
           : 'Free';
+      // New registrations are always 'Guest' effective role until an Admin
+      // approves the role request. Trust the BE echo when present; otherwise
+      // derive from isActive (lockout-safe: undefined ⇒ 'Guest').
+      const effectiveRoleRaw = resData?.effectiveRole ?? resData?.user?.effectiveRole ?? undefined;
+      const effectiveRole: EffectiveRole =
+        typeof effectiveRoleRaw === 'string' &&
+        [
+          'Researcher',
+          'Reviewer',
+          'Lecturer',
+          'Graduate Student',
+          'Admin',
+          'Guest',
+        ].includes(effectiveRoleRaw)
+          ? (effectiveRoleRaw as EffectiveRole)
+          : isActive
+            ? (role as EffectiveRole)
+            : 'Guest';
 
       return {
         token,
@@ -193,6 +253,7 @@ export const authService = {
         isActive,
         verificationStatus,
         accountTier,
+        effectiveRole,
       };
     } catch (err: any) {
       console.warn('Backend register attempt failed:', err?.message || err);
@@ -218,6 +279,21 @@ export const authService = {
         resData?.accountTier === 'Premium' || resData?.accountTier === 'Enterprise'
           ? resData.accountTier
           : 'Free';
+      const effectiveRoleRaw = resData?.effectiveRole ?? resData?.user?.effectiveRole ?? undefined;
+      const effectiveRole: EffectiveRole =
+        typeof effectiveRoleRaw === 'string' &&
+        [
+          'Researcher',
+          'Reviewer',
+          'Lecturer',
+          'Graduate Student',
+          'Admin',
+          'Guest',
+        ].includes(effectiveRoleRaw)
+          ? (effectiveRoleRaw as EffectiveRole)
+          : isActive
+            ? ((resData?.role || payload.role || 'Researcher') as EffectiveRole)
+            : 'Guest';
       return {
         token: resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now(),
         username: resData?.fullName || payload.fullName || payload.username,
@@ -226,6 +302,7 @@ export const authService = {
         isActive,
         verificationStatus,
         accountTier,
+        effectiveRole,
       };
     } catch (err: any) {
       console.warn('Backend registerUser attempt failed:', err?.message || err);
@@ -258,14 +335,23 @@ export const authService = {
     if (user && token) {
       // Read ALL fields from persisted user — not just token/username/role.
       // Missing verificationStatus/accountTier defaults mirror the live path:
+      // For `effectiveRole`, fall back to the derived value (unverified ⇒
+      // 'Guest') when the persisted blob pre-dates the migration. Old blobs
+      // hydrate cleanly because the field is optional everywhere.
+      const isActive = user.isActive ?? false;
       return {
         token,
         username: user.username,
         email: user.email,
         role: user.roleName,
-        isActive: user.isActive ?? false,
+        isActive,
         verificationStatus: user.verificationStatus ?? 'Pending',
         accountTier: user.accountTier ?? 'Free',
+        effectiveRole:
+          user.effectiveRole ??
+          (isActive && user.roleName
+            ? (user.roleName as EffectiveRole)
+            : 'Guest'),
       };
     }
     return null;
@@ -290,6 +376,14 @@ export const authService = {
       verificationStatus: authResponse.verificationStatus ?? 'Pending',
       // Mirror accountTier from BE; default to 'Free'.
       accountTier: authResponse.accountTier ?? 'Free',
+      // Mirror effectiveRole from BE; default to derived (unverified ⇒ 'Guest').
+      // This is what MainLayout / Forum / verified-guard read when deciding
+      // whether to render the pending-state banner.
+      effectiveRole:
+        authResponse.effectiveRole ??
+        (authResponse.isActive
+          ? (authResponse.role as EffectiveRole)
+          : 'Guest'),
     };
     storage.setUser(user);
   },
