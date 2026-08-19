@@ -57,7 +57,7 @@ export const RoleRequests = () => {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return requests.filter((request) => {
+    const base = requests.filter((request) => {
       if (status !== 'ALL' && request.status !== status) return false;
       if (!query) return true;
       const searchable = [
@@ -71,6 +71,11 @@ export const RoleRequests = () => {
         .toLowerCase();
       return searchable.includes(query);
     });
+    // Newest first by submissionDate.
+    return base.sort(
+      (a, b) =>
+        new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime(),
+    );
   }, [requests, search, status]);
 
   const {

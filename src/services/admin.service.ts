@@ -1,5 +1,6 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+import type { User } from '../types/auth';
 import { notificationService } from './notification.service';
 import { auditLog } from './auditLogStore';
 import {
@@ -9,6 +10,7 @@ import {
   MOCK_ANALYTICS_SUMMARY,
   buildMockTimeseries,
 } from './admin.mocks';
+import type { PagedResult } from '../types/api';
 import type {
   RoleRequest,
   RoleRequestDecision,
@@ -25,7 +27,12 @@ import type {
 // TODO: Replace mock data with live endpoints once the BE ships the admin
 // endpoints described in docs/local-only/admin-suite-be-gap-report.md.
 // Flip this to `false` (or remove it entirely) to start hitting axios.
-const USE_MOCK_DATA = true;
+// WARNING: Existing admin.service.test.ts mocks axios globally — when flipping
+// to false, those tests must also mock the axios paths for each method.
+const USE_MOCK_DATA = false;
+
+// Analytics surfaced through the live Swagger endpoints (live since BE shipped).
+const USE_ANALYTICS_MOCK = false;
 
 // Withdrawal-only narrow toggle (E2E override point). Defaults to true so
 // the existing Admin UX continues to render against the in-memory mock store
@@ -149,6 +156,25 @@ async function decideRoleRequest(
 }
 
 // ── Accounts ───────────────────────────────────────────────────────────────
+
+// Normalize a raw User row (from /api/user) into the AccountItem shape the
+// AccountsManagement page expects.  The live API returns the dbo.Users
+// columns verbatim; the two shapes differ in field names so a mapping is
+// unavoidable.  Role is stored as roleName on the row; plan maps
+// accountTier (null → FREE_TIER); status maps isActive (true → ACTIVE).
+function userToAccountItem(user: User): AccountItem {
+  return {
+    id: user.id,
+    name: user.fullName,
+    email: user.email,
+    roles: [user.roleName as AccountItem['roles'][number]],
+    plan: (user.accountTier ?? 'Free') === 'Free' ? 'FREE_TIER' : 'PREMIUM',
+    status: user.isActive ? 'ACTIVE' : 'SUSPENDED',
+    joinedDate: user.createdAt ?? new Date().toISOString(),
+    isActive: user.isActive,
+  };
+}
+
 async function getAccounts(query: AccountsQuery = {}): Promise<AccountItem[]> {
   const filterFn = (a: AccountItem) => {
     if (query.search) {
@@ -164,16 +190,14 @@ async function getAccounts(query: AccountsQuery = {}): Promise<AccountItem[]> {
 
   if (USE_MOCK_DATA) return delay(clone(accountStore).filter(filterFn));
 
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const response = await api.get<AccountItem[]>(API_ENDPOINTS.ADMIN.ACCOUNTS.GET_ALL, {
+  const response = await api.get<PagedResult<User>>(API_ENDPOINTS.USER.GET_ALL, {
     params: {
-      search: query.search || undefined,
-      role: query.role && query.role !== 'ALL' ? query.role : undefined,
-      plan: query.plan && query.plan !== 'ALL' ? query.plan : undefined,
-      status: query.status && query.status !== 'ALL' ? query.status : undefined,
+      pageNumber: 1,
+      pageSize: 1000, // Admin wants the full list; pagination handled client-side.
     },
   });
-  return response.data ?? [];
+  const items = response.data.items ?? response.data;
+  return (Array.isArray(items) ? items : [items]).filter(Boolean).map(userToAccountItem).filter(filterFn);
 }
 
 async function suspendAccount(
@@ -374,8 +398,7 @@ async function notifyReviewer(
 
 // ── Analytics ──────────────────────────────────────────────────────────────
 async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
-  if (USE_MOCK_DATA) return delay(MOCK_ANALYTICS_SUMMARY);
-  // TODO: Replace mock data with live endpoint once backend is updated.
+  if (USE_ANALYTICS_MOCK) return delay(MOCK_ANALYTICS_SUMMARY);
   const response = await api.get<AnalyticsSummary>(API_ENDPOINTS.ANALYTICS.SUMMARY);
   return response.data;
 }
@@ -384,8 +407,7 @@ async function getAnalyticsTimeseries(
   range: AnalyticsRange,
   metric: AnalyticsMetric,
 ): Promise<AnalyticsTimeSeries> {
-  if (USE_MOCK_DATA) return delay(buildMockTimeseries(range, metric));
-  // TODO: Replace mock data with live endpoint once backend is updated.
+  if (USE_ANALYTICS_MOCK) return delay(buildMockTimeseries(range, metric));
   const response = await api.get<AnalyticsTimeSeries>(API_ENDPOINTS.ANALYTICS.TIMESERIES, {
     params: { range, metric },
   });

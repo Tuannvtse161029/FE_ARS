@@ -18,6 +18,8 @@ export interface StoredUserShape {
   isActive?: boolean;
   roleId?: number;
   roleName?: string;
+  verificationStatus?: string;
+  accountTier?: string;
 }
 
 export const readStoredUser = <T extends StoredUserShape = StoredUserShape>(): T | null => {

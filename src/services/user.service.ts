@@ -4,6 +4,7 @@ import type { User } from '../types/auth';
 import type { PagedResult, PaginationParams } from '../types/api';
 
 export interface UserUpdateRequest {
+  username?: string; // partial update — included so BE can return a User with username
   fullName?: string;
   orcidId?: string;
 }

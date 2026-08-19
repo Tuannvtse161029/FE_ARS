@@ -71,6 +71,16 @@ export const ResearchGroup = () => {
     refetch: refetchGroups,
   } = useResearchGroups({ lecturerId });
 
+  // Newest first by assignedAt.
+  const sortedGroups = useMemo(
+    () =>
+      [...groups].sort(
+        (a, b) =>
+          new Date(b.assignedAt ?? 0).getTime() - new Date(a.assignedAt ?? 0).getTime(),
+      ),
+    [groups],
+  );
+
   const {
     topics,
     isLoading: isLoadingTopics,
@@ -496,7 +506,7 @@ export const ResearchGroup = () => {
             </p>
           </div>
         ) : (
-          groups.map((grp) => {
+          sortedGroups.map((grp) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
             const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;

@@ -25,6 +25,9 @@ import type {
 // Flip this to `false` (or remove it entirely) to start hitting axios.
 const USE_MOCK_DATA = true;
 
+// AuditLog endpoints shipped through Swagger (live since BE shipped).
+const USE_AUDIT_MOCK = false;
+
 const MOCK_LATENCY_MS = 450;
 
 function delay<T>(value: T, ms: number = MOCK_LATENCY_MS): Promise<T> {
@@ -267,43 +270,68 @@ const RANGE_MS: Record<AuditLogRange, number | null> = {
 };
 
 async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogEntry[]> {
-  const all = auditLog.snapshot();
-  // Stable sort: newest entries first. The underlying store is an unshift'd
-  // array so the head is most recent, but mock fixtures may have been written
-  // in a different order — normalize here.
-  const sorted = [...all].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
-  const filtered = sorted.filter((entry) => {
-    if (query.adminId !== undefined && query.adminId !== 'ALL' && entry.adminId !== query.adminId) {
-      return false;
-    }
-    if (query.range && query.range !== 'all_time') {
-      const ms = RANGE_MS[query.range];
-      if (ms !== null) {
-        const cutoff = Date.now() - ms;
-        if (new Date(entry.timestamp).getTime() < cutoff) return false;
+  if (USE_AUDIT_MOCK) {
+    const all = auditLog.snapshot();
+    const sorted = [...all].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+    const filtered = sorted.filter((entry) => {
+      if (query.adminId !== undefined && query.adminId !== 'ALL' && entry.adminId !== query.adminId) {
+        return false;
       }
-    }
-    if (query.search) {
-      const q = query.search.toLowerCase();
-      const hay =
-        `${entry.logId} ${entry.adminId} ${entry.target} ${entry.action} ${entry.details}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-  if (USE_MOCK_DATA) return delay(filtered);
+      if (query.range && query.range !== 'all_time') {
+        const ms = RANGE_MS[query.range];
+        if (ms !== null) {
+          const cutoff = Date.now() - ms;
+          if (new Date(entry.timestamp).getTime() < cutoff) return false;
+        }
+      }
+      if (query.search) {
+        const q = query.search.toLowerCase();
+        const hay =
+          `${entry.logId} ${entry.adminId} ${entry.target} ${entry.action} ${entry.details}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    return delay(filtered);
+  }
 
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const response = await api.get<AuditLogEntry[]>(API_ENDPOINTS.ADMIN.AUDIT_LOGS.GET_ALL, {
+  // Live API path — returns a paged result; page handles client-side pagination.
+  const response = await api.get<{
+    items: Array<{
+      logId: number;
+      adminId: number;
+      adminName: string;
+      action: string;
+      target: string;
+      targetId: number | string;
+      details: string;
+      createdAt: string;
+    }>;
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+  }>(API_ENDPOINTS.ADMIN.AUDIT_LOGS.GET_ALL, {
     params: {
       search: query.search || undefined,
-      adminId: query.adminId && query.adminId !== 'ALL' ? query.adminId : undefined,
+      adminId: query.adminId !== undefined && query.adminId !== 'ALL' ? query.adminId : undefined,
       range: query.range ?? undefined,
+      PageNumber: 1,
+      PageSize: 1000,
     },
   });
-  return response.data ?? [];
+  const rawItems = response.data?.items ?? [];
+  return rawItems.map((item) => ({
+    logId: item.logId,
+    adminId: item.adminId,
+    adminName: item.adminName ?? '',
+    action: item.action as AuditLogEntry['action'],
+    target: item.target ?? '',
+    targetId: typeof item.targetId === 'string' ? parseInt(item.targetId, 10) : item.targetId,
+    timestamp: item.createdAt ?? '',
+    details: item.details ?? '',
+  }));
 }
 
 /**

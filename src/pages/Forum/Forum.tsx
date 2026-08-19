@@ -12,8 +12,12 @@ import {
   PenLine,
   UserCheck,
   AlertTriangle,
+  MoreHorizontal,
+  Flag,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../context/AuthContext';
+import { ReportModal } from '../../components/forum/ReportModal';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
@@ -21,7 +25,7 @@ type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
 const ALL_CATEGORIES: readonly Category[] = ['All Posts', 'My Posts', 'Following'];
 
 interface Post {
-  id: string;
+  id: number;
   title: string;
   author: string;
   avatarInitials: string;
@@ -36,7 +40,7 @@ interface Post {
 
 const ALL_POSTS: Post[] = [
   {
-    id: '1',
+    id: 1,
     title: 'A Modular Backend Network Protocol for High-Throughput Storage',
     author: 'Dr. Nguyen Van A',
     avatarInitials: 'NA',
@@ -50,7 +54,7 @@ const ALL_POSTS: Post[] = [
     views: 312,
   },
   {
-    id: '2',
+    id: 2,
     title: 'Transformer-Based Models for Low-Resource Languages',
     author: 'Prof. Le Thi B',
     avatarInitials: 'LB',
@@ -64,7 +68,7 @@ const ALL_POSTS: Post[] = [
     views: 589,
   },
   {
-    id: '3',
+    id: 3,
     title: 'Quantum Computing Applications in Cryptography',
     author: 'Researcher_XYZ',
     avatarInitials: 'RX',
@@ -78,7 +82,7 @@ const ALL_POSTS: Post[] = [
     views: 203,
   },
   {
-    id: '4',
+    id: 4,
     title: 'Advances in Federated Learning for Privacy-Preserving AI',
     author: 'Researcher_DV',
     avatarInitials: 'RD',
@@ -92,7 +96,7 @@ const ALL_POSTS: Post[] = [
     views: 941,
   },
   {
-    id: '5',
+    id: 5,
     title: 'Energy-Efficient Routing Protocols for IoT Networks',
     author: 'Dr. Tran Van C',
     avatarInitials: 'TC',
@@ -109,6 +113,7 @@ const ALL_POSTS: Post[] = [
 
 export const Forum = () => {
   const { isVerified, canCreatePost } = usePermissions();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -117,6 +122,12 @@ export const Forum = () => {
   const [followingAuthors, setFollowingAuthors] = useState<Set<string>>(new Set());
   const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [reportTarget, setReportTarget] = useState<{
+    targetType: 'ForumPost' | 'ForumComment';
+    targetId: number;
+    targetPreview: string;
+  } | null>(null);
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -247,69 +258,106 @@ export const Forum = () => {
           {/* Post Cards */}
           <div className={styles.postList}>
             {filteredPosts.map((post) => (
-              <div key={post.id} className={styles.postCard}>
-                {/* Author row */}
-                <div className={styles.postAuthorRow}>
-                  <div
-                    className={styles.postAvatar}
-                    style={{ backgroundColor: post.avatarColor, color: '#0f172a' }}
-                  >
-                    {post.avatarInitials}
-                  </div>
-                  <div className={styles.postAuthorInfo}>
-                    <span className={styles.postAuthorName}>{post.author}</span>
-                    <span className={styles.postTimestamp}>{post.timestamp}</span>
-                  </div>
-                  {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && isVerified && (
-                    <button
-                      className={`${styles.cardFollowBtn} ${followingAuthors.has(post.author) ? styles.following : ''}`}
-                      onClick={() => {
-                        setFollowingAuthors(prev => {
-                          const next = new Set(prev);
-                          if (next.has(post.author)) {
-                            next.delete(post.author);
-                          } else {
-                            next.add(post.author);
-                          }
-                          return next;
-                        });
-                      }}
+              <div key={post.id} className={styles.postCardWrapper}>
+                <div className={styles.postCard}>
+                  {/* Author row */}
+                  <div className={styles.postAuthorRow}>
+                    <div
+                      className={styles.postAvatar}
+                      style={{ backgroundColor: post.avatarColor, color: '#0f172a' }}
                     >
-                      {followingAuthors.has(post.author) ? 'Following' : 'Follow'}
-                    </button>
-                  )}
-                </div>
+                      {post.avatarInitials}
+                    </div>
+                    <div className={styles.postAuthorInfo}>
+                      <span className={styles.postAuthorName}>{post.author}</span>
+                      <span className={styles.postTimestamp}>{post.timestamp}</span>
+                    </div>
+                    {(activeCategory !== 'Following' || !followingAuthors.has(post.author)) && post.author !== 'Dr. Nguyen Van A' && isVerified && (
+                      <button
+                        className={`${styles.cardFollowBtn} ${followingAuthors.has(post.author) ? styles.following : ''}`}
+                        onClick={() => {
+                          setFollowingAuthors(prev => {
+                            const next = new Set(prev);
+                            if (next.has(post.author)) {
+                              next.delete(post.author);
+                            } else {
+                              next.add(post.author);
+                            }
+                            return next;
+                          });
+                        }}
+                      >
+                        {followingAuthors.has(post.author) ? 'Following' : 'Follow'}
+                      </button>
+                    )}
+                  </div>
 
-                {/* Title */}
-                <h3 className={styles.postTitle}>{post.title}</h3>
+                  {/* Title */}
+                  <h3 className={styles.postTitle}>{post.title}</h3>
 
-                {/* Abstract */}
-                <p className={styles.postAbstract}>{post.abstract}</p>
+                  {/* Abstract */}
+                  <p className={styles.postAbstract}>{post.abstract}</p>
 
-                {/* Tags */}
-                <div className={styles.postTags}>
-                  {post.tags.map((tag) => (
-                    <span key={tag} className={styles.postTag}>
-                      {tag}
+                  {/* Tags */}
+                  <div className={styles.postTags}>
+                    {post.tags.map((tag) => (
+                      <span key={tag} className={styles.postTag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Stats row */}
+                  <div className={styles.postStats}>
+                    <span className={styles.postStatItem}>
+                      <Heart size={14} />
+                      {post.likes}
                     </span>
-                  ))}
+                    <span className={styles.postStatItem}>
+                      <MessageSquare size={14} />
+                      {post.comments}
+                    </span>
+                    <span className={styles.postStatItem}>
+                      <Eye size={14} />
+                      {post.views}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Stats row */}
-                <div className={styles.postStats}>
-                  <span className={styles.postStatItem}>
-                    <Heart size={14} />
-                    {post.likes}
-                  </span>
-                  <span className={styles.postStatItem}>
-                    <MessageSquare size={14} />
-                    {post.comments}
-                  </span>
-                  <span className={styles.postStatItem}>
-                    <Eye size={14} />
-                    {post.views}
-                  </span>
-                </div>
+                {/* Overflow Menu - only for verified users */}
+                {isVerified && (
+                  <div className={styles.postCardActions}>
+                    <button
+                      className={styles.menuTrigger}
+                      onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                      aria-label="More options"
+                      aria-haspopup="menu"
+                      aria-expanded={openMenuId === post.id}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+
+                    {openMenuId === post.id && (
+                      <div className={styles.menuDropdown} role="menu">
+                        <button
+                          className={`${styles.menuItem} ${styles.menuItemReport}`}
+                          onClick={() => {
+                            setReportTarget({
+                              targetType: 'ForumPost',
+                              targetId: post.id,
+                              targetPreview: post.title,
+                            });
+                            setOpenMenuId(null);
+                          }}
+                          role="menuitem"
+                        >
+                          <Flag size={16} className={styles.menuIcon} />
+                          Report this post
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -460,6 +508,18 @@ export const Forum = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Modal */}
+      {reportTarget && user && (
+        <ReportModal
+          isOpen={true}
+          onClose={() => setReportTarget(null)}
+          targetType={reportTarget.targetType}
+          targetPreview={reportTarget.targetPreview}
+          targetId={reportTarget.targetId}
+          reporterId={user.userId ?? 0}
+        />
       )}
     </div>
   );

@@ -110,7 +110,12 @@ export const AccountsManagement = () => {
     s === 'ACTIVE' ? styles.statusActive : styles.statusSuspended;
 
   const sorted = useMemo(
-    () => [...accounts].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...accounts].sort(
+        (a, b) =>
+          // Newest first by joinedDate (handle both ISO and locale date strings).
+          new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime(),
+      ),
     [accounts],
   );
 

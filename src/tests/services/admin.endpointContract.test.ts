@@ -44,10 +44,12 @@ function pathTemplates(): string[] {
     e.PACKAGES.UPDATE(1),
     e.PACKAGES.DELETE(1),
     e.PACKAGES.TOGGLE(1),
-    e.AUDIT_LOGS.GET_ALL,
-    e.AUDIT_LOGS.EXPORT,
-    API_ENDPOINTS.ANALYTICS.SUMMARY,
-    API_ENDPOINTS.ANALYTICS.TIMESERIES,
+    // AuditLog GET is live; export is live.
+    // e.AUDIT_LOGS.GET_ALL,
+    // e.AUDIT_LOGS.EXPORT,
+    // Analytics summary + timeseries are live.
+    // API_ENDPOINTS.ANALYTICS.SUMMARY,
+    // API_ENDPOINTS.ANALYTICS.TIMESERIES,
   ];
 }
 
@@ -99,5 +101,14 @@ describe('admin endpoint contract vs swagger.json', () => {
     expect(declaredPaths.has('/api/ResearchTopic')).toBe(true);
     expect(declaredPaths.has('/api/LearningMaterial')).toBe(true);
     expect(declaredPaths.has('/api/GuidanceProject')).toBe(true);
+  });
+
+  it('analytics and audit-log endpoints exist in swagger.json (live API flipped)', () => {
+    // These endpoints are now live — assert they exist so the mock flip
+    // cannot regress silently.
+    expect(declaredPaths.has('/api/Analytics/summary')).toBe(true);
+    expect(declaredPaths.has('/api/Analytics/timeseries')).toBe(true);
+    expect(declaredPaths.has('/api/AuditLog')).toBe(true);
+    expect(declaredPaths.has('/api/AuditLog/export')).toBe(true);
   });
 });

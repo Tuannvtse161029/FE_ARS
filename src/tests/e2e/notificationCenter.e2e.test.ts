@@ -78,11 +78,11 @@ const FAKE_NOTIFICATIONS = [
   },
 ];
 
-// Both the zustand `ars-auth-storage` and the legacy `ars_user` key must
-// be seeded. `useVerifiedGuard` reads `ars_user` directly from storage
-// during the brief window before AuthContext finishes rehydrating; if
-// it's missing the user gets bounced to /login even though the zustand
-// store says they're authenticated.
+// Both the zustand `ars-auth-storage` (now in sessionStorage) and the legacy
+// `ars_user` key must be seeded. `useVerifiedGuard` reads `ars_user` directly
+// from storage during the brief window before AuthContext finishes
+// rehydrating; if it's missing the user gets bounced to /login even though
+// the zustand store says they're authenticated.
 function buildFakeUser(): string {
   return JSON.stringify({
     id: 7,
@@ -119,14 +119,28 @@ describe('NotificationCenter — header E2E (Agent 16)', () => {
         origins: [
           {
             origin: DEV_SERVER_URL,
-            localStorage: [
-              { name: 'ars-auth-storage', value: buildFakeAuthStorage() },
-              { name: 'ars_user', value: buildFakeUser() },
-            ],
+            // Note: `ars-auth-storage` lives in sessionStorage (authSlice was
+            // updated to use a sessionStorage-backed adapter so auth is always
+            // cleared on tab/window close). We seed it via page.evaluate after
+            // navigation instead — see below.
+            localStorage: [{ name: 'ars_user', value: buildFakeUser() }],
           },
         ],
       },
     });
+
+    // Seed the Zustand auth store (sessionStorage) and legacy ars_user (also
+    // sessionStorage via the rememberBucket path). Must happen after the page
+    // loads because sessionStorage is per-origin per-tab.
+    const seedAuth = async (page: Page) => {
+      const authStorageValue = buildFakeAuthStorage();
+      await page.evaluate(
+        (authStorage) => {
+          sessionStorage.setItem('ars-auth-storage', authStorage);
+        },
+        authStorageValue
+      );
+    };
 
     // Intercept the notification endpoints with deterministic fixtures.
     // The "unread count" the FE computes is `count(isRead === false)`, so
@@ -172,6 +186,7 @@ describe('NotificationCenter — header E2E (Agent 16)', () => {
     });
 
     pageRef = await context.newPage();
+    await seedAuth(pageRef);
   });
 
   afterAll(async () => {

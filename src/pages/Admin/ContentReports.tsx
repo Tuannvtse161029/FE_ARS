@@ -67,6 +67,12 @@ export default function ContentReports(): JSX.Element {
     [reports],
   );
 
+  // Newest first by date.
+  const sortedReports = useMemo(
+    () => [...reports].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [reports],
+  );
+
   const {
     page,
     totalPages,
@@ -78,7 +84,7 @@ export default function ContentReports(): JSX.Element {
     next,
     prev,
     resetPage,
-  } = usePagination<ViolationReport>(reports, DEFAULT_PAGE_SIZE);
+  } = usePagination<ViolationReport>(sortedReports, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();

@@ -159,7 +159,12 @@ export interface CommentVoteCreateRequest {
 
 // ── Wallet ───────────────────────────────────────────────────────────────────
 export interface Wallet {
+  // `id` is the primary key; `walletId` is the BE's own identifier field
+  // returned in the Swagger response. Both are present in the JSON but are
+  // semantically distinct per the BE schema — they happen to be equal for the
+  // first wallet created for a user.
   id: number;
+  walletId?: number;
   userId: number;
   balance: number;
   currency?: string;

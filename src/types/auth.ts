@@ -1,3 +1,9 @@
+// Verification and account state machine.
+// All new registrations go through: Registered → Email Verified → Admin Reviewed → Active.
+// The BE stores these as database fields; the FE mirrors them for route-gating.
+export type VerificationStatus = 'Pending' | 'Accepted' | 'Rejected';
+export type AccountTier = 'Free' | 'Premium' | 'Enterprise';
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -63,10 +69,20 @@ export interface AuthResponse {
   // the FE prompts the user to pick one before navigating to the dashboard.
   // When omitted (single-role user or older BE), the FE falls back to [role].
   roles?: UserRole[];
-  // Whether the user's account has been activated. New registrations start
-  // unverified (false) and flip to true once an Admin approves the role
-  // request. Unverified users get read-only access to /forum only.
+  // Mirrors `dbo.Users.isActive`. New registrations start false (unverified)
+  // and flip to true when an Admin approves the role request. Unverified users
+  // get read-only access to /forum only. The BE is the authoritative source;
+  // the FE defaults to false (lockout-safe) when the field is absent.
   isActive?: boolean;
+  // Mirrors `dbo.Users.verificationStatus`. Tracks where in the registration
+  // lifecycle the user stands. Required for the complete state machine:
+  //   Registered:    isEmailVerified=false, verificationStatus='Pending', isActive=false
+  //   Email Verified: isEmailVerified=true,  verificationStatus='Pending', isActive=false
+  //   Admin Accepted: isEmailVerified=true,  verificationStatus='Accepted', isActive=true
+  //   Admin Rejected: isEmailVerified=true,  verificationStatus='Rejected', isActive=false
+  verificationStatus?: VerificationStatus;
+  // Mirrors `dbo.Users.accountTier`. Must default to 'Free' on registration.
+  accountTier?: AccountTier;
 }
 
 export interface User {
@@ -78,10 +94,14 @@ export interface User {
   roleId: number;
   roleName: string;
   // Mirrors `dbo.Users.isActive`. False until an Admin approves the role
-  // request that was filed at registration time. Defaults to true for users
-  // provisioned directly by the DB (admins) so existing code paths keep
-  // working when the BE hasn't yet shipped the field.
+  // request that was filed at registration time. Defaults to false (lockout-safe)
+  // so a BE that hasn't shipped this field doesn't grant unregistered users access.
   isActive: boolean;
+  // Mirrors `dbo.Users.verificationStatus`. Required for complete state machine
+  // checking — see AuthResponse.verificationStatus for the full lifecycle.
+  verificationStatus?: VerificationStatus;
+  // Mirrors `dbo.Users.accountTier`. Defaults to 'Free' per BE defaults.
+  accountTier?: AccountTier;
   createdAt?: string;
   updatedAt?: string;
 }

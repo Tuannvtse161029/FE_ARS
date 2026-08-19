@@ -96,10 +96,28 @@ export const EvaluateReports = () => {
     [myReports],
   );
 
-  // Group rows by status for the three visible columns.
-  const submitted = reviewableReports.filter((r) => r.status === 'SUBMITTED');
-  const rejected = reviewableReports.filter((r) => r.status === 'REJECTED');
-  const waiting = reviewableReports.filter((r) => r.status === 'WAITING');
+  // Group rows by status for the three visible columns, newest-first within each.
+  const submitted = reviewableReports
+    .filter((r) => r.status === 'SUBMITTED')
+    .sort((a, b) => {
+      const aT = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const bT = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return bT - aT;
+    });
+  const rejected = reviewableReports
+    .filter((r) => r.status === 'REJECTED')
+    .sort((a, b) => {
+      const aT = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const bT = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return bT - aT;
+    });
+  const waiting = reviewableReports
+    .filter((r) => r.status === 'WAITING')
+    .sort((a, b) => {
+      const aT = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const bT = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return bT - aT;
+    });
 
   const groupNameById = useMemo(() => {
     const map = new Map<number, string>();

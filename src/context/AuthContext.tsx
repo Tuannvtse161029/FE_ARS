@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import authService from '../services/auth.service';
+import { userService } from '../services/user.service';
 import { ROUTES } from '../utils/constants';
-import type { LoginRequest, AuthResponse, UserRole } from '../types/auth';
+import type { LoginRequest, AuthResponse, User, UserRole } from '../types/auth';
 import { isAdminUser, landingRouteForRoleName } from '../utils/roleNormalizer';
 import { storage } from '../utils/storage';
 
@@ -54,21 +55,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    * storage.setToken / setUser (which call rememberBucket()) land in the
    * correct backing store (localStorage vs sessionStorage) without changing
    * their signatures.
+   *
+   * Immediately after login, we call GET /api/user/{id} to fetch the BE's
+   * authoritative user record. This overwrites ars_user with fresh data so
+   * the user NEVER sees stale verificationStatus / isActive from a prior session
+   * (e.g. an account approved by an Admin while the user was offline).
    */
   const persistAuthAndNavigate = useCallback(
-    (response: AuthResponse, roleToUse: string, rememberMe: boolean) => {
-      // Override `role` on the response so storage (which writes
-      // `authResponse.role` as the persisted roleName) reflects the chosen
-      // role rather than whatever the BE happened to put first.
-      const responseWithChosenRole: AuthResponse = {
-        ...response,
-        role: roleToUse,
-      };
+    async (response: AuthResponse, roleToUse: string, rememberMe: boolean) => {
       // Select the storage bucket first — rememberBucket() inside storage.ts
       // reads getRememberMe() on every setToken/setUser call, so we MUST set
-      // this BEFORE the setAuthData call below.
+      // this BEFORE any setToken/setUser call below.
       storage.setRememberMe(rememberMe);
-      authService.setAuthData(responseWithChosenRole);
+      storage.setToken(response.token);
+
+      // Immediately fetch the authoritative user profile from the BE so ars_user
+      // is written with the current state (verificationStatus, isActive, etc.).
+      // Falls back to the login response fields if the GET fails (network glitch
+      // or BE temporarily down — the stale snapshot is no worse than nothing).
+      let freshUser: User | null = null;
+      try {
+        const userId = response.userId ?? 0;
+        if (userId !== 0) {
+          freshUser = await userService.getById(userId);
+        }
+      } catch {
+        // silently skip — use the login response below as fallback
+      }
+
+      const userId = freshUser?.id ?? response.userId ?? 0;
+      const userToPersist = freshUser ?? {
+        id: userId,
+        username: response.username,
+        email: response.email,
+        fullName: response.username,
+        roleId: response.roleId ?? 0,
+        roleName: roleToUse,
+        isActive: response.isActive ?? false,
+        verificationStatus: response.verificationStatus ?? 'Pending',
+        accountTier: response.accountTier ?? 'Free',
+      };
+      storage.setUser(userToPersist);
+
       // We delegate to `landingRouteForRoleName` from utils/roleNormalizer so
       // the post-login redirect and the admin guard stay in sync. The
       // `isAdminOverride` flag covers the BE-bug sentinel where roleName
@@ -76,20 +104,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // the user is actually an Admin.
       const adminOverride = isAdminUser({
         roleName: roleToUse,
-        roleId: responseWithChosenRole.roleId ?? 0,
+        roleId: response.roleId ?? 0,
       });
+
       authStore.login(
         {
-          id: response.userId ?? 0,
-          username: response.username,
-          email: response.email,
-          fullName: response.username,
-          roleId: responseWithChosenRole.roleId ?? 0,
+          id: userId,
+          username: freshUser?.username ?? response.username,
+          email: freshUser?.email ?? response.email,
+          fullName: freshUser?.fullName ?? response.username,
+          roleId: freshUser?.roleId ?? response.roleId ?? 0,
           roleName: roleToUse,
-          // Carry isActive through to the store so route guards can read it
-          // off `authStore.user` without re-hitting storage. Existing users
-          // default to verified (true) when the BE didn't echo the field.
-          isActive: responseWithChosenRole.isActive ?? true,
+          // Use the BE's authoritative isActive value; default to FALSE (lockout-safe).
+          isActive: freshUser?.isActive ?? response.isActive ?? false,
+          // Use the BE's authoritative verificationStatus value.
+          verificationStatus: freshUser?.verificationStatus ?? response.verificationStatus ?? 'Pending',
+          accountTier: freshUser?.accountTier ?? response.accountTier ?? 'Free',
         },
         response.token
       );
@@ -126,7 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Single-role (or zero — fall back to BE's `role`) — proceed.
       const roleToUse = assignedRoles[0] ?? response.role;
-      persistAuthAndNavigate(response, roleToUse, credentials.rememberMe ?? false);
+      await persistAuthAndNavigate(response, roleToUse, credentials.rememberMe ?? false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
       setError(errorMessage);
@@ -137,13 +167,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const confirmRoleSelection = useCallback(
-    (role: UserRole) => {
+    async (role: UserRole) => {
       if (!pendingRoleSelection) return;
       // Persist using the stashed BE response, overriding `role` with the
       // user's choice. Token/email/username come from the original login.
       // Forward the original rememberMe choice so multi-role users get the
       // same storage-bucket behavior as single-role users.
-      persistAuthAndNavigate(
+      await persistAuthAndNavigate(
         pendingRoleSelection.authResponse,
         role,
         pendingRoleSelection.rememberMe
@@ -172,6 +202,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
   };
 
+  /**
+   * On every app boot (Zustand rehydrate completes while user is authenticated),
+   * hit GET /api/user/{id} to overwrite the stale ars_user snapshot with the
+   * BE's authoritative values. This is the fix for the verificationStatus bug:
+   * a user approved by an Admin has their BE record updated, but the FE's cached
+   * ars_user still showed the old "Pending" value from registration day.
+   *
+   * Runs only once per app session (no deps) and only when auth state is
+   * rehydrated with a valid userId — the GET call will fail with 401 if the
+   * token is invalid and we catch it silently.
+   */
+  useEffect(() => {
+    const syncUserFromBE = async () => {
+      const userId = authStore.user?.id;
+      if (!authStore.isAuthenticated || !userId || userId === 0) return;
+
+      try {
+        const freshUser = await userService.getById(userId);
+
+        // Overwrite ars_user with the BE's authoritative record.
+        storage.setUser(freshUser);
+
+        // Sync the Zustand store too so the in-memory view matches storage.
+        authStore.updateUser({
+          isActive: freshUser.isActive,
+          verificationStatus: freshUser.verificationStatus,
+          accountTier: freshUser.accountTier,
+        });
+      } catch {
+        // GET failed (401 = expired token, 404 = user deleted, 5xx = BE down).
+        // Silently skip — the stale snapshot is no worse than nothing, and the
+        // user can re-login to get a fresh token.
+      }
+    };
+
+    // Wait for Zustand persist rehydration before reading authStore.user.
+    // The `isLoading` flag flips to false once rehydration completes.
+    if (!authStore.isLoading) {
+      syncUserFromBE();
+    }
+  }, []); // intentionally empty — run once after first render when store is ready
+
   const value: AuthContextType = {
     user: authStore.user
       ? {
@@ -180,11 +252,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           username: authStore.user.username,
           email: authStore.user.email,
           role: authStore.user.roleName,
-          // Surface the verified/unverified flag so guards and UI components
-          // can gate features without going back to storage. Defaulting to
-          // true keeps the BE-rollout safe (an unverified flag only fires
-          // when the BE explicitly sets it to false).
-          isActive: authStore.user.isActive ?? true,
+          isActive: authStore.user.isActive ?? false,
+          verificationStatus: authStore.user.verificationStatus ?? 'Pending',
         }
       : null,
     isAuthenticated: authStore.isAuthenticated,

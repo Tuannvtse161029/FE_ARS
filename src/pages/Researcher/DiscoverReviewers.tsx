@@ -20,6 +20,8 @@ import { useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { useFollowReviewer } from '../../hooks/useFollowers';
 import { useWallet } from '../../hooks/useWallet';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import { resolveReviewerName, getReviewerDisplayName, ensureReviewerDisplayName } from '../../services/reviewerLookup.service';
+import { useAuthStore } from '../../store/authSlice';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -98,8 +100,11 @@ export const DiscoverReviewers = () => {
   const [activeTab, setActiveTab] = useState<'discover' | 'requests'>('discover');
   const [screenState, setScreenState] = useState<'list' | 'create-request'>('list');
 
-  // Wallet balance loaded from the BE (no hardcoded 1,500,000 fallback).
-  const { balance: walletBalance } = useWallet();
+  // Authenticated user for wallet fetch (ensures we read the current user's wallet, not the first in the system).
+  const user = useAuthStore((s) => s.user);
+
+  // Wallet balance loaded from the BE for the authenticated user (not the first wallet in the system).
+  const { balance: walletBalance } = useWallet(user?.id);
 
   // Selected reviewer for creating request
   const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
@@ -108,6 +113,10 @@ export const DiscoverReviewers = () => {
   const [topUpReviewer, setTopUpReviewer] = useState<Reviewer | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSubmittedRequest, setLastSubmittedRequest] = useState<ReviewRequest | null>(null);
+  // Incremented when a reviewer name resolves via GET /api/User/{id}, so the
+  // reviewerNameByUserId memo re-evaluates and the table re-renders with the
+  // real name instead of the "Reviewer #<id>" fallback.
+  const [reviewerNameRefreshKey, setReviewerNameRefreshKey] = useState(0);
 
   // Form states
   const [selectedPaperId, setSelectedPaperId] = useState('');
@@ -150,6 +159,13 @@ export const DiscoverReviewers = () => {
     window.addEventListener('review-update', handler);
     return () => window.removeEventListener('review-update', handler);
   }, [refetchReviewRequests]);
+
+  // ── Event: re-render when a reviewer name resolves via GET /api/User/{id} ───
+  useEffect(() => {
+    const handler = () => setReviewerNameRefreshKey((k) => k + 1);
+    window.addEventListener('ars:reviewer-name-resolved', handler);
+    return () => window.removeEventListener('ars:reviewer-name-resolved', handler);
+  }, []);
 
   // Fetch papers for reviewer recommendation dropdown
   useEffect(() => {
@@ -321,10 +337,14 @@ export const DiscoverReviewers = () => {
       m.set(String(p.userId), { name, initials, avatarBg });
     }
     return m;
-  }, [reviewerProfiles]);
+  }, [reviewerProfiles, reviewerNameRefreshKey]);
 
   // Resolve a Reviewer's display info with type-tolerant `reviewerId`
   // matching (defect 1B item 5 — strict equality drops rows).
+  // Uses three-stage resolution:
+  //   1. BE inline `reviewerName` field (BE JOIN, if present)
+  //   2. Cached reviewer profile `fullName` (via GET /api/ProfessionalProfile)
+  //   3. GET /api/User/{reviewerId} via reviewerLookup.service (fills the BE gap)
   const lookupReviewer = (req: Pick<ReviewRequest, 'reviewerId' | 'reviewerName'>) => {
     if (req.reviewerName && req.reviewerName.trim()) {
       const trimmed = req.reviewerName.trim();
@@ -335,19 +355,28 @@ export const DiscoverReviewers = () => {
       };
     }
     if (req.reviewerId == null) return null;
-    return (
-      reviewerNameByUserId.get(String(req.reviewerId)) ??
-      reviewerNameByUserId.get(String(Number(req.reviewerId))) ??
-      null
-    );
+    const strId = String(req.reviewerId);
+    const cachedProfile = reviewerNameByUserId.get(strId)
+      ?? reviewerNameByUserId.get(String(Number(req.reviewerId)));
+    if (cachedProfile) return cachedProfile;
+    // reviewerLookup probes GET /api/User/{reviewerId} asynchronously and
+    // dispatches a custom event to re-render when the name resolves.
+    const name = resolveReviewerName(req.reviewerId);
+    if (name && !name.startsWith('Reviewer #')) {
+      return {
+        name,
+        initials: initialsFromName(name),
+        avatarBg: '#1D2A4A',
+      };
+    }
+    return null;
   };
 
   // My Review Requests table — search + pagination
 
   const filteredRequests = useMemo(() => {
     const q = requestSearch.trim().toLowerCase();
-    if (!q) return [...requests]; // spread to create mutable copy
-    return requests.filter((req) => {
+    const base = requests.filter((req) => {
       const title = resolvePaperTitle({ req, papersById, extraPapersById });
       const titleText =
         title.kind === 'title'
@@ -363,6 +392,11 @@ export const DiscoverReviewers = () => {
         (req.status ?? '').toLowerCase().includes(q)
       );
     });
+    // Newest first by createdAt.
+    return [...base].sort(
+      (a, b) =>
+        new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+    );
   }, [requests, requestSearch, papersById, extraPapersById]);
 
   const {
@@ -741,7 +775,14 @@ export const DiscoverReviewers = () => {
                         const reviewerInfo = lookupReviewer(req);
                         const reviewerName = reviewerInfo?.name ??
                           (req.reviewerId != null
-                            ? 'Reviewer (profile not yet completed)'
+                            ? (() => {
+                                // Synchronously show the reviewerLookup fallback while the
+                                // async name probe resolves in the background.
+                                const name = getReviewerDisplayName(req.reviewerId);
+                                // Kick off the async probe so the next render can show the real name.
+                                ensureReviewerDisplayName(req.reviewerId);
+                                return name;
+                              })()
                             : 'Reviewer details unavailable');
                         const reviewerInitials = reviewerInfo?.initials ?? initialsFromName(reviewerName);
                         const reviewerAvatarBg = reviewerInfo?.avatarBg ?? '#1D2A4A';

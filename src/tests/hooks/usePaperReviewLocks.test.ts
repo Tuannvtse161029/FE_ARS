@@ -88,4 +88,31 @@ describe('usePaperReviewLocks — mergePendingRequest preserves non-null IDs (de
     expect(result.current.requests).toHaveLength(1);
     expect(result.current.requests[0].paperId).toBe(300);
   });
+
+  it('refetches requests when the review-update custom event fires', async () => {
+    const { result } = renderHook(() => usePaperReviewLocks());
+
+    // Wait for initial load.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Initial load returned empty.
+    expect(result.current.requests).toHaveLength(0);
+
+    // A second BE response is ready for the refetch.
+    getAllMock.mockResolvedValueOnce([
+      baseReq({ id: 10, status: 'Completed', paperId: 50 }),
+    ]);
+
+    // Fire the custom event that EvaluationDesk dispatches after a successful submit.
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('review-update', { detail: { reviewRequestId: 10, status: 'Completed' } }),
+      );
+    });
+
+    // The hook refetches and replaces the list with the new data.
+    await waitFor(() => expect(result.current.requests).toHaveLength(1));
+    expect(result.current.requests[0].id).toBe(10);
+    expect(result.current.requests[0].status).toBe('Completed');
+  });
 });

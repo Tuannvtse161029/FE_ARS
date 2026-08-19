@@ -71,6 +71,15 @@ export function usePaperReviewLocks(): UsePaperReviewLocksResult {
     void refetch();
   }, [refetch]);
 
+  // Keep requests in sync across all views when a review is submitted.
+  // Adding the listener inside `refetch`'s scope ensures it always uses the
+  // latest `setRequests` — not the stale closure from the mount effect.
+  useEffect(() => {
+    const handleReviewUpdate = () => void refetch();
+    window.addEventListener('review-update', handleReviewUpdate);
+    return () => window.removeEventListener('review-update', handleReviewUpdate);
+  }, [refetch]);
+
   // Optimistic merge — used by DiscoverReviewers after a successful
   // submission. We trust the caller's payload because the BE has already
   // persisted the row by the time we reach this codepath.

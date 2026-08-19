@@ -45,6 +45,7 @@ const ProfileDropdown = ({
   username,
   activeRole,
   avatarInitials,
+  accountTier,
   onLogout,
   onProfileClick,
   onAccountSettingsClick,
@@ -52,11 +53,19 @@ const ProfileDropdown = ({
   username: string;
   activeRole: string;
   avatarInitials: string;
+  accountTier?: string;
   onLogout: () => void;
   onProfileClick: () => void;
   onAccountSettingsClick: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  const tierClass =
+    accountTier === 'Premium'
+      ? styles.userPillTierPremium
+      : accountTier === 'Enterprise'
+      ? styles.userPillTierEnterprise
+      : styles.userPillTierFree;
 
   return (
     <div className={styles.profileDropdownContainer}>
@@ -67,7 +76,14 @@ const ProfileDropdown = ({
         <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
         <div className={styles.userInfoText}>
           <div className={styles.userPillName}>{username}</div>
-          <div className={styles.userPillRole}>{activeRole}</div>
+          <div className={styles.userPillRole}>
+            {activeRole}
+            {accountTier && accountTier !== 'Free' && (
+              <span className={`${styles.userPillTier} ${tierClass}`}>
+                {accountTier}
+              </span>
+            )}
+          </div>
         </div>
         <ChevronDown size={16} />
       </button>
@@ -119,7 +135,7 @@ export const MainLayout = () => {
   // We also pull the full `wallet` object so we can pass the `walletId`
   // through to WalletTopUpModal (which posts it as `walletId` on
   // `POST /api/Payment/create-link`).
-  const { wallet: beWallet, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
+  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
 
   // Notifications are owned by <NotificationCenter /> below. The header
   // bell button now renders the dropdown directly, so we no longer read
@@ -127,7 +143,7 @@ export const MainLayout = () => {
   // sources of truth for the same BE row.
 
   // Reviewer availability comes from the BE (read-only here; toggle still calls update).
-  const { isAvailable: beReviewerAvailable, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
+  const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
 
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
   // Role switching is no longer performed in-app — users with multiple roles re-login
@@ -210,6 +226,10 @@ export const MainLayout = () => {
       setIsUpdatingAvailability(false);
     }
   };
+
+  // Derive accountTier from the persisted user blob so the profile badge
+  // stays correct even when BE hasn't been reached yet.
+  const accountTier = user?.accountTier ?? stored?.accountTier ?? 'Free';
 
   // Display name and avatar initials are derived from the authenticated user.
   const displayName = user?.username || user?.email || 'Account';
@@ -372,9 +392,10 @@ export const MainLayout = () => {
             {activeRole === 'Reviewer' && (
               <div className={styles.availabilityToggle}>
                 <button
+                  data-testid="availability-toggle"
                   className={`${styles.toggleSwitch} ${isReviewerAvailable ? styles.toggleSwitchOn : styles.toggleSwitchOff}`}
                   onClick={handleToggleAvailability}
-                  disabled={isUpdatingAvailability}
+                  disabled={isUpdatingAvailability || beAvailabilityLoading}
                   aria-label={isReviewerAvailable ? 'Turn off availability' : 'Turn on availability'}
                   aria-pressed={isReviewerAvailable}
                   title={isReviewerAvailable ? 'Click to go unavailable' : 'Click to go available'}
@@ -425,6 +446,7 @@ export const MainLayout = () => {
               username={displayName}
               activeRole={displayedRole}
               avatarInitials={avatarInitials}
+              accountTier={accountTier}
               onLogout={handleLogout}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
               onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
@@ -444,7 +466,7 @@ export const MainLayout = () => {
         <WalletTopUpModal
           isOpen={isTopUpOpen}
           currentUserId={user?.userId ?? null}
-          currentWalletId={beWallet?.id ?? null}
+          currentWalletId={beWalletId ?? null}
           currentBalance={beBalance}
           onSuccess={async () => {
             // Re-fetch the wallet so the header pill reflects the new balance

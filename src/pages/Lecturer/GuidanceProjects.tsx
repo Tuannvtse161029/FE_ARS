@@ -124,7 +124,7 @@ export const GuidanceProjects = () => {
 
   const filtered = useMemo<GuidanceProject[]>(() => {
     const normalisedSearch = search.trim().toLowerCase();
-    return myProjects.filter((p) => {
+    const base = myProjects.filter((p) => {
       if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
       if (normalisedSearch.length === 0) return true;
       const titleMatch = (p.title ?? '').toLowerCase().includes(normalisedSearch);
@@ -140,6 +140,11 @@ export const GuidanceProjects = () => {
         studentLabel.toLowerCase().includes(normalisedSearch)
       );
     });
+    // Newest first by createdAt.
+    return [...base].sort(
+      (a, b) =>
+        new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+    );
   }, [myProjects, statusFilter, search]);
 
   // Counts by status — surfaces in the pill labels.

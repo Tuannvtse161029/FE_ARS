@@ -8,6 +8,8 @@ interface PdfDropzoneProps {
   onRemove: () => void;
   pdfUrl: string | null;
   uploadedFile: File | null;
+  /** Fires whenever the upload state changes (true during upload, false when idle/done). */
+  onUploadStateChange?: (isUploading: boolean) => void;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -25,6 +27,7 @@ export const PdfDropzone = ({
   onRemove,
   pdfUrl,
   uploadedFile,
+  onUploadStateChange,
 }: PdfDropzoneProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -32,6 +35,12 @@ export const PdfDropzone = ({
   const deliveredUrlRef = useRef<string | null>(null);
   const { uploadPdf, progress, isUploading, error, pdfUrl: hookPdfUrl, resetUpload } =
     useFirebaseUpload();
+
+  // Propagate isUploading state up to the parent (Register) so the submit
+  // button can be disabled while the PDF is still uploading to Firebase.
+  useEffect(() => {
+    onUploadStateChange?.(isUploading);
+  }, [isUploading, onUploadStateChange]);
 
   useEffect(() => {
     if (

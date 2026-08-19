@@ -1,8 +1,63 @@
+/**
+ * Tests for src/pages/Register/Register.tsx
+ *
+ * All network calls (authService, Firebase Storage) are mocked so tests run
+ * in isolation without a backend.
+ *
+ * For the pdfUrl integration test, vi.hoisted() is used to share spy references
+ * with the hoisted vi.mock factory without running into the temporal dead zone.
+ */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Register } from '../../pages/Register/Register';
+
+// ── Module-level mocks via vi.hoisted() ────────────────────────────────────────
+// vi.hoisted() tells Vitest to keep the callback in its original file position
+// rather than hoisting just the factory body to the top. This avoids the TDZ
+// error when the factory references module-level const declarations.
+
+const { registerUserSpy, setAuthDataSpy } = vi.hoisted(() => {
+  return {
+    registerUserSpy: vi.fn(),
+    setAuthDataSpy: vi.fn(),
+  };
+});
+
+const { loginSpy, setLoadingSpy } = vi.hoisted(() => {
+  return {
+    loginSpy: vi.fn(),
+    setLoadingSpy: vi.fn(),
+  };
+});
+
+const firebaseUploadResult = vi.hoisted(() => ({
+  uploadPdf: vi.fn().mockResolvedValue(undefined),
+  progress: 0,
+  isUploading: false,
+  error: null,
+  pdfUrl: null as string | null,
+  resetUpload: vi.fn(),
+}));
+
+vi.mock('../../services/auth.service', () => ({
+  authService: {
+    registerUser: registerUserSpy,
+    setAuthData: setAuthDataSpy,
+  },
+}));
+
+vi.mock('../../store', () => ({
+  useAuthStore: () => ({
+    login: loginSpy,
+    setLoading: setLoadingSpy,
+  }),
+}));
+
+vi.mock('../../hooks/useFirebaseUpload', () => ({
+  useFirebaseUpload: () => firebaseUploadResult,
+}));
 
 const renderRegister = () =>
   render(<Register />, {
@@ -192,5 +247,99 @@ describe('Register Page – link navigation', () => {
     renderRegister();
     const link = screen.getByRole('link', { name: /sign in instead/i });
     expect(link).toHaveAttribute('href', '/login');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF URL IN REGISTRATION PAYLOAD (R6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Register Page – pdfUrl included in registration payload', () => {
+  beforeEach(() => {
+    registerUserSpy.mockReset();
+    registerUserSpy.mockResolvedValue({
+      token: 'test-jwt-token',
+      username: 'Test User',
+      email: 'test@example.com',
+      role: 'Researcher',
+      isActive: false,
+      verificationStatus: 'Pending',
+      accountTier: 'Free',
+    });
+  });
+
+  test('authService.registerUser is called with pdfUrl when form is submitted', async () => {
+    const user = userEvent.setup();
+
+    // Simulate Firebase returning a URL after upload
+    firebaseUploadResult.uploadPdf.mockResolvedValue(undefined);
+    firebaseUploadResult.progress = 100;
+    firebaseUploadResult.isUploading = false;
+    firebaseUploadResult.pdfUrl = 'https://firebasestorage.googleapis.com/fake-test-url.pdf';
+
+    renderRegister();
+
+    // Suppress console.error from the internal setAuthData call
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Fill in all required fields
+    await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
+    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
+    await user.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await user.type(screen.getByLabelText(/retype password/i), 'Password123');
+
+    // Simulate PDF upload by triggering the hidden file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
+      type: 'application/pdf',
+    });
+    await user.upload(fileInput, fakeFile);
+
+    // The button should now be enabled (pdfUrl is set, all fields valid)
+    const submitBtn = screen.getByRole('button', { name: /create account/i });
+    expect(submitBtn).not.toBeDisabled();
+
+    // Submit the form
+    await user.click(submitBtn);
+
+    // Assert authService.registerUser was called with pdfUrl in the payload
+    expect(registerUserSpy).toHaveBeenCalledTimes(1);
+    const [payload] = registerUserSpy.mock.calls[0];
+    expect(payload).toHaveProperty('pdfUrl');
+    expect(typeof payload.pdfUrl).toBe('string');
+    expect(payload.pdfUrl).toBe('https://firebasestorage.googleapis.com/fake-test-url.pdf');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('submit button stays disabled while PDF is uploading', async () => {
+    const user = userEvent.setup();
+
+    // Simulate upload in progress — pdfUrl not yet available
+    firebaseUploadResult.uploadPdf.mockResolvedValue(undefined);
+    firebaseUploadResult.progress = 50;
+    firebaseUploadResult.isUploading = true;
+    firebaseUploadResult.pdfUrl = null;
+
+    renderRegister();
+
+    // Fill all required fields
+    await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
+    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
+    await user.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await user.type(screen.getByLabelText(/retype password/i), 'Password123');
+
+    // Trigger file upload (which is still in-progress)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
+      type: 'application/pdf',
+    });
+    await user.upload(fileInput, fakeFile);
+
+    // Button must stay disabled while upload is in progress
+    const submitBtn = screen.getByRole('button', { name: /create account/i });
+    expect(submitBtn).toBeDisabled();
   });
 });

@@ -8,7 +8,7 @@
  *
  *   mockUseAuth({ role: 'Graduate Student', userId: 42 });
  */
-import type { AuthResponse, UserRole } from '../../types/auth';
+import type { AuthResponse, UserRole, VerificationStatus } from '../../types/auth';
 
 export interface MockUseAuthOptions {
   role?: UserRole | string | null;
@@ -19,6 +19,12 @@ export interface MockUseAuthOptions {
   token?: string;
   /** Mirrors `dbo.Users.isActive`. `undefined` → defaults to `true` (verified). */
   isActive?: boolean;
+  /**
+   * Mirrors `dbo.Users.verificationStatus`. Defaults to `'Accepted'` when
+   * `isActive === true`, and `'Pending'` when `isActive === false`.
+   * Explicitly set this field in tests that verify the complete state machine.
+   */
+  verificationStatus?: VerificationStatus;
   /** Role id used by the dual-signal admin check. */
   roleId?: number;
 }
@@ -33,7 +39,15 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
         email: opts.email ?? 'student@example.com',
         role: role as string,
         userId: opts.userId ?? 42,
+        // Default to true (verified) for backward compatibility with existing tests.
+        // When isActive is explicitly false, verificationStatus defaults to 'Pending'.
         isActive: opts.isActive ?? true,
+        // Agent 26: verificationStatus is now required for the complete state machine.
+        // Default to 'Accepted' when isActive is true (the real BE sets both together).
+        // Explicitly set opts.verificationStatus in tests that verify specific states.
+        verificationStatus: opts.verificationStatus ??
+          (opts.isActive === false ? 'Pending' : 'Accepted'),
+        accountTier: 'Free',
         roleId: opts.roleId ?? 0,
       }
     : null;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Banknote,
@@ -75,23 +75,28 @@ export const TransactionsManagement = () => {
     void load();
   }, [load]);
 
-  const filtered = (() => {
+  const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return withdrawals;
-    return withdrawals.filter((w) =>
-      [
-        String(w.txId),
-        w.reviewerName,
-        w.accountName,
-        w.accountNumber,
-        w.bankName,
-        String(w.userId),
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
+    const base = query
+      ? withdrawals.filter((w) =>
+          [
+            String(w.txId),
+            w.reviewerName,
+            w.accountName,
+            w.accountNumber,
+            w.bankName,
+            String(w.userId),
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(query),
+        )
+      : withdrawals;
+    // Newest first by requestDate.
+    return [...base].sort(
+      (a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime(),
     );
-  })();
+  }, [withdrawals, search]);
 
   const {
     page,

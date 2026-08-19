@@ -70,6 +70,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/Seminar/${id}`,
     UPDATE: (id: number) => `/api/Seminar/${id}`,
     DELETE: (id: number) => `/api/Seminar/${id}`,
+    SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
   },
   SEMINAR_PARTICIPANT: {
     BASE: '/api/SeminarParticipant',
@@ -236,6 +237,14 @@ export const ROLES = {
   REVIEWER: 'Reviewer',
   LECTURER: 'Lecturer',
   GRADUATE_STUDENT: 'Graduate Student',
+} as const;
+
+export const REPORT = {
+  BASE: '/api/Report',
+  CREATE: '/api/Report',
+  GET_ALL: '/api/Report',
+  GET_BY_ID: (id: number) => `/api/Report/${id}`,
+  UPDATE: (id: number) => `/api/Report/${id}`,
 } as const;
 
 export type RoleName = typeof ROLES[keyof typeof ROLES];

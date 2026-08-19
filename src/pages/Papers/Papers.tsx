@@ -8,6 +8,7 @@ import { paperService } from '../../services/paper.service';
 import { usePapers } from '../../hooks/usePapers';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import { useCompletedReviewRequestForPaper } from '../../hooks/useCompletedReviewRequestForPaper';
 import { PaperLockBadge } from '../../components/researcher/PaperLockBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -115,10 +116,19 @@ export const Papers = () => {
   // immediately re-evaluates the lock here.
   const {
     getLockForPaper,
+    requests,
     isLoading: isReviewRequestsLoading,
     error: reviewRequestsLoadError,
     refetch: refetchReviewRequests,
   } = usePaperReviewLocks();
+
+  // The completed review request for the paper currently shown in the ScorecardModal.
+  // null when no completed request exists yet — ScorecardModal then renders the
+  // "not yet submitted" hint rather than a fabricated scorecard.
+  const completedReviewRequestForSelectedPaper = useCompletedReviewRequestForPaper(
+    selectedPaperForScorecard,
+    requests,
+  );
 
   // Local state mirrors the BE-loaded papers for interactive operations (upload/delete).
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -411,9 +421,12 @@ export const Papers = () => {
 
   const filteredPapers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return tabFiltered;
-    return tabFiltered.filter((p) =>
+    const base = tabFiltered.filter((p) =>
       [p.name, p.status, p.date].join(' ').toLowerCase().includes(query),
+    );
+    // Newest first by date.
+    return [...base].sort(
+      (a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime(),
     );
   }, [tabFiltered, search]);
 
@@ -669,16 +682,15 @@ export const Papers = () => {
         </div>
       </div>
 
-      {/* Scorecard Modal — live data via reviewRequest/paper. The previous
-          version of this modal was mock-only; Agent 9's Phase 2 re-implements
-          it with live `evaluation` + `paper` props. Caller (Papers.tsx) does
-          not yet have the review-request context, so we pass `null`s — the
-          modal renders an empty hint rather than fabricated scores. */}
+      {/* Scorecard Modal — shows live evaluation data when a completed review request
+          exists for the selected paper. Fetches evaluation by reviewRequest.id and
+          resolves reviewer name via reviewerLookup.service. */}
       {selectedPaperForScorecard && (
         <ScorecardModal
           isOpen={true}
           onClose={() => setSelectedPaperForScorecard(null)}
-          reviewRequest={null}
+          reviewRequest={completedReviewRequestForSelectedPaper}
+          reviewerId={completedReviewRequestForSelectedPaper?.reviewerId ?? undefined}
         />
       )}
 

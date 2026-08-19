@@ -98,6 +98,12 @@ export default function AuditLogs(): JSX.Element {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [entries]);
 
+  // Newest first by timestamp.
+  const sortedEntries = useMemo(
+    () => [...entries].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    [entries],
+  );
+
   const {
     page,
     totalPages,
@@ -109,7 +115,7 @@ export default function AuditLogs(): JSX.Element {
     next,
     prev,
     resetPage,
-  } = usePagination<AuditLogEntry>(entries, DEFAULT_PAGE_SIZE);
+  } = usePagination<AuditLogEntry>(sortedEntries, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();

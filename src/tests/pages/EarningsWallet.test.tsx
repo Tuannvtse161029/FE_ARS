@@ -20,6 +20,22 @@ vi.mock('../../store/authSlice', () => ({
   useAuthStore: (selector: any) => selector({ user: mockUser }),
 }));
 
+// Mutable so individual tests can override isLoading / wallet state
+let useWalletReturnValue = {
+  wallet: { id: 8, walletId: 8, userId: 7, balance: 0 },
+  walletId: 8,
+  isLoading: false,
+  error: null,
+  refetch: vi.fn(),
+};
+
+vi.mock('../../hooks/useWallet', () => ({
+  useWallet: () => useWalletReturnValue,
+  _setUseWalletReturn: (val: typeof useWalletReturnValue) => {
+    useWalletReturnValue = val;
+  },
+}));
+
 vi.mock('./components/WithdrawalSuccessModal', () => ({
   WithdrawalSuccessModal: ({ isOpen, requestId }: any) =>
     isOpen ? (
@@ -238,6 +254,12 @@ describe('EarningsWallet – Create Withdrawal modal', () => {
 
     expect(await screen.findByText(/withdrawal request submitted!/i)).toBeInTheDocument();
     expect(screen.getByText(/#WR-000999/i)).toBeInTheDocument();
+
+    // Verify walletId came from useWallet (8), not a hardcoded or zero fallback
+    const { withdrawalService: ws } = await import('../../services/withdrawal.service');
+    const createCall = (ws.create as any).mock.calls.at(-1)[0];
+    expect(createCall.walletId).toBe(8);
+    expect(createCall.userId).toBe(7);
   });
 
   it('closes the modal when Cancel is clicked', async () => {
@@ -248,5 +270,18 @@ describe('EarningsWallet – Create Withdrawal modal', () => {
     await user.click(screen.getByRole('button', { name: /^cancel$/i }));
 
     expect(screen.queryByText('Submit Withdrawal Request')).not.toBeInTheDocument();
+  });
+
+  it('disables the submit button while wallet is still loading', async () => {
+    const { _setUseWalletReturn } = await import('../../hooks/useWallet');
+    _setUseWalletReturn({ wallet: null, walletId: null, isLoading: true, error: null, refetch: vi.fn() });
+
+    const user = userEvent.setup();
+    renderWallet();
+    await user.click(screen.getByRole('button', { name: /create new request/i }));
+
+    expect(screen.getByRole('button', { name: /send request/i })).toBeDisabled();
+
+    _setUseWalletReturn({ wallet: { id: 8, walletId: 8, userId: 7, balance: 0 }, walletId: 8, isLoading: false, error: null, refetch: vi.fn() });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Shield,
   Building2,
@@ -12,9 +12,11 @@ import styles from './EarningsWallet.module.css';
 import { withdrawalService, WithdrawalRequest } from '../../services/withdrawal.service';
 import { WithdrawalSuccessModal } from './components/WithdrawalSuccessModal';
 import { useAuthStore } from '../../store/authSlice';
+import { useWallet } from '../../hooks/useWallet';
 
 export const EarningsWallet = () => {
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const { walletId } = useWallet(currentUserId);
 
   // Available balance state loaded from localStorage
   const [unlockedBalance] = useState(() => {
@@ -62,6 +64,15 @@ export const EarningsWallet = () => {
     fetchRequests();
   }, [fetchRequests]);
 
+  // Newest first by createdAt.
+  const sortedRequests = useMemo(
+    () =>
+      [...requests].sort(
+        (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+      ),
+    [requests],
+  );
+
   const handleOpenRejectReason = (req: WithdrawalRequest) => {
     setSelectedRequest(req);
     setShowRejectModal(true);
@@ -96,7 +107,7 @@ export const EarningsWallet = () => {
     try {
       const result = await withdrawalService.create({
         userId: currentUserId ?? undefined,
-        walletId: 1, // primary wallet — replace with real walletId from auth/Wallet entity when available
+        walletId: walletId ?? undefined,
         bankName: targetBank,
         accountNumber,
         accountName,
@@ -220,7 +231,7 @@ export const EarningsWallet = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.map((req) => (
+                {sortedRequests.map((req) => (
                   <tr key={req.id ?? req.withdrawalRequestId}>
                     <td className={styles.requestIdText}>{formatId(req)}</td>
                     <td>{req.createdAt ? req.createdAt.slice(0, 10) : '——'}</td>
@@ -466,11 +477,11 @@ export const EarningsWallet = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className={styles.modalSubmitBtn}
-                  disabled={submitting}
-                >
+                  <button
+                    type="submit"
+                    className={styles.modalSubmitBtn}
+                    disabled={submitting || !walletId}
+                  >
                   {submitting ? 'Sending...' : 'Send Request'}
                 </button>
               </div>

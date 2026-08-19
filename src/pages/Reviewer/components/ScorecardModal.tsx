@@ -9,8 +9,9 @@ import {
   detailedEvaluationService,
   type DetailedEvaluation,
 } from '../../../services/detailedEvaluation.service';
-import type { ReviewRequest } from '../../../services/reviewRequest.service';
-import type { Paper } from '../../../services/paper.service';
+import { type ReviewRequest } from '../../../services/reviewRequest.service';
+import { type Paper } from '../../../services/paper.service';
+import { getReviewerDisplayName, ensureReviewerDisplayName } from '../../../services/reviewerLookup.service';
 import styles from './ScorecardModal.module.css';
 
 interface CriteriaItem {
@@ -24,12 +25,15 @@ interface ScorecardModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** When provided, fetches the evaluation by review request id. */
-  reviewRequest?: Pick<ReviewRequest, 'id' | 'paperId'> | null;
+  reviewRequest?: Pick<ReviewRequest, 'id' | 'paperId' | 'reviewerId'> | null;
   /** When the caller already has the evaluation loaded, pass it in to skip
    *  the BE round-trip. */
   evaluation?: DetailedEvaluation | null;
   /** Optional paper to display the title above the scorecard. */
   paper?: Paper | null;
+  /** Reviewer user id — used to fetch the reviewer's display name when
+   *  the reviewerId is available on the review request. */
+  reviewerId?: number | null;
 }
 
 interface ScorecardData {
@@ -97,10 +101,30 @@ export const ScorecardModal = ({
   reviewRequest,
   evaluation: evaluationProp,
   paper,
+  reviewerId: reviewerIdProp,
 }: ScorecardModalProps) => {
   const [fetchedEvaluation, setFetchedEvaluation] = useState<DetailedEvaluation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reviewer name — prefer the explicit prop, fall back to the reviewRequest, fall back to null.
+  const effectiveReviewerId = reviewerIdProp ?? reviewRequest?.reviewerId ?? null;
+
+  // Resolve the reviewer display name. The reviewerLookup service probes GET /api/User/{id}
+  // asynchronously and dispatches 'ars:reviewer-name-resolved' on success; we use a
+  // refresh-key so the component re-renders with the resolved name.
+  const [, setReviewerNameRefresh] = useState(0);
+  useEffect(() => {
+    if (effectiveReviewerId == null) return;
+    ensureReviewerDisplayName(effectiveReviewerId);
+    const handler = () => setReviewerNameRefresh((k) => k + 1);
+    window.addEventListener('ars:reviewer-name-resolved', handler);
+    return () => window.removeEventListener('ars:reviewer-name-resolved', handler);
+  }, [effectiveReviewerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const reviewerDisplayName = effectiveReviewerId != null
+    ? getReviewerDisplayName(effectiveReviewerId)
+    : 'Reviewer';
 
   // Fetch only when the caller didn't pre-supply `evaluation` AND we have a
   // valid `reviewRequest.id`.
@@ -221,7 +245,7 @@ export const ScorecardModal = ({
   const data: ScorecardData = {
     fileName: paper?.title ?? 'Untitled',
     decision: decisionToClass(evaluation.finalDecision),
-    reviewerName: 'Reviewer',
+    reviewerName: reviewerDisplayName,
     date: evaluation.createdAt
       ? new Date(evaluation.createdAt).toISOString().split('T')[0]
       : '',

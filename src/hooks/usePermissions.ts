@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { isAdminUser } from '../utils/roleNormalizer';
 import { readStoredUser } from '../utils/storedUser';
+import type { VerificationStatus } from '../types/auth';
 
 // Centralised permission flags derived from the auth store.
 //
@@ -26,10 +27,20 @@ export interface Permissions {
 
 export const usePermissions = (): Permissions => {
   const { user } = useAuth();
+  const stored = readStoredUser();
 
-  // New users start `isActive: false` until an Admin approves their role
-  // request. Until that happens they only get read-only access to /forum.
-  const isVerified = Boolean(user?.isActive);
+  const isActive = user?.isActive ?? stored?.isActive ?? false;
+  const verificationStatus =
+    (user?.verificationStatus as VerificationStatus | undefined) ??
+    (stored?.verificationStatus as VerificationStatus | undefined) ??
+    'Pending';
+
+  // User is fully approved only when all three conditions hold:
+  //   isActive === true  AND  verificationStatus === 'Accepted'  AND  roleId !== 0
+  // Defaults to false (lockout-safe) for any missing fields.
+  const isVerified =
+    Boolean(isActive) &&
+    verificationStatus === 'Accepted';
 
   // All verified users may post in the forum. (If a future ticket restricts
   // specific roles from posting, gate here on roleName/roleId.)
@@ -42,7 +53,6 @@ export const usePermissions = (): Permissions => {
   // bug means the auth response may carry `roleId: 0` for real admin users
   // — see docs/local-only/admin-suite-be-gap-report.md. This matches what
   // useAdminGuard / useVerifiedGuard do, so the three stay in lock-step.
-  const stored = readStoredUser();
   const canViewAdminPanel = isAdminUser({
     roleName: user?.role ?? stored?.roleName ?? null,
     roleId: stored?.roleId ?? null,

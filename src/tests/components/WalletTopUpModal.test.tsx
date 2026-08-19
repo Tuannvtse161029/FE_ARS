@@ -112,6 +112,44 @@ describe('WalletTopUpModal', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables Confirm & Pay when currentWalletId is null — no payment payload sent', async () => {
+    const user = userEvent.setup();
+    const { onMessage } = renderModal({ currentWalletId: null });
+
+    const confirm = screen.getByTestId('confirm-pay-button');
+    expect(confirm).toBeDisabled();
+
+    // Attempting to click has no effect — no API call is made.
+    await user.click(confirm).catch(() => undefined);
+    expect(paymentService.createLink).not.toHaveBeenCalled();
+    // The user-facing recovery message is surfaced.
+    expect(screen.getByText(/wallet information could not be loaded/i)).toBeInTheDocument();
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it('disables Confirm & Pay when currentWalletId is 0 — never sends walletId:0 to payment API', async () => {
+    const user = userEvent.setup();
+    renderModal({ currentWalletId: 0 });
+
+    const confirm = screen.getByTestId('confirm-pay-button');
+    expect(confirm).toBeDisabled();
+    expect(screen.getByText(/wallet information could not be loaded/i)).toBeInTheDocument();
+
+    await user.click(confirm).catch(() => undefined);
+    expect(paymentService.createLink).not.toHaveBeenCalled();
+  });
+
+  it('shows wallet-unavailable error banner when wallet ID is not yet loaded', async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderModal({ currentWalletId: undefined });
+
+    // The recovery CTA is present so the user can dismiss and retry.
+    expect(screen.getByText(/wallet information could not be loaded/i)).toBeInTheDocument();
+    const retry = screen.getByRole('button', { name: /refresh and try again/i });
+    await user.click(retry);
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('Confirm & Pay POSTs /api/Payment/create-link with PayOS returnUrl/cancelUrl', async () => {
     const user = userEvent.setup();
     renderModal();

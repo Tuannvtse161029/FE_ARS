@@ -22,9 +22,10 @@ const MAX_AMOUNT_VND = 50_000_000;
 interface WalletTopUpModalProps {
   isOpen: boolean;
   currentUserId?: number | null;
-  // The BE's wallet id for the user. Optional — when missing we send 0 and
-  // let the BE reject the request with a 400 (it owns the wallet->user
-  // mapping). The parent (MainLayout) can look this up via walletService.
+  // The BE's wallet id for the user. Must be a positive integer — never null,
+  // undefined, or 0. The parent is responsible for fetching the wallet before
+  // opening this modal. When missing the submit button is disabled and a
+  // recovery message is shown.
   currentWalletId?: number | null;
   currentBalance: number | null;
   // Called whenever the wallet balance changes (after BE confirmation).
@@ -139,6 +140,11 @@ export function WalletTopUpModal({
 
   const handleConfirmPay = async (): Promise<void> => {
     if (!isAmountValid || parsedAmount === null) return;
+    // Reject when wallet is missing — never fall back to 0.
+    if (!currentWalletId || currentWalletId <= 0) {
+      onMessage('Your wallet information could not be loaded. Refresh and try again.', 'error');
+      return;
+    }
     // Disable duplicate submission while the request is in flight.
     if (submitGuard || isCreatingLink) return;
     const amount = parsedAmount;
@@ -156,7 +162,7 @@ export function WalletTopUpModal({
       amount,
       description: `Wallet top-up ${formatVnd(amount)} VND`,
       userId: currentUserId ?? undefined,
-      walletId: currentWalletId ?? 0,
+      walletId: currentWalletId,
       returnUrl,
       cancelUrl,
     });
@@ -285,6 +291,20 @@ export function WalletTopUpModal({
 
         {step === 'amount' ? (
           <div className={styles.body}>
+            {/* Wallet unavailable — stop the user from attempting a payment. */}
+            {!currentWalletId || currentWalletId <= 0 ? (
+              <div className={styles.errorBanner}>
+                <span>Your wallet information could not be loaded.</span>
+                <button
+                  type="button"
+                  className={styles.retryButton}
+                  onClick={onClose}
+                >
+                  Refresh and try again
+                </button>
+              </div>
+            ) : null}
+
             <p className={styles.helperText}>
               Pick a quick amount or type a custom value. Funds are credited via
               PayOS. Min {formatVnd(MIN_AMOUNT_VND)} VND — max{' '}
@@ -459,7 +479,7 @@ export function WalletTopUpModal({
                 type="button"
                 className={styles.confirmButton}
                 onClick={() => void handleConfirmPay()}
-                disabled={!isAmountValid || submitGuard || isCreatingLink}
+                disabled={!isAmountValid || !currentWalletId || currentWalletId <= 0 || submitGuard || isCreatingLink}
                 data-testid="confirm-pay-button"
               >
                 {submitGuard || isCreatingLink

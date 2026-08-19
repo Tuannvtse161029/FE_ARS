@@ -265,3 +265,43 @@ describe('AssignedReviews – Refresh button', () => {
     expect(reviewRequestService.getAll).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('AssignedReviews – deadline display (agent-19 fix)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockNavigate.mockClear();
+  });
+
+  it('does NOT render "No deadline set" when the BE sends deadline=null', async () => {
+    const { reviewRequestService } = await import('../../services/reviewRequest.service');
+    (reviewRequestService.getAll as any).mockResolvedValueOnce([
+      {
+        id: 5,
+        paperId: 20,
+        reviewerId: 35,
+        fee: 300000,
+        status: 'Pending',
+        deadline: null,   // BE never sets deadline — the fix: no "No deadline set" shown
+        type: 'Peer Review',
+        createdAt: '2026-08-01T00:00:00Z',
+      },
+    ]);
+
+    renderAssigned();
+    await waitFor(() => screen.getByText('Paper #20'));
+
+    // The "No deadline set" text must NOT appear anywhere on the page.
+    // Previously this was rendered even when deadline=null.
+    expect(screen.queryByText(/no deadline set/i)).not.toBeInTheDocument();
+  });
+
+  it('renders the deadline date when the BE sends a real deadline', async () => {
+    renderAssigned();
+    await waitFor(() => screen.getByText('Federated Learning at Scale'));
+    // The seed data has deadline: '2026-09-01T00:00:00Z'.
+    // formatDeadline returns "Deadline: 2026-09-01 • X Days Remaining".
+    expect(screen.getByText(/deadline:/i)).toBeInTheDocument();
+    // "No deadline set" must still not appear for rows that have a deadline.
+    expect(screen.queryByText(/no deadline set/i)).not.toBeInTheDocument();
+  });
+});

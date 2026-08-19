@@ -1,15 +1,8 @@
-import { useEffect, useState } from 'react';
-import {
-  seminarService,
-  seminarParticipantService,
-  mapSeminarToCard,
-  type SeminarCard,
-} from '../../services/seminar.service';
+import { useState, useCallback, useRef } from 'react';
 import {
   Plus,
   RefreshCw,
   Check,
-  CheckCircle2,
   X,
   Loader,
   FileText,
@@ -18,25 +11,23 @@ import {
   Clock,
   Video,
   Eye,
-  Sparkles,
   ClipboardList,
   Mail,
   AlertTriangle,
-  Film,
-  Upload,
-  Wand2,
-  RotateCcw,
-  Folder,
 } from 'lucide-react';
+import {
+  deriveEffectiveStatus,
+  isValidMeetLink,
+  type SeminarCard,
+} from '../../services/seminar.service';
+import {
+  useSeminars,
+  useCreateSeminar,
+  useSendReminder,
+  useSeminarParticipants,
+} from '../../hooks/useSeminar';
+import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import styles from './SeminarWorkspace.module.css';
-
-interface StudentGrade {
-  name: string;
-  email: string;
-  status: 'SUBMITTED' | 'PENDING';
-  score?: string;
-  comment?: string;
-}
 
 export const SeminarWorkspace = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'completed' | 'drafts'>('all');
@@ -47,38 +38,60 @@ export const SeminarWorkspace = () => {
   const [bannerText, setBannerText] = useState('');
   const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<SeminarCard | null>(null);
 
-  // AI Summarizer states (Frame 35 & 36)
+  // AI Summary integration point — Agent 23 wires the actual modal
   const [showAiModal, setShowAiModal] = useState(false);
-  const [aiModalStep, setAiModalStep] = useState<'upload' | 'results'>('upload');
-  const [aiNotesSaved, setAiNotesSaved] = useState(false);
   const [selectedSeminarForAi, setSelectedSeminarForAi] = useState<SeminarCard | null>(null);
 
-  // Form states inside Create Modal (Frame 30)
-  const [seminarName, setSeminarName] = useState('Advanced Cloud Routing Architecture Seminar');
+  // Form states inside Create Modal
+  const [seminarName, setSeminarName] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [seminarDetails, setSeminarDetails] = useState('');
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const [emailInputText, setEmailInputText] = useState('');
   const [sendReminder, setSendReminder] = useState(true);
 
-  // Generated Meet link state for Frame 31 — populated by the BE response on create
+  // Google Meet link from BE on create
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
-  // Workshops pulled from the BE
-  const [seminars, setSeminars] = useState<SeminarCard[]>([]);
-  const [isLoadingSeminars, setIsLoadingSeminars] = useState(true);
-  const [loadSeminarsError, setLoadSeminarsError] = useState<string | null>(null);
-  const [isCreatingSeminar, setIsCreatingSeminar] = useState(false);
+  // ── Seminar data via hooks ───────────────────────────────────────────────────
+  const { seminars, isLoading: isLoadingSeminars, error: loadSeminarsError, refetch } =
+    useSeminars();
 
-  // Hybrid ID format for display. The BE returns numeric IDs, so we render
-  // them as "SEM-{year}-{id}" for a stable human-friendly badge.
+  // ── Create seminar ────────────────────────────────────────────────────────────
+  const handleCreateSuccess = useCallback(
+    (created: { seminarId: number; onlineLink?: string | null }) => {
+      setGeneratedMeetLink(created.onlineLink ?? '');
+      setBannerText(`"${seminarName || 'Seminar'}" has been created.`);
+      setShowSuccessBanner(true);
+      setShowCreateModal(false);
+      setShowGeneratedModal(true);
+    },
+    [seminarName]
+  );
+
+  const { createSeminar, isCreating: isCreatingSeminar } = useCreateSeminar(
+    handleCreateSuccess,
+    refetch
+  );
+
+  // ── Send reminder ────────────────────────────────────────────────────────────
+  const { sendReminder: doSendReminder, isSending: isSendingReminder } =
+    useSendReminder(undefined, refetch);
+
+  // Double-click guard — prevents racing calls from rapid button presses
+  const reminderInFlightRef = useRef(false);
+
+  // ── Participants for feedback modal ──────────────────────────────────────────
+  const { participants: allParticipants, isLoading: isLoadingParticipants } =
+    useSeminarParticipants(selectedSeminarForFeedback?.seminarId);
+
+  // Hybrid ID format for display
   const formatSeminarId = (id: number): string => {
     const year = new Date().getFullYear();
     return `SEM-${year}-${String(id).padStart(3, '0')}`;
   };
 
-  // Split a "2026-07-29 · 10:00 AM" style string into ISO start/end.
-  // Falls back to "now + 1h" so the BE always receives a valid pair.
+  // Parse a display date-time string into ISO start/end (1-hour default).
   const parseDateTimeRange = (
     raw: string
   ): { startTime: string; endTime: string } => {
@@ -93,92 +106,22 @@ export const SeminarWorkspace = () => {
     return { startTime: now.toISOString(), endTime: end.toISOString() };
   };
 
-  // Initial load of seminars
-  useEffect(() => {
-    let cancelled = false;
-    const loadSeminars = async () => {
-      setLoadSeminarsError(null);
-      try {
-        const list = await seminarService.getAll();
-        if (cancelled) return;
-        setSeminars(list.map(mapSeminarToCard));
-      } catch (err) {
-        if (cancelled) return;
-        setLoadSeminarsError(
-          (err as { message?: string })?.message ||
-            'Failed to load seminars. Please try again.'
-        );
-      } finally {
-        if (!cancelled) setIsLoadingSeminars(false);
-      }
-    };
-    void loadSeminars();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Best-effort invite dispatch. Succeeds silently — UI does not depend on it.
-  // The BE's /api/SeminarParticipant contract is keyed on userId, not email,
-  // so until the BE exposes an invite-by-email endpoint, we mark the seminar
-  // as having invitations in flight by posting an empty participant row.
-  const dispatchInvitations = async (seminarId: number, _emails: string[]) => {
-    await Promise.allSettled(
-      Array.from({ length: 1 }).map(() =>
-        seminarParticipantService.create({
-          seminarId,
-          invitationStatus: 'Invited',
-        })
-      )
-    );
-  };
-
-  // Mock Student Grades for Feedback Modal (Frame 34)
-  const studentGradesList: StudentGrade[] = [
-    {
-      name: 'Anh Nguyen Thi',
-      email: 'student1@ars.edu.vn',
-      status: 'SUBMITTED',
-      score: '8.5/10',
-      comment: 'Excellent replication strategy analysis.',
-    },
-    {
-      name: 'Bao Tran Van',
-      email: 'researcher.b@ars.edu.vn',
-      status: 'SUBMITTED',
-      score: '7.0/10',
-      comment: 'Good work, more depth on CAP theorem needed.',
-    },
-    {
-      name: 'Chi Pham Minh',
-      email: 'chi.pm@ars.edu.vn',
-      status: 'SUBMITTED',
-      score: '9.0/10',
-      comment: 'Outstanding distributed DB design proposal.',
-    },
-    {
-      name: 'Duc Le Hoang',
-      email: 'duc.lh@ars.edu.vn',
-      status: 'PENDING',
-      score: '-',
-      comment: 'No submission yet',
-    },
-  ];
-
-  // Filters logic
+  // Tab filtering — uses effectiveStatus so past-endTime seminars appear in "Completed"
   const filteredSeminars = seminars.filter((sem) => {
+    const effective = deriveEffectiveStatus(sem.status, sem.endTime);
     if (activeTab === 'upcoming') {
-      return sem.status === 'UPCOMING' || sem.status === 'IN PROGRESS';
+      return effective === 'UPCOMING' || effective === 'IN PROGRESS';
     }
     if (activeTab === 'completed') {
-      return sem.status === 'COMPLETED';
+      return effective === 'COMPLETED';
     }
     if (activeTab === 'drafts') {
-      return false; // No drafts
+      return effective === 'DRAFT';
     }
-    return true; // All
+    return true;
   });
 
+  // Email invite helpers
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && emailInputText.trim()) {
       if (!guestEmails.includes(emailInputText.trim())) {
@@ -192,77 +135,55 @@ export const SeminarWorkspace = () => {
     setGuestEmails(guestEmails.filter((x) => x !== email));
   };
 
+  // Create submit
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCreatingSeminar) return;
-    if (!seminarName.trim()) {
-      alert('Please enter a seminar name.');
-      return;
-    }
-    if (!dateTime.trim()) {
-      alert('Please select a date and time.');
-      return;
-    }
-    if (!seminarDetails.trim()) {
-      alert('Please enter seminar details.');
+    if (!seminarName.trim()) { alert('Please enter a seminar name.'); return; }
+    if (!dateTime.trim())   { alert('Please select a date and time.'); return; }
+    if (!seminarDetails.trim()) { alert('Please enter seminar details.'); return; }
+
+    // Enforce at least 1-hour-in-advance rule (belt-and-suspenders over the min attribute).
+    const minTime = new Date(Date.now() + 60 * 60 * 1000);
+    if (new Date(dateTime) < minTime) {
+      alert('Seminars must be scheduled at least 1 hour in advance.');
       return;
     }
 
     const { startTime, endTime } = parseDateTimeRange(dateTime);
-
-    setIsCreatingSeminar(true);
-    setLoadSeminarsError(null);
-    try {
-      // 1. POST the seminar to the BE
-      const created = await seminarService.create({
-        startTime,
-        endTime,
-        content: seminarDetails.trim(),
-        isReminderSent: sendReminder,
-        status: 'Upcoming',
-      });
-      const createdCard = mapSeminarToCard(created);
-
-      // 2. Optimistically insert the new card so the list updates immediately
-      setSeminars((prev) => [{ ...createdCard, isNew: true }, ...prev]);
-
-      // 3. Fire invitations (best-effort). Failures are swallowed.
-      if (guestEmails.length > 0) {
-        await dispatchInvitations(createdCard.seminarId, guestEmails);
-      }
-
-      // 4. Re-fetch the full list so the BE-canonical rows replace the optimistic one
-      try {
-        const fresh = await seminarService.getAll();
-        setSeminars(fresh.map(mapSeminarToCard));
-      } catch {
-        // Non-fatal — the optimistic row stays in place
-      }
-
-      // 5. Surface the generated meeting link in the success modal
-      setGeneratedMeetLink(createdCard.onlineLink || 'https://meet.google.com/');
-      setBannerText(`"${seminarName}" has been created and Google Meet link generated.`);
-      setShowSuccessBanner(true);
-      setShowCreateModal(false);
-      setShowGeneratedModal(true);
-    } catch (err) {
-      const message =
-        (err as { message?: string })?.message ||
-        'Failed to create the seminar. Please try again.';
-      alert(message);
-    } finally {
-      setIsCreatingSeminar(false);
-    }
+    await createSeminar({
+      startTime,
+      endTime,
+      content: seminarDetails.trim(),
+      isReminderSent: sendReminder,
+      status: 'Upcoming',
+    });
   };
 
+  // Feedback modal
   const handleOpenFeedbackModal = (sem: SeminarCard) => {
     setSelectedSeminarForFeedback(sem);
     setShowFeedbackModal(true);
   };
 
-  const handleRemindPending = () => {
-    alert('An automated email reminder has been sent to Duc Le Hoang (duc.lh@ars.edu.vn).');
+  // Reminder — calls the real API hook with double-click guard
+  const handleRemindPending = async (seminarId: number) => {
+    if (reminderInFlightRef.current) return;
+    reminderInFlightRef.current = true;
+    try {
+      await doSendReminder(seminarId);
+      alert('Reminder sent successfully!');
+    } catch {
+      alert('Failed to send reminder. Please try again.');
+    } finally {
+      reminderInFlightRef.current = false;
+    }
   };
+
+  // AI Summary integration point — Agent 23 wires the actual modal
+  const handleOpenAiSummary = useCallback((sem: SeminarCard) => {
+    setSelectedSeminarForAi(sem);
+    setShowAiModal(true);
+  }, []);
 
   return (
     <div className={styles.seminarWorkspace}>
@@ -283,23 +204,7 @@ export const SeminarWorkspace = () => {
           <button
             type="button"
             className={styles.refreshBtn}
-            onClick={() => {
-              setIsLoadingSeminars(true);
-              void (async () => {
-                setLoadSeminarsError(null);
-                try {
-                  const list = await seminarService.getAll();
-                  setSeminars(list.map(mapSeminarToCard));
-                } catch (err) {
-                  setLoadSeminarsError(
-                    (err as { message?: string })?.message ||
-                      'Failed to load seminars. Please try again.'
-                  );
-                } finally {
-                  setIsLoadingSeminars(false);
-                }
-              })();
-            }}
+            onClick={() => { void refetch(); }}
             disabled={isLoadingSeminars}
             aria-label="Refresh seminars"
           >
@@ -354,13 +259,19 @@ export const SeminarWorkspace = () => {
           className={`${styles.tabBtn} ${activeTab === 'upcoming' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('upcoming')}
         >
-          Upcoming ({seminars.filter((s) => s.status !== 'COMPLETED').length})
+          Upcoming ({seminars.filter((s) => {
+            const eff = deriveEffectiveStatus(s.status, s.endTime);
+            return eff === 'UPCOMING' || eff === 'IN PROGRESS';
+          }).length})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'completed' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('completed')}
         >
-          Completed ({seminars.filter((s) => s.status === 'COMPLETED').length})
+          Completed ({seminars.filter((s) => {
+            const eff = deriveEffectiveStatus(s.status, s.endTime);
+            return eff === 'COMPLETED';
+          }).length})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'drafts' ? styles.activeTab : ''}`}
@@ -385,23 +296,7 @@ export const SeminarWorkspace = () => {
             <button
               type="button"
               className={styles.errorRetryBtn}
-              onClick={() => {
-                setIsLoadingSeminars(true);
-                void (async () => {
-                  setLoadSeminarsError(null);
-                  try {
-                    const list = await seminarService.getAll();
-                    setSeminars(list.map(mapSeminarToCard));
-                  } catch (err) {
-                    setLoadSeminarsError(
-                      (err as { message?: string })?.message ||
-                        'Failed to load seminars. Please try again.'
-                    );
-                  } finally {
-                    setIsLoadingSeminars(false);
-                  }
-                })();
-              }}
+              onClick={() => { void refetch(); }}
             >
               Retry
             </button>
@@ -474,8 +369,8 @@ export const SeminarWorkspace = () => {
                 </div>
               )}
 
-              {/* Google Meet Box */}
-              {sem.onlineLink && (
+              {/* Google Meet Box — only shown when BE returns a valid HTTPS Google Meet URL */}
+              {isValidMeetLink(sem.onlineLink) && (
                 <div className={styles.meetBox}>
                   <Video size={14} className={styles.meetIcon} aria-hidden />
                   <a href={sem.onlineLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
@@ -484,16 +379,25 @@ export const SeminarWorkspace = () => {
                 </div>
               )}
 
-              {/* Completed Feedback Bar — backend has not yet exposed
-                  feedbackSubmitted/feedbackTotal counters; render placeholder when missing. */}
+              {/* Feedback progress bar — real counts from participant list */}
               {sem.status === 'COMPLETED' && (
                 <div className={styles.feedbackProgressBlock}>
                   <div className={styles.feedbackProgressLabels}>
                     <span className={styles.progressLabel}>Feedback submissions</span>
-                    <span className={styles.progressText}>—</span>
+                    <span className={styles.progressText}>
+                      {sem.feedbackSubmitted}/{sem.feedbackTotal}
+                    </span>
                   </div>
                   <div className={styles.progressBg}>
-                    <div className={styles.progressFill} style={{ width: '0%' }}></div>
+                    <div
+                      className={styles.progressFill}
+                      style={{
+                        width:
+                          sem.feedbackTotal > 0
+                            ? `${(sem.feedbackSubmitted / sem.feedbackTotal) * 100}%`
+                            : '0%',
+                      }}
+                    ></div>
                   </div>
                 </div>
               )}
@@ -504,28 +408,10 @@ export const SeminarWorkspace = () => {
                   <>
                     <button
                       className={styles.viewNotesBtn}
-                      onClick={() => {
-                        setSelectedSeminarForAi(sem);
-                        if (aiNotesSaved) {
-                          setAiModalStep('results');
-                        } else {
-                          setAiModalStep('upload');
-                        }
-                        setShowAiModal(true);
-                      }}
+                      onClick={() => handleOpenAiSummary(sem)}
                     >
                       <Eye size={14} aria-hidden />
-                      {aiNotesSaved ? (
-                        <>
-                          View Notes (AI Generated){' '}
-                          <span className={styles.greenAiBadge}>
-                            <Sparkles size={12} aria-hidden style={{ verticalAlign: '-2px', marginRight: 3 }} />
-                            AI
-                          </span>
-                        </>
-                      ) : (
-                        'View Notes'
-                      )}
+                      View Notes
                     </button>
                     <button
                       className={styles.feedbackGradingBtn}
@@ -539,8 +425,8 @@ export const SeminarWorkspace = () => {
                   <>
                     <button
                       className={styles.joinMeetBtn}
-                      onClick={() => sem.onlineLink && window.open(sem.onlineLink, '_blank')}
-                      disabled={!sem.onlineLink}
+                      onClick={() => window.open(sem.onlineLink, '_blank')}
+                      disabled={!isValidMeetLink(sem.onlineLink)}
                     >
                       <Video size={14} aria-hidden />
                       Join Google Meet
@@ -548,12 +434,10 @@ export const SeminarWorkspace = () => {
                     <button
                       className={styles.sendInviteBtn}
                       onClick={() => {
-                        if (sem.onlineLink) {
-                          navigator.clipboard.writeText(sem.onlineLink);
-                          alert('Copied invite link!');
-                        }
+                        navigator.clipboard.writeText(sem.onlineLink);
+                        alert('Copied invite link!');
                       }}
-                      disabled={!sem.onlineLink}
+                      disabled={!isValidMeetLink(sem.onlineLink)}
                     >
                       <Mail size={14} aria-hidden />
                       Send Invite Link
@@ -611,11 +495,20 @@ export const SeminarWorkspace = () => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>* Date & Time</label>
                 <input
-                  type="text"
+                  type="datetime-local"
                   className={styles.formInput}
-                  value={dateTime}
-                  onChange={(e) => setDateTime(e.target.value)}
-                  placeholder="2026-07-29 · 10:00 AM"
+                  value={dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''}
+                  min={(() => {
+                    // Seminar must be scheduled at least 1 hour in advance.
+                    const minDate = new Date(Date.now() + 60 * 60 * 1000);
+                    return minDate.toISOString().slice(0, 16);
+                  })()}
+                  onChange={(e) => {
+                    const localValue = e.target.value; // "2026-07-29T10:00"
+                    if (!localValue) { setDateTime(''); return; }
+                    // Convert local time to an ISO string so the API and parseDateTimeRange stay compatible.
+                    setDateTime(new Date(localValue).toISOString());
+                  }}
                   required
                 />
               </div>
@@ -803,84 +696,149 @@ export const SeminarWorkspace = () => {
               </button>
             </div>
 
-            {/* Stats Metrics Bar */}
+            {/* Stats Metrics Bar — computed from real participant list */}
             <div className={styles.feedbackStatsGrid}>
               <div className={styles.statBlock}>
                 <span className={styles.statLabel}>Total Invited</span>
-                <span className={styles.statVal}>4</span>
+                <span className={styles.statVal}>{allParticipants.length}</span>
               </div>
               <div className={styles.statBlock}>
                 <span className={styles.statLabel}>Submitted</span>
-                <span className={styles.statVal}>3</span>
+                <span className={styles.statVal}>
+                  {allParticipants.filter((p) => p.invitationStatus?.toLowerCase() === 'submitted').length}
+                </span>
               </div>
               <div className={styles.statBlock}>
                 <span className={styles.statLabel}>Pending</span>
-                <span className={styles.statVal}>1</span>
+                <span className={styles.statVal}>
+                  {allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted').length}
+                </span>
               </div>
               <div className={styles.statBlock}>
                 <span className={styles.statLabel}>Avg. Score</span>
-                <span className={styles.statVal}>8.2</span>
+                <span className={styles.statVal}>—</span>
               </div>
               <div className={styles.statBlockCompletion}>
                 <div className={styles.completionHeaderRow}>
                   <span className={styles.statLabel}>Completion</span>
-                  <span className={styles.completionPercent}>75%</span>
+                  <span className={styles.completionPercent}>
+                    {allParticipants.length > 0
+                      ? `${Math.round(
+                          (allParticipants.filter(
+                            (p) => p.invitationStatus?.toLowerCase() === 'submitted'
+                          ).length /
+                            allParticipants.length) *
+                            100
+                        )}%`
+                      : '—'}
+                  </span>
                 </div>
                 <div className={styles.completionBarBg}>
-                  <div className={styles.completionBarFill} style={{ width: '75%' }}></div>
+                  <div
+                    className={styles.completionBarFill}
+                    style={{
+                      width:
+                        allParticipants.length > 0
+                          ? `${
+                              (allParticipants.filter(
+                                (p) => p.invitationStatus?.toLowerCase() === 'submitted'
+                              ).length /
+                                allParticipants.length) *
+                              100
+                            }%`
+                          : '0%',
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
 
-            {/* Student Grading Table */}
+            {/* Participant Table — real API data */}
             <div className={styles.studentGradesTableWrapper}>
-              <table className={styles.studentGradesTable}>
-                <thead>
-                  <tr>
-                    <th>STUDENT</th>
-                    <th>STATUS</th>
-                    <th>SCORE</th>
-                    <th>COMMENT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentGradesList.map((st, i) => (
-                    <tr key={i}>
-                      <td>
-                        <div className={styles.studentCellBlock}>
-                          <span className={styles.studentAvatarMini}>{st.name.slice(0, 2).toUpperCase()}</span>
-                          <div>
-                            <span className={styles.studentNameText}>{st.name}</span>
-                            <span className={styles.studentEmailText}>{st.email}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {st.status === 'SUBMITTED' ? (
-                          <span className={styles.submittedPill}>
-                            <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
-                            SUBMITTED
-                          </span>
-                        ) : (
-                          <span className={styles.pendingPill}>
-                            <Clock size={12} aria-hidden style={{ marginRight: 4 }} />
-                            PENDING
-                          </span>
-                        )}
-                      </td>
-                      <td className={styles.scoreValText}>{st.score}</td>
-                      <td className={styles.commentText}>{st.comment}</td>
+              {isLoadingParticipants ? (
+                <div className={styles.emptyDrafts}>
+                  <Loader size={20} className={styles.emptyIcon} aria-hidden />
+                  <span>Loading participants…</span>
+                </div>
+              ) : allParticipants.length === 0 ? (
+                <div className={styles.emptyDrafts}>
+                  <Inbox size={20} className={styles.emptyIcon} aria-hidden />
+                  <span>No participants invited yet.</span>
+                </div>
+              ) : (
+                <table className={styles.studentGradesTable}>
+                  <thead>
+                    <tr>
+                      <th>STUDENT</th>
+                      <th>STATUS</th>
+                      <th>EVALUATION</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {allParticipants.map((p) => (
+                      <tr key={p.seminarParticipantId ?? p.userId}>
+                        <td>
+                          <div className={styles.studentCellBlock}>
+                            <span className={styles.studentAvatarMini}>
+                              {(p.userFullName ?? p.userEmail ?? '??')
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </span>
+                            <div>
+                              <span className={styles.studentNameText}>
+                                {p.userFullName ?? p.userEmail ?? 'Unknown'}
+                              </span>
+                              {p.userEmail && (
+                                <span className={styles.studentEmailText}>
+                                  {p.userEmail}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          {p.invitationStatus?.toLowerCase() === 'submitted' ? (
+                            <span className={styles.submittedPill}>
+                              <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
+                              SUBMITTED
+                            </span>
+                          ) : (
+                            <span className={styles.pendingPill}>
+                              <Clock size={12} aria-hidden style={{ marginRight: 4 }} />
+                              PENDING
+                            </span>
+                          )}
+                        </td>
+                        <td className={styles.commentText}>
+                          {p.participantEvaluation ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Footer */}
             <div className={styles.feedbackModalFooter}>
-              <button className={styles.remindPendingBtn} onClick={handleRemindPending}>
-                <Mail size={14} aria-hidden />
-                Remind Pending (1)
+              <button
+                className={styles.remindPendingBtn}
+                onClick={() =>
+                  selectedSeminarForFeedback &&
+                  void handleRemindPending(selectedSeminarForFeedback.seminarId)
+                }
+                disabled={
+                  isSendingReminder ||
+                  allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted')
+                    .length === 0
+                }
+              >
+                {isSendingReminder ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <Mail size={14} aria-hidden />
+                )}
+                Remind Pending ({allParticipants.length})
               </button>
               <button className={styles.modalCloseNavyBtn} onClick={() => setShowFeedbackModal(false)}>
                 Close
@@ -890,160 +848,18 @@ export const SeminarWorkspace = () => {
         </div>
       )}
 
-      {/* FRAME 35 & 36: SEMINAR RECORDING AI SUMMARIZER MODAL */}
-      {showAiModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.aiSummarizerModalCard}>
-            {/* Header */}
-            <div className={styles.modalHeaderRow}>
-              <div className={styles.modalTitleBlock}>
-                <span className={styles.aiIconCircle}>
-                  <Sparkles size={18} aria-hidden />
-                </span>
-                <div>
-                  <h3 className={styles.modalTitle}>Seminar Recording AI Summarizer</h3>
-                  <span className={styles.modalSubtitle}>
-                    Upload meeting media for {selectedSeminarForAi ? selectedSeminarForAi.title : 'seminar'} to generate automated AI notes.
-                  </span>
-                </div>
-              </div>
-              <button
-                className={styles.closeBtn}
-                onClick={() => setShowAiModal(false)}
-                aria-label="Close"
-              >
-                <X size={18} aria-hidden />
-              </button>
-            </div>
-
-            {/* Content for Step 1: Upload (Frame 35) or Step 2: Results (Frame 36) */}
-            <div className={styles.aiModalContentArea}>
-              {/* Media Dropzone */}
-              <div className={styles.mediaDropzone}>
-                <Film size={32} className={styles.dropzoneFilmIcon} aria-hidden />
-                <span className={styles.dropzoneMainText}>Drag & drop your meeting recording here or click to browse</span>
-                <span className={styles.dropzoneSubText}>Supported formats: .mp4, .wav · Maximum file size: Below 3 GB</span>
-                <button className={styles.browseFilesBtn} type="button">
-                  <Upload size={14} aria-hidden />
-                  Browse files
-                </button>
-              </div>
-
-              {/* Attached file card */}
-              <div className={styles.attachedFileCard}>
-                <Film size={20} className={styles.attachedFilmIcon} aria-hidden />
-                <div className={styles.attachedFileMeta}>
-                  <span className={styles.attachedFileName}>Phase2_DB_Review_20260720.mp4</span>
-                  <span className={styles.attachedFileSize}>1.2 GB · Ready to process</span>
-                </div>
-                <span className={styles.attachedPillBadge}>
-                  <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
-                  Attached
-                </span>
-              </div>
-
-              {/* STEP 2 RESULTS PANEL (Frame 36) */}
-              {aiModalStep === 'results' && (
-                <div className={styles.aiGeneratedResultsCard}>
-                  <div className={styles.aiResultsHeaderRow}>
-                    <div className={styles.aiResultsHeaderLeft}>
-                      <Sparkles size={16} className={styles.sparkleIcon} aria-hidden />
-                      <span className={styles.aiResultsTitle}>AI Generated Notes & Key Takeaways</span>
-                    </div>
-                    <span className={styles.regenerationAttemptsPill}>
-                      <RotateCcw size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                      Regeneration Attempts Left: 3/3
-                    </span>
-                  </div>
-
-                  <div className={styles.aiResultSection}>
-                    <h5 className={styles.aiSectionLabel}>EXECUTIVE OVERVIEW</h5>
-                    <p className={styles.aiSectionText}>
-                      Discussed distributed database consistency models, multi-region replication latency, and trade-offs under CAP theorem constraints.
-                    </p>
-                  </div>
-
-                  <div className={styles.aiResultSection}>
-                    <h5 className={styles.aiSectionLabel}>KEY ACTION ITEMS</h5>
-                    <div className={styles.actionItemsList}>
-                      <div className={styles.actionItemRow}>
-                        <span className={styles.actionNumBadge}>1</span>
-                        <span>Group 1 to migrate metadata to PostgreSQL with read replicas.</span>
-                      </div>
-                      <div className={styles.actionItemRow}>
-                        <span className={styles.actionNumBadge}>2</span>
-                        <span>Group 2 approved for testing Raft consensus protocol.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.aiResultSection}>
-                    <h5 className={styles.aiSectionLabel}>PARTICIPANT ENGAGEMENT</h5>
-                    <div className={styles.engagementBadge}>
-                      <CheckCircle2 size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px', color: '#10b981' }} />
-                      <b>4/4 active</b> participants active in Q&A session.
-                    </div>
-                  </div>
-
-                  <div className={styles.aiDisclaimerFooter}>
-                    <AlertTriangle size={12} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
-                    AI-generated content. Review for accuracy before saving. Notes will be attached to the seminar record permanently.
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer Buttons */}
-            <div className={styles.aiModalFooter}>
-              {aiModalStep === 'upload' ? (
-                <>
-                  <span className={styles.filesReadyText}>
-                    <Folder size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
-                    1 file ready · 1.2 GB
-                  </span>
-                  <div className={styles.footerBtnsRight}>
-                    <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
-                      Cancel
-                    </button>
-                    <button
-                      className={styles.summarizeMagicBtn}
-                      onClick={() => setAiModalStep('results')}
-                    >
-                      <Wand2 size={14} aria-hidden />
-                      Click to Summarize
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <button className={styles.regenerateBtn} onClick={() => alert('Regenerated AI notes!')}>
-                    <RotateCcw size={14} aria-hidden />
-                    Regenerate (3/3 Left)
-                  </button>
-                  <div className={styles.footerBtnsRight}>
-                    <button className={styles.modalCancelBtn} onClick={() => setShowAiModal(false)}>
-                      Cancel
-                    </button>
-                    <button
-                      className={styles.agreeSaveNavyBtn}
-                      onClick={() => {
-                        setAiNotesSaved(true);
-                        setBannerText(
-                          'AI Seminar Notes successfully saved and attached to Phase 2 Milestone Review - Distributed DBs.\nGenerated by AI · Accessible via "View Notes (AI Generated)" on the seminar card below.'
-                        );
-                        setShowSuccessBanner(true);
-                        setShowAiModal(false);
-                      }}
-                    >
-                      <Check size={14} aria-hidden />
-                      Agree & Save Notes
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* AI Summary Modal — wired by Agent 23 */}
+      {showAiModal && selectedSeminarForAi && (
+        <AudioSummaryModal
+          seminarId={selectedSeminarForAi.seminarId}
+          seminarTitle={selectedSeminarForAi.title}
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          onSuccess={(id) => {
+            void refetch(); // Refresh so aiSummary appears on card
+            void id;
+          }}
+        />
       )}
     </div>
   );

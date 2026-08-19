@@ -23,10 +23,13 @@ import styles from './AssignedReviews.module.css';
 
 type StatusTab = 'pending' | 'inprogress' | 'completed';
 
-const formatDeadline = (req: ReviewRequest): { text: string; tone: 'orange' | 'gray' } => {
-  if (!req.deadline) return { text: 'No deadline set', tone: 'gray' };
+const formatDeadline = (req: ReviewRequest): { text: string; tone: 'orange' | 'gray' } | null => {
+  // The BE never persists a deadline on ReviewRequest — do not render a placeholder.
+  // Show nothing instead of "No deadline set" which misleads users into thinking a
+  // deadline feature exists when it does not.
+  if (!req.deadline) return null;
   const d = new Date(req.deadline);
-  if (Number.isNaN(d.getTime())) return { text: 'No deadline set', tone: 'gray' };
+  if (Number.isNaN(d.getTime())) return null;
   const now = Date.now();
   const diffMs = d.getTime() - now;
   const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -147,7 +150,11 @@ export const AssignedReviews = () => {
   // `getReviewRequestTab` so they cannot drift apart. Replaces the prior
   // local lowercase `statusOf` switch which would miss whitespace / casing.
   const visible = useMemo(
-    () => items.filter((r) => getReviewRequestTab(r.status) === activeTab),
+    () =>
+      [...items]
+        .filter((r) => getReviewRequestTab(r.status) === activeTab)
+        // Newest first by createdAt.
+        .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()),
     [items, activeTab]
   );
 
@@ -327,17 +334,13 @@ export const AssignedReviews = () => {
                     )}
                   </div>
                   <div className={styles.cardBadges}>
-                    {req.deadline ? (
+                    {deadline !== null && (
                       <span
                         className={
                           deadline.tone === 'orange' ? styles.deadlineOrange : styles.deadlineGray
                         }
                       >
                         <Clock size={12} style={{ verticalAlign: 'middle' }} /> {deadline.text}
-                      </span>
-                    ) : (
-                      <span className={styles.deadlineGray}>
-                        <Clock size={12} style={{ verticalAlign: 'middle' }} /> No deadline set
                       </span>
                     )}
                     {completed ? (

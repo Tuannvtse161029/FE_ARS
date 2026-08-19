@@ -72,6 +72,7 @@ export const Register = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
@@ -136,6 +137,7 @@ export const Register = () => {
     if (!passwordRegex.hasNumber.test(form.password)) return false;
     if (form.password !== form.retypePassword) return false;
     if (!pdfUrl) return false;
+    if (isUploadingPdf) return false;
     return true;
   })();
 
@@ -256,7 +258,7 @@ export const Register = () => {
             placeholder="e.g., Dr. Nguyen Van A"
             value={form.fullName}
             onChange={handleChange}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingPdf}
             autoComplete="name"
           />
           {errors.fullName && <p className={styles.errorText}>{errors.fullName}</p>}
@@ -277,7 +279,7 @@ export const Register = () => {
             placeholder="email@example.com"
             value={form.email}
             onChange={handleChange}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingPdf}
             autoComplete="email"
           />
           {errors.email && <p className={styles.errorText}>{errors.email}</p>}
@@ -298,7 +300,7 @@ export const Register = () => {
             placeholder="+84 90 123 4567"
             value={form.phoneNumber}
             onChange={handleChange}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingPdf}
             autoComplete="tel"
           />
           {errors.phoneNumber && (
@@ -322,31 +324,31 @@ export const Register = () => {
               placeholder="Create a password"
               value={form.password}
               onChange={handleChange}
-              disabled={isSubmitting}
-              autoComplete="new-password"
-            />
-            {errors.password && (
-              <p className={styles.errorText}>{errors.password}</p>
-            )}
-          </div>
+            disabled={isSubmitting || isUploadingPdf}
+            autoComplete="new-password"
+          />
+          {errors.password && (
+            <p className={styles.errorText}>{errors.password}</p>
+          )}
+        </div>
 
-          <div className={styles.fieldGroup}>
-            <label
-              htmlFor="retypePassword"
-              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
-            >
-              Retype Password
-            </label>
-            <input
-              id="retypePassword"
-              name="retypePassword"
-              type="password"
-              className={`${styles.nativeInput} ${errors.retypePassword ? styles['nativeInput--error'] : ''}`}
-              placeholder="Retype your password"
-              value={form.retypePassword}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              autoComplete="new-password"
+        <div className={styles.fieldGroup}>
+          <label
+            htmlFor="retypePassword"
+            className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+          >
+            Retype Password
+          </label>
+          <input
+            id="retypePassword"
+            name="retypePassword"
+            type="password"
+            className={`${styles.nativeInput} ${errors.retypePassword ? styles['nativeInput--error'] : ''}`}
+            placeholder="Retype your password"
+            value={form.retypePassword}
+            onChange={handleChange}
+            disabled={isSubmitting || isUploadingPdf}
+            autoComplete="new-password"
             />
             {errors.retypePassword && (
               <p className={styles.errorText}>{errors.retypePassword}</p>
@@ -370,7 +372,7 @@ export const Register = () => {
             className={styles.nativeSelect}
             value={form.role}
             onChange={handleChange}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingPdf}
           >
             {ROLE_OPTIONS.map((role) => (
               <option key={role} value={role}>
@@ -397,6 +399,7 @@ export const Register = () => {
                 size="sm"
                 onClick={() => setIsSampleOpen(true)}
                 className={styles.sampleBtn}
+                disabled={isUploadingPdf}
               >
                 View Sample PDF Format
               </Button>
@@ -415,6 +418,7 @@ export const Register = () => {
             onRemove={handleUploadRemove}
             pdfUrl={pdfUrl}
             uploadedFile={pdfFile}
+            onUploadStateChange={setIsUploadingPdf}
           />
         </div>
 

@@ -13,6 +13,8 @@ import type {
   VerifyEmailRequest,
   SendApprovalEmailRequest,
   UserRole,
+  VerificationStatus,
+  AccountTier,
 } from '../types/auth';
 
 export const authService = {
@@ -68,17 +70,16 @@ export const authService = {
       // `isActive` mirrors `dbo.Users.isActive`. New accounts start false
       // until an Admin approves the role request. Accept the flag from any
       // of the common BE shapes; coerce to a strict boolean; fall back to
-      // `true` for established logins where the BE hasn't shipped the field
-      // (older tokens / older BEs shouldn't get locked out of the dashboard).
+      // FALSE (lockout-safe) when the field is absent — this is the critical
+      // fix for Agent 26: Test 5 had isActive=true despite being unverified
+      // because the BE sent the field as absent and this fallback granted access.
       const isActiveRaw =
         data?.isActive ??
         data?.user?.isActive ??
         data?.user?.IsActive ??
         undefined;
       const isActive =
-        typeof isActiveRaw === 'boolean'
-          ? isActiveRaw
-          : true;
+        typeof isActiveRaw === 'boolean' ? isActiveRaw : false;
 
       // Parse the assigned-role list from any of the common BE shapes.
       // Falls back to a single-element array containing `role` when the BE
@@ -120,6 +121,22 @@ export const authService = {
 
       const roles: UserRole[] = parsedRoles.length > 0 ? parsedRoles : isKnownRole(role) ? [role] : ['Researcher'];
 
+      // `verificationStatus` mirrors `dbo.Users.verificationStatus`. Tracks where in
+      // the registration lifecycle the user stands. Absent field → default to 'Pending'
+      // (lockout-safe for pending registrations).
+      const verificationStatusRaw = data?.verificationStatus ?? data?.user?.verificationStatus ?? undefined;
+      const verificationStatus: VerificationStatus =
+        verificationStatusRaw === 'Accepted' || verificationStatusRaw === 'Rejected'
+          ? verificationStatusRaw
+          : 'Pending';
+
+      // `accountTier` mirrors `dbo.Users.accountTier`. Defaults to 'Free' when absent.
+      const accountTierRaw = data?.accountTier ?? data?.user?.accountTier ?? undefined;
+      const accountTier: AccountTier =
+        accountTierRaw === 'Premium' || accountTierRaw === 'Enterprise'
+          ? accountTierRaw
+          : 'Free';
+
       return {
         token,
         username,
@@ -129,6 +146,8 @@ export const authService = {
         roleId,
         roles,
         isActive,
+        verificationStatus,
+        accountTier,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);
@@ -154,10 +173,17 @@ export const authService = {
       const username = resData?.fullName || data.fullName || data.email.split('@')[0];
       const role = resData?.role || 'Researcher';
       // New registrations are always pending; trust the BE echo when it
-      // provides one, otherwise default to false. Falling back to true here
-      // would let an unapproved account reach the dashboard.
+      // provides one, otherwise default to false (lockout-safe).
       const isActive =
         typeof resData?.isActive === 'boolean' ? resData.isActive : false;
+      const verificationStatus: VerificationStatus =
+        resData?.verificationStatus === 'Accepted' || resData?.verificationStatus === 'Rejected'
+          ? resData.verificationStatus
+          : 'Pending';
+      const accountTier: AccountTier =
+        resData?.accountTier === 'Premium' || resData?.accountTier === 'Enterprise'
+          ? resData.accountTier
+          : 'Free';
 
       return {
         token,
@@ -165,6 +191,8 @@ export const authService = {
         email,
         role,
         isActive,
+        verificationStatus,
+        accountTier,
       };
     } catch (err: any) {
       console.warn('Backend register attempt failed:', err?.message || err);
@@ -182,12 +210,22 @@ export const authService = {
       const resData = response.data;
       const isActive =
         typeof resData?.isActive === 'boolean' ? resData.isActive : false;
+      const verificationStatus: VerificationStatus =
+        resData?.verificationStatus === 'Accepted' || resData?.verificationStatus === 'Rejected'
+          ? resData.verificationStatus
+          : 'Pending';
+      const accountTier: AccountTier =
+        resData?.accountTier === 'Premium' || resData?.accountTier === 'Enterprise'
+          ? resData.accountTier
+          : 'Free';
       return {
         token: resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now(),
         username: resData?.fullName || payload.fullName || payload.username,
         email: resData?.email || payload.email,
         role: resData?.role || payload.role || 'Researcher',
         isActive,
+        verificationStatus,
+        accountTier,
       };
     } catch (err: any) {
       console.warn('Backend registerUser attempt failed:', err?.message || err);
@@ -197,15 +235,18 @@ export const authService = {
 
   logout: (): void => {
     storage.clearAuth();
-    // Also clear the Zustand-persisted 'ars-auth-storage' key so that the
-    // next page load (which rehydrates from localStorage) doesn't keep the
-    // user "authenticated" and bounce PublicRoute → /dashboard.
+    // Clear the Zustand auth store. Since authSlice was updated to use a
+    // sessionStorage-backed adapter, the key lives in sessionStorage — but
+    // clear it from localStorage too so a stale entry can't survive a future
+    // revert of that adapter change.
     try {
+      sessionStorage.removeItem('ars-auth-storage');
       localStorage.removeItem('ars-auth-storage');
       // Legacy role-switch preference key — no longer used after the role
       // deprecation. Clean it up so users don't carry stale role data into
       // a new session.
       localStorage.removeItem('ars_active_role');
+      sessionStorage.removeItem('ars_active_role');
     } catch {
       /* ignore */
     }
@@ -215,11 +256,16 @@ export const authService = {
     const user = storage.getUser();
     const token = storage.getToken();
     if (user && token) {
+      // Read ALL fields from persisted user — not just token/username/role.
+      // Missing verificationStatus/accountTier defaults mirror the live path:
       return {
         token,
         username: user.username,
         email: user.email,
         role: user.roleName,
+        isActive: user.isActive ?? false,
+        verificationStatus: user.verificationStatus ?? 'Pending',
+        accountTier: user.accountTier ?? 'Free',
       };
     }
     return null;
@@ -237,9 +283,13 @@ export const authService = {
       // Falls back to 0 when the BE didn't supply one.
       roleId: authResponse.roleId ?? 0,
       roleName: authResponse.role,
-      // Default to true when the BE didn't echo this — protects existing
-      // logins from being locked out while the BE ships the field.
-      isActive: authResponse.isActive ?? true,
+      // Default to false (lockout-safe) when the BE didn't echo this —
+      // this is the critical fix for the Test 5 vulnerability.
+      isActive: authResponse.isActive ?? false,
+      // Mirror verificationStatus from BE; default to 'Pending' (lockout-safe).
+      verificationStatus: authResponse.verificationStatus ?? 'Pending',
+      // Mirror accountTier from BE; default to 'Free'.
+      accountTier: authResponse.accountTier ?? 'Free',
     };
     storage.setUser(user);
   },
