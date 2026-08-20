@@ -85,3 +85,4 @@ input_file_*.png
 test_out.xlsx
 input_file_*.png
 *.log
+.env.example
