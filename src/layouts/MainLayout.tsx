@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAuthStore } from '../store/authSlice';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
@@ -242,7 +243,15 @@ export const MainLayout = () => {
     .slice(0, 2) || 'U';
 
   const handleLogout = () => {
-    logout();
+    if (isGuest) {
+      // Guest has no token / persistent session — just clear the in-memory
+      // Zustand state and redirect. Calling authService.logout() would try to
+      // POST /api/auth/logout with no token, which causes a 401 that leaks
+      // through to the error boundary.
+      useAuthStore.getState().logout();
+    } else {
+      logout();
+    }
     navigate(ROUTES.LOGIN);
   };
 

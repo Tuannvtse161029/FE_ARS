@@ -128,6 +128,15 @@ export interface User {
   // request that was filed at registration time. Defaults to false (lockout-safe)
   // so a BE that hasn't shipped this field doesn't grant unregistered users access.
   isActive: boolean;
+  // Mirrors `dbo.Users.isEmailVerified`. True after the user clicks the
+  // verification link sent at registration. Required for the verified-guard
+  // to grant access to role workspaces (see BTR-AGENT39). Defaults to
+  // false (lockout-safe) when the BE omits the field.
+  isEmailVerified?: boolean;
+  // Mirrors `dbo.Users.proofDocumentUrl`. Public URL of the registration
+  // proof PDF (Firebase Storage). Admin verification pages render this in
+  // the existing PDF viewer; null when no proof was supplied.
+  proofDocumentUrl?: string | null;
   // Mirrors `dbo.Users.verificationStatus`. Required for complete state machine
   // checking — see AuthResponse.verificationStatus for the full lifecycle.
   verificationStatus?: VerificationStatus;

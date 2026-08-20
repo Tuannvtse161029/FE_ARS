@@ -99,8 +99,19 @@ vi.mock('../../components/PdfViewer', () => ({
 }));
 
 vi.mock('../../store/authSlice', () => ({
-  useAuthStore: <T,>(selector: (s: { user: { id: number } | null }) => T) =>
-    selector({ user: useAuthStoreState.id != null ? { id: useAuthStoreState.id } : null }),
+  useAuthStore: <T,>(selector: (s: {
+    user: { id: number; isActive?: boolean } | null;
+    isAuthenticated?: boolean;
+    isLoading?: boolean;
+  }) => T) =>
+    selector({
+      user:
+        useAuthStoreState.id != null
+          ? { id: useAuthStoreState.id, isActive: true }
+          : null,
+      isAuthenticated: useAuthStoreState.id != null,
+      isLoading: false,
+    }),
 }));
 
 import DiscoverReviewers from '../../pages/Researcher/DiscoverReviewers';
@@ -126,11 +137,17 @@ describe('DiscoverReviewers — defects 1A, 1B, 1C', () => {
     detailedGetByReviewRequestIdMock.mockReset();
 
     useAuthStoreState.id = 1;
-    paperServiceGetAllMock.mockResolvedValue({ items: [] });
+    // The Discovery page selects a paper from the GET /api/paper list.
+    // The cross-account ownership filter (defense-in-depth) keeps papers
+    // whose ownership field matches the authenticated user (id=1).
+    paperServiceGetAllMock.mockResolvedValue({
+      items: [{ id: '100', title: 'Paper A', status: '', userId: 1 }],
+    });
     paperServiceGetByIdMock.mockResolvedValue({
       id: '100',
       title: 'Paper fetched by id',
       status: '',
+      userId: 1,
     });
     getReviewerProfilesMock.mockReturnValue([
       { userId: 7, fullName: 'Dr. Alice' },

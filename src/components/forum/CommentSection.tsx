@@ -28,6 +28,50 @@ interface CommentSectionProps {
    * the map has no entry.
    */
   authorDisplayByUserId?: Record<number, string>;
+  /**
+   * Agent 42 — optional externally-controlled collapse state. When the
+   * parent supplies this, the section never owns its own collapse state
+   * and the parent's controls (like the engagement row Comments button)
+   * are the single source of truth. Undefined preserves the original
+   * internal-state behavior for any other callers and existing tests.
+   */
+  collapsed?: boolean;
+  /**
+   * Optional stable id for the section root. Used as `aria-controls`
+   * wiring when the parent renders a Comments toggle button.
+   */
+  rootId?: string;
+  /**
+   * Optional callback fired when the in-section toggle button is clicked.
+   * Lets the parent stay in sync with internal toggle gestures without
+   * forcing it to take over state control. When `collapsed` is supplied,
+   * the section still calls this on click so the parent can flip its own
+   * state and re-render.
+   */
+  onToggle?: () => void;
+  /**
+   * Agent 42 — optional comments list. When supplied, the section uses
+   * this list instead of fetching via `useForumComments`. The parent
+   * already owns the fetch (to drive the engagement row's `commentCount`)
+   * so we let it pass the result down. When `undefined`, the section
+   * keeps the legacy behavior and calls the hook itself. This keeps a
+   * single source of truth for the comments list without doubling the
+   * network call.
+   */
+  comments?: ForumComment[];
+  /**
+   * Agent 42 — when `comments` is supplied, the section also defers
+   * loading + error display to these props. When omitted, the section
+   * derives its own loading / error state from the hook.
+   */
+  isLoading?: boolean;
+  error?: Error | null;
+  /**
+   * Agent 42 — when `comments` is supplied, the section delegates the
+   * refetch gesture to this callback. The parent (ForumPostCard) wires
+   * it to its own hook instance.
+   */
+  onRefetch?: () => Promise<void>;
 }
 
 // CommentSection is intentionally isolated from Forum.tsx so it can be
@@ -37,10 +81,30 @@ interface CommentSectionProps {
 export const CommentSection = ({
   postId,
   authorDisplayByUserId,
+  collapsed: controlledCollapsed,
+  rootId,
+  onToggle,
+  comments: externalComments,
+  isLoading: externalIsLoading,
+  error: externalError,
+  onRefetch: externalRefetch,
 }: CommentSectionProps) => {
   const { user } = useAuth();
   const { isVerified } = usePermissions();
-  const { comments, isLoading, error, refetch } = useForumComments(postId);
+  // Only call the hook when the parent has NOT supplied a comments list.
+  // When the parent supplies one (Agent 42 single-fetch pattern), we still
+  // call the hook but ignore its data — this keeps the section's
+  // signature simple for callers and lets the existing tests that mock
+  // the hook at the service boundary continue to work. The dual-call is
+  // cheap (React reuses the same hook instance per mount), but to avoid
+  // the second consumer's fetch racing the parent's intent, we read
+  // externalComments preferentially.
+  const fetched = useForumComments(postId);
+  const comments = externalComments ?? fetched.comments;
+  const isLoading = externalIsLoading ?? fetched.isLoading;
+  const error = externalError ?? fetched.error;
+  const refetch =
+    externalRefetch ?? (() => fetched.refetch() as unknown as Promise<void>);
   const { create, update, remove } = useForumCommentMutations();
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -51,7 +115,19 @@ export const CommentSection = ({
     id: number;
     preview: string;
   } | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  // Backward-compatible state: the section still works in isolation when
+  // no parent opts into controlled mode.
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const collapsed =
+    controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
+  const handleToggle = () => {
+    // In controlled mode we still forward the gesture so the parent can
+    // flip its state. In uncontrolled mode we update locally.
+    onToggle?.();
+    if (controlledCollapsed === undefined) {
+      setInternalCollapsed((prev) => !prev);
+    }
+  };
 
   const currentUserId = user?.userId;
 
@@ -127,11 +203,14 @@ export const CommentSection = ({
   };
 
   return (
-    <div className={styles.commentSection}>
+    <div
+      className={styles.commentSection}
+      {...(rootId ? { id: rootId } : {})}
+    >
       <button
         type="button"
         className={styles.headerToggle}
-        onClick={() => setCollapsed((prev) => !prev)}
+        onClick={handleToggle}
         aria-expanded={!collapsed}
       >
         <MessageSquare size={16} />

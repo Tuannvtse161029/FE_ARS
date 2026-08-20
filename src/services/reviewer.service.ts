@@ -10,7 +10,10 @@ export interface ReviewerProfile {
   totalCitations: number | null;
   publicationCount: number | null;
   syncStatus: string | null;
+  majorFieldId?: number | null;
+  majorFieldName?: string | null;
   subFieldId?: number | null;
+  subFieldName?: string | null;
   reviewFee: number | null;
   // Whether this reviewer is currently accepting review requests.
   // May be missing on older API responses — treat as false in that case.
@@ -25,8 +28,10 @@ export interface ProfessionalProfileUpdateRequest {
   totalCitations?: number | null;
   publicationCount?: number | null;
   syncStatus?: string | null;
+  majorFieldId?: number | null;
   subFieldId?: number | null;
   reviewFee?: number | null;
+  isAvailable?: boolean | null;
 }
 
 export const reviewerService = {

@@ -47,21 +47,34 @@ export const EarningsWallet = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchRequests = useCallback(async () => {
+    // Wait for authenticated user and wallet data before fetching
+    if (!currentUserId || !walletId) {
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
       const data = await withdrawalService.getAll();
-      setRequests(data);
+      // Filter to current user's requests (backend should do this, but defend here)
+      const userRequests = data.filter(req => req.userId === currentUserId);
+      setRequests(userRequests);
     } catch (err) {
       setError('Failed to load withdrawal requests. Please try again.');
-      console.error(err);
+      if (import.meta.env?.DEV) {
+        // Log sanitized error details in development
+        console.error('[EarningsWallet] Withdrawal request load failed:', {
+          status: (err as any)?.response?.status,
+          message: (err as Error)?.message,
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUserId, walletId]);
 
   useEffect(() => {
-    fetchRequests();
+    void fetchRequests();
   }, [fetchRequests]);
 
   // Newest first by createdAt.

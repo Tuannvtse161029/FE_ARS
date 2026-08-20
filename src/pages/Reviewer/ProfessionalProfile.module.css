@@ -91,6 +91,14 @@
 .statusAvailable { color: #087f5b; }
 .statusUnavailable { color: #c05621; }
 
+.expertiseSection { margin-bottom: 24px; }
+.expertiseForm { margin-top: 16px; }
+.formRow { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+.formField label { display: block; margin-bottom: 8px; color: #2d3748; font-size: 13px; font-weight: 600; }
+.formField select { width: 100%; border: 1px solid #cbd5e0; border-radius: 7px; padding: 10px 12px; color: #2d3748; font: inherit; background: #fff; }
+.formField select:focus { border-color: #007aff; outline: 3px solid rgb(0 122 255 / 15%); }
+.formField select:disabled { color: #a0aec0; background: #f7fafc; cursor: not-allowed; }
+
 .metricSection { margin-bottom: 24px; }
 .sectionHeading { align-items: end; margin-bottom: 14px; }
 .sectionHeading h2 { margin-bottom: 0; font-size: 20px; }
@@ -123,6 +131,7 @@
   .feeCard { flex-direction: column; }
   .profileDetails { width: 100%; }
   .feeForm { width: 100%; }
+  .formRow { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -131,4 +140,5 @@
   .sectionHeading { align-items: flex-start; flex-direction: column; }
   .feeControls { flex-wrap: wrap; }
   .feeControls input { flex-basis: 65%; }
+  .formRow { grid-template-columns: 1fr; }
 }

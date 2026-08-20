@@ -1,0 +1,124 @@
+/* ────────────────────────────────────────────────────────────────────────
+ * ForumPostEngagementRow
+ *
+ * ARS-aligned styles for the Like → Comments → Views row. Tokens (colors,
+ * spacings, radii) deliberately follow the ARS design system color
+ * palette:
+ *   Header / Sidebar background = #2D3561 / #323964 (Dark Navy)
+ *   Primary accent              = #007AFF (Bright Blue)
+ *   Single-color iconography    = #A0AEC0 (Muted Slate)
+ *   Main canvas background      = #F8FAFC (Light Grey)
+ *
+ * Three controls live on a single row, baseline-aligned, with consistent
+ * icon sizing so the icons themselves convey the engagement scale.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.engagementRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-3);
+  margin-top: var(--spacing-3);
+  border-top: 1px solid #e2e8f0; /* subtle divider below content + tags */
+}
+
+/* All three controls share identical chrome so the user reads the
+   counter block uniformly. The variant classes below only flip colors /
+   active state. */
+.engagementControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid transparent;
+  /* Buttons are inline so they remain on a single baseline with the
+     non-button Views block. */
+  cursor: default;
+  user-select: none;
+}
+
+/* The non-button Views block inherits `.engagementControl` and forces
+   cursor:default so it never hints at a click target. */
+.engagementControlViews {
+  color: #64748b;
+  cursor: default;
+}
+
+.engagementControlLike,
+.engagementControlComments {
+  /* Only semantic buttons get cursor:pointer — but only when they are not
+     disabled. We express the disabled style separately (see
+     .engagementControl:disabled below). */
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    color 120ms ease;
+}
+
+.engagementControlLike:hover:not(:disabled),
+.engagementControlComments:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Active states are reserved for "true" engagement signals: a Like that
+   has been confirmed by the BE, and a Comments toggle that is currently
+   expanded. The blue accent is the ARS primary (#007AFF). */
+.engagementControlLiked {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.45);
+  color: #007aff;
+  font-weight: 700;
+}
+
+.engagementControlLiked:hover:not(:disabled) {
+  background: rgba(0, 122, 255, 0.14);
+}
+
+.engagementControlActive {
+  background: #e0f2fe;
+  border-color: #93c5fd;
+  color: #075985;
+  font-weight: 700;
+}
+
+.engagementCount {
+  font-variant-numeric: tabular-nums;
+  /* Pull the counter close to its icon so the eye tracks
+     [icon] [count] [label] as a single visual unit. */
+  min-width: 18px;
+  text-align: left;
+}
+
+.engagementLabel {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Disabled state — uniform for both buttons. We deliberately keep the
+   label visible (the plan says counters stay visible for Guests) and
+   only dim + remove the cursor. */
+.engagementControl:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+/* Honor users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .engagementControlLike,
+  .engagementControlComments {
+    transition: none;
+  }
+}

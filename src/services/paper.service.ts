@@ -1,6 +1,7 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type { PagedResult, PaginationParams } from '../types/api';
+import type { AxiosRequestConfig } from 'axios';
 
 export interface Paper {
   id: string;
@@ -16,6 +17,8 @@ export interface Paper {
   authorName?: string;
   createdAt?: string;
   updatedAt?: string;
+  subfieldId?: number | null;
+  subFieldId?: number | null;
 }
 
 export interface PaperCreateRequest {
@@ -40,13 +43,25 @@ export interface GetPapersParams extends PaginationParams {
 }
 
 export const paperService = {
-  getAll: async (params?: GetPapersParams): Promise<PagedResult<Paper>> => {
-    const response = await api.get<PagedResult<Paper>>(API_ENDPOINTS.PAPER.GET_ALL, { params });
+  getAll: async (
+    params?: GetPapersParams,
+    config?: AxiosRequestConfig,
+  ): Promise<PagedResult<Paper>> => {
+    const response = await api.get<PagedResult<Paper>>(
+      API_ENDPOINTS.PAPER.GET_ALL,
+      { params, ...config },
+    );
     return response.data;
   },
 
-  getById: async (id: string): Promise<Paper> => {
-    const response = await api.get<Paper>(API_ENDPOINTS.PAPER.GET_BY_ID(id as unknown as number));
+  getById: async (
+    id: string,
+    config?: AxiosRequestConfig,
+  ): Promise<Paper> => {
+    const response = await api.get<Paper>(
+      API_ENDPOINTS.PAPER.GET_BY_ID(id as unknown as number),
+      config,
+    );
     return response.data;
   },
 

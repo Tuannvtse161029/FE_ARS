@@ -74,8 +74,12 @@ vi.mock('../../hooks/usePaperReviewLocks', () => ({
 }));
 
 vi.mock('../../store/authSlice', () => ({
-  useAuthStore: <T,>(selector: (s: { user: { id: number } | null }) => T) =>
-    selector({ user: { id: 1 } }),
+  useAuthStore: (selector: (s: any) => unknown) =>
+    selector({
+      user: { id: 1, isActive: true },
+      isAuthenticated: true,
+      isLoading: false,
+    }),
 }));
 
 import DiscoverReviewers from '../../pages/Researcher/DiscoverReviewers';
@@ -117,8 +121,18 @@ const selectFirstPaper = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('DiscoverReviewers — researcher reviewer grid (Agent 15)', () => {
   beforeEach(() => {
     paperServiceGetAllMock.mockReset();
+    // The paper carries userId=1 so the new cross-account ownership
+    // filter (defense-in-depth) admits it for the authenticated test
+    // researcher.
     paperServiceGetAllMock.mockResolvedValue({
-      items: [{ id: '1', title: 'My Paper', fileUrl: 'x.pdf' }],
+      items: [
+        {
+          id: '1',
+          title: 'My Paper',
+          fileUrl: 'x.pdf',
+          userId: 1,
+        },
+      ],
     });
     getAllMock.mockReturnValue([]);
     refetchReviewersMock.mockReset();

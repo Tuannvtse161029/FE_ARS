@@ -9,8 +9,6 @@ import {
   PenLine,
   UserCheck,
   AlertTriangle,
-  MoreHorizontal,
-  Flag,
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
@@ -20,11 +18,10 @@ import { useForumPosts, useCreateForumPost } from '../../hooks/useForumPosts';
 import { useFollow } from '../../hooks/useFollow';
 import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
 import { useImageUpload } from '../../hooks/useImageUpload';
-import { ReportModal } from '../../components/forum/ReportModal';
-import { CommentSection } from '../../components/forum/CommentSection';
-import { FollowButton } from '../../components/forum/FollowButton';
-import type { ForumPost } from '../../types/forum.types';
+import { ForumPostCard } from '../../components/forum/ForumPostCard';
 import { storage } from '../../utils/storage';
+import { PALETTE, initialsFromName } from './forum.utils';
+
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
@@ -43,39 +40,6 @@ const SORT_QUERY_VALUE: Record<SortBy, string> = {
   Newest: 'newest',
   'Most Discussed': 'most-discussed',
   'Most Viewed': 'most-viewed',
-};
-
-const PALETTE = [
-  '#eff6ff',
-  '#f0fdf4',
-  '#fef9c3',
-  '#fdf4ff',
-  '#fff7ed',
-  '#ecfeff',
-  '#f5f3ff',
-  '#fef2f2',
-];
-
-const initialsFromName = (name: string): string => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-};
-
-const formatRelativeTime = (iso?: string): string => {
-  if (!iso) return '';
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '';
-  const diffMs = Date.now() - then;
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
 };
 
 export const Forum = () => {
@@ -363,175 +327,12 @@ export const Forum = () => {
   );
 };
 
-// ─── ForumPostCard ───────────────────────────────────────────────────────────
-// One row of the feed. Owns the "more options" overflow menu and the
-// per-card report-target state. Renders the CommentSection below the card.
-interface ForumPostCardProps {
-  post: ForumPost;
-  isVerified: boolean;
-  currentUserId: number | null;
-  currentUserName: string;
-}
-
-const ForumPostCard = ({
-  post,
-  isVerified,
-  currentUserId,
-  currentUserName,
-}: ForumPostCardProps) => {
-  const [openMenuId, setOpenMenuId] = useState(false);
-  const [reportTarget, setReportTarget] = useState<{
-    id: number;
-    preview: string;
-  } | null>(null);
-
-  // Build a stable avatar color from the post id so each card picks a
-  // distinct background. We use the mod palette length so any id maps
-  // to a valid color.
-  const avatarColor = PALETTE[post.id % PALETTE.length];
-
-  // Author label — Swagger doesn't return fullName on the post, only
-  // authorId. Until the BE ships it we render "Author #{id}" or, if the
-  // post belongs to the current user, fall back to their own name.
-  const authorLabel =
-    post.authorId != null && currentUserId != null && post.authorId === currentUserId
-      ? currentUserName
-      : post.authorId != null
-        ? `Author #${post.authorId}`
-        : 'Unknown author';
-
-  const authorInitials = initialsFromName(authorLabel);
-
-  return (
-    <div className={styles.postCardWrapper}>
-      <div className={styles.postCard}>
-        {/* Author row */}
-        <div className={styles.postAuthorRow}>
-          <div
-            className={styles.postAvatar}
-            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
-          >
-            {authorInitials}
-          </div>
-          <div className={styles.postAuthorInfo}>
-            <span className={styles.postAuthorName}>{authorLabel}</span>
-            <span className={styles.postTimestamp}>
-              {formatRelativeTime(post.createdAt)}
-            </span>
-          </div>
-          {/* FollowButton — only for verified viewers, only when we know
-              the authorId, and never on the viewer's own posts. The
-              component itself enforces these guards; we just gate the
-              render so the button doesn't appear at all for guests. */}
-          {isVerified &&
-            post.authorId != null &&
-            post.authorId !== currentUserId && (
-              <div className={styles.postAuthorActions}>
-                <FollowButton authorId={post.authorId} size="sm" />
-              </div>
-            )}
-        </div>
-
-        {/* Title */}
-        {post.title && <h3 className={styles.postTitle}>{post.title}</h3>}
-
-        {/* Abstract / content */}
-        {(post.abstract ?? post.content) && (
-          <p className={styles.postAbstract}>
-            {post.abstract ?? post.content}
-          </p>
-        )}
-
-        {/* Attachments (if any) */}
-        {(post.attachedImageUrl || post.attachedPdfUrl) && (
-          <div className={styles.attachmentRow}>
-            {post.attachedImageUrl && (
-              <a
-                href={post.attachedImageUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className={styles.attachmentLink}
-              >
-                <ImageIcon size={14} />
-                Attached image
-              </a>
-            )}
-            {post.attachedPdfUrl && (
-              <a
-                href={post.attachedPdfUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className={styles.attachmentLink}
-              >
-                <FileText size={14} />
-                Attached PDF
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
-          <div className={styles.postTags}>
-            {post.tags.map((tag, idx) => (
-              <span key={`${tag}-${idx}`} className={styles.postTag}>
-                {tag.startsWith('#') ? tag : `#${tag}`}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Comments thread */}
-        <CommentSection postId={post.id} />
-      </div>
-
-      {/* Overflow Menu - only for verified users */}
-      {isVerified && (
-        <div className={styles.postCardActions}>
-          <button
-            className={styles.menuTrigger}
-            onClick={() => setOpenMenuId((prev) => !prev)}
-            aria-label="More options"
-            aria-haspopup="menu"
-            aria-expanded={openMenuId}
-          >
-            <MoreHorizontal size={18} />
-          </button>
-
-          {openMenuId && (
-            <div className={styles.menuDropdown} role="menu">
-              <button
-                className={`${styles.menuItem} ${styles.menuItemReport}`}
-                onClick={() => {
-                  setReportTarget({
-                    id: post.id,
-                    preview: post.title ?? '(untitled post)',
-                  });
-                  setOpenMenuId(false);
-                }}
-                role="menuitem"
-              >
-                <Flag size={16} className={styles.menuIcon} />
-                Report this post
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {reportTarget && currentUserId != null && (
-        <ReportModal
-          isOpen={true}
-          onClose={() => setReportTarget(null)}
-          targetType="ForumPost"
-          targetId={reportTarget.id}
-          targetPreview={reportTarget.preview}
-          reporterId={currentUserId}
-        />
-      )}
-    </div>
-  );
-};
+// ForumPostCard has been extracted to its own file:
+//   src/components/forum/ForumPostCard.tsx
+// It re-uses `PALETTE` and `initialsFromName` (imported below) plus all the
+// existing CSS modules. The Forum page still owns the feed-state +
+// pagination. The card owns per-card local UI state (overflow menu, report
+// modal, comments collapse, like-disabled tooltip).
 
 // ─── CreatePostModal ─────────────────────────────────────────────────────────
 // Owns the create-form local state and the actual POST /api/ForumPost call.

@@ -23,6 +23,17 @@ vi.mock('../../../hooks/useAdminGuard', () => ({
   useAdminGuard: () => undefined,
 }));
 
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { userId: 99, role: 'Admin', token: 't', email: 'admin@test.com', username: 'admin' },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    login: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
+
 vi.mock('../../../store/authSlice', () => ({
   useAuthStore: <T,>(selector: (s: { user: { id: number } | null }) => T) =>
     selector({ user: { id: 1, role: 'Admin' } }),

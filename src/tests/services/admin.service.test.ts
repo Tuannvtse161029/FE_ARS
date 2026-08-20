@@ -11,6 +11,7 @@ import type { User } from '../../types/auth';
 let axiosGetSpy: ReturnType<typeof vi.spyOn>;
 let axiosPostSpy: ReturnType<typeof vi.spyOn>;
 let axiosPatchSpy: ReturnType<typeof vi.spyOn>;
+let axiosPutSpy: ReturnType<typeof vi.spyOn>;
 let axiosDeleteSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('../../services/notification.service', () => ({
@@ -23,6 +24,7 @@ describe('adminService (mock data path)', () => {
     axiosGetSpy = vi.spyOn(api, 'get');
     axiosPostSpy = vi.spyOn(api, 'post');
     axiosPatchSpy = vi.spyOn(api, 'patch');
+    axiosPutSpy = vi.spyOn(api, 'put');
     axiosDeleteSpy = vi.spyOn(api, 'delete');
   });
 
@@ -33,6 +35,7 @@ describe('adminService (mock data path)', () => {
     axiosGetSpy.mockReset();
     axiosPostSpy.mockReset();
     axiosPatchSpy.mockReset();
+    axiosPutSpy.mockReset();
     axiosDeleteSpy.mockReset();
   });
 
@@ -184,17 +187,28 @@ describe('adminService (mock data path)', () => {
       expect(hits.length).toBeGreaterThan(0);
     });
 
-    it('toggles account status via suspend/unsuspend', async () => {
-      axiosGetSpy.mockResolvedValue({ data: { items: userFixture, totalCount: userFixture.length } });
-      // Mock POST to return the correct AccountItem shape based on which endpoint is called.
-      axiosPostSpy.mockImplementation(async (url: string) => {
-        if (String(url).includes('/suspend')) {
-          return { data: { ...userFixture[0], isActive: false, status: 'SUSPENDED' } };
+    it('toggles account status via suspend/unsuspend (PUT /api/user/{id})', async () => {
+      // Live path now goes through the User API per Agent 29 BTR-AGENT29-A.
+      // The suspend flow is:
+      //   1. GET /api/user/{id}        — to read fullName + avatarUrl
+      //   2. PUT /api/user/{id}        — with { fullName, isActive: false }
+      //   3. GET /api/user/{id}        — refetch the authoritative row
+      const userRow = { ...userFixture[0] };
+      let isActive = true;
+
+      axiosGetSpy.mockImplementation(async (url: string) => {
+        if (String(url) === '/api/user' || String(url).startsWith('/api/user?')) {
+          return { data: { items: userFixture, totalCount: userFixture.length } };
         }
-        if (String(url).includes('/unsuspend')) {
-          return { data: { ...userFixture[0], isActive: true, status: 'ACTIVE' } };
+        if (String(url) === `/api/user/${userRow.id}`) {
+          return { data: { ...userRow, isActive } };
         }
         return { data: {} };
+      });
+
+      axiosPutSpy.mockImplementation(async (url: string, body: { isActive?: boolean }) => {
+        isActive = body.isActive ?? isActive;
+        return { data: { ...userRow, isActive } };
       });
 
       const accounts = await adminService.getAccounts({});

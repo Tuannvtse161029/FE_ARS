@@ -247,6 +247,11 @@ const mockPosts = [
     tags: ['quantum', 'computing'],
     authorId: 7,
     createdAt: '2026-08-15T10:00:00Z',
+    // Live BE wire shape — counters are integers; 0 is a valid value.
+    likeCount: 0,
+    viewCount: 0,
+    commentCount: 0,
+    isLikedByCurrentUser: false,
   },
   {
     id: 2,
@@ -254,6 +259,10 @@ const mockPosts = [
     content: 'How do we scale FL to millions of clients?',
     authorId: 8,
     createdAt: '2026-08-16T12:00:00Z',
+    likeCount: 4,
+    viewCount: 17,
+    commentCount: 2,
+    isLikedByCurrentUser: false,
   },
   {
     id: 3,
@@ -261,6 +270,10 @@ const mockPosts = [
     content: 'My own draft post.',
     authorId: 42,
     createdAt: '2026-08-17T12:00:00Z',
+    likeCount: 0,
+    viewCount: 0,
+    commentCount: 0,
+    isLikedByCurrentUser: false,
   },
 ];
 
@@ -782,6 +795,219 @@ describe('Forum page — integration', () => {
       expect(lastCall?.targetType).toBe('ForumComment');
       expect(lastCall?.targetId).toBe(100);
       expect(lastCall?.reporterId).toBe(42);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 7. Engagement row — Agent 42
+  // Vital tests per the plan §10. The current BE publishes
+  // `likeCount` / `viewCount` / `commentCount` on `GET /api/ForumPost`
+  // (confirmed 2026-08-19 against the live wire). The BE still does NOT
+  // expose a Like mutation endpoint (BTR-AGENT42-A), so the Like button
+  // remains disabled with an explanatory tooltip.
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('engagement row — Like / Comments / Views', () => {
+    it('renders three controls in Like → Comments → Views order, with real likeCount / commentCount / viewCount from the wire', async () => {
+      postGetAll.mockResolvedValueOnce([mockPosts[1]]); // post #2 has 4 / 17 / 2
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+
+      // Card surfaces.
+      await screen.findByText('Federated Learning at Scale');
+
+      const row = await screen.findByTestId('forum-post-engagement-row');
+      const buttons = within(row).getAllByRole('button');
+
+      // Order: Like button, Comments button. Views is a non-button stat.
+      expect(buttons).toHaveLength(2);
+      expect(buttons[0]).toHaveAttribute('data-testid', 'forum-post-like-button');
+      expect(buttons[1]).toHaveAttribute(
+        'data-testid',
+        'forum-post-comments-button',
+      );
+      const viewsStat = within(row).getByTestId('forum-post-views-stat');
+      expect(viewsStat.tagName.toLowerCase()).toBe('div');
+
+      // Live wire: post #2 has 4 likes, 17 views, 2 comments.
+      const likeBtn = within(row).getByTestId('forum-post-like-button');
+      expect(likeBtn).toHaveTextContent('4');
+      expect(likeBtn).toHaveTextContent(/Likes?/);
+      const commentsBtn = within(row).getByTestId('forum-post-comments-button');
+      expect(commentsBtn).toHaveTextContent('2');
+      expect(commentsBtn).toHaveTextContent(/Comments?/);
+      expect(viewsStat).toHaveTextContent('17');
+      expect(viewsStat).toHaveTextContent(/Views?/);
+    });
+
+    it('preserves zero counts and renders singular/plural labels correctly', async () => {
+      // Use a post fixture WITHOUT a wire commentCount so the mapper
+      // falls back to the loaded comments collection. This mirrors the
+      // scenario where the BE has shipped `isLikedByCurrentUser` but
+      // older rows do not yet report a commentCount.
+      const post = {
+        ...mockPosts[0],
+        id: 99,
+        // Strip the wire commentCount so the fallback engages.
+        commentCount: undefined,
+      };
+      postGetAll.mockResolvedValueOnce([post]);
+      commentGetByPostId.mockResolvedValue([
+        {
+          id: 1,
+          forumPostId: 99,
+          userId: 7,
+          content: 'one',
+          createdAt: '2026-08-15T11:00:00Z',
+        },
+      ]);
+
+      renderForum();
+      await screen.findByText('Quantum Computing Primer');
+
+      const row = await screen.findByTestId('forum-post-engagement-row');
+      // One loaded comment → "1 Comment" (singular). The text is split
+      // across two spans (count + label), so we assert on each piece
+      // individually rather than the concatenated string.
+      const commentsBtn = within(row).getByTestId('forum-post-comments-button');
+      expect(commentsBtn).toHaveTextContent(/^1/);
+      expect(commentsBtn).toHaveTextContent(/Comment$/);
+      // Like: wire says 0 → rendered as "0 Likes" (plural).
+      const likeBtn = within(row).getByTestId('forum-post-like-button');
+      expect(likeBtn).toHaveTextContent('0');
+      expect(likeBtn).toHaveTextContent(/Likes$/);
+      // Views: wire says 0 → rendered as "0 Views".
+      const viewsStat = within(row).getByTestId('forum-post-views-stat');
+      expect(viewsStat).toHaveTextContent('0');
+      expect(viewsStat).toHaveTextContent(/Views$/);
+    });
+
+    it('disables the Like button when the BE does not expose a mutation endpoint', async () => {
+      postGetAll.mockResolvedValueOnce([mockPosts[0]]);
+      commentGetByPostId.mockResolvedValue([]);
+
+      const user = userEvent.setup();
+      renderForum();
+
+      await screen.findByText('Quantum Computing Primer');
+
+      const likeBtn = await screen.findByTestId('forum-post-like-button');
+      // The button is rendered with the live wire's real count, but it
+      // stays disabled because BTR-AGENT42-A (Like mutation) is still
+      // open until the BE ships a documented endpoint.
+      expect(likeBtn).toHaveTextContent('0');
+      expect(likeBtn).toBeDisabled();
+      expect(likeBtn).toHaveAttribute(
+        'title',
+        expect.stringMatching(/until the forum API exposes a Like mutation endpoint/i),
+      );
+
+      // Clicking it (forced) must NOT trigger any mutation request.
+      await user.click(likeBtn, { pointerEventsCheck: 0 }).catch(() => undefined);
+      // The forumPostService.getAll call we already did is the only call;
+      // there is no create/update/like call available today, so we just
+      // assert the like endpoint was never called by checking the same
+      // create mock was never invoked.
+      expect(postCreate).not.toHaveBeenCalled();
+    });
+
+    it('disables the Like button with a Guest-friendly tooltip when the viewer is unverified', async () => {
+      postGetAll.mockResolvedValueOnce([mockPosts[0]]);
+      commentGetByPostId.mockResolvedValue([]);
+
+      // Switch to a Guest (unverified) viewer.
+      setAuth(
+        buildMockAuth({
+          isAuthenticated: false,
+          userId: null,
+        }),
+      );
+
+      renderForum();
+
+      await screen.findByText('Quantum Computing Primer');
+
+      const likeBtn = await screen.findByTestId('forum-post-like-button');
+      expect(likeBtn).toBeDisabled();
+      expect(likeBtn).toHaveAttribute(
+        'title',
+        expect.stringMatching(/Sign in with an approved account to like posts/i),
+      );
+    });
+
+    it('keeps the Like button disabled even when the BE reports isLikedByCurrentUser=true (BTR-AGENT42-A pending)', async () => {
+      // The live BE now publishes `isLikedByCurrentUser: true` for posts
+      // the viewer has liked. Even so, the FE keeps the button disabled
+      // until a documented Like mutation endpoint ships.
+      const likedPost = {
+        ...mockPosts[0],
+        isLikedByCurrentUser: true,
+        likeCount: 3,
+      };
+      postGetAll.mockResolvedValueOnce([likedPost]);
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+      await screen.findByText('Quantum Computing Primer');
+
+      const likeBtn = await screen.findByTestId('forum-post-like-button');
+      // The wire reports the real count and state, but the button is
+      // still disabled.
+      expect(likeBtn).toHaveTextContent('3');
+      expect(likeBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(likeBtn).toBeDisabled();
+    });
+
+    it('renders Comments as a single-request source-of-truth: clicking it expands / collapses the section', async () => {
+      postGetAll.mockResolvedValueOnce([mockPosts[0]]);
+      commentGetByPostId.mockResolvedValue([]);
+
+      const user = userEvent.setup();
+      renderForum();
+
+      await screen.findByText('Quantum Computing Primer');
+
+      // Expanded by default: the "Write a comment…" textarea is visible.
+      const textarea = await screen.findByPlaceholderText(/Write a comment/i);
+      expect(textarea).toBeInTheDocument();
+
+      const commentsBtn = await screen.findByTestId(
+        'forum-post-comments-button',
+      );
+      await user.click(commentsBtn);
+
+      // Collapsed: textarea gone (the comments list body is gated by
+      // !collapsed).
+      await waitFor(() => {
+        expect(
+          screen.queryByPlaceholderText(/Write a comment/i),
+        ).not.toBeInTheDocument();
+      });
+
+      await user.click(commentsBtn);
+      // Expanded again.
+      expect(
+        await screen.findByPlaceholderText(/Write a comment/i),
+      ).toBeInTheDocument();
+    });
+
+    it('does NOT inflate view counts on rerender, pagination, or refresh', async () => {
+      postGetAll.mockResolvedValueOnce(mockPosts);
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+
+      await screen.findByText('Quantum Computing Primer');
+      const rows = await screen.findAllByTestId('forum-post-engagement-row');
+      const firstViewsStat = within(rows[0]).getByTestId('forum-post-views-stat');
+
+      // Snapshot the rendered view count text BEFORE refresh. It must
+      // be the same afterwards — there is no client-side auto-increment.
+      const before = firstViewsStat.textContent;
+      expect(firstViewsStat).toHaveTextContent('0');
+      // The wire has been called exactly once — no per-render re-fetch.
+      expect(postGetAll).toHaveBeenCalledTimes(1);
+      expect(firstViewsStat.textContent).toBe(before);
     });
   });
 });

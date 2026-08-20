@@ -7,6 +7,7 @@ import {
   Play,
 } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
+import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
 import { adminService } from '../../services/admin.service';
 import type {
@@ -50,6 +51,9 @@ interface ConfirmState {
 export const AccountsManagement = () => {
   useAdminGuard();
 
+  const { user: currentAuth } = useAuth();
+  const currentUserId = currentAuth?.userId ?? null;
+
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('ALL');
   const [plan, setPlan] = useState<PlanFilter>('ALL');
@@ -87,6 +91,11 @@ export const AccountsManagement = () => {
   const onConfirm = async () => {
     if (!confirm) return;
     const id = confirm.account.id;
+    if (currentUserId != null && currentUserId === id) {
+      setError('You cannot suspend or restore your own admin account.');
+      setConfirm(null);
+      return;
+    }
     setActingId(id);
     try {
       const updated =
@@ -343,7 +352,15 @@ export const AccountsManagement = () => {
                               onClick={() =>
                                 setConfirm({ account: a, next: 'SUSPENDED' })
                               }
-                              disabled={actingId === a.id}
+                              disabled={
+                                actingId === a.id ||
+                                (currentUserId != null && currentUserId === a.id)
+                              }
+                              title={
+                                currentUserId === a.id
+                                  ? 'You cannot suspend your own admin account.'
+                                  : undefined
+                              }
                               type="button"
                             >
                               <Pause
@@ -361,7 +378,15 @@ export const AccountsManagement = () => {
                               onClick={() =>
                                 setConfirm({ account: a, next: 'ACTIVE' })
                               }
-                              disabled={actingId === a.id}
+                              disabled={
+                                actingId === a.id ||
+                                (currentUserId != null && currentUserId === a.id)
+                              }
+                              title={
+                                currentUserId === a.id
+                                  ? 'You cannot change the status of your own admin account.'
+                                  : undefined
+                              }
                               type="button"
                             >
                               <Play

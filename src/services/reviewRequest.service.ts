@@ -1,5 +1,6 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+import type { AxiosRequestConfig } from 'axios';
 
 // Mirrors BE ReviewRequest shape. The BE GET response is undocumented in Swagger
 // (only "200: OK" is declared), so we model all known fields from the create
@@ -36,8 +37,13 @@ export interface ReviewRequestCreateRequest {
 
 export const reviewRequestService = {
   // GET /api/ReviewRequest — returns a raw array per the user's confirmed shape.
-  getAll: async (): Promise<ReviewRequest[]> => {
-    const response = await api.get<ReviewRequest[]>(API_ENDPOINTS.REVIEW_REQUEST.GET_ALL);
+  getAll: async (
+    config?: AxiosRequestConfig,
+  ): Promise<ReviewRequest[]> => {
+    const response = await api.get<ReviewRequest[]>(
+      API_ENDPOINTS.REVIEW_REQUEST.GET_ALL,
+      config,
+    );
     const raw: any[] = Array.isArray(response.data) ? response.data : [];
     // Normalize BE field name `reviewRequestId` → `id` so callers can use `r.id`
     return raw.map((item) => ({

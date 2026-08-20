@@ -8,10 +8,12 @@ import type { AuditLogEntry } from '../../types/adminAuxiliary';
 // can reconfigure them per-test with the current state of the auditLog store.
 let mockGet: ReturnType<typeof vi.fn>;
 let mockPost: ReturnType<typeof vi.fn>;
+let mockPut: ReturnType<typeof vi.fn>;
 vi.mock('../../services/axios', () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
     post: (...args: unknown[]) => mockPost(...args),
+    put: (...args: unknown[]) => mockPut(...args),
   },
 }));
 
@@ -54,7 +56,32 @@ beforeEach(async () => {
         data: { items, totalCount: items.length, pageNumber: 1, pageSize: 1000 },
       });
     }
-    // GET /api/user — accounts path used by adminService.getAccounts().
+    // GET /api/user/{id} — used by userService.updateIsActive (Agent 29).
+    // AccountItem fixtures do NOT include `fullName` so we synthesize a User
+    // here. The mock intentionally loses fidelity for fields the test does
+    // not assert on.
+    const singleMatch = path.match(/^\/api\/user\/(\d+)\/?$/);
+    if (singleMatch) {
+      const id = parseInt(singleMatch[1], 10);
+      const acc = (_mockAccountsData as Array<{ id: number; name?: string; email?: string; username?: string }>).find(
+        (a) => a.id === id,
+      );
+      return Promise.resolve({
+        data: {
+          id,
+          email: acc?.email ?? `user${id}@example.com`,
+          fullName: acc?.name ?? `User ${id}`,
+          username: acc?.username ?? `user${id}`,
+          roleId: 0,
+          roleName: null,
+          isActive: _lastSuspendedId === id ? false : true,
+          isEmailVerified: true,
+          accountTier: 'Free',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      });
+    }
+    // GET /api/user (list) — accounts path used by adminService.getAccounts().
     // Inject suspendedUntil for the account that was last suspended via DELETE_CONTENT_SUSPEND_14D.
     const futureDate = new Date(Date.now() + 14 * 86_400_000).toISOString();
     // eslint-disable-next-line no-console
@@ -79,6 +106,35 @@ beforeEach(async () => {
     const userId = match ? parseInt(match[1], 10) : undefined;
     if (userId !== undefined && path.toLowerCase().includes('suspend')) {
       _lastSuspendedId = userId;
+    }
+    return Promise.resolve({ data: {} });
+  });
+
+  // Agent 29 — the suspend flow now goes through PUT /api/user/{id} with
+  // { fullName, isActive }. The mock echoes the body back as the updated
+  // User record.
+  mockPut = vi.fn().mockImplementation((url: unknown, body: unknown) => {
+    const path = String(url ?? '');
+    const singleMatch = path.match(/^\/api\/user\/(\d+)\/?$/);
+    if (singleMatch) {
+      const id = parseInt(singleMatch[1], 10);
+      if (id === _lastSuspendedId || (body as { isActive?: boolean })?.isActive === false) {
+        _lastSuspendedId = id;
+      }
+      return Promise.resolve({
+        data: {
+          id,
+          email: `user${id}@example.com`,
+          fullName: `User ${id}`,
+          username: `user${id}`,
+          roleId: 0,
+          roleName: null,
+          isActive: (body as { isActive?: boolean })?.isActive ?? true,
+          isEmailVerified: true,
+          accountTier: 'Free',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      });
     }
     return Promise.resolve({ data: {} });
   });

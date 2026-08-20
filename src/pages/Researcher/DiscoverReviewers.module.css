@@ -156,6 +156,22 @@
   text-align: left;
   height: 100%;
   min-height: 360px;
+  position: relative;
+}
+
+.matchBadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #38bdf8 0%, #22d3ee 100%);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(34, 211, 238, 0.3);
 }
 
 .reviewerHeader {
@@ -192,6 +208,36 @@
   font-size: 0.75rem;
   color: #64748b;
   margin-top: 2px;
+}
+
+.taxonomyRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.taxonomyItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taxonomyLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.taxonomyValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 /* Stats */

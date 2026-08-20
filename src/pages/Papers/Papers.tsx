@@ -7,8 +7,10 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { paperService } from '../../services/paper.service';
 import { usePapers } from '../../hooks/usePapers';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
+import { parseEntityId } from '../../utils/entityId';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
 import { useCompletedReviewRequestForPaper } from '../../hooks/useCompletedReviewRequestForPaper';
+import { useAuthenticatedResearcher } from '../../hooks/useAuthenticatedResearcher';
 import { PaperLockBadge } from '../../components/researcher/PaperLockBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -21,7 +23,6 @@ import {
   FileText,
   Eye,
   Upload,
-  Plus,
   Check,
   Trash2,
   Loader2,
@@ -38,7 +39,7 @@ interface Paper {
   fileUrl?: string;
 }
 
-type UploadPhase = 'idle' | 'preview' | 'confirm' | 'delete';
+type UploadPhase = 'idle' | 'preview' | 'confirm';
 
 // Domain error codes the BE may emit when rejecting a paper delete. We treat
 // any of these (or a 409 Conflict in general) as the "active review request"
@@ -100,16 +101,31 @@ export const Papers = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'accepted' | 'rejected' | 'draft'>('all');
 
   // Papers are loaded from the BE via usePapers (no hardcoded initial state).
+  // The hook enforces cross-account isolation by filtering out records whose
+  // ownership field disagrees with the authenticated researcher.
   const {
     papers: fetchedPapers,
     isLoading: isPapersLoading,
     error: papersError,
     refetch: refetchPapers,
+    detectedCrossAccountLeak: papersLeak,
   } = usePapers({ pageNumber: 1, pageSize: 50 });
 
+  // Cross-account isolation: surfaced as a security banner + BTR signal.
+  // The hook itself drops the foreign records — this flag exists so the UI
+  // can alert the researcher AND so the BE team knows to fix the root
+  // cause.
+  const { researcherUserId } = useAuthenticatedResearcher();
+
   // Research field taxonomy is loaded from the BE via /api/MajorField and /api/SubField.
-  const { fields: majorFields } = useMajorFields();
-  const { subFields } = useSubFields();
+  const { fields: majorFields, isLoading: isLoadingMajorFields, error: majorFieldsError } = useMajorFields();
+  const { subFields: allSubfields } = useSubFields(); // Load all Subfields for lookup map
+
+  // Build Subfield lookup map to avoid N+1 queries in Paper list
+  const subfieldMap = useMemo(
+    () => new Map(allSubfields.map((sf) => [sf.id, sf])),
+    [allSubfields]
+  );
 
   // Review requests + per-paper lock state. The hook is the single source
   // of truth shared with DiscoverReviewers so a successful submission there
@@ -169,15 +185,15 @@ export const Papers = () => {
     setPapers(mapped);
   }, [fetchedPapers]);
 
-  const RECOMMENDED_FIELDS = majorFields.map((f) => f.name);
-  const SUBFIELD_OPTIONS = subFields.map((f) => f.name);
-
   // Upload flow state
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showFieldDropdown, setShowFieldDropdown] = useState(false);
+  
+  // Taxonomy state: single Major → single Subfield
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedSubfieldId, setSelectedSubfieldId] = useState<number | null>(null);
+  const { subFields: filteredSubfields, isLoading: isLoadingSubfields, error: subfieldError } = useSubFields(selectedMajorId ?? undefined);
 
   // Paper metadata for upload
   const [paperTitle, setPaperTitle] = useState('');
@@ -205,14 +221,12 @@ export const Papers = () => {
     fileInputRef.current?.click();
   };
 
-  const defaultSelectedField = (): string[] =>
-  majorFields.length > 0 ? [majorFields[0].name] : [];
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.pdf')) {
       setSelectedFile(file);
-      setSelectedFields(defaultSelectedField());
+      setSelectedMajorId(null);
+      setSelectedSubfieldId(null);
       setPaperTitle('');
       setPaperAbstract('');
       setUploadPhase('preview');
@@ -220,23 +234,13 @@ export const Papers = () => {
     }
   };
 
-  const toggleField = (field: string) => {
-    setSelectedFields(prev =>
-      prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
-    );
-  };
-
   const handleUploadPaper = () => {
     if (!paperTitle.trim()) {
       setTitleError(true);
       return;
     }
-    if (selectedFields.length === 0) return;
+    if (!selectedSubfieldId) return; // Subfield is required
     setUploadPhase('confirm');
-  };
-
-  const handleDeleteClick = () => {
-    setUploadPhase('delete');
   };
 
   const handleConfirmUpload = async () => {
@@ -254,7 +258,7 @@ export const Papers = () => {
     }
     if (hasError) return;
 
-    if (!selectedFile || selectedFields.length === 0 || !storage) return;
+    if (!selectedFile || !selectedSubfieldId || !storage) return;
     setIsUploading(true);
 
     const storageRef = ref(storage, `papers/${Date.now()}_${selectedFile.name}`);
@@ -279,7 +283,7 @@ export const Papers = () => {
             issn: false,
             isOpenAccess: false,
             quartile: undefined,
-            subFieldId: undefined,
+            subFieldId: selectedSubfieldId,
           });
 
           // Verify the paper was saved by fetching it back
@@ -304,7 +308,8 @@ export const Papers = () => {
           setToastMessage({ text: 'Failed to upload paper. Please try again.', type: 'error' });
         } finally {
           setSelectedFile(null);
-          setSelectedFields(defaultSelectedField());
+          setSelectedMajorId(null);
+          setSelectedSubfieldId(null);
           setPaperTitle('');
           setPaperAbstract('');
           setIsUploading(false);
@@ -316,12 +321,12 @@ export const Papers = () => {
 
   const handleRemovePaper = () => {
     setSelectedFile(null);
-    setSelectedFields(defaultSelectedField());
+    setSelectedMajorId(null);
+    setSelectedSubfieldId(null);
     setPaperTitle('');
     setPaperAbstract('');
     setTitleError(false);
     setUploadPhase('idle');
-    setShowFieldDropdown(false);
   };
 
   const handleDeleteTablePaper = (paper: Paper) => {
@@ -479,6 +484,25 @@ export const Papers = () => {
         </div>
       )}
 
+      {/* Cross-account data-isolation warning.
+          Defense-in-depth only — the underlying filter has already stripped
+          the foreign rows. The BE team has been notified via BTR. */}
+      {papersLeak && researcherUserId !== null && (
+        <div
+          className={styles.formError}
+          role="alert"
+          data-testid="papers-leak-warning"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <AlertCircle size={16} aria-hidden="true" />
+          <span>
+            The server returned records that do not belong to your account. They
+            have been hidden, but this is a backend security issue — please
+            contact the BE team. Reference: researcher-data-isolation BTR.
+          </span>
+        </div>
+      )}
+
       {/* Tabs Filter */}
       <div className={styles.tabsRow}>
         <button
@@ -556,6 +580,7 @@ export const Papers = () => {
             <thead>
               <tr>
                 <th>MANUSCRIPT</th>
+                <th>SUBFIELD</th>
                 <th>SUBMITTED</th>
                 <th>STATUS</th>
                 <th>ACTIONS</th>
@@ -573,12 +598,21 @@ export const Papers = () => {
                       : isReviewRequestsLoading
                         ? 'Checking review request status…'
                         : `Delete "${paper.name}"`;
+                  
+                  // Resolve Subfield name from lookup map
+                  const paperData = fetchedPapers.find(p => p.id === paper.id);
+                  const subfieldId = (paperData as any)?.subfieldId ?? (paperData as any)?.subFieldId;
+                  const subfieldName = subfieldId 
+                    ? (subfieldMap.get(Number(subfieldId))?.name ?? 'Unknown')
+                    : 'Not assigned';
+                  
                   return (
                     <tr key={paper.id} data-testid="papers-row" data-locked={isLocked ? 'true' : 'false'}>
                       <td className={styles.manuscriptCell}>
                         <FileText size={16} className={styles.fileIcon} />
                         <span className={styles.fileNameText}>{paper.name}</span>
                       </td>
+                      <td className={styles.subfieldCell}>{subfieldName}</td>
                       <td className={styles.dateCell}>{paper.date}</td>
                       <td>
                         <div className={styles.statusCellInner}>
@@ -786,80 +820,86 @@ export const Papers = () => {
                   </div>
                 </div>
 
-                {/* Fields Section */}
+                {/* Taxonomy Section */}
                 <div className={styles.fieldsSection}>
                   <div className={styles.fieldsSectionHeader}>
-                    <h4 className={styles.fieldsSectionTitle}>AI Recommended Research Fields</h4>
-                    <span className={styles.fieldsSectionHint}>({selectedFields.length} selected)</span>
+                    <h4 className={styles.fieldsSectionTitle}>Research Field Classification</h4>
+                    <span className={styles.requiredStar}>*</span>
                   </div>
 
-                  {/* Recommended field tags */}
-                  <div className={styles.fieldTags}>
-                    {RECOMMENDED_FIELDS.map(field => (
-                      <button
-                        key={field}
-                        className={`${styles.fieldTag} ${selectedFields.includes(field) ? styles.fieldTagSelected : ''}`}
-                        onClick={() => toggleField(field)}
-                      >
-                        {field}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Add field dropdown */}
-                  <div className={styles.addFieldWrapper}>
-                    <button
-                      className={styles.addFieldBtn}
-                      onClick={() => setShowFieldDropdown(!showFieldDropdown)}
-                    >
-                      <Plus size={14} />
-                      Add field
-                    </button>
-                    {showFieldDropdown && (
-                      <div className={styles.fieldDropdown}>
-                        {SUBFIELD_OPTIONS
-                          .filter(opt => !RECOMMENDED_FIELDS.includes(opt))
-                          .map(sub => (
-                            <button
-                              key={sub}
-                              className={`${styles.fieldDropdownItem} ${selectedFields.includes(sub) ? styles.fieldDropdownItemSelected : ''}`}
-                              onClick={() => {
-                                toggleField(sub);
-                                setShowFieldDropdown(false);
-                              }}
-                            >
-                              {selectedFields.includes(sub) && (
-                                <Check size={12} strokeWidth={2.5} />
-                              )}
-                              {sub}
-                            </button>
-                          ))}
+                  {/* Major Field Selection */}
+                  <div className={styles.paperMetaField}>
+                    <label className={styles.paperMetaLabel} htmlFor="majorField-select">
+                      Major Field <span className={styles.requiredStar}>*</span>
+                    </label>
+                    {majorFieldsError && (
+                      <div className={styles.fieldsWarning}>
+                        Major Fields could not be loaded.
                       </div>
+                    )}
+
+                    <select
+                      id="majorField-select"
+                      className={styles.paperMetaInput}
+                      value={selectedMajorId != null ? String(selectedMajorId) : ''}
+                      onChange={(e) => {
+                        setSelectedMajorId(parseEntityId(e.target.value));
+                        setSelectedSubfieldId(null);
+                      }}
+                      disabled={isLoadingMajorFields}
+                    >
+                      <option value="">Select a Major Field</option>
+                      {majorFields.map((field) => (
+                        <option key={field.id} value={String(field.id)}>
+                          {field.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subfield Selection */}
+                  <div className={styles.paperMetaField}>
+                    <label className={styles.paperMetaLabel} htmlFor="subfield-select">
+                      Subfield <span className={styles.requiredStar}>*</span>
+                    </label>
+                    {!selectedMajorId ? (
+                      <div className={styles.fieldsHint}>
+                        Select a Major Field to view its Subfields.
+                      </div>
+                    ) : isLoadingSubfields ? (
+                      <div className={styles.fieldsHint}>
+                        Loading Subfields...
+                      </div>
+                    ) : subfieldError ? (
+                      <div className={styles.fieldsWarning}>
+                        Subfields could not be loaded.
+                      </div>
+                    ) : filteredSubfields.length === 0 ? (
+                      <div className={styles.fieldsWarning}>
+                        No Subfields are available for this Major Field.
+                      </div>
+                    ) : (
+                      <select
+                        id="subfield-select"
+                        className={styles.paperMetaInput}
+                        value={selectedSubfieldId != null ? String(selectedSubfieldId) : ''}
+                        onChange={(e) => {
+                          const id = parseEntityId(e.target.value);
+                          setSelectedSubfieldId(id);
+                        }}
+                      >
+                        <option value="">Select a Subfield</option>
+                        {filteredSubfields.map((subfield) => (
+                          <option key={subfield.id} value={String(subfield.id)}>
+                            {subfield.name}
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </div>
 
-                  {/* Selected fields summary */}
-                  {selectedFields.length > 0 && (
-                    <div className={styles.selectedFieldsSummary}>
-                      <span className={styles.selectedFieldsLabel}>Selected:</span>
-                      <div className={styles.selectedFieldsChips}>
-                        {selectedFields.map(f => (
-                          <span key={f} className={styles.selectedChip}>
-                            {f}
-                            <button
-                              className={styles.removeChipBtn}
-                              onClick={() => toggleField(f)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedFields.length === 0 && (
-                    <p className={styles.fieldsWarning}>Please select at least one research field.</p>
+                  {!selectedSubfieldId && selectedMajorId && !isLoadingSubfields && filteredSubfields.length > 0 && (
+                    <p className={styles.fieldsWarning}>Please select a Subfield to continue.</p>
                   )}
                 </div>
               </div>
@@ -867,12 +907,6 @@ export const Papers = () => {
 
             {/* Modal Footer */}
             <div className={styles.uploadModalFooter}>
-              <div className={styles.uploadFooterLeft}>
-                <button className={styles.deleteBtn} onClick={handleDeleteClick}>
-                  <Trash2 size={14} />
-                  Delete
-                </button>
-              </div>
               <div className={styles.uploadFooterRight}>
                 <button className={styles.cancelBtn} onClick={handleRemovePaper}>
                   Cancel
@@ -880,7 +914,7 @@ export const Papers = () => {
                 <button
                   className={styles.uploadBtn}
                   onClick={handleUploadPaper}
-                  disabled={!paperTitle.trim() || selectedFields.length === 0}
+                  disabled={!paperTitle.trim() || !selectedSubfieldId}
                 >
                   <Upload size={14} />
                   Upload Paper
@@ -915,12 +949,16 @@ export const Papers = () => {
                 <span className={styles.popupDetailValue}>{new Date().toISOString().split('T')[0]}</span>
               </div>
               <div className={styles.popupDetailRow}>
-                <span className={styles.popupDetailLabel}>Research Fields</span>
-                <div className={styles.popupDetailFields}>
-                  {selectedFields.map(f => (
-                    <span key={f} className={styles.popupFieldChip}>{f}</span>
-                  ))}
-                </div>
+                <span className={styles.popupDetailLabel}>Major Field</span>
+                <span className={styles.popupDetailValue}>
+                  {majorFields.find(f => f.id === selectedMajorId)?.name ?? 'N/A'}
+                </span>
+              </div>
+              <div className={styles.popupDetailRow}>
+                <span className={styles.popupDetailLabel}>Subfield</span>
+                <span className={styles.popupDetailValue}>
+                  {filteredSubfields.find(f => f.id === selectedSubfieldId)?.name ?? 'N/A'}
+                </span>
               </div>
             </div>
 

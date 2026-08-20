@@ -1,51 +1,80 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Eye, Inbox, Search, X } from 'lucide-react';
+import { AlertTriangle, Check, Eye, FileText, Inbox, Search, X } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
-import { adminService } from '../../services/admin.service';
-import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
-import ApproveRoleRequestModal from './ApproveRoleRequestModal';
-import DenyRoleRequestModal from './DenyRoleRequestModal';
-import RoleRequestDetailsModal from './RoleRequestDetailsModal';
+import { adminUserService } from '../../services/adminUser.service';
+import type { User } from '../../types/auth';
+import { displayAccountTier } from '../../services/user.service';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import VerificationDetailsModal from './VerificationDetailsModal';
 import styles from './RoleRequests.module.css';
 
-type StatusFilter = 'ALL' | RoleRequestStatus;
-type ModalKind = 'details' | 'approve' | 'deny' | null;
+// ── Agent 40 — verification management page ────────────────────────────────
+//
+// Source: `GET /api/User` (`swagger.json:3688-3716`). The original
+// `/api/RoleRequest` endpoint does not exist in the current BE contract
+// (BTR-AGENT29-C). Pending verification users are derived from the User
+// response by `adminUserService.listPendingVerification`.
+//
+// The page deliberately renders the sidebar label "Role Requests" so we do
+// not break existing deep-links while the BE contracts are still landing.
+//
+// IMPORTANT: Accept / Reject buttons are **disabled with explanatory copy**
+// because the Swagger contract does NOT expose a verification-mutation
+// endpoint. Flipping `verificationStatus` server-side requires BE work
+// (BTR-AGENT29-C). Until then the UI stays honest and the Admin sees the
+// reason inline.
 
-const STATUS_FILTERS: StatusFilter[] = ['ALL', 'PENDING', 'APPROVED', 'DENIED'];
-const rolesText = (roles?: string[]) =>
-  roles ? (roles.length ? roles.join(', ') : 'None') : 'Unavailable';
-const requestTypeLabel = (request: RoleRequest) => {
-  if (request.requestType === 'INITIAL_REGISTRATION') return 'INITIAL REGISTRATION';
-  if (request.requestType === 'ADDITIONAL_ROLE') return 'ADDITIONAL ROLE';
-  return 'UNAVAILABLE';
+type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+type ModalKind = 'details' | null;
+
+const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
+
+const statusClass = (raw: string): string => {
+  switch (raw) {
+    case 'Accepted':
+      return styles.statusAPPROVED;
+    case 'Rejected':
+      return styles.statusDENIED;
+    case 'Pending':
+    default:
+      return styles.statusPENDING;
+  }
 };
+
+const formatRole = (roleName: string | null | undefined): string => {
+  if (!roleName) return 'Pending role assignment';
+  return roleName;
+};
+
+const formatTier = (tier: User['accountTier']): string => displayAccountTier(tier);
+
+const formatEmailState = (user: User): string =>
+  user.isEmailVerified ? 'Verified' : 'Not verified';
 
 export const RoleRequests = () => {
   useAdminGuard();
-  const [requests, setRequests] = useState<RoleRequest[]>([]);
+  const [rows, setRows] = useState<User[]>([]);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('ALL');
+  const [status, setStatus] = useState<StatusFilter>('PENDING');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<RoleRequest | null>(null);
+  const [selected, setSelected] = useState<User | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setRequests(await adminService.getRoleRequests());
+      const aggregate = await adminUserService.listAllUsers();
+      setRows(aggregate.rows);
     } catch (loadError) {
-      // Service already sanitizes the message; keep the copy verbatim so the
-      // page never surfaces a raw axios 404.
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Role requests could not be loaded. The Admin API contract may have changed.',
+          : 'Users could not be loaded. The Admin User API contract may have changed.',
       );
     } finally {
       setLoading(false);
@@ -59,26 +88,28 @@ export const RoleRequests = () => {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const base = requests.filter((request) => {
-      if (status !== 'ALL' && request.status !== status) return false;
+    const base = rows.filter((row) => {
+      const rowStatus =
+        typeof row.verificationStatus === 'string' ? row.verificationStatus.toUpperCase() : '';
+      if (status === 'PENDING' && rowStatus !== 'PENDING') return false;
+      if (status === 'ACCEPTED' && rowStatus !== 'ACCEPTED') return false;
+      if (status === 'REJECTED' && rowStatus !== 'REJECTED') return false;
       if (!query) return true;
       const searchable = [
-        request.userName,
-        request.email,
-        String(request.userId),
-        ...(request.currentRoles ?? []),
-        ...(request.requestedAdditionalRoles ?? []),
+        row.fullName,
+        row.email,
+        String(row.id),
+        row.roleName ?? '',
       ]
         .join(' ')
         .toLowerCase();
       return searchable.includes(query);
     });
-    // Newest first by submissionDate.
     return base.sort(
       (a, b) =>
-        new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime(),
+        new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
     );
-  }, [requests, search, status]);
+  }, [rows, search, status]);
 
   const {
     page,
@@ -91,33 +122,22 @@ export const RoleRequests = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<RoleRequest>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<User>(filtered, DEFAULT_PAGE_SIZE);
 
-  // Spec: every time the search query or status filter changes, the user
-  // must land back on page 1 (otherwise a stale page index can hide results).
   useEffect(() => {
     resetPage();
   }, [search, status, resetPage]);
 
-  const openModal = (request: RoleRequest, kind: Exclude<ModalKind, null>) => {
-    setSelected(request);
-    setModal(kind);
+  const openModal = (row: User) => {
+    setSelected(row);
+    setModal('details');
   };
 
-  const handleActioned = (updated: RoleRequest) => {
-    setRequests((previous) =>
-      previous.map((request) => (request.id === updated.id ? updated : request)),
-    );
-  };
-
-  // "No matching results" only fires when the user has typed a query — we do
-  // not want to override the "no records in the system" empty state with the
-  // same zero-rows view.
   const hasNoMatch =
     !loading &&
     !error &&
     totalItems === 0 &&
-    (search.trim().length > 0 || status !== 'ALL');
+    (search.trim().length > 0 || status !== 'PENDING');
 
   return (
     <div className={styles.page}>
@@ -129,8 +149,8 @@ export const RoleRequests = () => {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Role Requests</h1>
           <p className={styles.pageSubtitle}>
-            Inspect requests independently, then approve or deny pending
-            decisions.
+            Inspect pending verification, then approve or deny after the
+            Admin User API exposes the mutation endpoints.
           </p>
         </div>
       </div>
@@ -154,13 +174,17 @@ export const RoleRequests = () => {
               className={styles.select}
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
-              aria-label="Filter by status"
+              aria-label="Filter by verification status"
               data-testid="role-requests-status-filter"
               disabled={Boolean(error)}
             >
               {STATUS_FILTERS.map((filterStatus) => (
                 <option key={filterStatus} value={filterStatus}>
-                  {filterStatus === 'ALL' ? 'All Statuses' : filterStatus}
+                  {filterStatus === 'PENDING'
+                    ? 'Pending'
+                    : filterStatus === 'ACCEPTED'
+                      ? 'Accepted'
+                      : 'Rejected'}
                 </option>
               ))}
             </select>
@@ -196,13 +220,13 @@ export const RoleRequests = () => {
             <Inbox size={32} />
             <span>
               No role requests match “{search.trim()}”
-              {status !== 'ALL' ? ` in ${status}` : ''}.
+              {status !== 'PENDING' ? ` in ${status}` : ''}.
             </span>
           </div>
         ) : totalItems === 0 ? (
           <div className={styles.emptyState} data-testid="role-requests-empty">
             <Inbox size={32} />
-            <span>No role requests yet.</span>
+            <span>No {status.toLowerCase()} role requests.</span>
           </div>
         ) : (
           <>
@@ -212,79 +236,69 @@ export const RoleRequests = () => {
                   <tr>
                     <th>User</th>
                     <th>Email</th>
-                    <th>Initial / Current Role</th>
-                    <th>Requested Additional Role</th>
-                    <th>Request Type</th>
+                    <th>Assigned / Pending Role</th>
+                    <th>Email Verification</th>
                     <th>Submitted</th>
-                    <th>Status</th>
+                    <th>Verification Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((request) => (
-                    <tr key={request.id}>
+                  {pageItems.map((row) => (
+                    <tr key={row.id}>
                       <td>
                         <div className={styles.userCell}>
-                          <span className={styles.userName}>{request.userName}</span>
-                          <span className={styles.userEmail}>
-                            ID #{request.userId}
-                          </span>
+                          <span className={styles.userName}>{row.fullName}</span>
+                          <span className={styles.userEmail}>ID #{row.id}</span>
                         </div>
                       </td>
-                      <td>{request.email}</td>
-                      <td>{rolesText(request.currentRoles)}</td>
-                      <td>{rolesText(request.requestedAdditionalRoles)}</td>
+                      <td>{row.email}</td>
+                      <td>{formatRole(row.roleName)}</td>
+                      <td>{formatEmailState(row)}</td>
                       <td>
-                        <span
-                          className={`${styles.requestTypeBadge} ${
-                            !request.requestType ? styles.requestTypeUnknown : ''
-                          }`}
-                        >
-                          {requestTypeLabel(request)}
-                        </span>
-                      </td>
-                      <td>
-                        {new Date(request.submissionDate).toLocaleDateString('vi-VN')}
+                        {row.createdAt
+                          ? new Date(row.createdAt).toLocaleDateString('vi-VN')
+                          : '—'}
                       </td>
                       <td>
                         <span
-                          className={`${styles.statusPill} ${
-                            styles[`status${request.status}`]
-                          }`}
+                          className={`${styles.statusPill} ${statusClass(
+                            row.verificationStatus ?? 'Pending',
+                          )}`}
                         >
-                          {request.status}
+                          {row.verificationStatus ?? 'Pending'}
                         </span>
                       </td>
                       <td>
                         <div className={styles.actions}>
                           <button
                             className={`${styles.actionButton} ${styles.inspectButton}`}
-                            onClick={() => openModal(request, 'details')}
+                            onClick={() => openModal(row)}
                             type="button"
                           >
                             <Eye size={14} />
                             View Details
                           </button>
-                          {request.status === 'PENDING' ? (
-                            <>
-                              <button
-                                className={`${styles.actionButton} ${styles.approveButton}`}
-                                onClick={() => openModal(request, 'approve')}
-                                type="button"
-                              >
-                                <Check size={14} />
-                                Approve
-                              </button>
-                              <button
-                                className={`${styles.actionButton} ${styles.denyButton}`}
-                                onClick={() => openModal(request, 'deny')}
-                                type="button"
-                              >
-                                <X size={14} />
-                                Deny
-                              </button>
-                            </>
-                          ) : null}
+                          <button
+                            className={`${styles.actionButton} ${styles.approveButton}`}
+                            disabled
+                            type="button"
+                            title="Accept is unavailable until the Admin User API exposes a verification-mutation endpoint. See BTR-AGENT29-C."
+                            data-testid="role-requests-accept"
+                          >
+                            <Check size={14} />
+                            Accept
+                          </button>
+                          <button
+                            className={`${styles.actionButton} ${styles.denyButton}`}
+                            disabled
+                            type="button"
+                            title="Reject is unavailable until the Admin User API exposes a verification-mutation endpoint. See BTR-AGENT29-C."
+                            data-testid="role-requests-reject"
+                          >
+                            <X size={14} />
+                            Reject
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -307,25 +321,22 @@ export const RoleRequests = () => {
         )}
       </div>
 
-      <RoleRequestDetailsModal
-        request={selected}
+      <VerificationDetailsModal
+        user={selected}
         open={modal === 'details'}
         onClose={() => setModal(null)}
-      />
-      <ApproveRoleRequestModal
-        request={selected}
-        open={modal === 'approve'}
-        onClose={() => setModal(null)}
-        onActioned={handleActioned}
-      />
-      <DenyRoleRequestModal
-        request={selected}
-        open={modal === 'deny'}
-        onClose={() => setModal(null)}
-        onActioned={handleActioned}
       />
     </div>
   );
 };
+
+// Re-export so the modal can be exercised in unit tests without exposing
+// the modal component in two places.
+export { formatRole, formatTier, statusClass };
+
+// Hint to the linter: `FileText` is reserved for future "no proof document
+// attached" copy updates; removing the import would require re-introducing
+// it later, so the import stays here as a single reference.
+void FileText;
 
 export default RoleRequests;

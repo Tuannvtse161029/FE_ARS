@@ -20,12 +20,14 @@ import { useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { useFollowReviewer } from '../../hooks/useFollowers';
 import { useWallet } from '../../hooks/useWallet';
 import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
+import { usePapers } from '../../hooks/usePapers';
 import { resolveReviewerName, getReviewerDisplayName, ensureReviewerDisplayName } from '../../services/reviewerLookup.service';
 import { useAuthStore } from '../../store/authSlice';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE, REVIEWER_GRID_PAGE_SIZE } from '../../utils/tableConstants';
+import { useSubFields } from '../../hooks/useMajorFields';
 import {
   resolvePaperTitle,
 } from '../../utils/reviewRequestDisplay';
@@ -132,7 +134,8 @@ export const DiscoverReviewers = () => {
 
   // Review requests history state — hydrated from the shared paper-review-locks hook
   // so the policy decisions in this page and the lock decisions in /papers use the
-  // same source of truth. The hook keeps its own loading/error/refetch lifecycle.
+  // same source of truth. The hook keeps its own loading/error/refetch lifecycle
+  // and applies the cross-account ownership filter (defense-in-depth).
   const {
     requests,
     isLoading: isLoadingRequests,
@@ -167,14 +170,23 @@ export const DiscoverReviewers = () => {
     return () => window.removeEventListener('ars:reviewer-name-resolved', handler);
   }, []);
 
-  // Fetch papers for reviewer recommendation dropdown
+  // Fetch papers for reviewer recommendation dropdown. Reuse the shared
+  // `usePapers` hook so the cross-account ownership filter is applied
+  // here too — never call paperService.getAll() directly for a list view.
+  const {
+    papers: myPapers,
+  } = usePapers({ pageNumber: 1, pageSize: 200 });
+
+  // Load all subfields for matching (don't filter by major)
+  const { subFields } = useSubFields();
+
   useEffect(() => {
-    paperService.getAll().then((result) => {
-      setPapers(result.items);
-    }).catch(() => {
-      // silently fail — dropdown stays empty
-    });
-  }, []);
+    // Bridge the hook into the local `papers` state used by the selector
+    // + paper-id lookup. Only update when the upstream list actually
+    // changes — avoid a one-frame render where a previous user's papers
+    // were still in `papers`.
+    setPapers(myPapers);
+  }, [myPapers]);
 
   // Render reviewers — shows every reviewer the BE returned, ignoring the
   // historical seed-user filter. Reviewers marked isAvailable !== false are kept;
@@ -185,20 +197,62 @@ export const DiscoverReviewers = () => {
       .map(mapProfileToReviewer);
   }, [reviewerProfiles]);
 
+  // Reviewer ranking: when creating a request for a specific Paper, rank by Subfield match
+  const rankedReviewers = useMemo(() => {
+    if (screenState !== 'create-request' || !selectedPaperId) {
+      return reviewers;
+    }
+
+    const paper = papers.find((p) => String(p.id) === selectedPaperId);
+    const paperSubfieldId = paper?.subfieldId ?? paper?.subFieldId ?? null;
+    
+    if (paperSubfieldId === null) {
+      return reviewers;
+    }
+
+    // Partition reviewers by match quality
+    const exactSubfieldMatch: Reviewer[] = [];
+    const sameMajorField: Reviewer[] = [];
+    const others: Reviewer[] = [];
+
+    reviewers.forEach((reviewer) => {
+      const profile = reviewerProfiles.find((p) => p.userId === Number(reviewer.id.replace('rev-', '')));
+      const reviewerSubfieldId = profile?.subFieldId ?? null;
+      const reviewerMajorId = profile?.majorFieldId ?? null;
+
+      if (reviewerSubfieldId === paperSubfieldId) {
+        exactSubfieldMatch.push(reviewer);
+      } else if (reviewerMajorId !== null && paperSubfieldId !== null) {
+        // Check if paper's subfield belongs to this reviewer's major field
+        const paperSubfield = subFields.find((sf) => sf.id === paperSubfieldId);
+        if (paperSubfield && paperSubfield.majorFieldId === reviewerMajorId) {
+          sameMajorField.push(reviewer);
+        } else {
+          others.push(reviewer);
+        }
+      } else {
+        others.push(reviewer);
+      }
+    });
+
+    return [...exactSubfieldMatch, ...sameMajorField, ...others];
+  }, [reviewers, screenState, selectedPaperId, papers, reviewerProfiles, subFields]);
+
   // Reviewer grid search + refresh state
   const [reviewerSearch, setReviewerSearch] = useState('');
   const [isRefreshingReviewers, setIsRefreshingReviewers] = useState(false);
 
   const filteredReviewers = useMemo(() => {
     const q = reviewerSearch.trim().toLowerCase();
-    if (!q) return reviewers;
-    return reviewers.filter((r) =>
+    const baseList = rankedReviewers;
+    if (!q) return baseList;
+    return baseList.filter((r) =>
       [r.name, r.title, r.orcid, ...(r.tags ?? []), ...(r.specializations ?? [])]
         .join(' ')
         .toLowerCase()
         .includes(q),
     );
-  }, [reviewers, reviewerSearch]);
+  }, [rankedReviewers, reviewerSearch]);
 
   const {
     page: reviewerPage,
@@ -608,6 +662,17 @@ export const DiscoverReviewers = () => {
                           const hasSufficientFunds = balance >= reviewer.fee;
                           const shortfall = Math.max(0, reviewer.fee - balance);
 
+                          // Determine if this reviewer has a Subfield match with the selected paper
+                          const paper = papers.find((p) => String(p.id) === selectedPaperId);
+                          const paperSubfieldId = paper?.subfieldId ?? paper?.subFieldId ?? null;
+                          const profile = reviewerProfiles.find((p) => p.userId === Number(reviewer.id.replace('rev-', '')));
+                          const reviewerSubfieldId = profile?.subFieldId ?? null;
+                          const hasExactMatch = paperSubfieldId !== null && reviewerSubfieldId === paperSubfieldId;
+                          
+                          // Get taxonomy display names
+                          const majorFieldName = profile?.majorFieldName ?? null;
+                          const subFieldName = profile?.subFieldName ?? null;
+
                           return (
                           <div
                             key={reviewer.id}
@@ -624,6 +689,23 @@ export const DiscoverReviewers = () => {
                               <div className={styles.authorMeta}>
                                 <span className={styles.reviewerName}>{reviewer.name}</span>
                                 <span className={styles.reviewerTitle}>{reviewer.title}</span>
+                              </div>
+                            </div>
+
+                            {hasExactMatch && (
+                              <div className={styles.matchBadge} data-testid="subfield-match-badge">
+                                Subfield Match
+                              </div>
+                            )}
+
+                            <div className={styles.taxonomyRow}>
+                              <div className={styles.taxonomyItem}>
+                                <span className={styles.taxonomyLabel}>Major Field</span>
+                                <span className={styles.taxonomyValue}>{majorFieldName ?? 'Expertise not specified'}</span>
+                              </div>
+                              <div className={styles.taxonomyItem}>
+                                <span className={styles.taxonomyLabel}>Subfield</span>
+                                <span className={styles.taxonomyValue}>{subFieldName ?? 'Expertise not specified'}</span>
                               </div>
                             </div>
 

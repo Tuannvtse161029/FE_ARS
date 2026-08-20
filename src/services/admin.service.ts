@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 import type { User } from '../types/auth';
 import { notificationService } from './notification.service';
 import { auditLog } from './auditLogStore';
+import { userService } from './user.service';
 import {
   MOCK_ROLE_REQUESTS,
   MOCK_ACCOUNTS,
@@ -10,7 +11,6 @@ import {
   MOCK_ANALYTICS_SUMMARY,
   buildMockTimeseries,
 } from './admin.mocks';
-import type { PagedResult } from '../types/api';
 import type {
   RoleRequest,
   RoleRequestDecision,
@@ -248,31 +248,40 @@ async function getAccounts(query: AccountsQuery = {}): Promise<AccountItem[]> {
 
   if (USE_MOCK_DATA) return delay(clone(accountStore).filter(filterFn));
 
-  const response = await api.get<PagedResult<User>>(API_ENDPOINTS.USER.GET_ALL, {
-    params: {
-      pageNumber: 1,
-      pageSize: 1000, // Admin wants the full list; pagination handled client-side.
-    },
-  });
-  const items = response.data.items ?? response.data;
-  return (Array.isArray(items) ? items : [items]).filter(Boolean).map(userToAccountItem).filter(filterFn);
+  // Agent 29 (BTR-AGENT29-A): the User API does not yet support a
+  // server-side search / role / plan / status filter. Walk every backend
+  // page (capped by `MAX_USER_FETCH_PAGES`) so the Admin accounts table
+  // reflects the full directory, and apply the client-side filter on top.
+  const { items } = await userService.getAllUsers();
+  return items
+    .map(userToAccountItem)
+    .filter(filterFn);
 }
 
 async function suspendAccount(
   id: number,
   options?: { suspendedUntil?: string },
 ): Promise<AccountItem> {
-  return mutateAccount(id, 'SUSPENDED', 'suspend', options);
+  return mutateAccount(id, false, options);
 }
 
 async function unsuspendAccount(id: number): Promise<AccountItem> {
-  return mutateAccount(id, 'ACTIVE', 'unsuspend');
+  return mutateAccount(id, true);
 }
 
+/**
+ * Mutate an account's active state via the documented `PUT /api/User/{id}`
+ * mutation. The `UserUpdateRequest` contract requires `fullName`
+ * (`swagger.json:6161-6181`) — we must read the current record first so
+ * the PUT body never blanks unrelated fields. The mutation is
+ * server-confirmation only: no optimistic flip on the FE side.
+ *
+ * Returns the refetched AccountItem so callers can rely on `isActive`
+ * matching what the BE now has on disk.
+ */
 async function mutateAccount(
   id: number,
-  status: AccountItem['status'],
-  endpoint: 'suspend' | 'unsuspend',
+  isActive: boolean,
   options?: { suspendedUntil?: string },
 ): Promise<AccountItem> {
   if (USE_MOCK_DATA) {
@@ -283,17 +292,17 @@ async function mutateAccount(
     }
     const updated: AccountItem = {
       ...accountStore[idx],
-      status,
+      status: isActive ? 'ACTIVE' : 'SUSPENDED',
       suspendedUntil:
-        status === 'SUSPENDED'
-          ? options?.suspendedUntil ?? accountStore[idx].suspendedUntil ?? null
-          : null,
+        isActive
+          ? null
+          : options?.suspendedUntil ?? accountStore[idx].suspendedUntil ?? null,
     };
     accountStore[idx] = updated;
     auditLog.append({
       adminId: 0,
       adminName: 'Admin User',
-      action: status === 'SUSPENDED' ? 'SUSPENDED_ACCOUNT' : 'UNSUSPENDED_ACCOUNT',
+      action: isActive ? 'UNSUSPENDED_ACCOUNT' : 'SUSPENDED_ACCOUNT',
       target: `User #${updated.id} / ${updated.name}`,
       targetId: updated.id,
       details: options?.suspendedUntil
@@ -302,13 +311,23 @@ async function mutateAccount(
     });
     return delay(clone(updated));
   }
-  // TODO: Replace mock data with live endpoint once backend is updated.
-  const path =
-    endpoint === 'suspend'
-      ? API_ENDPOINTS.ADMIN.ACCOUNTS.SUSPEND(id)
-      : API_ENDPOINTS.ADMIN.ACCOUNTS.UNSUSPEND(id);
-  const response = await api.post<AccountItem>(path, options ?? {});
-  return response.data;
+  try {
+    // Issue `PUT /api/User/{id}` with `isActive` as the only mutation. The
+    // helper reads the current User record first and constructs a full
+    // body so we never overwrite unrelated columns.
+    // If the BE has a separate `suspendedUntil` deadline, fold it into the
+    // next evolution of `UserUpdateRequest`. For now the helper only
+    // mutates `isActive`; the `options.suspendedUntil` is preserved for
+    // future BE growth.
+    void options;
+    await userService.updateIsActive(id, isActive);
+    const refreshed = await userService.getById(id);
+    return userToAccountItem(refreshed);
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag(`mutateAccount(${id}, ${isActive}) failed`, err);
+    throw sanitize(ACTION_FAILED_MESSAGE, err);
+  }
 }
 
 // ── Withdrawals (3-state manual flow) ─────────────────────────────────────

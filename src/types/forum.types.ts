@@ -2,13 +2,35 @@
 // All field names are taken verbatim from the deployed Swagger contract at
 // https://arsplatform.onrender.com/swagger/index.html. The Swagger schema
 // is the authoritative reference — these types intentionally stay narrow
-// rather than fabricating likes/views/commentCount fields that the API
-// does not return (do not extend based on assumptions).
+// rather than fabricating fields that the API does not return (do not
+// extend based on assumptions).
+//
+// Agent 42 audit (2026-08-19):
+//   The bundled `swagger.json` and the live /swagger/v1/swagger.json
+//   document do NOT publish `likeCount` / `viewCount` / `commentCount`
+//   on ForumPost, and no Like/Unlike/Toggle/Register-View endpoint
+//   exists. However, the deployed BE actually returns these counters in
+//   its real /api/ForumPost response (confirmed via Network panel by
+//   the user). This is a documented schema-vs-runtime drift: the
+//   backend ships the response but the OpenAPI document has not caught
+//   up. Until the schema is republished, the FE accepts the live shape
+//   and the comments below mark the divergence. BTR-AGENT42-A
+//   (Like mutation) and BTR-AGENT42-B (View register) remain open.
 
 // ── ForumPost ────────────────────────────────────────────────────────────────
-// Note: Swagger does NOT return likes, views, or commentCount for a post.
-// Any count metadata shown in the UI must come from the dedicated
-// endpoints (e.g. comment list length for comments), not invented here.
+// Live wire shape (confirmed against the deployed BE on 2026-08-19):
+//   {
+//     id, title, content, abstract, category, tags,
+//     attachedPdfUrl, attachedImageUrl, authorId,
+//     createdAt, updatedAt,
+//     likeCount, viewCount, commentCount,
+//     isLikedByCurrentUser,
+//   }
+// The last four fields are not in the published OpenAPI schema yet.
+// Author display info (fullName, avatarUrl) is NOT in the post payload
+// per the observed wire — the parent must call `userService.getById`
+// when it needs to render an author byline. For now, the FE renders
+// "Author #{id}" as a fallback.
 export interface ForumPost {
   id: number;
   title?: string | null;
@@ -25,6 +47,17 @@ export interface ForumPost {
   authorId?: number;
   createdAt?: string;
   updatedAt?: string;
+  // ── Engagement counters (live BE — not yet in published Swagger) ──────
+  // `likeCount` / `viewCount` / `commentCount` are integer totals the BE
+  // populates server-side. The FE renders these as-is (zeros are valid).
+  likeCount?: number;
+  viewCount?: number;
+  commentCount?: number;
+  // `isLikedByCurrentUser` is the per-viewer liked state. The BE may
+  // return `true` only for authenticated, non-Guest viewers. Until the
+  // BE ships a Like mutation endpoint (BTR-AGENT42-A), the FE still
+  // disables the Like button even when this is `true`.
+  isLikedByCurrentUser?: boolean;
 }
 
 export interface ForumPostCreateRequest {

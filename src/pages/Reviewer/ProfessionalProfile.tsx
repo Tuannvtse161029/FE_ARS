@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useReviewerAvailability, useReviewerProfiles } from '../../hooks/useReviewerProfiles';
-import { fieldService } from '../../services/field.service';
 import { reviewerService } from '../../services/reviewer.service';
 import { userService } from '../../services/user.service';
+import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
+import { parseEntityId } from '../../utils/entityId';
 import styles from './ProfessionalProfile.module.css';
 
 const REVIEW_FEE_MIN = 0;
@@ -45,14 +46,30 @@ export const ProfessionalProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [account, setAccount] = useState<{ fullName?: string; email?: string } | null>(null);
-  const [majorFieldName, setMajorFieldName] = useState<string | null>(null);
-  const [subFieldName, setSubFieldName] = useState<string | null>(null);
-  const [isEnriching, setIsEnriching] = useState(false);
+
+  // Research Expertise state
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
+  const [expertiseFeedback, setExpertiseFeedback] = useState<Feedback>(null);
+  const [isSubmittingExpertise, setIsSubmittingExpertise] = useState(false);
+
+  // Load Major Fields and Subfields
+  const { fields: majorFields, isLoading: isMajorsLoading } = useMajorFields();
+  // Only fetch subfields when a valid positive majorId is selected
+  const { subFields, isLoading: isSubsLoading } = useSubFields(selectedMajorId);
 
   useEffect(() => {
     setFee(professionalProfile?.reviewFee === null || professionalProfile?.reviewFee === undefined ? '' : String(professionalProfile.reviewFee));
     setFeedback(null);
   }, [professionalProfile?.userId, professionalProfile?.reviewFee]);
+
+  // Initialize expertise fields from profile
+  useEffect(() => {
+    if (professionalProfile) {
+      setSelectedMajorId(professionalProfile.majorFieldId ?? null);
+      setSelectedSubId(professionalProfile.subFieldId ?? null);
+    }
+  }, [professionalProfile?.userId, professionalProfile?.majorFieldId, professionalProfile?.subFieldId]);
 
   useEffect(() => {
     if (authenticatedUserId === undefined) {
@@ -61,23 +78,17 @@ export const ProfessionalProfile = () => {
     }
 
     let cancelled = false;
-    setIsEnriching(true);
-    void Promise.all([
-      userService.getById(authenticatedUserId).catch(() => null),
-      fieldService.getAllMajor().catch(() => []),
-      fieldService.getAllSub().catch(() => []),
-    ]).then(([nextAccount, majors, subFields]) => {
+    userService.getById(authenticatedUserId).then((nextAccount) => {
       if (cancelled) return;
       setAccount(nextAccount);
-      const subField = subFields.find((field) => field.id === professionalProfile?.subFieldId);
-      setSubFieldName(subField?.name ?? null);
-      setMajorFieldName(subField ? majors.find((field) => field.id === subField.majorFieldId)?.name ?? null : null);
-      setIsEnriching(false);
+    }).catch(() => {
+      if (cancelled) return;
+      setAccount(null);
     });
     return () => {
       cancelled = true;
     };
-  }, [authenticatedUserId, professionalProfile?.subFieldId]);
+  }, [authenticatedUserId]);
 
   const parsedFee = fee.trim() === '' ? null : Number(fee);
   const isFeeValid =
@@ -87,12 +98,67 @@ export const ProfessionalProfile = () => {
     parsedFee <= REVIEW_FEE_MAX;
   const hasFeeChanged = parsedFee !== (professionalProfile?.reviewFee ?? null);
 
+  // Expertise validation
+  const isExpertiseValid = selectedMajorId !== null && selectedSubId !== null;
+  const hasExpertiseChanged = 
+    selectedMajorId !== (professionalProfile?.majorFieldId ?? null) ||
+    selectedSubId !== (professionalProfile?.subFieldId ?? null);
+
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
       await Promise.all([refetch()]);
     } finally {
       setIsRetrying(false);
+    }
+  };
+
+  const handleMajorChange = (event: import('react').ChangeEvent<HTMLSelectElement>) => {
+    const newMajorId = parseEntityId(event.target.value);
+    setSelectedMajorId(newMajorId);
+    // Clear Subfield when Major changes to avoid invalid combinations
+    setSelectedSubId(null);
+    setExpertiseFeedback(null);
+  };
+
+  const handleSubChange = (event: import('react').ChangeEvent<HTMLSelectElement>) => {
+    const newSubId = parseEntityId(event.target.value);
+    setSelectedSubId(newSubId);
+    setExpertiseFeedback(null);
+  };
+
+  const handleSaveExpertise = async (event: import('react').FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!professionalProfile || authenticatedUserId === undefined || !isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise) {
+      if (!isExpertiseValid) {
+        setExpertiseFeedback({ type: 'error', message: 'Please select both Major Field and Subfield.' });
+      }
+      return;
+    }
+
+    const previousMajor = professionalProfile.majorFieldId;
+    const previousSub = professionalProfile.subFieldId;
+    setIsSubmittingExpertise(true);
+    setExpertiseFeedback(null);
+
+    try {
+      // Send only taxonomy IDs (minimal PATCH payload)
+      await reviewerService.update(authenticatedUserId, { 
+        majorFieldId: selectedMajorId, 
+        subFieldId: selectedSubId 
+      });
+      await refetch();
+      setExpertiseFeedback({ type: 'success', message: 'Research expertise updated successfully.' });
+    } catch (saveError) {
+      // Restore previous values on error
+      setSelectedMajorId(previousMajor ?? null);
+      setSelectedSubId(previousSub ?? null);
+      setExpertiseFeedback({
+        type: 'error',
+        message: saveError instanceof Error && saveError.message ? saveError.message : 'Unable to save research expertise. Previous values restored.',
+      });
+    } finally {
+      setIsSubmittingExpertise(false);
     }
   };
 
@@ -177,12 +243,74 @@ export const ProfessionalProfile = () => {
         </div>
         <dl className={styles.profileDetails}>
           <div><dt>ORCID</dt><dd>{professionalProfile.orcidId ?? 'Not set'}</dd></div>
-          <div><dt>Major field</dt><dd>{majorFieldName ?? (isEnriching ? 'Loading…' : 'Not available')}</dd></div>
-          <div><dt>Subfield</dt><dd>{subFieldName ?? (professionalProfile.subFieldId === null || professionalProfile.subFieldId === undefined ? 'Not set' : `Subfield #${professionalProfile.subFieldId}`)}</dd></div>
           <div><dt>Synchronization</dt><dd>{professionalProfile.syncStatus ?? 'Not available'}</dd></div>
           <div><dt>Last updated</dt><dd>{formatUpdatedAt(professionalProfile.updatedAt)}</dd></div>
           <div><dt>Availability</dt><dd><span className={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>{displayAvailability}</span></dd></div>
         </dl>
+      </section>
+
+      <section className={styles.expertiseSection} data-testid="research-expertise-section" aria-labelledby="research-expertise-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.eyebrow}>RESEARCH EXPERTISE</p>
+            <h2 id="research-expertise-title">Your research specialization</h2>
+            <p>Select your Major Field and Subfield. This helps researchers find reviewers with matching expertise.</p>
+          </div>
+        </div>
+        <form className={styles.expertiseForm} onSubmit={handleSaveExpertise}>
+          <div className={styles.formRow}>
+            <div className={styles.formField}>
+              <label htmlFor="major-field">Major Field</label>
+              <select
+                id="major-field"
+                data-testid="major-field-select"
+                value={selectedMajorId ?? ''}
+                onChange={handleMajorChange}
+                disabled={isMajorsLoading}
+              >
+                <option value="">Select a Major Field</option>
+                {majorFields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.formField}>
+              <label htmlFor="sub-field">Subfield</label>
+              <select
+                id="sub-field"
+                data-testid="sub-field-select"
+                value={selectedSubId ?? ''}
+                onChange={handleSubChange}
+                disabled={selectedMajorId === null || isMajorsLoading || isSubsLoading}
+              >
+                <option value="">Select a Subfield</option>
+                {subFields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button 
+            className={styles.primaryButton} 
+            type="submit" 
+            data-testid="save-expertise-button"
+            disabled={!isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise}
+          >
+            {isSubmittingExpertise ? 'Saving…' : 'Save Expertise'}
+          </button>
+          {expertiseFeedback && (
+            <div 
+              className={expertiseFeedback.type === 'success' ? styles.successFeedback : styles.errorFeedback} 
+              role={expertiseFeedback.type === 'error' ? 'alert' : 'status'}
+            >
+              {expertiseFeedback.message}
+            </div>
+          )}
+        </form>
       </section>
 
       <section className={styles.metricSection} data-testid="academic-metrics-section" aria-labelledby="academic-metrics-title">
