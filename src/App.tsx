@@ -36,6 +36,7 @@ import PremiumPackages from './pages/Admin/PremiumPackages';
 import AuditLogs from './pages/Admin/AuditLogs';
 import CheckoutReturn from './pages/Payment/CheckoutReturn';
 import PremiumPackagesPreview from './pages/PremiumPackages';
+import { CompleteGoogleRegistration } from './pages/CompleteGoogleRegistration/CompleteGoogleRegistration';
 import './styles/globals.css';
 
 const App = () => {
@@ -53,6 +54,16 @@ const App = () => {
               <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
             </Route>
           </Route>
+
+          {/* Agent 52 — First-time Google-user onboarding. Renders outside
+              the AuthLayout / PublicRoute chain because the page controls
+              its own auth state. If the user is not authenticated, the
+              page bounces to /login. See BTR-AGENT52-04 for the
+              refresh-safe handoff. */}
+          <Route
+            path={ROUTES.COMPLETE_GOOGLE_REGISTRATION}
+            element={<CompleteGoogleRegistration />}
+          />
 
           {/* Private Routes */}
           <Route element={<PrivateRoute />}>

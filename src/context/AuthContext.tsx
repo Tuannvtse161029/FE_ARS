@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
-import authService from '../services/auth.service';
+import authService, { clearAuthSession } from '../services/auth.service';
 import { userService } from '../services/user.service';
 import { ROUTES } from '../utils/constants';
 import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
@@ -15,6 +15,14 @@ interface AuthContextType {
   error: string | null;
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
+  /**
+   * Agent 53 — failed-session recovery (401 / 403 / token-expired). Clears
+   * the centralized ARS session and resets the Zustand store without
+   * navigating; the caller is expected to redirect. Equivalent to logout
+   * minus the navigation step. Safe to invoke from non-React surfaces
+   * that hold a reference to this method.
+   */
+  handleSessionFailure: () => void;
   clearError: () => void;
   // Set when the BE returned more than one role for this user. The FE shows
   // a picker; the user picks a role and we call `confirmRoleSelection`.
@@ -70,6 +78,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     authResponse: AuthResponse;
     rememberMe: boolean;
   } | null>(null);
+
+  // Agent 53 — single in-flight logout guard. Multiple subscribers
+  // (MainLayout profile menu, Onboarding flow, PendingVerification page,
+  // PublicRoute 401 interceptor, useVerifiedGuard bounce) may invoke
+  // logout() concurrently. The ref guarantees we only run the cleanup
+  // and the navigation once; subsequent invocations become no-ops while
+  // the guard is held.
+  const logoutInFlightRef = useRef(false);
 
   /**
    * Persist the BE auth response into both the storage layer and the Zustand
@@ -218,17 +234,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const cancelRoleSelection = useCallback(() => {
     setPendingRoleSelection(null);
     // User backed out — clear any partial auth state so they can re-login cleanly.
-    authService.logout();
+    // Agent 53 — route through the centralized routine so storage keys, the
+    // Axios header, and the Zustand store are all reset before the navigate.
+    void clearAuthSession();
     authStore.logout();
-    navigate(ROUTES.LOGIN);
+    navigate(ROUTES.LOGIN, { replace: true });
   }, [authStore, navigate]);
 
   const logout = () => {
-    authService.logout();
-    authStore.logout();
-    setPendingRoleSelection(null);
-    navigate(ROUTES.LOGIN);
+    // Agent 53 — null-safe for Guest sessions. `authStore.logout()` and
+    // `clearAuthSession()` are both safe to call when there is no token
+    // or no user — Guest users have a hydrated `effectiveRole: 'Guest'`
+    // and `user: null`, and the cleanup routine no-ops on empty storage.
+    if (logoutInFlightRef.current) return;
+    logoutInFlightRef.current = true;
+    try {
+      void clearAuthSession();
+      authStore.logout();
+      setPendingRoleSelection(null);
+      navigate(ROUTES.LOGIN, { replace: true });
+    } finally {
+      // Release the guard on the next tick so the user can re-trigger
+      // logout from another surface (e.g. after a session recovery).
+      queueMicrotask(() => {
+        logoutInFlightRef.current = false;
+      });
+    }
   };
+
+  /**
+   * Agent 53 — failed-session recovery. Called from axios response
+   * interceptors and the Pending Verification / Onboarding recovery
+   * paths when the BE refuses a request (401 / 403). Equivalent to a
+   * normal logout but uses the centralized cleanup so the failure path
+   * stays in lock-step with the success path. Fire-and-forget; the
+   * interceptor already redirected to /login so we do not navigate
+   * again here.
+   */
+  const handleSessionFailure = useCallback(() => {
+    if (logoutInFlightRef.current) return;
+    logoutInFlightRef.current = true;
+    try {
+      void clearAuthSession();
+      authStore.logout();
+      setPendingRoleSelection(null);
+    } finally {
+      queueMicrotask(() => {
+        logoutInFlightRef.current = false;
+      });
+    }
+  }, [authStore]);
 
   const clearError = () => {
     setError(null);
@@ -301,6 +356,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     error,
     login,
     logout,
+    handleSessionFailure,
     clearError,
     pendingRoleSelection,
     confirmRoleSelection,

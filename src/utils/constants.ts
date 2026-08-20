@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
+    GOOGLE_LOGIN: '/api/auth/google-login',
     REFRESH: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
     FORGOT_PASSWORD: '/api/auth/forgot-password',
@@ -21,6 +22,9 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: '/api/auth/reset-password',
     VERIFY_EMAIL: '/api/auth/verify-email',
     SEND_APPROVAL_EMAIL: '/api/auth/send-approval-email',
+  },
+  ROLE: {
+    GET_ALL: '/api/Role',
   },
   USER: {
     BASE: '/api/user',

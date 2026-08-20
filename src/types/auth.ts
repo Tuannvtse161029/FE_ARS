@@ -77,7 +77,13 @@ export interface AuthResponse {
   token: string;
   username: string;
   email: string;
-  role: string;
+  /**
+   * BE-derived business-role name. Nullable to accommodate first-time
+   * Google accounts where the BE has not yet assigned a role. The
+   * admin-guard reads `role ?? null` so a `null` here is a safe
+   * lockout sentinel. See BTR-AGENT52-04.
+   */
+  role: string | null;
   userId?: number;
   // BE's authoritative role identifier (1-5, see ROLE_IDS). The FE accepts
   // either `roleId` OR `roleName` as the role signal until the BE's
@@ -122,8 +128,21 @@ export interface User {
   email: string;
   fullName: string;
   orcidId?: string;
-  roleId: number;
-  roleName: string;
+  /**
+   * BE-derived business-role identifier (see ROLE_IDS). The FE accepts
+   * `null` here when the BE has not yet assigned a role — e.g. on a
+   * freshly-created Google account that is awaiting onboarding. The
+   * verified-guard and admin guard already treat `null` as "no role
+   * assigned" (lockout-safe). See BTR-AGENT52-04.
+   */
+  roleId: number | null;
+  /**
+   * BE-derived business-role name. `null` when the BE has not yet
+   * assigned a role. The role-name-based admin guard checks
+   * `roleName ?? null` against the known list, so `null` is a safe
+   * lockout sentinel.
+   */
+  roleName: string | null;
   // Mirrors `dbo.Users.isActive`. False until an Admin approves the role
   // request that was filed at registration time. Defaults to false (lockout-safe)
   // so a BE that hasn't shipped this field doesn't grant unregistered users access.

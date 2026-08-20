@@ -187,6 +187,13 @@
   gap: var(--spacing-3) !important;
 }
 
+.googleButtonWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
 .googleButton:hover:not(:disabled) {
   background-color: #1a1a1a !important;
   border-color: #1a1a1a !important;

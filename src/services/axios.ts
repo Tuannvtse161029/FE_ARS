@@ -3,6 +3,8 @@ import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
 import type { AxiosErrorResponse } from '../types/api';
 
+let sessionFailureHandled = false;
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -24,12 +26,28 @@ api.interceptors.request.use(
   }
 );
 
+// Agent 53 — failed-session recovery is delegated to the centralized
+// ARS session cleanup so the 401 path stays in lock-step with the
+// normal logout path. The interceptor still owns the navigation
+// (window.location.href) so a hard redirect survives even when the
+// React tree has unmounted; `clearAuthSession` runs synchronously and
+// the navigation happens immediately after.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const url = response.config.url ?? '';
+    if (url.includes('/api/auth/login') || url.includes('/api/auth/google-login') || url.includes('/api/auth/register')) {
+      sessionFailureHandled = false;
+    }
+    return response;
+  },
   (error: AxiosError<AxiosErrorResponse>) => {
-    if (error.response?.status === 401) {
-      storage.clearAuth();
-      if (window.location.pathname !== '/login') {
+    if (error.response?.status === 401 && !sessionFailureHandled) {
+      sessionFailureHandled = true;
+      // Fire-and-forget — local cleanup removes the token and the redirect
+      // happens immediately. Repeated 401s from in-flight requests are
+      // rejected without starting another cleanup/redirect cycle.
+      void import('./auth.service').then(({ clearAuthSession }) => clearAuthSession());
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }

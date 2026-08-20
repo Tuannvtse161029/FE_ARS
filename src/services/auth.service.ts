@@ -18,6 +18,141 @@ import type {
   EffectiveRole,
 } from '../types/auth';
 
+/**
+ * Documented ARS auth-related localStorage / sessionStorage keys.
+ *
+ * Every ARS auth artefact that must be cleared during a logout / session
+ * reset is listed here so the centralized cleanup routine can target them
+ * by name. Domain data keys (e.g. `ars_wallet`, `ars_reviewer_balance`) are
+ * intentionally NOT included — they belong to other modules and must
+ * survive a session reset so the user does not lose unrelated state.
+ *
+ * NOTE: keep this list in sync with `authSlice.ts` and `storage.ts`. Any
+ * new persisted auth field MUST be added here.
+ */
+const ARS_AUTH_STORAGE_KEYS = [
+  'ars_token',
+  'ars_user',
+  'ars_remember',
+  'ars-active-role',
+  'ars_active_role',
+  // Agent 52 — Google onboarding session. (No longer used by the
+  // Agent 52 surface as of the follow-up correction — the JWT is
+  // carried by the standard `ars_token` key; the profile is read
+  // from the auth store. We keep the entry here as a defensive
+  // cleanup so a previous build's half-written session doesn't
+  // survive the logout boundary.)
+  'ars_google_onboarding_session',
+] as const;
+
+/**
+ * Agent 53 — central document of the session-scoped Zustand persist key.
+ * `authSlice.ts` writes the auth store under this name into
+ * sessionStorage; the legacy dual-bucket layout also writes it into
+ * localStorage, so the cleanup routine must clear both buckets.
+ */
+const ARS_AUTH_ZUSTAND_KEY = 'ars-auth-storage';
+
+/**
+ * Defensive Google Identity Services auto-select toggle. Called only when
+ * the GIS library is actually present on `window.google.accounts.id`. We
+ * intentionally do NOT call `google.accounts.id.revoke()` — that would
+ * terminate the user's Google account-level consent, which is a privacy
+ * escalation outside the scope of an ARS session logout.
+ *
+ * The auto-select toggle is read by the next Google Sign-In prompt and
+ * stops the browser from immediately re-authenticating a user who just
+ * signed out of ARS.
+ */
+function disableGoogleAutoSelectIfAvailable(): void {
+  if (typeof window === 'undefined') return;
+  const google = (window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google;
+  const disable = google?.accounts?.id?.disableAutoSelect;
+  if (typeof disable === 'function') {
+    try {
+      disable();
+    } catch {
+      /* defensive — GIS may be in a non-initialized state during logout */
+    }
+  }
+}
+
+/**
+ * Agent 53 — centralized ARS session cleanup.
+ *
+ * Performs a complete, null-safe logout of the ARS session:
+ *
+ *   1. Remove every documented ARS auth-related key from BOTH
+ *      localStorage and sessionStorage (token, user blob, remember flag,
+ *      Zustand auth store, legacy role key, Google onboarding draft).
+ *   2. Strip the Axios `Authorization` header from the shared instance so
+ *      the next request is not sent with a stale bearer token.
+ *   3. Defensive Google Identity Services auto-select toggle so the
+ *      browser does not immediately re-prompt the just-signed-out user.
+ *
+ * The backend does not expose a documented revocation contract for logout,
+ * so this routine intentionally performs local cleanup only. Calling a
+ * protected logout endpoint after removing the token would recursively
+ * trigger the Axios 401 interceptor.
+ *
+ * No call to `localStorage.clear()` — that would wipe unrelated domain
+ * data (wallet, reviewer balance, etc.) and break cross-session state.
+ */
+export async function clearAuthSession(): Promise<void> {
+  // ── Synchronous cleanup (must run before the await) ───────────────────────
+  try {
+    ARS_AUTH_STORAGE_KEYS.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* ignore quota / privacy-mode errors */
+      }
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+    });
+
+    // Zustand auth store under both buckets (sessionStorageAdapter writes
+    // sessionStorage; the legacy dual-bucket adapter also wrote
+    // localStorage — strip both for safety).
+    try {
+      localStorage.removeItem(ARS_AUTH_ZUSTAND_KEY);
+      sessionStorage.removeItem(ARS_AUTH_ZUSTAND_KEY);
+    } catch {
+      /* ignore */
+    }
+
+    // Strip the Axios authorization header so no follow-up call sends a
+    // stale bearer token. We mutate the shared default headers in place
+    // because the existing axios instance is a module-level singleton.
+    try {
+      if (api?.defaults?.headers?.common) {
+        delete (api.defaults.headers.common as Record<string, unknown>).Authorization;
+      }
+      if (api?.defaults?.headers) {
+        if ('Authorization' in api.defaults.headers) {
+          delete (api.defaults.headers as Record<string, unknown>).Authorization;
+        }
+      }
+    } catch {
+      /* defensive — axios may be mocked in tests */
+    }
+
+    // Defensive GIS auto-select disable (no-op when GIS is absent).
+    disableGoogleAutoSelectIfAvailable();
+  } catch {
+    /* swallow — the synchronous cleanup is best-effort */
+  }
+
+  // ── Local cleanup only ───────────────────────────────────────────────────
+  // The BE has no documented logout/revocation contract. More importantly,
+  // calling a protected logout endpoint after clearing the token would make
+  // its 401 response re-enter the Axios 401 interceptor indefinitely.
+  return;
+}
+
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     try {
@@ -311,22 +446,11 @@ export const authService = {
   },
 
   logout: (): void => {
+    // Logout is intentionally local-only. The shared Axios 401 interceptor
+    // handles expired sessions; sending another protected request here would
+    // recursively trigger that interceptor when the token is already gone.
+    void clearAuthSession();
     storage.clearAuth();
-    // Clear the Zustand auth store. Since authSlice was updated to use a
-    // sessionStorage-backed adapter, the key lives in sessionStorage — but
-    // clear it from localStorage too so a stale entry can't survive a future
-    // revert of that adapter change.
-    try {
-      sessionStorage.removeItem('ars-auth-storage');
-      localStorage.removeItem('ars-auth-storage');
-      // Legacy role-switch preference key — no longer used after the role
-      // deprecation. Clean it up so users don't carry stale role data into
-      // a new session.
-      localStorage.removeItem('ars_active_role');
-      sessionStorage.removeItem('ars_active_role');
-    } catch {
-      /* ignore */
-    }
   },
 
   getCurrentUser: (): AuthResponse | null => {
