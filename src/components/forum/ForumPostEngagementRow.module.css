@@ -1,7 +1,7 @@
 /* ────────────────────────────────────────────────────────────────────────
  * ForumPostEngagementRow
  *
- * ARS-aligned styles for the Like → Comments → Views row. Tokens (colors,
+ * ARS-aligned styles for the Like → Comments row. Tokens (colors,
  * spacings, radii) deliberately follow the ARS design system color
  * palette:
  *   Header / Sidebar background = #2D3561 / #323964 (Dark Navy)
@@ -9,7 +9,7 @@
  *   Single-color iconography    = #A0AEC0 (Muted Slate)
  *   Main canvas background      = #F8FAFC (Light Grey)
  *
- * Three controls live on a single row, baseline-aligned, with consistent
+ * Two controls live on a single row, baseline-aligned, with consistent
  * icon sizing so the icons themselves convey the engagement scale.
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -23,9 +23,9 @@
   border-top: 1px solid #e2e8f0; /* subtle divider below content + tags */
 }
 
-/* All three controls share identical chrome so the user reads the
-   counter block uniformly. The variant classes below only flip colors /
-   active state. */
+/* Both controls share identical chrome so the user reads the counter
+   block uniformly. The variant classes below only flip colors / active
+   state. */
 .engagementControl {
   display: inline-flex;
   align-items: center;
@@ -44,18 +44,11 @@
   user-select: none;
 }
 
-/* The non-button Views block inherits `.engagementControl` and forces
-   cursor:default so it never hints at a click target. */
-.engagementControlViews {
-  color: #64748b;
-  cursor: default;
-}
-
+/* Semantic buttons receive cursor:pointer — but only when they are not
+   disabled. We express the disabled style separately (see
+   .engagementControl:disabled below). */
 .engagementControlLike,
 .engagementControlComments {
-  /* Only semantic buttons get cursor:pointer — but only when they are not
-     disabled. We express the disabled style separately (see
-     .engagementControl:disabled below). */
   cursor: pointer;
   background: #ffffff;
   border: 1px solid #e2e8f0;

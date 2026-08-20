@@ -806,8 +806,8 @@ describe('Forum page — integration', () => {
   // expose a Like mutation endpoint (BTR-AGENT42-A), so the Like button
   // remains disabled with an explanatory tooltip.
   // ─────────────────────────────────────────────────────────────────────────
-  describe('engagement row — Like / Comments / Views', () => {
-    it('renders three controls in Like → Comments → Views order, with real likeCount / commentCount / viewCount from the wire', async () => {
+  describe('engagement row — Like and Comments', () => {
+    it('renders Like and Comments controls with real likeCount and commentCount from the wire', async () => {
       postGetAll.mockResolvedValueOnce([mockPosts[1]]); // post #2 has 4 / 17 / 2
       commentGetByPostId.mockResolvedValue([]);
 
@@ -819,25 +819,22 @@ describe('Forum page — integration', () => {
       const row = await screen.findByTestId('forum-post-engagement-row');
       const buttons = within(row).getAllByRole('button');
 
-      // Order: Like button, Comments button. Views is a non-button stat.
+      // Order: Like button, Comments button.
       expect(buttons).toHaveLength(2);
       expect(buttons[0]).toHaveAttribute('data-testid', 'forum-post-like-button');
       expect(buttons[1]).toHaveAttribute(
         'data-testid',
         'forum-post-comments-button',
       );
-      const viewsStat = within(row).getByTestId('forum-post-views-stat');
-      expect(viewsStat.tagName.toLowerCase()).toBe('div');
+      expect(within(row).queryByTestId('forum-post-views-stat')).not.toBeInTheDocument();
 
-      // Live wire: post #2 has 4 likes, 17 views, 2 comments.
+      // Live wire: post #2 has 4 likes and 2 comments.
       const likeBtn = within(row).getByTestId('forum-post-like-button');
       expect(likeBtn).toHaveTextContent('4');
       expect(likeBtn).toHaveTextContent(/Likes?/);
       const commentsBtn = within(row).getByTestId('forum-post-comments-button');
       expect(commentsBtn).toHaveTextContent('2');
       expect(commentsBtn).toHaveTextContent(/Comments?/);
-      expect(viewsStat).toHaveTextContent('17');
-      expect(viewsStat).toHaveTextContent(/Views?/);
     });
 
     it('preserves zero counts and renders singular/plural labels correctly', async () => {
@@ -876,10 +873,7 @@ describe('Forum page — integration', () => {
       const likeBtn = within(row).getByTestId('forum-post-like-button');
       expect(likeBtn).toHaveTextContent('0');
       expect(likeBtn).toHaveTextContent(/Likes$/);
-      // Views: wire says 0 → rendered as "0 Views".
-      const viewsStat = within(row).getByTestId('forum-post-views-stat');
-      expect(viewsStat).toHaveTextContent('0');
-      expect(viewsStat).toHaveTextContent(/Views$/);
+      expect(within(row).queryByTestId('forum-post-views-stat')).not.toBeInTheDocument();
     });
 
     it('disables the Like button when the BE does not expose a mutation endpoint', async () => {
@@ -991,7 +985,7 @@ describe('Forum page — integration', () => {
       ).toBeInTheDocument();
     });
 
-    it('does NOT inflate view counts on rerender, pagination, or refresh', async () => {
+    it('does not render a view statistic on forum posts', async () => {
       postGetAll.mockResolvedValueOnce(mockPosts);
       commentGetByPostId.mockResolvedValue([]);
 
@@ -999,15 +993,7 @@ describe('Forum page — integration', () => {
 
       await screen.findByText('Quantum Computing Primer');
       const rows = await screen.findAllByTestId('forum-post-engagement-row');
-      const firstViewsStat = within(rows[0]).getByTestId('forum-post-views-stat');
-
-      // Snapshot the rendered view count text BEFORE refresh. It must
-      // be the same afterwards — there is no client-side auto-increment.
-      const before = firstViewsStat.textContent;
-      expect(firstViewsStat).toHaveTextContent('0');
-      // The wire has been called exactly once — no per-render re-fetch.
-      expect(postGetAll).toHaveBeenCalledTimes(1);
-      expect(firstViewsStat.textContent).toBe(before);
+      expect(within(rows[0]).queryByTestId('forum-post-views-stat')).not.toBeInTheDocument();
     });
   });
 });

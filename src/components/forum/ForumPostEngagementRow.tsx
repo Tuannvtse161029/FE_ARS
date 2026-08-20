@@ -1,30 +1,20 @@
-import { Eye, Heart, MessageCircle } from 'lucide-react';
+import { Heart, MessageCircle } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import type { ForumPostViewModel } from '../../types/forumPostViewModel';
 import styles from './ForumPostEngagementRow.module.css';
 
-// `ForumPostEngagementRow` — the Like → Comments → Views row pinned to
+// `ForumPostEngagementRow` — the Like → Comments row pinned to
 // the bottom of every ForumPost card.
 //
-// Critical design rules from the plan:
-//   1. **Always** exactly three controls, in this exact order:
-//      Like, Comments, Views. No control can be hidden.
+// Critical design rules:
+//   1. The row exposes Like and Comments only.
 //   2. Comments must still expand/collapse the existing `CommentSection`
 //      — we delegate that via the `onToggleComments` callback so the row
 //      does not own comment-list state itself.
-//   3. Views is a non-interactive statistic (no click handler) unless an
-//      explicit interaction is required by the BE — there isn't one yet
-//      (BTR-AGENT42-B), so we render it as a static block.
-//   4. Likes is rendered as a semantic `<button>`. It is enabled only when
+//   3. Likes is rendered as a semantic `<button>`. It is enabled only when
 //      the BE has BOTH a Like-mutation endpoint AND a way to read the
 //      current viewer's like state; otherwise it is disabled with an
-//      explanatory `title` (BTR-AGENT42-A).
-//   5. Counter rendering rules:
-//      - `0` is a valid count → rendered as `0`
-//      - `null` means "the BE never reported a value for this field" → `—`
-//      - `1 Like` / `1 Comment` / `1 View` singular labels.
-//   6. Guests (read-only viewer) cannot mutate — the Like button is
-//      disabled and shows "Sign in with an approved account to like posts".
+//      explanatory `title`.
 //
 // The row does NOT own any state. The parent `ForumPostCard` provides the
 // counters through `viewModel`, the toggle callback for Comments, and the
@@ -187,25 +177,6 @@ export const ForumPostEngagementRow = ({
         </span>
       </button>
 
-      {/* ── 3. VIEWS ─────────────────────────────────────────────────────
-          A non-interactive statistic. The BE publishes `viewCount` on
-          the live wire (BTR-AGENT42-B updated 2026-08-19). The Views
-          block stays a non-clickable div until the BE ships a
-          register-view endpoint — clicking must never inflate counts. */}
-      <div
-        className={`${styles.engagementControl} ${styles.engagementControlViews}`}
-        role="status"
-        aria-label={`View count: ${formatCount(viewModel.viewCount)}`}
-        data-testid="forum-post-views-stat"
-      >
-        <Eye size={14} aria-hidden />
-        <span className={styles.engagementCount}>
-          {formatCount(viewModel.viewCount)}
-        </span>
-        <span className={styles.engagementLabel}>
-          {pluralize(viewModel.viewCount, 'View', 'Views')}
-        </span>
-      </div>
     </div>
   );
 };
