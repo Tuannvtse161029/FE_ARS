@@ -18,6 +18,7 @@ interface MajorFieldApiResponse {
   majorFieldId?: unknown;
   name?: unknown;
   description?: unknown;
+  subFields?: SubFieldApiResponse[];
 }
 
 function normalizeMajorField(value: MajorFieldApiResponse): MajorField | null {
@@ -32,6 +33,13 @@ function normalizeMajorField(value: MajorFieldApiResponse): MajorField | null {
     id: numericId,
     name: value.name,
     description: typeof value.description === 'string' ? value.description : null,
+    ...(Array.isArray(value.subFields)
+      ? {
+          subFields: value.subFields
+            .map(normalizeSubField)
+            .filter((field): field is SubField => field !== null),
+        }
+      : {}),
   };
 }
 

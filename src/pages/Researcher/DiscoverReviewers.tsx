@@ -27,7 +27,7 @@ import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE, REVIEWER_GRID_PAGE_SIZE } from '../../utils/tableConstants';
-import { useSubFields } from '../../hooks/useMajorFields';
+import { useMajorFields } from '../../hooks/useMajorFields';
 import {
   resolvePaperTitle,
 } from '../../utils/reviewRequestDisplay';
@@ -35,6 +35,8 @@ import styles from './DiscoverReviewers.module.css';
 
 // Domain shape used by the UI. All values are derived from the BE
 // ReviewerProfile rows; previously they were hardcoded for seeded users.
+type ReviewerMatchTier = 'subfield' | 'major' | 'other';
+
 interface Reviewer {
   id: string;
   name: string;
@@ -48,6 +50,7 @@ interface Reviewer {
   tags: string[];
   orcid: string;
   specializations: string[];
+  matchTier: ReviewerMatchTier;
 }
 
 const COLD_PALETTE = ['#1D2A4A', '#3b82f6', '#f59e0b'];
@@ -94,6 +97,7 @@ function mapProfileToReviewer(p: EnrichedReviewer): Reviewer {
     tags: Array.isArray(p.tags) ? p.tags : [],
     orcid: p.orcidId ?? '',
     specializations: Array.isArray(p.specializations) ? p.specializations : [],
+    matchTier: 'other',
   };
 }
 
@@ -177,8 +181,9 @@ export const DiscoverReviewers = () => {
     papers: myPapers,
   } = usePapers({ pageNumber: 1, pageSize: 200 });
 
-  // Load all subfields for matching (don't filter by major)
-  const { subFields } = useSubFields();
+  // The Major Field response includes its Subfields, allowing recommendation
+  // ranking without issuing an invalid unfiltered SubField API request.
+  const { fields: majorFields } = useMajorFields();
 
   useEffect(() => {
     // Bridge the hook into the local `papers` state used by the selector
@@ -197,46 +202,48 @@ export const DiscoverReviewers = () => {
       .map(mapProfileToReviewer);
   }, [reviewerProfiles]);
 
-  // Reviewer ranking: when creating a request for a specific Paper, rank by Subfield match
+  // Recommendation order: exact Major + Subfield, same Major, then all
+  // remaining available reviewers. This ranking applies immediately after a
+  // paper is selected, while the reviewer grid is still visible.
   const rankedReviewers = useMemo(() => {
-    if (screenState !== 'create-request' || !selectedPaperId) {
-      return reviewers;
-    }
+    if (!selectedPaperId) return reviewers;
 
     const paper = papers.find((p) => String(p.id) === selectedPaperId);
-    const paperSubfieldId = paper?.subfieldId ?? paper?.subFieldId ?? null;
-    
-    if (paperSubfieldId === null) {
-      return reviewers;
-    }
+    const rawPaperSubfieldId = paper?.subfieldId ?? paper?.subFieldId ?? null;
+    const paperSubfieldId = rawPaperSubfieldId == null ? null : Number(rawPaperSubfieldId);
+    const paperMajorFromTaxonomy = Number.isFinite(paperSubfieldId)
+      ? majorFields.find((majorField) =>
+          majorField.subFields?.some((subField) => Number(subField.id) === paperSubfieldId),
+        )
+      : undefined;
+    const paperMajorId = paperMajorFromTaxonomy == null ? null : Number(paperMajorFromTaxonomy.id);
 
-    // Partition reviewers by match quality
-    const exactSubfieldMatch: Reviewer[] = [];
-    const sameMajorField: Reviewer[] = [];
-    const others: Reviewer[] = [];
+    const reviewerById = new Map(reviewerProfiles.map((profile) => [profile.userId, profile]));
+    const ranked = reviewers.map((reviewer) => {
+      const reviewerId = Number(reviewer.id.replace('rev-', ''));
+      const profile = reviewerById.get(reviewerId);
+      const reviewerMajorId = profile?.majorFieldId == null ? null : Number(profile.majorFieldId);
+      const reviewerSubfieldId = profile?.subFieldId == null ? null : Number(profile.subFieldId);
+      const hasExactMatch =
+        paperMajorId !== null &&
+        paperSubfieldId !== null &&
+        reviewerMajorId === paperMajorId &&
+        reviewerSubfieldId === paperSubfieldId;
+      const hasMajorMatch = paperMajorId !== null && reviewerMajorId === paperMajorId;
+      const matchTier: ReviewerMatchTier = hasExactMatch
+        ? 'subfield'
+        : hasMajorMatch
+          ? 'major'
+          : 'other';
 
-    reviewers.forEach((reviewer) => {
-      const profile = reviewerProfiles.find((p) => p.userId === Number(reviewer.id.replace('rev-', '')));
-      const reviewerSubfieldId = profile?.subFieldId ?? null;
-      const reviewerMajorId = profile?.majorFieldId ?? null;
-
-      if (reviewerSubfieldId === paperSubfieldId) {
-        exactSubfieldMatch.push(reviewer);
-      } else if (reviewerMajorId !== null && paperSubfieldId !== null) {
-        // Check if paper's subfield belongs to this reviewer's major field
-        const paperSubfield = subFields.find((sf) => sf.id === paperSubfieldId);
-        if (paperSubfield && paperSubfield.majorFieldId === reviewerMajorId) {
-          sameMajorField.push(reviewer);
-        } else {
-          others.push(reviewer);
-        }
-      } else {
-        others.push(reviewer);
-      }
+      return { reviewer, matchTier };
     });
 
-    return [...exactSubfieldMatch, ...sameMajorField, ...others];
-  }, [reviewers, screenState, selectedPaperId, papers, reviewerProfiles, subFields]);
+    const tierOrder: Record<ReviewerMatchTier, number> = { subfield: 0, major: 1, other: 2 };
+    return ranked
+      .sort((a, b) => tierOrder[a.matchTier] - tierOrder[b.matchTier])
+      .map(({ reviewer, matchTier }) => ({ ...reviewer, matchTier }));
+  }, [reviewers, selectedPaperId, papers, reviewerProfiles, majorFields]);
 
   // Reviewer grid search + refresh state
   const [reviewerSearch, setReviewerSearch] = useState('');
@@ -662,14 +669,9 @@ export const DiscoverReviewers = () => {
                           const hasSufficientFunds = balance >= reviewer.fee;
                           const shortfall = Math.max(0, reviewer.fee - balance);
 
-                          // Determine if this reviewer has a Subfield match with the selected paper
-                          const paper = papers.find((p) => String(p.id) === selectedPaperId);
-                          const paperSubfieldId = paper?.subfieldId ?? paper?.subFieldId ?? null;
-                          const profile = reviewerProfiles.find((p) => p.userId === Number(reviewer.id.replace('rev-', '')));
-                          const reviewerSubfieldId = profile?.subFieldId ?? null;
-                          const hasExactMatch = paperSubfieldId !== null && reviewerSubfieldId === paperSubfieldId;
-                          
-                          // Get taxonomy display names
+                          const profile = reviewerProfiles.find(
+                            (p) => p.userId === Number(reviewer.id.replace('rev-', '')),
+                          );
                           const majorFieldName = profile?.majorFieldName ?? null;
                           const subFieldName = profile?.subFieldName ?? null;
 
@@ -692,9 +694,16 @@ export const DiscoverReviewers = () => {
                               </div>
                             </div>
 
-                            {hasExactMatch && (
-                              <div className={styles.matchBadge} data-testid="subfield-match-badge">
-                                Subfield Match
+                            {reviewer.matchTier !== 'other' && (
+                              <div
+                                className={`${styles.matchBadge} ${
+                                  reviewer.matchTier === 'major' ? styles.majorMatchBadge : ''
+                                }`}
+                                data-testid={`${reviewer.matchTier}-match-badge`}
+                              >
+                                {reviewer.matchTier === 'subfield'
+                                  ? 'Major + Subfield Match'
+                                  : 'Major Field Match'}
                               </div>
                             )}
 

@@ -6,6 +6,7 @@ export interface MajorField {
   id: number;
   name: string;
   description?: string | null;
+  subFields?: SubField[];
 }
 
 export interface MajorFieldCreateRequest {

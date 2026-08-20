@@ -143,9 +143,10 @@ export const ProfessionalProfile = () => {
 
     try {
       // Send only taxonomy IDs (minimal PATCH payload)
-      await reviewerService.update(authenticatedUserId, { 
-        majorFieldId: selectedMajorId, 
-        subFieldId: selectedSubId 
+      await reviewerService.update(authenticatedUserId, {
+        userId: authenticatedUserId,
+        majorFieldId: selectedMajorId,
+        subFieldId: selectedSubId
       });
       await refetch();
       setExpertiseFeedback({ type: 'success', message: 'Research expertise updated successfully.' });

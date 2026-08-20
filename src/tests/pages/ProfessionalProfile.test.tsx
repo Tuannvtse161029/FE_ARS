@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     totalCitations: number | null;
     publicationCount: number | null;
     syncStatus: string | null;
+    majorFieldId: number | null;
     subFieldId: number | null;
     reviewFee: number | null;
     updatedAt: string;
@@ -52,6 +53,7 @@ const profile = (overrides: Partial<(typeof mocks.profiles)[number]> = {}) => ({
   totalCitations: 345,
   publicationCount: 27,
   syncStatus: 'Synced',
+  majorFieldId: 4,
   subFieldId: 9,
   reviewFee: 10000,
   updatedAt: '2026-08-19T10:00:00Z',
@@ -92,6 +94,25 @@ describe('Reviewer Professional Profile — five vital contracts', () => {
     fireEvent.submit(input.closest('form') as HTMLFormElement);
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(42, { reviewFee: 25000 }));
     expect(mocks.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves reviewer expertise with the authenticated profile userId', async () => {
+    mocks.profiles = [profile({ majorFieldId: null, subFieldId: null })];
+    renderPage();
+
+    const majorSelect = await screen.findByTestId('major-field-select');
+    fireEvent.change(majorSelect, { target: { value: '4' } });
+
+    const subSelect = await screen.findByTestId('sub-field-select');
+    await waitFor(() => expect(subSelect).toHaveTextContent('Artificial Intelligence'));
+    fireEvent.change(subSelect, { target: { value: '9' } });
+    fireEvent.click(screen.getByTestId('save-expertise-button'));
+
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(42, {
+      userId: 42,
+      majorFieldId: 4,
+      subFieldId: 9,
+    }));
   });
 
   it('keeps admin-managed metrics read-only and absent from the fee mutation payload', () => {

@@ -12,11 +12,13 @@ const {
   paperServiceGetAllMock,
   getAllMock,
   getReviewerProfilesMock,
+  getMajorFieldsMock,
   refetchReviewersMock,
 } = vi.hoisted(() => ({
   paperServiceGetAllMock: vi.fn(),
   getAllMock: vi.fn(),
   getReviewerProfilesMock: vi.fn(),
+  getMajorFieldsMock: vi.fn(),
   refetchReviewersMock: vi.fn(),
 }));
 
@@ -38,6 +40,15 @@ vi.mock('../../services/reviewRequest.service', () => ({
     update: vi.fn(),
     remove: vi.fn(),
   },
+}));
+
+vi.mock('../../hooks/useMajorFields', () => ({
+  useMajorFields: () => ({
+    fields: getMajorFieldsMock() || [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useReviewerProfiles', () => ({
@@ -135,7 +146,40 @@ describe('DiscoverReviewers — researcher reviewer grid (Agent 15)', () => {
       ],
     });
     getAllMock.mockReturnValue([]);
+    getMajorFieldsMock.mockReturnValue([]);
     refetchReviewersMock.mockReset();
+  });
+
+  it('orders reviewers by exact specialization, then Major Field, then all others', async () => {
+    paperServiceGetAllMock.mockResolvedValue({
+      items: [{ id: '1', title: 'Taxonomy paper', subFieldId: 101, userId: 1 }],
+    });
+    getMajorFieldsMock.mockReturnValue([
+      {
+        id: 10,
+        name: 'Computer Science',
+        subFields: [{ id: 101, majorFieldId: 10, name: 'Artificial Intelligence' }],
+      },
+    ]);
+    getReviewerProfilesMock.mockReturnValue([
+      { ...makeProfile(1, 'Other Reviewer'), majorFieldId: 20, subFieldId: 201 },
+      { ...makeProfile(2, 'Major Match Reviewer'), majorFieldId: 10, subFieldId: 102 },
+      { ...makeProfile(3, 'Exact Match Reviewer'), majorFieldId: 10, subFieldId: 101 },
+    ]);
+
+    const user = userEvent.setup();
+    renderPage();
+    await selectFirstPaper(user);
+
+    await waitFor(() => expect(screen.getByTestId('reviewers-grid')).toBeInTheDocument());
+    const cards = screen.getAllByTestId('reviewer-card');
+    expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringContaining('Exact Match Reviewer'),
+      expect.stringContaining('Major Match Reviewer'),
+      expect.stringContaining('Other Reviewer'),
+    ]);
+    expect(screen.getByTestId('subfield-match-badge')).toHaveTextContent('Major + Subfield Match');
+    expect(screen.getByTestId('major-match-badge')).toHaveTextContent('Major Field Match');
   });
 
   it('shows exactly 9 reviewer cards on page 1', async () => {
