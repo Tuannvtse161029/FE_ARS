@@ -5,7 +5,6 @@
 // The parent owns submission state (`disabled`) — this button does not
 // decide whether the user can submit.
 
-import { type CSSProperties } from 'react';
 import { useGoogleIdentity, type GoogleIdentityStatus } from '../../hooks/useGoogleIdentity';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { Button } from '../../components/Button';
@@ -24,13 +23,6 @@ export interface GoogleSignInButtonProps {
   /** Optional error message slot, used when GIS is unavailable. */
   errorMessage?: string | null;
 }
-
-const wrapStyle: CSSProperties = {
-  minHeight: 44,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
 
 function statusMessage(status: GoogleIdentityStatus): string | null {
   switch (status) {
@@ -58,45 +50,43 @@ export const GoogleSignInButton = ({
   });
 
   const visibleError = errorMessage ?? hookError ?? statusMessage(status);
-
-  // GIS rendered successfully → show the official button.
-  if (isReady && !disabled) {
-    return (
-      <div className={styles.wrap} style={wrapStyle}>
-        <div ref={buttonContainerRef} className={styles.gisMount} />
-      </div>
-    );
-  }
-
-  // GIS still loading or disabled → show our fallback button so the UI is
-  // never stuck on a blank slot.
   const showSpinner = status === 'loading';
+
+  // Keep the mount node in the DOM while GIS initializes. The hook needs a
+  // committed target before it can render the official Google control.
   return (
     <div className={styles.wrap}>
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        fullWidth
-        onClick={() => {
-          // When the official button is disabled / loading, our fallback
-          // can only surface an error message — it never bypasses the
-          // GIS flow because the user must tap the official button to
-          // emit a credential. We prevent accidental click-throughs by
-          // leaving the fallback button as a no-op visual placeholder.
-        }}
-        disabled
-        isLoading={showSpinner}
-        className={styles.fallbackButton}
-      >
-        <GoogleIcon />
-        <span>{label}</span>
-      </Button>
-      {visibleError && (
-        <p className={styles.error} role="alert">
-          {visibleError}
-        </p>
-      )}
+      <div
+        ref={buttonContainerRef}
+        className={styles.gisMount}
+        hidden={!isReady || disabled}
+        aria-hidden={!isReady || disabled}
+      />
+      {!isReady || disabled ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            fullWidth
+            onClick={() => {
+              // The fallback is intentionally non-interactive until GIS has
+              // rendered the official control.
+            }}
+            disabled
+            isLoading={showSpinner}
+            className={styles.fallbackButton}
+          >
+            <GoogleIcon />
+            <span>{label}</span>
+          </Button>
+          {visibleError && (
+            <p className={styles.error} role="alert">
+              {visibleError}
+            </p>
+          )}
+        </>
+      ) : null}
     </div>
   );
 };
