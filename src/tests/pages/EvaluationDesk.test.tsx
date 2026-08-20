@@ -209,7 +209,15 @@ describe('EvaluationDesk – Submit validation + success', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
-    mockReviewRequest = { id: 10, paperId: 10, fee: 500000 };
+    mockReviewRequest = {
+      id: 10,
+      paperId: 10,
+      reviewerId: 35,
+      fee: 500000,
+      deadline: '2026-09-01T00:00:00Z',
+      airecommended: true,
+      type: 'Standard',
+    };
   });
 
   it('blocks submit when qualitative comments are empty', async () => {
@@ -244,7 +252,15 @@ describe('EvaluationDesk – Submit validation + success', () => {
 
     await waitFor(() => {
       expect(detailedEvaluationService.create).toHaveBeenCalled();
-      expect(reviewRequestService.update).toHaveBeenCalledWith(10, { status: 'Completed' });
+      expect(reviewRequestService.update).toHaveBeenCalledWith(10, {
+        paperId: 10,
+        reviewerId: 35,
+        fee: 500000,
+        deadline: '2026-09-01T00:00:00Z',
+        airecommended: true,
+        type: 'Standard',
+        status: 'Completed',
+      });
     });
 
     expect(await screen.findByText(/evaluation submitted successfully/i)).toBeInTheDocument();

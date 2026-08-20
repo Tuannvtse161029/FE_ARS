@@ -234,6 +234,12 @@ export const EvaluationDesk = () => {
 
       // Defect 2A — request status update AFTER evaluation is persisted.
       const updatedReq = await reviewRequestService.update(reviewRequestId, {
+        paperId: reviewRequest?.paperId ?? null,
+        reviewerId: reviewRequest?.reviewerId ?? currentUserId,
+        fee: reviewRequest?.fee ?? null,
+        deadline: reviewRequest?.deadline ?? null,
+        airecommended: reviewRequest?.airecommended ?? null,
+        type: reviewRequest?.type ?? null,
         status: 'Completed',
       });
 
