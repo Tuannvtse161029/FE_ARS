@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Input } from '../../components/Input';
@@ -13,15 +13,10 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Eye, EyeOff } from 'lucide-react';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import {
-  googleAuthService,
-  GoogleLoginError,
-} from '../../services/googleAuth.service';
-import { useAuthStore } from '../../store';
+  googleOAuthService,
+  GoogleOAuthError,
+} from '../../services/googleOAuth.service';
 import { authService } from '../../services/auth.service';
-import { storage } from '../../utils/storage';
-import { landingRouteForRoleName } from '../../utils/roleNormalizer';
-import type { AuthResponse, UserRole, EffectiveRole } from '../../types/auth';
-import type { GoogleCredentialResponse } from '../../types/googleAuth';
 
 const FAST_LOGIN_USERS = [
   { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234' },
@@ -35,16 +30,14 @@ const Login = () => {
   const { login, isLoading, error, user, pendingRoleSelection, confirmRoleSelection, cancelRoleSelection } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
-  // ── Agent 52 — Google Sign-In UI state (in-flight lock + error surface) ───
-  // The submit lock is a ref so double-clicks cannot enter the network call
-  // before React-18's StrictMode double-invoke or the GIS callback's
-  // duplicate event loops get a chance to re-enter.
+  // ── Agent 54 — Google Sign-In UI state (in-flight lock + error surface) ──
+  // The submit lock is a ref so double-clicks cannot enter the redirect
+  // before React-18's StrictMode double-invoke or a second tap has a
+  // chance to re-enter. The service layer mirrors this with a
+  // module-level flag in googleOAuth.service.ts.
   const googleInFlightRef = useRef(false);
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
-
-  const navigate = useNavigate();
-  const authStore = useAuthStore();
 
   const {
     control,
@@ -76,220 +69,63 @@ const Login = () => {
     setValue('password', password);
   };
 
-  // ── Agent 52 — Google Identity Services callback ──────────────────────────
+  // ── Agent 54 — Google OAuth begin handler ────────────────────────────────
   //
-  // Hard rules (see src/services/googleAuth.service.ts for the bridge):
-  //   1. `response.credential` is the GIS-signed JWT — POST it EXACTLY once
-  //      to `/api/auth/google-login`. We never authenticate from any other
-  //      GIS field (select_by, clientId, etc.).
-  //   2. We never log / store the credential, the BE's JWT, or the
-  //      Authorization header.
-  //   3. Errors are normalised to typed `GoogleLoginError` codes so the
-  //      button can surface a recoverable error message without leaking
-  //      the credential into the dev console.
-  //   4. After a successful BE response, we trust the BE's auth/session
-  //      payload exclusively. We do NOT inspect decoded JWT claims, do NOT
-  //      authenticate from local claims, do NOT re-derive role from the
-  //      `role` field alone (Swagger doesn't document a separate
-  //      `isNewUser` / `requiresOnboarding` indicator — see BTR-AGENT52-01).
-  //   5. We persist via the existing `storage` / `authStore` pattern that
-  //      the password-login flow uses. AuthContext is NOT touched (Agent 53
-  //      owns it). The Login handler writes to storage and the Zustand
-  //      store, then navigates with `replace: true` so a back-button press
-  //      does not return to the credential-posting page.
-  //   6. Routing is decided solely from the BE response:
-  //      - `isNewUser === true` OR `requiresOnboarding === true` ONLY
-  //        → `/complete-google-registration` (the explicit onboarding gate).
-  //      - `isActive === true` AND `verificationStatus === 'Accepted'`
-  //        → `landingRouteForRoleName(role)` (the approved workspace).
-  //      - Pending / Rejected / Guest → `/forum` (the only place a
-  //        not-yet-approved user has read access). We do NOT rely on a
-  //        downstream guard to route this case — we navigate explicitly.
-  //   7. We never silently link to a password account on conflicting email;
-  //      `409 Conflict` from the BE is surfaced as the error message.
-  //   8. The user can resubmit only by clicking the Google button again.
-  //      The pending flag is reset in `finally` so a failed attempt
-  //      releases the UI.
-  const handleGoogleCredential = async (response: GoogleCredentialResponse) => {
+  // The BE has moved from a GIS credential swap (`POST /api/Auth/google-login`)
+  // to a server-issued OAuth Authorization Code flow:
+  //
+  //   1. The user clicks the "Sign in with Google" button.
+  //   2. We issue `window.location.assign(GET /api/Auth/google-oauth-login)`.
+  //   3. The BE redirects to Google; the user consents.
+  //   4. Google redirects back to `/api/Auth/google-callback?code=...` (or
+  //      `?error=...` on cancel / error). The BE then 302s the browser to
+  //      our `/auth/google/callback` page (handled by GoogleCallback.tsx).
+  //
+  // Hard rules:
+  //   - The Google `code`, the ARS JWT, and any access/refresh tokens are
+  //     NEVER logged, echoed in the address bar, or stored beyond the
+  //     standard `ars_token` bucket the rest of the FE already uses.
+  //   - The OAuth redirect is in-flight deduped at TWO layers: a local
+  //     ref + state (UI lock) and a module-level guard inside the service.
+  //     Rapid double-clicks cannot issue two redirects.
+  //   - We do NOT call the legacy `POST /api/Auth/google-login` flow any
+  //     more. The legacy service is retained for tests but is not invoked
+  //     from the Login page.
+  //   - Defensive null-safe guest logout is run before the OAuth redirect
+  //     so a guest who clicks "Sign in with Google" leaves any anonymous
+  //     state behind. `authService.logout()` / `clearAuthSession()` no-op
+  //     on empty storage — safe for guests.
+  //   - On a synchronous failure (e.g. the URL was malformed) we surface a
+  //     recoverable error and release the in-flight flag so the user can
+  //     retry. The navigate-away case does not need to release the flag —
+  //     the callback page does it once it mounts.
+  const handleBeginGoogleOAuth = async () => {
     setGoogleError(null);
 
-    // Duplicate-submit guard — pair of ref + state so the second click
-    // is rejected before it can race the network call.
+    // UI-layer duplicate guard. The service also guards via a module-level
+    // flag, but having the UI lock lets us flip the button into a loading
+    // state immediately on the first click.
     if (googleInFlightRef.current) return;
     googleInFlightRef.current = true;
     setGooglePending(true);
 
     try {
-      const credential = googleAuthService.extractCredential(response);
-      if (!credential) {
-        setGoogleError('Google did not return a credential. Please try again.');
-        return;
-      }
+      // Null-safe guest logout: a guest who clicks "Sign in with Google"
+      // leaves any anonymous state behind before the OAuth handshake.
+      // `authService.logout()` and the underlying `clearAuthSession()`
+      // both no-op when there is no token / user.
+      authService.logout();
 
-      // Per-call idempotency key so accidental GIS double-callbacks do
-      // not produce two `POST /api/Auth/google-login` bodies.
-      const idempotencyKey =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-      const session = await googleAuthService.postGoogleLogin({
-        credential,
-        idempotencyKey,
-      });
-
-      // ── Mandatory BE-response validation (runs BEFORE any routing) ─────
-      // The first-time Google-user onboarding screen reads back the
-      // persisted profile to know whose onboarding is in progress. If we
-      // proceeded to /complete-google-registration with a fabricated
-      // token/userId/email, the page would treat an invalid session as
-      // authenticated. So we refuse to persist at all when the BE
-      // response is missing the fields we need to seed a session.
-      const safeToken =
-        typeof session.token === 'string' && session.token.trim() !== ''
-          ? session.token
-          : null;
-      const safeUserId =
-        typeof session.userId === 'number' && session.userId > 0
-          ? session.userId
-          : null;
-      const safeEmail =
-        typeof session.email === 'string' && session.email.trim() !== ''
-          ? session.email
-          : null;
-      const safeFullName =
-        typeof session.fullName === 'string' && session.fullName.trim() !== ''
-          ? session.fullName
-          : null;
-
-      if (!safeToken || !safeUserId || !safeEmail || !safeFullName) {
-        setGoogleError(
-          'Google sign-in succeeded but the platform did not return the expected session. Please contact support.',
-        );
-        return;
-      }
-
-      // ── Routing decision: explicit signals only ─────────────────────────
-      // (1) First-time Google user → onboarding. We DO NOT infer
-      //     onboarding from a missing role property alone — that would
-      //     accidentally trap existing users whose role is in flight.
-      if (session.isNewUser || session.requiresOnboarding) {
-        // Strict, BE-derived data only. The User fields that the BE has
-        // not assigned yet (roleId, roleName, effectiveRole) are written
-        // as `null` — never as a default `0` or `'Guest'`. Auth type
-        // definitions allow `null` for first-time accounts (see
-        // BTR-AGENT52-04). We deliberately bypass `authService.setAuthData`
-        // (Agent 53 owns it) because it fabricates `id: 0`,
-        // `roleId ?? 0`, `roleName: authResponse.role`, and
-        // `effectiveRole ?? 'Guest'` — that fabrication is what previously
-        // let an invalid session slip past the onboarding screen.
-        storage.setToken(safeToken);
-        storage.setUser({
-          id: safeUserId,
-          username: safeEmail,
-          email: safeEmail,
-          fullName: safeFullName,
-          roleId: session.roleId ?? null,
-          roleName: session.role ?? null,
-          isActive: session.isActive ?? false,
-          verificationStatus: session.verificationStatus ?? 'Pending',
-          accountTier: 'Free',
-          effectiveRole: (session.effectiveRole as EffectiveRole) ?? null,
-        });
-        authStore.login(
-          {
-            id: safeUserId,
-            username: safeEmail,
-            email: safeEmail,
-            fullName: safeFullName,
-            roleId: session.roleId ?? null,
-            roleName: session.role ?? null,
-            isActive: session.isActive ?? false,
-            verificationStatus: session.verificationStatus ?? 'Pending',
-            accountTier: 'Free',
-            effectiveRole: session.effectiveRole as EffectiveRole | undefined,
-          },
-          safeToken,
-          (session.effectiveRole as EffectiveRole) ?? null,
-        );
-        navigate(ROUTES.COMPLETE_GOOGLE_REGISTRATION, { replace: true });
-        return;
-      }
-
-      // (2) Existing user — the BE must surface a JWT, userId, and role.
-      //     Anything missing is a contract violation; we surface it instead
-      //     of guessing.
-      if (!session.role) {
-        setGoogleError(
-          'Google sign-in succeeded but the platform did not return the expected session. Please contact support.',
-        );
-        return;
-      }
-
-      const knownRoles = session.roles.filter((r): r is UserRole =>
-        (['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin'] as string[]).includes(r),
-      );
-
-      const authResponse: AuthResponse = {
-        token: safeToken,
-        username: safeEmail,
-        email: safeEmail,
-        role: session.role,
-        userId: safeUserId,
-        roleId: session.roleId ?? undefined,
-        roles: knownRoles.length > 0 ? knownRoles : [session.role as UserRole],
-        isActive: session.isActive ?? false,
-        verificationStatus: session.verificationStatus ?? 'Pending',
-        effectiveRole:
-          (session.effectiveRole as EffectiveRole) ??
-          ((session.isActive ?? false) ? (session.role as EffectiveRole) : 'Guest'),
-      };
-
-      // Persist via the existing ARS auth-storage/authStore pattern. No
-      // call to AuthContext.login() (Agent 53 owns it) — we route through
-      // the same storage writes the password-login flow uses so the
-      // authStore rehydrate picks up the new session on the next mount.
-      storage.setRememberMe(false);
-      authService.setAuthData(authResponse);
-      authStore.login(
-        {
-          id: safeUserId,
-          username: authResponse.username,
-          email: authResponse.email,
-          fullName: safeFullName,
-          roleId: authResponse.roleId ?? 0,
-          roleName: session.role,
-          isActive: authResponse.isActive ?? false,
-          verificationStatus: authResponse.verificationStatus ?? 'Pending',
-          accountTier: 'Free',
-          effectiveRole: authResponse.effectiveRole,
-        },
-        safeToken,
-        authResponse.effectiveRole,
-      );
-
-      // ── Routing decision: approved vs pending ──────────────────────────
-      // Approved + active business-role user → workspace.
-      // Pending / Rejected / Guest → `/forum` (the only place a
-      // not-yet-approved user has read access). We do NOT rely on a
-      // downstream guard to redirect — we navigate explicitly.
-      const isApproved =
-        (session.isActive ?? false) && session.verificationStatus === 'Accepted';
-
-      if (isApproved) {
-        navigate(landingRouteForRoleName(authResponse.role), { replace: true });
-      } else {
-        // Pending / Rejected / Guest lands on `/forum`. The page itself
-        // renders the pending-state UI (per useVerifiedGuard's behaviour).
-        navigate(ROUTES.FORUM, { replace: true });
-      }
+      // The backend owns the Google callback and its registered redirect URI.
+      // Swagger defines this endpoint without query parameters, so do not send
+      // the frontend callback as redirect_uri.
+      await googleOAuthService.beginGoogleOAuth();
     } catch (err: unknown) {
       const fallback =
-        'Google sign-in failed. Please try again or use the email & password option.';
+        'Could not start the Google sign-in flow. Please try again or use the email & password option.';
       setGoogleError(
-        err instanceof GoogleLoginError && err.message ? err.message : fallback,
+        err instanceof GoogleOAuthError && err.message ? err.message : fallback,
       );
-    } finally {
       googleInFlightRef.current = false;
       setGooglePending(false);
     }
@@ -397,8 +233,10 @@ const Login = () => {
 
         <div className={styles.googleButtonWrapper}>
           <GoogleSignInButton
-            onCredential={handleGoogleCredential}
+            onBegin={handleBeginGoogleOAuth}
             disabled={isLoading || googlePending}
+            pending={googlePending}
+            errorMessage={googleError}
           />
         </div>
         {googleError && (

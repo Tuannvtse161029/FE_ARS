@@ -39,6 +39,14 @@ export const ROUTES = {
   // Public route — the page is responsible for re-validating the session
   // before letting the user submit a proof.
   COMPLETE_GOOGLE_REGISTRATION: '/complete-google-registration',
+  // Agent 54 — backend OAuth callback landing page. The BE redirects here
+  // after `/api/Auth/google-callback` finishes the handshake (with
+  // `?code=...` on success or `?error=...access_denied` on cancel/error).
+  // The page consumes the query string once, persists the session through
+  // the existing ARS auth-storage path, and replaces itself with the
+  // workspace / onboarding / rejection route — it does NOT keep the
+  // `code` in the address bar or in sessionStorage after rendering.
+  GOOGLE_OAUTH_CALLBACK: '/auth/google/callback',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

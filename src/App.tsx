@@ -37,6 +37,7 @@ import AuditLogs from './pages/Admin/AuditLogs';
 import CheckoutReturn from './pages/Payment/CheckoutReturn';
 import PremiumPackagesPreview from './pages/PremiumPackages';
 import { CompleteGoogleRegistration } from './pages/CompleteGoogleRegistration/CompleteGoogleRegistration';
+import { GoogleCallback } from './pages/GoogleCallback';
 import './styles/globals.css';
 
 const App = () => {
@@ -64,6 +65,14 @@ const App = () => {
             path={ROUTES.COMPLETE_GOOGLE_REGISTRATION}
             element={<CompleteGoogleRegistration />}
           />
+
+          {/* Agent 54 — Google OAuth callback landing page. The BE redirects
+              the browser here after /api/Auth/google-callback. The page
+              parses ?code=&error= once, persists the session through the
+              existing ARS auth-storage path, then navigates with replace:
+              true so the code never lingers in history. Public route — the
+              page itself enforces auth-state handoff. */}
+          <Route path={ROUTES.GOOGLE_OAUTH_CALLBACK} element={<GoogleCallback />} />
 
           {/* Private Routes */}
           <Route element={<PrivateRoute />}>

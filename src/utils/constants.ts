@@ -15,6 +15,13 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     GOOGLE_LOGIN: '/api/auth/google-login',
+    // Agent 54 — backend-driven Google OAuth (Authorization Code flow).
+    // GET /api/Auth/google-oauth-login begins the BE handshake; GET
+    // /api/Auth/google-callback?code=&error= completes it on our /auth/google/callback
+    // route. The old `POST /api/auth/google-login` (GIS credential swap) is
+    // retained for backward compatibility but is no longer the primary path.
+    GOOGLE_OAUTH_LOGIN: '/api/auth/google-oauth-login',
+    GOOGLE_CALLBACK: '/api/auth/google-callback',
     REFRESH: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
     FORGOT_PASSWORD: '/api/auth/forgot-password',
