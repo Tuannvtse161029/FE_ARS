@@ -12,10 +12,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useNotifications } from '../../hooks/useNotifications';
-import { notificationService } from '../../services/notification.service';
+import { useNotifications } from '../../../src/hooks/useNotifications';
+import { notificationService } from '../../../src/services/notification.service';
 
-vi.mock('../../services/notification.service', () => ({
+vi.mock('../../../src/services/notification.service', () => ({
   notificationService: {
     getAll: vi.fn(),
     getById: vi.fn(),

@@ -16,7 +16,7 @@ import { renderHook, act } from '@testing-library/react';
 
 // ── Mock the seminarAudioService (no real HTTP calls) ──────────────────────────
 const summarizeAudioMock = vi.fn();
-vi.mock('../../services/seminarAudio.service', () => ({
+vi.mock('../../../src/services/seminarAudio.service', () => ({
   seminarAudioService: { summarizeAudio: (...args: unknown[]) => summarizeAudioMock(...args) },
 }));
 
@@ -54,12 +54,12 @@ const mockHookState = {
   }),
 };
 
-vi.mock('../../hooks/useSeminarAudio', () => ({
+vi.mock('../../../src/hooks/useSeminarAudio', () => ({
   useSeminarAudio: () => mockHookState,
 }));
 
 // ── Static import reads the mocked module ─────────────────────────────────────
-import { useSeminarAudio } from '../../hooks/useSeminarAudio';
+import { useSeminarAudio } from '../../../src/hooks/useSeminarAudio';
 
 const mockResponse = {
   seminarId: 5,

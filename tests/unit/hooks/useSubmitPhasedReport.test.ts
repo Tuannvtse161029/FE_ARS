@@ -29,7 +29,7 @@ const { uploadPdfMock, resetUploadMock, submitPhasedReportMock, resubmitPhasedRe
   }));
 
 const setupFirebaseMock = () => {
-  vi.doMock('../../hooks/useFirebaseUpload', () => {
+  vi.doMock('../../../src/hooks/useFirebaseUpload', () => {
     // Module-scoped mutable holder so the mock closure can flip pdfUrl
     // and let the consumer's captured `upload` object read the new value
     // via getters.
@@ -74,13 +74,13 @@ const SUBMIT_OPTIONS = {
 const loadHook = async () => {
   vi.resetModules();
   setupFirebaseMock();
-  vi.doMock('../../services/phasedReport.service', () => ({
+  vi.doMock('../../../src/services/phasedReport.service', () => ({
     submitPhasedReport: submitPhasedReportMock,
     resubmitPhasedReport: resubmitPhasedReportMock,
     evaluatePhasedReport: vi.fn(),
     rejectPhasedReport: vi.fn(),
   }));
-  const mod = await import('../../hooks/useSubmitPhasedReport');
+  const mod = await import('../../../src/hooks/useSubmitPhasedReport');
   return mod.useSubmitPhasedReport;
 };
 

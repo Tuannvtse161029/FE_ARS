@@ -10,10 +10,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useForumPosts, useCreateForumPost } from '../../hooks/useForumPosts';
-import { forumPostService } from '../../services/forumPost.service';
+import { useForumPosts, useCreateForumPost } from '../../../src/hooks/useForumPosts';
+import { forumPostService } from '../../../src/services/forumPost.service';
 
-vi.mock('../../services/forumPost.service', () => ({
+vi.mock('../../../src/services/forumPost.service', () => ({
   forumPostService: {
     getAll: vi.fn(),
     getById: vi.fn(),

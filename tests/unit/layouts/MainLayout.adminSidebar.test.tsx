@@ -16,8 +16,8 @@ import {
   setupMainLayoutMocks,
   setMockAuth,
   renderMainLayout,
-} from '../utils/renderMainLayout';
-import { MainLayout } from '../../layouts/MainLayout';
+} from '../../../src/utils/renderMainLayout';
+import { MainLayout } from '../../../src/layouts/MainLayout';
 import { ROUTES } from '../../routes/paths';
 
 setupMainLayoutMocks();

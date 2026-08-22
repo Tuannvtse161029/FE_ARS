@@ -8,8 +8,8 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useAuthenticatedResearcher } from '../../hooks/useAuthenticatedResearcher';
-import { useAuthStore } from '../../store/authSlice';
+import { useAuthenticatedResearcher } from '../../../src/hooks/useAuthenticatedResearcher';
+import { useAuthStore } from '../../../src/store/authSlice';
 
 const resetStore = () => {
   useAuthStore.setState({

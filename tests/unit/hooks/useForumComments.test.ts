@@ -12,10 +12,10 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import {
   useForumComments,
   useForumCommentMutations,
-} from '../../hooks/useForumComments';
-import { forumCommentService } from '../../services/forumComment.service';
+} from '../../../src/hooks/useForumComments';
+import { forumCommentService } from '../../../src/services/forumComment.service';
 
-vi.mock('../../services/forumComment.service', () => ({
+vi.mock('../../../src/services/forumComment.service', () => ({
   forumCommentService: {
     getByPostId: vi.fn(),
     getAll: vi.fn(),

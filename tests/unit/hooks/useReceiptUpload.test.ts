@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useReceiptUpload } from '../../hooks/useReceiptUpload';
+import { useReceiptUpload } from '../../../src/hooks/useReceiptUpload';
 
 const { uploadBytesResumableMock, getDownloadURLMock } = vi.hoisted(() => ({
   uploadBytesResumableMock: vi.fn(),

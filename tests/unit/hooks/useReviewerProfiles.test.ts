@@ -3,10 +3,10 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import {
   useReviewerProfiles,
   useReviewerAvailability,
-} from '../../hooks/useReviewerProfiles';
-import { reviewerService } from '../../services/reviewer.service';
+} from '../../../src/hooks/useReviewerProfiles';
+import { reviewerService } from '../../../src/services/reviewer.service';
 
-vi.mock('../../services/reviewer.service', () => ({
+vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: {
     getAll: vi.fn(),
     updateAvailability: vi.fn(),

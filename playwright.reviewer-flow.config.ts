@@ -26,7 +26,7 @@ import { defineConfig, devices } from '@playwright/test';
 const BASE_URL = process.env.VITE_E2E_APP_URL || 'https://fe-ars.vercel.app';
 
 export default defineConfig({
-  testDir: './src/tests/e2e',
+  testDir: './tests/e2e',
   // Preflight must run before the main flow (per addendum §G).
   testMatch:
     /researcherReviewerPreflight\.spec\.ts$|researcherReviewerMainFlow\.spec\.ts$/,

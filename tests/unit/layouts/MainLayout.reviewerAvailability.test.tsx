@@ -13,10 +13,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
+import { MainLayout } from '../../../src/layouts/MainLayout';
 import { ROUTES } from '../../routes/paths';
-import { buildMockAuth } from '../utils/mockAuth';
-import type { MockUseAuthOptions } from '../utils/mockAuth';
+import { buildMockAuth } from '../../../src/utils/mockAuth';
+import type { MockUseAuthOptions } from '../../../src/utils/mockAuth';
 
 // ── Shared mock state ──────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ const captureUserId = (uid?: number) => {
   return hookImpl(uid);
 };
 
-vi.mock('../../hooks/useReviewerProfiles', () => ({
+vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
   // Module has both a default export (useReviewerProfiles) and a named export
   // (useReviewerAvailability). Both must be provided; MainLayout calls the
   // named export directly.
@@ -50,14 +50,14 @@ vi.mock('../../hooks/useReviewerProfiles', () => ({
   useReviewerAvailability: (...args: unknown[]) => hookImpl(...args),
 }));
 
-vi.mock('../../services/reviewer.service', () => ({
+vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: {
     updateAvailability: (...args: unknown[]) =>
       updateAvailabilityMock(...(args as [number, boolean])),
   },
 }));
 
-vi.mock('../../hooks/useWallet', () => ({
+vi.mock('../../../src/hooks/useWallet', () => ({
   useWallet: () => ({
     wallet: null,
     balance: null,
@@ -66,7 +66,7 @@ vi.mock('../../hooks/useWallet', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useNotifications', () => ({
+vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
     unreadCount: 0,
@@ -79,7 +79,7 @@ vi.mock('../../hooks/useNotifications', () => ({
   }),
 }));
 
-vi.mock('../../components/wallet/WalletTopUpModal', () => ({
+vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
   WalletTopUpModal: () => null,
 }));
 
@@ -87,7 +87,7 @@ vi.mock('../../components/wallet/WalletTopUpModal', () => ({
 
 const useAuthMock = vi.fn();
 
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 

@@ -12,12 +12,12 @@ const { evaluateMock, rejectMock } = vi.hoisted(() => ({
   rejectMock: vi.fn(),
 }));
 
-vi.mock('../../services/phasedReport.service', () => ({
+vi.mock('../../../src/services/phasedReport.service', () => ({
   evaluatePhasedReport: evaluateMock,
   rejectPhasedReport: rejectMock,
 }));
 
-import { useEvaluatePhasedReport } from '../../hooks/useEvaluatePhasedReport';
+import { useEvaluatePhasedReport } from '../../../src/hooks/useEvaluatePhasedReport';
 
 describe('useEvaluatePhasedReport', () => {
   beforeEach(() => {

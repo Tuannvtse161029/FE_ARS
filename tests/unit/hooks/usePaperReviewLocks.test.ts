@@ -7,22 +7,22 @@ const { getAllMock, getByIdMock, paperGetAllMock } = vi.hoisted(() => ({
   paperGetAllMock: vi.fn(),
 }));
 
-vi.mock('../../services/reviewRequest.service', () => ({
+vi.mock('../../../src/services/reviewRequest.service', () => ({
   reviewRequestService: {
     getAll: getAllMock,
     getById: getByIdMock,
   },
 }));
 
-vi.mock('../../services/paper.service', () => ({
+vi.mock('../../../src/services/paper.service', () => ({
   paperService: {
     getAll: paperGetAllMock,
   },
 }));
 
-import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
-import { useAuthStore } from '../../store/authSlice';
-import type { ReviewRequest } from '../../services/reviewRequest.service';
+import { usePaperReviewLocks } from '../../../src/hooks/usePaperReviewLocks';
+import { useAuthStore } from '../../../src/store/authSlice';
+import type { ReviewRequest } from '../../../src/services/reviewRequest.service';
 
 const baseReq = (overrides: Partial<ReviewRequest> = {}): ReviewRequest => ({
   id: 1,

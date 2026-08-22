@@ -8,11 +8,11 @@ const { getAllGuidanceProjectsMock } = vi.hoisted(() => ({
   getAllGuidanceProjectsMock: vi.fn(),
 }));
 
-vi.mock('../../services/guidanceProject.service', () => ({
+vi.mock('../../../src/services/guidanceProject.service', () => ({
   getAllGuidanceProjects: getAllGuidanceProjectsMock,
 }));
 
-import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
+import { useGuidanceProjects } from '../../../src/hooks/useGuidanceProjects';
 
 describe('useGuidanceProjects', () => {
   beforeEach(() => {

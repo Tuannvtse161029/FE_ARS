@@ -6,7 +6,7 @@ import {
   MOCK_VIOLATION_REPORTS,
   MOCK_PREMIUM_PACKAGES,
   // MOCK_AUDIT_LOG_ENTRIES moved to ./auditLogStore
-} from './adminAuxiliary.mocks';
+} from '../../tests/mocks/adminAuxiliary.mocks';
 import type {
   ViolationReport,
   ViolationReportsQuery,

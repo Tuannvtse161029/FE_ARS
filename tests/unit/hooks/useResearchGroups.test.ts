@@ -8,11 +8,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 
 const { getAllMock } = vi.hoisted(() => ({ getAllMock: vi.fn() }));
 
-vi.mock('../../services/researchGroup.service', () => ({
+vi.mock('../../../src/services/researchGroup.service', () => ({
   researchGroupService: { getAll: getAllMock },
 }));
 
-import { useResearchGroups } from '../../hooks/useResearchGroups';
+import { useResearchGroups } from '../../../src/hooks/useResearchGroups';
 
 const SEED = [
   { id: 1, lecturerId: 7, name: 'Group A', topicId: 11 },

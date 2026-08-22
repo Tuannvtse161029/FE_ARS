@@ -20,7 +20,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PROD_URL = process.env.VITE_E2E_APP_URL || 'https://fe-ars.vercel.app';
 
 export default defineConfig({
-  testDir: './src/tests/e2e',
+  testDir: './tests/e2e',
   testMatch: /researcherProduction\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useFetch } from '../../hooks/useFetch';
-import api from '../../services/axios';
+import { useFetch } from '../../../src/hooks/useFetch';
+import api from '../../../src/services/axios';
 
 // Mock the axios instance
-vi.mock('../../services/axios', () => ({
+vi.mock('../../../src/services/axios', () => ({
   default: {
     get: vi.fn(),
   },

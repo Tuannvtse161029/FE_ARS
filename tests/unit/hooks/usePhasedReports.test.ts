@@ -8,11 +8,11 @@ const { listReportsForGroupMock } = vi.hoisted(() => ({
   listReportsForGroupMock: vi.fn(),
 }));
 
-vi.mock('../../services/phasedReport.service', () => ({
+vi.mock('../../../src/services/phasedReport.service', () => ({
   listReportsForGroup: listReportsForGroupMock,
 }));
 
-import { usePhasedReports } from '../../hooks/usePhasedReports';
+import { usePhasedReports } from '../../../src/hooks/usePhasedReports';
 
 const SEED = [
   {

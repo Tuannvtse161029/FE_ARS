@@ -10,11 +10,11 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 const { getByIdMock } = vi.hoisted(() => ({ getByIdMock: vi.fn() }));
 
-vi.mock('../../services/user.service', () => ({
+vi.mock('../../../src/services/user.service', () => ({
   userService: { getById: getByIdMock },
 }));
 
-import { useLecturerProfile } from '../../hooks/useLecturerProfile';
+import { useLecturerProfile } from '../../../src/hooks/useLecturerProfile';
 
 describe('useLecturerProfile', () => {
   beforeEach(() => {

@@ -10,7 +10,7 @@
 // `auditLog.append()` helper should still be called from any new admin
 // action so the Audit Logs page reflects real user activity end-to-end.
 
-import { MOCK_AUDIT_LOG_ENTRIES } from './adminAuxiliary.mocks';
+import { MOCK_AUDIT_LOG_ENTRIES } from '../../tests/mocks/adminAuxiliary.mocks';
 import type { AuditLogEntry } from '../types/adminAuxiliary';
 
 const clone = <T>(value: T): T =>

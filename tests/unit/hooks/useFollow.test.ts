@@ -14,8 +14,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useFollow } from '../../hooks/useFollow';
-import { followerService } from '../../services/follower.service';
+import { useFollow } from '../../../src/hooks/useFollow';
+import { followerService } from '../../../src/services/follower.service';
 
 // ── AuthContext mock ───────────────────────────────────────────────────────
 // We don't import the real AuthContext here because it pulls in Zustand
@@ -23,11 +23,11 @@ import { followerService } from '../../services/follower.service';
 // hook's needs.
 const mockUseAuth = vi.fn();
 
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock('../../utils/storage', () => ({
+vi.mock('../../../src/utils/storage', () => ({
   storage: {
     getToken: vi.fn().mockReturnValue(null),
     getUser: vi.fn().mockReturnValue(null),
@@ -43,7 +43,7 @@ vi.mock('../../utils/storage', () => ({
   },
 }));
 
-vi.mock('../../services/follower.service', () => ({
+vi.mock('../../../src/services/follower.service', () => ({
   followerService: {
     getAll: vi.fn(),
     follow: vi.fn(),

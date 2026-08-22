@@ -10,7 +10,7 @@
  */
 import { renderHook, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { useVerifiedGuard } from '../../hooks/useVerifiedGuard';
+import { useVerifiedGuard } from '../../../src/hooks/useVerifiedGuard';
 
 // ── Minimal AuthContext mock ──────────────────────────────────────────────────
 // We'll override user data per test via doMock inside each test block so we
@@ -24,7 +24,7 @@ vi.mock('react-router-dom', () => ({
 
 // Storage mock — useVerifiedGuard reads from storedUser as a fallback when
 // the auth store hasn't rehydrated yet.
-vi.mock('../../utils/storage', () => ({
+vi.mock('../../../src/utils/storage', () => ({
   storage: {
     getToken: vi.fn().mockReturnValue('mock-token'),
     getUser: vi.fn().mockReturnValue(null),
@@ -36,18 +36,18 @@ vi.mock('../../utils/storage', () => ({
   },
 }));
 
-vi.mock('../../utils/storedUser', () => ({
+vi.mock('../../../src/utils/storedUser', () => ({
   readStoredUser: vi.fn().mockReturnValue(null),
 }));
 
-vi.mock('../../utils/roleNormalizer', () => ({
+vi.mock('../../../src/utils/roleNormalizer', () => ({
   isAdminUser: vi.fn().mockReturnValue(false),
 }));
 
 // ── Helper to re-import after doMock ───────────────────────────────────────
 
 const setupHook = (userOverrides: Record<string, unknown> = {}) => {
-  vi.doMock('../../context/AuthContext', () => ({
+  vi.doMock('../../../src/context/AuthContext', () => ({
     useAuth: () => ({
       user: {
         token: 'mock-token',
@@ -68,7 +68,7 @@ const setupHook = (userOverrides: Record<string, unknown> = {}) => {
   vi.resetModules();
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useVerifiedGuard: guarded } = require('../../hooks/useVerifiedGuard');
+  const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
   const { result } = renderHook(() => guarded());
   return result;
 };
@@ -81,7 +81,7 @@ describe('useVerifiedGuard', () => {
   });
 
   it('redirects to /forum when isActive is false', async () => {
-    vi.doMock('../../context/AuthContext', () => ({
+    vi.doMock('../../../src/context/AuthContext', () => ({
       useAuth: () => ({
         user: {
           token: 'mock-token',
@@ -98,7 +98,7 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
 
     renderHook(() => guarded());
 
@@ -111,7 +111,7 @@ describe('useVerifiedGuard', () => {
   });
 
   it('redirects to /forum when verificationStatus is Pending even if isActive is true', async () => {
-    vi.doMock('../../context/AuthContext', () => ({
+    vi.doMock('../../../src/context/AuthContext', () => ({
       useAuth: () => ({
         user: {
           token: 'mock-token',
@@ -128,7 +128,7 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
 
     renderHook(() => guarded());
 
@@ -140,7 +140,7 @@ describe('useVerifiedGuard', () => {
   });
 
   it('does NOT redirect when isActive is true AND verificationStatus is Accepted', async () => {
-    vi.doMock('../../context/AuthContext', () => ({
+    vi.doMock('../../../src/context/AuthContext', () => ({
       useAuth: () => ({
         user: {
           token: 'mock-token',
@@ -157,7 +157,7 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
 
     renderHook(() => guarded());
 
@@ -169,7 +169,7 @@ describe('useVerifiedGuard', () => {
   });
 
   it('does NOT redirect when user is authenticated but isActive is undefined (lockout-safe)', async () => {
-    vi.doMock('../../context/AuthContext', () => ({
+    vi.doMock('../../../src/context/AuthContext', () => ({
       useAuth: () => ({
         user: {
           token: 'mock-token',
@@ -186,7 +186,7 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
 
     renderHook(() => guarded());
 

@@ -6,11 +6,11 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 const { getAllMock } = vi.hoisted(() => ({ getAllMock: vi.fn() }));
 
-vi.mock('../../services/learningMaterial.service', () => ({
+vi.mock('../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: { getAll: getAllMock },
 }));
 
-import { useLearningMaterials } from '../../hooks/useLearningMaterials';
+import { useLearningMaterials } from '../../../src/hooks/useLearningMaterials';
 
 const SEED = [
   { id: 1, lecturerId: 7, title: 'A' },

@@ -10,7 +10,7 @@ import {
   MOCK_WITHDRAWALS,
   MOCK_ANALYTICS_SUMMARY,
   buildMockTimeseries,
-} from './admin.mocks';
+} from '../../tests/mocks/admin.mocks';
 import type {
   RoleRequest,
   RoleRequestDecision,

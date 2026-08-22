@@ -10,7 +10,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:list": "playwright test --list",
+    "e2e:production": "playwright test --config playwright.config.ts",
+    "e2e:researcher-reviewer": "playwright test --config playwright.reviewer-flow.config.ts",
+    "e2e:reviewer-withdrawal": "playwright test --config playwright.withdrawal-flow.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

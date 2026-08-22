@@ -18,16 +18,16 @@ const {
   getResearchTopicByIdMock: vi.fn(),
 }));
 
-vi.mock('../../services/guidanceProject.service', () => ({
+vi.mock('../../../src/services/guidanceProject.service', () => ({
   getActiveGuidanceProjectForStudent: getActiveGuidanceProjectForStudentMock,
   getResearchTopicById: getResearchTopicByIdMock,
 }));
 
-vi.mock('../../services/groupMembership.service', () => ({
+vi.mock('../../../src/services/groupMembership.service', () => ({
   getJoinedGroupsForStudent: getJoinedGroupsForStudentMock,
 }));
 
-import { useStudentGroups } from '../../hooks/useStudentGroups';
+import { useStudentGroups } from '../../../src/hooks/useStudentGroups';
 
 describe('useStudentGroups', () => {
   beforeEach(() => {

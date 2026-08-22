@@ -28,7 +28,7 @@ import {
   renderMainLayout,
   findSidebarLinkByHref,
   findSidebarLinkByText,
-} from '../utils/renderMainLayout';
+} from '../../../src/utils/renderMainLayout';
 import { ROUTES } from '../../routes/paths';
 
 setupMainLayoutMocks();

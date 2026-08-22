@@ -21,14 +21,14 @@ const { useAuthMock, useNotificationsMock } = vi.hoisted(() => ({
   useNotificationsMock: vi.fn(),
 }));
 
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
 // Re-mock every header-internal hook the MainLayout uses, mirroring the
 // setupMainLayoutMocks helper. This avoids depending on the helper
 // entirely and lets us drive the notification hook per-test.
-vi.mock('../../hooks/useWallet', () => ({
+vi.mock('../../../src/hooks/useWallet', () => ({
   useWallet: () => ({
     wallet: null,
     balance: null,
@@ -37,7 +37,7 @@ vi.mock('../../hooks/useWallet', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useNotifications', () => ({
+vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: (...args: unknown[]) => useNotificationsMock(...args),
   useMarkNotificationRead: () => ({
     markRead: () => Promise.resolve(true),
@@ -46,24 +46,24 @@ vi.mock('../../hooks/useNotifications', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useReviewerProfiles', () => ({
+vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
   useReviewerAvailability: () => ({
     isAvailable: false,
     refetch: () => Promise.resolve(),
   }),
 }));
 
-vi.mock('../../services/reviewer.service', () => ({
+vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
 }));
 
-vi.mock('../../components/wallet/WalletTopUpModal', () => ({
+vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
   WalletTopUpModal: () => null,
 }));
 
-import { MainLayout } from '../../layouts/MainLayout';
-import type { UserRole } from '../../types/auth';
-import { buildMockAuth } from '../utils/mockAuth';
+import { MainLayout } from '../../../src/layouts/MainLayout';
+import type { UserRole } from '../../../src/types/auth';
+import { buildMockAuth } from '../../../src/utils/mockAuth';
 
 const setAuth = (role: UserRole | string, roleId?: number) => {
   useAuthMock.mockReturnValue(buildMockAuth({ role, roleId }));

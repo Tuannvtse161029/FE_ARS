@@ -8,11 +8,11 @@ const { getAllResearchTopicsMock } = vi.hoisted(() => ({
   getAllResearchTopicsMock: vi.fn(),
 }));
 
-vi.mock('../../services/guidanceProject.service', () => ({
+vi.mock('../../../src/services/guidanceProject.service', () => ({
   getAllResearchTopics: getAllResearchTopicsMock,
 }));
 
-import { useResearchTopics } from '../../hooks/useResearchTopics';
+import { useResearchTopics } from '../../../src/hooks/useResearchTopics';
 
 describe('useResearchTopics', () => {
   beforeEach(() => {

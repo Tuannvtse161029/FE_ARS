@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
+import { useFirebaseUpload } from '../../../src/hooks/useFirebaseUpload';
 
 const { uploadBytesResumableMock, getDownloadURLMock } = vi.hoisted(() => {
   const uploadBytesResumableMock = vi.fn();

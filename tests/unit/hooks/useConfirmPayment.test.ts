@@ -10,7 +10,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../services/payment.service', () => ({
+vi.mock('../../../src/services/payment.service', () => ({
   paymentService: {
     getSuccess: vi.fn().mockResolvedValue({ status: 'PAID' }),
     getCancel: vi.fn().mockResolvedValue({ status: 'CANCELLED' }),
@@ -19,8 +19,8 @@ vi.mock('../../services/payment.service', () => ({
   },
 }));
 
-import { useConfirmPayment } from '../../hooks/useCreatePaymentLink';
-import { paymentService } from '../../services/payment.service';
+import { useConfirmPayment } from '../../../src/hooks/useCreatePaymentLink';
+import { paymentService } from '../../../src/services/payment.service';
 
 describe('useConfirmPayment', () => {
   beforeEach(() => {

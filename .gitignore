@@ -11,6 +11,10 @@ coverage
 seed-reviewers.cjs
 *.seed.cjs
 
+# Generated Test Reports
+reports/test-results/
+test-results/
+
 # Documentation — auto-generated test cases, specs, and local-only docs
 docs/
 docs/local-only/

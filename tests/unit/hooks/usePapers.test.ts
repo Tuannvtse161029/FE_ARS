@@ -12,9 +12,9 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { usePapers } from '../../hooks/usePapers';
-import { useAuthStore } from '../../store/authSlice';
-import type { Paper } from '../../services/paper.service';
+import { usePapers } from '../../../src/hooks/usePapers';
+import { useAuthStore } from '../../../src/store/authSlice';
+import type { Paper } from '../../../src/services/paper.service';
 
 const setAuthedUser = (id: number | null) => {
   if (id === null) {
@@ -49,7 +49,7 @@ const { paperServiceMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../services/paper.service', () => ({
+vi.mock('../../../src/services/paper.service', () => ({
   paperService: paperServiceMock,
 }));
 
