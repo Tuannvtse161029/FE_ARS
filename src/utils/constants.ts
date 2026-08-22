@@ -54,6 +54,13 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/ProfessionalProfile/${id}`,
     UPDATE_AVAILABILITY: (id: number) => `/api/ProfessionalProfile/${id}/availability`,
   },
+  PROFILE: {
+    GET_CURRENT: '/api/Profile',
+    GET_BY_ID: (id: number) => `/api/Profile/${id}`,
+    UPDATE: (id: number) => `/api/Profile/${id}`,
+    PATCH: (id: number) => `/api/Profile/${id}`,
+    DELETE: (id: number) => `/api/Profile/${id}`,
+  },
   REVIEW_REQUEST: {
     BASE: '/api/ReviewRequest',
     GET_ALL: '/api/ReviewRequest',

@@ -18,6 +18,25 @@ import userEvent from '@testing-library/user-event';
 import { ApprovePayoutModal } from '../../../../../src/pages/Admin/ApprovePayoutModal';
 import type { WithdrawalRequestItem } from '../../../../../src/types/admin';
 
+// The centralized withdrawal gate (AppConfig.features.enableWithdrawals) is
+// off in production by default; for these tests we force-enable withdrawals
+// so the existing UI mechanics are exercised. The disabled-state itself is
+// covered by tests/unit/withdrawalGate.test.tsx.
+vi.mock('../../../../../src/config/app', () => ({
+  AppConfig: {
+    appName: 'ARS Platform',
+    appVersion: '1.0.0',
+    description: 'x',
+    features: {
+      enableRegistration: true,
+      enableORCID: false,
+      enablePaperSubmission: true,
+      enableWithdrawals: true,
+    },
+  },
+  AuthConfig: { tokenKey: 'ars_token', userKey: 'ars_user', tokenExpirationHours: 24 },
+}));
+
 const NOW = '2026-08-16T10:30:00Z';
 
 const fixtures = {

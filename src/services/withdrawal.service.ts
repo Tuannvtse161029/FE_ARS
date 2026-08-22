@@ -1,5 +1,33 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+import { AppConfig } from '../config/app';
+
+// ── Centralized withdrawal feature gate ──────────────────────────────────────
+// When AppConfig.features.enableWithdrawals is `false`, every withdrawal
+// service call short-circuits with `WithdrawalFeatureDisabledError` so stale
+// or partially-rendered UI cannot trigger BE withdrawal endpoints. The
+// underlying axios calls remain defined and untouched — re-enabling the flag
+// restores them with no other code changes required.
+
+export class WithdrawalFeatureDisabledError extends Error {
+  constructor() {
+    super('Withdrawal requests are temporarily unavailable. The feature has been disabled pending product review.');
+    this.name = 'WithdrawalFeatureDisabledError';
+  }
+}
+
+export const isWithdrawalFeatureEnabled = (): boolean =>
+  AppConfig.features.enableWithdrawals === true;
+
+const guardWithdrawalCall = (method: string) => {
+  if (!isWithdrawalFeatureEnabled()) {
+    if (import.meta.env?.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(`[withdrawalService] ${method} blocked: withdrawal feature is disabled.`);
+    }
+    throw new WithdrawalFeatureDisabledError();
+  }
+};
 
 // Mirrors BE WithdrawalRequest entity:
 // WithdrawalRequestId (PK), UserId (FK), WalletId (FK), BankName, AccountNumber,
@@ -39,6 +67,7 @@ export interface WithdrawalStatusUpdateRequest {
 export const withdrawalService = {
   // GET /api/WithdrawalRequest — returns raw array
   getAll: async (): Promise<WithdrawalRequest[]> => {
+    guardWithdrawalCall('getAll');
     const response = await api.get<WithdrawalRequest[]>(API_ENDPOINTS.WITHDRAWAL_REQUEST.GET_ALL);
     const raw: unknown[] = Array.isArray(response.data) ? response.data : [];
     return (raw as WithdrawalRequest[]).map((item) => ({
@@ -48,6 +77,7 @@ export const withdrawalService = {
   },
 
   getById: async (id: number): Promise<WithdrawalRequest> => {
+    guardWithdrawalCall('getById');
     const response = await api.get<WithdrawalRequest>(
       API_ENDPOINTS.WITHDRAWAL_REQUEST.GET_BY_ID(id)
     );
@@ -59,6 +89,7 @@ export const withdrawalService = {
 
   // POST /api/WithdrawalRequest — creates a new request (Status defaults to Pending on BE)
   create: async (data: WithdrawalRequestCreateRequest): Promise<WithdrawalRequest> => {
+    guardWithdrawalCall('create');
     const response = await api.post<WithdrawalRequest>(
       API_ENDPOINTS.WITHDRAWAL_REQUEST.CREATE,
       data
@@ -74,6 +105,7 @@ export const withdrawalService = {
     id: number,
     data: WithdrawalStatusUpdateRequest
   ): Promise<WithdrawalRequest> => {
+    guardWithdrawalCall('updateStatus');
     const response = await api.put<WithdrawalRequest>(
       API_ENDPOINTS.WITHDRAWAL_REQUEST.UPDATE(id),
       data
@@ -86,6 +118,7 @@ export const withdrawalService = {
     id: number,
     data: Partial<WithdrawalRequest>
   ): Promise<WithdrawalRequest> => {
+    guardWithdrawalCall('update');
     const response = await api.put<WithdrawalRequest>(
       API_ENDPOINTS.WITHDRAWAL_REQUEST.UPDATE(id),
       data

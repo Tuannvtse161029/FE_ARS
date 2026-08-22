@@ -255,6 +255,53 @@
   background-color: var(--color-border);
 }
 
+.consentGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) 0;
+}
+
+.consentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.consentCheckbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.consentCheckbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.consentText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.consentLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+.consentLink:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
 @media (max-width: 480px) {
   .passwordRow {
     grid-template-columns: 1fr;

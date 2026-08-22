@@ -19,6 +19,7 @@ import WithdrawalDetailsModal from './WithdrawalDetailsModal';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { AppConfig } from '../../config/app';
 import styles from './TransactionsManagement.module.css';
 
 type Tab = 'revenue' | 'withdrawals';
@@ -43,9 +44,21 @@ const STATUS_LABEL: Record<WithdrawalRequestItem['status'], string> = {
   DENIED: 'DENIED',
 };
 
+// Centralized withdrawal feature gate: while disabled, the Admin's
+// "Reviewer Withdrawal Requests" tab is omitted entirely, the table /
+// modals / actions are not rendered, and an informational notice is shown
+// in its place. Wallet balance, top-up, and other admin functions are NOT
+// affected. Restore by toggling `AppConfig.features.enableWithdrawals`.
+const WITHDRAWAL_DISABLED_MESSAGE =
+  'Reviewer withdrawal requests are temporarily unavailable while the requirements are being revised. Approve / Deny / Transfer actions and payout receipts are paused; all other admin functions remain active.';
+
 export const TransactionsManagement = () => {
   useAdminGuard();
-  const [tab, setTab] = useState<Tab>('withdrawals');
+  const withdrawalsEnabled = AppConfig.features.enableWithdrawals === true;
+  // When withdrawals are disabled, default to the revenue tab. Re-enabling
+  // the flag does NOT auto-switch the active tab — the Admin keeps their
+  // selection, which may now be revenue.
+  const [tab, setTab] = useState<Tab>(withdrawalsEnabled ? 'withdrawals' : 'revenue');
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,6 +69,15 @@ export const TransactionsManagement = () => {
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
+    if (!withdrawalsEnabled) {
+      // Gate the load — even if a stale caller invokes `load()` (e.g. via the
+      // refresh button before the disabled notice finishes rendering), the
+      // underlying admin withdrawal call is short-circuited at the service.
+      setWithdrawals([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     setError(null);
     try {
       setWithdrawals(await adminService.getReviewerWithdrawals());
@@ -69,7 +91,7 @@ export const TransactionsManagement = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [withdrawalsEnabled]);
 
   useEffect(() => {
     void load();
@@ -220,19 +242,21 @@ export const TransactionsManagement = () => {
           <Banknote size={16} />
           Platform Revenue &amp; Transactions
         </button>
-        <button
-          className={`${styles.tab} ${tab === 'withdrawals' ? styles.tabActive : ''}`}
-          onClick={() => setTab('withdrawals')}
-          role="tab"
-          aria-selected={tab === 'withdrawals'}
-          type="button"
-        >
-          <Building2 size={16} />
-          Reviewer Withdrawal Requests
-          {pendingCount > 0 ? (
-            <span className={styles.tabBadge}>{pendingCount}</span>
-          ) : null}
-        </button>
+        {withdrawalsEnabled && (
+          <button
+            className={`${styles.tab} ${tab === 'withdrawals' ? styles.tabActive : ''}`}
+            onClick={() => setTab('withdrawals')}
+            role="tab"
+            aria-selected={tab === 'withdrawals'}
+            type="button"
+          >
+            <Building2 size={16} />
+            Reviewer Withdrawal Requests
+            {pendingCount > 0 ? (
+              <span className={styles.tabBadge}>{pendingCount}</span>
+            ) : null}
+          </button>
+        )}
       </div>
 
       {tab === 'revenue' ? (
@@ -247,7 +271,23 @@ export const TransactionsManagement = () => {
         </div>
       ) : null}
 
-      {tab === 'withdrawals' ? (
+      {/* Withdrawal tab content: gated by the centralized feature flag.
+          While disabled, only the informational notice renders (no table,
+          search, refresh button, modal triggers, or payout receipts). */}
+      {tab === 'withdrawals' && !withdrawalsEnabled ? (
+        <div className={styles.tableCard}>
+          <div
+            className={styles.emptyState}
+            data-testid="admin-withdrawal-disabled-notice"
+            role="status"
+          >
+            <AlertTriangle size={32} color="#d97706" />
+            <span>{WITHDRAWAL_DISABLED_MESSAGE}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {tab === 'withdrawals' && withdrawalsEnabled ? (
         <>
           <TableToolbar
             search={search}
@@ -382,19 +422,19 @@ export const TransactionsManagement = () => {
       ) : null}
 
       <WithdrawalDetailsModal
-        withdrawal={activeWithdrawal}
-        open={modal === 'details'}
+        withdrawal={withdrawalsEnabled ? activeWithdrawal : null}
+        open={withdrawalsEnabled && modal === 'details'}
         onClose={() => setModal(null)}
       />
       <DenyWithdrawalModal
-        withdrawal={activeWithdrawal}
-        open={modal === 'deny'}
+        withdrawal={withdrawalsEnabled ? activeWithdrawal : null}
+        open={withdrawalsEnabled && modal === 'deny'}
         onClose={() => setModal(null)}
         onDenied={handleUpdated}
       />
       <ApprovePayoutModal
-        withdrawal={activeWithdrawal}
-        open={modal === 'payout'}
+        withdrawal={withdrawalsEnabled ? activeWithdrawal : null}
+        open={withdrawalsEnabled && modal === 'payout'}
         onClose={() => setModal(null)}
         onCompleted={handleUpdated}
       />

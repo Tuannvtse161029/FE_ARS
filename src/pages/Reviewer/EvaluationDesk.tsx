@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   FileText,
@@ -9,6 +9,7 @@ import {
   X,
   RotateCw,
   Download,
+  BookOpen,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
 import { PdfViewer } from '../../components/PdfViewer';
@@ -18,10 +19,18 @@ import { paperService, type Paper } from '../../services/paper.service';
 import {
   detailedEvaluationService,
   type DetailedEvaluation,
+  type SpecializedEvaluationItem,
 } from '../../services/detailedEvaluation.service';
+import { subFieldService } from '../../services/subField.service';
+import type { GradingRubricCriterion } from '../../services/subField.service';
 import { useAuthStore } from '../../store/authSlice';
 import { normalizeReviewRequestStatus } from '../../utils/reviewRequestPolicy';
 import { ReviewRequestStatusBadge } from '../../components/reviewer/ReviewRequestStatusBadge';
+import {
+  ReviewerPolicyModal,
+  hasAcceptedPolicySession,
+} from '../../components/reviewer/ReviewerPolicyModal';
+import { isValidEntityId } from '../../utils/entityId';
 import styles from './EvaluationDesk.module.css';
 
 const EMPTY_FORM = {
@@ -38,6 +47,14 @@ const EMPTY_FORM = {
   finalDecision: 'Accept',
   generalComments: '',
 };
+
+/**
+ * Product/legal-approved reviewer policy version. Increment this string when the
+ * policy text inside `ReviewerPolicyModal` is materially changed (e.g., new
+ * jurisdiction, new compliance requirements). When bumped, all reviewers will be
+ * re-prompted to accept for each open review request.
+ */
+const REVIEWER_POLICY_VERSION = 'v1.0.0';
 
 export const EvaluationDesk = () => {
   const navigate = useNavigate();
@@ -70,6 +87,60 @@ export const EvaluationDesk = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  // ── Specialized (subfield) rubric state ─────────────────────────────────
+  // The Reviewer's paper.subFieldId → fetch /api/SubField/{id} → if the BE
+  // response carries a `gradingRubric` array, render a second scorecard
+  // ("Additional Subfield Evaluation") immediately before Submit. This
+  // matches the Additional-eval contract in
+  // https://arsplatform.onrender.com/swagger/index.html (swagger.json
+  // GradingRubricCriterionRequest + DetailedEvaluationCreateRequest.
+  // specializedEvaluation[]).
+  const [subField, setSubField] = useState<Awaited<ReturnType<typeof subFieldService.getById>>>(null);
+  const [isLoadingSubField, setIsLoadingSubField] = useState(false);
+  const [subFieldLoadError, setSubFieldLoadError] = useState<string | null>(null);
+  // Per-criterion score/notes map, keyed by criterion code. Empty when the
+  // subfield has no rubric.
+  const [specializedForm, setSpecializedForm] = useState<
+    Record<string, { score: string; notes: string }>
+  >({});
+  const [specializedErrors, setSpecializedErrors] = useState<Record<string, string>>({});
+
+  // Defect fix: a ref-based in-flight guard so a fast double-click (or any
+  // other race) cannot fire two create/update calls even before React has
+  // re-rendered with the new `isSubmitting` value.
+  const submitInFlightRef = useRef(false);
+
+  // ── Per-paper reviewer policy gate ─────────────────────────────────────
+  // The PDF and any manuscript content MUST NOT be requested or rendered until
+  // the reviewer accepts the policy for THIS specific reviewRequestId and
+  // policy version. localStorage is NOT the source of authority — we use a
+  // session-only cache (sessionStorage, scoped to reviewRequestId + version)
+  // as defense-in-depth, but backend enforcement is required for full
+  // compliance (see BE Team Request in this PR).
+  const [policyAccepted, setPolicyAccepted] = useState<boolean>(false);
+  const [policyModalOpen, setPolicyModalOpen] = useState<boolean>(false);
+
+  // When the review request resolves (either from state or query), check
+  // whether the policy has already been accepted in this session. If not,
+  // block the PDF and other manuscript-accessing requests behind the modal.
+  useEffect(() => {
+    if (!reviewRequestId) {
+      setPolicyAccepted(false);
+      setPolicyModalOpen(false);
+      return;
+    }
+    const alreadyAccepted = hasAcceptedPolicySession(reviewRequestId, REVIEWER_POLICY_VERSION);
+    setPolicyAccepted(alreadyAccepted);
+    // ALWAYS show the modal on mount for this reviewRequestId so the user
+    // sees the policy at least once per paper; if already accepted this
+    // session, immediately mark accepted and skip the modal.
+    if (!alreadyAccepted) {
+      setPolicyModalOpen(true);
+    } else {
+      setPolicyModalOpen(false);
+    }
+  }, [reviewRequestId]);
 
   // Defect 2B — read-only when the request is already Completed.
   const isReadOnly =
@@ -107,8 +178,15 @@ export const EvaluationDesk = () => {
   }, [reviewRequestFromState, reviewRequestIdFromQuery]);
 
   // ── Load paper ────────────────────────────────────────────────────────────
+  // Do not request paper metadata or its protected file URL until the scoped
+  // reviewer policy has been accepted. Backend enforcement remains required.
   useEffect(() => {
-    if (!reviewRequest?.paperId) return;
+    if (reviewRequest?.paperId == null) {
+      setPaper(null);
+      setPaperLoadError(null);
+      setIsLoadingPaper(false);
+      return;
+    }
     setIsLoadingPaper(true);
     paperService
       .getById(String(reviewRequest.paperId))
@@ -145,15 +223,172 @@ export const EvaluationDesk = () => {
             finalDecision: eval_.finalDecision ?? 'Accept',
             generalComments: eval_.generalComments ?? '',
           });
+          // Seed the specialized-section form from any prior
+          // specializedEvaluation entries (keyed by criterionCode).
+          if (Array.isArray(eval_.specializedEvaluation) && eval_.specializedEvaluation.length > 0) {
+            const seeded: Record<string, { score: string; notes: string }> = {};
+            eval_.specializedEvaluation.forEach((item) => {
+              if (item && item.criterionCode) {
+                seeded[item.criterionCode] = {
+                  score: item.score != null ? String(item.score) : '',
+                  notes: item.notes ?? '',
+                };
+              }
+            });
+            if (Object.keys(seeded).length > 0) setSpecializedForm(seeded);
+          }
         }
       })
       .catch((err) => console.error('Failed to load evaluation:', err))
       .finally(() => setIsLoadingEvaluation(false));
   }, [reviewRequestId]);
 
+  // ── Load subfield (if the Paper has a subFieldId) ───────────────────────
+  // Resolves the paper belonging to the active review request via the
+  // already-fetched Paper entity (paper.service.getById), reads subFieldId,
+  // then fetches the SubField via /api/SubField/{id}. The section is only
+  // rendered when gradingRubric is a non-empty array.
+  useEffect(() => {
+    // Determine the subfield id from the loaded Paper (single source of
+    // truth for the join paper ↔ subfield).
+    const rawSubFieldId = paper
+      ? (paper.subFieldId ?? paper.subfieldId ?? null)
+      : null;
+    const subFieldId = isValidEntityId(rawSubFieldId) ? rawSubFieldId : null;
+
+    if (subFieldId == null) {
+      setSubField(null);
+      setSubFieldLoadError(null);
+      setIsLoadingSubField(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingSubField(true);
+    setSubFieldLoadError(null);
+    subFieldService
+      .getById(subFieldId)
+      .then((field) => {
+        if (cancelled) return;
+        setSubField(field);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load subfield for evaluation:', err);
+        setSubField(null);
+        setSubFieldLoadError(
+          (err as Error)?.message ?? 'Unable to load subfield rubric.'
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSubField(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paper]);
+
+  // Ordered, validated criteria list (ascending by `order`, then by code).
+  // Empty unless the BE returned a gradingRubric — per spec we render NO
+  // section and emit NO specializedEvaluation entries in that case.
+  const orderedCriteria: GradingRubricCriterion[] = useMemo(() => {
+    const rubric = subField?.gradingRubric;
+    if (!Array.isArray(rubric) || rubric.length === 0) return [];
+    return [...rubric].sort((a, b) => {
+      const ao = typeof a.order === 'number' ? a.order : Number.MAX_SAFE_INTEGER;
+      const bo = typeof b.order === 'number' ? b.order : Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return a.code.localeCompare(b.code);
+    });
+  }, [subField]);
+
+  const hasUsableRubric = orderedCriteria.length > 0;
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const setScore = (field: keyof typeof EMPTY_FORM, value: number | string) =>
     setForm((f) => ({ ...f, [field]: value }));
+
+  const setSpecialized = (
+    code: string,
+    patch: Partial<{ score: string; notes: string }>
+  ) => {
+    setSpecializedForm((prev) => {
+      const base = prev[code] ?? { score: '', notes: '' };
+      const next = { ...base, ...patch };
+      return { ...prev, [code]: next };
+    });
+    setSpecializedErrors((prev) => {
+      if (!prev[code]) return prev;
+      const next = { ...prev };
+      delete next[code];
+      return next;
+    });
+  };
+
+  /**
+   * Build the `specializedEvaluation[]` payload from the ordered criteria +
+   * user-entered scores/notes. Each item uses EXACTLY the field names defined
+   * by Swagger's `SpecializedEvaluationItemRequest`:
+   *   criterionCode, criterionTitle, maxScore, score, notes, standardReferences.
+   * Empty/missing answers are sent as `null` for `score` so the BE can persist
+   * a known shape.
+   */
+  const buildSpecializedEvaluation = (): SpecializedEvaluationItem[] => {
+    if (!hasUsableRubric) return [];
+    return orderedCriteria.map((c) => {
+      const answer = specializedForm[c.code] ?? { score: '', notes: '' };
+      // Emit the score only when the reviewer entered a number in
+      // [0, maxScore]. Empty/blank → null; out-of-range → null (the
+      // validation gate has already blocked submit).
+      const parsed = Number(answer.score);
+      const maxScore =
+        typeof c.maxScore === 'number' && Number.isFinite(c.maxScore)
+          ? c.maxScore
+          : 10;
+      const score = Number.isInteger(parsed) && parsed >= 1 && parsed <= maxScore
+        ? parsed
+        : null;
+      const standardReferences = Array.isArray(c.standardReferences)
+        ? c.standardReferences
+        : [];
+      return {
+        criterionCode: c.code,
+        criterionTitle: c.title,
+        maxScore,
+        score,
+        notes: answer.notes ?? '',
+        standardReferences,
+      };
+    });
+  };
+
+  /**
+   * Validate the specialized-section answers. Returns true when nothing
+   * requires attention, otherwise populates `specializedErrors` and returns
+   * false.
+   *
+   * Scores are optional in Swagger's `SpecializedEvaluationItemRequest`, but
+   * when supplied they must be whole numbers in [1, maxScore].
+   */
+  const validateSpecialized = (): boolean => {
+    if (!hasUsableRubric) return true;
+    const errs: Record<string, string> = {};
+    orderedCriteria.forEach((c) => {
+      const answer = specializedForm[c.code] ?? { score: '', notes: '' };
+      const scoreRaw = (answer.score ?? '').trim();
+      if (scoreRaw === '') return;
+      const parsed = Number(scoreRaw);
+      const max =
+        typeof c.maxScore === 'number' && Number.isFinite(c.maxScore)
+          ? c.maxScore
+          : 10;
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+        errs[c.code] = `Score must be a whole number between 1 and ${max}.`;
+      }
+    });
+    setSpecializedErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleSaveDraft = async () => {
     if (!reviewRequestId || !currentUserId) return;
@@ -181,6 +416,10 @@ export const EvaluationDesk = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewRequestId || !currentUserId || isSubmitting) return;
+    // Defect fix: explicit ref-based guard so a fast double-click cannot
+    // slip past the `isSubmitting` state update and dispatch two create/update
+    // requests in parallel.
+    if (submitInFlightRef.current) return;
     // Defect 2B — never submit through the read-only scorecard view. The
     // Completed tab uses this same surface; we don't want a stray click to
     // re-write a finalized evaluation.
@@ -198,10 +437,27 @@ export const EvaluationDesk = () => {
       setSubmitError('Please select a final decision before submitting.');
       return;
     }
+    if (!validateSpecialized()) {
+      setSubmitError('Please correct the highlighted specialized-evaluation scores.');
+      return;
+    }
 
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      // Build the payload once so create + update both ship identical fields,
+      // matching DetailedEvaluationCreateRequest / DetailedEvaluationUpdateRequest
+      // verbatim. `specializedEvaluation` only appears when there is a usable
+      // rubric — no fabricated entries.
+      const specializedEvaluation = buildSpecializedEvaluation();
+      const basePayload = {
+        ...form,
+        reviewRequestId,
+        reviewerId: currentUserId,
+        ...(hasUsableRubric ? { specializedEvaluation } : {}),
+      };
+
       // Defect 2A — persist evaluation FIRST, assert a non-empty id, THEN
       // mark the request Completed. If the evaluation persistence fails the
       // request MUST stay in its current state — never mark Completed without
@@ -210,19 +466,11 @@ export const EvaluationDesk = () => {
       if (existingEvaluation?.detailedEvaluationId) {
         const updated = await detailedEvaluationService.update(
           existingEvaluation.detailedEvaluationId,
-          {
-            ...form,
-            reviewRequestId,
-            reviewerId: currentUserId,
-          }
+          basePayload
         );
         persistedEvaluationId = updated.detailedEvaluationId ?? existingEvaluation.detailedEvaluationId;
       } else {
-        const created = await detailedEvaluationService.create({
-          ...form,
-          reviewRequestId,
-          reviewerId: currentUserId,
-        });
+        const created = await detailedEvaluationService.create(basePayload);
         persistedEvaluationId = created.detailedEvaluationId;
       }
 
@@ -269,6 +517,7 @@ export const EvaluationDesk = () => {
       );
     } finally {
       setIsSubmitting(false);
+      submitInFlightRef.current = false;
     }
   };
 
@@ -394,6 +643,31 @@ export const EvaluationDesk = () => {
                   <p>Paper title: <em>{paper.title}</em></p>
                   <p>Paper ID: #{reviewRequest?.paperId}</p>
                   <p>Contact the author or platform administrator to attach the document.</p>
+                </div>
+              ) : !policyAccepted ? (
+                <div
+                  className={styles.pdfNoFile}
+                  data-testid="pdf-gated-by-policy"
+                  role="alert"
+                >
+                  <strong>Manuscript access is gated</strong>
+                  <p>
+                    You must accept the reviewer policy before the manuscript PDF
+                    becomes available for this review request.
+                  </p>
+                  <p>
+                    Paper title: <em>{paper.title}</em>
+                  </p>
+                  <p>
+                    <button
+                      type="button"
+                      className={styles.submitBtn}
+                      onClick={() => setPolicyModalOpen(true)}
+                      data-testid="pdf-open-policy-btn"
+                    >
+                      Review &amp; Accept Policy
+                    </button>
+                  </p>
                 </div>
               ) : (
                 <PdfViewer
@@ -529,6 +803,155 @@ export const EvaluationDesk = () => {
                 />
               </div>
 
+              {/* 8. ADDITIONAL SUBFIELD EVALUATION — only render when the loaded
+                  SubField carries a non-empty `gradingRubric`. Per spec, if
+                  the paper has no subFieldId or the rubric is empty the
+                  section MUST NOT render and no specializedEvaluation entries
+                  are fabricated. */}
+              {hasUsableRubric && (
+                <div
+                  className={styles.scorecardSection}
+                  data-testid="subfield-evaluation-section"
+                >
+                  <div className={styles.subfieldHeader}>
+                    <BookOpen size={14} aria-hidden="true" />
+                    <span className={styles.sectionTitle}>
+                      8. ADDITIONAL SUBFIELD EVALUATION
+                    </span>
+                    {subField?.name && (
+                      <span className={styles.subfieldNameTag}>
+                        {subField.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className={styles.subfieldHint}>
+                    Score each criterion on a scale of 0 to its maximum. Numeric
+                    entries must be between 0 and the maximum score listed for
+                    that criterion.
+                  </p>
+                  {orderedCriteria.map((criterion, idx) => {
+                    const answer = specializedForm[criterion.code] ?? {
+                      score: '',
+                      notes: '',
+                    };
+                    const maxScore =
+                      typeof criterion.maxScore === 'number' &&
+                      Number.isFinite(criterion.maxScore)
+                        ? criterion.maxScore
+                        : 10;
+                    const err = specializedErrors[criterion.code];
+                    const baseId = `spec-${criterion.code}-${idx}`;
+                    const refs = Array.isArray(criterion.standardReferences)
+                      ? criterion.standardReferences
+                      : [];
+                    return (
+                      <div
+                        key={criterion.code}
+                        className={styles.subfieldCriterion}
+                        data-testid={`subfield-criterion-${criterion.code}`}
+                      >
+                        <div className={styles.subfieldCriterionHeader}>
+                          <span className={styles.subfieldCriterionCode}>
+                            [{criterion.code}]
+                          </span>
+                          <span className={styles.subfieldCriterionTitle}>
+                            {criterion.title}
+                          </span>
+                          <span className={styles.subfieldCriterionMax}>
+                            Max: {maxScore}
+                          </span>
+                        </div>
+                        {criterion.description && (
+                          <p className={styles.subfieldCriterionDescription}>
+                            {criterion.description}
+                          </p>
+                        )}
+                        {refs.length > 0 && (
+                          <ul
+                            className={styles.subfieldReferences}
+                            aria-label={`Standard references for ${criterion.code}`}
+                          >
+                            {refs.map((ref) => (
+                              <li key={ref}>{ref}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className={styles.subfieldScoreRow}>
+                          <label
+                            htmlFor={`${baseId}-score`}
+                            className={styles.subfieldLabel}
+                          >
+                            Score (0–{maxScore})
+                          </label>
+                          <input
+                            id={`${baseId}-score`}
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={maxScore}
+                            step={1}
+                            className={styles.subfieldScoreInput}
+                            value={answer.score}
+                            onChange={(e) =>
+                              setSpecialized(criterion.code, {
+                                score: e.target.value,
+                              })
+                            }
+                            readOnly={isReadOnly}
+                            aria-invalid={Boolean(err)}
+                            aria-describedby={err ? `${baseId}-err` : undefined}
+                            data-testid={`subfield-score-${criterion.code}`}
+                          />
+                        </div>
+                        <label
+                          htmlFor={`${baseId}-notes`}
+                          className={styles.subfieldLabel}
+                        >
+                          Notes
+                        </label>
+                        <textarea
+                          id={`${baseId}-notes`}
+                          className={styles.criteriaFeedbackText}
+                          rows={2}
+                          placeholder="Add your notes…"
+                          value={answer.notes}
+                          onChange={(e) =>
+                            setSpecialized(criterion.code, {
+                              notes: e.target.value,
+                            })
+                          }
+                          readOnly={isReadOnly}
+                          data-testid={`subfield-notes-${criterion.code}`}
+                        />
+                        {err && (
+                          <div
+                            id={`${baseId}-err`}
+                            className={styles.subfieldCriterionError}
+                            role="alert"
+                          >
+                            {err}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {isLoadingSubField && !hasUsableRubric && (
+                <div
+                  className={styles.subfieldLoading}
+                  aria-live="polite"
+                  data-testid="subfield-loading"
+                >
+                  Loading subfield rubric…
+                </div>
+              )}
+              {subFieldLoadError && (
+                <div className={styles.subfieldError} role="alert">
+                  Could not load subfield rubric: {subFieldLoadError}
+                </div>
+              )}
+
               {/* Error */}
               {submitError && (
                 <div className={styles.submitError}>{submitError}</div>
@@ -567,6 +990,25 @@ export const EvaluationDesk = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Reviewer policy gate — must be accepted before manuscript access. */}
+      {reviewRequestId && (
+        <ReviewerPolicyModal
+          isOpen={policyModalOpen}
+          reviewRequestId={reviewRequestId}
+          policyVersion={REVIEWER_POLICY_VERSION}
+          paperTitle={paper?.title}
+          onCancel={() => {
+            setPolicyModalOpen(false);
+            // Per spec: cancel = back out of the paper, do not grant access.
+            navigate(ROUTES.REVIEW_TASKS);
+          }}
+          onAccept={() => {
+            setPolicyAccepted(true);
+            setPolicyModalOpen(false);
+          }}
+        />
       )}
 
       {/* Success Modal */}

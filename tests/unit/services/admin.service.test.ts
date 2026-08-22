@@ -5,6 +5,25 @@ import { notificationService } from '../../../src/services/notification.service'
 import type { WithdrawalRequestItem } from '../../../src/types/admin';
 import type { User } from '../../../src/types/auth';
 
+// The centralized withdrawal gate (AppConfig.features.enableWithdrawals) is
+// off in production by default; for these tests we force-enable withdrawals
+// so the existing service contract is exercised. The disabled-state itself
+// is covered by tests/unit/withdrawalGate.test.tsx.
+vi.mock('../../../src/config/app', () => ({
+  AppConfig: {
+    appName: 'ARS Platform',
+    appVersion: '1.0.0',
+    description: 'x',
+    features: {
+      enableRegistration: true,
+      enableORCID: false,
+      enablePaperSubmission: true,
+      enableWithdrawals: true,
+    },
+  },
+  AuthConfig: { tokenKey: 'ars_token', userKey: 'ars_user', tokenExpirationHours: 24 },
+}));
+
 // Spy on the api object the service module imported at load time.
 // The service holds a direct reference to this object; vi.mock does not
 // redirect module-level imports.  vi.spyOn is the correct tool here.

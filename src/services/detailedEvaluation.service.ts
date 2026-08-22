@@ -1,6 +1,24 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 
+/**
+ * Item shape inside `specializedEvaluation[]` on DetailedEvaluationCreateRequest
+ * / DetailedEvaluationUpdateRequest. Mirrors swagger.json →
+ * SpecializedEvaluationItemRequest verbatim.
+ *
+ * Required: `criterionCode` (string, 1..100), `criterionTitle` (string, 1..255).
+ * Optional: `maxScore` (int32, 1..10), `score` (int32, 1..10),
+ * `notes` (nullable string), `standardReferences` (nullable string[]).
+ */
+export interface SpecializedEvaluationItem {
+  criterionCode: string;
+  criterionTitle: string;
+  maxScore?: number | null;
+  score?: number | null;
+  notes?: string | null;
+  standardReferences?: string[] | null;
+}
+
 export interface DetailedEvaluation {
   detailedEvaluationId?: number;
   reviewRequestId?: number | null;
@@ -17,6 +35,7 @@ export interface DetailedEvaluation {
   notesFormatting?: string | null;
   generalComments?: string | null;
   finalDecision?: string | null;
+  specializedEvaluation?: SpecializedEvaluationItem[] | null;
   createdAt?: string;
 }
 
@@ -35,6 +54,7 @@ export interface DetailedEvaluationCreateRequest {
   notesFormatting?: string | null;
   generalComments?: string | null;
   finalDecision?: string | null;
+  specializedEvaluation?: SpecializedEvaluationItem[] | null;
 }
 
 export interface DetailedEvaluationUpdateRequest extends DetailedEvaluationCreateRequest {}

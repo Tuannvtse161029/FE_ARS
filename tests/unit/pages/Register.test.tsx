@@ -307,6 +307,9 @@ describe('Register Page – pdfUrl included in registration payload', () => {
     });
     await user.upload(fileInput, fakeFile);
 
+    // Tick consent — required by the registration gate added by Agent 3.
+    await user.click(screen.getByRole('checkbox', { name: /privacy policy|terms/i }));
+
     // Submit
     const submitBtn = screen.getByRole('button', { name: /create account/i });
     await user.click(submitBtn);

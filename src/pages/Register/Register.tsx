@@ -11,6 +11,7 @@ import { RegisterSuccessModal } from './components/RegisterSuccessModal';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
+import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
 
 const ROLE_OPTIONS: RequestableRole[] = [
   'Researcher',
@@ -44,6 +45,8 @@ interface FormState {
   password: string;
   retypePassword: string;
   role: RequestableRole;
+  orcidId: string;
+  consentAccepted: boolean;
 }
 
 const initialForm: FormState = {
@@ -53,6 +56,8 @@ const initialForm: FormState = {
   password: '',
   retypePassword: '',
   role: 'Researcher',
+  orcidId: '',
+  consentAccepted: false,
 };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,8 +85,13 @@ export const Register = () => {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+      ...(name === 'role' && value !== 'Reviewer' ? { orcidId: '' } : {}),
+    }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -124,6 +134,17 @@ export const Register = () => {
       next.role = 'Role is required';
     }
 
+    if (form.role === 'Reviewer') {
+      const normalizedOrcid = normalizeOrcid(form.orcidId);
+      if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
+        next.orcidId = 'Enter a valid ORCID iD with a valid checksum.';
+      }
+    }
+
+    if (!form.consentAccepted) {
+      next.consentAccepted = 'You must accept the Privacy Policy and Terms before registering.';
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -138,6 +159,8 @@ export const Register = () => {
     if (form.password !== form.retypePassword) return false;
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
+    if (form.role === 'Reviewer' && !normalizeOrcid(form.orcidId)) return false;
+    if (!form.consentAccepted) return false;
     return true;
   })();
 
@@ -383,6 +406,36 @@ export const Register = () => {
           {errors.role && <p className={styles.errorText}>{errors.role}</p>}
         </div>
 
+        {form.role === 'Reviewer' && (
+          <div className={styles.fieldGroup}>
+            <label
+              htmlFor="orcidId"
+              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+            >
+              ORCID iD
+            </label>
+            <input
+              id="orcidId"
+              name="orcidId"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              placeholder="0000-0000-0000-0000 or https://orcid.org/..."
+              value={form.orcidId}
+              onChange={handleChange}
+              disabled={isSubmitting || isUploadingPdf}
+              aria-describedby="orcid-help"
+              aria-invalid={Boolean(errors.orcidId)}
+              className={`${styles.nativeInput} ${errors.orcidId ? styles['nativeInput--error'] : ''}`}
+            />
+            <p className={styles.passwordHelper} id="orcid-help">
+              Enter your canonical ORCID iD or full ORCID URL. ARS validates the checksum and
+              uses the normalized value only for future reviewer verification support.
+            </p>
+            {errors.orcidId && <p className={styles.errorText}>{errors.orcidId}</p>}
+          </div>
+        )}
+
         <div className={styles.roleBanner}>
           <span className={styles.roleBannerIcon}>
             <Info size={20} />
@@ -422,6 +475,42 @@ export const Register = () => {
           />
         </div>
 
+        <div className={styles.consentGroup}>
+          <label className={styles.consentLabel}>
+            <input
+              type="checkbox"
+              name="consentAccepted"
+              checked={form.consentAccepted}
+              onChange={handleChange}
+              disabled={isSubmitting || isUploadingPdf}
+              className={styles.consentCheckbox}
+              aria-describedby="consent-description"
+            />
+            <span className={styles.consentText} id="consent-description">
+              I have read and agree to the{' '}
+              <a
+                href="/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.consentLink}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Privacy Policy
+              </a>{' '}
+              and{' '}
+              <a
+                href="/terms-of-service"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.consentLink}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Terms of Service
+              </a>
+            </span>
+          </label>
+        </div>
+
         <Button
           type="submit"
           variant="primary"
@@ -459,8 +548,6 @@ export const Register = () => {
         onClose={() => {
           setIsSuccessOpen(false);
           setForm(initialForm);
-          setPdfFile(null);
-          setPdfUrl(null);
           // The user is now authenticated but pending (isActive: false).
           // /forum is the only route they can access; the verified-guard
           // in MainLayout will bounce them back here if they try anything

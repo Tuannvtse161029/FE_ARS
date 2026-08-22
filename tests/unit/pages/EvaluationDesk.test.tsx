@@ -89,6 +89,12 @@ vi.mock('../../../src/services/reviewRequest.service', () => ({
 
 const renderDesk = () => render(<EvaluationDesk />);
 
+// Policy gate uses sessionStorage as a transient cache; clear between tests
+// to prevent one test's accept bleeding into another.
+beforeEach(() => {
+  sessionStorage.clear();
+});
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('EvaluationDesk – empty state', () => {
@@ -141,7 +147,10 @@ describe('EvaluationDesk – scorecard', () => {
   });
 
   it('renders the PDF viewer with the paper URL', async () => {
+    const user = userEvent.setup();
     renderDesk();
+    // Accept the reviewer policy first to unblock the PdfViewer mount.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     const pdfViewer = await screen.findByTestId('pdf-viewer');
     expect(pdfViewer).toHaveTextContent('https://example.com/paper.pdf');
   });
@@ -164,6 +173,8 @@ describe('EvaluationDesk – Save Draft', () => {
     const { detailedEvaluationService } = await import('../../../src/services/detailedEvaluation.service');
 
     renderDesk();
+    // Accept the reviewer policy first to unblock the scorecard interactions.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     await screen.findByText('CRITERIA EVALUATION SCORECARD');
 
     await user.click(screen.getByRole('button', { name: /save draft/i }));
@@ -190,6 +201,8 @@ describe('EvaluationDesk – Save Draft', () => {
 
     const user = userEvent.setup();
     renderDesk();
+    // Accept the reviewer policy first.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     await screen.findByText('CRITERIA EVALUATION SCORECARD');
 
     // Allow the existing-evaluation hydration to complete
@@ -225,6 +238,8 @@ describe('EvaluationDesk – Submit validation + success', () => {
     const { detailedEvaluationService } = await import('../../../src/services/detailedEvaluation.service');
 
     renderDesk();
+    // Accept the reviewer policy first.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     await screen.findByText('CRITERIA EVALUATION SCORECARD');
 
     // Type a space-only string so HTML5 `required` validation passes
@@ -243,6 +258,8 @@ describe('EvaluationDesk – Submit validation + success', () => {
     const { reviewRequestService } = await import('../../../src/services/reviewRequest.service');
 
     renderDesk();
+    // Accept the reviewer policy first.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     await screen.findByText('CRITERIA EVALUATION SCORECARD');
 
     const comments = screen.getByPlaceholderText(/provide detailed feedback/i);
@@ -273,6 +290,8 @@ describe('EvaluationDesk – Submit validation + success', () => {
     const eventSpy = vi.spyOn(window, 'dispatchEvent');
 
     renderDesk();
+    // Accept the reviewer policy first.
+    await user.click(await screen.findByTestId('policy-accept-btn'));
     await screen.findByText('CRITERIA EVALUATION SCORECARD');
 
     await user.type(screen.getByPlaceholderText(/provide detailed feedback/i), 'All clear.');

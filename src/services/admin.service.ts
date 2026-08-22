@@ -1,5 +1,7 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+import { AppConfig } from '../config/app';
+import { WithdrawalFeatureDisabledError } from './withdrawal.service';
 import type { User } from '../types/auth';
 import { notificationService } from './notification.service';
 import { auditLog } from './auditLogStore';
@@ -54,6 +56,21 @@ const USE_WITHDRAWAL_MOCK =
   runtimeOverride !== undefined
     ? runtimeOverride !== 'false'
     : import.meta.env.VITE_USE_ADMIN_WITHDRAWAL_MOCK !== 'false';
+
+// Centralized withdrawal feature gate — mirrors withdrawal.service.ts. While
+// the flag is off, every admin-side withdrawal mutation short-circuits with
+// `WithdrawalFeatureDisabledError` so a stale visible UI cannot complete
+// payouts or deny requests. Restore by re-enabling the flag in
+// src/config/app.ts (AppConfig.features.enableWithdrawals = true).
+const guardAdminWithdrawalCall = (method: string) => {
+  if (AppConfig.features.enableWithdrawals !== true) {
+    if (import.meta.env?.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(`[adminService] ${method} blocked: withdrawal feature is disabled.`);
+    }
+    throw new WithdrawalFeatureDisabledError();
+  }
+};
 
 // Simulated latency so loading skeletons actually render.
 const MOCK_LATENCY_MS = 450;
@@ -354,6 +371,7 @@ export const normalizeWithdrawalItem = (
 };
 
 async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
+  guardAdminWithdrawalCall('getReviewerWithdrawals');
   if (USE_WITHDRAWAL_MOCK) {
     return delay(clone(withdrawalStore).map(normalizeWithdrawalItem));
   }
@@ -365,6 +383,7 @@ async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
 }
 
 async function markWithdrawalProcessing(id: number): Promise<WithdrawalRequestItem> {
+  guardAdminWithdrawalCall('markWithdrawalProcessing');
   if (USE_WITHDRAWAL_MOCK) {
     return delay(
       normalizeWithdrawalItem(
@@ -396,6 +415,7 @@ async function completeWithdrawal(
   reviewerName: string,
   amountVnd: number,
 ): Promise<WithdrawalRequestItem> {
+  guardAdminWithdrawalCall('completeWithdrawal');
   if (USE_WITHDRAWAL_MOCK) {
     const updated = updateWithdrawal(id, {
       status: 'COMPLETED',
@@ -423,6 +443,7 @@ async function completeWithdrawal(
 }
 
 async function denyWithdrawal(id: number, reason: string): Promise<WithdrawalRequestItem> {
+  guardAdminWithdrawalCall('denyWithdrawal');
   if (USE_WITHDRAWAL_MOCK) {
     const updated = updateWithdrawal(id, {
       status: 'DENIED',

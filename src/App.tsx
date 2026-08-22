@@ -38,6 +38,7 @@ import CheckoutReturn from './pages/Payment/CheckoutReturn';
 import PremiumPackagesPreview from './pages/PremiumPackages';
 import { CompleteGoogleRegistration } from './pages/CompleteGoogleRegistration/CompleteGoogleRegistration';
 import { GoogleCallback } from './pages/GoogleCallback';
+import { AppConfig } from './config/app';
 import './styles/globals.css';
 
 const App = () => {
@@ -109,7 +110,14 @@ const App = () => {
               {/* Shared / cross-role routes */}
               <Route path={ROUTES.FORUM} element={<Forum />} />
               <Route path={ROUTES.EVALUATION} element={<EvaluationDesk />} />
-              <Route path={ROUTES.EARNINGS_WALLET} element={<EarningsWallet />} />
+              <Route
+                path={ROUTES.EARNINGS_WALLET}
+                element={
+                  AppConfig.features.enableWithdrawals
+                    ? <EarningsWallet />
+                    : <Navigate to={ROUTES.FORUM} replace />
+                }
+              />
               <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
               <Route path={ROUTES.PROFILE} element={<Profile />} />
               <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />

@@ -260,6 +260,37 @@
         }
       }
     },
+    "/api/Auth/google-login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Auth/verify-email": {
       "post": {
         "tags": [
@@ -289,6 +320,46 @@
         "parameters": [
           {
             "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Auth/google-oauth-login": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Auth/google-callback": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
             "in": "query",
             "schema": {
               "type": "string"
@@ -2310,6 +2381,48 @@
         }
       }
     },
+    "/api/ProfessionalProfile/{id}/availability": {
+      "patch": {
+        "tags": [
+          "ProfessionalProfile"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfessionalProfileAvailabilityUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfessionalProfileAvailabilityUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfessionalProfileAvailabilityUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Profile": {
       "get": {
         "tags": [
@@ -3108,6 +3221,145 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Seminar/{id}/invite": {
+      "post": {
+        "tags": [
+          "Seminar"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeminarInviteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeminarInviteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeminarInviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarInviteResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarInviteResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarInviteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Seminar/{id}/stats": {
+      "get": {
+        "tags": [
+          "Seminar"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarStatsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarStatsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Seminar/{id}/reminders/send": {
+      "post": {
+        "tags": [
+          "Seminar"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarReminderResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarReminderResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarReminderResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4054,6 +4306,16 @@
         "tags": [
           "Wallet"
         ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -4399,6 +4661,13 @@
           "finalDecision": {
             "type": "string",
             "nullable": true
+          },
+          "specializedEvaluation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpecializedEvaluationItemRequest"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -4467,6 +4736,13 @@
           },
           "finalDecision": {
             "type": "string",
+            "nullable": true
+          },
+          "specializedEvaluation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpecializedEvaluationItemRequest"
+            },
             "nullable": true
           }
         },
@@ -4579,6 +4855,62 @@
           },
           "attachedImageUrl": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoogleLoginRequest": {
+        "required": [
+          "credential"
+        ],
+        "type": "object",
+        "properties": {
+          "credential": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GradingRubricCriterionRequest": {
+        "required": [
+          "code",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxScore": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "order": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "standardReferences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -5287,6 +5619,15 @@
         },
         "additionalProperties": false
       },
+      "ProfessionalProfileAvailabilityUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "isAvailable": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProfessionalProfileCreateRequest": {
         "type": "object",
         "properties": {
@@ -5483,7 +5824,10 @@
         "required": [
           "email",
           "fullName",
-          "password"
+          "password",
+          "pdfUrl",
+          "phoneNumber",
+          "role"
         ],
         "type": "object",
         "properties": {
@@ -5499,6 +5843,20 @@
           "fullName": {
             "minLength": 1,
             "type": "string"
+          },
+          "phoneNumber": {
+            "minLength": 1,
+            "pattern": "^[+\\d\\s\\-()]{8,20}$",
+            "type": "string"
+          },
+          "role": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "pdfUrl": {
+            "minLength": 1,
+            "type": "string",
+            "format": "uri"
           }
         },
         "additionalProperties": false
@@ -5783,13 +6141,13 @@
         "additionalProperties": false
       },
       "SeminarCreateRequest": {
+        "required": [
+          "content",
+          "endTime",
+          "startTime"
+        ],
         "type": "object",
         "properties": {
-          "organizerId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
           "startTime": {
             "type": "string",
             "format": "date-time"
@@ -5799,12 +6157,8 @@
             "format": "date-time"
           },
           "content": {
-            "type": "string",
-            "nullable": true
-          },
-          "onlineLink": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "maxParticipants": {
             "type": "integer",
@@ -5817,6 +6171,61 @@
           },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "guestEmails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarInviteRequest": {
+        "required": [
+          "emails"
+        ],
+        "type": "object",
+        "properties": {
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarInviteResponse": {
+        "type": "object",
+        "properties": {
+          "seminarId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requested": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "added": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedEmails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -5835,6 +6244,10 @@
             "format": "int32",
             "nullable": true
           },
+          "invitedEmail": {
+            "type": "string",
+            "nullable": true
+          },
           "invitationStatus": {
             "type": "string",
             "nullable": true
@@ -5849,16 +6262,6 @@
       "SeminarParticipantUpdateRequest": {
         "type": "object",
         "properties": {
-          "seminarId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "userId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
           "invitationStatus": {
             "type": "string",
             "nullable": true
@@ -5870,27 +6273,84 @@
         },
         "additionalProperties": false
       },
+      "SeminarReminderResponse": {
+        "type": "object",
+        "properties": {
+          "seminarId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eligible": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedEmails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarStatsResponse": {
+        "type": "object",
+        "properties": {
+          "seminarId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalInvited": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "submitted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "declined": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completionPercentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageScore": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SeminarUpdateRequest": {
         "type": "object",
         "properties": {
-          "organizerId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
           "startTime": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "nullable": true
           },
           "endTime": {
             "type": "string",
-            "format": "date-time"
-          },
-          "content": {
-            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
-          "onlineLink": {
+          "content": {
             "type": "string",
             "nullable": true
           },
@@ -5900,6 +6360,10 @@
             "nullable": true
           },
           "isReminderSent": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "reminderEnabled": {
             "type": "boolean",
             "nullable": true
           },
@@ -5970,6 +6434,49 @@
         },
         "additionalProperties": false
       },
+      "SpecializedEvaluationItemRequest": {
+        "required": [
+          "criterionCode",
+          "criterionTitle"
+        ],
+        "type": "object",
+        "properties": {
+          "criterionCode": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "criterionTitle": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxScore": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "standardReferences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SubFieldCreateRequest": {
         "type": "object",
         "properties": {
@@ -5984,6 +6491,13 @@
           },
           "description": {
             "type": "string",
+            "nullable": true
+          },
+          "gradingRubric": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradingRubricCriterionRequest"
+            },
             "nullable": true
           }
         },
@@ -6003,6 +6517,13 @@
           },
           "description": {
             "type": "string",
+            "nullable": true
+          },
+          "gradingRubric": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradingRubricCriterionRequest"
+            },
             "nullable": true
           }
         },

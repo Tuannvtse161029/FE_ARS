@@ -641,6 +641,164 @@
   outline-offset: 2px;
 }
 
+/* ── Additional Subfield Evaluation ───────────────────────────────── */
+.subfieldHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.subfieldNameTag {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-reviewer, #065f46);
+  background: var(--ars-reviewer-light, #d1fae5);
+  border: 1px solid var(--ars-reviewer, #065f46);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.subfieldHint {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.subfieldCriterion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.subfieldCriterionHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.subfieldCriterionCode {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-reviewer, #065f46);
+  background: var(--ars-paper-inset);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
+}
+
+.subfieldCriterionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  flex: 1;
+  min-width: 0;
+}
+
+.subfieldCriterionMax {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  white-space: nowrap;
+}
+
+.subfieldCriterionDescription {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.subfieldReferences {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}
+
+.subfieldReferences li {
+  list-style: disc;
+  margin: 0;
+}
+
+.subfieldScoreRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.subfieldLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.subfieldScoreInput {
+  width: 96px;
+  padding: var(--space-2) var(--space-2);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+
+.subfieldScoreInput:focus {
+  outline: none;
+  border-color: var(--ars-reviewer, #065f46);
+}
+
+.subfieldScoreInput:focus-visible {
+  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline-offset: 2px;
+}
+
+.subfieldScoreInput[aria-invalid='true'] {
+  border-color: var(--ars-error, #991b1b);
+}
+
+.subfieldCriterionError {
+  font-size: var(--font-size-xs);
+  color: var(--ars-error, #991b1b);
+  background: var(--ars-error-bg, #fee2e2);
+  border: 1px solid var(--ars-error, #991b1b);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.subfieldLoading {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  padding: var(--space-2) 0;
+}
+
+.subfieldError {
+  font-size: var(--font-size-xs);
+  color: var(--ars-error, #991b1b);
+  background: var(--ars-error-bg, #fee2e2);
+  border: 1px solid var(--ars-error, #991b1b);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
 /* ── Empty State ─────────────────────────────────────────── */
 .emptyState {
   background: var(--ars-paper-alt);

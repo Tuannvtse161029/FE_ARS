@@ -13,10 +13,35 @@ import { withdrawalService, WithdrawalRequest } from '../../services/withdrawal.
 import { WithdrawalSuccessModal } from './components/WithdrawalSuccessModal';
 import { useAuthStore } from '../../store/authSlice';
 import { useWallet } from '../../hooks/useWallet';
+import { AppConfig } from '../../config/app';
+
+// ── Centralized withdrawal feature gate (temporary) ─────────────────────────
+// While `AppConfig.features.enableWithdrawals` is `false`, the page renders
+// an informational notice in place of the table, form, modal triggers, and
+// API calls. All underlying hooks / services / modal components are
+// preserved verbatim and resume the moment the flag is re-enabled.
+// See src/config/app.ts for the rationale and full set of gated surfaces.
+const WITHDRAWAL_DISABLED_MESSAGE =
+  'Cash-out withdrawal requests are temporarily unavailable while the requirements are being revised. Your wallet balance, top-up, and transaction history are unaffected.';
 
 export const EarningsWallet = () => {
+  // Single source of truth: respect the centralized feature flag. Any stale
+  // page render goes through this gate before any API call or interactive
+  // control can fire.
+  const withdrawalsEnabled = AppConfig.features.enableWithdrawals === true;
+
   const currentUserId = useAuthStore((s) => s.user?.id);
   const { walletId } = useWallet(currentUserId);
+
+  // Defense-in-depth guard for direct navigation. While the flag is off, the
+  // page renders ONLY an informational notice — no API calls, no buttons, no
+  // forms, no modals, no tables. The sidebar entry is also hidden (see
+  // MainLayout). Hooks above MUST run before this conditional to satisfy the
+  // rules of hooks, but no withdrawal UI/data fetch is attempted.
+  //
+  // The shell (breadcrumbs, metrics card) remains visible so a Reviewer who
+  // hits /earnings-wallet via a stale bookmark still lands on a coherent
+  // page rather than a blank redirect.
 
   // Available balance state loaded from localStorage
   const [unlockedBalance] = useState(() => {
@@ -74,8 +99,9 @@ export const EarningsWallet = () => {
   }, [currentUserId, walletId]);
 
   useEffect(() => {
+    if (!withdrawalsEnabled) return;
     void fetchRequests();
-  }, [fetchRequests]);
+  }, [fetchRequests, withdrawalsEnabled]);
 
   // Newest first by createdAt.
   const sortedRequests = useMemo(
@@ -87,11 +113,13 @@ export const EarningsWallet = () => {
   );
 
   const handleOpenRejectReason = (req: WithdrawalRequest) => {
+    if (!withdrawalsEnabled) return;
     setSelectedRequest(req);
     setShowRejectModal(true);
   };
 
   const handleOpenCreateModal = () => {
+    if (!withdrawalsEnabled) return;
     setTargetBank('');
     setAccountNumber('');
     setAccountName('');
@@ -165,19 +193,40 @@ export const EarningsWallet = () => {
           </p>
         </div>
         <div className={styles.headerActions}>
-          <button
-            className={styles.refreshBtn}
-            onClick={fetchRequests}
-            disabled={loading}
-            title="Refresh"
-          >
-            <RefreshCw size={15} className={loading ? styles.spinning : ''} />
-          </button>
-          <button className={styles.createRequestBtn} onClick={handleOpenCreateModal}>
-            ＋ Create New Request
-          </button>
+          {withdrawalsEnabled && (
+            <>
+              <button
+                className={styles.refreshBtn}
+                onClick={fetchRequests}
+                disabled={loading}
+                title="Refresh"
+              >
+                <RefreshCw size={15} className={loading ? styles.spinning : ''} />
+              </button>
+              <button className={styles.createRequestBtn} onClick={handleOpenCreateModal}>
+                ＋ Create New Request
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Withdrawal disabled notice — only shown while the centralized feature
+          flag is off. Replaces the Create button, the table, the View Reason
+          actions, and all modal triggers so a stale direct-page render cannot
+          reach any withdrawal API call. */}
+      {!withdrawalsEnabled && (
+        <div
+          className={styles.tableCard}
+          data-testid="withdrawal-disabled-notice"
+          role="status"
+        >
+          <div className={styles.emptyState}>
+            <AlertTriangle size={32} color="#d97706" />
+            <span>{WITHDRAWAL_DISABLED_MESSAGE}</span>
+          </div>
+        </div>
+      )}
 
       {/* Section 1: Earnings Metrics Card */}
       <div className={styles.metricsCard}>
@@ -206,7 +255,10 @@ export const EarningsWallet = () => {
         </div>
       </div>
 
-      {/* Section 2: Requests History Table */}
+      {/* Section 2: Requests History Table — only shown while withdrawals are
+          enabled. Disabled-state notice above replaces all interactive
+          surfaces (table rows, View Reason buttons, modals). */}
+      {withdrawalsEnabled && (
       <div className={styles.tableCard}>
         {loading && requests.length === 0 ? (
           <div className={styles.loadingState}>
@@ -292,9 +344,13 @@ export const EarningsWallet = () => {
           </div>
         )}
       </div>
+      )}
 
-      {/* FRAME 23: REQUEST REJECTION NOTICE MODAL */}
-      {showRejectModal && selectedRequest && (
+      {/* Modal surfaces are co-gated with the table. While the feature flag is
+          off, none of the modal triggers exist (the Create/View Reason buttons
+          are hidden above), but we still short-circuit here so a programmatic
+          open cannot leak through. */}
+      {withdrawalsEnabled && showRejectModal && selectedRequest && (
         <div className={styles.modalOverlay}>
           <div className={styles.rejectModalCard}>
             <div className={styles.modalHeaderRow}>
@@ -371,7 +427,7 @@ export const EarningsWallet = () => {
       )}
 
       {/* FRAME 24: SUBMIT WITHDRAWAL REQUEST MODAL FORM */}
-      {showCreateModal && (
+      {withdrawalsEnabled && showCreateModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.createModalCard}>
             <div className={styles.modalHeaderRow}>
@@ -503,12 +559,17 @@ export const EarningsWallet = () => {
         </div>
       )}
 
-      {/* SUCCESS MODAL */}
-      <WithdrawalSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        requestId={successRequestId}
-      />
+      {/* SUCCESS MODAL — gated by the centralized withdrawal flag. Even
+          though the create flow is impossible while disabled, this short-
+          circuits a stale `successRequestId` state from any path that might
+          try to surface it. */}
+      {withdrawalsEnabled && (
+        <WithdrawalSuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          requestId={successRequestId}
+        />
+      )}
     </div>
   );
 };

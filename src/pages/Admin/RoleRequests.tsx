@@ -9,6 +9,7 @@ import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import VerificationDetailsModal from './VerificationDetailsModal';
+import OrcidCheckModal from './OrcidCheckModal';
 import styles from './RoleRequests.module.css';
 
 // ── Agent 40 — verification management page ────────────────────────────────
@@ -28,7 +29,7 @@ import styles from './RoleRequests.module.css';
 // reason inline.
 
 type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
-type ModalKind = 'details' | null;
+type ModalKind = 'details' | 'orcid' | null;
 
 const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
 
@@ -324,6 +325,22 @@ export const RoleRequests = () => {
       <VerificationDetailsModal
         user={selected}
         open={modal === 'details'}
+        onClose={() => setModal(null)}
+        onOpenOrcidCheck={() => setModal('orcid')}
+      />
+
+      <OrcidCheckModal
+        user={
+          selected
+            ? {
+                id: selected.id,
+                fullName: selected.fullName,
+                email: selected.email,
+                orcidId: selected.orcidId,
+              }
+            : { id: 0, email: '', orcidId: '' }
+        }
+        open={modal === 'orcid'}
         onClose={() => setModal(null)}
       />
     </div>

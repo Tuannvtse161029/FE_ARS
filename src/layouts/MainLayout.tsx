@@ -10,6 +10,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
+import { AppConfig } from '../config/app';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -276,7 +277,9 @@ export const MainLayout = () => {
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon size={20} />, badge: '2' },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
-          { to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> },
+          ...(AppConfig.features.enableWithdrawals
+            ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
+            : []),
           { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
         ];
       case 'Lecturer':

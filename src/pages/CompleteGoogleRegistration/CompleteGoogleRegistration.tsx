@@ -41,6 +41,7 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../utils/storage';
 import { ROUTES } from '../../routes/paths';
 import type { BusinessRole } from '../../types/auth';
+import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
 
@@ -49,6 +50,7 @@ import styles from './CompleteGoogleRegistration.module.css';
 interface FormState {
   phoneNumber: string;
   role: BusinessRole | '';
+  orcidId: string;
   pdfUrl: string | null;
   pdfFile: File | null;
 }
@@ -58,6 +60,7 @@ const phoneRegex = /^[+\d\s\-()]{8,20}$/;
 const initialForm: FormState = {
   phoneNumber: '',
   role: '',
+  orcidId: '',
   pdfUrl: null,
   pdfFile: null,
 };
@@ -73,7 +76,9 @@ function buildInitials(name: string): string {
 
 export const CompleteGoogleRegistration = () => {
   const navigate = useNavigate();
-  const authStore = useAuthStore();
+  const updateUser = useAuthStore((state) => state.updateUser);
+  const logoutStore = useAuthStore((state) => state.logout);
+  const storeEmail = useAuthStore((state) => state.user?.email);
   const { isAuthenticated, user } = useAuth();
 
   const [form, setForm] = useState<FormState>(initialForm);
@@ -124,15 +129,15 @@ export const CompleteGoogleRegistration = () => {
   // the store already reflects the BE-derived values.
   useEffect(() => {
     if (!profile) return;
-    if (authStore.user?.email !== profile.email) {
-      authStore.updateUser({
+    if (storeEmail !== profile.email) {
+      updateUser({
         email: profile.email,
         fullName: profile.fullName,
         isActive: profile.isActive,
         verificationStatus: profile.verificationStatus,
       });
     }
-  }, [profile, authStore]);
+  }, [profile, storeEmail, updateUser]);
 
   // ── 2. Load the BE's role list (Guest excluded server-side, Admin
   //       excluded here to mirror Register.tsx) ────────────────────────────
@@ -161,6 +166,10 @@ export const CompleteGoogleRegistration = () => {
     if (!profile) return false;
     if (isUploadingPdf) return false;
     if (!form.role) return false;
+    if (form.role === 'Reviewer') {
+      const normalizedOrcid = normalizeOrcid(form.orcidId);
+      if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) return false;
+    }
     if (form.phoneNumber && !phoneRegex.test(form.phoneNumber)) return false;
     if (!form.pdfUrl) return false;
     return true;
@@ -174,8 +183,17 @@ export const CompleteGoogleRegistration = () => {
   };
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setForm((prev) => ({ ...prev, role: e.target.value as FormState['role'] }));
-    setErrors((prev) => ({ ...prev, role: undefined }));
+    setForm((prev) => ({
+      ...prev,
+      role: e.target.value as FormState['role'],
+      orcidId: e.target.value === 'Reviewer' ? prev.orcidId : '',
+    }));
+    setErrors((prev) => ({ ...prev, role: undefined, orcidId: undefined }));
+  };
+
+  const handleOrcidChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, orcidId: e.target.value }));
+    setErrors((prev) => ({ ...prev, orcidId: undefined }));
   };
 
   const handleUploadComplete = (file: File, url: string) => {
@@ -189,7 +207,7 @@ export const CompleteGoogleRegistration = () => {
   const handleCancel = () => {
     // Drop the local form state and the auth session, redirect to /login.
     authService.logout();
-    authStore.logout();
+    logoutStore();
     navigate(ROUTES.LOGIN, { replace: true });
   };
 
@@ -296,9 +314,27 @@ export const CompleteGoogleRegistration = () => {
           </div>
 
           <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel}>
-              Verification Document (PDF)
+            <label htmlFor="orcidId" className={styles.fieldLabel}>
+              ORCID iD {form.role === 'Reviewer' ? '(required)' : '(optional)'}
             </label>
+            <Input
+              id="orcidId"
+              name="orcidId"
+              type="text"
+              value={form.orcidId}
+              onChange={handleOrcidChange}
+              placeholder="0000-0000-0000-0000 or https://orcid.org/..."
+              disabled={isUploadingPdf}
+              className={styles.input}
+              error={errors.orcidId}
+              aria-describedby="google-orcid-help"
+            />
+            <p className={styles.hint} id="google-orcid-help">
+              Reviewer onboarding requires a canonical ORCID iD or full ORCID URL with a valid checksum.
+            </p>
+          </div>
+
+          <div className={styles.fieldGroup}>
             <PdfDropzone
               onUploadComplete={handleUploadComplete}
               onRemove={handleUploadRemove}

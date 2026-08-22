@@ -1,0 +1,22 @@
+---
+description: Markdown formatting standards for headings
+globs: **/*.md
+alwaysApply: false
+---
+
+# Markdown Heading Spacing
+
+When creating or editing Markdown files, surround every ATX heading (`#` through `######`) with exactly one blank line when adjacent content exists.
+
+```markdown
+<!-- Incorrect -->
+## Goal
+Describe the objective.
+
+<!-- Correct -->
+## Goal
+
+Describe the objective.
+```
+
+This prevents markdownlint `MD022/blanks-around-headings` warnings. Do not insert an unnecessary trailing blank line after a final heading at end of file.
