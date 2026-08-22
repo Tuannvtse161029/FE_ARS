@@ -484,3 +484,67 @@
     width: 100%;
   }
 }
+
+/* ── Protected-review mode (reviewer-facing manuscript views) ─────── */
+
+/**
+ * Applied to the root viewerWrapper when mode="protected-review".
+ * Used as a hook for visual polish or user-agent detection without
+ * changing behaviour (all logic lives in the TS event handlers).
+ */
+.protectedWrapper {
+  /* intentionally empty — class is present for future CSS hooks */
+}
+
+/**
+ * Non-interactive overlay anchored over the canvas area.
+ * pointer-events: none ensures the notice never captures focus or blocks
+ * interaction with toolbar controls (which are outside this element).
+ */
+.protectedOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+  gap: 12px;
+  padding: 16px;
+}
+
+/** Confidential notice — semi-transparent so the PDF canvas remains visible beneath. */
+.protectedNotice {
+  display: inline-block;
+  padding: 6px 16px;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(4px);
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/**
+ * Watermark copy identifier — positioned so it is legible but does not
+ * fully obscure the PDF content.  Never exposes researcher identity
+ * (double-blind: uses review-request id or reviewer copy token).
+ */
+.protectedWatermark {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.7;
+}

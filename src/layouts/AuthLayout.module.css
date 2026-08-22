@@ -1,9 +1,14 @@
+/**
+ * AuthLayout — ARS Research Constellation
+ * Two-panel: left branded wallpaper, right warm paper form panel.
+ * Fully responsive — stacks vertically on tablet/mobile.
+ */
 .authLayout {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: var(--color-background);
-  font-family: var(--font-family-primary);
+  background-color: var(--ars-paper);
+  font-family: var(--font-family-ui);
   overflow: hidden;
 }
 
@@ -14,6 +19,7 @@
   overflow: hidden;
 }
 
+/* ── Left Panel — Branded Wallpaper ─────────────────────────── */
 .leftPanel {
   flex: 1;
   display: flex;
@@ -25,13 +31,44 @@
   overflow: hidden;
 }
 
+/* Constellation overlay */
+.leftPanel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(26, 31, 54, 0.6) 0%,
+    rgba(45, 53, 97, 0.3) 100%
+  );
+}
+
+/* ── Right Panel — Form Surface ────────────────────────────── */
 .rightPanel {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-6);
-  background-color: var(--color-surface);
+  padding: var(--space-8) var(--space-6);
+  background-color: var(--ars-paper);
+  position: relative;
+}
+
+/* Thin constellation accent on panel edge */
+.rightPanel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--ars-network) 30%,
+    var(--ars-network) 70%,
+    transparent
+  );
 }
 
 .formContainer {
@@ -39,6 +76,7 @@
   max-width: 440px;
 }
 
+/* ── Tablet ──────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .authCard {
     flex-direction: column;
@@ -46,22 +84,35 @@
   }
 
   .leftPanel {
-    height: 240px;
+    height: 200px;
     flex: none;
   }
 
   .rightPanel {
     min-height: auto;
-    padding: var(--spacing-4);
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .rightPanel::before {
+    display: none;
   }
 }
 
-@media (max-width: 480px) {
+/* ── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
   .authLayout {
     padding: 0;
   }
 
   .leftPanel {
-    height: 160px;
+    height: 140px;
+  }
+
+  .rightPanel {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .formContainer {
+    max-width: 100%;
   }
 }

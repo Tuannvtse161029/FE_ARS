@@ -1,73 +1,86 @@
+/**
+ * Login — ARS Research Constellation
+ * Auth form page. Wrapped inside AuthLayout's right panel.
+ * Consistent with the ARS design contract.
+ */
 .loginPage {
   width: 100%;
 }
 
+/* ── Logo / Brand Header ─────────────────────────────────── */
 .logoSection {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-1);
-  margin-bottom: var(--spacing-8);
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
 }
 
 .logoImage {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
 }
 
 .brandText {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
-  color: #2563EB;
+  color: var(--ars-blue);
   letter-spacing: 0.5px;
   text-align: center;
+  line-height: var(--line-height-tight);
 }
 
+/* ── Page Title ────────────────────────────────────────── */
 .header {
   text-align: left;
-  margin-bottom: var(--spacing-6);
+  margin-bottom: var(--space-6);
 }
 
 .title {
+  font-family: var(--font-family-serif);
   font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  font-weight: 700;
+  color: var(--ars-ink);
   margin-bottom: 0;
+  line-height: var(--line-height-tight);
 }
 
+/* ── Form ─────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
+  gap: var(--space-5);
 }
 
 .formError {
-  padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-error-bg);
-  color: var(--color-error);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
   text-align: center;
-  border: 1px solid var(--color-error-light);
+  border: 1px solid rgba(153, 27, 27, 0.2);
 }
 
+/* ── Input Overrides ─────────────────────────────────── */
 .loginInput {
-  background-color: #f3f4f6 !important;
+  background-color: var(--ars-paper-alt) !important;
   border: 1.5px solid transparent !important;
-  border-radius: 8px !important;
-  color: #000000 !important;
-  font-size: var(--font-size-sm) !important;
+  border-radius: var(--radius-lg) !important;
+  color: var(--ars-ink) !important;
+  font-size: var(--font-size-base) !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 .loginInput:focus {
-  border-color: #0075ff !important;
-  background-color: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(0, 117, 255, 0.15) !important;
+  border-color: var(--ars-blue) !important;
+  background-color: var(--ars-paper) !important;
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12) !important;
 }
 
+/* ── Password Field ─────────────────────────────────────── */
 .passwordFieldWrapper {
   position: relative;
 }
@@ -80,177 +93,175 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: var(--color-text-muted);
+  color: var(--ars-ink-muted);
   transition: color var(--transition-fast);
 }
 
 .passwordToggle:hover {
-  color: var(--color-text-secondary);
+  color: var(--ars-ink-soft);
 }
 
+/* ── Remember Me Row ─────────────────────────────────────── */
 .rememberRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: var(--spacing-1);
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .toggleWrapper {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
+  gap: var(--space-3);
   cursor: pointer;
 }
 
 .toggleInput {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .toggleSlider {
   position: relative;
   width: 44px;
   height: 24px;
-  background-color: var(--color-border);
+  background-color: var(--ars-node);
   border-radius: 24px;
   transition: background-color var(--transition-fast);
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .toggleSlider::before {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background-color: white;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background-color: var(--ars-paper);
   border-radius: 50%;
-  transition: transform var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.toggleInput:checked+.toggleSlider {
-  background-color: #0075ff;
+.toggleInput:checked + .toggleSlider {
+  background-color: var(--ars-blue);
 }
 
-.toggleInput:checked+.toggleSlider::before {
+.toggleInput:checked + .toggleSlider::before {
   transform: translateX(20px);
+}
+
+.toggleInput:focus-visible + .toggleSlider {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .toggleLabel {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: var(--ars-ink-soft);
   user-select: none;
+  line-height: 1;
 }
 
 .forgotLink {
   font-size: var(--font-size-sm);
-  color: #0075ff;
+  color: var(--ars-blue);
   font-weight: var(--font-weight-medium);
   transition: color var(--transition-fast);
   text-decoration: none;
 }
 
 .forgotLink:hover {
-  color: #0062d6;
+  color: var(--ars-blue-mid);
   text-decoration: underline;
 }
 
+/* ── Submit Button ─────────────────────────────────────── */
 .submitButton {
-  background-color: #0075ff !important;
-  border-color: #0075ff !important;
-  color: #ffffff !important;
+  background-color: var(--ars-blue) !important;
+  border-color: var(--ars-blue) !important;
+  color: var(--ars-paper) !important;
   font-weight: 600 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-lg) !important;
   min-height: 48px !important;
   font-size: var(--font-size-base) !important;
-  margin-top: var(--spacing-2);
+  margin-top: var(--space-2);
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #0062d6 !important;
-  border-color: #0062d6 !important;
+  background-color: var(--ars-blue-mid) !important;
+  border-color: var(--ars-blue-mid) !important;
   box-shadow: var(--shadow-md);
 }
 
-.googleButton {
-  background-color: #2d2d2d !important;
-  border-color: #2d2d2d !important;
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  border-radius: 8px !important;
-  min-height: 48px !important;
-  font-size: var(--font-size-sm) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: var(--spacing-3) !important;
-}
-
+/* ── Google Button Wrapper ─────────────────────────────── */
 .googleButtonWrapper {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--space-2);
 }
 
-.googleButton:hover:not(:disabled) {
-  background-color: #1a1a1a !important;
-  border-color: #1a1a1a !important;
-  box-shadow: var(--shadow-md);
-}
-
-.googleIcon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
+/* ── Dev-Only Divider ──────────────────────────────────── */
 .devDivider {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
-  margin-top: var(--spacing-2);
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .devDividerLine {
   flex: 1;
   height: 1px;
-  background-color: var(--color-border);
+  background-color: var(--ars-network);
 }
 
 .devDividerText {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--ars-ink-muted);
   font-weight: var(--font-weight-medium);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
+/* ── Fast Login Grid ─────────────────────────────────────── */
 .fastLoginGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-2);
+  gap: var(--space-2);
 }
 
 .fastLoginBtn {
   flex: 1;
   min-width: 90px;
-  padding: var(--spacing-2) var(--spacing-3);
-  background-color: #f3f4f6;
-  border: 1.5px solid #d1d5db;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--ars-paper-alt);
+  border: 1.5px solid var(--ars-node);
+  border-radius: var(--radius-lg);
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: #374151;
+  color: var(--ars-ink);
   cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .fastLoginBtn:hover:not(:disabled) {
-  background-color: #e5e7eb;
-  border-color: #9ca3af;
+  background-color: var(--ars-node);
+  border-color: var(--ars-ink-muted);
+}
+
+.fastLoginBtn:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .fastLoginBtn:disabled {
@@ -258,24 +269,46 @@
   cursor: not-allowed;
 }
 
+/* ── Footer ─────────────────────────────────────────────── */
 .footer {
-  margin-top: var(--spacing-4);
+  margin-top: var(--space-4);
   text-align: center;
 }
 
 .footerText {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: var(--ars-ink-soft);
 }
 
 .registerLink {
-  color: #0075ff;
+  color: var(--ars-blue);
   font-weight: var(--font-weight-medium);
   transition: color var(--transition-fast);
   text-decoration: none;
 }
 
 .registerLink:hover {
-  color: #0062d6;
+  color: var(--ars-blue-mid);
   text-decoration: underline;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .logoImage {
+    width: 96px;
+    height: 96px;
+  }
+
+  .brandText {
+    font-size: var(--font-size-base);
+  }
+
+  .title {
+    font-size: var(--font-size-xl);
+  }
+
+  .rememberRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

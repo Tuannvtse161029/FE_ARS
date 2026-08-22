@@ -696,7 +696,230 @@ describe('PdfViewer', () => {
       await act(async () => {
         await Promise.resolve();
       });
-      expect(onPage).toHaveBeenCalledWith(2);
-    });
+    expect(onPage).toHaveBeenCalledWith(2);
   });
+});
+
+// ── Protected-review mode ─────────────────────────────────────────────────────
+
+describe('PdfViewer protected-review mode', () => {
+  // Ensure each test starts with a clean DOM to avoid duplicate overlays.
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockObserve.mockReset();
+    mockUnobserve.mockReset();
+    mockDisconnect.mockReset();
+    mockDoc.numPages = 5;
+  });
+
+  // ── Structural ──────────────────────────────────────────────────────────
+
+  it('adds the protected class to the root wrapper', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const wrapper = screen.getByTestId('pdf-viewer');
+    expect(wrapper.className).toContain('protectedWrapper');
+  });
+
+  it('renders the protected overlay notice with the exact required text', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const overlay = screen.getByTestId('pdf-protected-overlay');
+    expect(overlay).toHaveTextContent(
+      'Confidential review copy — copying and redistribution are prohibited.'
+    );
+  });
+
+  it('renders the watermark when reviewCopyId is provided', async () => {
+    render(
+      <PdfViewer
+        url="https://example.com/doc.pdf"
+        mode="protected-review"
+        reviewCopyId="Review Copy #42"
+      />
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const overlay = screen.getByTestId('pdf-protected-overlay');
+    expect(overlay).toHaveTextContent('Review Copy #42');
+  });
+
+  it('does NOT render the watermark when reviewCopyId is absent', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const overlay = screen.getByTestId('pdf-protected-overlay');
+    // Only the notice text should be present; no extra copy-id span.
+    expect(overlay.textContent).not.toContain('Review Copy');
+  });
+
+  it('renders the overlay as non-interactive (aria-hidden)', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const overlay = screen.getByTestId('pdf-protected-overlay');
+    expect(overlay).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  // ── Toolbar: no open-in-new-tab ─────────────────────────────────────────
+
+  it('does NOT render the Open in new tab toolbar button in protected mode', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByTestId('pdf-open-newtab-btn')).not.toBeInTheDocument();
+  });
+
+  it('still renders all navigation and zoom controls in protected mode', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('pdf-prev-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('pdf-next-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('pdf-zoom-in-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('pdf-zoom-out-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('pdf-zoom-percent')).toBeInTheDocument();
+    expect(screen.getByTestId('pdf-page-input')).toBeInTheDocument();
+  });
+
+  // ── Page navigation still works ─────────────────────────────────────────
+
+  it('navigates to the next page in protected mode', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('pdf-next-btn'));
+    await act(async () => { await Promise.resolve(); });
+    expect(mockDoc.getPage).toHaveBeenLastCalledWith(2);
+  });
+
+  it('navigates to the previous page in protected mode', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('pdf-next-btn'));
+    await act(async () => { await Promise.resolve(); });
+    await user.click(screen.getByTestId('pdf-prev-btn'));
+    await act(async () => { await Promise.resolve(); });
+    expect(mockDoc.getPage).toHaveBeenLastCalledWith(1);
+  });
+
+  it('zooms in and out in protected mode', async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const user = userEvent.setup();
+    expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
+    await user.click(screen.getByTestId('pdf-zoom-in-btn'));
+    expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('175%');
+    await user.click(screen.getByTestId('pdf-zoom-out-btn'));
+    expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
+  });
+
+  // ── Event registration ──────────────────────────────────────────────────
+
+  it('registers copy, cut, paste, contextmenu, dragstart, drag, and keydown listeners in protected mode', async () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="protected-review" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const registeredTypes = addSpy.mock.calls.map((c) => c[0] as string);
+    expect(registeredTypes).toContain('copy');
+    expect(registeredTypes).toContain('cut');
+    expect(registeredTypes).toContain('paste');
+    expect(registeredTypes).toContain('contextmenu');
+    expect(registeredTypes).toContain('dragstart');
+    expect(registeredTypes).toContain('drag');
+    expect(registeredTypes).toContain('keydown');
+  });
+});
+
+// ── Standard mode (backwards-compatibility) ──────────────────────────────────
+
+describe('PdfViewer standard mode (default)', () => {
+  beforeEach(async () => {
+    render(<PdfViewer url="https://example.com/doc.pdf" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    mockDoc.numPages = 5;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockDoc.numPages = 5;
+  });
+
+  it('renders the Open in new tab toolbar button in standard mode', () => {
+    expect(screen.getByTestId('pdf-open-newtab-btn')).toBeInTheDocument();
+  });
+
+  it('does NOT add the protected class to the root wrapper in standard mode', () => {
+    const wrapper = screen.getByTestId('pdf-viewer');
+    expect(wrapper.className).not.toContain('protectedWrapper');
+  });
+
+  it('does NOT render the protected overlay in standard mode', () => {
+    expect(screen.queryByTestId('pdf-protected-overlay')).not.toBeInTheDocument();
+  });
+
+  it('does NOT register copy/cut/paste/contextmenu dragstart handlers in standard mode', async () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    // The render in beforeEach already set up the component; spy separately here.
+    render(<PdfViewer url="https://example.com/doc.pdf" mode="standard" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const registeredTypes = addSpy.mock.calls.map((c) => c[0] as string);
+    // Navigation keydown is always registered; copy/cut/paste/contextmenu/dragstart are not.
+    expect(registeredTypes).not.toContain('copy');
+    expect(registeredTypes).not.toContain('cut');
+    expect(registeredTypes).not.toContain('paste');
+    expect(registeredTypes).not.toContain('contextmenu');
+    expect(registeredTypes).not.toContain('dragstart');
+    expect(registeredTypes).not.toContain('drag');
+  });
+
+  it('page navigation works identically in standard mode', async () => {
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('pdf-next-btn'));
+    await act(async () => { await Promise.resolve(); });
+    expect(mockDoc.getPage).toHaveBeenLastCalledWith(2);
+  });
+
+  it('zoom works identically in standard mode', async () => {
+    const user = userEvent.setup();
+    expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('150%');
+    await user.click(screen.getByTestId('pdf-zoom-in-btn'));
+    expect(screen.getByTestId('pdf-zoom-percent')).toHaveTextContent('175%');
+  });
+});
 });

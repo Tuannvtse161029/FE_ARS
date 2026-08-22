@@ -1,0 +1,91 @@
+/**
+ * MetricCard styles — ARS Research Constellation
+ */
+.card {
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  padding: var(--space-5) var(--space-6);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--ars-node);
+}
+
+.inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.iconWrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--card-accent, var(--ars-blue));
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+  line-height: 1;
+}
+
+.value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.annotation {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+  margin-top: var(--space-1);
+}
+
+.accentLine {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--card-accent, var(--ars-blue));
+  opacity: 0.25;
+  transition: opacity var(--transition-fast);
+}
+
+.card:hover .accentLine {
+  opacity: 0.5;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-4);
+  }
+
+  .value {
+    font-size: var(--font-size-xl);
+  }
+}

@@ -1,56 +1,72 @@
+/**
+ * Button — ARS Research Constellation
+ * Standardized button with role-aware variants and keyboard focus support.
+ */
+/* ── Base Button ──────────────────────────────────────────── */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-2);
-  font-family: var(--font-family-primary);
-  font-weight: var(--font-weight-medium);
+  gap: var(--space-2);
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-semibold);
   border-radius: var(--radius-lg);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
   cursor: pointer;
   border: 2px solid transparent;
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
+/* ── Disabled State ─────────────────────────────────────── */
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
+/* ── Focus Visible (keyboard) ───────────────────────────── */
 .button:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ars-blue);
   outline-offset: 2px;
 }
 
-/* Sizes */
+/* ── Button Sizes ─────────────────────────────────────────── */
 .button--sm {
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
   min-height: 32px;
 }
 
 .button--md {
-  padding: var(--spacing-3) var(--spacing-5);
+  padding: var(--space-3) var(--space-5);
   font-size: var(--font-size-base);
   min-height: 44px;
 }
 
 .button--lg {
-  padding: var(--spacing-4) var(--spacing-6);
+  padding: var(--space-4) var(--space-6);
   font-size: var(--font-size-lg);
   min-height: 52px;
 }
 
-/* Variants */
+/* ── Primary Variant (ARS Blue) ─────────────────────────── */
 .button--primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
-  border-color: var(--color-primary);
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
+  border-color: var(--ars-blue);
 }
 
 .button--primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+  background-color: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -60,49 +76,86 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* ── Secondary Variant (Reviewer Green) ────────────────── */
 .button--secondary {
-  background-color: var(--color-secondary);
-  color: var(--color-text-inverse);
-  border-color: var(--color-secondary);
+  background-color: var(--ars-reviewer);
+  color: var(--ars-paper);
+  border-color: var(--ars-reviewer);
 }
 
 .button--secondary:hover:not(:disabled) {
-  background-color: var(--color-secondary-light);
-  border-color: var(--color-secondary-light);
+  background-color: var(--ars-reviewer-mid);
+  border-color: var(--ars-reviewer-mid);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
+.button--secondary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Outline Variant ────────────────────────────────────── */
 .button--outline {
   background-color: transparent;
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  color: var(--ars-blue);
+  border-color: var(--ars-blue);
 }
 
 .button--outline:hover:not(:disabled) {
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
+.button--outline:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Ghost Variant ──────────────────────────────────────── */
 .button--ghost {
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--ars-ink-soft);
   border-color: transparent;
 }
 
 .button--ghost:hover:not(:disabled) {
-  background-color: var(--color-border-light);
-  color: var(--color-text-primary);
+  background-color: var(--ars-node);
+  color: var(--ars-ink);
 }
 
-/* Full Width */
+.button--ghost:active:not(:disabled) {
+  background-color: var(--ars-network);
+}
+
+/* ── Danger Variant ─────────────────────────────────────── */
+.button--danger {
+  background-color: var(--ars-error);
+  color: var(--ars-paper);
+  border-color: var(--ars-error);
+}
+
+.button--danger:hover:not(:disabled) {
+  background-color: var(--ars-error-bg);
+  border-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.button--danger:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Full Width ─────────────────────────────────────────── */
 .button--fullWidth {
   width: 100%;
 }
 
-/* Loading State */
+/* ── Loading Spinner ────────────────────────────────────── */
 .button__spinner {
   width: 16px;
   height: 16px;
@@ -110,17 +163,26 @@
   border-right-color: transparent;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@media (prefers-reduced-motion: reduce) {
+  .button__spinner {
+    animation-duration: 1s;
   }
 }
 
-/* Icon */
+/* ── Icon ────────────────────────────────────────────────── */
 .button__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Spin Keyframe ──────────────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

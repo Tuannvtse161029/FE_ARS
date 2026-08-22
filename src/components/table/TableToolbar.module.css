@@ -1,11 +1,15 @@
+/**
+ * TableToolbar — ARS Research Constellation
+ * Shared table toolbar used across role pages.
+ */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
+  border-bottom: var(--border-thin);
 }
 
 .searchField {
@@ -20,7 +24,7 @@
 .searchIcon {
   position: absolute;
   left: 10px;
-  color: #94a3b8;
+  color: var(--ars-ink-muted);
   display: inline-flex;
   pointer-events: none;
 }
@@ -28,77 +32,101 @@
 .searchInput {
   width: 100%;
   height: 34px;
-  padding: 0 12px 0 32px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  font-size: 13px;
-  color: #1e293b;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 0 var(--space-3) 0 32px;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  font-family: var(--font-family-ui);
+  box-sizing: border-box;
 }
 
 .searchInput::placeholder {
-  color: #94a3b8;
+  color: var(--ars-ink-muted);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #2d3561;
+  border-color: var(--ars-blue);
   box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
 }
 
 .toolbarFilters {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .toolbarFilter {
   height: 34px;
-  padding: 0 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  font-size: 13px;
-  color: #1e293b;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .toolbarFilter:focus {
   outline: none;
-  border-color: #2d3561;
+  border-color: var(--ars-blue);
   box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
 }
 
 .refreshBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   height: 34px;
-  padding: 0 14px;
-  border: 1px solid #2d3561;
-  border-radius: 6px;
-  background: #2d3561;
-  color: #ffffff;
-  font-size: 13px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-blue);
+  border-radius: var(--radius-md);
+  background: var(--ars-blue);
+  color: var(--ars-paper);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+  font-family: var(--font-family-ui);
 }
 
 .refreshBtn:hover:not(:disabled) {
-  background: #232a52;
-  border-color: #232a52;
+  background: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
+}
+
+.refreshBtn:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .refreshBtn:disabled {
-  background: #94a3b8;
-  border-color: #94a3b8;
+  background: var(--ars-ink-muted);
+  border-color: var(--ars-ink-muted);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .spinning {
   animation: toolbarSpin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation-duration: 1.6s;
+  }
 }
 
 @keyframes toolbarSpin {

@@ -1,57 +1,49 @@
-/* ─── FollowButton ──────────────────────────────────────────────────────────
- * Pill-shaped toggle used on forum post cards to follow / unfollow the
- * post author. Two visual states ("Follow" outlined, "Following" filled)
- * plus a transient loading state and a permanent disabled state.
- *
- * Colors intentionally mirror the existing `.cardFollowBtn` rules in
- * Forum.module.css so the inline ad-hoc styles there can be removed later
- * without leaving the design system in two places.
- * ─────────────────────────────────────────────────────────────────────── */
-
+/**
+ * FollowButton — ARS Research Constellation
+ * Pill-shaped toggle used on forum post cards to follow / unfollow.
+ */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border-radius: 999px;
-  font-family: var(--font-family-primary);
+  font-family: var(--font-family-ui);
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
   transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.12s ease,
-    box-shadow 0.18s ease;
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-/* Sizes ────────────────────────────────────────────────────────────────── */
-
+/* Sizes */
 .sizeSm {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   padding: 4px 12px;
   min-height: 28px;
 }
 
 .sizeMd {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   padding: 6px 16px;
   min-height: 34px;
 }
 
-/* "Not following" state — outlined blue ────────────────────────────────── */
-
+/* "Not following" state — outlined */
 .follow {
   background-color: transparent;
-  color: #3b82f6;
-  border: 1px solid #3b82f6;
+  color: var(--ars-blue);
+  border: 1px solid var(--ars-blue);
 }
 
 .follow:hover:not(:disabled) {
-  background-color: #eff6ff;
+  background-color: var(--ars-blue-light);
   transform: translateY(-1px);
 }
 
@@ -59,17 +51,21 @@
   transform: translateY(0);
 }
 
-/* "Following" state — filled blue ──────────────────────────────────────── */
+.follow:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
 
+/* "Following" state — filled */
 .following {
-  background-color: #3b82f6;
-  color: #ffffff;
-  border: 1px solid #3b82f6;
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
+  border: 1px solid var(--ars-blue);
 }
 
 .following:hover:not(:disabled) {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
   transform: translateY(-1px);
 }
 
@@ -77,34 +73,37 @@
   transform: translateY(0);
 }
 
-/* Disabled (unauthenticated / unverified / self / mid-request) ────────── */
+.following:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
 
+/* Disabled (unauthenticated / unverified / self / mid-request) */
 .disabled,
 .button:disabled {
-  background-color: #f1f5f9;
-  color: #94a3b8;
-  border-color: #e2e8f0;
+  background-color: var(--ars-paper-alt);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-node);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  opacity: 0.7;
 }
 
-/* Loading spinner ──────────────────────────────────────────────────────── */
-
+/* Loading spinner */
 .spinner {
   animation: followBtnSpin 0.85s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.7s; }
+}
+
 .label {
-  /* keeps the label from wrapping when the icon swaps for a spinner */
   display: inline-block;
 }
 
 @keyframes followBtnSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }

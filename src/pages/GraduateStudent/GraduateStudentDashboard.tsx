@@ -1,3 +1,13 @@
+/**
+ * GraduateStudentDashboard — Research Journey
+ * ARS Research Constellation — Graduate Student Landing Page
+ *
+ * Features:
+ * - Large progress timeline showing research milestones
+ * - Current milestone with lecturer feedback
+ * - Role-specific slate-blue accent
+ * - Section markers, editorial typography, minimal motion
+ */
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -5,7 +15,6 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  GraduationCap,
   HelpCircle,
   Inbox,
   Layers,
@@ -30,29 +39,16 @@ import type {
   PhasedReportStatus,
 } from '../../types/research';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
+import { WorkspaceHeader } from '../../components/workspace/WorkspaceHeader';
+import { MetricCard } from '../../components/workspace/MetricCard';
+import { ActivityFeed, type ActivityEntry } from '../../components/workspace/ActivityFeed';
 import styles from './GraduateStudentDashboard.module.css';
 
-// Landing page for the Graduate Student role. Per `lead-phase-c-contract.md`
-// G4 this page renders one of the following state cards based on the student's
-// Guidance Project status (or the absence of one):
-//
-//   - Loading skeleton
-//   - No guidance project + "Request supervision" disabled-with-tooltip
-//   - PROPOSED
-//   - ONGOING (no mark-complete, only Withdraw)
-//   - COMPLETED
-//   - CANCELLED (no fake cancellation reason; tooltip "Cancellation reason is
-//     not yet captured by the platform.")
-//
-// It also refreshes on focus (G4(i)) and reads `joinedGroups[i].membershipId`
-// (G1) when opening the SubmitReportModal.
-
-// Default folder key for Firebase uploads. Per lead-phase-c-contract.md G3
-// this is **only** a Firebase-folder label — it has no representation in the
-// BE PhasedReports schema. The actual page derives the key from
-// `primaryTopic?.title ?? primaryGroup.name ?? 'milestone'` so the folder
-// path reflects what the student actually sees.
+// Default folder key for Firebase uploads.
 const DEFAULT_FOLDER_KEY = 'milestone';
+
+// Role accent
+const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 const GUIDANCE_STATUS_PALETTE: Record<GuidanceProjectStatus, string> = {
   PROPOSED: styles.statusSubmitted,
@@ -82,10 +78,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     latestByStatus,
   } = usePhasedReports(primaryGroupId);
 
-  // The dashboard's invitation surface is contractually read-only — the BE
-  // has no `/api/GroupInvitation` (gap ticket §D.2). We render the banner
-  // with `invitation={null}` so the "what would this look like" UX is
-  // visible without faking a row.
   const [invitation] = useState<null | {
     id: string;
     lecturerName: string;
@@ -94,26 +86,20 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     sentAt?: string;
   }>(null);
 
-  // Modal state for fresh submission of the current milestone.
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [resubmitting, setResubmitting] = useState<SubmittedPhasedReport | null>(null);
   const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
 
-  // Mirror of the lecturerLookup cache so a successful probe re-renders the
-  // hero label locally without making the helper React-aware.
   const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
   const lecturerId = guidanceProject?.lecturerId ?? primaryGroup?.lecturerId ?? null;
 
-  // Fire-and-forget probe — ensure display name is resolved when possible.
   useEffect(() => {
     if (typeof lecturerId === 'number' && lecturerId > 0) {
       lecturerLookupService.ensureLecturerDisplayName(lecturerId);
     }
   }, [lecturerId]);
 
-  // Subscribe to lecturer-name resolution events so the hero label updates
-  // without a full re-render.
   useEffect(() => {
     const handler = (event: Event): void => {
       const detail = (event as CustomEvent<{ lecturerId: number }>).detail;
@@ -151,21 +137,28 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     return latestByStatus('SUBMITTED');
   }, [latestByStatus]);
 
-  const recentActivity = useMemo(() => {
+  const recentActivity = useMemo<ActivityEntry[]>(() => {
     const sorted = [...reports].sort((a, b) => {
       const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
       const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
       return bTime - aTime;
     });
-    return sorted.slice(0, 5);
+    return sorted.slice(0, 6).map((report) => ({
+      id: String(report.id),
+      title: `Report #${report.id}`,
+      meta: report.status,
+      time: report.submittedAt ? formatRelativeTime(report.submittedAt) : undefined,
+      tag: <StatusBadgeInline status={report.status} />,
+      onClick: report.reportFileUrl
+        ? () => window.open(report.reportFileUrl!, '_blank', 'noopener,noreferrer')
+        : undefined,
+    }));
   }, [reports]);
 
   const handleRefresh = async (): Promise<void> => {
     await Promise.all([refetch(), refetchReports()]);
   };
 
-  // G4(i) — refresh-on-focus. When the tab becomes visible again after the
-  // student switched away, re-fetch both the hook data and the report list.
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
     const handler = (): void => {
@@ -180,233 +173,209 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAcceptInvitation = (): void => {
-    // No-op per the documented BE gap — see InvitationBanner.
-  };
-
-  const handleDeclineInvitation = (): void => {
-    // No-op per the documented BE gap — see InvitationBanner.
-  };
-
+  const handleAcceptInvitation = (): void => {};
+  const handleDeclineInvitation = (): void => {};
   const handleResubmit = (report: SubmittedPhasedReport): void => {
     setResubmitting(report);
     setSubmitting(true);
   };
-
   const handleSubmitted = (report: SubmittedPhasedReport): void => {
     setLastSubmitted(report);
     void refetchReports();
   };
-
   const handleCloseSubmit = (): void => {
     setSubmitting(false);
     setResubmitting(null);
   };
 
+  // Loading skeleton
   if (!user) {
     return (
       <div className={styles.page}>
-        <div className={styles.notSignedIn}>
-          <AlertCircle size={20} />
-          <span>Please sign in to view your dashboard.</span>
-        </div>
+        <WorkspaceHeader
+          marker="01 / RESEARCH JOURNEY"
+          title="Graduate Student Workspace"
+          subtitle="Please sign in to view your workspace."
+          accent={ROLE_ACCENT}
+        />
       </div>
     );
   }
 
-  // G4(a) — Loading state (skeleton cards).
   if (isLoading && !guidanceProject && joinedGroups.length === 0) {
     return (
       <div className={styles.page}>
-        <header className={styles.heroHeader}>
-          <div className={styles.heroLeft}>
-            <span className={styles.heroIconCircle} aria-hidden>
-              <GraduationCap size={26} />
-            </span>
-            <div>
-              <h1 className={styles.heroTitle}>Graduate Student Workspace</h1>
-              <p className={styles.heroSubtitle}>
-                Welcome back, {user.username}. Loading your dashboard…
-              </p>
-            </div>
-          </div>
-          <span className={styles.refreshBtn} aria-hidden>
-            <Loader2 size={14} className={styles.spin} />
-            <span>Loading</span>
-          </span>
-        </header>
-        <section className={styles.summaryGrid} aria-hidden>
+        <WorkspaceHeader
+          marker="01 / RESEARCH JOURNEY"
+          title="Graduate Student Workspace"
+          subtitle={`Welcome back, ${user.username}. Loading your research journey…`}
+          accent={ROLE_ACCENT}
+          annotation="Loading research data…"
+        />
+        <div className={styles.loadingGrid}>
           {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className={`${styles.summaryCard} ${styles.summaryCardEmpty}`}
-            >
-              <span className={styles.summaryIcon}>
-                <Loader2 size={16} className={styles.spin} />
-              </span>
-              <span className={styles.summaryLabel}>Loading</span>
-              <span className={styles.summaryPrimary}>…</span>
-              <span className={styles.summarySecondary}>…</span>
-            </div>
+            <div key={i} className={styles.metricSkeleton} />
           ))}
-        </section>
+        </div>
       </div>
     );
   }
 
+  // Build metric cards data
+  const metricCards = [
+    {
+      label: 'Guidance Project',
+      value: guidanceProject?.title ?? 'No active project',
+      annotation: guidanceProject?.status
+        ? `Status: ${guidanceProject.status}`
+        : 'Awaiting lecturer confirmation',
+      icon: <Microscope size={16} />,
+      empty: !guidanceProject,
+    },
+    {
+      label: 'Supervising Lecturer',
+      value: lecturerName,
+      annotation: primaryGroup?.name ? `Group: ${primaryGroup.name}` : 'No group joined yet',
+      icon: <Users size={16} />,
+      empty: !lecturerId && !primaryGroup,
+    },
+    {
+      label: 'Assigned Topic',
+      value: primaryTopic?.title ?? 'No topic assigned',
+      annotation: primaryTopic?.status ? `Status: ${primaryTopic.status}` : 'Awaiting lecturer assignment',
+      icon: <FileText size={16} />,
+      empty: !primaryTopic,
+    },
+    {
+      label: 'Joined Groups',
+      value: `${joinedGroups.length} active`,
+      annotation: joinedGroups[0] ? `Most recent: ${joinedGroups[0].name}` : 'Join a research group to begin',
+      icon: <Layers size={16} />,
+      empty: joinedGroups.length === 0,
+    },
+  ];
+
   return (
     <div className={styles.page}>
-      <header className={styles.heroHeader}>
-        <div className={styles.heroLeft}>
-          <span className={styles.heroIconCircle} aria-hidden>
-            <GraduationCap size={26} />
-          </span>
-          <div>
-            <h1 className={styles.heroTitle}>Graduate Student Workspace</h1>
-            <p className={styles.heroSubtitle}>
-              Welcome back, {user.username}. Track your guidance project,
-              milestones, and lecturer feedback in one place.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className={styles.refreshBtn}
-          onClick={handleRefresh}
-          disabled={isLoading || reportsLoading}
-          aria-label="Refresh dashboard"
-        >
-          {isLoading || reportsLoading ? (
-            <Loader2 size={14} className={styles.spin} />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-          <span>Refresh</span>
-        </button>
-      </header>
-
-      {invitation ? (
-        <InvitationBanner
-          invitation={invitation}
-          onAccept={handleAcceptInvitation}
-          onDecline={handleDeclineInvitation}
-        />
-      ) : null}
-
-      {error ? (
-        <div className={styles.errorBanner} role="alert">
-          <AlertCircle size={16} />
-          <span>{error.message}</span>
-        </div>
-      ) : null}
-
-      <section className={styles.summaryGrid}>
-        <SummaryCard
-          icon={<Microscope size={18} />}
-          label="Guidance Project"
-          primary={guidanceProject?.title ?? 'No active project'}
-          secondary={
-            guidanceProject?.status
-              ? `Status: ${guidanceProject.status}`
-              : 'Awaiting lecturer confirmation'
-          }
-          empty={!guidanceProject}
-        />
-        <SummaryCard
-          icon={<Users size={18} />}
-          label="Supervising Lecturer"
-          primary={lecturerName}
-          secondary={
-            primaryGroup?.name ? `Group: ${primaryGroup.name}` : 'No group joined yet'
-          }
-          empty={!lecturerId && !primaryGroup}
-        />
-        <SummaryCard
-          icon={<FileText size={18} />}
-          label="Assigned Topic"
-          primary={primaryTopic?.title ?? 'No topic assigned'}
-          secondary={
-            primaryTopic?.status
-              ? `Status: ${primaryTopic.status}`
-              : 'Awaiting lecturer assignment'
-          }
-          empty={!primaryTopic}
-        />
-        <SummaryCard
-          icon={<Layers size={18} />}
-          label="Joined Groups"
-          primary={`${joinedGroups.length} active`}
-          secondary={
-            joinedGroups[0]
-              ? `Most recent: ${joinedGroups[0].name}`
-              : 'Join a research group to begin'
-          }
-          empty={joinedGroups.length === 0}
-        />
-      </section>
-
-      <GuidanceProjectCard
-        guidanceProject={guidanceProject}
-        isLoading={reportsLoading}
-        lecturerName={lecturerName}
-        hasGroup={joinedGroups.length > 0}
-        hasTopic={primaryTopic !== null}
-        onOpenSubmit={() => setSubmitting(true)}
-        currentMilestone={currentMilestone}
-        onResubmit={handleResubmit}
+      {/* ── Workspace Header ──────────────────────────────── */}
+      <WorkspaceHeader
+        marker="01 / RESEARCH JOURNEY"
+        title={`${user.username}'s Research Journey`}
+        subtitle="Track your guidance project, milestones, and lecturer feedback."
+        accent={ROLE_ACCENT}
+        annotation={`Lecturer: ${lecturerName}`}
+        actions={
+          <button
+            type="button"
+            className={styles.refreshBtn}
+            onClick={handleRefresh}
+            disabled={isLoading || reportsLoading}
+            aria-label="Refresh dashboard"
+          >
+            {isLoading || reportsLoading ? (
+              <Loader2 size={13} className={styles.spin} />
+            ) : (
+              <RefreshCw size={13} />
+            )}
+            <span>Refresh</span>
+          </button>
+        }
       />
 
-      <section className={styles.activitySection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Recent Activity</h2>
-            <p className={styles.sectionSubtitle}>
-              Your last {recentActivity.length || 0} submission
-              {recentActivity.length === 1 ? '' : 's'}.
-            </p>
+      <div className={styles.content}>
+        {/* ── Invitation Banner ─────────────────────────── */}
+        {invitation ? (
+          <InvitationBanner
+            invitation={invitation}
+            onAccept={handleAcceptInvitation}
+            onDecline={handleDeclineInvitation}
+          />
+        ) : null}
+
+        {/* ── Error Banner ──────────────────────────────── */}
+        {error ? (
+          <div className={styles.errorBanner} role="alert">
+            <AlertCircle size={14} />
+            <span>{error.message}</span>
+          </div>
+        ) : null}
+
+        {/* ── Metric Cards ──────────────────────────────── */}
+        <div className={styles.metricGrid}>
+          {metricCards.map((card, i) => (
+            <div key={i} className={`${styles.metricWrapper} ${card.empty ? styles.metricWrapperEmpty : ''}`}>
+              <MetricCard
+                label={card.label}
+                value={card.value}
+                annotation={card.annotation}
+                icon={card.icon}
+                accent={ROLE_ACCENT}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* ── Two-column layout: Milestone + Activity ─────── */}
+        <div className={styles.twoCol}>
+          {/* Left: Guidance Project Card */}
+          <GuidanceProjectCard
+            guidanceProject={guidanceProject}
+            isLoading={reportsLoading}
+            lecturerName={lecturerName}
+            hasGroup={joinedGroups.length > 0}
+            hasTopic={primaryTopic !== null}
+            onOpenSubmit={() => setSubmitting(true)}
+            currentMilestone={currentMilestone}
+            onResubmit={handleResubmit}
+          />
+
+          {/* Right: Activity Timeline */}
+          <div className={styles.rightCol}>
+            <ActivityFeed
+              marker="02 / SUBMISSION LOG"
+              title="Recent Milestones"
+              entries={recentActivity}
+              loading={reportsLoading && reports.length === 0}
+              emptyMessage="No submissions recorded yet."
+            />
+
+            {/* Current status callout */}
+            {guidanceProject?.status === 'ONGOING' && currentMilestone && (
+              <div className={styles.statusCallout}>
+                <div className={styles.calloutHeader}>
+                  <span className={styles.calloutMarker}>CURRENT STATUS</span>
+                </div>
+                <div className={styles.calloutBody}>
+                  {currentMilestone.status === 'REJECTED' ? (
+                    <p className={styles.calloutText}>
+                      Your latest submission was returned for revision.
+                      Review the feedback and resubmit when ready.
+                    </p>
+                  ) : currentMilestone.status === 'SUBMITTED' ? (
+                    <p className={styles.calloutText}>
+                      Submitted on{' '}
+                      {currentMilestone.submittedAt
+                        ? formatDateTime(currentMilestone.submittedAt)
+                        : 'an unknown date'}
+                      . Awaiting lecturer feedback.
+                    </p>
+                  ) : currentMilestone.status === 'EVALUATED' ? (
+                    <p className={styles.calloutText}>
+                      Milestone approved
+                      {typeof currentMilestone.lectureFeedback === 'number'
+                        ? ` with a grade of ${currentMilestone.lectureFeedback}/10`
+                        : ''}
+                      . Submit your next milestone when ready.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        {reportsLoading ? (
-          <div className={styles.emptyCard}>
-            <Loader2 size={18} className={styles.spin} />
-            <span>Loading recent submissions…</span>
-          </div>
-        ) : recentActivity.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <Inbox size={20} />
-            <span>No submissions yet.</span>
-          </div>
-        ) : (
-          <ul className={styles.activityList}>
-            {recentActivity.map((report) => (
-              <li key={report.id} className={styles.activityItem}>
-                <span className={styles.activityStatus}>
-                  <StatusBadge status={report.status} />
-                </span>
-                <div className={styles.activityMeta}>
-                  <span className={styles.activityTitle}>
-                    Report #{report.id}
-                  </span>
-                  <span className={styles.activityDate}>
-                    {report.submittedAt
-                      ? formatRelativeTime(report.submittedAt)
-                      : 'Unknown date'}
-                  </span>
-                </div>
-                <a
-                  href={report.reportFileUrl ?? '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.activityLink}
-                >
-                  {report.reportFileUrl ? 'Open PDF' : 'No file'}
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      </div>
 
+      {/* Submit Report Modal */}
       {submitting && primaryGroup ? (
         <SubmitReportModal
           isOpen={submitting}
@@ -432,49 +401,24 @@ export const GraduateStudentDashboard = (): JSX.Element => {
   );
 };
 
-// ---------- Sub-components ----------
+// ── Sub-components ────────────────────────────────────────────────
 
-interface SummaryCardProps {
-  icon: JSX.Element;
-  label: string;
-  primary: string;
-  secondary: string;
-  empty?: boolean;
-}
-
-function SummaryCard({
-  icon,
-  label,
-  primary,
-  secondary,
-  empty,
-}: SummaryCardProps): JSX.Element {
+function StatusBadgeInline({ status }: { status: PhasedReportStatus }): JSX.Element {
+  const palette: Record<PhasedReportStatus, string> = {
+    WAITING: styles.statusInlineWaiting,
+    SUBMITTED: styles.statusInlineSubmitted,
+    EVALUATED: styles.statusInlineEvaluated,
+    REJECTED: styles.statusInlineRejected,
+  };
   return (
-    <div className={`${styles.summaryCard} ${empty ? styles.summaryCardEmpty : ''}`}>
-      <span className={styles.summaryIcon} aria-hidden>
-        {icon}
-      </span>
-      <span className={styles.summaryLabel}>{label}</span>
-      <span className={styles.summaryPrimary}>{primary}</span>
-      <span className={styles.summarySecondary}>{secondary}</span>
-    </div>
+    <span className={`${styles.statusInline} ${palette[status]}`}>
+      {status}
+    </span>
   );
 }
 
-function StatusBadge({ status }: { status: PhasedReportStatus }): JSX.Element {
-  const palette: Record<PhasedReportStatus, string> = {
-    WAITING: styles.statusWaiting,
-    SUBMITTED: styles.statusSubmitted,
-    EVALUATED: styles.statusEvaluated,
-    REJECTED: styles.statusRejected,
-  };
-  return <span className={`${styles.statusBadge} ${palette[status]}`}>{status}</span>;
-}
-
 interface GuidanceProjectCardProps {
-  guidanceProject:
-    | import('../../types/research').GuidanceProject
-    | null;
+  guidanceProject: import('../../types/research').GuidanceProject | null;
   isLoading: boolean;
   lecturerName: string;
   hasGroup: boolean;
@@ -486,7 +430,7 @@ interface GuidanceProjectCardProps {
 
 function GuidanceProjectCard({
   guidanceProject,
-  isLoading,
+  isLoading: _isLoading,
   lecturerName,
   hasGroup,
   hasTopic,
@@ -494,130 +438,106 @@ function GuidanceProjectCard({
   currentMilestone,
   onResubmit,
 }: GuidanceProjectCardProps): JSX.Element {
-  // G4(b) — no guidance project + "Request supervision" disabled-with-tooltip.
+
   if (!guidanceProject) {
     return (
-      <section className={styles.milestoneSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Guidance Project</h2>
-            <p className={styles.sectionSubtitle}>
-              You haven&apos;t started a guidance project yet.
-            </p>
-          </div>
+      <section className={styles.projectCard}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardMarker}>02 / GUIDANCE PROJECT</span>
+          <h2 className={styles.cardTitle}>Current Project</h2>
         </div>
         <div className={styles.emptyCard}>
-          <Inbox size={20} />
+          <Inbox size={18} />
           <span>
             You don&apos;t have an active guidance project. Once a lecturer
             invites you, a card will appear here.
           </span>
         </div>
-        <div className={styles.actionRow}>
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            disabled
-            aria-disabled="true"
-            title="Request supervision is not yet available — the Grad-initiated POST endpoint is on the BE gap ticket (§D.3)."
-          >
-            <HelpCircle size={14} />
-            <span>Request supervision</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className={styles.primaryBtn}
+          disabled
+          aria-disabled="true"
+          title="Request supervision is not yet available — the Grad-initiated POST endpoint is on the BE gap ticket (§D.3)."
+        >
+          <HelpCircle size={13} />
+          <span>Request supervision</span>
+        </button>
       </section>
     );
   }
 
-  // G4(c) — PROPOSED.
+  // PROPOSED
   if (guidanceProject.status === 'PROPOSED') {
     return (
-      <section className={styles.milestoneSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Guidance Project</h2>
-            <p className={styles.sectionSubtitle}>
-              {guidanceProject.title} · awaiting your lecturer
-            </p>
-          </div>
-          <span
-            className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.PROPOSED}`}
-          >
-            PROPOSED
-          </span>
+      <section className={styles.projectCard}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardMarker}>02 / GUIDANCE PROJECT</span>
+          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
         </div>
+        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.PROPOSED}`}>
+          PROPOSED
+        </span>
         <div className={styles.infoCard}>
-          <span className={styles.infoIcon} aria-hidden>
-            <Clock size={18} />
-          </span>
+          <Clock size={14} className={styles.infoIcon} />
           <div>
             <p className={styles.infoTitle}>Awaiting lecturer confirmation</p>
             <p className={styles.infoBody}>
-              Your lecturer ({lecturerName}) has proposed this guidance
-              project. They will move it to ONGOING once both of you agree on
-              the milestones.
+              Your lecturer ({lecturerName}) has proposed this guidance project.
+              They will move it to ONGOING once both of you agree on milestones.
             </p>
           </div>
         </div>
-        <div className={styles.actionRow}>
-          <button
-            type="button"
-            className={styles.secondaryBtn}
-            disabled
-            aria-disabled="true"
-            title="Withdraw is disabled in the PROPOSED state — only your lecturer can move this project forward."
-          >
-            Withdraw
-          </button>
-        </div>
+        <button
+          type="button"
+          className={styles.secondaryBtn}
+          disabled
+          aria-disabled="true"
+          title="Withdraw is disabled in the PROPOSED state."
+        >
+          Withdraw
+        </button>
       </section>
     );
   }
 
-  // G4(d) — ONGOING (no mark-complete).
+  // ONGOING
   if (guidanceProject.status === 'ONGOING') {
     return (
-      <section className={styles.milestoneSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Current Milestone</h2>
-            <p className={styles.sectionSubtitle}>
-              {guidanceProject.title} · supervised by {lecturerName}
-            </p>
-          </div>
-          <span
-            className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.ONGOING}`}
-          >
-            ONGOING
-          </span>
+      <section className={styles.projectCard}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardMarker}>02 / CURRENT MILESTONE</span>
+          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
+          <p className={styles.cardSubtitle}>Supervised by {lecturerName}</p>
         </div>
+        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.ONGOING}`}>
+          ONGOING
+        </span>
 
         {currentMilestone?.status === 'REJECTED' ? (
           <RejectionFeedbackBanner
             report={currentMilestone}
-            onResubmit={onResubmit}
+            onResubmit={(report) => {
+              onResubmit(report);
+            }}
           />
         ) : currentMilestone?.status === 'SUBMITTED' ? (
           <div className={styles.infoCard}>
-            <span className={styles.infoIcon} aria-hidden>
-              <Clock size={18} />
-            </span>
+            <Clock size={14} className={styles.infoIcon} />
             <div>
               <p className={styles.infoTitle}>Awaiting lecturer review</p>
               <p className={styles.infoBody}>
-                Your report (#{currentMilestone.id}) was submitted on{' '}
+                Submitted on{' '}
                 {currentMilestone.submittedAt
                   ? formatDateTime(currentMilestone.submittedAt)
                   : 'an unknown date'}
-                . You will be notified once the lecturer provides feedback.
+                . You will be notified once feedback is available.
               </p>
             </div>
           </div>
         ) : currentMilestone?.status === 'EVALUATED' ? (
           <div className={styles.successCard}>
-            <span className={styles.successIcon} aria-hidden>
-              <CheckCircle2 size={18} />
-            </span>
+            <CheckCircle2 size={14} className={styles.successIcon} />
             <div>
               <p className={styles.successTitle}>Milestone approved</p>
               <p className={styles.successBody}>
@@ -625,13 +545,13 @@ function GuidanceProjectCard({
                 {typeof currentMilestone.lectureFeedback === 'number'
                   ? ` with a grade of ${currentMilestone.lectureFeedback}/10`
                   : ''}
-                . Submit your next milestone when ready.
+                .
               </p>
             </div>
           </div>
         ) : (
           <div className={styles.emptyCard}>
-            <Calendar size={20} />
+            <Calendar size={18} />
             <span>
               No active milestone. Click <strong>Submit milestone</strong> to
               upload your first report.
@@ -647,7 +567,7 @@ function GuidanceProjectCard({
             disabled={!hasGroup || !hasTopic}
             aria-label="Submit milestone report"
           >
-            <FileText size={14} />
+            <FileText size={13} />
             <span>{currentMilestone ? 'Update submission' : 'Submit milestone'}</span>
           </button>
           <button
@@ -655,7 +575,7 @@ function GuidanceProjectCard({
             className={styles.secondaryBtn}
             disabled
             aria-disabled="true"
-            title="Withdraw is disabled in the demo build — the BE PUT /api/GuidanceProject/{id} path is wired in v2."
+            title="Withdraw is disabled in the demo build."
           >
             Withdraw
           </button>
@@ -664,33 +584,25 @@ function GuidanceProjectCard({
     );
   }
 
-  // G4(e) — COMPLETED.
+  // COMPLETED
   if (guidanceProject.status === 'COMPLETED') {
     return (
-      <section className={styles.milestoneSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Guidance Project</h2>
-            <p className={styles.sectionSubtitle}>
-              {guidanceProject.title} · completed
-            </p>
-          </div>
-          <span
-            className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.COMPLETED}`}
-          >
-            COMPLETED
-          </span>
+      <section className={styles.projectCard}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardMarker}>02 / GUIDANCE PROJECT</span>
+          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
         </div>
+        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.COMPLETED}`}>
+          COMPLETED
+        </span>
         <div className={styles.successCard}>
-          <span className={styles.successIcon} aria-hidden>
-            <CheckCircle2 size={18} />
-          </span>
+          <CheckCircle2 size={14} className={styles.successIcon} />
           <div>
             <p className={styles.successTitle}>Project completed by your lecturer</p>
             <p className={styles.successBody}>
               {guidanceProject.updatedAt
                 ? `Completed on ${formatDateTime(guidanceProject.updatedAt)}.`
-              : 'Your lecturer has marked this project as completed.'}
+                : 'Your lecturer has marked this project as completed.'}
               {currentMilestone?.lectureFeedback !== undefined &&
               currentMilestone?.lectureFeedback !== null
                 ? ` Final grade: ${currentMilestone.lectureFeedback}/10.`
@@ -698,53 +610,29 @@ function GuidanceProjectCard({
             </p>
           </div>
         </div>
-        {!isLoading && currentMilestone ? (
-          <div className={styles.actionRow}>
-            <button
-              type="button"
-              className={styles.secondaryBtn}
-              disabled
-              aria-disabled="true"
-              title="Once a project is COMPLETED no further submissions are accepted."
-            >
-              Submit milestone
-            </button>
-          </div>
-        ) : null}
       </section>
     );
   }
 
-  // G4(f) — CANCELLED.
+  // CANCELLED
   return (
-    <section className={styles.milestoneSection}>
-      <div className={styles.sectionHeader}>
-        <div>
-          <h2 className={styles.sectionTitle}>Guidance Project</h2>
-          <p className={styles.sectionSubtitle}>
-            {guidanceProject.title} · cancelled
-          </p>
-        </div>
-        <span
-          className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.CANCELLED}`}
-        >
-          CANCELLED
-        </span>
+    <section className={styles.projectCard}>
+      <div className={styles.cardHeader}>
+        <span className={styles.cardMarker}>02 / GUIDANCE PROJECT</span>
+        <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
       </div>
+      <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.CANCELLED}`}>
+        CANCELLED
+      </span>
       <div className={styles.warnCard}>
-        <span className={styles.warnIcon} aria-hidden>
-          <AlertCircle size={18} />
-        </span>
+        <AlertCircle size={14} className={styles.warnIcon} />
         <div>
           <p className={styles.warnTitle}>Project cancelled</p>
           <p className={styles.warnBody}>
             Either you or your lecturer withdrew from this guidance project.
           </p>
-          <p
-            className={styles.warnBody}
-            title="Cancellation reason is not yet captured by the platform."
-          >
-            <em>Cancellation reason is not yet captured by the platform.</em>
+          <p className={styles.warnBody} style={{ fontStyle: 'italic', marginTop: 4 }}>
+            Cancellation reason is not yet captured by the platform.
           </p>
         </div>
       </div>

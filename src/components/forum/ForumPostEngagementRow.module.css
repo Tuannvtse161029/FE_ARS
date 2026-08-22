@@ -1,114 +1,102 @@
 /* ────────────────────────────────────────────────────────────────────────
- * ForumPostEngagementRow
+ * ForumPostEngagementRow — ARS Research Constellation
  *
- * ARS-aligned styles for the Like → Comments row. Tokens (colors,
- * spacings, radii) deliberately follow the ARS design system color
- * palette:
- *   Header / Sidebar background = #2D3561 / #323964 (Dark Navy)
- *   Primary accent              = #007AFF (Bright Blue)
- *   Single-color iconography    = #A0AEC0 (Muted Slate)
- *   Main canvas background      = #F8FAFC (Light Grey)
- *
- * Two controls live on a single row, baseline-aligned, with consistent
- * icon sizing so the icons themselves convey the engagement scale.
+ * Engagement row for forum post actions (Like, Comments).
+ * All colors, spacings, and radii follow the ARS design token contract.
  * ──────────────────────────────────────────────────────────────────────── */
 
 .engagementRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-3);
-  padding-top: var(--spacing-3);
-  margin-top: var(--spacing-3);
-  border-top: 1px solid #e2e8f0; /* subtle divider below content + tags */
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+  border-top: var(--border-thin);
 }
 
-/* Both controls share identical chrome so the user reads the counter
-   block uniformly. The variant classes below only flip colors / active
-   state. */
+/* Both controls share identical chrome. Variant classes flip colors / active state. */
 .engagementControl {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: var(--radius-md, 8px);
-  font-size: 0.78rem;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid transparent;
-  /* Buttons are inline so they remain on a single baseline with the
-     non-button Views block. */
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink-soft);
+  border: var(--border-thin);
   cursor: default;
   user-select: none;
 }
 
-/* Semantic buttons receive cursor:pointer — but only when they are not
-   disabled. We express the disabled style separately (see
-   .engagementControl:disabled below). */
 .engagementControlLike,
 .engagementControlComments {
   cursor: pointer;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  transition: background-color 120ms ease, border-color 120ms ease,
-    color 120ms ease;
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  color: var(--ars-ink-soft);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .engagementControlLike:hover:not(:disabled),
 .engagementControlComments:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-ink-muted);
 }
 
-/* Active states are reserved for "true" engagement signals: a Like that
-   has been confirmed by the BE, and a Comments toggle that is currently
-   expanded. The blue accent is the ARS primary (#007AFF). */
+/* Active: confirmed like */
 .engagementControlLiked {
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.45);
-  color: #007aff;
-  font-weight: 700;
+  background: var(--ars-blue-light);
+  border-color: rgba(45, 53, 97, 0.3);
+  color: var(--ars-blue);
+  font-weight: var(--font-weight-bold);
 }
 
 .engagementControlLiked:hover:not(:disabled) {
-  background: rgba(0, 122, 255, 0.14);
+  background: rgba(45, 53, 97, 0.15);
 }
 
+/* Active: comments expanded */
 .engagementControlActive {
-  background: #e0f2fe;
-  border-color: #93c5fd;
-  color: #075985;
-  font-weight: 700;
+  background: var(--ars-info-bg);
+  border-color: rgba(30, 64, 175, 0.3);
+  color: var(--ars-info);
+  font-weight: var(--font-weight-bold);
 }
 
 .engagementCount {
   font-variant-numeric: tabular-nums;
-  /* Pull the counter close to its icon so the eye tracks
-     [icon] [count] [label] as a single visual unit. */
   min-width: 18px;
   text-align: left;
+  font-family: var(--font-family-mono);
 }
 
 .engagementLabel {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   opacity: 0.85;
 }
 
-/* Disabled state — uniform for both buttons. We deliberately keep the
-   label visible (the plan says counters stay visible for Guests) and
-   only dim + remove the cursor. */
+/* Disabled — counters stay visible for Guests, only dim interaction */
 .engagementControl:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
-  background: #f8fafc;
-  color: #94a3b8;
-  border-color: #e2e8f0;
+  opacity: 0.6;
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
 }
 
-/* Honor users who prefer reduced motion. */
+.engagementControl:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+/* Honor reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .engagementControlLike,
   .engagementControlComments {

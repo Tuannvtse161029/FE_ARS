@@ -1,3 +1,13 @@
+/**
+ * AdminDashboard — System Observatory
+ * ARS Research Constellation — Admin Landing Page
+ *
+ * Features:
+ * - System health metrics, approval queues, platform activity
+ * - Admin violet accent
+ * - Role-specific section markers
+ * - Editorial typography
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Users as UsersIcon, FileText as PapersIcon } from 'lucide-react';
 import {
@@ -17,6 +27,9 @@ import type {
   AnalyticsMetric,
   RoleRequest,
 } from '../../types/admin';
+import { WorkspaceHeader } from '../../components/workspace/WorkspaceHeader';
+import { MetricCard } from '../../components/workspace/MetricCard';
+import { ActivityFeed, type ActivityEntry } from '../../components/workspace/ActivityFeed';
 import styles from './AdminDashboard.module.css';
 
 type Range = AnalyticsRange;
@@ -30,10 +43,7 @@ const RANGE_LABEL: Record<Range, string> = {
   yearly: 'Yearly',
 };
 
-// Surface-level messages: NEVER leak raw axios messages to admins.
 const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
-// Recent role-requests widget uses the role-requests-specific copy so the
-// dashboard widget text matches the dedicated RoleRequests page.
 const RECENT_REQUESTS_UNAVAILABLE =
   'Role requests could not be loaded. The Admin API contract may have changed.';
 
@@ -47,12 +57,11 @@ const formatRevenue = (n: number) =>
   }).format(n) + ' VND';
 
 const formatDate = (iso: string) => {
-  if (iso.length === 7) return iso; // YYYY-MM (monthly)
-  if (iso.length === 4) return iso; // YYYY (yearly)
-  return iso.slice(5); // YYYY-MM-DD -> MM-DD
+  if (iso.length === 7) return iso;
+  if (iso.length === 4) return iso;
+  return iso.slice(5);
 };
 
-// DEV-only diagnostic — keeps the technical detail out of the UI.
 const logDiag = (label: string, err: unknown) => {
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
@@ -60,26 +69,7 @@ const logDiag = (label: string, err: unknown) => {
   }
 };
 
-const MetricCard = ({
-  icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  hint?: string;
-}) => (
-  <div className={styles.metricCard}>
-    <div className={styles.metricIcon}>{icon}</div>
-    <div className={styles.metricBody}>
-      <span className={styles.metricLabel}>{label}</span>
-      <span className={styles.metricValue}>{value}</span>
-      {hint && <span className={styles.metricHint}>{hint}</span>}
-    </div>
-  </div>
-);
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const WidgetErrorState = ({
   message,
@@ -95,7 +85,7 @@ const WidgetErrorState = ({
     role="alert"
     data-testid={testId}
   >
-    <AlertTriangle size={16} />
+    <AlertTriangle size={14} />
     <span>{message}</span>
     <button type="button" className={styles.retryBtn} onClick={onRetry}>
       Retry
@@ -159,9 +149,9 @@ const ChartCard = ({
                   ? [new Intl.NumberFormat('vi-VN').format(Number(value)) + ' VND', title]
                   : [formatNumber(Number(value)), title]
               }
-              contentStyle={{ fontSize: '0.78rem', borderRadius: 6 }}
+              contentStyle={{ fontSize: '0.78rem', borderRadius: 4, border: '1px solid #e2e8f0' }}
             />
-            <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="value" fill="#7c3aed" radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -174,8 +164,6 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => {
-  // Each widget owns its loading + error flag. A failure in one widget must
-  // NOT leave the others loading forever or convert them to fake `0` values.
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -189,14 +177,12 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
   const [loadingRevenue, setLoadingRevenue] = useState(true);
 
   const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
-  const [recentRequestsError, setRecentRequestsError] = useState<string | null>(null);
+  const [_recentRequestsError, setRecentRequestsError] = useState<string | null>(null);
   const [loadingRecentRequests, setLoadingRecentRequests] = useState(true);
 
   const [range, setRange] = useState<Range>('monthly');
 
-  // Stale-response guard: only the latest request id may commit results.
   const requestIdRef = useRef(0);
-  // Track the in-flight load so unmount/period-changes can cancel via AbortController.
   const abortRef = useRef<AbortController | null>(null);
 
   const loadSummary = useCallback(async (signal: AbortSignal) => {
@@ -247,7 +233,7 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     setRecentRequestsError(null);
     try {
       const data = await adminService.getRoleRequests(signal);
-      if (!signal.aborted) setRecentRequests(data.slice(0, 5));
+      if (!signal.aborted) setRecentRequests(data.slice(0, 8));
     } catch (err) {
       logDiag('recent role requests failed', err);
       if (!signal.aborted) {
@@ -260,32 +246,20 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
   }, []);
 
   const loadAll = useCallback(async () => {
-    // Cancel any in-flight load and start a fresh one.
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
-
-    // Bump the request id guard as a belt-and-braces fallback in case
-    // AbortController isn't honored by an upstream mock.
     const myRequestId = ++requestIdRef.current;
-
-    // Fire all four independently with their own loading flags so a
-    // rejection in one does NOT block the others from settling.
     await Promise.allSettled([
       loadSummary(signal),
       loadSeries('user_registrations', signal),
       loadSeries('revenue', signal),
       loadRecentRequests(signal),
     ]);
-    // If a newer load started, do nothing — the new load owns the state.
     if (myRequestId !== requestIdRef.current) return;
   }, [loadRecentRequests, loadSeries, loadSummary]);
 
-  // Initial mount: load every widget once. We deliberately omit `loadAll`
-  // from the deps because `loadSeries` is range-dependent and would change
-  // identity on every period change, causing a full summary + recent-requests
-  // refetch. The range-specific effect below owns series refetches.
   useEffect(() => {
     void loadAll();
     return () => {
@@ -294,8 +268,6 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Period pills only re-trigger the period-dependent data. Summary and
-  // recent-requests don't depend on `range`, so they aren't refetched.
   useEffect(() => {
     const controller = new AbortController();
     abortRef.current?.abort();
@@ -309,129 +281,112 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     });
   }, [range, loadSeries]);
 
+  // Activity entries from role requests
+  const requestActivity: ActivityEntry[] = recentRequests.map((r) => ({
+    id: String(r.id),
+    title: r.userName,
+    meta: r.email,
+    tag: (
+      <span className={`${styles.statusTag} ${styles[`statusTag${r.status}`]}`}>
+        {r.status}
+      </span>
+    ),
+    time: new Date(r.submissionDate).toLocaleDateString('vi-VN'),
+    onClick: () => onSelectRoleRequest?.(r),
+  }));
+
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Admin Dashboard</span>
-      </div>
-
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Admin Dashboard</h1>
-          <p className={styles.pageSubtitle}>
-            System-wide metrics, role requests, and revenue at a glance.
-          </p>
-        </div>
-        <div className={styles.rangePills}>
-          {RANGES.map((r) => (
-            <button
-              key={r}
-              className={`${styles.rangePill} ${range === r ? styles.rangePillActive : ''}`}
-              onClick={() => setRange(r)}
-              type="button"
-            >
-              {RANGE_LABEL[r]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.metricRow}>
-        {summaryError ? (
-          <WidgetErrorState
-            message={summaryError}
-            onRetry={() => void loadAll()}
-            testId="summary-error"
-          />
-        ) : (
-          <>
-            <MetricCard
-              icon={<UsersIcon size={22} />}
-              label="Total Members"
-              value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)}
-              hint={loadingSummary ? 'Loading…' : 'Cumulative registered users'}
-            />
-            <MetricCard
-              icon={<PapersIcon size={22} />}
-              label="Scientific Papers"
-              value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)}
-              hint={loadingSummary ? 'Loading…' : 'Across all majors & sub-fields'}
-            />
-          </>
-        )}
-      </div>
-
-      <ChartCard
-        title="User Newly Register"
-        metric="user_registrations"
-        series={registrations}
-        loading={loadingRegistrations}
-        error={registrationsError}
-        onRetry={() => void loadAll()}
+      {/* Workspace Header */}
+      <WorkspaceHeader
+        marker="01 / SYSTEM OBSERVATORY"
+        title="Platform Dashboard"
+        subtitle="System-wide metrics, role request queue, and platform health at a glance."
+        accent={ROLE_ACCENT}
+        annotation={`Analytics period: ${RANGE_LABEL[range]}`}
+        actions={
+          <div className={styles.rangePills} role="group" aria-label="Analytics time range">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                className={`${styles.rangePill} ${range === r ? styles.rangePillActive : ''}`}
+                onClick={() => setRange(r)}
+                type="button"
+              >
+                {RANGE_LABEL[r]}
+              </button>
+            ))}
+          </div>
+        }
       />
 
-      <ChartCard
-        title="Revenue"
-        metric="revenue"
-        series={revenue}
-        loading={loadingRevenue}
-        error={revenueError}
-        onRetry={() => void loadAll()}
-      />
+      <div className={styles.content}>
+        {/* ── Metric Row ─────────────────────────────── */}
+        <div className={styles.metricGrid}>
+          {summaryError ? (
+            <WidgetErrorState
+              message={summaryError}
+              onRetry={() => void loadAll()}
+              testId="summary-error"
+            />
+          ) : (
+            <>
+              <MetricCard
+                label="Total Members"
+                value={
+                  loadingSummary || summary === null
+                    ? '—'
+                    : formatNumber(summary.totalMembers)
+                }
+                annotation="Cumulative registered users"
+                icon={<UsersIcon size={16} />}
+                accent={ROLE_ACCENT}
+              />
+              <MetricCard
+                label="Scientific Papers"
+                value={
+                  loadingSummary || summary === null
+                    ? '—'
+                    : formatNumber(summary.totalPapers)
+                }
+                annotation="Across all majors & sub-fields"
+                icon={<PapersIcon size={16} />}
+                accent={ROLE_ACCENT}
+              />
+            </>
+          )}
+        </div>
 
-      <div className={styles.recentSection}>
-        <span className={styles.sectionTitle}>Recent Role Requests</span>
-        {recentRequestsError ? (
-          <WidgetErrorState
-            message={recentRequestsError}
+        {/* ── Charts Row ─────────────────────────────── */}
+        <div className={styles.chartsRow}>
+          <ChartCard
+            title="User Newly Register"
+            metric="user_registrations"
+            series={registrations}
+            loading={loadingRegistrations}
+            error={registrationsError}
             onRetry={() => void loadAll()}
-            testId="recent-requests-error"
           />
-        ) : loadingRecentRequests && recentRequests.length === 0 ? (
-          <div className={styles.emptyState}>Loading role requests…</div>
-        ) : recentRequests.length === 0 ? (
-          <div className={styles.emptyState}>No role requests yet.</div>
-        ) : (
-          <table className={styles.recentTable}>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Roles</th>
-                <th>Submitted</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentRequests.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <div className={styles.userCell}>
-                      <span className={styles.userName}>{r.userName}</span>
-                      <span className={styles.userEmail}>{r.email}</span>
-                    </div>
-                  </td>
-                  <td>{r.requestedAdditionalRoles?.join(', ') || 'Unavailable'}</td>
-                  <td>{new Date(r.submissionDate).toLocaleDateString('vi-VN')}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${styles[`status${r.status}`]}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className={styles.viewDetailsBtn}
-                      onClick={() => onSelectRoleRequest?.(r)}
-                      type="button"
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <ChartCard
+            title="Revenue"
+            metric="revenue"
+            series={revenue}
+            loading={loadingRevenue}
+            error={revenueError}
+            onRetry={() => void loadAll()}
+          />
+        </div>
+
+        {/* ── Role Requests Activity Feed ─────────── */}
+        <div className={styles.activitySection}>
+          <ActivityFeed
+            marker="02 / APPROVAL QUEUE"
+            title="Recent Role Requests"
+            entries={requestActivity}
+            loading={loadingRecentRequests && recentRequests.length === 0}
+            emptyMessage="No role requests yet."
+          />
+        </div>
       </div>
     </div>
   );

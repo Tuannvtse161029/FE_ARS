@@ -23,6 +23,24 @@ interface PdfViewerProps {
   currentPage?: number;
   onTotalPages?: (total: number) => void;
   onPageChange?: (page: number) => void;
+  /**
+   * Viewer mode that controls content-protection behaviour.
+   * - `'standard'` — default; normal viewer with open-in-new-tab toolbar action.
+   * - `'protected-review'` — reviewer-facing manuscript view: no open-in-new-tab,
+   *   no download/print shortcuts, copy/cut/context-menu/drag blocked inside the
+   *   viewer, and a confidential watermark/notice overlay is shown.
+   *
+   * Applied only to reviewer-facing researcher-paper views (EvaluationDesk
+   * reviewer path).  NOT applied to researcher upload preview, researcher
+   * viewing their own paper, admin proof-document review, or other PDF usages.
+   */
+  mode?: 'standard' | 'protected-review';
+  /**
+   * Optional copy-identifier displayed in the watermark overlay when in
+   * `protected-review` mode.  Typically the review-request id or a reviewer
+   * copy token.  Never exposes researcher identity (double-blind support).
+   */
+  reviewCopyId?: string;
 }
 
 interface ThumbnailEntry {
@@ -105,6 +123,8 @@ export const PdfViewer = ({
   currentPage: _currentPage,
   onTotalPages,
   onPageChange,
+  mode = 'standard',
+  reviewCopyId,
 }: PdfViewerProps) => {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +132,8 @@ export const PdfViewer = ({
   const thumbRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
   const lastResolvedUrlRef = useRef<{ absolute: string | null } | null>(null);
+
+  const isProtected = mode === 'protected-review';
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -127,6 +149,61 @@ export const PdfViewer = ({
   const thumbCanvasCache = useRef<Map<number, HTMLCanvasElement>>(new Map());
   /** Object URL of the resolved PDF blob, kept so the toolbar can open it in a new tab. */
   const pdfObjectUrlRef = useRef<string | null>(null);
+
+  // ── Protected-review event blockers ────────────────────────────────────
+  // Scoped to the viewer container ref so they do not affect the rest of the page.
+  // Registered only when isProtected is true and cleaned up on unmount.
+
+  /** Returns true when the event originates from inside the protected viewer. */
+  const isInsideProtected = (e: MouseEvent | DragEvent | Event) => {
+    const container = containerRef.current;
+    if (!container) return false;
+    const target = e.target as Node | null;
+    return target !== null && container.contains(target);
+  };
+
+  const handleProtectedCopy = (e: ClipboardEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+  const handleProtectedCut  = (e: ClipboardEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+  const handleProtectedPaste = (e: ClipboardEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+  const handleProtectedContextMenu = (e: MouseEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+  const handleProtectedDragStart = (e: DragEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+  const handleProtectedDrag = (e: DragEvent) => { if (isInsideProtected(e)) e.preventDefault(); };
+
+  const handleProtectedKeyDown = (e: KeyboardEvent) => {
+    if (!isInsideProtected(e)) return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    // Block Ctrl/Cmd+C (copy), Ctrl/Cmd+S (save page), Ctrl/Cmd+P (print)
+    if (ctrl && /^[csap]$/i.test(e.key)) {
+      e.preventDefault();
+      return;
+    }
+    // Also block right-arrow drag (select-all in some contexts) — but allow
+    // navigation arrows which are handled by the dedicated handleKeyDown below.
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      // Let the component's own handleKeyDown manage navigation — don't double-stop here.
+      return;
+    }
+  };
+
+  useEffect(() => {
+    if (!isProtected) return;
+    document.addEventListener('copy',      handleProtectedCopy);
+    document.addEventListener('cut',       handleProtectedCut);
+    document.addEventListener('paste',     handleProtectedPaste);
+    document.addEventListener('contextmenu', handleProtectedContextMenu);
+    document.addEventListener('dragstart', handleProtectedDragStart);
+    document.addEventListener('drag',      handleProtectedDrag);
+    document.addEventListener('keydown',   handleProtectedKeyDown);
+    return () => {
+      document.removeEventListener('copy',      handleProtectedCopy);
+      document.removeEventListener('cut',       handleProtectedCut);
+      document.removeEventListener('paste',     handleProtectedPaste);
+      document.removeEventListener('contextmenu', handleProtectedContextMenu);
+      document.removeEventListener('dragstart', handleProtectedDragStart);
+      document.removeEventListener('drag',      handleProtectedDrag);
+      document.removeEventListener('keydown',   handleProtectedKeyDown);
+    };
+  }, [isProtected]); // re-register only when protection mode changes
 
   // ── Render a single page to a canvas ───────────────────────────────
   const renderToCanvas = async (
@@ -271,11 +348,16 @@ export const PdfViewer = ({
 
         // Cache an object URL for the resolved bytes so the toolbar can
         // open the PDF in a new tab without forcing a Chrome "save as" dialog.
+        // In protected-review mode the open-in-new-tab button is hidden; we skip
+        // creating the URL here to avoid retaining a blob URL that could be
+        // exploited to open the document outside the viewer.
         const blob = new Blob([buffer], { type: 'application/pdf' });
-        pdfObjectUrlRef.current = swapObjectUrl(
-          pdfObjectUrlRef.current,
-          URL.createObjectURL(blob),
-        );
+        if (!isProtected) {
+          pdfObjectUrlRef.current = swapObjectUrl(
+            pdfObjectUrlRef.current,
+            URL.createObjectURL(blob),
+          );
+        }
 
         const loadingTask = pdfjsLib.getDocument({ data: buffer });
         const doc = await loadingTask.promise;
@@ -316,7 +398,8 @@ export const PdfViewer = ({
       pdfDocRef.current = null;
     };
     // retryNonce forces a retry-driven reload without depending on identity of `url`.
-  }, [url, onTotalPages, retryNonce]);
+    // isProtected is included so that switching modes re-fetches the PDF.
+  }, [url, onTotalPages, retryNonce, isProtected]);
 
   // Revoke the cached object URL when the component unmounts.
   useEffect(() => {
@@ -499,12 +582,40 @@ export const PdfViewer = ({
     </div>
   );
 
+  // ── Protected-review notice + watermark overlay ────────────────────────────
+  //
+  // Non-interactive: `pointer-events: none` so it never captures focus or clicks.
+  // The watermark uses reviewCopyId (review-request id or reviewer copy token) so
+  // the copy is traceable without exposing researcher identity (double-blind).
+  const renderProtectedOverlay = () => {
+    if (!isProtected) return null;
+    return (
+      <div
+        className={styles.protectedOverlay}
+        aria-hidden="true"
+        data-testid="pdf-protected-overlay"
+      >
+        <span className={styles.protectedNotice}>
+          Confidential review copy — copying and redistribution are prohibited.
+        </span>
+        {reviewCopyId ? (
+          <span className={styles.protectedWatermark} aria-label="Review copy identifier">
+            {reviewCopyId}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
   const inputIsEmpty =
     url == null || (typeof url === 'string' && url.trim().length === 0);
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div className={styles.viewerWrapper} data-testid="pdf-viewer">
+    <div
+      className={`${styles.viewerWrapper}${isProtected ? ` ${styles.protectedWrapper}` : ''}`}
+      data-testid="pdf-viewer"
+    >
       {showToolbar ? (
         <div className={styles.toolbar} role="toolbar" aria-label="PDF viewer controls">
           <div className={styles.navGroup}>
@@ -581,8 +692,9 @@ export const PdfViewer = ({
           {/* Top-right action: open the loaded PDF in a new tab. Uses
               `window.open(URL.createObjectURL(blob), ...)` so Chrome does
               not treat the response as a forced "save as" download — the
-              user already sees the PDF inline and just wants a new tab. */}
-          {totalPages > 0 ? (
+              user already sees the PDF inline and just wants a new tab.
+              Hidden in protected-review mode. */}
+          {totalPages > 0 && !isProtected ? (
             <div className={styles.toolbarActions}>
               <button
                 type="button"
@@ -671,6 +783,8 @@ export const PdfViewer = ({
             aria-label={`Page ${currentPage} of ${totalPages}`}
             data-testid="pdf-canvas"
           />
+
+          {renderProtectedOverlay()}
         </div>
       </div>
     </div>

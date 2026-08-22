@@ -396,7 +396,11 @@ export const EvaluationDesk = () => {
                   <p>Contact the author or platform administrator to attach the document.</p>
                 </div>
               ) : (
-                <PdfViewer url={fileUrl} />
+                <PdfViewer
+                  url={fileUrl}
+                  mode="protected-review"
+                  reviewCopyId={reviewRequest?.id != null ? `Review Copy #${reviewRequest.id}` : undefined}
+                />
               )}
             </div>
           </div>

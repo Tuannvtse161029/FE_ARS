@@ -1,256 +1,321 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  font-family: var(--font-family-primary);
+/**
+ * SubmitReport — ARS Research Constellation
+ * "Research Journey" — Graduate Student workspace.
+ * Graduate Student role accent: var(--ars-gradstudent, #7c3aed)
+ * Tokens are globally available via src/styles/ars-tokens.css
+ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
+/* ── Page Shell ─────────────────────────────────────────── */
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+/* ── Breadcrumbs ───────────────────────────────────────── */
 .breadcrumbs {
-  font-size: 12px;
-  color: #64748b;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
 }
 
 .activeBreadcrumb {
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
 }
 
+/* ── Header Row ─────────────────────────────────────────── */
 .headerRow {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
 .pageTitle {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
   margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
+  line-height: var(--line-height-tight);
 }
 
 .pageSubtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #64748b;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: var(--space-1) 0 0;
   max-width: 720px;
+  line-height: var(--line-height-normal);
 }
 
+/* ── Error Banner ──────────────────────────────────────── */
 .errorBanner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 13px;
+  gap: var(--space-3);
+  background: var(--ars-error-bg);
+  border: 1px solid rgba(153, 27, 27, 0.2);
+  color: var(--ars-error);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+/* ── Grid ─────────────────────────────────────────────── */
 .grid {
   display: grid;
   grid-template-columns: 0.85fr 1.15fr;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: start;
 }
 
+/* ── Card ─────────────────────────────────────────────── */
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 22px;
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-4);
 }
 
 .cardTitle {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
   text-transform: uppercase;
-  color: #1e3a8a;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 8px;
+  letter-spacing: 0.06em;
+  color: var(--ars-gradstudent);
+  border-bottom: 1px solid var(--ars-network);
+  padding-bottom: var(--space-3);
+  margin: 0;
 }
 
+/* ── Detail Row ────────────────────────────────────────── */
 .detailRow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
 }
 
 .detailLabel {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--ars-ink-muted);
 }
 
 .detailVal {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
 }
 
+/* ── Phase Picker ──────────────────────────────────────── */
 .phasePicker {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .phaseLabel {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #475569;
+  color: var(--ars-ink-muted);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .phaseHint {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
   margin-top: 2px;
 }
 
 .phaseSelect {
-  background: #f8fafc;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 13px;
-  color: #0f172a;
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
   outline: none;
+  font-family: var(--font-family-ui);
+  transition: border-color var(--transition-fast);
+  cursor: pointer;
 }
 
 .phaseSelect:focus {
-  border-color: #2563eb;
+  border-color: var(--ars-gradstudent);
 }
 
+/* ── Empty State ──────────────────────────────────────── */
 .emptyState {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  color: #475569;
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 13px;
+  gap: var(--space-3);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-style: dashed;
+  color: var(--ars-ink-muted);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
 }
 
+.emptyState svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ── Active Report Card ───────────────────────────────── */
 .activeReportCard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: #eff6ff;
-  border: 1.5px solid #bfdbfe;
-  border-radius: 12px;
-  padding: 14px 16px;
+  gap: var(--space-3);
+  background: var(--ars-info-bg);
+  border: 1px solid var(--ars-info);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
 }
 
 .activeReportHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .activeReportTitle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e3a8a;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-info);
 }
 
 .activeReportBody {
+  font-size: var(--font-size-xs);
+  color: var(--ars-info);
+  line-height: var(--line-height-normal);
   margin: 0;
-  font-size: 12px;
-  color: #1d4ed8;
-  line-height: 1.5;
+  opacity: 0.85;
 }
 
 .linkBtn {
-  background: #ffffff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: 11.5px;
-  font-weight: 700;
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-color: var(--ars-info);
+  color: var(--ars-info);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   text-decoration: none;
-}
-.linkBtn:hover {
-  background: #dbeafe;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
+.linkBtn:hover {
+  background: var(--ars-info);
+  color: var(--ars-paper);
+}
+
+.linkBtn:focus-visible {
+  outline: 2px solid var(--ars-info);
+  outline-offset: 2px;
+}
+
+/* ── Action Center ─────────────────────────────────────── */
 .actionCenter {
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .submitBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: #2563eb;
-  border: 1.5px solid #2563eb;
+  gap: var(--space-2);
+  background: var(--ars-gradstudent);
+  border: none;
   color: #ffffff;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
 }
+
 .submitBtn:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--ars-gradstudent-mid);
 }
+
 .submitBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+.submitBtn:focus-visible {
+  outline: 2px solid var(--ars-gradstudent);
+  outline-offset: 2px;
+}
+
 .successHint {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   margin: 0;
-  font-size: 12px;
-  color: #047857;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  padding: 6px 10px;
-  border-radius: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--ars-success);
+  background: var(--ars-success-bg);
+  border: 1px solid var(--ars-success);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   align-self: flex-start;
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerRow {
+    flex-direction: column;
   }
 }

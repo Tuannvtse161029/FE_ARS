@@ -1,0 +1,212 @@
+/**
+ * ARS Research Constellation — Design Tokens
+ * Inspired by academic publishing, research networks, and the ARS logo geometry.
+ *
+ * Design direction:
+ * - Warm paper-toned backgrounds (not stark white)
+ * - Deep ink navigation (#1a1f36) with subtle constellation geometry
+ * - Editorial typography: Inter for UI text, Georgia (serif) for headings
+ * - Asymmetrical layouts with section markers like "01 / ACTIVE RESEARCH"
+ * - Thin annotation lines, citation-style metadata, timelines, connected nodes
+ * - Role-specific accent colors while retaining one ARS system color
+ * - Minimal purposeful motion, reduced-motion support
+ */
+
+:root {
+  /* ── ARS Constellation Palette ──────────────────────────── */
+  /* Paper & Background */
+  --ars-paper: #faf8f3;          /* Warm cream — main canvas */
+  --ars-paper-alt: #f4f1ea;     /* Warm off-white — cards, surfaces */
+  --ars-paper-inset: #ede8df;   /* Inset sections, sidebar */
+  --ars-ink: #1a1f36;           /* Deep navy ink — primary text, sidebar */
+  --ars-ink-soft: #2d3358;      /* Softer ink — secondary text */
+  --ars-ink-muted: #525873;     /* Muted ink — captions, metadata */
+
+  /* Network / Constellation */
+  --ars-network: rgba(45, 53, 97, 0.08);  /* Subtle constellation lines */
+  --ars-node: rgba(45, 53, 97, 0.12);     /* Node backgrounds */
+
+  /* Accent — ARS Blue (used across all roles) */
+  --ars-blue: #2d3561;
+  --ars-blue-mid: #3d4785;
+  --ars-blue-light: #e8eaf4;
+
+  /* ── Role Accent Colors ─────────────────────────────────── */
+  /* Researcher — warm amber/ochre (academic ink, paper) */
+  --ars-researcher: #b45309;
+  --ars-researcher-light: #fef3c7;
+  --ars-researcher-mid: #d97706;
+
+  /* Reviewer — forest green (peer credibility, trust) */
+  --ars-reviewer: #065f46;
+  --ars-reviewer-light: #d1fae5;
+  --ars-reviewer-mid: #047857;
+
+  /* Lecturer — deep burgundy (academic authority) */
+  --ars-lecturer: #7c2d12;
+  --ars-lecturer-light: #fef2f2;
+  --ars-lecturer-mid: #9a3412;
+
+  /* Graduate Student — slate blue (potential, growth) */
+  --ars-gradstudent: #1e3a8a;
+  --ars-gradstudent-light: #dbeafe;
+  --ars-gradstudent-mid: #1d4ed8;
+
+  /* Admin — violet (system oversight) */
+  --ars-admin: #4c1d95;
+  --ars-admin-light: #ede9fe;
+  --ars-admin-mid: #7c3aed;
+
+  /* ── Status Colors ──────────────────────────────────────── */
+  --ars-success: #047857;
+  --ars-success-bg: #d1fae5;
+  --ars-warning: #92400e;
+  --ars-warning-bg: #fef3c7;
+  --ars-error: #991b1b;
+  --ars-error-bg: #fee2e2;
+  --ars-info: #1e40af;
+  --ars-info-bg: #dbeafe;
+
+  /* ── Typography ─────────────────────────────────────────── */
+  /* Primary: Inter for UI, numbers, labels */
+  --font-family-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Serif: Georgia for editorial headings, section titles */
+  --font-family-serif: Georgia, 'Times New Roman', serif;
+  /* Mono: Consolas for IDs, metadata, citation-style text */
+  --font-family-mono: 'Consolas', 'Courier New', monospace;
+
+  --font-size-xs: 0.6875rem;   /* 11px — metadata, annotations */
+  --font-size-sm: 0.8125rem;   /* 13px — labels, secondary text */
+  --font-size-base: 0.9375rem; /* 15px — body text */
+  --font-size-lg: 1.0625rem;   /* 17px — subheadings */
+  --font-size-xl: 1.25rem;     /* 20px — page section titles */
+  --font-size-2xl: 1.5rem;     /* 24px — role workspace title */
+  --font-size-3xl: 1.875rem;   /* 30px — hero headings */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  /* ── Spacing ─────────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ── Border & Radius ────────────────────────────────────── */
+  --border-thin: 1px solid var(--ars-network);
+  --border-ink: 1px solid var(--ars-ink);
+  --border-accent: 1px solid var(--ars-blue-light);
+
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(26, 31, 54, 0.08);
+  --shadow-md: 0 4px 12px rgba(26, 31, 54, 0.1);
+  --shadow-lg: 0 8px 24px rgba(26, 31, 54, 0.12);
+  --shadow-xl: 0 16px 40px rgba(26, 31, 54, 0.14);
+
+  /* ── Transitions ─────────────────────────────────────────── */
+  --transition-fast: 120ms ease;
+  --transition-normal: 220ms ease;
+  --transition-slow: 350ms ease;
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  --sidebar-width: 228px;
+  --header-height: 60px;
+  --content-max-width: 1200px;
+
+  /* ── Section Marker Style ───────────────────────────────── */
+  --section-marker: 0.65rem;
+  --section-marker-color: var(--ars-ink-muted);
+  --section-marker-weight: 700;
+  --section-marker-tracking: 0.12em;
+}
+
+/* ── Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+  }
+}
+
+/* ── Legacy Aliases (backward-compat) ────────────────────
+   Existing code uses --spacing-N and --color-*.
+   These aliases ensure ars-tokens is the single source of truth
+   without requiring a mass-refactor of old modules.
+   New code should use --space-N and --ars-* directly. */
+:root {
+  /* Spacing aliases */
+  --spacing-0: 0;
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+
+  /* Legacy color aliases (for modules not yet migrated) */
+  --color-primary: var(--ars-blue);
+  --color-primary-light: var(--ars-blue-mid);
+  --color-primary-dark: var(--ars-ink);
+  --color-primary-hover: var(--ars-blue-mid);
+  --color-secondary: var(--ars-reviewer);
+  --color-secondary-light: var(--ars-reviewer-mid);
+  --color-secondary-dark: var(--ars-reviewer);
+  --color-accent: var(--ars-researcher);
+  --color-accent-light: var(--ars-researcher-mid);
+  --color-accent-dark: var(--ars-researcher);
+  --color-background: var(--ars-paper);
+  --color-surface: var(--ars-paper-alt);
+  --color-surface-elevated: var(--ars-paper);
+  --color-text-primary: var(--ars-ink);
+  --color-text-secondary: var(--ars-ink-soft);
+  --color-text-muted: var(--ars-ink-muted);
+  --color-text-inverse: var(--ars-paper);
+  --color-border: var(--ars-network);
+  --color-border-light: var(--ars-node);
+  --color-border-focus: var(--ars-blue-mid);
+  --color-success: var(--ars-success);
+  --color-success-light: var(--ars-success-bg);
+  --color-success-bg: var(--ars-success-bg);
+  --color-error: var(--ars-error);
+  --color-error-light: var(--ars-error-bg);
+  --color-error-bg: var(--ars-error-bg);
+  --color-warning: var(--ars-warning);
+  --color-warning-light: var(--ars-warning-bg);
+  --color-warning-bg: var(--ars-warning-bg);
+  --color-info: var(--ars-info);
+  --color-info-light: var(--ars-info-bg);
+  --color-info-bg: var(--ars-info-bg);
+
+  /* Font aliases */
+  --font-family-primary: var(--font-family-ui);
+
+  /* Radius aliases */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}

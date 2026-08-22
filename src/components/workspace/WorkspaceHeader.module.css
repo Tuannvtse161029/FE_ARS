@@ -1,0 +1,107 @@
+/**
+ * WorkspaceHeader styles — ARS Research Constellation
+ */
+.header {
+  position: relative;
+  padding: var(--space-6) var(--space-8);
+  background: var(--ars-paper-alt);
+  border-bottom: var(--border-thin);
+}
+
+/* Left accent bar */
+.header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--header-accent, var(--ars-blue));
+  border-radius: 0 2px 2px 0;
+}
+
+.inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.textCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.marker {
+  font-family: var(--font-family-mono);
+  font-size: var(--section-marker);
+  font-weight: var(--section-marker-weight);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--section-marker-color);
+  line-height: 1;
+}
+
+.title {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+  margin: var(--space-1) 0 0;
+  max-width: 560px;
+}
+
+.annotation {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--ars-network);
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding-top: var(--space-1);
+}
+
+.rule {
+  margin-top: var(--space-5);
+  height: 1px;
+  background: var(--ars-network);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .header {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .inner {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .title {
+    font-size: var(--font-size-xl);
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

@@ -1,7 +1,12 @@
+/**
+ * Input — ARS Research Constellation
+ * Form control with label, icons, error, and helper text.
+ * Consistent sizing at all breakpoints.
+ */
 .inputWrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-1);
+  gap: var(--space-2);
   width: 100%;
 }
 
@@ -9,97 +14,122 @@
   width: 100%;
 }
 
+/* ── Label ─────────────────────────────────────────────── */
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
 }
 
 .label--required::after {
   content: ' *';
-  color: var(--color-error);
+  color: var(--ars-error);
 }
 
+/* ── Input Container ─────────────────────────────────── */
 .inputContainer {
   position: relative;
   display: flex;
   align-items: center;
 }
 
+/* ── Base Input ───────────────────────────────────────── */
 .input {
   width: 100%;
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-base);
-  font-family: var(--font-family-primary);
-  color: var(--color-text-primary);
-  background-color: var(--color-surface);
-  border: 1.5px solid var(--color-border);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+  background-color: var(--ars-paper);
+  border: 1.5px solid var(--ars-node);
   border-radius: var(--radius-lg);
-  transition: all var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
   min-height: 48px;
+  box-sizing: border-box;
 }
 
 .input::placeholder {
-  color: var(--color-text-muted);
+  color: var(--ars-ink-muted);
 }
 
 .input:hover:not(:disabled) {
-  border-color: var(--color-text-muted);
+  border-color: var(--ars-ink-muted);
 }
 
 .input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: var(--ars-blue);
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  background-color: var(--ars-paper);
+  outline: none;
 }
 
+/* ── Disabled ──────────────────────────────────────────── */
 .input:disabled {
-  background-color: var(--color-border-light);
+  background-color: var(--ars-paper-alt);
   cursor: not-allowed;
   opacity: 0.7;
 }
 
-/* With Icons */
+/* ── With Icons ────────────────────────────────────────── */
 .input--withLeftIcon {
-  padding-left: var(--spacing-12);
+  padding-left: var(--space-12);
 }
 
 .input--withRightIcon {
-  padding-right: var(--spacing-12);
+  padding-right: var(--space-12);
 }
 
+/* ── Icon ──────────────────────────────────────────────── */
 .inputIcon {
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: var(--ars-ink-muted);
   pointer-events: none;
+  transition: color var(--transition-fast);
 }
 
 .inputIcon--left {
-  left: var(--spacing-4);
+  left: var(--space-4);
 }
 
 .inputIcon--right {
-  right: var(--spacing-4);
+  right: var(--space-4);
   pointer-events: auto;
 }
 
-/* Error State */
+/* ── Error State ───────────────────────────────────────── */
 .input--error {
-  border-color: var(--color-error);
+  border-color: var(--ars-error);
 }
 
 .input--error:focus {
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
-}
-
-.helperText {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.12);
 }
 
 .errorText {
   font-size: var(--font-size-xs);
-  color: var(--color-error);
+  color: var(--ars-error);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.helperText {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .input {
+    font-size: var(--font-size-sm);
+    min-height: 44px;
+  }
 }

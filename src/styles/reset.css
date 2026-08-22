@@ -73,11 +73,40 @@ table {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ars-blue);
   outline-offset: 2px;
 }
 
 ::selection {
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
+}
+
+/* ── Keyboard focus for interactive elements ────────────── */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar styling (WebKit) ───────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ars-paper-alt);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ars-node);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ars-ink-muted);
 }

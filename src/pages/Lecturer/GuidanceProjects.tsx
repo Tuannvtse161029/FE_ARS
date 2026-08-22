@@ -312,12 +312,12 @@ export const GuidanceProjects = () => {
   // Documented inline at §L1.f.
 
   return (
-    <div className={styles.root}>
+    <div className={styles.projectsPage}>
       <div className={styles.breadcrumbs}>
         Home &gt; <span className={styles.activeBreadcrumb}>Guidance Projects</span>
       </div>
 
-      <div className={styles.pageHeader}>
+      <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Guidance Projects</h1>
           <p className={styles.pageSubtitle}>
@@ -328,7 +328,7 @@ export const GuidanceProjects = () => {
         <div className={styles.headerActions}>
           <button
             type="button"
-            className={styles.primaryBtn}
+            className={styles.createBtn}
             onClick={handleOpenCreate}
             disabled={lecturerId === null}
             title={
@@ -677,7 +677,7 @@ export const GuidanceProjects = () => {
                 </button>
                 <button
                   type="submit"
-                  className={styles.primaryBtn}
+                  className={styles.createProposalBtn}
                   disabled={isCreating}
                 >
                   {isCreating ? (

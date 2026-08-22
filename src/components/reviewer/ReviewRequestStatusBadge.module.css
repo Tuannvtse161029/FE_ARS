@@ -6,8 +6,14 @@
   border-radius: 9999px;
   white-space: nowrap;
   line-height: 1;
-  /* Single-line guarantee — children cannot wrap onto a new line. */
   flex-wrap: nowrap;
+  /* Single-line guarantee — children cannot wrap onto a new line. */
+  cursor: default;
+}
+
+.badge:focus-visible {
+  outline: 2px solid var(--ars-reviewer);
+  outline-offset: 2px;
 }
 
 .icon {

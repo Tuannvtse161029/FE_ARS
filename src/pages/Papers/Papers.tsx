@@ -466,7 +466,13 @@ export const Papers = () => {
     <div className={styles.papersPage}>
       {/* Page Title */}
       <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Research Paper List</h1>
+        <div className={styles.headerLeft}>
+          <span className={styles.pageMarker}>01 / MANUSCRIPT STUDIO</span>
+          <h1 className={styles.pageTitle}>My Research Papers</h1>
+          <p className={styles.pageSubtitle}>
+            Submit manuscripts, track peer review status, and review feedback.
+          </p>
+        </div>
       </div>
 
       {/* Toast Notification */}

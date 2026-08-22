@@ -1,8 +1,12 @@
+/**
+ * GoogleSignInButton — ARS Research Constellation
+ * Wraps Google's Identity Services (GIS) button with a fallback.
+ */
 .wrap {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2, 0.5rem);
+  gap: var(--space-2);
 }
 
 .gisMount {
@@ -18,22 +22,34 @@
   width: 100% !important;
 }
 
+/* Fallback button — Google brand colors are intentional */
 .fallbackButton {
   background-color: #ffffff !important;
   border: 1.5px solid #dadce0 !important;
   color: #3c4043 !important;
   font-weight: 500 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-lg) !important;
   min-height: 48px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: var(--spacing-3, 0.75rem) !important;
+  gap: var(--space-3) !important;
+}
+
+.fallbackButton:hover:not(:disabled) {
+  background-color: #f8f8f8 !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.fallbackButton:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .error {
-  font-size: var(--font-size-sm, 0.875rem);
-  color: var(--color-error, #b91c1c);
+  font-size: var(--font-size-sm);
+  color: var(--ars-error);
   margin: 0;
   text-align: center;
+  line-height: var(--line-height-tight);
 }

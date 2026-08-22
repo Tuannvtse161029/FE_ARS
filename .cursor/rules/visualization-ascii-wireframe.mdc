@@ -1,0 +1,105 @@
+---
+description: Visualization style — default to ASCII wireframes for UI/mockup requests
+alwaysApply: false
+---
+
+# Visualization Style
+
+When the user asks for a visualization, mockup, wireframe, layout, screen preview, popup preview, or any "show me what it would look like" request, **default to ASCII wireframes (ASCII UI layout / ASCII diagram)**.
+
+## Why
+
+- Saves time and tokens compared to heavy canvas/fidelity mockups.
+- Communicates layout intent clearly.
+- Easy to edit, copy, paste, and diff.
+
+## How to draw an ASCII wireframe
+
+1. Use a fixed-width monospace block.
+2. Draw the outer container first (e.g. browser frame, modal box, card).
+3. Use ASCII box characters consistently:
+   - `┌ ─ ┐` for top corners and top/bottom edges
+   - `└ ─ ┘` for bottom corners
+   - `│` for left/right edges
+   - `├ ┤ ┬ ┴ ┼` for internal intersections when needed
+   - `╔ ═ ╗` and `╚ ╝` for nested/highlighted boxes
+4. Label each region explicitly (`[Header]`, `[Sidebar]`, `[CTA: Submit]`, etc.).
+5. Show interactive states by switching only the relevant rows (e.g. button text, badge text).
+6. Use arrows (`→`, `▼`, `↑`, `←`) to indicate flow, navigation, or state transitions.
+7. Keep line length reasonable (≤ 100 chars) for readability.
+
+## Standard ASCII frame templates
+
+Browser frame:
+
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│ ● ● ●   arsplatform.com/auth/google/callback                      │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+Modal / popup:
+
+```text
+╔═══════════════════════════════════════════════════════════════════╗
+║ Choose your requested role                                    [X] ║
+╠═══════════════════════════════════════════════════════════════════╣
+║ ( ) Researcher     Submit manuscripts and manage research work.   ║
+║ ( ) Reviewer       Evaluate papers and manage assigned reviews.   ║
+║ ( ) Lecturer       Manage seminars and student guidance.          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                            [ Cancel ]  [ Continue ]               ║
+╚═══════════════════════════════════════════════════════════════════╝
+```
+
+Card / form section:
+
+```text
+┌─ Upload verification PDF ─────────────────────────────────────────┐
+│                                                                   │
+│      ┌─────────────────────────────────────────────────┐          │
+│      │   Drop PDF here or choose a file                │          │
+│      │   PDF only · 1 file · max 10MB                  │          │
+│      └─────────────────────────────────────────────────┘          │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+## Multi-state mockups
+
+For a flow with multiple states, present them as **stacked labeled blocks**:
+
+```text
+[State 1: New user lands on role picker]
+┌─ Choose your requested role ──────────────────────────────────────┐
+...
+└───────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+[State 2: PDF uploaded, submit enabled]
+┌─ Upload verification PDF ─────────────────────────────────────────┐
+│   ✓ verification-profile.pdf · 1.8MB                              │
+└───────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+[State 3: Pending admin review]
+┌─ Request submitted ───────────────────────────────────────────────┐
+│   [Pending review]   Continue to Forum →                          │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+## When NOT to use ASCII
+
+Use a richer canvas only when the user explicitly asks for:
+- "high-fidelity mockup", "pixel-perfect", "interactive prototype", "build it", or
+- provides screenshots/design specs to match.
+
+In those cases, still consider an ASCII pass first to confirm layout before spending tokens on a canvas.
+
+## Out of scope
+
+- Do not paste code frameworks instead of a wireframe unless asked.
+- Do not use emojis as UI controls in the wireframe.
+- Do not include placeholder lorem text — short descriptive labels are enough.

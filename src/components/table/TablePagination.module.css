@@ -1,68 +1,83 @@
+/**
+ * TablePagination — ARS Research Constellation
+ * Shared pagination used across role pages.
+ */
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--border-thin);
+  background: var(--ars-paper);
   flex-wrap: wrap;
 }
 
 .paginationInfo {
-  font-size: 13px;
-  color: #64748b;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
 }
 
 .paginationInfo strong {
-  color: #1e293b;
-  font-weight: 600;
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
 }
 
 .paginationControls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .paginationBtn {
   min-width: 32px;
   height: 32px;
-  padding: 0 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #1e293b;
-  font-size: 13px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  gap: var(--space-1);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  font-family: var(--font-family-ui);
 }
 
 .paginationBtn:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.paginationBtn:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .paginationBtn:disabled {
-  color: #94a3b8;
-  background: #f8fafc;
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-alt);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .paginationBtnActive {
-  background: #2d3561;
-  border-color: #2d3561;
-  color: #ffffff;
+  background: var(--ars-blue);
+  border-color: var(--ars-blue);
+  color: var(--ars-paper);
 }
 
 .paginationBtnActive:hover:not(:disabled) {
-  background: #232a52;
-  border-color: #232a52;
+  background: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
 }
 
 .paginationEllipsis {
@@ -71,12 +86,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
-  font-size: 13px;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
 }
 
 .paginationSpinner {
   animation: paginationSpin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paginationSpinner {
+    animation-duration: 1.6s;
+  }
 }
 
 @keyframes paginationSpin {
