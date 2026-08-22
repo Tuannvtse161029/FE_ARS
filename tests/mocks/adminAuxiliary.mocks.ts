@@ -2,7 +2,7 @@ import type {
   ViolationReport,
   PremiumPackage,
   AuditLogEntry,
-} from '../src/types/adminAuxiliary';
+} from '../../src/types/adminAuxiliary';
 
 // Vietnamese-style fixtures matching the existing MOCK_* style.
 

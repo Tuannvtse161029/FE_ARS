@@ -6,7 +6,7 @@ import type {
   AnalyticsTimeSeries,
   AnalyticsRange,
   AnalyticsMetric,
-} from '../src/types/admin';
+} from '../../src/types/admin';
 
 // Internal copy of fixtures kept here so adminService.ts stays readable.
 // Vietnamese-style names + bank names match the existing AdminWithdrawal page
@@ -318,6 +318,10 @@ function dateLabelsFor(range: AnalyticsRange): string[] {
     }
     case 'yearly': {
       return ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+    }
+    default: {
+      const unreachableRange: never = range;
+      throw new Error(`Unsupported analytics range: ${unreachableRange}`);
     }
   }
 }
