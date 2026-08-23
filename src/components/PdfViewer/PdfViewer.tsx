@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.js?raw';
+import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?raw';
 import { RefreshCw, ExternalLink, FileText } from 'lucide-react';
 import {
   resolvePdfSource,

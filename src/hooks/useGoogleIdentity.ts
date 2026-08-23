@@ -119,6 +119,12 @@ export function useGoogleIdentity({
     onCancelRef.current = onCancel;
   }, [onCancel]);
 
+  const buttonType = buttonOptions?.type ?? 'standard';
+  const buttonTheme = buttonOptions?.theme ?? 'outline';
+  const buttonSize = buttonOptions?.size ?? 'large';
+  const buttonText = buttonOptions?.text ?? 'signin_with';
+  const buttonShape = buttonOptions?.shape ?? 'rectangular';
+
   useEffect(() => {
     const clientId = getClientId();
     if (!clientId) {
@@ -127,6 +133,8 @@ export function useGoogleIdentity({
     }
 
     let cancelled = false;
+    let animationFrameHandle: number | null = null;
+    let cancelHandler: (() => void) | null = null;
     setStatus('loading');
     setErrorMessage(null);
 
@@ -172,11 +180,11 @@ export function useGoogleIdentity({
         // Idempotent: clear children first.
         target.innerHTML = '';
         id.renderButton(target, {
-          type: buttonOptions?.type ?? 'standard',
-          theme: buttonOptions?.theme ?? 'outline',
-          size: buttonOptions?.size ?? 'large',
-          text: buttonOptions?.text ?? 'signin_with',
-          shape: buttonOptions?.shape ?? 'rectangular',
+          type: buttonType,
+          theme: buttonTheme,
+          size: buttonSize,
+          text: buttonText,
+          shape: buttonShape,
         });
         return true;
       };
@@ -184,26 +192,18 @@ export function useGoogleIdentity({
       const target = buttonContainerRef.current;
       if (!renderInto(target)) {
         // Defer to next frame and retry exactly once.
-        const handle = window.requestAnimationFrame(() => {
-          renderInto(buttonContainerRef.current);
+        animationFrameHandle = window.requestAnimationFrame(() => {
+          animationFrameHandle = null;
+          if (!cancelled) renderInto(buttonContainerRef.current);
         });
-        // Cleanup on unmount below.
-        (target as unknown as { __rafHandle__?: number } | null);
-        // Best-effort: leave the rAF handle so the cleanup cancels it.
-        if (handle) {
-          (buttonContainerRef as unknown as { current: HTMLElement | null }).current?.setAttribute(
-            'data-raf-pending',
-            String(handle),
-          );
-        }
       }
 
       // Wire up a cancel listener via the prompt cancel callback. GIS does
       // not emit a global "cancel" event; we listen for `mousedown` outside
       // the popup and fall through to onCancel if provided.
       if (onCancelRef.current) {
-        const handler = () => onCancelRef.current?.();
-        document.addEventListener('mousedown', handler, { once: true });
+        cancelHandler = () => onCancelRef.current?.();
+        document.addEventListener('mousedown', cancelHandler, { once: true });
       }
 
       setStatus('ready');
@@ -211,13 +211,22 @@ export function useGoogleIdentity({
 
     return () => {
       cancelled = true;
+      if (animationFrameHandle !== null) {
+        window.cancelAnimationFrame(animationFrameHandle);
+      }
+      if (cancelHandler) {
+        document.removeEventListener('mousedown', cancelHandler);
+      }
+      if (buttonContainerRef.current) {
+        buttonContainerRef.current.innerHTML = '';
+      }
       try {
         window.google?.accounts?.id?.disableAutoSelect();
       } catch {
         /* ignore — GIS throws if it wasn't initialised in some edge cases */
       }
     };
-  }, [buttonOptions]);
+  }, [buttonShape, buttonSize, buttonText, buttonTheme, buttonType]);
 
   return {
     status,
