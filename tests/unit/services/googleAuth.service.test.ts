@@ -16,7 +16,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const postMock = vi.fn();
 
 vi.mock('../../../src/services/axios', () => ({
-  default: { post: (...args: unknown[]) => postMock(...args) },
+  default: {
+    post: (...args: unknown[]) => postMock(...args),
+    defaults: { headers: { common: {} } },
+  },
 }));
 
 import { googleAuthService, GoogleLoginError } from '../../../src/services/googleAuth.service';
@@ -137,6 +140,60 @@ describe('googleAuthService.postGoogleLogin — credential posting', () => {
     await expect(
       googleAuthService.postGoogleLogin({ credential: 'x' }),
     ).rejects.toMatchObject({ code: 'NETWORK', status: null });
+  });
+
+  it('strips any pre-existing Authorization header for the duration of the credential POST', async () => {
+    const axiosModule = await import('../../../src/services/axios');
+    (axiosModule.default.defaults.headers.common as Record<string, string>).Authorization =
+      'Bearer STALE_TOKEN';
+
+    postMock.mockImplementationOnce(async () => {
+      // While inside the POST, the Authorization header MUST be gone.
+      const headerValue =
+        (axiosModule.default.defaults.headers.common as Record<string, string | undefined>)
+          .Authorization;
+      expect(headerValue).toBeUndefined();
+      return {
+        data: {
+          token: 'jwt',
+          email: 'user@example.com',
+          fullName: 'Google User',
+          userId: 42,
+          role: 'Researcher',
+        },
+      };
+    });
+
+    await googleAuthService.postGoogleLogin({ credential: 'a.b.c' });
+
+    // After the call, the previous token is restored.
+    expect(
+      (axiosModule.default.defaults.headers.common as Record<string, string | undefined>)
+        .Authorization,
+    ).toBe('Bearer STALE_TOKEN');
+  });
+
+  it('restores the Authorization header even when the POST rejects', async () => {
+    const axiosModule = await import('../../../src/services/axios');
+    (axiosModule.default.defaults.headers.common as Record<string, string>).Authorization =
+      'Bearer STALE_TOKEN';
+
+    postMock.mockImplementationOnce(async () => {
+      const headerValue =
+        (axiosModule.default.defaults.headers.common as Record<string, string | undefined>)
+          .Authorization;
+      expect(headerValue).toBeUndefined();
+      throw { response: { status: 401 } };
+    });
+
+    await expect(
+      googleAuthService.postGoogleLogin({ credential: 'a.b.c' }),
+    ).rejects.toBeInstanceOf(GoogleLoginError);
+
+    expect(
+      (axiosModule.default.defaults.headers.common as Record<string, string | undefined>)
+        .Authorization,
+    ).toBe('Bearer STALE_TOKEN');
   });
 });
 

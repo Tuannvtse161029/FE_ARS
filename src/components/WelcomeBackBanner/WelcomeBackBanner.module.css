@@ -1,0 +1,111 @@
+/**
+ * WelcomeBackBanner — shared authenticated-layout welcome banner.
+ *
+ * Visual contract:
+ *   - Positioned below the top header, above the page content area.
+ *   - Warm paper background, deep-ink text, soft blue accent strip
+ *     matching the ARS design tokens.
+ *   - Subtle slide-down + fade entrance animation; the animation is
+ *     disabled when the user prefers reduced motion.
+ *   - Radii / typography follow --radius-md and --font-family-ui.
+ *   - Responsive: collapses icon padding on mobile, full-width text.
+ */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) var(--space-6) 0;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-left: 3px solid var(--ars-blue-mid);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-sm);
+  animation: welcomeSlideIn var(--transition-normal) ease-out both;
+  /* Allow long welcome messages to wrap inside the banner */
+  flex-wrap: wrap;
+}
+
+.bannerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ars-blue-mid);
+  flex-shrink: 0;
+}
+
+.bannerText {
+  flex: 1;
+  line-height: var(--line-height-tight);
+  /* Trim overflow text gracefully for very long names */
+  overflow-wrap: anywhere;
+}
+
+.bannerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.bannerClose:hover {
+  background-color: var(--ars-network);
+  color: var(--ars-ink);
+}
+
+.bannerClose:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+}
+
+/* ── Entrance animation ─────────────────────────────────────── */
+@keyframes welcomeSlideIn {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Reduced motion: drop animation entirely ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .banner {
+    margin-left: var(--space-4);
+    margin-right: var(--space-4);
+  }
+}
+
+@media (max-width: 640px) {
+  .banner {
+    margin-left: var(--space-3);
+    margin-right: var(--space-3);
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+  }
+}

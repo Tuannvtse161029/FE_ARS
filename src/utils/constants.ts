@@ -14,12 +14,15 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
+    // Primary Google sign-in endpoint. FE ↔ BE contract:
+    //   POST { credential: <Google ID token JWT> } → BE validates the
+    //   credential, finds or creates the user, and returns the ARS
+    //   session (same shape as the password login response, plus the
+    //   `isNewUser` / `requiresOnboarding` routing signals).
     GOOGLE_LOGIN: '/api/auth/google-login',
-    // Agent 54 — backend-driven Google OAuth (Authorization Code flow).
-    // GET /api/Auth/google-oauth-login begins the BE handshake; GET
-    // /api/Auth/google-callback?code=&error= completes it on our /auth/google/callback
-    // route. The old `POST /api/auth/google-login` (GIS credential swap) is
-    // retained for backward compatibility but is no longer the primary path.
+    // Authorization Code redirect flow — kept for backwards compatibility
+    // with the existing /auth/google/callback page; the credential flow
+    // above is the agreed primary path.
     GOOGLE_OAUTH_LOGIN: '/api/auth/google-oauth-login',
     GOOGLE_CALLBACK: '/api/auth/google-callback',
     REFRESH: '/api/auth/refresh',

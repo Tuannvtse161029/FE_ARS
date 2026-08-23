@@ -1,4 +1,4 @@
-// Agent 52 — Google Identity Services ↔ Backend glue.
+// Agent 52 (revised) — Google Identity Services ↔ Backend glue.
 //
 // This file is the single bridge between:
 //   - The browser-side GIS callback (`CredentialResponse.credential`)
@@ -12,14 +12,19 @@
 //      `unknown` rather than `any` for the parsed error so the call site can
 //      produce a user-friendly message without leaking the credential into a
 //      console warning.
-//   3. Errors are normalised to a discriminated union so the Login button can
-//      distinguish 401/403 (auth failed), 409 (already linked, etc.), 422
-//      (validation), and 5xx (transient). The Login page keeps the user in
-//      the same UI state — recoverable UI states, no hard fail.
+//   3. Errors are normalised to a discriminated union so the Login / Register
+//      surfaces can distinguish 401/403 (auth failed), 409 (already linked,
+//      etc.), 422 (validation), and 5xx (transient). The pages keep the user
+//      in the same UI state — recoverable UI states, no hard fail.
 //   4. Duplicate-request prevention is enforced here too: each call gets a
 //      fresh idempotency key so an unintended double-submit (race between the
 //      GIS callback firing twice) does not produce two account-creation
 //      attempts on the BE.
+//
+// Call sites: `Login.tsx` (existing users) and `Register.tsx` (first-time
+// Google sign-up). Both share the same BE endpoint — the BE decides whether
+// the credential belongs to an existing user or a new one and returns the
+// appropriate `isNewUser` / `requiresOnboarding` signals for routing.
 
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
@@ -209,13 +214,20 @@ interface PostGoogleLoginInput {
 /**
  * POST the GIS credential EXACTLY once to `/api/auth/google-login`.
  *
- * @throws GoogleLoginError with a typed `code` and `status`.
+ * Hard rules:
+ *   1. `credential` is the signed Google ID token (JWT). We never log it,
+ *      decode it, or echo it back to the caller.
+ *   2. The shared axios instance carries a per-user `Authorization` header
+ *      from the active ARS session. Sending the credential with a stale
+ *      bearer in the header would confuse the BE — and a brand-new
+ *      visitor does not have a session yet. We strip the header for
+ *      the duration of the call and restore it after, so the rest of
+ *      the FE is unaffected.
+ *   3. An optional Idempotency-Key header is attached so a duplicated
+ *      GIS callback (StrictMode double-invoke, rapid double-click) does
+ *      not produce two account-creation attempts on the BE.
  *
- * The throw site is the only place that touches the credential: it never
- * leaves this function. Network logs are scrubbed of the credential by the
- * axios response interceptor (we deliberately do not log the response body
- * here either — it carries the JWT which the caller persists through its
- * own secure path).
+ * @throws GoogleLoginError with a typed `code` and `status`.
  */
 export async function postGoogleLogin({
   credential,
@@ -228,7 +240,20 @@ export async function postGoogleLogin({
     );
   }
 
+  // Strip the shared `Authorization` header so the credential is the only
+  // identity attached to this request. We restore the original header in
+  // the `finally` block so concurrent / subsequent calls are unaffected.
+  const previousAuthHeader =
+    (api.defaults.headers.common as Record<string, unknown>).Authorization ??
+    null;
   try {
+    delete (api.defaults.headers.common as Record<string, unknown>).Authorization;
+    if (api.defaults.headers) {
+      if ('Authorization' in api.defaults.headers) {
+        delete (api.defaults.headers as Record<string, unknown>).Authorization;
+      }
+    }
+
     const response = await api.post(
       API_ENDPOINTS.AUTH.GOOGLE_LOGIN,
       { credential },
@@ -300,6 +325,23 @@ export async function postGoogleLogin({
       'Google sign-in failed for an unexpected reason. Please try again.',
       status,
     );
+  } finally {
+    // Restore the previous `Authorization` header so the rest of the FE
+    // keeps using the existing ARS session, if any. This is a no-op when
+    // there was no prior session.
+    if (previousAuthHeader) {
+      (api.defaults.headers.common as Record<string, unknown>).Authorization =
+        previousAuthHeader;
+    } else {
+      try {
+        delete (api.defaults.headers.common as Record<string, unknown>).Authorization;
+        if ('Authorization' in api.defaults.headers) {
+          delete (api.defaults.headers as Record<string, unknown>).Authorization;
+        }
+      } catch {
+        /* defensive — axios may be mocked in tests */
+      }
+    }
   }
 }
 

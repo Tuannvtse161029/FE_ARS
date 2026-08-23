@@ -61,6 +61,7 @@ vi.mock('../../../src/services/auth.service', () => ({
   authService: {
     registerUser: registerUserSpy,
     setAuthData: setAuthDataSpy,
+    logout: vi.fn(),
   },
 }));
 
@@ -69,6 +70,31 @@ vi.mock('../../store', () => ({
     login: loginSpy,
     setLoading: setLoadingSpy,
   }),
+}));
+
+vi.mock('../../../src/context/AuthContext', () => ({
+  useAuth: () => ({
+    login: vi.fn(),
+    loginWithGoogle: vi.fn().mockResolvedValue(undefined),
+    isLoading: false,
+    error: null,
+    user: null,
+    pendingRoleSelection: null,
+    confirmRoleSelection: vi.fn(),
+    cancelRoleSelection: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../src/components/auth/GoogleSignInButton', () => ({
+  GoogleSignInButton: () => null,
+}));
+
+vi.mock('../../../src/services/googleAuth.service', () => ({
+  googleAuthService: {
+    postGoogleLogin: vi.fn(),
+    extractCredential: vi.fn(),
+  },
+  GoogleLoginError: class GoogleLoginError extends Error {},
 }));
 
 vi.mock('../../../src/hooks/useFirebaseUpload', () => ({

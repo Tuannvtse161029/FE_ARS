@@ -81,12 +81,20 @@ const App = () => {
 
               {/* Lecturer-only routes */}
               <Route element={<RoleRouteGuard allow={['Lecturer']} />}>
-                <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
                 <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
                 <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
                 <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
                 <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
                 <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
+              </Route>
+
+              {/* Seminar workspace is shared by Lecturer (manage) and
+                  Graduate Student (accept / decline invitation, view
+                  schedule). Per the notification-routing spec the dropdown
+                  only marks-as-read and navigates — accept / decline lives
+                  on the seminar page itself. */}
+              <Route element={<RoleRouteGuard allow={['Lecturer', 'Graduate Student']} />}>
+                <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
               </Route>
 
               {/* Graduate Student-only routes */}

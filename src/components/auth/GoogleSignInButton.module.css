@@ -53,3 +53,10 @@
   text-align: center;
   line-height: var(--line-height-tight);
 }
+
+.helper {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary, #475569);
+  margin: 0;
+  text-align: center;
+}

@@ -12,10 +12,8 @@ import styles from './Login.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Eye, EyeOff } from 'lucide-react';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
-import {
-  googleOAuthService,
-  GoogleOAuthError,
-} from '../../services/googleOAuth.service';
+import { GoogleLoginError } from '../../services/googleAuth.service';
+import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { authService } from '../../services/auth.service';
 
 const FAST_LOGIN_USERS = [
@@ -27,14 +25,21 @@ const FAST_LOGIN_USERS = [
 ] as const;
 
 const Login = () => {
-  const { login, isLoading, error, user, pendingRoleSelection, confirmRoleSelection, cancelRoleSelection } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    isLoading,
+    error,
+    user,
+    pendingRoleSelection,
+    confirmRoleSelection,
+    cancelRoleSelection,
+  } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
-  // ── Agent 54 — Google Sign-In UI state (in-flight lock + error surface) ──
-  // The submit lock is a ref so double-clicks cannot enter the redirect
-  // before React-18's StrictMode double-invoke or a second tap has a
-  // chance to re-enter. The service layer mirrors this with a
-  // module-level flag in googleOAuth.service.ts.
+  // GIS-credential Google sign-in UI state. The double-submit guard is a
+  // ref so double-clicks cannot enter the GIS callback twice; the loading
+  // state is mirrored in React so the button can render a spinner.
   const googleInFlightRef = useRef(false);
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -69,63 +74,51 @@ const Login = () => {
     setValue('password', password);
   };
 
-  // ── Agent 54 — Google OAuth begin handler ────────────────────────────────
+  // ── GIS credential Google sign-in handler ───────────────────────────────
   //
-  // The BE has moved from a GIS credential swap (`POST /api/Auth/google-login`)
-  // to a server-issued OAuth Authorization Code flow:
+  // The agreed FE ↔ BE contract is the GIS credential flow:
   //
-  //   1. The user clicks the "Sign in with Google" button.
-  //   2. We issue `window.location.assign(GET /api/Auth/google-oauth-login)`.
-  //   3. The BE redirects to Google; the user consents.
-  //   4. Google redirects back to `/api/Auth/google-callback?code=...` (or
-  //      `?error=...` on cancel / error). The BE then 302s the browser to
-  //      our `/auth/google/callback` page (handled by GoogleCallback.tsx).
+  //   1. The user clicks the "Sign in with Google" button (rendered by GIS).
+  //   2. GIS returns a `CredentialResponse` whose `credential` field is a
+  //      signed Google ID token (JWT).
+  //   3. We POST `{ credential }` to `POST /api/Auth/google-login` via
+  //      `AuthContext.loginWithGoogle`. The BE validates the credential,
+  //      finds or creates the user, and returns the ARS session.
+  //   4. `loginWithGoogle` handles routing: first-time users land on
+  //      `/complete-google-registration`, pending/rejected users land on
+  //      `/forum`, accepted users land on their workspace.
   //
   // Hard rules:
-  //   - The Google `code`, the ARS JWT, and any access/refresh tokens are
-  //     NEVER logged, echoed in the address bar, or stored beyond the
-  //     standard `ars_token` bucket the rest of the FE already uses.
-  //   - The OAuth redirect is in-flight deduped at TWO layers: a local
-  //     ref + state (UI lock) and a module-level guard inside the service.
-  //     Rapid double-clicks cannot issue two redirects.
-  //   - We do NOT call the legacy `POST /api/Auth/google-login` flow any
-  //     more. The legacy service is retained for tests but is not invoked
-  //     from the Login page.
-  //   - Defensive null-safe guest logout is run before the OAuth redirect
-  //     so a guest who clicks "Sign in with Google" leaves any anonymous
-  //     state behind. `authService.logout()` / `clearAuthSession()` no-op
-  //     on empty storage — safe for guests.
-  //   - On a synchronous failure (e.g. the URL was malformed) we surface a
-  //     recoverable error and release the in-flight flag so the user can
-  //     retry. The navigate-away case does not need to release the flag —
-  //     the callback page does it once it mounts.
-  const handleBeginGoogleOAuth = async () => {
-    setGoogleError(null);
-
-    // UI-layer duplicate guard. The service also guards via a module-level
-    // flag, but having the UI lock lets us flip the button into a loading
-    // state immediately on the first click.
+  //   - The `credential` is forwarded EXACTLY once. We never log it, echo
+  //     it back to the UI, or store it beyond the in-flight submission.
+  //   - The callback fires inside `AuthContext.loginWithGoogle` — this
+  //     handler only releases the in-flight lock and surfaces recoverable
+  //     errors.
+  //   - The legacy Authorization Code redirect flow (Agent 54) is no longer
+  //     invoked from the Login page.
+  const handleGoogleCredential = async (
+    response: GoogleCredentialResponse,
+  ): Promise<void> => {
     if (googleInFlightRef.current) return;
+    setGoogleError(null);
     googleInFlightRef.current = true;
     setGooglePending(true);
 
     try {
-      // Null-safe guest logout: a guest who clicks "Sign in with Google"
-      // leaves any anonymous state behind before the OAuth handshake.
-      // `authService.logout()` and the underlying `clearAuthSession()`
-      // both no-op when there is no token / user.
+      // Null-safe guest logout so a guest leaves anonymous state behind.
       authService.logout();
-
-      // The backend owns the Google callback and its registered redirect URI.
-      // Swagger defines this endpoint without query parameters, so do not send
-      // the frontend callback as redirect_uri.
-      await googleOAuthService.beginGoogleOAuth();
+      await loginWithGoogle(response);
     } catch (err: unknown) {
       const fallback =
-        'Could not start the Google sign-in flow. Please try again or use the email & password option.';
-      setGoogleError(
-        err instanceof GoogleOAuthError && err.message ? err.message : fallback,
-      );
+        'Google sign-in failed. Please try again or use the email & password option.';
+      const message =
+        err instanceof GoogleLoginError && err.message
+          ? err.message
+          : err instanceof Error && err.message
+            ? err.message
+            : fallback;
+      setGoogleError(message);
+    } finally {
       googleInFlightRef.current = false;
       setGooglePending(false);
     }
@@ -233,10 +226,11 @@ const Login = () => {
 
         <div className={styles.googleButtonWrapper}>
           <GoogleSignInButton
-            onBegin={handleBeginGoogleOAuth}
+            onCredential={handleGoogleCredential}
             disabled={isLoading || googlePending}
             pending={googlePending}
             errorMessage={googleError}
+            intent="signin"
           />
         </div>
         {googleError && (

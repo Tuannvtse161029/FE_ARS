@@ -6,8 +6,9 @@
 // discriminator. Instead we infer a notification "kind" from the message
 // text using a deterministic pattern list. Every notification produced by
 // the BE for the ARS workflow must use one of the prefixes below; any
-// message that does not match falls back to staying on the dropdown
-// (see `resolveNotificationRoute`).
+// message that does not match falls back to a safe destination (the
+// shared /forum route) so the user is never deep-linked into a page they
+// cannot reach.
 //
 // Keeping this in one place — instead of scattering `if message.includes…`
 // checks across components — is required so the navigation rule stays
@@ -15,11 +16,19 @@
 //
 // The `roles` field is the set of roles that are allowed to land on the
 // resolved target. Notifications for other roles are silently dropped to
-// the fallback route to prevent a Reviewer from being deep-linked into
+// the safe fallback to prevent a Reviewer from being deep-linked into
 // the Admin surface, etc.
+//
+// Withdrawal notifications are intentionally REMOVED from the active
+// mapping set because the withdrawal feature is currently disabled
+// (see AppConfig.features.enableWithdrawals). Any historical
+// "Wallet withdrawal …" rows that linger in the BE's notification table
+// resolve to the safe `/forum` fallback — they never navigate to
+// `/earnings-wallet` until the withdrawal feature ships again.
 
 import { ROUTES } from '../routes/paths';
 import type { UserRole } from '../types/auth';
+import { AppConfig } from '../config/app';
 
 export type NotificationKind =
   // Researcher
@@ -29,28 +38,43 @@ export type NotificationKind =
   | 'review-request-completed'
   | 'paper-status-changed'
   | 'review-result-available'
+  | 'paper-needs-revision'
+  | 'payment-result'
+  | 'membership-result'
+  | 'forum-reply'
   // Reviewer
   | 'new-review-request'
-  | 'withdrawal-approved'
-  | 'withdrawal-denied'
-  | 'withdrawal-processing'
-  | 'withdrawal-completed'
+  | 'review-request-cancelled'
+  | 'review-deadline-reminder'
+  | 'reviewer-payment-result'
   // Lecturer
   | 'student-report-submitted'
   | 'student-report-resubmitted'
   | 'student-topic-requested'
+  | 'seminar-participant-response'
+  | 'seminar-feedback-available'
+  | 'group-membership-response'
   // Graduate Student
+  | 'seminar-invitation'
+  | 'seminar-schedule-update'
+  | 'added-to-research-group'
   | 'topic-assigned'
   | 'group-invitation'
   | 'milestone-opened'
+  | 'learning-material-available'
   | 'report-evaluated'
   | 'report-rejected'
   // Admin
   | 'role-request-submitted'
-  | 'withdrawal-request-submitted'
   | 'violation-report-submitted'
+  | 'account-management-event'
+  | 'admin-payment-issue'
   // Account / platform
+  | 'role-request-accepted'
+  | 'role-request-rejected'
+  | 'account-status-changed'
   | 'account-platform-update'
+  | 'system-update'
   // Catch-all
   | 'unknown';
 
@@ -61,11 +85,11 @@ interface NotificationRouteSpec {
   path: string;
   // The set of roles that may navigate to this path. If the
   // authenticated user's role is not in this set, the route resolver
-  // returns `null` and the UI keeps the user on the dropdown.
+  // returns the safe fallback instead of navigating.
   roles: ReadonlyArray<UserRole>;
   // Optional: a regex that captures a numeric id from the message so
   // we can build `/review-tasks/123` style URLs. The first capture group
-  // is the id.
+  // is the id. Reserved for future per-entity routing — currently unused.
   idPattern?: RegExp;
 }
 
@@ -103,6 +127,21 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Paper] review result',
     spec: { path: ROUTES.PAPERS, roles: ['Researcher', 'Admin'] },
   },
+  {
+    kind: 'paper-needs-revision',
+    prefix: '[Paper] needs revision',
+    spec: { path: ROUTES.PAPERS, roles: ['Researcher', 'Admin'] },
+  },
+  {
+    kind: 'payment-result',
+    prefix: '[Payment] result',
+    spec: { path: ROUTES.PAYMENT_RETURN, roles: ['Researcher', 'Admin'] },
+  },
+  {
+    kind: 'membership-result',
+    prefix: '[Membership] result',
+    spec: { path: ROUTES.PREMIUM_PACKAGES, roles: ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin'] },
+  },
 
   // ── Reviewer events ───────────────────────────────────────────────────────
   {
@@ -111,23 +150,18 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'], idPattern: /\b(\d+)\b/ },
   },
   {
-    kind: 'withdrawal-approved',
-    prefix: '[Wallet] withdrawal approved',
-    spec: { path: ROUTES.EARNINGS_WALLET, roles: ['Reviewer', 'Admin'] },
+    kind: 'review-request-cancelled',
+    prefix: '[Review] cancelled',
+    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'] },
   },
   {
-    kind: 'withdrawal-denied',
-    prefix: '[Wallet] withdrawal denied',
-    spec: { path: ROUTES.EARNINGS_WALLET, roles: ['Reviewer', 'Admin'] },
+    kind: 'review-deadline-reminder',
+    prefix: '[Review] deadline',
+    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'] },
   },
   {
-    kind: 'withdrawal-processing',
-    prefix: '[Wallet] withdrawal processing',
-    spec: { path: ROUTES.EARNINGS_WALLET, roles: ['Reviewer', 'Admin'] },
-  },
-  {
-    kind: 'withdrawal-completed',
-    prefix: '[Wallet] withdrawal completed',
+    kind: 'reviewer-payment-result',
+    prefix: '[Wallet] payment result',
     spec: { path: ROUTES.EARNINGS_WALLET, roles: ['Reviewer', 'Admin'] },
   },
 
@@ -156,8 +190,60 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
       roles: ['Lecturer', 'Admin'],
     },
   },
+  {
+    kind: 'seminar-participant-response',
+    prefix: '[Seminar] participant',
+    spec: {
+      path: ROUTES.SEMINAR_WORKSPACE,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'seminar-feedback-available',
+    prefix: '[Seminar] feedback',
+    spec: {
+      path: ROUTES.SEMINAR_WORKSPACE,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'group-membership-response',
+    prefix: '[Group] membership',
+    spec: {
+      path: ROUTES.RESEARCH_GROUP,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
 
   // ── Graduate Student events ───────────────────────────────────────────────
+  // Seminar invitation → redirect to the Seminar workspace. Accept/Decline
+  // lives on the destination page (per the spec — never on the dropdown).
+  // Both Lecturer and Graduate Student share the seminar workspace route;
+  // the role guard permits either.
+  {
+    kind: 'seminar-invitation',
+    prefix: '[Seminar] invitation',
+    spec: {
+      path: ROUTES.SEMINAR_WORKSPACE,
+      roles: ['Graduate Student', 'Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'seminar-schedule-update',
+    prefix: '[Seminar] schedule',
+    spec: {
+      path: ROUTES.SEMINAR_WORKSPACE,
+      roles: ['Graduate Student', 'Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'added-to-research-group',
+    prefix: '[Student] added to group',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
   {
     kind: 'topic-assigned',
     prefix: '[Student] topic assigned',
@@ -180,6 +266,14 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Admin'] },
   },
   {
+    kind: 'learning-material-available',
+    prefix: '[Student] learning material',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
     kind: 'report-evaluated',
     prefix: '[Student] report evaluated',
     spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Admin'] },
@@ -197,21 +291,63 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     spec: { path: ROUTES.ADMIN_ROLE_REQUESTS, roles: ['Admin'] },
   },
   {
-    kind: 'withdrawal-request-submitted',
-    prefix: '[Admin] withdrawal request',
-    spec: { path: ROUTES.ADMIN_TRANSACTIONS, roles: ['Admin'] },
-  },
-  {
     kind: 'violation-report-submitted',
     prefix: '[Admin] violation report',
     spec: { path: ROUTES.ADMIN_REPORTS, roles: ['Admin'] },
   },
+  {
+    kind: 'account-management-event',
+    prefix: '[Admin] account',
+    spec: { path: ROUTES.ADMIN_ACCOUNTS, roles: ['Admin'] },
+  },
+  {
+    kind: 'admin-payment-issue',
+    prefix: '[Admin] payment',
+    spec: { path: ROUTES.ADMIN_TRANSACTIONS, roles: ['Admin'] },
+  },
 
   // ── Platform-wide ─────────────────────────────────────────────────────────
+  {
+    kind: 'role-request-accepted',
+    prefix: '[Account] role accepted',
+    spec: { path: ROUTES.ACCOUNT_SETTINGS, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'role-request-rejected',
+    prefix: '[Account] role rejected',
+    spec: { path: ROUTES.ACCOUNT_SETTINGS, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'account-status-changed',
+    prefix: '[Account] status changed',
+    spec: { path: ROUTES.ACCOUNT_SETTINGS, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
   {
     kind: 'account-platform-update',
     prefix: '[Account]',
     spec: { path: ROUTES.ACCOUNT_SETTINGS, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'system-update',
+    prefix: '[System]',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+
+  // ── Forum / reply (all roles) ─────────────────────────────────────────────
+  {
+    kind: 'forum-reply',
+    prefix: '[Forum] reply',
+    spec: { path: ROUTES.FORUM, roles: [
       'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
     ] },
   },
@@ -220,7 +356,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
 // Infer a notification kind from the BE-supplied message text. The BE
 // authors the message, so the prefixes are a contract — if the BE changes
 // the wording, this function will return `unknown` and the UI falls back
-// to keeping the user on the dropdown. This is safer than guessing.
+// to the safe destination. This is safer than guessing.
 export function inferNotificationKind(message: string): NotificationKind {
   const normalized = (message ?? '').trim();
   for (const { kind, prefix } of ROUTE_SPECS) {
@@ -231,29 +367,64 @@ export function inferNotificationKind(message: string): NotificationKind {
   return 'unknown';
 }
 
+// Safe fallback destination for any notification that does not match a
+// known prefix, or whose matched prefix targets a role the current user
+// does not hold. Returning the shared /forum route (which every role can
+// reach) keeps the user in a page they can actually view without
+// deep-linking them past their role boundary.
+//
+// Exported as a getter so tests / callers can document the contract —
+// and so a future change to the fallback destination only touches this
+// single definition.
+export function getSafeFallbackRoute(): string {
+  return ROUTES.FORUM;
+}
+
 // Resolve a notification to a target route, given the current role.
 //
-// Returns `null` when:
+// Returns the safe fallback (never null) when:
 //   * the message did not match any known prefix, OR
 //   * the matched prefix targets a role the current user does not hold.
 //
-// Callers must treat `null` as "stay on the dropdown" — never navigate
-// elsewhere. This is the single source of truth for the
-// "navigate-into-a-page-they-cannot-access" rule.
+// This is the single source of truth for the
+// "navigate-into-a-page-they-cannot-access" rule. The UI MUST always
+// navigate to the returned path (even when it is the fallback) so the
+// dropdown closes consistently.
 export function resolveNotificationRoute(
   message: string,
   currentRole: UserRole | string | null | undefined,
-): string | null {
+): string {
   const role: UserRole | null =
     typeof currentRole === 'string' && currentRole.length > 0
       ? (currentRole as UserRole)
       : null;
   const kind = inferNotificationKind(message);
-  if (kind === 'unknown') return null;
+
+  // Withdrawal messages are intentionally suppressed: while
+  // AppConfig.features.enableWithdrawals is false, the withdrawal
+  // destination route is unreachable. Returning the safe fallback for
+  // any prefix matching `[Wallet] withdrawal` keeps the dropdown honest
+  // without ever deep-linking into a hidden page.
+  if (kind === 'unknown') {
+    return getSafeFallbackRoute();
+  }
+  if (
+    !AppConfig.features.enableWithdrawals &&
+    message.trim().toLowerCase().startsWith('[wallet] withdrawal')
+  ) {
+    return getSafeFallbackRoute();
+  }
+
   const spec = ROUTE_SPECS.find((entry) => entry.kind === kind)?.spec;
-  if (!spec) return null;
-  if (!role) return null;
-  if (!spec.roles.includes(role)) return null;
+  if (!spec) {
+    return getSafeFallbackRoute();
+  }
+  if (!role) {
+    return getSafeFallbackRoute();
+  }
+  if (!spec.roles.includes(role)) {
+    return getSafeFallbackRoute();
+  }
   // The idPattern branch is reserved for routes like `/review-tasks/:id`
   // that need a captured numeric id from the message. We currently don't
   // have any such route wired up, but the hook keeps the seam so adding
@@ -265,3 +436,7 @@ export function resolveNotificationRoute(
 // new entry to `ROUTE_SPECS` automatically extends this list.
 export const KNOWN_NOTIFICATION_KINDS: ReadonlyArray<NotificationKind> =
   ROUTE_SPECS.map((entry) => entry.kind);
+
+// Convenience used by tests: list the explicit kind for which the
+// withdrawal destination has been disabled in this build.
+export const DISABLED_KINDS: ReadonlyArray<NotificationKind> = [];

@@ -76,23 +76,31 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
   const handleItemClick = useCallback(
     (notification: NotificationItem) => {
       // Dedupe concurrent clicks while a mark-read request is in flight —
-      // prevents double-fire when the user double-clicks an item.
+      // prevents double-fire when the user double-clicks an item. The
+      // pendingRef is also reused for the navigation step so an already
+      // dispatched click can't fire mark-read or navigation a second time.
       if (pendingRef.current.has(notification.id)) return;
-      // Mark read first — only navigate when the BE confirmed. The
-      // optimistic flip inside `markRead` updates the bell badge
-      // immediately; if the BE call fails we stay on the dropdown.
       pendingRef.current.add(notification.id);
       void (async () => {
         try {
+          // Only mark-read for unread rows. Reading the BE on an already-read
+          // row is wasted bandwidth and would re-bump the unread badge if the
+          // BE round-trips a fresh optimistic row.
           if (!notification.isRead) {
             const ok = await markRead(notification.id);
-            if (!ok) return;
+            if (!ok) {
+              // The BE refused the update — keep the dropdown open so the
+              // user can retry. Navigation must NOT happen on a failed
+              // mark-read so the optimistic flip doesn't lie to the user.
+              return;
+            }
           }
+          // The resolver always returns a route (a safe fallback at minimum),
+          // so the dropdown closes consistently and the user lands on a
+          // page they can actually reach.
           const target = resolveNotificationRoute(notification.message, role);
           setIsOpen(false);
-          if (target) {
-            onNavigate(target);
-          }
+          onNavigate(target);
         } finally {
           pendingRef.current.delete(notification.id);
         }
@@ -264,6 +272,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
 // human-readable heading. Centralized so test snapshots stay stable.
 function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
   switch (kind) {
+    // Researcher
     case 'review-request-accepted':
       return 'Review request accepted';
     case 'review-request-rejected':
@@ -274,39 +283,85 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
       return 'Review completed';
     case 'paper-status-changed':
       return 'Paper status updated';
+    case 'paper-needs-revision':
+      return 'Paper needs revision';
     case 'review-result-available':
       return 'Review result available';
+    case 'payment-result':
+      return 'Payment update';
+    case 'membership-result':
+      return 'Membership update';
+
+    // Reviewer
     case 'new-review-request':
       return 'New review request';
-    case 'withdrawal-approved':
-    case 'withdrawal-denied':
-    case 'withdrawal-processing':
-    case 'withdrawal-completed':
-      return 'Wallet withdrawal update';
+    case 'review-request-cancelled':
+      return 'Review request cancelled';
+    case 'review-deadline-reminder':
+      return 'Review deadline reminder';
+    case 'reviewer-payment-result':
+      return 'Wallet payment update';
+
+    // Lecturer
     case 'student-report-submitted':
       return 'Report submitted';
     case 'student-report-resubmitted':
       return 'Report resubmitted';
     case 'student-topic-requested':
       return 'New topic request';
+    case 'seminar-participant-response':
+      return 'Seminar participant update';
+    case 'seminar-feedback-available':
+      return 'Seminar feedback available';
+    case 'group-membership-response':
+      return 'Group membership update';
+
+    // Graduate Student
+    case 'seminar-invitation':
+      return 'Seminar invitation';
+    case 'seminar-schedule-update':
+      return 'Seminar schedule update';
+    case 'added-to-research-group':
+      return 'Added to research group';
     case 'topic-assigned':
       return 'Topic assigned';
     case 'group-invitation':
       return 'Group invitation';
     case 'milestone-opened':
       return 'Milestone opened';
+    case 'learning-material-available':
+      return 'New learning material';
     case 'report-evaluated':
       return 'Report evaluated';
     case 'report-rejected':
       return 'Report rejected';
+
+    // Admin
     case 'role-request-submitted':
       return 'New role request';
-    case 'withdrawal-request-submitted':
-      return 'New withdrawal request';
     case 'violation-report-submitted':
       return 'New violation report';
+    case 'account-management-event':
+      return 'Account management update';
+    case 'admin-payment-issue':
+      return 'Payment issue';
+
+    // Platform
+    case 'role-request-accepted':
+      return 'Role request accepted';
+    case 'role-request-rejected':
+      return 'Role request rejected';
+    case 'account-status-changed':
+      return 'Account status changed';
     case 'account-platform-update':
       return 'Account update';
+    case 'system-update':
+      return 'System update';
+
+    // Cross-role
+    case 'forum-reply':
+      return 'Forum reply';
+
     case 'unknown':
     default:
       return 'Notification';

@@ -1,13 +1,17 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
+import { useAuth } from '../../context/AuthContext';
+import { GoogleLoginError } from '../../services/googleAuth.service';
+import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { useAuthStore } from '../../store';
 import { ROUTES } from '../../utils/constants';
 import type { AuthResponse, UserRole, RegisterPayload } from '../../types/auth';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
 import { RegisterSuccessModal } from './components/RegisterSuccessModal';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
@@ -70,6 +74,7 @@ const passwordRegex = {
 export const Register = () => {
   const navigate = useNavigate();
   const authStore = useAuthStore();
+  const { loginWithGoogle } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
     {}
@@ -81,6 +86,12 @@ export const Register = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+
+  // GIS-credential Google sign-up UI state. Same double-submit guard as the
+  // Login page so rapid clicks cannot fire the GIS callback twice.
+  const googleInFlightRef = useRef(false);
+  const [googlePending, setGooglePending] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -240,6 +251,38 @@ export const Register = () => {
   const handleUploadRemove = () => {
     setPdfFile(null);
     setPdfUrl(null);
+  };
+
+  // GIS-credential Google sign-up handler. The agreed FE ↔ BE contract is
+  // `POST /api/Auth/google-login` with `{ credential }` — the BE decides
+  // whether the user is new or returning and returns `isNewUser` /
+  // `requiresOnboarding` so AuthContext can route them to the right
+  // landing page. New users land on `/complete-google-registration`.
+  const handleGoogleCredential = async (
+    response: GoogleCredentialResponse,
+  ): Promise<void> => {
+    if (googleInFlightRef.current) return;
+    setGoogleError(null);
+    googleInFlightRef.current = true;
+    setGooglePending(true);
+
+    try {
+      authService.logout();
+      await loginWithGoogle(response);
+    } catch (err: unknown) {
+      const fallback =
+        'Google sign-up failed. Please try again or use the email & password option.';
+      const message =
+        err instanceof GoogleLoginError && err.message
+          ? err.message
+          : err instanceof Error && err.message
+            ? err.message
+            : fallback;
+      setGoogleError(message);
+    } finally {
+      googleInFlightRef.current = false;
+      setGooglePending(false);
+    }
   };
 
   return (
@@ -524,6 +567,23 @@ export const Register = () => {
         </Button>
 
         <div className={styles.divider}>or</div>
+
+        <div className={styles.googleButtonWrapper}>
+          <GoogleSignInButton
+            label="Sign up with Google"
+            onCredential={handleGoogleCredential}
+            disabled={isSubmitting || isUploadingPdf || googlePending}
+            pending={googlePending}
+            errorMessage={googleError}
+            intent="signup"
+          />
+        </div>
+
+        {googleError && (
+          <div className={styles.formError} role="alert">
+            {googleError}
+          </div>
+        )}
 
         <div className={styles.footer}>
           <p className={styles.footerText}>

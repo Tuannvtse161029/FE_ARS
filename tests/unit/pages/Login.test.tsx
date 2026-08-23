@@ -1,60 +1,44 @@
 /**
- * Tests for Agent 52 — Login.tsx Google Sign-In flow.
+ * Tests for Login.tsx — GIS-credential Google sign-in (agreed FE ↔ BE contract).
  *
- * Critical contracts (post follow-up correction):
- *   - The page posts the GIS `credential` EXACTLY once per callback.
- *   - The page does NOT authenticate from any other GIS field.
- *   - The page persists the session via the existing storage/authStore
- *     pattern — it does NOT modify AuthContext.
- *   - The page navigates with `replace: true` on every route change.
- *   - Pending / Rejected / Guest users route to /forum explicitly.
- *   - Duplicate in-flight submissions are blocked by the in-flight ref.
- *   - First-time Google users route to /complete-google-registration
- *     ONLY when the BE returns `isNewUser === true` OR
- *     `requiresOnboarding === true`. We never infer onboarding from a
- *     missing role property alone.
- *   - The page surfaces a recoverable error message on failure.
+ * Contract:
+ *   1. The user clicks the Google button. GIS returns a `CredentialResponse`
+ *      whose `credential` field is the signed Google ID token (JWT).
+ *   2. `Login.tsx` calls `AuthContext.loginWithGoogle(response)` exactly once
+ *      per click (UI-level in-flight guard).
+ *   3. `loginWithGoogle` is responsible for forwarding `{ credential }` to
+ *      `POST /api/Auth/google-login`, persisting the session, and routing
+ *      the user. The Login page does NOT call `api.post` directly and does
+ *      NOT touch `storage` / `useAuthStore` itself.
+ *   4. Errors surface as a recoverable alert message. The user remains on
+ *      /login on failure.
+ *   5. The button is in-flight deduped so a duplicate GIS callback does
+ *      not fire `loginWithGoogle` twice.
+ *   6. `authService.logout()` runs defensively before forwarding the
+ *      credential so a guest leaves anonymous state behind (null-safe).
+ *
+ * These tests pin the Login page surface only; the deeper AuthContext
+ * routing logic is covered by AuthContext.loginWithGoogle tests.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-const postMock = vi.fn();
-const setAuthDataMock = vi.fn();
-const authStoreLoginMock = vi.fn();
-const authStoreLogoutMock = vi.fn();
-
-vi.mock('../../../src/services/axios', () => ({
-  default: { post: (...args: unknown[]) => postMock(...args) },
-}));
+const loginWithGoogleMock = vi.fn();
+const authLogoutMock = vi.fn();
 
 vi.mock('../../../src/services/auth.service', () => ({
   authService: {
-    setAuthData: (...args: unknown[]) => setAuthDataMock(...args),
-    logout: vi.fn(),
-  },
-}));
-
-vi.mock('../../store', () => ({
-  useAuthStore: () => ({
-    login: (...args: unknown[]) => authStoreLoginMock(...args),
-    logout: (...args: unknown[]) => authStoreLogoutMock(...args),
-  }),
-}));
-
-vi.mock('../../../src/utils/storage', () => ({
-  storage: {
-    setToken: vi.fn(),
-    setUser: vi.fn(),
-    getToken: vi.fn(),
-    setRememberMe: vi.fn(),
+    setAuthData: vi.fn(),
+    logout: (...args: unknown[]) => authLogoutMock(...args),
   },
 }));
 
 vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({
     login: vi.fn(),
+    loginWithGoogle: (...args: unknown[]) => loginWithGoogleMock(...args),
     isLoading: false,
     error: null,
     user: null,
@@ -64,27 +48,16 @@ vi.mock('../../../src/context/AuthContext', () => ({
   }),
 }));
 
-vi.mock('../../../src/hooks/useGoogleIdentity', () => ({
-  useGoogleIdentity: ({ onCredential }: { onCredential: (r: unknown) => void }) => ({
-    status: 'ready',
-    buttonContainerRef: { current: null },
-    isReady: true,
-    errorMessage: null,
-    // Expose the callback for direct invocation in tests.
-    __onCredential: onCredential,
-  }),
-}));
-
 vi.mock('../../../src/components/auth/GoogleSignInButton', () => ({
   GoogleSignInButton: ({
     onCredential,
   }: {
-    onCredential: (r: unknown) => void;
+    onCredential?: (r: { credential: string }) => void;
   }) => (
     <button
       type="button"
       data-testid="google-button"
-      onClick={() => onCredential({ credential: 'gis-credential' })}
+      onClick={() => onCredential?.({ credential: 'gis-credential-token' })}
     >
       mock-google-button
     </button>
@@ -139,10 +112,9 @@ vi.mock('./components/RoleSelectionModal', () => ({
 import Login from '../../../src/pages/Login/Login';
 
 beforeEach(() => {
-  postMock.mockReset();
-  setAuthDataMock.mockReset();
-  authStoreLoginMock.mockReset();
-  authStoreLogoutMock.mockReset();
+  loginWithGoogleMock.mockReset();
+  authLogoutMock.mockReset();
+  loginWithGoogleMock.mockResolvedValue(undefined);
 });
 
 function mountLogin() {
@@ -155,250 +127,46 @@ function mountLogin() {
           path="/complete-google-registration"
           element={<div data-testid="onboarding-marker">onboarding</div>}
         />
-        <Route path="/admin" element={<div data-testid="admin-marker">admin</div>} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
-describe('Login — Google Sign-In credential flow', () => {
-  it('posts the credential EXACTLY once for a successful Existing-User response', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-from-google',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-      },
-    });
+function fireGoogleClick() {
+  const button = screen.getByTestId('google-button');
+  fireEvent.click(button);
+}
 
+describe('Login — GIS credential Google sign-in (page surface)', () => {
+  it('forwards the GIS credential to loginWithGoogle EXACTLY once per click', async () => {
     mountLogin();
-
     fireGoogleClick();
 
     await waitFor(() => {
-      expect(postMock).toHaveBeenCalledTimes(1);
+      expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
     });
 
-    const [url, body] = postMock.mock.calls[0];
-    expect(url).toBe('/api/auth/google-login');
-    expect(body).toEqual({ credential: 'gis-credential' });
-    // No client-decoded fields leak into the POST body.
-    expect(Object.keys(body)).toEqual(['credential']);
-  });
-
-  it('persists the session via storage/authStore without touching AuthContext', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(setAuthDataMock).toHaveBeenCalledTimes(1);
-    });
-    const authResponse = setAuthDataMock.mock.calls[0][0];
-    expect(authResponse.token).toBe('jwt-1');
-    expect(authResponse.email).toBe('user@example.com');
-    expect(authResponse.role).toBe('Researcher');
-    expect(authResponse.isActive).toBe(true);
-    expect(authResponse.verificationStatus).toBe('Accepted');
-
-    await waitFor(() => {
-      expect(authStoreLoginMock).toHaveBeenCalledTimes(1);
+    // The first argument must be the GIS CredentialResponse so the
+    // AuthContext can extract the credential string and POST it to BE.
+    expect(loginWithGoogleMock.mock.calls[0][0]).toEqual({
+      credential: 'gis-credential-token',
     });
   });
 
-  it('routes an Approved + Active business-role user to /forum (existing landing)', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-      },
-    });
-
+  it('runs null-safe guest cleanup (authService.logout) BEFORE forwarding the credential', async () => {
     mountLogin();
-
     fireGoogleClick();
 
     await waitFor(() => {
-      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
+      expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
     });
-  });
-
-  it('routes a Pending user to /forum (explicit, not via guard)', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: false,
-        verificationStatus: 'Pending',
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
-    });
-  });
-
-  it('routes a Rejected user to /forum (existing decision state)', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: false,
-        verificationStatus: 'Rejected',
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
-    });
-  });
-
-  it('routes a First-time user (isNewUser=true) to /complete-google-registration', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: false,
-        verificationStatus: 'Pending',
-        isNewUser: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
-    });
-
-    // Existing user should NOT be on /forum.
-    expect(screen.queryByTestId('forum-marker')).toBeNull();
-  });
-
-  it('routes a requiresOnboarding=true user to /complete-google-registration', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: false,
-        verificationStatus: 'Pending',
-        requiresOnboarding: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
-    });
-  });
-
-  it('does NOT infer onboarding from a missing role alone', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-        // No isNewUser / requiresOnboarding flag — the user is approved.
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
-  });
-
-  it('surfaces a recoverable error message on a 401 invalid credential', async () => {
-    postMock.mockRejectedValueOnce({ response: { status: 401 } });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-    });
-
-    // The user remains on /login (no auto-navigation on failure).
-    expect(screen.queryByTestId('forum-marker')).toBeNull();
-    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
+    expect(authLogoutMock).toHaveBeenCalledTimes(1);
   });
 
   it('prevents duplicate in-flight submissions when clicked twice rapidly', async () => {
-    let release: (v: unknown) => void = () => {};
-    postMock.mockImplementationOnce(
-      () => new Promise((resolve) => {
-        release = resolve;
+    loginWithGoogleMock.mockImplementationOnce(
+      () => new Promise(() => {
+        /* never resolves — keeps the in-flight flag set */
       }),
     );
 
@@ -409,187 +177,26 @@ describe('Login — Google Sign-In credential flow', () => {
     fireEvent.click(button);
     fireEvent.click(button);
 
-    // The first click fires the POST, the next two are blocked by the
-    // in-flight ref.
-    expect(postMock).toHaveBeenCalledTimes(1);
-
-    release({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-      },
-    });
+    expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
   });
 
-  // ── First-time branch: refuse to persist when the BE response is missing
-  //    required fields. These checks run BEFORE any routing decision. Without
-  //    them, CompleteGoogleRegistration would treat an invalid session as
-  //    authenticated. See Login.tsx "Mandatory BE-response validation".
-  it('does NOT persist any auth state when the BE response is missing a token', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        // token intentionally omitted
-        email: 'user@example.com',
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-        isNewUser: true,
-      },
-    });
+  it('surfaces a recoverable error message when loginWithGoogle rejects', async () => {
+    loginWithGoogleMock.mockRejectedValueOnce(
+      Object.assign(new Error('Google sign-in failed'), {
+        name: 'GoogleLoginError',
+        code: 'INVALID_CREDENTIAL',
+      }),
+    );
 
     mountLogin();
-
     fireGoogleClick();
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    // No persistence, no navigation.
-    expect(setAuthDataMock).not.toHaveBeenCalled();
-    expect(authStoreLoginMock).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
+    // The user remains on /login (no auto-navigation on failure).
     expect(screen.queryByTestId('forum-marker')).toBeNull();
-  });
-
-  it('does NOT persist any auth state when the BE response is missing a positive userId', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        fullName: 'Google User',
-        // userId intentionally zero / missing
-        userId: 0,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-        isNewUser: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-    });
-
-    expect(setAuthDataMock).not.toHaveBeenCalled();
-    expect(authStoreLoginMock).not.toHaveBeenCalled();
     expect(screen.queryByTestId('onboarding-marker')).toBeNull();
-    expect(screen.queryByTestId('forum-marker')).toBeNull();
-  });
-
-  it('does NOT persist any auth state when the BE response is missing an email', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        // email intentionally omitted
-        fullName: 'Google User',
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-        isNewUser: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-    });
-
-    expect(setAuthDataMock).not.toHaveBeenCalled();
-    expect(authStoreLoginMock).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
-    expect(screen.queryByTestId('forum-marker')).toBeNull();
-  });
-
-  it('does NOT persist any auth state when the BE response is missing a fullName', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'user@example.com',
-        // fullName intentionally omitted
-        userId: 42,
-        role: 'Researcher',
-        roleId: 1,
-        roles: ['Researcher'],
-        isActive: true,
-        verificationStatus: 'Accepted',
-        isNewUser: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-    });
-
-    expect(setAuthDataMock).not.toHaveBeenCalled();
-    expect(authStoreLoginMock).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
-    expect(screen.queryByTestId('forum-marker')).toBeNull();
-  });
-
-  it('persists a first-time user with BE-derived data only (no fabricated roleId/roleName)', async () => {
-    postMock.mockResolvedValueOnce({
-      data: {
-        token: 'jwt-1',
-        email: 'new@example.com',
-        fullName: 'New User',
-        userId: 99,
-        // role intentionally omitted — backend has not assigned a role yet
-        isActive: false,
-        verificationStatus: 'Pending',
-        isNewUser: true,
-      },
-    });
-
-    mountLogin();
-
-    fireGoogleClick();
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
-    });
-
-    // The authStore.login call must reflect the BE-derived shape, not
-    // invented roleId/roleName/defaults.
-    const [loginArg] = authStoreLoginMock.mock.calls[0];
-    expect(loginArg.id).toBe(99);
-    expect(loginArg.email).toBe('new@example.com');
-    expect(loginArg.fullName).toBe('New User');
-    expect(loginArg.roleId).toBeNull();
-    expect(loginArg.roleName).toBeNull();
-    expect(loginArg.isActive).toBe(false);
-    expect(loginArg.verificationStatus).toBe('Pending');
   });
 });
-
-function fireGoogleClick() {
-  const button = screen.getByTestId('google-button');
-  fireEvent.click(button);
-}

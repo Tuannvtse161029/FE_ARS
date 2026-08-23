@@ -1,30 +1,32 @@
-// Agent 54 — Reusable Google sign-in button.
+// Google sign-in button.
 //
-// The new BE OAuth flow (Agent 54) replaces the legacy GIS credential
-// swap. The button no longer loads `accounts.google.com/gsi/client`;
-// instead it issues `window.location.assign(GET /api/Auth/google-oauth-login)`
-// when clicked. The BE handles the redirect to Google, the user consents,
-// and the BE then redirects the browser back to
-// `/auth/google/callback?code=...` (handled by `GoogleCallback.tsx`).
+// The agreed FE ↔ BE contract is the GIS credential flow:
+//   1. The user clicks "Sign in with Google".
+//   2. `useGoogleIdentity` renders the official Google button and wires the
+//      GIS `callback` to the supplied `onCredential` handler.
+//   3. The handler POSTs the opaque `credential` to `POST /api/Auth/google-login`
+//      via `googleAuthService.postGoogleLogin`. The BE validates the Google
+//      ID token, finds or creates the ARS user, and returns the ARS session.
 //
-// Backward compatibility:
-//   - `onCredential` is still accepted but ignored (legacy Agent 52 hooks
-//     wired it through `useGoogleIdentity`). We keep the prop so a future
-//     GIS fallback does not require a parent rewrite.
-//   - `onBegin` is the new handler. The Login page wires it to
-//     `googleOAuthService.beginGoogleOAuth()` with a guarded in-flight lock.
-//
-// The button still surfaces a recoverable loading / disabled state while
-// the redirect is in flight, and never persists anything before the BE
-// callback fires.
+// For backwards compatibility the deprecated Authorization Code redirect
+// flow (`onBegin` + `pending`) is still accepted — see `Login.googleOAuth` and
+// `GoogleCallback`. New code should always prefer the credential mode.
+
+import { useEffect } from 'react';
 import { Button } from '../../components/Button';
 import { GoogleIcon } from '../../assets/icons/GoogleIcon';
+import { useGoogleIdentity } from '../../hooks/useGoogleIdentity';
 import styles from './GoogleSignInButton.module.css';
 
 export interface GoogleSignInButtonProps {
-  /** Legacy hook — ignored under the Agent 54 OAuth flow. */
-  onCredential?: (response: unknown) => void;
-  /** Called when the user dismisses the Google popup without selecting an account. */
+  /**
+   * Credential flow — receives the GIS `CredentialResponse`. The caller MUST
+   * POST `response.credential` exactly once to `/api/Auth/google-login`. When
+   * this prop is provided the component renders the official Google button
+   * (powered by `useGoogleIdentity`).
+   */
+  onCredential?: (response: import('../../types/googleAuth').GoogleCredentialResponse) => void;
+  /** Called when the user dismisses the GIS popup without picking an account. */
   onCancel?: () => void;
   /** Disable interaction (e.g. while a submission is in flight). */
   disabled?: boolean;
@@ -32,28 +34,118 @@ export interface GoogleSignInButtonProps {
   label?: string;
   /** Optional error message slot, used when OAuth cannot be started. */
   errorMessage?: string | null;
-  /** Agent 54 — invoked when the user clicks the button. */
+  /**
+   * @deprecated Authorization Code flow handler. Retained for the legacy
+   * Login redirect path; new surfaces should use `onCredential`.
+   */
   onBegin?: () => void;
-  /** Agent 54 — true while the OAuth redirect is in flight. */
+  /** @deprecated Authorization Code flow in-flight flag. */
   pending?: boolean;
+  /**
+   * Optional button UX overrides forwarded to `useGoogleIdentity`.
+   * Only applies to the credential flow (`onCredential` provided).
+   */
+  buttonOptions?: {
+    type?: 'standard' | 'icon';
+    theme?: 'outline' | 'filled_blue' | 'filled_black';
+    size?: 'large' | 'medium' | 'small';
+    text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+    shape?: 'rectangular' | 'pill' | 'circle' | 'square';
+  };
+  /** Visible on the credential flow only. Forwarded to GIS as `text`. */
+  intent?: 'signin' | 'signup';
 }
 
 export const GoogleSignInButton = ({
-  onCredential: _onCredential,
-  onCancel: _onCancel,
+  onCredential,
+  onCancel,
   disabled = false,
   label = 'Sign in with Google',
   errorMessage,
   onBegin,
   pending = false,
+  buttonOptions,
+  intent = 'signin',
 }: GoogleSignInButtonProps) => {
-  // Agent 54 — the GIS loader hook is intentionally NOT called here. The
-  // new BE flow does not load `accounts.google.com/gsi/client` and we
-  // never show the legacy GIS-rendered button.
+  // Credential flow — render the official GIS button. The hook loads
+  // accounts.google.com/gsi/client exactly once per session and exposes a
+  // container ref the official button attaches to.
+  const {
+    status: gisStatus,
+    buttonContainerRef,
+    isReady: gisReady,
+    errorMessage: gisErrorMessage,
+  } = useGoogleIdentity({
+    onCredential: onCredential ?? (() => {}),
+    onCancel,
+    buttonOptions: {
+      type: buttonOptions?.type ?? 'standard',
+      theme: buttonOptions?.theme ?? 'outline',
+      size: buttonOptions?.size ?? 'large',
+      text:
+        buttonOptions?.text ??
+        (intent === 'signup' ? 'signup_with' : 'signin_with'),
+      shape: buttonOptions?.shape ?? 'rectangular',
+    },
+  });
 
-  const showSpinner = pending;
-  const visibleError = errorMessage;
+  // Defensive: when the parent unmounts mid-render (route change), make sure
+  // GIS stops auto-selecting on the next mount.
+  useEffect(() => {
+    return () => {
+      try {
+        window.google?.accounts?.id?.disableAutoSelect();
+      } catch {
+        /* GIS may not be initialised yet — safe to ignore */
+      }
+    };
+  }, []);
 
+  // When the credential handler is provided, render the GIS-mounted button.
+  if (onCredential) {
+    const visibleError = errorMessage ?? gisErrorMessage;
+    const showSpinner = pending || (gisStatus === 'loading' && !gisReady);
+
+    return (
+      <div className={styles.wrap}>
+        <div
+          ref={buttonContainerRef}
+          className={styles.gisMount}
+          data-testid="google-gis-button"
+          data-status={gisStatus}
+          aria-busy={gisStatus === 'loading'}
+        />
+        {/* Fallback button — shown if GIS is unavailable so the user still has
+            a non-Google path forward (the page already offers email/password). */}
+        {gisStatus === 'unavailable' || gisStatus === 'no-client-id' ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            fullWidth
+            disabled
+            className={styles.fallbackButton}
+          >
+            <GoogleIcon />
+            <span>{label}</span>
+          </Button>
+        ) : null}
+        {showSpinner && gisReady ? (
+          <p className={styles.helper} role="status">
+            Completing your Google sign-in…
+          </p>
+        ) : null}
+        {visibleError && (
+          <p className={styles.error} role="alert">
+            {visibleError}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Legacy redirect flow — kept so existing Login/Register redirect wiring
+  // doesn't break. The official GIS button is intentionally NOT rendered here.
   return (
     <div className={styles.wrap}>
       <Button
@@ -63,16 +155,16 @@ export const GoogleSignInButton = ({
         fullWidth
         onClick={onBegin}
         disabled={disabled || pending}
-        isLoading={showSpinner}
+        isLoading={pending}
         className={styles.fallbackButton}
         data-testid="google-sign-in-button"
       >
         <GoogleIcon />
         <span>{label}</span>
       </Button>
-      {visibleError && (
+      {errorMessage && (
         <p className={styles.error} role="alert">
-          {visibleError}
+          {errorMessage}
         </p>
       )}
     </div>

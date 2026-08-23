@@ -10,6 +10,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
+import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
 import { AppConfig } from '../config/app';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
@@ -457,6 +458,15 @@ export const MainLayout = () => {
             />
           </div>
         </header>
+
+        {/* Welcome-back banner — Agent banner: renders a transient greeting
+            after a genuine successful login (email/password or Google OAuth).
+            Lives in the shared layout so every role (Researcher, Reviewer,
+            Lecturer, Graduate Student, Admin) sees it through the single
+            MainLayout slot. The banner reads its visibility from a session-
+            only signal store; on refresh / route change the store stays empty
+            so the banner does NOT re-show. */}
+        <WelcomeBackBanner />
 
         {/* Content Body */}
         <main className={styles.contentBody}>

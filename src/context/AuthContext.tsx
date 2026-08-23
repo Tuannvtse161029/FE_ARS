@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
+import { useWelcomeSignal } from '../store/welcomeSignal';
 import authService, { clearAuthSession } from '../services/auth.service';
 import { userService } from '../services/user.service';
-import { ROUTES } from '../utils/constants';
+import { googleAuthService } from '../services/googleAuth.service';
+import { ROUTES } from '../routes/paths';
 import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
+import type { GoogleCredentialResponse } from '../types/googleAuth';
 import { isAdminUser, landingRouteForRoleName } from '../utils/roleNormalizer';
 import { storage } from '../utils/storage';
 
@@ -14,6 +17,17 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (credentials: LoginRequest) => Promise<void>;
+  /**
+   * GIS-credential Google sign-in. POSTs the opaque Google ID token to
+   * `POST /api/Auth/google-login` via `googleAuthService.postGoogleLogin`
+   * and routes the user to the right workspace — new users go to the
+   * existing onboarding page, pending/rejected users land on /forum,
+   * accepted users land on their workspace.
+   */
+  loginWithGoogle: (
+    credentialOrResponse: string | GoogleCredentialResponse,
+    options?: { rememberMe?: boolean },
+  ) => Promise<void>;
   logout: () => void;
   /**
    * Agent 53 — failed-session recovery (401 / 403 / token-expired). Clears
@@ -66,6 +80,14 @@ function resolveEffectiveRole(
   const isActive = freshUser?.isActive ?? response.isActive ?? false;
   return isActive ? (roleToUse as EffectiveRole) : 'Guest';
 }
+
+const KNOWN_BUSINESS_ROLES: readonly UserRole[] = [
+  'Researcher',
+  'Reviewer',
+  'Lecturer',
+  'Graduate Student',
+  'Admin',
+];
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -171,6 +193,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.token,
         resolveEffectiveRole(freshUser, response, roleToUse)
       );
+
+      // Flip the welcome-back signal ONLY after the auth store has the new
+      // user persisted, so a mount of the banner reads the correct name. The
+      // signal is ephemeral (never rehydrated from sessionStorage), so the
+      // banner never appears on a fresh tab or after a page reload — only
+      // after the genuine login transition that just completed.
+      useWelcomeSignal.getState().show();
       navigate(landingRouteForRoleName(roleToUse, { isAdminOverride: adminOverride }));
     },
     [authStore, navigate]
@@ -214,6 +243,141 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  /**
+   * GIS-credential Google sign-in (the agreed FE ↔ BE contract).
+   *
+   * Flow:
+   *   1. POST `{ credential }` to `/api/Auth/google-login`.
+   *   2. If the BE signals `isNewUser || requiresOnboarding`, persist a
+   *      first-time session and route to `/complete-google-registration`.
+   *   3. Otherwise, run the same persistence + navigation pipeline used by
+   *      the password login flow (`persistAuthAndNavigate`).
+   *
+   * The credential is forwarded exactly once. Errors from `postGoogleLogin`
+   * are normalised into a user-friendly `error` string; the underlying
+   * `GoogleLoginError.code` is intentionally not surfaced to the UI.
+   */
+  const loginWithGoogle = useCallback(
+    async (
+      credentialOrResponse: string | GoogleCredentialResponse,
+      options?: { rememberMe?: boolean },
+    ): Promise<void> => {
+      const rememberMe = options?.rememberMe ?? false;
+      setIsLoading(true);
+      setError(null);
+      setPendingRoleSelection(null);
+      authStore.setLoading(true);
+
+      // Defensive: accept either the raw credential string (from
+      // googleAuthService.extractCredential) or the full GIS response.
+      const credential =
+        typeof credentialOrResponse === 'string'
+          ? credentialOrResponse
+          : googleAuthService.extractCredential(credentialOrResponse);
+
+      if (!credential) {
+        setIsLoading(false);
+        authStore.setLoading(false);
+        setError(
+          'Google did not return a valid credential. Please try signing in again.',
+        );
+        return;
+      }
+
+      try {
+        const session = await googleAuthService.postGoogleLogin({ credential });
+
+        if (!session.token || !session.userId || !session.email) {
+          // BE didn't surface enough fields to start a session. Treat as
+          // recoverable failure — never fabricate a session.
+          setIsLoading(false);
+          authStore.setLoading(false);
+          setError(
+            'Google sign-in reached the platform but no session was returned. Please retry.',
+          );
+          return;
+        }
+
+        if (session.isNewUser || session.requiresOnboarding) {
+          // First-time Google user. Persist a pending session WITHOUT a role
+          // (mirrors the existing GoogleCallback first-time branch). The
+          // /complete-google-registration page reads from the same storage
+          // path so the existing onboarding UI continues to work.
+          storage.setRememberMe(rememberMe);
+          storage.setToken(session.token);
+          const onboardingUser = {
+            id: session.userId,
+            username: session.email,
+            email: session.email,
+            fullName: session.fullName ?? session.email,
+            roleId: session.roleId ?? 0,
+            roleName: session.role ?? '',
+            isActive: session.isActive ?? false,
+            verificationStatus: session.verificationStatus ?? 'Pending',
+            accountTier: 'Free' as const,
+            effectiveRole: (session.effectiveRole as EffectiveRole) ?? null,
+          };
+          storage.setUser(onboardingUser);
+          authStore.login(onboardingUser, session.token, onboardingUser.effectiveRole);
+          useWelcomeSignal.getState().show();
+          navigate(ROUTES.COMPLETE_GOOGLE_REGISTRATION, { replace: true });
+          setIsLoading(false);
+          authStore.setLoading(false);
+          return;
+        }
+
+        // Existing user — delegate to the centralised persist + navigate
+        // helper so storage, the Zustand store, the welcome signal and the
+        // landing-route resolution all match the password-login path.
+        const knownRoles = session.roles.filter((r): r is UserRole =>
+          (KNOWN_BUSINESS_ROLES as readonly string[]).includes(r as string),
+        );
+        const roleToUse =
+          (session.role as UserRole | null) ??
+          (knownRoles[0] ?? null) ??
+          null;
+
+        if (!roleToUse) {
+          setIsLoading(false);
+          authStore.setLoading(false);
+          setError(
+            'Your Google account is missing a role on the platform. Please contact support.',
+          );
+          return;
+        }
+
+        const filteredRoles =
+          knownRoles.length > 0 ? knownRoles : [roleToUse];
+
+        const authResponse: AuthResponse = {
+          token: session.token,
+          username: session.email,
+          email: session.email,
+          role: roleToUse,
+          userId: session.userId,
+          roleId: session.roleId ?? undefined,
+          roles: filteredRoles,
+          isActive: session.isActive ?? false,
+          verificationStatus: session.verificationStatus ?? 'Pending',
+          effectiveRole:
+            (session.effectiveRole as EffectiveRole) ??
+            ((session.isActive ?? false) ? roleToUse : 'Guest'),
+        };
+
+        await persistAuthAndNavigate(authResponse, roleToUse, rememberMe);
+      } catch (err: unknown) {
+        const fallback = 'Google sign-in failed. Please try again.';
+        const message =
+          err instanceof Error && err.message ? err.message : fallback;
+        setError(message);
+        authStore.setLoading(false);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [authStore, navigate, persistAuthAndNavigate],
+  );
+
   const confirmRoleSelection = useCallback(
     async (role: UserRole) => {
       if (!pendingRoleSelection) return;
@@ -236,6 +400,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // User backed out — clear any partial auth state so they can re-login cleanly.
     // Agent 53 — route through the centralized routine so storage keys, the
     // Axios header, and the Zustand store are all reset before the navigate.
+    // Wipe the welcome signal too so the banner never bleeds through a
+    // cancelled multi-role flow into another user's session.
+    useWelcomeSignal.getState().reset();
     void clearAuthSession();
     authStore.logout();
     navigate(ROUTES.LOGIN, { replace: true });
@@ -249,6 +416,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
+      // Clear the welcome-back signal alongside the rest of the auth state.
+      // The next successful login will flip it back to true for the new user
+      // — the banner must never linger across a logout/login boundary.
+      useWelcomeSignal.getState().reset();
       void clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
@@ -275,6 +446,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
+      // Force-clear the welcome signal too. A 401/403-driven wipe must
+      // leave no trace of the previous user's session.
+      useWelcomeSignal.getState().reset();
       void clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
@@ -355,6 +529,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading: isLoading || authStore.isLoading,
     error,
     login,
+    loginWithGoogle,
     logout,
     handleSessionFailure,
     clearError,

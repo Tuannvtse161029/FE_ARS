@@ -1,19 +1,23 @@
 /**
- * Tests for Agent 54 — Login.tsx Google button (backend-driven OAuth).
+ * Tests for the Login.tsx Google button (GIS-credential flow).
  *
- * Critical contracts pinned here:
- *   - The button calls `googleOAuthService.beginGoogleOAuth` exactly
- *     once per click.
- *   - The button calls `authService.logout()` defensively before the
- *     redirect so a guest leaves no anonymous state behind (null-safe
- *     cleanup).
- *   - A second click while the redirect is in flight is rejected via
- *     the local in-flight ref (no second navigation issued).
- *   - The legacy `POST /api/Auth/google-login` flow is NOT invoked
- *     any more — the FE has fully migrated to the BE OAuth flow.
- *   - The page does NOT call `authService.login` / no email+password
- *     fields are involved (those still work via the form, but the
- *     Google button itself uses the OAuth path).
+ * Agreed FE ↔ BE contract:
+ *   1. The user clicks the Google button. GIS returns a `CredentialResponse`
+ *      whose `credential` field is the signed Google ID token (JWT).
+ *   2. `Login.tsx` extracts the `credential` string and calls
+ *      `AuthContext.loginWithGoogle(response)`, which forwards the opaque
+ *      credential to `POST /api/Auth/google-login` via
+ *      `googleAuthService.postGoogleLogin`.
+ *   3. The BE returns the ARS session. New users are routed to
+ *      `/complete-google-registration`; existing accepted users are routed
+ *      to their workspace.
+ *   4. The button is in-flight deduped so a duplicate GIS callback does
+ *      not fire `postGoogleLogin` twice.
+ *   5. `authService.logout()` runs defensively before the credential POST
+ *      so a guest leaves anonymous state behind (null-safe).
+ *
+ * These tests pin the contract above; if any of them break, the FE and BE
+ * have drifted from the agreed `{ credential }` POST.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -22,7 +26,9 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 const postMock = vi.fn();
 const authLogoutMock = vi.fn();
-const beginGoogleOAuthMock = vi.fn();
+const loginWithGoogleMock = vi.fn();
+
+const postGoogleLoginMock = vi.fn();
 
 vi.mock('../../../src/services/axios', () => ({
   default: {
@@ -42,8 +48,9 @@ vi.mock('../../../src/services/auth.service', () => ({
 
 vi.mock('../../../src/services/googleAuth.service', () => ({
   googleAuthService: {
-    postGoogleLogin: vi.fn(),
-    extractCredential: vi.fn(),
+    postGoogleLogin: (...args: unknown[]) => postGoogleLoginMock(...args),
+    extractCredential: (response: { credential?: unknown }) =>
+      typeof response?.credential === 'string' ? response.credential : null,
     normaliseGoogleLoginResponse: vi.fn(),
   },
   GoogleLoginError: class GoogleLoginError extends Error {
@@ -53,25 +60,6 @@ vi.mock('../../../src/services/googleAuth.service', () => ({
       super(message);
       this.code = code as never;
       this.status = status;
-    }
-  },
-}));
-
-vi.mock('../../../src/services/googleOAuth.service', () => ({
-  googleOAuthService: {
-    beginGoogleOAuth: (...args: unknown[]) => beginGoogleOAuthMock(...args),
-    buildGoogleOAuthLoginUrl: vi.fn(),
-    parseCallbackLocation: vi.fn(),
-    payloadFromLocationSearch: vi.fn(),
-    normaliseGoogleOAuthCallback: vi.fn(),
-    isGoogleOAuthRedirectInFlight: vi.fn(() => false),
-    _resetGoogleOAuthInFlightForTesting: vi.fn(),
-  },
-  GoogleOAuthError: class GoogleOAuthError extends Error {
-    code = 'NETWORK';
-    constructor(code: string, message: string) {
-      super(message);
-      this.code = code as never;
     }
   },
 }));
@@ -86,6 +74,7 @@ vi.mock('../../store', () => ({
 vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({
     login: vi.fn(),
+    loginWithGoogle: (...args: unknown[]) => loginWithGoogleMock(...args),
     isLoading: false,
     error: null,
     user: null,
@@ -97,23 +86,27 @@ vi.mock('../../../src/context/AuthContext', () => ({
 
 vi.mock('../../../src/components/auth/GoogleSignInButton', () => ({
   GoogleSignInButton: ({
-    onBegin,
+    onCredential,
     pending,
     errorMessage,
+    label,
   }: {
-    onBegin?: () => void;
+    onCredential?: (response: { credential: string }) => void;
     pending?: boolean;
     errorMessage?: string | null;
+    label?: string;
   }) => (
     <button
       type="button"
       data-testid="google-button"
-      onClick={onBegin}
+      onClick={() =>
+        onCredential?.({ credential: 'GIS_CREDENTIAL_TOKEN', select_by: 'btn' })
+      }
       disabled={pending}
       data-pending={pending ? '1' : '0'}
       data-error={errorMessage ?? ''}
     >
-      {pending ? 'Loading…' : 'Sign in with Google'}
+      {pending ? 'Loading…' : label ?? 'Sign in with Google'}
     </button>
   ),
 }));
@@ -180,38 +173,15 @@ vi.mock('./components/RoleSelectionModal', () => ({
 
 import Login from '../../../src/pages/Login/Login';
 
-let originalAssign: typeof window.location.assign;
-
 beforeEach(() => {
   postMock.mockReset();
   authLogoutMock.mockReset();
-  beginGoogleOAuthMock.mockReset();
-  // Stub out `window.location.assign` so the page does not attempt to
-  // navigate when `beginGoogleOAuth` is invoked. The Login page itself
-  // never calls `assign` directly — it delegates to the service — but
-  // jsdom throws if a service tries to navigate during tests.
-  originalAssign = window.location.assign;
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    writable: true,
-    value: {
-      ...window.location,
-      assign: vi.fn(),
-      origin: 'http://localhost:3000',
-    },
-  });
-  beginGoogleOAuthMock.mockResolvedValue(undefined);
+  loginWithGoogleMock.mockReset();
+  loginWithGoogleMock.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    writable: true,
-    value: {
-      ...window.location,
-      assign: originalAssign,
-    },
-  });
+  vi.restoreAllMocks();
 });
 
 function mountLogin() {
@@ -229,43 +199,34 @@ function mountLogin() {
   );
 }
 
-describe('Login — Agent 54 Google OAuth begin handler', () => {
-  it('calls beginGoogleOAuth EXACTLY once per click', async () => {
+describe('Login — GIS credential Google sign-in', () => {
+  it('forwards the GIS credential to loginWithGoogle EXACTLY once per click', async () => {
     mountLogin();
     const button = screen.getByTestId('google-button');
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(beginGoogleOAuthMock).toHaveBeenCalledTimes(1);
+      expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
     });
 
-    // The legacy POST /api/Auth/google-login path is NOT invoked.
-    expect(postMock).not.toHaveBeenCalled();
+    // The first argument must be the GIS CredentialResponse so the
+    // AuthContext can extract the credential string and POST it to BE.
+    const firstArg = loginWithGoogleMock.mock.calls[0][0];
+    expect(firstArg).toMatchObject({ credential: 'GIS_CREDENTIAL_TOKEN' });
   });
 
-  it('starts the backend OAuth endpoint without a frontend redirect_uri parameter', async () => {
+  it('runs null-safe guest cleanup (authService.logout) BEFORE forwarding the credential', async () => {
     mountLogin();
     fireEvent.click(screen.getByTestId('google-button'));
 
     await waitFor(() => {
-      expect(beginGoogleOAuthMock).toHaveBeenCalledTimes(1);
+      expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
     });
-    expect(beginGoogleOAuthMock.mock.calls[0]).toHaveLength(0);
-  });
-
-  it('runs null-safe guest cleanup (authService.logout) BEFORE the redirect', async () => {
-    mountLogin();
-    fireEvent.click(screen.getByTestId('google-button'));
-
-    await waitFor(() => {
-      expect(beginGoogleOAuthMock).toHaveBeenCalledTimes(1);
-    });
-    // logout was called once before the beginGoogleOAuth call site.
     expect(authLogoutMock).toHaveBeenCalledTimes(1);
   });
 
-  it('prevents duplicate in-flight clicks (only ONE beginGoogleOAuth even when fired thrice)', async () => {
-    beginGoogleOAuthMock.mockImplementationOnce(
+  it('prevents duplicate in-flight clicks (only ONE loginWithGoogle even when fired thrice)', async () => {
+    loginWithGoogleMock.mockImplementationOnce(
       () => new Promise(() => {
         /* never resolves — keeps the in-flight flag set */
       }),
@@ -276,17 +237,16 @@ describe('Login — Agent 54 Google OAuth begin handler', () => {
     fireEvent.click(button);
     fireEvent.click(button);
 
-    // Give the microtask queue a chance to drain.
     await new Promise<void>((r) => setTimeout(r, 0));
 
-    expect(beginGoogleOAuthMock).toHaveBeenCalledTimes(1);
+    expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
   });
 
-  it('surfaces a recoverable error message when beginGoogleOAuth rejects', async () => {
-    beginGoogleOAuthMock.mockRejectedValueOnce(
-      Object.assign(new Error('bad url'), {
-        name: 'GoogleOAuthError',
-        code: 'BAD_REDIRECT_TARGET',
+  it('surfaces a recoverable error message when loginWithGoogle rejects', async () => {
+    loginWithGoogleMock.mockRejectedValueOnce(
+      Object.assign(new Error('Google token rejected'), {
+        name: 'GoogleLoginError',
+        code: 'INVALID_CREDENTIAL',
       }),
     );
     mountLogin();
@@ -295,13 +255,14 @@ describe('Login — Agent 54 Google OAuth begin handler', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
+
     // The user stays on /login (no auto-navigation on failure).
     expect(screen.queryByTestId('forum-marker')).toBeNull();
     expect(screen.queryByTestId('onboarding-marker')).toBeNull();
   });
 
-  it('flips the button into a loading state while the redirect is in flight', async () => {
-    beginGoogleOAuthMock.mockImplementationOnce(
+  it('flips the button into a loading state while the credential POST is in flight', async () => {
+    loginWithGoogleMock.mockImplementationOnce(
       () => new Promise(() => {
         /* never resolves */
       }),
@@ -315,13 +276,14 @@ describe('Login — Agent 54 Google OAuth begin handler', () => {
     });
   });
 
-  it('does NOT call the legacy POST /api/auth/google-login at all', async () => {
+  it('does NOT call the legacy /api/auth/google-oauth-login flow at all', async () => {
     mountLogin();
     fireEvent.click(screen.getByTestId('google-button'));
 
     await waitFor(() => {
-      expect(beginGoogleOAuthMock).toHaveBeenCalledTimes(1);
+      expect(loginWithGoogleMock).toHaveBeenCalledTimes(1);
     });
+    // No window.location.assign / GET redirect endpoint is invoked.
     expect(postMock).not.toHaveBeenCalled();
   });
 });

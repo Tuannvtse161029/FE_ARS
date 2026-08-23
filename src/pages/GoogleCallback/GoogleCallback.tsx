@@ -42,6 +42,7 @@ import {
 } from '../../services/googleOAuth.service';
 import { storage } from '../../utils/storage';
 import { useAuthStore } from '../../store';
+import { useWelcomeSignal } from '../../store/welcomeSignal';
 import { ROUTES } from '../../routes/paths';
 import { landingRouteForRoleName } from '../../utils/roleNormalizer';
 import type { AuthResponse, EffectiveRole, UserRole } from '../../types/auth';
@@ -161,6 +162,12 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
     safeToken,
     authResponse.effectiveRole,
   );
+
+  // Flip the welcome-back signal AFTER the auth store has the new user
+  // persisted, so the banner reads the correct full name when MainLayout
+  // mounts at the destination route. This single point covers both the
+  // first-time (isNewUser) branch and the existing-user branch.
+  useWelcomeSignal.getState().show();
   return true;
 }
 

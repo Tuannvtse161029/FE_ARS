@@ -80,6 +80,12 @@ vi.mock('../../../src/utils/storage', () => ({
   },
 }));
 
+vi.mock('../../../src/store/welcomeSignal', () => ({
+  useWelcomeSignal: {
+    getState: () => ({ show: vi.fn(), reset: vi.fn() }),
+  },
+}));
+
 vi.mock('../../../src/components/Button', () => ({
   Button: ({
     children,
