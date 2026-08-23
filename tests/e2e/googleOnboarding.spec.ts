@@ -6,11 +6,38 @@
  * dialog end-to-end. Does NOT use a real Google account.
  *
  * Run:
- *   npx playwright test tests/e2e/googleOnboarding.spec.ts --reporter=list
+ *   npx playwright test --config=playwright.google-onboarding.config.ts
  *
  * Setup requirement:
- *   `npm run build` must have produced `dist/`. We invoke `vite preview`
- *   inside the spec so the test is self-contained.
+ *   `npm run build` must have produced `dist/`. The Playwright config
+ *   invokes `vite preview` automatically.
+ *
+ * ----------------------------------------------------------------------
+ * KNOWN INFRASTRUCTURE LIMITATION — GIS button click in headless mode
+ * ----------------------------------------------------------------------
+ * Tests #1 (`approved Google user never sees the onboarding dialog`) and
+ * #2 (`first-time Google user opens the dialog before reaching /forum`)
+ * rely on clicking the real Google Identity Services button rendered by
+ * the production Login page. In headless Playwright the GIS library
+ * loads but the OAuth iframe cannot complete a real sign-in flow
+ * without a Google account. The page therefore stays on `/login` and
+ * the dialog never opens. Tests #3, #4 and #5 (`seedOnboardingSession`
+ * variants) side-step the GIS click by seeding the auth store directly
+ * with the post-login user shape the BE would have produced, and they
+ * verify the dialog's submission/refresh behaviour rather than the
+ * initial GIS click.
+ *
+ * Test #6 (`authenticated role-null user landing on /login is routed
+ * to /complete-google-registration`) is the Agent 30 regression test
+ * that proves the `PublicRoute` fix. It seeds `sessionStorage.ars-auth-storage`
+ * with a role-null authenticated session and asserts that opening
+ * `/login` after the in-flight login transition still resolves to
+ * `/complete-google-registration` — i.e. the original "new Google user
+ * is redirected to /forum instead of /onboarding" defect cannot recur.
+ *
+ * If GIS-based E2E coverage is needed in the future, follow the official
+ * Playwright guide for Google Identity Services mocks:
+ * https://playwright.dev/docs/auth#google
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -141,6 +168,32 @@ async function seedOnboardingSession(page: Page) {
         roleName: '',
         isActive: false,
         verificationStatus: 'Pending',
+        effectiveRole: 'Guest',
+      }),
+    );
+    // Mirror the legacy ars_user / ars_token keys in the Zustand persist
+    // bucket (`ars-auth-storage`) so PublicRoute's `useAuth()` (which
+    // subscribes to the auth store) sees an authenticated, role-null
+    // session. Without this, `isAuthenticated` stays false during the
+    // first render and PublicRoute's authenticated-user branch never
+    // fires. Used by the Agent 30 regression test in particular.
+    window.sessionStorage.setItem(
+      'ars-auth-storage',
+      JSON.stringify({
+        user: {
+          id: 17,
+          username: 'Playwright Google',
+          email: 'playwright@example.com',
+          fullName: 'Playwright Google',
+          roleId: 0,
+          roleName: '',
+          isActive: false,
+          verificationStatus: 'Pending',
+          accountTier: 'Free',
+          effectiveRole: 'Guest',
+        },
+        token: 'mock-google-jwt',
+        isAuthenticated: true,
         effectiveRole: 'Guest',
       }),
     );
@@ -308,4 +361,65 @@ test('refresh after a successful submit renders the success state and does not r
 
   const after = ((globalThis as Record<string, unknown>).__completionCallCount as number) ?? 0;
   expect(after).toBe(before);
+});
+
+// Agent 30 — the override fix. A first-time Google user must end up on
+// /complete-google-registration even though PublicRoute re-renders during
+// the in-flight login transition. Without the priority-1 onboarding branch
+// in `resolvePostAuthRoute`, PublicRoute silently redirected the
+// authenticated user (role=null, roleId=0) to /forum, overriding the
+// `navigate(ROUTES.COMPLETE_GOOGLE_REGISTRATION)` call inside
+// `AuthContext.loginWithGoogle`. The trace below is the regression test.
+//
+// We can't click the official GIS button in headless mode (the existing
+// tests above have the same limitation, see the GitHub Issue), so we
+// seed the session directly with the post-login user shape the BE would
+// have produced (role=null, roleId=0, isActive=false) and assert that
+// opening /login still routes to /complete-google-registration — proving
+// the authenticated-user branch of PublicRoute honours the priority-1
+// onboarding branch.
+test('authenticated role-null user landing on /login is routed to /complete-google-registration', async ({ page }) => {
+  await mockBackend(page, {
+    isNewUser: true,
+    requiresOnboarding: true,
+    isActive: false,
+    verificationStatus: 'Pending',
+    role: '',
+    roleId: 0,
+    effectiveRole: 'Guest',
+  });
+  await seedOnboardingSession(page);
+
+  page.on('console', (msg) => {
+    // Surface the browser console for headless debugging.
+    // eslint-disable-next-line no-console
+    console.log('[browser]', msg.type(), msg.text());
+  });
+
+  // Capture every navigation the browser performs so the test can assert
+  // /forum is NOT visited before the onboarding dialog is rendered.
+  const visited: string[] = [];
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      visited.push(new URL(frame.url()).pathname);
+    }
+  });
+
+  // The freshly-logged-in first-time Google user lands on /login (e.g.
+  // a stale tab) — PublicRoute's authenticated-user branch must route
+  // them to /complete-google-registration (NOT /forum).
+  await page.goto(`${baseURL}/login`);
+
+  // Give the Zustand persist rehydration one tick to settle.
+  await page.waitForTimeout(500);
+
+  await expect(page.getByTestId('complete-google-registration')).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/complete-google-registration/);
+
+  // /forum must NOT appear before the user has submitted the role request.
+  const onboardingIndex = visited.findIndex(
+    (path) => path === '/complete-google-registration',
+  );
+  expect(onboardingIndex).toBeGreaterThanOrEqual(0);
+  expect(visited.slice(0, onboardingIndex + 1)).not.toContain('/forum');
 });

@@ -12,6 +12,7 @@ import { ROUTES } from '../routes/paths';
 import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
 import type { GoogleCredentialResponse } from '../types/googleAuth';
 import { isAdminUser, landingRouteForRoleName } from '../utils/roleNormalizer';
+import { isFirstTimeOnboardingUser, type PostAuthSnapshot } from '../utils/postAuthRoute';
 import { storage } from '../utils/storage';
 
 interface AuthContextType {
@@ -415,7 +416,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         }
 
-        // Routing rule (per task spec):
+        // Routing rule (per task spec, centralized in
+        // utils/postAuthRoute.ts so the same priority applies to
+        // AuthContext.loginWithGoogle, GoogleCallback, and PublicRoute):
         //   1. Onboarding page when BE signals new/requires-onboarding OR when
         //      the role + roleId fields are both absent/null/empty. The second
         //      clause is the documented fallback for BE versions that don't
@@ -425,12 +428,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         //      not approved (Pending verification OR isActive=false).
         //   3. Otherwise, preserve the existing role landing route
         //      (landingRouteForRoleName via persistAuthAndNavigate).
-        const hasRole = hasNonEmptyRole(session.role);
-        const hasRoleId = hasPositiveRoleId(session.roleId);
-        const shouldOnboard =
-          session.isNewUser ||
-          session.requiresOnboarding ||
-          (!hasRole && !hasRoleId);
+        const onboardingSnapshot: PostAuthSnapshot = {
+          role: session.role,
+          roleId: session.roleId,
+          isActive: session.isActive,
+          verificationStatus: session.verificationStatus,
+          effectiveRole: session.effectiveRole,
+          isNewUser: session.isNewUser,
+          requiresOnboarding: session.requiresOnboarding,
+        };
+        const shouldOnboard = isFirstTimeOnboardingUser(onboardingSnapshot);
 
         if (shouldOnboard) {
           // First-time Google user. Persist a pending session WITHOUT a role

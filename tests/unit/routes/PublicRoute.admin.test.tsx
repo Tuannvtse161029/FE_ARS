@@ -24,6 +24,7 @@ vi.mock('../../../src/context/AuthContext', () => ({
 const AdminLanding = () => <div data-testid="admin-landing" />;
 const ForumLanding = () => <div data-testid="forum-landing" />;
 const LoginSurface = () => <div data-testid="login-surface" />;
+const OnboardingLanding = () => <div data-testid="onboarding-landing" />;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -141,5 +142,111 @@ describe('<PublicRoute> — authenticated Admin lands on /admin', () => {
     // The login surface must remain rendered; the redirect must not fire.
     expect(screen.getByTestId('login-surface')).toBeInTheDocument();
     expect(screen.queryByTestId('admin-landing')).not.toBeInTheDocument();
+  });
+});
+
+// Agent 30 — regression test for the agent-30 onboarding redirect defect.
+// A first-time Google user who reaches /login (or any other public route)
+// while their session is already authenticated must be routed to
+// /complete-google-registration, NOT to /forum. Without this branch the
+// authenticated-user branch of PublicRoute would silently drop the user
+// on /forum, bypassing the onboarding page they were meant to land on.
+//
+// The /forum-as-Guest fallback MUST NOT precede the onboarding branch.
+describe('<PublicRoute> — first-time Google user lands on /complete-google-registration', () => {
+  it('redirects a role-null authenticated user from /login to /complete-google-registration (not /forum)', async () => {
+    // Mirror the BE response shape for a brand-new Google account:
+    // role/roleId empty, isActive=false, effectiveRole=Guest. Without the
+    // priority-1 onboarding branch, PublicRoute would fall through to
+    // /forum and bypass the onboarding page.
+    useAuthMock.mockReturnValue(
+      buildMockAuth({
+        role: null,
+        roleId: 0,
+        isActive: false,
+        verificationStatus: 'Pending',
+        effectiveRole: 'Guest',
+        isAuthenticated: true,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[ROUTES.LOGIN]}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path={ROUTES.LOGIN} element={<LoginSurface />} />
+          </Route>
+          <Route path={ROUTES.COMPLETE_GOOGLE_REGISTRATION} element={<OnboardingLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('onboarding-landing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('forum-landing')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('login-surface')).not.toBeInTheDocument();
+  });
+
+  it('redirects a role-null authenticated user from /register to /complete-google-registration', async () => {
+    useAuthMock.mockReturnValue(
+      buildMockAuth({
+        role: null,
+        roleId: 0,
+        isActive: false,
+        verificationStatus: 'Pending',
+        effectiveRole: 'Guest',
+        isAuthenticated: true,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[ROUTES.REGISTER]}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path={ROUTES.REGISTER} element={<div data-testid="register-surface" />} />
+          </Route>
+          <Route path={ROUTES.COMPLETE_GOOGLE_REGISTRATION} element={<OnboardingLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('onboarding-landing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('forum-landing')).not.toBeInTheDocument();
+  });
+
+  it('still routes an unverified (Pending) user with a non-null role to /forum (as Guest)', async () => {
+    // Pending user (role assigned but not yet approved) must continue to
+    // land on /forum — the verified-guard renders the pending banner.
+    useAuthMock.mockReturnValue(
+      buildMockAuth({
+        role: 'Researcher',
+        isActive: false,
+        verificationStatus: 'Pending',
+        effectiveRole: 'Guest',
+        isAuthenticated: true,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[ROUTES.LOGIN]}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path={ROUTES.LOGIN} element={<LoginSurface />} />
+          </Route>
+          <Route path={ROUTES.COMPLETE_GOOGLE_REGISTRATION} element={<OnboardingLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('forum-landing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-landing')).not.toBeInTheDocument();
   });
 });

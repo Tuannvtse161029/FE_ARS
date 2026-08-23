@@ -38,7 +38,7 @@ import { storage } from '../../utils/storage';
 import { useAuthStore } from '../../store';
 import { useWelcomeSignal } from '../../store/welcomeSignal';
 import { ROUTES } from '../../routes/paths';
-import { landingRouteForRoleName } from '../../utils/roleNormalizer';
+import { resolvePostAuthRoute, isFirstTimeOnboardingUser } from '../../utils/postAuthRoute';
 import type { AuthResponse, EffectiveRole, UserRole } from '../../types/auth';
 
 const KNOWN_BUSINESS_ROLES: UserRole[] = [
@@ -52,38 +52,6 @@ const KNOWN_BUSINESS_ROLES: UserRole[] = [
 function isKnownRole(value: string | null): value is UserRole {
   if (!value) return false;
   return (KNOWN_BUSINESS_ROLES as string[]).includes(value);
-}
-
-// Routing-rule helpers (Agent 52 — Google entry paths).
-//
-// `hasNonEmptyRole` accepts strings, null, undefined, and trimmed-empty.
-// `hasPositiveRoleId` accepts finite positive integers (per ROLE_IDS) and
-// treats null/undefined/zero/non-finite as "no role id assigned".
-//
-// The combined role-null check (`!hasRole && !hasRoleId`) is the unified
-// fallback signal for first-time Google users when the BE doesn't surface
-// `isNewUser` / `requiresOnboarding` (BTR-AGENT52-01). It mirrors the
-// helpers in AuthContext.loginWithGoogle so the credential-flow and the
-// legacy OAuth code-redirect-flow apply the same routing rule.
-function hasNonEmptyRole(role: string | null): boolean {
-  return typeof role === 'string' && role.trim().length > 0;
-}
-
-function hasPositiveRoleId(roleId: number | null): boolean {
-  return (
-    typeof roleId === 'number' &&
-    Number.isFinite(roleId) &&
-    roleId > 0
-  );
-}
-
-function shouldOnboard(payload: GoogleOAuthCallbackPayload): boolean {
-  if (payload.isNewUser || payload.requiresOnboarding) return true;
-  // Fallback for BE versions that don't surface isNewUser /
-  // requiresOnboarding: role-null + roleId-null is the same routing
-  // signal we use in loginWithGoogle. We do NOT rely solely on the
-  // legacy isNewUser/requiresOnboarding fields.
-  return !hasNonEmptyRole(payload.role) && !hasPositiveRoleId(payload.roleId);
 }
 
 type CallbackStatus = 'pending' | 'success' | 'incomplete' | 'cancelled' | 'error';
@@ -113,7 +81,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
   const safeEmail = payload.email;
   const safeFullName = payload.fullName;
 
-  if (shouldOnboard(payload)) {
+  if (isFirstTimeOnboardingUser(payload)) {
     // First-time Google user. Persist a pending session WITHOUT fabricating a role.
     storage.setToken(safeToken);
     storage.setUser({
@@ -254,23 +222,20 @@ export const GoogleCallback = () => {
       return;
     }
 
-    // Decide the destination. Per the unified routing rule:
-    //   - New / onboarding / role-null user → /complete-google-registration
-    //   - Pending / Rejected / inactive      → /forum (existing decision-state landing)
-    //   - Approved + active + known role     → workspace landing route
-    let destination: string;
-    if (shouldOnboard(payload)) {
-      destination = ROUTES.COMPLETE_GOOGLE_REGISTRATION;
-    } else if (
-      payload.isActive === true &&
-      payload.verificationStatus === 'Accepted' &&
-      payload.role &&
-      isKnownRole(payload.role)
-    ) {
-      destination = landingRouteForRoleName(payload.role);
-    } else {
-      destination = ROUTES.FORUM;
-    }
+    // Decide the destination via the centralized post-auth route resolver
+    // (Agent 30 — utils/postAuthRoute.ts). The same priority applies across
+    // AuthContext.loginWithGoogle, GoogleCallback, and PublicRoute so a
+    // first-time Google user never lands on /forum before completing
+    // onboarding.
+    const destination = resolvePostAuthRoute({
+      role: payload.role,
+      roleId: payload.roleId,
+      isActive: payload.isActive,
+      verificationStatus: payload.verificationStatus,
+      effectiveRole: payload.effectiveRole,
+      isNewUser: payload.isNewUser,
+      requiresOnboarding: payload.requiresOnboarding,
+    });
 
     // Replace so the `code` query string does not linger in history.
     navigate(destination, { replace: true });
@@ -296,8 +261,21 @@ export const GoogleCallback = () => {
   if (status === 'success') {
     // The navigate() call above should already have replaced the page.
     // This branch is defensive (e.g. if React re-mounts after the
-    // navigate but before history.replaceState propagates).
-    return <Navigate to={ROUTES.FORUM} replace />;
+    // navigate but before history.replaceState propagates). Agent 30 —
+    // we route through the centralized post-auth resolver so a re-mount
+    // cannot accidentally drop a first-time user on /forum before they
+    // have completed onboarding.
+    const reMountSnapshot = payloadFromLocationSearch(window.location.search);
+    const reMountDestination = resolvePostAuthRoute({
+      role: reMountSnapshot.role,
+      roleId: reMountSnapshot.roleId,
+      isActive: reMountSnapshot.isActive,
+      verificationStatus: reMountSnapshot.verificationStatus,
+      effectiveRole: reMountSnapshot.effectiveRole,
+      isNewUser: reMountSnapshot.isNewUser,
+      requiresOnboarding: reMountSnapshot.requiresOnboarding,
+    });
+    return <Navigate to={reMountDestination} replace />;
   }
 
   return (
