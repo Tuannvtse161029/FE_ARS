@@ -14,8 +14,8 @@ import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MemoryRouter } from 'react-router-dom';
-import { SubmitReport } from '../../../../../src/pages/GraduateStudent/SubmitReport';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { SubmitReport } from '../../../../src/pages/GraduateStudent/SubmitReport';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {
   mockUseStudentGroups,
@@ -29,19 +29,19 @@ const {
   mockResubmitPhasedReport: vi.fn(),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Graduate Student', userId: 9 }),
 }));
 
-vi.mock('../../../../../src/hooks/useStudentGroups', () => ({
+vi.mock('../../../../src/hooks/useStudentGroups', () => ({
   useStudentGroups: () => mockUseStudentGroups(),
 }));
 
-vi.mock('../../../../../src/hooks/usePhasedReports', () => ({
+vi.mock('../../../../src/hooks/usePhasedReports', () => ({
   usePhasedReports: () => mockUsePhasedReports(),
 }));
 
-vi.mock('../../../../../src/components/gradstudent/SubmitReportModal', () => ({
+vi.mock('../../../../src/components/gradstudent/SubmitReportModal', () => ({
   default: ({
     isOpen,
     onSubmitted,
@@ -214,6 +214,8 @@ describe('<SubmitReport> — sibling tests (Phase C rewrite)', () => {
       '..',
       '..',
       '..',
+      '..',
+      'src',
       'pages',
       'GraduateStudent',
       'SubmitReport.tsx',

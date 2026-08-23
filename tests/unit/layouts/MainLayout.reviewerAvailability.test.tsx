@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MainLayout } from '../../../src/layouts/MainLayout';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES } from '../../../src/routes/paths';
 import { buildMockAuth } from '../../../src/utils/mockAuth';
 import type { MockUseAuthOptions } from '../../../src/utils/mockAuth';
 

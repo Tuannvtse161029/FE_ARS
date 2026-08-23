@@ -65,7 +65,7 @@ vi.mock('../../../src/services/auth.service', () => ({
   },
 }));
 
-vi.mock('../../store', () => ({
+vi.mock('../../../src/store', () => ({
   useAuthStore: () => ({
     login: loginSpy,
     setLoading: setLoadingSpy,

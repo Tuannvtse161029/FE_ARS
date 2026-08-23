@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ProfessionalProfile } from '../../../src/pages/Reviewer/ProfessionalProfile';
-import { RoleRouteGuard } from '../../routes/RoleRouteGuard';
-import { ROUTES } from '../../routes/paths';
+import { RoleRouteGuard } from '../../../src/routes/RoleRouteGuard';
+import { ROUTES } from '../../../src/routes/paths';
 
 const mocks = vi.hoisted(() => ({
   profiles: [] as Array<{

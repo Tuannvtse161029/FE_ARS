@@ -72,6 +72,8 @@ import { EarningsWallet } from '../../../src/pages/Reviewer/EarningsWallet';
 const mockRequests = [
   {
     id: 1,
+    userId: 7,
+    walletId: 8,
     bankName: 'Vietcombank (VCB)',
     accountNumber: '1234567890',
     amount: 500000,
@@ -80,6 +82,8 @@ const mockRequests = [
   },
   {
     id: 2,
+    userId: 7,
+    walletId: 8,
     bankName: 'Techcombank (TCB)',
     accountNumber: '9876543210',
     amount: 1000000,
@@ -88,6 +92,8 @@ const mockRequests = [
   },
   {
     id: 3,
+    userId: 7,
+    walletId: 8,
     bankName: 'BIDV',
     accountNumber: '5555444433',
     amount: 750000,

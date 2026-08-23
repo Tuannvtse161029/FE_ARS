@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import {
   getReviewRequestStatusDisplay,
-} from '../../../../../src/utils/reviewRequestDisplay';
+} from '../../../../src/utils/reviewRequestDisplay';
 import {
   normalizeReviewRequestStatus,
   getReviewRequestTab,
-} from '../../../../../src/utils/reviewRequestPolicy';
-import { ReviewRequestStatusBadge } from '../../../../../src/components/reviewer/ReviewRequestStatusBadge';
-import styles from '../../../../../src/components/reviewer/ReviewRequestStatusBadge.module.css';
+} from '../../../../src/utils/reviewRequestPolicy';
+import { ReviewRequestStatusBadge } from '../../../../src/components/reviewer/ReviewRequestStatusBadge';
+import styles from '../../../../src/components/reviewer/ReviewRequestStatusBadge.module.css';
 
 describe('normalizeReviewRequestStatus (defect 1A)', () => {
   it('maps canonical strings exactly', () => {

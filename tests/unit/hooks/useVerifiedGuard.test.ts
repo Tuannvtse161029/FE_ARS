@@ -46,7 +46,7 @@ vi.mock('../../../src/utils/roleNormalizer', () => ({
 
 // ── Helper to re-import after doMock ───────────────────────────────────────
 
-const setupHook = (userOverrides: Record<string, unknown> = {}) => {
+const setupHook = async (userOverrides: Record<string, unknown> = {}) => {
   vi.doMock('../../../src/context/AuthContext', () => ({
     useAuth: () => ({
       user: {
@@ -67,8 +67,9 @@ const setupHook = (userOverrides: Record<string, unknown> = {}) => {
 
   vi.resetModules();
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
+  const { useVerifiedGuard: guarded } = await import(
+    '../../../src/hooks/useVerifiedGuard'
+  );
   const { result } = renderHook(() => guarded());
   return result;
 };
@@ -98,7 +99,9 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = await import(
+      '../../../src/hooks/useVerifiedGuard'
+    );
 
     renderHook(() => guarded());
 
@@ -128,7 +131,9 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = await import(
+      '../../../src/hooks/useVerifiedGuard'
+    );
 
     renderHook(() => guarded());
 
@@ -157,7 +162,9 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = await import(
+      '../../../src/hooks/useVerifiedGuard'
+    );
 
     renderHook(() => guarded());
 
@@ -186,7 +193,9 @@ describe('useVerifiedGuard', () => {
     }));
 
     vi.resetModules();
-    const { useVerifiedGuard: guarded } = require('../../../src/hooks/useVerifiedGuard');
+    const { useVerifiedGuard: guarded } = await import(
+      '../../../src/hooks/useVerifiedGuard'
+    );
 
     renderHook(() => guarded());
 

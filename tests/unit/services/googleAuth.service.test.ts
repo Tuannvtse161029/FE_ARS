@@ -231,6 +231,104 @@ describe('googleAuthService.normaliseGoogleLoginResponse — explicit new-user s
     expect(out.requiresOnboarding).toBe(false);
   });
 
+  it('coerces isNewUser="true" (stringified by the BE) to true so first-time users still route to onboarding', () => {
+    // Symptom of the bug investigated in this ticket: a newly-registered
+    // Google user is not redirected to /complete-google-registration
+    // because the BE echoed `isNewUser` as the string "true" and the
+    // old strict `=== true` check dropped it. The relaxed coercion now
+    // accepts the well-known string forms without sacrificing the
+    // "explicit-only" intent.
+    const out = googleAuthService.normaliseGoogleLoginResponse({
+      token: 't',
+      email: 'u@e.com',
+      userId: 7,
+      isNewUser: 'true',
+    });
+    expect(out.isNewUser).toBe(true);
+  });
+
+  it('coerces isNewUser="1" / "True" (case-insensitive) to true', () => {
+    const a = googleAuthService.normaliseGoogleLoginResponse({
+      token: 't',
+      email: 'u@e.com',
+      userId: 7,
+      isNewUser: '1',
+    });
+    expect(a.isNewUser).toBe(true);
+    const b = googleAuthService.normaliseGoogleLoginResponse({
+      token: 't',
+      email: 'u@e.com',
+      userId: 7,
+      isNewUser: 'TRUE',
+    });
+    expect(b.isNewUser).toBe(true);
+  });
+
+  it('coerces isNewUser="false" / "0" to false', () => {
+    const out = googleAuthService.normaliseGoogleLoginResponse({
+      token: 't',
+      email: 'u@e.com',
+      userId: 7,
+      isNewUser: 'false',
+      requiresOnboarding: '0',
+    });
+    expect(out.isNewUser).toBe(false);
+    expect(out.requiresOnboarding).toBe(false);
+  });
+
+  it('coerces isNewUser=1 (numeric) to true', () => {
+    const out = googleAuthService.normaliseGoogleLoginResponse({
+      token: 't',
+      email: 'u@e.com',
+      userId: 7,
+      isNewUser: 1,
+    });
+    expect(out.isNewUser).toBe(true);
+  });
+
+  it('unwraps the { data: { ... } } .NET response wrapper so a wrapped isNewUser still routes to onboarding', () => {
+    // .NET controllers commonly wrap responses as `{ success, data: {...} }`.
+    // The old normaliser only checked the root, so a wrapped new-user
+    // signal was silently dropped. We now unwrap one level when the
+    // inner object carries a `token`.
+    const out = googleAuthService.normaliseGoogleLoginResponse({
+      success: true,
+      data: {
+        token: 'wrapped-jwt',
+        email: 'u@e.com',
+        userId: 7,
+        isNewUser: true,
+      },
+    });
+    expect(out.token).toBe('wrapped-jwt');
+    expect(out.userId).toBe(7);
+    expect(out.isNewUser).toBe(true);
+  });
+
+  it('unwraps { result: { ... } } and { payload: { ... } } wrappers', () => {
+    const r1 = googleAuthService.normaliseGoogleLoginResponse({
+      result: {
+        token: 'r-jwt',
+        email: 'u@e.com',
+        userId: 7,
+        requiresOnboarding: true,
+      },
+    });
+    expect(r1.token).toBe('r-jwt');
+    expect(r1.requiresOnboarding).toBe(true);
+
+    const r2 = googleAuthService.normaliseGoogleLoginResponse({
+      payload: {
+        token: 'p-jwt',
+        email: 'u@e.com',
+        userId: 7,
+        isNewUser: true,
+      },
+    });
+    expect(r2.token).toBe('p-jwt');
+    expect(r2.isNewUser).toBe(true);
+  });
+
   it('falls back to verificationStatus-based routing when neither signal is present', () => {
     const out = googleAuthService.normaliseGoogleLoginResponse({
       token: 't',

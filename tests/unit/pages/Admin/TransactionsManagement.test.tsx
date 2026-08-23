@@ -11,13 +11,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { TransactionsManagement } from '../../../../../src/pages/Admin/TransactionsManagement';
+import { TransactionsManagement } from '../../../../src/pages/Admin/TransactionsManagement';
 
 // The centralized withdrawal gate (AppConfig.features.enableWithdrawals) is
 // off in production by default; for these tests we force-enable withdrawals
 // so the existing UI mechanics are exercised. The disabled-state itself is
 // covered by tests/unit/withdrawalGate.test.tsx.
-vi.mock('../../../../../src/config/app', () => ({
+vi.mock('../../../../src/config/app', () => ({
   AppConfig: {
     appName: 'ARS Platform',
     appVersion: '1.0.0',
@@ -156,11 +156,11 @@ const { adminService, _internal } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../../../src/services/admin.service', () => ({
+vi.mock('../../../../src/services/admin.service', () => ({
   adminService,
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => ({
     user: { token: 'mock-token', username: 'admin', email: 'admin@example.com', role: 'Admin', userId: 1 },
     isAuthenticated: true,

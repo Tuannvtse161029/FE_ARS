@@ -5,8 +5,8 @@
  * `membershipId` and skips rows with `null` / `undefined` / non-positive.
  */
 import { describe, it, expect } from 'vitest';
-import { getPrimaryMembershipId } from '../../../../../src/components/gradstudent/utils';
-import type { StudentGroupView } from '../../../../../src/services/groupMembership.service';
+import { getPrimaryMembershipId } from '../../../../src/components/gradstudent/utils';
+import type { StudentGroupView } from '../../../../src/services/groupMembership.service';
 
 const makeRow = (membershipId: number | null | undefined): StudentGroupView => ({
   id: 1,

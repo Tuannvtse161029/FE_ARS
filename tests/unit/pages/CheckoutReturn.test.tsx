@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CheckoutReturn from '../../../src/pages/Payment/CheckoutReturn';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES } from '../../../src/routes/paths';
 
 vi.mock('../../../src/services/payment.service', () => ({
   paymentService: {

@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import {
   InvitationBanner,
   type InvitationPreview,
-} from '../../../../../src/components/gradstudent/InvitationBanner';
+} from '../../../../src/components/gradstudent/InvitationBanner';
 
 const INV: InvitationPreview = {
   id: 'inv-1',

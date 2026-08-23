@@ -6,7 +6,7 @@
  * Premium Packages route at a hash or a different path, this fails fast.
  */
 import { describe, it, expect } from 'vitest';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES } from '../../../src/routes/paths';
 
 describe('ROUTES.PREMIUM_PACKAGES', () => {
   it('is the real /premium-packages path', () => {

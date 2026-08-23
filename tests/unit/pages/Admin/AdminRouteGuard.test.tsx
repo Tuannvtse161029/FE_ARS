@@ -13,9 +13,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { RoleRequests } from '../../../../../src/pages/Admin/RoleRequests';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
-import { ROUTES } from '../../../routes/paths';
+import { RoleRequests } from '../../../../src/pages/Admin/RoleRequests';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
+import { ROUTES } from '../../../../src/routes/paths';
 
 // Use a minimal mock for adminService — only used to load the page.
 const { adminService } = vi.hoisted(() => ({
@@ -40,7 +40,7 @@ const { adminService } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../../../../src/services/admin.service', () => ({ adminService }));
+vi.mock('../../../../src/services/admin.service', () => ({ adminService }));
 
 const ROLE_FORUM = '/forum';
 const ROLE_ADMIN = '/admin/role-requests';
@@ -62,7 +62,7 @@ const renderWithAuth = (
 
 // Mock the auth hook with a mutable ref so each test can swap roles.
 const useAuthMock = vi.fn();
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 

@@ -43,6 +43,12 @@ const ARS_AUTH_STORAGE_KEYS = [
   // cleanup so a previous build's half-written session doesn't
   // survive the logout boundary.)
   'ars_google_onboarding_session',
+  // Agent 30 — first-time Google onboarding "submitted" sentinel.
+  // Set by CompleteGoogleRegistration after a successful POST, used
+  // to make a page refresh idempotent (a re-render of the page
+  // should not re-submit the role request). Cleared on logout so a
+  // *new* first-time user can complete onboarding from scratch.
+  'ars_google_onboarding_submitted',
 ] as const;
 
 /**
@@ -52,6 +58,17 @@ const ARS_AUTH_STORAGE_KEYS = [
  * localStorage, so the cleanup routine must clear both buckets.
  */
 const ARS_AUTH_ZUSTAND_KEY = 'ars-auth-storage';
+
+/**
+ * Removed in this revision: the Agent 30 `ARS_GOOGLE_CREDENTIAL_KEY`
+ * sessionStorage cache and its `setGoogleCredential` / `getGoogleCredential`
+ * helpers. The onboarding completion endpoint authenticates via the ARS
+ * JWT only — neither the credential-flow (Login → GIS) nor the legacy
+ * code-redirect-flow (`/auth/google/callback`) has the upstream Google
+ * ID token available for forwarding. The BE ticket
+ * (`BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`) explicitly forbids
+ * echoing identity-provider tokens in requests.
+ */
 
 /**
  * Defensive Google Identity Services auto-select toggle. Called only when
@@ -538,6 +555,10 @@ export const authService = {
   sendApprovalEmail: async (data: SendApprovalEmailRequest): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email: data.email } });
   },
+
+  // Removed in this revision: `setGoogleCredential` / `getGoogleCredential`.
+  // The onboarding completion endpoint authenticates via the ARS JWT
+  // only; the upstream Google ID token is not echoed into requests.
 };
 
 export default authService;

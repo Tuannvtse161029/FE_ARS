@@ -1,3 +1,106 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+
+// ── Standard MainLayout test mock surface (CORE_KEEP: sidebar/header/wallet) ──
+const useAuthMockLocal = vi.fn();
+
+vi.mock('../../../src/context/AuthContext', () => ({
+  useAuth: () => useAuthMockLocal(),
+}));
+
+vi.mock('../../../src/store', () => ({
+  useAuthStore: (selector: unknown) =>
+    typeof selector === 'function'
+      ? selector({ user: null, isAuthenticated: false })
+      : { user: null, isAuthenticated: false },
+}));
+
+vi.mock('../../../src/hooks/useWallet', () => ({
+  useWallet: () => ({
+    wallet: null,
+    balance: null,
+    isLoading: false,
+    refetch: () => Promise.resolve(),
+  }),
+}));
+
+vi.mock('../../../src/hooks/useNotifications', () => ({
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+    markRead: () => Promise.resolve(true),
+    markAllRead: () => Promise.resolve([]),
+    reset: () => undefined,
+  }),
+  useMarkNotificationRead: () => ({
+    markRead: () => Promise.resolve(true),
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
+  useReviewerAvailability: () => ({
+    isAvailable: false,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
+}));
+
+vi.mock('../../../src/services/reviewer.service', () => ({
+  reviewerService: { updateAvailability: () => Promise.resolve() },
+}));
+
+vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
+  WalletTopUpModal: () => null,
+}));
+
+import { buildMockAuth } from '../../../src/utils/mockAuth';
+import { MainLayout } from '../../../src/layouts/MainLayout';
+
+beforeEach(() => {
+  useAuthMockLocal.mockReset();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
+
+const setMockAuth = (opts: Parameters<typeof buildMockAuth>[0] = {}) => {
+  useAuthMockLocal.mockReturnValue(buildMockAuth(opts));
+};
+
+const renderMainLayout = (initialPath: string) =>
+  render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <MainLayout />
+    </MemoryRouter>,
+  );
+
+const findSidebarLinkByHref = (href: string): HTMLAnchorElement | null => {
+  const aside = document.querySelector('aside');
+  if (!aside) return null;
+  const anchors = aside.querySelectorAll('a');
+  for (const a of Array.from(anchors)) {
+    if (a.getAttribute('href') === href) return a as HTMLAnchorElement;
+  }
+  return null;
+};
+
+const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
+  const aside = document.querySelector('aside');
+  if (!aside) return null;
+  const lower = text.toLowerCase();
+  const anchors = aside.querySelectorAll('a');
+  for (const a of Array.from(anchors)) {
+    const t = (a.textContent ?? '').toLowerCase();
+    if (t.includes(lower)) return a as HTMLAnchorElement;
+  }
+  return null;
+};
 /**
  * Sidebar regression for the Guest (unverified) state.
  *
@@ -22,16 +125,6 @@
  */
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
-import {
-  setupMainLayoutMocks,
-  setMockAuth,
-  renderMainLayout,
-  findSidebarLinkByHref,
-  findSidebarLinkByText,
-} from '../../../src/utils/renderMainLayout';
-import { ROUTES } from '../../routes/paths';
-
-setupMainLayoutMocks();
 
 describe('MainLayout — Guest (unverified) sidebar', () => {
   it('Guest sidebar shows only Forums regardless of the chosen roleName', () => {
@@ -156,3 +249,5 @@ describe('MainLayout — Guest (unverified) sidebar', () => {
     expect(screen.queryByText('Researcher')).toBeNull();
   });
 });
+
+import { ROUTES } from '../../../src/routes/paths';

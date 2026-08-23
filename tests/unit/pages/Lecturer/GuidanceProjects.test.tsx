@@ -15,8 +15,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { GuidanceProjects } from '../../../../../src/pages/Lecturer/GuidanceProjects';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { GuidanceProjects } from '../../../../src/pages/Lecturer/GuidanceProjects';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {
   getAllGuidanceProjectsMock,
@@ -30,18 +30,18 @@ const {
   getJoinedGroupsForStudentMock: vi.fn(),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
 }));
 
 // The GuidanceProjects page imports useAuth from context/AuthContext.
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   default: {},
 }));
 
-vi.mock('../../../../../src/services/axios', () => ({
+vi.mock('../../../../src/services/axios', () => ({
   default: {
     get: vi.fn(),
     post: postMock,
@@ -50,11 +50,11 @@ vi.mock('../../../../../src/services/axios', () => ({
   },
 }));
 
-vi.mock('../../../../../src/services/guidanceProject.service', () => ({
+vi.mock('../../../../src/services/guidanceProject.service', () => ({
   getAllGuidanceProjects: getAllGuidanceProjectsMock,
 }));
 
-vi.mock('../../../../../src/services/groupMembership.service', () => ({
+vi.mock('../../../../src/services/groupMembership.service', () => ({
   getJoinedGroupsForStudent: getJoinedGroupsForStudentMock,
 }));
 

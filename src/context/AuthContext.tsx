@@ -4,7 +4,10 @@ import { useAuthStore } from '../store';
 import { useWelcomeSignal } from '../store/welcomeSignal';
 import authService, { clearAuthSession } from '../services/auth.service';
 import { userService } from '../services/user.service';
-import { googleAuthService } from '../services/googleAuth.service';
+import {
+  googleAuthService,
+  type CompleteGoogleRegistrationResponse,
+} from '../services/googleAuth.service';
 import { ROUTES } from '../routes/paths';
 import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
 import type { GoogleCredentialResponse } from '../types/googleAuth';
@@ -28,6 +31,50 @@ interface AuthContextType {
     credentialOrResponse: string | GoogleCredentialResponse,
     options?: { rememberMe?: boolean },
   ) => Promise<void>;
+  /**
+   * Agent 30 — submit the first-time Google onboarding completion payload
+   * to `POST /api/Auth/complete-google-registration`.
+   *
+   * The ARS session is forwarded implicitly through the shared axios
+   * `Authorization: Bearer <ars-jwt>` header (see `services/axios.ts`).
+   * The BE derives the user id from the JWT subject — we do NOT echo
+   * the upstream Google ID token, the OAuth code, or any client-supplied
+   * user id into the body. This is true for both the credential flow
+   * (Login → `POST /api/Auth/google-login`) and the legacy
+   * code-redirect flow (`/auth/google/callback`); both produce the same
+   * ARS session, so a single onboarding submit works for either entry
+   * path.
+   *
+   * The context:
+   *   • posts the documented onboarding payload exactly once per call
+   *     (the page owns the double-click / in-flight guard)
+   *   • refetches the BE's authoritative user record so the auth store
+   *     and ars_user blob reflect the new pending state
+   *   • routes to `/forum` — pending Guests do not get into role
+   *     workspaces, and the verified-guard renders the pending banner.
+   */
+  completeGoogleRegistration: (
+    payload: {
+      pdfUrl: string;
+      phoneNumber: string;
+      role: string;
+      orcidId?: string;
+      consents?: Array<{ documentType: string; version: string }>;
+    },
+  ) => Promise<{
+    status: 'submitted';
+    requestStatus: string | null;
+    onboardingStatus: string | null;
+    role: string | null;
+    effectiveRole: string | null;
+  }>;
+  /**
+   * Removed in this revision — the onboarding completion endpoint
+   * authenticates via the ARS JWT only. The Google ID token is never
+   * cached or echoed; both the credential-flow (Login → GIS) and the
+   * legacy code-redirect-flow (`/auth/google/callback`) share the
+   * same ARS session, so a single onboarding submit works for both.
+   */
   logout: () => void;
   /**
    * Agent 53 — failed-session recovery (401 / 403 / token-expired). Clears
@@ -79,6 +126,34 @@ function resolveEffectiveRole(
   if (fromResponse) return fromResponse;
   const isActive = freshUser?.isActive ?? response.isActive ?? false;
   return isActive ? (roleToUse as EffectiveRole) : 'Guest';
+}
+
+/**
+ * Routing-rule helpers (Agent 52 — Google entry paths).
+ *
+ * The loginWithGoogle + GoogleCallback routing rules per the task spec:
+ *   1. Onboarding page when BE signals `isNewUser || requiresOnboarding`
+ *      OR when `role` is empty AND `roleId` is absent/zero. The second
+ *      clause is the documented fallback for BE versions that don't
+ *      surface `isNewUser` / `requiresOnboarding` (BTR-AGENT52-01).
+ *   2. /forum as Guest when the role is non-null but the account is
+ *      not approved (Pending verification OR isActive=false).
+ *   3. Otherwise, preserve the existing role landing route.
+ *
+ * `hasNonEmptyRole` accepts strings, null, undefined, and trimmed-empty.
+ * `hasPositiveRoleId` accepts finite positive integers (per ROLE_IDS) and
+ * treats null/undefined/zero/non-finite as "no role id assigned".
+ */
+function hasNonEmptyRole(role: unknown): boolean {
+  return typeof role === 'string' && role.trim().length > 0;
+}
+
+function hasPositiveRoleId(roleId: unknown): boolean {
+  return (
+    typeof roleId === 'number' &&
+    Number.isFinite(roleId) &&
+    roleId > 0
+  );
 }
 
 const KNOWN_BUSINESS_ROLES: readonly UserRole[] = [
@@ -248,10 +323,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    *
    * Flow:
    *   1. POST `{ credential }` to `/api/Auth/google-login`.
-   *   2. If the BE signals `isNewUser || requiresOnboarding`, persist a
-   *      first-time session and route to `/complete-google-registration`.
-   *   3. Otherwise, run the same persistence + navigation pipeline used by
-   *      the password login flow (`persistAuthAndNavigate`).
+   *   2. Decide the destination from the BE-derived routing signals:
+   *        - `isNewUser || requiresOnboarding`           → onboarding page
+   *        - role/roleId both empty (no legacy signal)   → onboarding page
+   *        - role non-null but Pending / inactive        → /forum as Guest
+   *        - role non-null and Approved + active         → role landing route
+   *   3. Run the persistence + navigation pipeline used by the
+   *      password-login flow (`persistAuthAndNavigate`).
    *
    * The credential is forwarded exactly once. Errors from `postGoogleLogin`
    * are normalised into a user-friendly `error` string; the underlying
@@ -298,11 +376,91 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        if (session.isNewUser || session.requiresOnboarding) {
+        // Dev-only: surface the exact routing decision so a mis-classified
+        // first-time user (who never reaches the onboarding page) shows
+        // up clearly in the browser console. No credentials / tokens are
+        // included — only the boolean signals + role assignment state.
+        if (import.meta.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.info('[google-login:diag] AuthContext routing decision', {
+            isNewUser: session.isNewUser,
+            requiresOnboarding: session.requiresOnboarding,
+            verificationStatus: session.verificationStatus,
+            isActive: session.isActive,
+            role: session.role,
+            roleId: session.roleId,
+            roles: session.roles,
+            effectiveRole: session.effectiveRole,
+            // Diagnostics-only: surface the unified routing signals so a
+            // mis-classified first-time user (BE omitted isNewUser /
+            // requiresOnboarding AND omitted role/roleId) is visible in the
+            // console. We never log the token, email, or credential.
+            hasRole: hasNonEmptyRole(session.role),
+            hasRoleId: hasPositiveRoleId(session.roleId),
+            onboardingByRoleNull:
+              hasNonEmptyRole(session.role) === false &&
+              hasPositiveRoleId(session.roleId) === false,
+            chosenRoute: (() => {
+              if (session.isNewUser || session.requiresOnboarding) {
+                return ROUTES.COMPLETE_GOOGLE_REGISTRATION;
+              }
+              if (
+                !hasNonEmptyRole(session.role) &&
+                !hasPositiveRoleId(session.roleId)
+              ) {
+                return ROUTES.COMPLETE_GOOGLE_REGISTRATION;
+              }
+              return 'existing-user';
+            })(),
+          });
+        }
+
+        // Routing rule (per task spec):
+        //   1. Onboarding page when BE signals new/requires-onboarding OR when
+        //      the role + roleId fields are both absent/null/empty. The second
+        //      clause is the documented fallback for BE versions that don't
+        //      surface `isNewUser` / `requiresOnboarding` (see BTR-AGENT52-01).
+        //      We do NOT rely solely on the legacy signals.
+        //   2. /forum as Guest when the role is non-null but the account is
+        //      not approved (Pending verification OR isActive=false).
+        //   3. Otherwise, preserve the existing role landing route
+        //      (landingRouteForRoleName via persistAuthAndNavigate).
+        const hasRole = hasNonEmptyRole(session.role);
+        const hasRoleId = hasPositiveRoleId(session.roleId);
+        const shouldOnboard =
+          session.isNewUser ||
+          session.requiresOnboarding ||
+          (!hasRole && !hasRoleId);
+
+        if (shouldOnboard) {
           // First-time Google user. Persist a pending session WITHOUT a role
           // (mirrors the existing GoogleCallback first-time branch). The
           // /complete-google-registration page reads from the same storage
           // path so the existing onboarding UI continues to work.
+          //
+          // The onboarding completion endpoint authenticates via the ARS
+          // JWT only — we deliberately do NOT cache the upstream Google
+          // ID token here (the BE forbids echoing identity-provider
+          // tokens; see BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md).
+          //
+          // Defensive cleanup: a stale `ars_google_onboarding_submitted`
+          // sentinel from a previous (now-deleted) account must NOT survive
+          // into this brand-new session. Otherwise the onboarding page
+          // could render its post-submit "success" state and offer a
+          // `Go to the Forum` button to a user who has not actually
+          // submitted anything yet. We clear it from BOTH storage buckets
+          // so neither `localStorage` (Remember Me) nor `sessionStorage`
+          // (default) can leak a previous user's sentinel.
+          try {
+            localStorage.removeItem('ars_google_onboarding_submitted');
+          } catch {
+            /* ignore */
+          }
+          try {
+            sessionStorage.removeItem('ars_google_onboarding_submitted');
+          } catch {
+            /* ignore */
+          }
           storage.setRememberMe(rememberMe);
           storage.setToken(session.token);
           const onboardingUser = {
@@ -310,6 +468,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             username: session.email,
             email: session.email,
             fullName: session.fullName ?? session.email,
+            // role/roleId are absent in this branch — leave them at the
+            // lockout-safe zero/null sentinels the rest of the FE expects
+            // for a "no role assigned yet" first-time Google user.
             roleId: session.roleId ?? 0,
             roleName: session.role ?? '',
             isActive: session.isActive ?? false,
@@ -332,10 +493,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const knownRoles = session.roles.filter((r): r is UserRole =>
           (KNOWN_BUSINESS_ROLES as readonly string[]).includes(r as string),
         );
-        const roleToUse =
-          (session.role as UserRole | null) ??
-          (knownRoles[0] ?? null) ??
-          null;
+        // `role` is non-null per the role-null check above (otherwise we
+        // would have routed to onboarding). Cast through `UserRole | null`
+        // to satisfy the TS narrowing downstream.
+        const roleToUse = (session.role as UserRole | null) ?? knownRoles[0] ?? null;
 
         if (!roleToUse) {
           setIsLoading(false);
@@ -349,6 +510,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const filteredRoles =
           knownRoles.length > 0 ? knownRoles : [roleToUse];
 
+        // The centralised persist+navigate helper resolves the
+        // landing route from `roleToUse` (via `landingRouteForRoleName`)
+        // so the verified-role branch is unchanged from the previous
+        // behaviour. We DO surface `effectiveRole` here so a Pending
+        // user that somehow reaches this branch (e.g. legacy BE shapes)
+        // lands on /forum as a Guest rather than a role workspace.
         const authResponse: AuthResponse = {
           token: session.token,
           username: session.email,
@@ -376,6 +543,123 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     [authStore, navigate, persistAuthAndNavigate],
+  );
+
+  // Removed in this revision: `getGoogleOnboardingCredential`. The
+  // onboarding completion endpoint authenticates via the ARS JWT only,
+  // so the cached Google ID token is no longer needed (and is no longer
+  // cached — see the new-user branch of `loginWithGoogle`).
+
+  /**
+   * Agent 30 — submit the first-time Google onboarding completion
+   * payload to the documented BE endpoint. The caller supplies the
+   * captured PDF URL, requested role, optional phone number, and (for
+   * Reviewer) the canonical ORCID iD.
+   *
+   * Authentication is forwarded implicitly through the SHARED ARS
+   * SESSION: `googleAuthService.postCompleteGoogleRegistration` posts
+   * through the shared axios instance, which carries the active
+   * `Authorization: Bearer <ars-jwt>` header populated from
+   * `storage.getToken()` (see `services/axios.ts` and
+   * `utils/storage.ts`). The BE derives the user id from the JWT
+   * subject server-side — we deliberately do NOT echo the upstream
+   * Google ID token, the OAuth code, or a client-supplied user id into
+   * the body. This is true for both the credential flow (Login →
+   * `POST /api/Auth/google-login`) and the legacy code-redirect flow
+   * (`/auth/google/callback`); both produce the same ARS session.
+   *
+   * The context:
+   *   • posts the documented onboarding payload exactly once per call
+   *     (the page owns the double-click / in-flight guard)
+   *   • refetches the BE's authoritative user record so the auth store
+   *     and ars_user blob reflect the new pending state
+   *   • routes to `/forum` — pending Guests do not get into role
+   *     workspaces, and the verified-guard renders the pending banner.
+   */
+  const completeGoogleRegistration = useCallback(
+    async (
+      payload: {
+        pdfUrl: string;
+        phoneNumber: string;
+        role: string;
+        orcidId?: string;
+        consents?: Array<{ documentType: string; version: string }>;
+      },
+    ): Promise<{
+      status: 'submitted';
+      requestStatus: string | null;
+      onboardingStatus: string | null;
+      role: string | null;
+      effectiveRole: string | null;
+    }> => {
+      const userId = authStore.user?.id ?? 0;
+      if (!userId) {
+        throw new Error(
+          'No authenticated user is associated with this onboarding request.',
+        );
+      }
+
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response: CompleteGoogleRegistrationResponse =
+          await googleAuthService.postCompleteGoogleRegistration({
+            payload: {
+              pdfUrl: payload.pdfUrl,
+              phoneNumber: payload.phoneNumber ?? '',
+              role: payload.role,
+              orcidId: payload.role === 'Reviewer' ? payload.orcidId : undefined,
+              consents: payload.consents,
+            },
+            // Per-call idempotency so a double-submit on the same page
+            // mount is deduped by the BE (and recognised as the same call
+            // locally). Survives a refresh because the page reads it from
+            // the sessionStorage-adjacent `ars_google_onboarding_submitted`
+            // sentinel.
+            idempotencyKey: `complete-google-registration-${userId}`,
+          });
+
+        // Refetch the authoritative user so the in-memory store reflects
+        // the BE's new pending state. We swallow errors so a transient
+        // BE blip doesn't break the navigation.
+        try {
+          const fresh = await userService.getById(userId);
+          if (fresh) {
+            storage.setUser(fresh);
+            authStore.updateUser({
+              roleName: fresh.roleName ?? null,
+              roleId: fresh.roleId ?? null,
+              isActive: fresh.isActive,
+              verificationStatus: fresh.verificationStatus,
+              accountTier: fresh.accountTier,
+              effectiveRole: fresh.effectiveRole,
+            });
+            if (fresh.effectiveRole) {
+              authStore.setEffectiveRole(fresh.effectiveRole);
+            }
+          }
+        } catch {
+          /* defensive — the user is already past the submit gate */
+        }
+
+        // The new account is expected to remain pending until Admin
+        // approval. route the user to /forum so the verified-guard
+        // renders the pending banner. We do NOT navigate to a role
+        // workspace — the role-request lifecycle is gated server-side.
+        navigate(ROUTES.FORUM, { replace: true });
+
+        return {
+          status: 'submitted',
+          requestStatus: response.requestStatus ?? 'Pending',
+          onboardingStatus: response.onboardingStatus ?? 'Completed',
+          role: response.role ?? payload.role,
+          effectiveRole: response.effectiveRole ?? 'Guest',
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [authStore, navigate],
   );
 
   const confirmRoleSelection = useCallback(
@@ -416,6 +700,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
+      // Dev-only: log the logout decision so a "Guest clicks logout but
+      // stays on the page" bug surfaces immediately in the console. We
+      // intentionally include neither the token nor the email — only
+      // the derived session bucket + the effective role so the trace is
+      // useful without leaking sensitive state.
+      if (import.meta.env?.DEV) {
+        const isAuthenticated = authStore.isAuthenticated;
+        const storedToken =
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem('ars_token') ??
+              localStorage.getItem('ars_token')
+            : null;
+        // eslint-disable-next-line no-console
+        console.info('[auth:logout] Guest-aware logout dispatched', {
+          effectiveRole: authStore.effectiveRole,
+          hasStoredToken: storedToken !== null,
+          isAuthenticated,
+          willNavigateTo: ROUTES.LOGIN,
+        });
+      }
       // Clear the welcome-back signal alongside the rest of the auth state.
       // The next successful login will flip it back to true for the new user
       // — the banner must never linger across a logout/login boundary.
@@ -530,6 +834,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     error,
     login,
     loginWithGoogle,
+    completeGoogleRegistration,
     logout,
     handleSessionFailure,
     clearError,

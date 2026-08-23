@@ -58,7 +58,7 @@ vi.mock('../../../src/services/auth.service', () => ({
   },
 }));
 
-vi.mock('../../store', () => ({
+vi.mock('../../../src/store', () => ({
   useAuthStore: () => ({
     login: loginSpy,
     setLoading: setLoadingSpy,
@@ -67,6 +67,25 @@ vi.mock('../../store', () => ({
 
 vi.mock('../../../src/hooks/useFirebaseUpload', () => ({
   useFirebaseUpload: () => firebaseUploadMock,
+}));
+
+vi.mock('../../../src/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+    login: undefined,
+    loginWithGoogle: undefined,
+    logout: undefined,
+    handleSessionFailure: undefined,
+    clearError: undefined,
+    pendingRoleSelection: null,
+    confirmRoleSelection: undefined,
+    cancelRoleSelection: undefined,
+    effectiveRole: null,
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const renderRegister = () =>

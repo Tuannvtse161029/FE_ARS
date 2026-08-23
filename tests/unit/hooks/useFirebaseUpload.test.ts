@@ -12,9 +12,10 @@ vi.mock('firebase/storage', () => ({
   ref: vi.fn((_storage: unknown, path: string) => ({ path })),
   uploadBytesResumable: uploadBytesResumableMock,
   getDownloadURL: getDownloadURLMock,
+  getStorage: vi.fn(() => ({})),
 }));
 
-vi.mock('../../firebase', () => ({
+vi.mock('../../../src/firebase', () => ({
   storage: {},
   isFirebaseConfigured: vi.fn(() => true),
 }));

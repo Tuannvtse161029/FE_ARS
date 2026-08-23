@@ -14,8 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { SeminarWorkspace } from '../../../../../src/pages/Lecturer/SeminarWorkspace';
-import * as useSeminarModule from '../../../../../src/hooks/useSeminar';
+import { SeminarWorkspace } from '../../../../src/pages/Lecturer/SeminarWorkspace';
+import * as useSeminarModule from '../../../../src/hooks/useSeminar';
 
 const { buildMockAuth } = vi.hoisted(() => ({
   buildMockAuth: vi.fn(() => ({
@@ -24,11 +24,11 @@ const { buildMockAuth } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth(),
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => buildMockAuth(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   default: {},

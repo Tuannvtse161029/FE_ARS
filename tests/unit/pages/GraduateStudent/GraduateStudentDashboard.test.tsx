@@ -15,8 +15,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { GraduateStudentDashboard } from '../../../../../src/pages/GraduateStudent/GraduateStudentDashboard';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { GraduateStudentDashboard } from '../../../../src/pages/GraduateStudent/GraduateStudentDashboard';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {
   mockUseStudentGroups,
@@ -26,19 +26,19 @@ const {
   mockUsePhasedReports: vi.fn(),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Graduate Student', userId: 9 }),
 }));
 
-vi.mock('../../../../../src/hooks/useStudentGroups', () => ({
+vi.mock('../../../../src/hooks/useStudentGroups', () => ({
   useStudentGroups: () => mockUseStudentGroups(),
 }));
 
-vi.mock('../../../../../src/hooks/usePhasedReports', () => ({
+vi.mock('../../../../src/hooks/usePhasedReports', () => ({
   usePhasedReports: () => mockUsePhasedReports(),
 }));
 
-vi.mock('../../../../../src/services/lecturerLookup.service', () => ({
+vi.mock('../../../../src/services/lecturerLookup.service', () => ({
   lecturerLookupService: {
     getLecturerDisplayName: () => 'Lecturer #4',
     ensureLecturerDisplayName: vi.fn(),
@@ -84,14 +84,14 @@ describe('<GraduateStudentDashboard>', () => {
       isLoading: true,
     }));
     renderPage();
-    expect(screen.getByText(/Loading your dashboard/)).toBeInTheDocument();
+    expect(screen.getByText(/Loading research data/i)).toBeInTheDocument();
   });
 
   it('renders empty state with disabled "Request supervision" (§D.3 tooltip)', async () => {
     mockUseStudentGroups.mockImplementationOnce(() => defaultEmpty());
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/Graduate Student Workspace/)).toBeInTheDocument(),
+      expect(screen.getByText(/Research Journey/)).toBeInTheDocument(),
     );
     const btn = screen.getByRole('button', { name: /Request supervision/i });
     expect(btn).toBeDisabled();
@@ -188,7 +188,7 @@ describe('<GraduateStudentDashboard>', () => {
     // default state — no groups, no project
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/Graduate Student Workspace/)).toBeInTheDocument(),
+      expect(screen.getByText(/Research Journey/)).toBeInTheDocument(),
     );
     // The "Joined Groups" summary card surfaces the empty state with
     // "Join a research group to begin" hint.
@@ -208,7 +208,7 @@ describe('<GraduateStudentDashboard>', () => {
     }));
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/Graduate Student Workspace/)).toBeInTheDocument(),
+      expect(screen.getByText(/Research Journey/)).toBeInTheDocument(),
     );
     // Simulate the visibilitychange event with visibilityState === 'visible'.
     Object.defineProperty(document, 'visibilityState', {

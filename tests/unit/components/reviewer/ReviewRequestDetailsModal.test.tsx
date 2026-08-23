@@ -7,19 +7,19 @@ const { getByReviewRequestIdMock, paperServiceGetByIdMock } = vi.hoisted(() => (
   paperServiceGetByIdMock: vi.fn(),
 }));
 
-vi.mock('../../../../../src/services/detailedEvaluation.service', () => ({
+vi.mock('../../../../src/services/detailedEvaluation.service', () => ({
   detailedEvaluationService: {
     getByReviewRequestId: getByReviewRequestIdMock,
   },
 }));
 
-vi.mock('../../../../../src/services/paper.service', () => ({
+vi.mock('../../../../src/services/paper.service', () => ({
   paperService: {
     getById: paperServiceGetByIdMock,
   },
 }));
 
-vi.mock('../../../../../src/components/PdfViewer', () => {
+vi.mock('../../../../src/components/PdfViewer', () => {
   const Mock = ({ url }: { url: string }) => <div data-testid="pdf-viewer">{url}</div>;
   return {
     PdfViewer: Mock,
@@ -27,10 +27,10 @@ vi.mock('../../../../../src/components/PdfViewer', () => {
   };
 });
 
-import { ReviewRequestDetailsModal } from '../../../../../src/components/reviewer/ReviewRequestDetailsModal';
-import type { ReviewRequest } from '../../../../../src/services/reviewRequest.service';
-import type { Paper } from '../../../../../src/services/paper.service';
-import type { DetailedEvaluation } from '../../../../../src/services/detailedEvaluation.service';
+import { ReviewRequestDetailsModal } from '../../../../src/components/reviewer/ReviewRequestDetailsModal';
+import type { ReviewRequest } from '../../../../src/services/reviewRequest.service';
+import type { Paper } from '../../../../src/services/paper.service';
+import type { DetailedEvaluation } from '../../../../src/services/detailedEvaluation.service';
 
 const makeReq = (overrides: Partial<ReviewRequest> = {}): ReviewRequest => ({
   id: 99,

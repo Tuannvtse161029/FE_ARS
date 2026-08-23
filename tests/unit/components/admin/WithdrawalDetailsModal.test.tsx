@@ -6,8 +6,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { WithdrawalDetailsModal } from '../../../../../src/pages/Admin/WithdrawalDetailsModal';
-import type { WithdrawalRequestItem } from '../../../../../src/types/admin';
+import { WithdrawalDetailsModal } from '../../../../src/pages/Admin/WithdrawalDetailsModal';
+import type { WithdrawalRequestItem } from '../../../../src/types/admin';
 
 const NOW = '2026-08-16T10:30:00Z';
 const BASE_W: WithdrawalRequestItem = {

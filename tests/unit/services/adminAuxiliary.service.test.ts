@@ -40,7 +40,7 @@ beforeEach(async () => {
   _getAuditLogStore = () => storeModule.auditLog;
 
   // Load account fixtures for the accounts path.
-  const { MOCK_ACCOUNTS } = await import('../../../src/services/admin.mocks');
+  const { MOCK_ACCOUNTS } = await import('../../mocks/admin.mocks');
   _mockAccountsData = MOCK_ACCOUNTS;
 
   mockGet = vi.fn().mockImplementation((url: unknown) => {

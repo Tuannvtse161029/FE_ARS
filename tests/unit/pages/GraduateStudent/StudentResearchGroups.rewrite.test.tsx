@@ -13,8 +13,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { StudentResearchGroups } from '../../../../../src/pages/GraduateStudent/StudentResearchGroups';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { StudentResearchGroups } from '../../../../src/pages/GraduateStudent/StudentResearchGroups';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {
   mockGetMembersForGroup,
@@ -28,26 +28,26 @@ const {
   useStudentGroupsImpl: vi.fn(),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Graduate Student', userId: 9 }),
 }));
 
-vi.mock('../../../../../src/services/groupMember.service', () => ({
+vi.mock('../../../../src/services/groupMember.service', () => ({
   groupMemberService: { getMembersForGroup: mockGetMembersForGroup },
 }));
 
-vi.mock('../../../../../src/services/phasedReport.service', () => ({
+vi.mock('../../../../src/services/phasedReport.service', () => ({
   listReportsForGroup: mockListReportsForGroup,
 }));
 
-vi.mock('../../../../../src/services/lecturerLookup.service', () => ({
+vi.mock('../../../../src/services/lecturerLookup.service', () => ({
   lecturerLookupService: {
     getLecturerDisplayName: mockGetLecturerDisplayName,
     ensureLecturerDisplayName: vi.fn(),
   },
 }));
 
-vi.mock('../../../../../src/hooks/useLearningMaterials', () => ({
+vi.mock('../../../../src/hooks/useLearningMaterials', () => ({
   useLearningMaterials: () => ({
     materials: [],
     isLoading: false,
@@ -56,11 +56,11 @@ vi.mock('../../../../../src/hooks/useLearningMaterials', () => ({
   }),
 }));
 
-vi.mock('../../../../../src/hooks/useStudentGroups', () => ({
+vi.mock('../../../../src/hooks/useStudentGroups', () => ({
   useStudentGroups: () => useStudentGroupsImpl(),
 }));
 
-vi.mock('../../../../../src/hooks/usePhasedReports', () => ({
+vi.mock('../../../../src/hooks/usePhasedReports', () => ({
   usePhasedReports: () => ({
     reports: [],
     isLoading: false,

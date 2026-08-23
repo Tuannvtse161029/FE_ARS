@@ -8,7 +8,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
-vi.mock('../../../../../src/services/admin.service', () => ({
+vi.mock('../../../../src/services/admin.service', () => ({
   adminService: {
     getAccounts: vi.fn(),
     getRoleRequests: vi.fn(),
@@ -19,11 +19,11 @@ vi.mock('../../../../../src/services/admin.service', () => ({
   },
 }));
 
-vi.mock('../../../../../src/hooks/useAdminGuard', () => ({
+vi.mock('../../../../src/hooks/useAdminGuard', () => ({
   useAdminGuard: () => undefined,
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => ({
     user: { userId: 99, role: 'Admin', token: 't', email: 'admin@test.com', username: 'admin' },
     isAuthenticated: true,
@@ -34,13 +34,13 @@ vi.mock('../../../../../src/context/AuthContext', () => ({
   }),
 }));
 
-vi.mock('../../../../../src/store/authSlice', () => ({
+vi.mock('../../../../src/store/authSlice', () => ({
   useAuthStore: <T,>(selector: (s: { user: { id: number } | null }) => T) =>
     selector({ user: { id: 1, role: 'Admin' } }),
 }));
 
-import { adminService } from '../../../../../src/services/admin.service';
-import { AccountsManagement } from '../../../../../src/pages/Admin/AccountsManagement';
+import { adminService } from '../../../../src/services/admin.service';
+import { AccountsManagement } from '../../../../src/pages/Admin/AccountsManagement';
 
 const makeAccount = (i: number) => ({
   id: i,

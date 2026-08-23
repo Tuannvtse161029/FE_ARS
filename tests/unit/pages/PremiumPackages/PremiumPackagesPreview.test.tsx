@@ -21,12 +21,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import PremiumPackagesPreview from '../../../../../src/pages/PremiumPackages/PremiumPackagesPreview';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import PremiumPackagesPreview from '../../../../src/pages/PremiumPackages/PremiumPackagesPreview';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 // Mutate this from the auth hook mock to swap roles between tests.
 const useAuthMock = vi.fn();
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 

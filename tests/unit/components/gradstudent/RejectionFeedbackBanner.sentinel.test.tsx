@@ -8,8 +8,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import {
   RejectionFeedbackBanner,
-} from '../../../../../src/components/gradstudent/RejectionFeedbackBanner';
-import type { SubmittedPhasedReport } from '../../../../../src/services/phasedReport.service';
+} from '../../../../src/components/gradstudent/RejectionFeedbackBanner';
+import type { SubmittedPhasedReport } from '../../../../src/services/phasedReport.service';
 
 const BASE_REPORT: SubmittedPhasedReport = {
   id: 9,

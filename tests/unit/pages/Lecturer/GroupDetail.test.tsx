@@ -14,8 +14,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { LecturerGroupDetail } from '../../../../../src/pages/Lecturer/GroupDetail';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { LecturerGroupDetail } from '../../../../src/pages/Lecturer/GroupDetail';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {
   getAllGroupsMock,
@@ -33,17 +33,17 @@ const {
   updateGroupMock: vi.fn(),
 }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   default: {},
 }));
 
-vi.mock('../../../../../src/services/axios', () => ({
+vi.mock('../../../../src/services/axios', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
@@ -52,10 +52,10 @@ vi.mock('../../../../../src/services/axios', () => ({
   },
 }));
 
-vi.mock('../../../../../src/services/researchGroup.service', async () => {
+vi.mock('../../../../src/services/researchGroup.service', async () => {
   const actual = await vi.importActual<
-    typeof import('../../../../../src/services/researchGroup.service')
-  >('../../../../../src/services/researchGroup.service');
+    typeof import('../../../../src/services/researchGroup.service')
+  >('../../../../src/services/researchGroup.service');
   return {
     ...actual,
     researchGroupService: {
@@ -68,7 +68,7 @@ vi.mock('../../../../../src/services/researchGroup.service', async () => {
   };
 });
 
-vi.mock('../../../../../src/services/groupMember.service', () => ({
+vi.mock('../../../../src/services/groupMember.service', () => ({
   groupMemberService: {
     getAll: vi.fn(),
     getById: vi.fn(),
@@ -79,18 +79,18 @@ vi.mock('../../../../../src/services/groupMember.service', () => ({
   },
 }));
 
-vi.mock('../../../../../src/services/phasedReport.service', () => ({
+vi.mock('../../../../src/services/phasedReport.service', () => ({
   listReportsForGroup: listReportsForGroupMock,
 }));
 
-vi.mock('../../../../../src/services/learningMaterial.service', () => ({
+vi.mock('../../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: { getAll: getAllLearningMaterialsMock },
 }));
 
-vi.mock('../../../../../src/services/guidanceProject.service', async () => {
+vi.mock('../../../../src/services/guidanceProject.service', async () => {
   const actual = await vi.importActual<
-    typeof import('../../../../../src/services/guidanceProject.service')
-  >('../../../../../src/services/guidanceProject.service');
+    typeof import('../../../../src/services/guidanceProject.service')
+  >('../../../../src/services/guidanceProject.service');
   return {
     ...actual,
     getAllResearchTopics: getAllTopicsMock,

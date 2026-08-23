@@ -15,8 +15,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { RoleRequests } from '../../../../../src/pages/Admin/RoleRequests';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+import { RoleRequests } from '../../../../src/pages/Admin/RoleRequests';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const { adminUserService, _internal } = vi.hoisted(() => {
   const NOW = '2026-08-19T10:30:00Z';
@@ -88,7 +88,7 @@ const { adminUserService, _internal } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../../../src/services/adminUser.service', () => ({
+vi.mock('../../../../src/services/adminUser.service', () => ({
   adminUserService,
   KNOWN_VERIFICATION_STATUSES: ['Pending', 'Accepted', 'Rejected'],
   normalizeVerificationStatus: (raw: unknown) => (typeof raw === 'string' ? raw : ''),
@@ -96,11 +96,11 @@ vi.mock('../../../../../src/services/adminUser.service', () => ({
     user.verificationStatus === 'Pending',
 }));
 
-vi.mock('../../../../../src/services/user.service', () => ({
+vi.mock('../../../../src/services/user.service', () => ({
   displayAccountTier: (tier: string | null | undefined) => tier ?? 'Free',
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => buildMockAuth({ role: 'Admin', userId: 18 }),
 }));
 

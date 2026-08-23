@@ -78,11 +78,72 @@ export class GoogleLoginError extends Error {
  *
  * We never invent an onboarding decision from `role` alone — see spec.
  */
+// Dev-only diagnostic helper. Logs the raw google-login response and the
+// normalised result so the FE can verify what the BE actually returned
+// when a first-time user is not being routed to the onboarding page.
+// Stripped in production builds (`import.meta.env.DEV` is a build-time
+// constant that Vite tree-shakes).
+function diagGoogleLoginResponse(label: string, payload: unknown): void {
+  if (typeof import.meta === 'undefined' || !import.meta.env?.DEV) return;
+  // eslint-disable-next-line no-console
+  console.info(`[google-login:diag] ${label}`, payload);
+}
+
+// Coerce a value into a strict boolean. Accepts:
+//   - boolean        (true / false → verbatim)
+//   - string "true"  / "false" / "1" / "0" (case-insensitive, trimmed) —
+//                    covers .NET responses that serialise boolean flags as
+//                    strings, URL query-string parsing, and explicit-string
+//                    serializers
+//   - number 1 / 0   (and any non-zero number)
+//   - everything else → false (explicit-only routing — we never default to
+//     the onboarding branch from a missing field)
+//
+// Rationale: the FE ↔ BE ticket
+// (`tickets/backend/BE_GOOGLE_OAUTH_LOGIN_TICKET.md`) documents booleans
+// but in practice the BE may echo them as strings (URL params, JSON
+// serialisation quirks, or `JsonStringEnumConverter`-style wrappers). A
+// newly-registered Google user who never sees the onboarding page is
+// almost always caused by this normalisation silently dropping the
+// explicit signal — we therefore accept the well-known string forms
+// (`"true"` / `"1"` / `"false"` / `"0"`) but NOT free-form words like
+// `"yes"`, which preserves the original "explicit-only routing" invariant.
+function coerceBooleanish(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === false) return false;
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === 'true' || trimmed === '1') return true;
+    if (trimmed === 'false' || trimmed === '0') return false;
+  }
+  if (typeof value === 'number') {
+    if (Number.isFinite(value)) return value !== 0;
+  }
+  return false;
+}
+
 export function normaliseGoogleLoginResponse(
   data: unknown,
 ): NormalisedGoogleSession {
   const root = (data ?? {}) as Record<string, unknown>;
-  const user = (root.user ?? {}) as Record<string, unknown>;
+  // .NET convention — the BE may wrap the session payload under
+  // `{ success, data }` / `{ result }` / `{ payload }`. Unwrap one level so
+  // a wrapped response is normalised identically to a flat one. We only
+  // descend when the wrapper object itself doesn't carry the routing
+  // signals directly.
+  let payloadRoot = root;
+  for (const wrapperKey of ['data', 'result', 'payload'] as const) {
+    const wrapped = root[wrapperKey];
+    if (
+      wrapped &&
+      typeof wrapped === 'object' &&
+      (wrapped as Record<string, unknown>).token !== undefined
+    ) {
+      payloadRoot = wrapped as Record<string, unknown>;
+      break;
+    }
+  }
+  const user = (payloadRoot.user ?? {}) as Record<string, unknown>;
 
   const pick = <T>(...candidates: Array<unknown>): T | null => {
     for (const candidate of candidates) {
@@ -93,28 +154,28 @@ export function normaliseGoogleLoginResponse(
   };
 
   const token = pick<string | undefined>(
-    root.token,
-    root.accessToken,
-    root.jwt,
+    payloadRoot.token,
+    payloadRoot.accessToken,
+    payloadRoot.jwt,
   );
   const email = pick<string | undefined>(
-    root.email,
+    payloadRoot.email,
     user.email,
   );
   const fullName = pick<string | undefined>(
-    root.fullName,
+    payloadRoot.fullName,
     user.fullName,
-    root.username,
+    payloadRoot.username,
     user.username,
   );
   const avatarUrl = pick<string | undefined>(
-    root.avatarUrl,
-    root.picture,
+    payloadRoot.avatarUrl,
+    payloadRoot.picture,
     user.avatarUrl,
     user.picture,
   );
   const userIdRaw = pick<number | undefined>(
-    root.userId,
+    payloadRoot.userId,
     user.userId,
     user.id,
   );
@@ -123,20 +184,20 @@ export function normaliseGoogleLoginResponse(
       ? userIdRaw
       : null;
 
-  const role = pick<string | undefined>(root.role, root.roleName, user.role, user.roleName);
+  const role = pick<string | undefined>(payloadRoot.role, payloadRoot.roleName, user.role, user.roleName);
   const nestedRoleObj = (user.role && typeof user.role === 'object' ? user.role : null) as
     | { id?: unknown }
     | null;
-  const roleIdRaw = pick<number | undefined>(root.roleId, user.roleId, nestedRoleObj?.id);
+  const roleIdRaw = pick<number | undefined>(payloadRoot.roleId, user.roleId, nestedRoleObj?.id);
   const roleId =
     typeof roleIdRaw === 'number' && Number.isFinite(roleIdRaw) && roleIdRaw > 0
       ? roleIdRaw
       : null;
 
-  const rolesRaw = Array.isArray(root.roles)
-    ? root.roles
-    : Array.isArray(root.userRoles)
-      ? root.userRoles
+  const rolesRaw = Array.isArray(payloadRoot.roles)
+    ? payloadRoot.roles
+    : Array.isArray(payloadRoot.userRoles)
+      ? payloadRoot.userRoles
       : Array.isArray(user.roles)
         ? user.roles
         : [];
@@ -151,11 +212,11 @@ export function normaliseGoogleLoginResponse(
     })
     .filter((r): r is string => typeof r === 'string');
 
-  const isActiveRaw = pick<boolean | undefined>(root.isActive, user.isActive);
+  const isActiveRaw = pick<unknown>(payloadRoot.isActive, user.isActive);
   const isActive = typeof isActiveRaw === 'boolean' ? isActiveRaw : null;
 
   const verificationRaw = pick<string | undefined>(
-    root.verificationStatus,
+    payloadRoot.verificationStatus,
     user.verificationStatus,
   );
   const verificationStatus: NormalisedGoogleSession['verificationStatus'] =
@@ -166,7 +227,7 @@ export function normaliseGoogleLoginResponse(
         : null;
 
   const effectiveRoleRaw = pick<string | undefined>(
-    root.effectiveRole,
+    payloadRoot.effectiveRole,
     user.effectiveRole,
   );
   const effectiveRole =
@@ -175,16 +236,43 @@ export function normaliseGoogleLoginResponse(
       : null;
 
   // The BE may or may not surface isNewUser / requiresOnboarding (Swagger
-  // doesn't document them — see BTR-AGENT52-01). Coerce strict booleans so
-  // the route logic only sees true / false (never undefined) and stays in
-  // lock-step with the spec's "explicit-only onboarding decision" rule.
-  const isNewUserRaw = pick<boolean | undefined>(root.isNewUser, user.isNewUser);
-  const requiresOnboardingRaw = pick<boolean | undefined>(
-    root.requiresOnboarding,
+  // doesn't document them — see BTR-AGENT52-01). Coerce via the
+  // truthy-string helper so the route logic sees a real boolean and a
+  // first-time user whose flag was stringified by the BE (e.g. URL query
+  // parsing or `JsonStringEnumConverter`) still routes to onboarding.
+  // The wrapper-unwrap above means the field may live at the root, under
+  // `data` / `result` / `payload`, or inside `user` — every position is
+  // checked.
+  const isNewUserRaw = pick<unknown>(payloadRoot.isNewUser, user.isNewUser);
+  const requiresOnboardingRaw = pick<unknown>(
+    payloadRoot.requiresOnboarding,
     user.requiresOnboarding,
   );
-  const isNewUser = isNewUserRaw === true;
-  const requiresOnboarding = requiresOnboardingRaw === true;
+  const isNewUser = coerceBooleanish(isNewUserRaw);
+  const requiresOnboarding = coerceBooleanish(requiresOnboardingRaw);
+
+  // Dev-only: surface the raw + normalised routing signals so we can
+  // diagnose "new user was not routed to onboarding" without rebuilding.
+  // No token / email / credential is included — the signal of interest
+  // is `isNewUser` / `requiresOnboarding` only.
+  diagGoogleLoginResponse('normaliseGoogleLoginResponse', {
+    rawSignals: {
+      rootIsNewUser: root.isNewUser,
+      rootRequiresOnboarding: root.requiresOnboarding,
+      userIsNewUser: user.isNewUser,
+      userRequiresOnboarding: user.requiresOnboarding,
+    },
+    normalised: {
+      isNewUser,
+      requiresOnboarding,
+      isActive,
+      verificationStatus,
+      effectiveRole,
+      userId,
+      role: role ?? null,
+      roleId,
+    },
+  });
 
   return {
     token: typeof token === 'string' ? token : null,
@@ -265,6 +353,24 @@ export async function postGoogleLogin({
         },
       },
     );
+    // Dev-only: surface the raw BE response BEFORE normalisation so a
+    // missing / mis-shaped `isNewUser` signal is visible in the browser
+    // console. We log only the routing-relevant keys (never the token /
+    // email / credential). This pairs with the post-normalisation log
+    // emitted by `normaliseGoogleLoginResponse` so we can see the exact
+    // drop-off point when a first-time user is not routed to onboarding.
+    diagGoogleLoginResponse('postGoogleLogin:rawResponse.data', {
+      hasToken: typeof response?.data?.token === 'string',
+      hasUserId: typeof response?.data?.userId === 'number',
+      hasEmail: typeof response?.data?.email === 'string',
+      rootIsNewUser: (response?.data as Record<string, unknown> | undefined)?.isNewUser,
+      rootRequiresOnboarding: (response?.data as Record<string, unknown> | undefined)?.requiresOnboarding,
+      userIsNewUser: ((response?.data as Record<string, unknown> | undefined)?.user as Record<string, unknown> | undefined)?.isNewUser,
+      userRequiresOnboarding: ((response?.data as Record<string, unknown> | undefined)?.user as Record<string, unknown> | undefined)?.requiresOnboarding,
+      verificationStatus: (response?.data as Record<string, unknown> | undefined)?.verificationStatus,
+      isActive: (response?.data as Record<string, unknown> | undefined)?.isActive,
+      role: (response?.data as Record<string, unknown> | undefined)?.role,
+    });
     return normaliseGoogleLoginResponse(response.data);
   } catch (err: unknown) {
     // Map axios-style errors to a discriminated GoogleLoginError. We never
@@ -347,6 +453,257 @@ export async function postGoogleLogin({
 
 // ── Public service object ──────────────────────────────────────────────────
 
+// Agent 30 — payload for `POST /api/Auth/complete-google-registration`.
+//
+// Per `tickets/backend/BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`
+// (BE-GOOGLE-ONBOARDING-03) the BE contract is:
+//
+//   "Require the authenticated Google account's JWT. The endpoint operates
+//    only on the token subject; do not accept a user ID that can target
+//    another user."
+//   "Do not expose Google identity-provider tokens in requests or
+//    responses."
+//
+// i.e. the ARS JWT (carried by the shared axios `Authorization` header)
+// is the ONLY credential the endpoint accepts. We do NOT echo the
+// upstream Google ID token into the request body — neither the
+// credential-flow (Login.tsx → POST /api/Auth/google-login) nor the
+// legacy code-redirect-flow (GoogleCallback.tsx → /auth/google/callback)
+// has the ID token available for forwarding anyway. The body therefore
+// carries only the documented onboarding fields. The BE derives the
+// user id from the JWT subject — we never trust a client-supplied id.
+//
+// Fields:
+//   • required by the BE: pdfUrl, phoneNumber, role
+//   • conditional: orcidId (Reviewer only)
+//   • optional: consents (versioned legal-consent receipts)
+//
+// `additionalProperties: false` on the BE schema means any extra property
+// returns 400. We omit `credential` / `code` / `redirect_uri` from the
+// body — the BE either accepts the ARS session or rejects the request.
+export interface CompleteGoogleRegistrationRequest {
+  /** Verification PDF URL (Firebase Storage getDownloadURL). */
+  pdfUrl: string;
+  /** E.164-ish phone number (`+XX XXXXXXX`). Optional — pass empty string if unknown. */
+  phoneNumber: string;
+  /** Requested business role name. */
+  role: string;
+  /** Required when role === 'Reviewer'. ISO 7064 MOD 11-2 checksum-validated. */
+  orcidId?: string;
+  /** Versioned legal-consent receipts (acceptedAt is server-stamped). */
+  consents?: Array<{
+    documentType: string;
+    version: string;
+    acceptedAt?: string;
+  }>;
+}
+
+// Agent 30 — response shape. Swagger documents only the request body;
+// the response is BE-defined. We accept a permissive shape but never
+// fabricate fields the BE didn't echo.
+export interface CompleteGoogleRegistrationResponse {
+  userId?: number;
+  email?: string | null;
+  fullName?: string | null;
+  role?: string | null;
+  roleId?: number | null;
+  token?: string | null;
+  isActive?: boolean | null;
+  verificationStatus?: 'Pending' | 'Accepted' | 'Rejected' | null;
+  effectiveRole?: string | null;
+  requestStatus?: string | null;
+  onboardingStatus?: string | null;
+}
+
+export class CompleteGoogleRegistrationError extends Error {
+  readonly code:
+    | 'NETWORK'
+    | 'CONFLICT'
+    | 'UNPROCESSABLE'
+    | 'UNAUTHORIZED'
+    | 'SERVER'
+    | 'UNKNOWN';
+  readonly status: number | null;
+  constructor(
+    code: CompleteGoogleRegistrationError['code'],
+    message: string,
+    status: number | null = null,
+  ) {
+    super(message);
+    this.name = 'CompleteGoogleRegistrationError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/**
+ * POST the verified PDF URL + role + (Reviewer) ORCID to the documented
+ * onboarding-completion endpoint.
+ *
+ * Hard rules:
+ *   1. The `credential` is the original opaque Google ID token. We never
+ *      log it, decode it, or echo it back.
+ *   2. Idempotency-Key header is attached so a double-submit (e.g. the
+ *      user clicks the Submit button twice before the first request
+ *      resolves) is deduplicated server-side.
+ *   3. Errors are normalised to a discriminated `CompleteGoogleRegistrationError`
+ *      so the page can show a recoverable UI state without leaking the
+ *      request body into the message.
+ */
+export async function postCompleteGoogleRegistration({
+  payload,
+  idempotencyKey,
+}: {
+  payload: CompleteGoogleRegistrationRequest;
+  idempotencyKey?: string;
+}): Promise<CompleteGoogleRegistrationResponse> {
+  if (!payload || typeof payload !== 'object') {
+    throw new CompleteGoogleRegistrationError(
+      'UNPROCESSABLE',
+      'Onboarding payload is missing. Please retry from the registration page.',
+      null,
+    );
+  }
+  if (!payload.pdfUrl || !payload.pdfUrl.startsWith('http')) {
+    throw new CompleteGoogleRegistrationError(
+      'UNPROCESSABLE',
+      'A verification PDF must be uploaded before submitting.',
+      null,
+    );
+  }
+  if (!payload.role) {
+    throw new CompleteGoogleRegistrationError(
+      'UNPROCESSABLE',
+      'Please choose a platform role before submitting.',
+      null,
+    );
+  }
+  if (payload.role === 'Reviewer' && !payload.orcidId) {
+    throw new CompleteGoogleRegistrationError(
+      'UNPROCESSABLE',
+      'Reviewer onboarding requires a valid ORCID iD.',
+      null,
+    );
+  }
+
+  // Build the request body with only the fields the BE has acknowledged.
+  // The BE derives the user id from the JWT subject (see
+  // `BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`), so we never echo the
+  // Google ID token, the OAuth code, or a user id into the body.
+  // `additionalProperties: false` on the BE schema means any extra
+  // property returns 400; we strip `orcidId` and `consents` unless the
+  // caller provided them.
+  const body: Record<string, unknown> = {
+    pdfUrl: payload.pdfUrl,
+    phoneNumber: payload.phoneNumber ?? '',
+    role: payload.role,
+  };
+  if (payload.role === 'Reviewer' && payload.orcidId) {
+    body.orcidId = payload.orcidId;
+  }
+  if (payload.consents && payload.consents.length > 0) {
+    body.consents = payload.consents;
+  }
+
+  try {
+    const response = await api.post(
+      API_ENDPOINTS.AUTH.COMPLETE_GOOGLE_REGISTRATION,
+      body,
+      {
+        headers: {
+          ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+        },
+      },
+    );
+    const data = (response.data ?? {}) as Record<string, unknown>;
+    const userIdValue =
+      typeof data.userId === 'number'
+        ? data.userId
+        : typeof data.id === 'number'
+          ? data.id
+          : undefined;
+    return {
+      userId: userIdValue,
+      email: typeof data.email === 'string' ? data.email : null,
+      fullName:
+        typeof data.fullName === 'string'
+          ? data.fullName
+          : typeof data.username === 'string'
+            ? data.username
+            : null,
+      role: typeof data.role === 'string' ? data.role : null,
+      roleId:
+        typeof data.roleId === 'number'
+          ? data.roleId
+          : null,
+      token: typeof data.token === 'string' ? data.token : null,
+      isActive:
+        typeof data.isActive === 'boolean' ? data.isActive : null,
+      verificationStatus:
+        data.verificationStatus === 'Accepted' ||
+        data.verificationStatus === 'Rejected' ||
+        data.verificationStatus === 'Pending'
+          ? data.verificationStatus
+          : null,
+      effectiveRole:
+        typeof data.effectiveRole === 'string' ? data.effectiveRole : null,
+      requestStatus:
+        typeof data.requestStatus === 'string' ? data.requestStatus : null,
+      onboardingStatus:
+        typeof data.onboardingStatus === 'string'
+          ? data.onboardingStatus
+          : null,
+    };
+  } catch (err: unknown) {
+    const status =
+      typeof (err as { response?: { status?: number } })?.response?.status ===
+      'number'
+        ? (err as { response: { status: number } }).response.status
+        : null;
+
+    if (status === null) {
+      throw new CompleteGoogleRegistrationError(
+        'NETWORK',
+        'Network error reaching the platform. Please check your connection and try again.',
+        null,
+      );
+    }
+    if (status === 401 || status === 403) {
+      throw new CompleteGoogleRegistrationError(
+        'UNAUTHORIZED',
+        'Your Google session is no longer valid. Please sign in again.',
+        status,
+      );
+    }
+    if (status === 409) {
+      throw new CompleteGoogleRegistrationError(
+        'CONFLICT',
+        'You already have a pending or completed onboarding request. The platform will not accept a duplicate.',
+        status,
+      );
+    }
+    if (status === 422 || status === 400) {
+      throw new CompleteGoogleRegistrationError(
+        'UNPROCESSABLE',
+        'Some fields could not be processed. Please review your input and try again.',
+        status,
+      );
+    }
+    if (status >= 500) {
+      throw new CompleteGoogleRegistrationError(
+        'SERVER',
+        'Our onboarding service is temporarily unavailable. Please try again in a moment.',
+        status,
+      );
+    }
+    throw new CompleteGoogleRegistrationError(
+      'UNKNOWN',
+      'Onboarding submission failed for an unexpected reason. Please try again.',
+      status,
+    );
+  }
+}
+
 export const googleAuthService = {
   /**
    * Submit a Google credential. The Login button (and any future GIS surface)
@@ -354,6 +711,12 @@ export const googleAuthService = {
    * session object containing the BE-derived routing signals.
    */
   postGoogleLogin,
+
+  /**
+   * Agent 30 — submit the first-time Google onboarding completion payload
+   * to the documented BE endpoint.
+   */
+  postCompleteGoogleRegistration,
 
   /** Convenience: validate the GIS callback shape before posting. */
   extractCredential: (response: GoogleCredentialResponse | null | undefined): string | null => {

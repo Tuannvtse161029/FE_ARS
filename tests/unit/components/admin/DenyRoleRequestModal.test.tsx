@@ -4,8 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { DenyRoleRequestModal } from '../../../../../src/pages/Admin/DenyRoleRequestModal';
-import type { RoleRequest } from '../../../../../src/types/admin';
+import { DenyRoleRequestModal } from '../../../../src/pages/Admin/DenyRoleRequestModal';
+import type { RoleRequest } from '../../../../src/types/admin';
 
 const NOW = '2026-08-16T10:30:00Z';
 const REQUEST: RoleRequest = {
@@ -50,7 +50,7 @@ const { adminService } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../../../../src/services/admin.service', () => ({ adminService }));
+vi.mock('../../../../src/services/admin.service', () => ({ adminService }));
 
 const renderModal = (
   overrides: Partial<React.ComponentProps<typeof DenyRoleRequestModal>> = {},

@@ -25,6 +25,17 @@ export const API_ENDPOINTS = {
     // above is the agreed primary path.
     GOOGLE_OAUTH_LOGIN: '/api/auth/google-oauth-login',
     GOOGLE_CALLBACK: '/api/auth/google-callback',
+    // Agent 30 — documented in Swagger `paths./api/Auth/complete-google-registration`
+    // (schema `CompleteGoogleRegistrationRequest`). The request body fields
+    // the BE acknowledges are: `pdfUrl`, `phoneNumber`, `role` (required)
+    // plus `orcidId` (Reviewer-only) and `consents` (optional). The
+    // endpoint authenticates via the ARS JWT carried by the shared axios
+    // `Authorization` header, so we deliberately do NOT echo the upstream
+    // Google ID token (`credential`) — `additionalProperties: false` on
+    // the BE schema means any extra property returns 400. The FE sends the
+    // optional fields when present and lets the BE reject with 422 when
+    // the schema is strict.
+    COMPLETE_GOOGLE_REGISTRATION: '/api/auth/complete-google-registration',
     REFRESH: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
     FORGOT_PASSWORD: '/api/auth/forgot-password',

@@ -15,21 +15,15 @@
 //      fabricate one — we render an explicit "Sign-in incomplete" notice
 //      and clear the in-flight guard so the user can retry.
 //
-// Routing outcome matrix:
-//   - `isNewUser || requiresOnboarding` → /complete-google-registration
-//     (the page itself still has the BTR-AGENT52-02 submit-button gate
-//      and will surface "Backend onboarding endpoint unavailable" until
-//      that ships; the user is presented with the same UI either way.)
-//   - `verificationStatus === 'Pending'` (no explicit onboarding flag) →
-//     the existing /forum Pending-landing path (useVerifiedGuard renders
-//     the pending banner).
-//   - `verificationStatus === 'Rejected'` → the existing rejection page
-//     (existing rejection feedback UI; user can resubmit via the existing
-//      /register path or wait for the admin).
-//   - `verificationStatus === 'Accepted'` AND `isActive === true` AND a
-//     known business-role → the matching workspace landing route.
-//   - Anything else (no token, malformed payload, BE error) → /login
-//     with an inline error message. We never invent a session.
+// Routing outcome matrix (per the unified task spec):
+//   - `isNewUser || requiresOnboarding`             → /complete-google-registration
+//   - role & roleId both empty (BE omitted legacy signal)
+//                                                    → /complete-google-registration
+//   - role non-null AND verificationStatus Pending
+//     OR isActive false (unapproved / inactive)    → /forum as Guest
+//   - role non-null AND Approved + active + known   → matching workspace route
+//   - Anything else (no token, malformed payload,
+//     BE error, missing email/userId/fullName)      → /login (error UI)
 
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -60,6 +54,38 @@ function isKnownRole(value: string | null): value is UserRole {
   return (KNOWN_BUSINESS_ROLES as string[]).includes(value);
 }
 
+// Routing-rule helpers (Agent 52 — Google entry paths).
+//
+// `hasNonEmptyRole` accepts strings, null, undefined, and trimmed-empty.
+// `hasPositiveRoleId` accepts finite positive integers (per ROLE_IDS) and
+// treats null/undefined/zero/non-finite as "no role id assigned".
+//
+// The combined role-null check (`!hasRole && !hasRoleId`) is the unified
+// fallback signal for first-time Google users when the BE doesn't surface
+// `isNewUser` / `requiresOnboarding` (BTR-AGENT52-01). It mirrors the
+// helpers in AuthContext.loginWithGoogle so the credential-flow and the
+// legacy OAuth code-redirect-flow apply the same routing rule.
+function hasNonEmptyRole(role: string | null): boolean {
+  return typeof role === 'string' && role.trim().length > 0;
+}
+
+function hasPositiveRoleId(roleId: number | null): boolean {
+  return (
+    typeof roleId === 'number' &&
+    Number.isFinite(roleId) &&
+    roleId > 0
+  );
+}
+
+function shouldOnboard(payload: GoogleOAuthCallbackPayload): boolean {
+  if (payload.isNewUser || payload.requiresOnboarding) return true;
+  // Fallback for BE versions that don't surface isNewUser /
+  // requiresOnboarding: role-null + roleId-null is the same routing
+  // signal we use in loginWithGoogle. We do NOT rely solely on the
+  // legacy isNewUser/requiresOnboarding fields.
+  return !hasNonEmptyRole(payload.role) && !hasPositiveRoleId(payload.roleId);
+}
+
 type CallbackStatus = 'pending' | 'success' | 'incomplete' | 'cancelled' | 'error';
 
 function deriveStatus(payload: GoogleOAuthCallbackPayload): CallbackStatus {
@@ -87,8 +113,8 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
   const safeEmail = payload.email;
   const safeFullName = payload.fullName;
 
-  if (payload.isNewUser || payload.requiresOnboarding) {
-    // Persist a first-time-Google session WITHOUT fabricating a role.
+  if (shouldOnboard(payload)) {
+    // First-time Google user. Persist a pending session WITHOUT fabricating a role.
     storage.setToken(safeToken);
     storage.setUser({
       id: safeUserId,
@@ -122,23 +148,30 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
     return true;
   }
 
-  // Existing-user path — must have a role to land on a workspace.
-  if (!payload.role) return false;
+  // Existing-user path — role is guaranteed non-null per shouldOnboard().
+  // We only reach here for users the BE has already assigned a role to.
+  if (!isKnownRole(payload.role)) {
+    // Shouldn't happen — shouldOnboard() returns true for role-null —
+    // but guard defensively. The page will surface "incomplete" and the
+    // user can re-authenticate.
+    return false;
+  }
+  const knownRole: UserRole = payload.role;
   const roles = payload.roles.filter((r): r is UserRole => isKnownRole(r));
   const authResponse: AuthResponse = {
     token: safeToken,
     username: safeEmail,
     email: safeEmail,
-    role: payload.role,
+    role: knownRole,
     userId: safeUserId,
     roleId: payload.roleId ?? undefined,
-    roles: roles.length > 0 ? roles : [payload.role as UserRole],
+    roles: roles.length > 0 ? roles : [knownRole],
     isActive: payload.isActive ?? false,
     verificationStatus: payload.verificationStatus ?? 'Pending',
     effectiveRole:
       (payload.effectiveRole as EffectiveRole) ??
       ((payload.isActive ?? false)
-        ? (payload.role as EffectiveRole)
+        ? (knownRole as EffectiveRole)
         : 'Guest'),
   };
   // Mirror the legacy Google flow: no "remember me" for OAuth (the BE
@@ -153,7 +186,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
       email: authResponse.email,
       fullName: safeFullName,
       roleId: authResponse.roleId ?? 0,
-      roleName: payload.role,
+      roleName: knownRole,
       isActive: authResponse.isActive ?? false,
       verificationStatus: authResponse.verificationStatus ?? 'Pending',
       accountTier: 'Free',
@@ -221,12 +254,12 @@ export const GoogleCallback = () => {
       return;
     }
 
-    // Decide the destination. Per the spec:
-    //   - New / onboarding user  → /complete-google-registration
-    //   - Pending / Rejected / Guest → /forum (existing decision-state landing)
-    //   - Approved + active      → workspace landing route
+    // Decide the destination. Per the unified routing rule:
+    //   - New / onboarding / role-null user → /complete-google-registration
+    //   - Pending / Rejected / inactive      → /forum (existing decision-state landing)
+    //   - Approved + active + known role     → workspace landing route
     let destination: string;
-    if (payload.isNewUser || payload.requiresOnboarding) {
+    if (shouldOnboard(payload)) {
       destination = ROUTES.COMPLETE_GOOGLE_REGISTRATION;
     } else if (
       payload.isActive === true &&

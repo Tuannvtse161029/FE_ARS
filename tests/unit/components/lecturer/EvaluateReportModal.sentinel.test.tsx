@@ -8,8 +8,8 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { EvaluateReportModal } from '../../../../../src/components/lecturer/EvaluateReportModal';
-import type { PhasedReport } from '../../../../../src/services/phasedReport.service';
+import { EvaluateReportModal } from '../../../../src/components/lecturer/EvaluateReportModal';
+import type { PhasedReport } from '../../../../src/services/phasedReport.service';
 
 // PdfViewer mocks — mirrors the pattern in the existing
 // `EvaluateReportModal.test.tsx` so jsdom is happy.
@@ -78,7 +78,7 @@ const { evaluateMock, rejectMock } = vi.hoisted(() => ({
   rejectMock: vi.fn(),
 }));
 
-vi.mock('../../../../../src/services/phasedReport.service', () => ({
+vi.mock('../../../../src/services/phasedReport.service', () => ({
   evaluatePhasedReport: evaluateMock,
   rejectPhasedReport: rejectMock,
 }));

@@ -64,7 +64,7 @@ vi.mock('../../../src/services/googleAuth.service', () => ({
   },
 }));
 
-vi.mock('../../store', () => ({
+vi.mock('../../../src/store', () => ({
   useAuthStore: () => ({
     login: vi.fn(),
     logout: vi.fn(),

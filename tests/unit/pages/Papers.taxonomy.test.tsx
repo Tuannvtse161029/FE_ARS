@@ -25,7 +25,7 @@ const { mockUploadTask, mockStorage, mockGetDownloadURL } = vi.hoisted(() => {
   return { mockUploadTask, mockStorage, mockGetDownloadURL };
 });
 
-vi.mock('../../firebase', () => ({
+vi.mock('../../../src/firebase', () => ({
   storage: mockStorage,
 }));
 
@@ -33,6 +33,7 @@ vi.mock('firebase/storage', () => ({
   ref: vi.fn(() => ({})),
   uploadBytesResumable: vi.fn(() => mockUploadTask),
   getDownloadURL: mockGetDownloadURL,
+  getStorage: vi.fn(() => mockStorage),
 }));
 
 describe('Papers - Subfield Taxonomy Integration', () => {

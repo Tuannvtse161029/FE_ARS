@@ -10,8 +10,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   LearningMaterialModal,
-} from '../../../../../src/components/lecturer/LearningMaterialModal';
-import { buildMockAuth } from '../../../../../src/utils/mockAuth';
+} from '../../../../src/components/lecturer/LearningMaterialModal';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const { getAllLearningMaterialsMock, createLearningMaterialMock } =
   vi.hoisted(() => ({
@@ -19,17 +19,17 @@ const { getAllLearningMaterialsMock, createLearningMaterialMock } =
     createLearningMaterialMock: vi.fn(),
   }));
 
-vi.mock('../../../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
 }));
 
-vi.mock('../../../../../src/context/AuthContext', () => ({
+vi.mock('../../../../src/context/AuthContext', () => ({
   useAuth: () => buildMockAuth({ role: 'Lecturer', userId: 7 }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   default: {},
 }));
 
-vi.mock('../../../../../src/services/learningMaterial.service', () => ({
+vi.mock('../../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: {
     getAll: getAllLearningMaterialsMock,
     create: createLearningMaterialMock,

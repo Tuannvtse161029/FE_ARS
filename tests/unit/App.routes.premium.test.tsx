@@ -12,20 +12,22 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import App from '../App';
-import { ROUTES } from '../routes/paths';
-import { buildMockAuth } from './utils/mockAuth';
+import App from '../../src/App';
+import { ROUTES } from '../../src/routes/paths';
+import { buildMockAuth } from '../../src/utils/mockAuth';
 
 // ── Auth mock (swap per test) ────────────────────────────────────────────────
-const useAuthMock = vi.fn();
-vi.mock('../src/context/AuthContext', () => ({
+const useAuthMock = vi.fn(() =>
+  buildMockAuth({ role: 'Researcher', isAuthenticated: true }),
+);
+vi.mock('../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // Avoid pulling real wallet / notifications / reviewer-availability / wallet
 // top-up modal behaviour from MainLayout in this routing test.
-vi.mock('../src/hooks/useWallet', () => ({
+vi.mock('../../src/hooks/useWallet', () => ({
   useWallet: () => ({
     wallet: null,
     balance: null,
@@ -33,7 +35,7 @@ vi.mock('../src/hooks/useWallet', () => ({
     refetch: () => Promise.resolve(),
   }),
 }));
-vi.mock('../src/hooks/useNotifications', () => ({
+vi.mock('../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
     unreadCount: 0,
@@ -50,16 +52,16 @@ vi.mock('../src/hooks/useNotifications', () => ({
     error: null,
   }),
 }));
-vi.mock('../src/hooks/useReviewerProfiles', () => ({
+vi.mock('../../src/hooks/useReviewerProfiles', () => ({
   useReviewerAvailability: () => ({
     isAvailable: false,
     refetch: () => Promise.resolve(),
   }),
 }));
-vi.mock('../src/services/reviewer.service', () => ({
+vi.mock('../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
 }));
-vi.mock('../src/components/wallet/WalletTopUpModal', () => ({
+vi.mock('../../src/components/wallet/WalletTopUpModal', () => ({
   WalletTopUpModal: () => null,
 }));
 
@@ -67,7 +69,7 @@ vi.mock('../src/components/wallet/WalletTopUpModal', () => ({
 // rendered on /admin/packages without pulling its full data-fetching
 // implementation. This also lets us distinguish the admin page from the
 // user preview by sentinel text.
-vi.mock('../src/pages/Admin/PremiumPackages', () => ({
+vi.mock('../../src/pages/Admin/PremiumPackages', () => ({
   default: () => (
     <section data-testid="admin-premium-packages">
       <h1>Premium Packages (Admin)</h1>
@@ -98,13 +100,13 @@ const renderAt = (path: string) => {
 };
 
 describe('App routing — /premium-packages (user-facing)', () => {
-  it('renders the PremiumPackagesPreview page when navigating to /premium-packages', () => {
+  it('renders the PremiumPackagesPreview page when navigating to /premium-packages', async () => {
     setupAuthenticated('Researcher');
     renderAt(ROUTES.PREMIUM_PACKAGES);
 
     // The user-facing preview shows a single <h1> with text "Premium Package".
     expect(
-      screen.getByRole('heading', { name: /Premium Package/i, level: 1 }),
+      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
     ).toBeInTheDocument();
     // And the preview badge ("Coming soon") is present.
     expect(screen.getByTestId('preview-badge')).toHaveTextContent(
@@ -114,12 +116,12 @@ describe('App routing — /premium-packages (user-facing)', () => {
     expect(screen.queryByTestId('admin-premium-packages')).not.toBeInTheDocument();
   });
 
-  it('keeps the PremiumPackagesPreview page mounted on refresh (no /login redirect)', () => {
+  it('keeps the PremiumPackagesPreview page mounted on refresh (no /login redirect)', async () => {
     setupAuthenticated('Researcher');
     // First mount
     const firstRender = renderAt(ROUTES.PREMIUM_PACKAGES);
     expect(
-      screen.getByRole('heading', { name: /Premium Package/i, level: 1 }),
+      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
     ).toBeInTheDocument();
 
     // Simulate a "refresh" by unmounting and re-rendering at the same URL.
@@ -129,7 +131,7 @@ describe('App routing — /premium-packages (user-facing)', () => {
 
     // Still rendered — no silent redirect to /login.
     expect(
-      screen.getByRole('heading', { name: /Premium Package/i, level: 1 }),
+      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
     ).toBeInTheDocument();
     // The login page heading must NOT be present.
     expect(
@@ -137,12 +139,12 @@ describe('App routing — /premium-packages (user-facing)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the admin PremiumPackages component on /admin/packages (no collision)', () => {
+  it('renders the admin PremiumPackages component on /admin/packages (no collision)', async () => {
     setupAuthenticated('Admin');
     renderAt(ROUTES.ADMIN_PACKAGES);
 
     // The admin sentinel shows.
-    expect(screen.getByTestId('admin-premium-packages')).toBeInTheDocument();
+    expect(await screen.findByTestId('admin-premium-packages')).toBeInTheDocument();
     // The user preview sentinel does not.
     expect(screen.queryByTestId('preview-badge')).not.toBeInTheDocument();
   });

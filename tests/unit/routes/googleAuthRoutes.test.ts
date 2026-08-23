@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES } from '../../../src/routes/paths';
 import { API_ENDPOINTS } from '../../../src/utils/constants';
 
 describe('Google-auth route constants', () => {

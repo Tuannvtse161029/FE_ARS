@@ -15,14 +15,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApprovePayoutModal } from '../../../../../src/pages/Admin/ApprovePayoutModal';
-import type { WithdrawalRequestItem } from '../../../../../src/types/admin';
+import { ApprovePayoutModal } from '../../../../src/pages/Admin/ApprovePayoutModal';
+import type { WithdrawalRequestItem } from '../../../../src/types/admin';
 
 // The centralized withdrawal gate (AppConfig.features.enableWithdrawals) is
 // off in production by default; for these tests we force-enable withdrawals
 // so the existing UI mechanics are exercised. The disabled-state itself is
 // covered by tests/unit/withdrawalGate.test.tsx.
-vi.mock('../../../../../src/config/app', () => ({
+vi.mock('../../../../src/config/app', () => ({
   AppConfig: {
     appName: 'ARS Platform',
     appVersion: '1.0.0',
@@ -136,11 +136,11 @@ const { adminService, mockReceiptUpload } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../../../src/services/admin.service', () => ({
+vi.mock('../../../../src/services/admin.service', () => ({
   adminService,
 }));
 
-vi.mock('../../../../../src/hooks/useReceiptUpload', () => ({
+vi.mock('../../../../src/hooks/useReceiptUpload', () => ({
   useReceiptUpload: () => mockReceiptUpload.apply(),
 }));
 

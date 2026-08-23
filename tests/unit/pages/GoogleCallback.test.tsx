@@ -49,7 +49,7 @@ vi.mock('../../../src/services/auth.service', () => ({
   },
 }));
 
-vi.mock('../../store', () => ({
+vi.mock('../../../src/store', () => ({
   useAuthStore: Object.assign(
     () => ({
       login: (...args: unknown[]) => authStoreLoginMock(...args),
@@ -342,5 +342,70 @@ describe('GoogleCallback — duplicate callback processing guard', () => {
     await new Promise<void>((r) => setTimeout(r, 30));
     expect(setAuthDataMock.mock.calls.length).toBe(initialSetAuthCalls);
     expect(authStoreLoginMock.mock.calls.length).toBe(initialStoreLoginCalls);
+  });
+});
+
+describe('GoogleCallback — unified routing rule', () => {
+  // Mirrors the routing rule applied in AuthContext.loginWithGoogle so
+  // both Google entry paths (credential-flow and OAuth code-redirect-flow)
+  // converge on the same destination for the same BE shape.
+  it('routes a role-null + roleId-null response (no legacy signal) to /complete-google-registration', async () => {
+    // BE omitted isNewUser/requiresOnboarding AND omitted role/roleId —
+    // the documented fallback path (BTR-AGENT52-01) routes to onboarding.
+    mountAt(
+      '?token=jwt-1&userId=42&email=rn@e.com&fullName=No Role&isActive=false&verificationStatus=Pending',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('forum-marker')).toBeNull();
+    expect(setAuthDataMock).not.toHaveBeenCalled();
+  });
+
+  it('routes a non-null role + Pending verificationStatus to /forum (Guest)', async () => {
+    mountAt(
+      '?token=jwt-1&userId=42&email=p@e.com&fullName=Pending&role=Researcher&roleId=1&roles=Researcher&isActive=false&verificationStatus=Pending',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
+    expect(setAuthDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a non-null role + Accepted + active + non-Admin user to /forum (workspace landing)', async () => {
+    // Existing approved Researcher — landingRouteForRoleName returns
+    // /forum for non-Admin roles.
+    mountAt(
+      '?token=jwt-1&userId=42&email=a@e.com&fullName=Approved&role=Researcher&roleId=1&roles=Researcher&isActive=true&verificationStatus=Accepted',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
+  });
+
+  it('routes a non-null role + Accepted + active + Admin user to /admin (workspace landing)', async () => {
+    mountAt(
+      '?token=jwt-1&userId=42&email=ad@e.com&fullName=Admin&role=Admin&roleId=2&roles=Admin&isActive=true&verificationStatus=Accepted',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('admin-marker')).toBeInTheDocument();
+    });
+  });
+
+  it('does not regress: isNewUser=true with non-null role still routes to onboarding (legacy signal wins)', async () => {
+    mountAt(
+      '?token=jwt-1&userId=42&email=w@e.com&fullName=Weird&role=Researcher&roleId=1&isNewUser=true',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('forum-marker')).toBeNull();
   });
 });
