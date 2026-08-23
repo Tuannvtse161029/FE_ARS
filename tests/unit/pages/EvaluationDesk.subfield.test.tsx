@@ -46,9 +46,13 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('../../../src/components/PdfViewer', () => ({
-  PdfViewer: () => <div data-testid="pdf-viewer-stub" />,
-}));
+vi.mock('../../../src/components/PdfViewer', () => {
+  const Mock = () => <div data-testid="pdf-viewer-stub" />;
+  return {
+    PdfViewer: Mock,
+    default: Mock,
+  };
+});
 
 // Hoist the mock handles so the `vi.mock(...)` factory closures can reach
 // them safely (the hoisting causes those factories to run before this file's

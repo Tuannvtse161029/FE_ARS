@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
 import type { AxiosErrorResponse } from '../types/api';
+import { clearAuthSession } from './auth.service';
 
 let sessionFailureHandled = false;
 
@@ -46,7 +47,10 @@ api.interceptors.response.use(
       // Fire-and-forget — local cleanup removes the token and the redirect
       // happens immediately. Repeated 401s from in-flight requests are
       // rejected without starting another cleanup/redirect cycle.
-      void import('./auth.service').then(({ clearAuthSession }) => clearAuthSession());
+      // Static import keeps Rollup from emitting a separate dynamic chunk
+      // (and removes the "dynamically imported but also statically imported"
+      // warning that Vercel surfaces on cold builds).
+      clearAuthSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

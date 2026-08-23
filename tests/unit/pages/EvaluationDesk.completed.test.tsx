@@ -61,9 +61,13 @@ vi.mock('../../../src/store/authSlice', () => ({
     selector({ user: { id: 7 } }),
 }));
 
-vi.mock('../../../src/components/PdfViewer', () => ({
-  PdfViewer: () => <div data-testid="pdf-viewer-stub" />,
-}));
+vi.mock('../../../src/components/PdfViewer', () => {
+  const Mock = () => <div data-testid="pdf-viewer-stub" />;
+  return {
+    PdfViewer: Mock,
+    default: Mock,
+  };
+});
 
 import { EvaluationDesk } from '../../../src/pages/Reviewer/EvaluationDesk';
 

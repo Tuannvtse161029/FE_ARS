@@ -12,7 +12,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
-import { PdfViewer } from '../../components/PdfViewer';
+import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import { reviewRequestService } from '../../services/reviewRequest.service';
 import type { ReviewRequest } from '../../services/reviewRequest.service';
 import { paperService, type Paper } from '../../services/paper.service';
@@ -670,7 +670,7 @@ export const EvaluationDesk = () => {
                   </p>
                 </div>
               ) : (
-                <PdfViewer
+                <LazyPdfViewer
                   url={fileUrl}
                   mode="protected-review"
                   reviewCopyId={reviewRequest?.id != null ? `Review Copy #${reviewRequest.id}` : undefined}

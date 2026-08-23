@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, X } from 'lucide-react';
-import PdfViewer from '../../components/PdfViewer';
+import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -95,7 +95,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose }: Props) => {
               ) : null}
             </div>
             {request.proofDocumentUrl ? (
-              <div className={styles.documentViewer}><PdfViewer url={request.proofDocumentUrl} /></div>
+              <div className={styles.documentViewer}><LazyPdfViewer url={request.proofDocumentUrl} /></div>
             ) : (
               <div className={styles.emptyDocument}><FileText size={22} /><span>No proof document supplied.</span></div>
             )}

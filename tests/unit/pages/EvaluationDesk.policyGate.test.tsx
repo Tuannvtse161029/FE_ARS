@@ -36,12 +36,18 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock PdfViewer so we can track when the gated URL is actually passed to a viewer mount.
+// `default` export is required because `LazyPdfViewer` resolves the barrel via
+// `lazy(() => import('./index'))` and looks at `module.default`.
 const PdfViewerSpy = vi.fn(({ url }: { url: string }) => (
   <div data-testid="pdf-viewer" data-url={url}>PDF: {url}</div>
 ));
-vi.mock('../../../src/components/PdfViewer', () => ({
-  PdfViewer: (props: any) => PdfViewerSpy(props),
-}));
+vi.mock('../../../src/components/PdfViewer', () => {
+  const mock = (props: any) => PdfViewerSpy(props);
+  return {
+    PdfViewer: mock,
+    default: mock,
+  };
+});
 
 import { EvaluationDesk } from '../../../src/pages/Reviewer/EvaluationDesk';
 

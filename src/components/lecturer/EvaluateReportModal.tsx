@@ -8,7 +8,7 @@ import {
   ExternalLink,
   FileText,
 } from 'lucide-react';
-import { PdfViewer } from '../PdfViewer';
+import LazyPdfViewer from '../PdfViewer/LazyPdfViewer';
 import { StatusBadge } from './StatusBadge';
 import { useEvaluatePhasedReport } from '../../hooks/useEvaluatePhasedReport';
 import type { PhasedReport } from '../../services/phasedReport.service';
@@ -204,7 +204,7 @@ export const EvaluateReportModal = ({
         {/* Optional inline PDF viewer */}
         {showPdf && hasPdf && (
           <div className={styles.pdfViewerBox}>
-            <PdfViewer url={report.reportFileUrl ?? null} />
+            <LazyPdfViewer url={report.reportFileUrl ?? null} />
           </div>
         )}
 

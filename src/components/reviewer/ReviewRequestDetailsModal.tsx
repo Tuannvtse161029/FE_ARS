@@ -8,7 +8,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { PdfViewer } from '../PdfViewer';
+import LazyPdfViewer from '../PdfViewer/LazyPdfViewer';
 import { ReviewRequestStatusBadge } from './ReviewRequestStatusBadge';
 import {
   detailedEvaluationService,
@@ -240,7 +240,7 @@ export const ReviewRequestDetailsModal = ({
             <h3 className={styles.sectionTitle}>Paper PDF</h3>
             {resolution.kind === 'title' && resolution.paper.fileUrl ? (
               <div className={styles.pdfFrame}>
-                <PdfViewer url={resolution.paper.fileUrl} />
+                <LazyPdfViewer url={resolution.paper.fileUrl} />
               </div>
             ) : (
               <div className={styles.emptyHint}>PDF not available.</div>

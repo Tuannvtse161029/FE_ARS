@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { PdfViewer } from '../../components/PdfViewer';
+import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import { ScorecardModal } from '../Reviewer/components/ScorecardModal';
 import { storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -745,7 +745,7 @@ export const Papers = () => {
               </button>
             </div>
             <div className={styles.pdfViewerBody}>
-              <PdfViewer url={pdfViewerUrl} />
+              <LazyPdfViewer url={pdfViewerUrl} />
             </div>
           </div>
         </div>
@@ -767,7 +767,7 @@ export const Papers = () => {
             <div className={styles.uploadModalBody}>
               {/* Left: PDF Viewer */}
               <div className={styles.uploadPreviewLeft}>
-                <PdfViewer url={selectedFile} />
+                <LazyPdfViewer url={selectedFile} />
               </div>
 
               {/* Right: Research Fields */}

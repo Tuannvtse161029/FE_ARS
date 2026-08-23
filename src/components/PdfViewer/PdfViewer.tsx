@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?raw';
+// Load pdf.js's worker as a separate Vite asset instead of inlining its full
+// source as a string with `?raw`. Inlining puts the ~1.1 MB minified worker
+// into the JS chunk (which already trips Vite's `chunkSizeWarningLimit` for
+// the `vendor-pdfjs` chunk). `?url` makes Vite emit the worker as its own
+// static file so the lazy-loaded `PdfViewer` chunk stays under the warning
+// limit (the main JS bundle still won't ship the worker at all).
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { RefreshCw, ExternalLink, FileText } from 'lucide-react';
 import {
   resolvePdfSource,
@@ -12,11 +18,9 @@ import {
 } from '../../utils/pdfSource';
 import styles from './PdfViewer.module.css';
 
-// Create a Blob URL from the worker source at module init.
-const workerSrc = URL.createObjectURL(
-  new Blob([pdfjsWorkerSrc], { type: 'application/javascript' })
-);
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+// Point pdf.js at the Vite-emitted worker asset. `import.meta.url` resolves
+// to a real `https://…/assets/pdf.worker-<hash>.mjs` URL at build time.
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(pdfWorkerUrl, import.meta.url).toString();
 
 interface PdfViewerProps {
   url: string | File | Blob | null;

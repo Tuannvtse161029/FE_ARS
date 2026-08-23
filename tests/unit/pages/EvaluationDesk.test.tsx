@@ -38,10 +38,17 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock PdfViewer
-vi.mock('../../../src/components/PdfViewer', () => ({
-  PdfViewer: ({ url }: any) => <div data-testid="pdf-viewer">PDF: {url}</div>,
-}));
+// Mock PdfViewer. The `default` export is required by `LazyPdfViewer`
+// (`src/components/PdfViewer/LazyPdfViewer.tsx`) which lazy-imports the
+// barrel via `lazy(() => import('./index'))`. Without `default` the lazy
+// boundary throws and the test fails.
+vi.mock('../../../src/components/PdfViewer', () => {
+  const Mock = ({ url }: any) => <div data-testid="pdf-viewer">PDF: {url}</div>;
+  return {
+    PdfViewer: Mock,
+    default: Mock,
+  };
+});
 
 import { EvaluationDesk } from '../../../src/pages/Reviewer/EvaluationDesk';
 

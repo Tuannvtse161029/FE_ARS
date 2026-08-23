@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, ShieldCheck, X } from 'lucide-react';
-import PdfViewer from '../../components/PdfViewer';
+import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import type { User } from '../../types/auth';
 import { displayAccountTier } from '../../services/user.service';
 import { isValidOrcidFormat } from '../../services/orcid.service';
@@ -104,7 +104,7 @@ export const VerificationDetailsModal = ({
             </div>
             {proofUrl ? (
               <div className={styles.documentViewer}>
-                <PdfViewer url={proofUrl} />
+                <LazyPdfViewer url={proofUrl} />
               </div>
             ) : (
               <div className={styles.emptyDocument}>

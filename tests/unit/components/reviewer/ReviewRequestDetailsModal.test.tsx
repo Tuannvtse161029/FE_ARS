@@ -19,9 +19,13 @@ vi.mock('../../../../../src/services/paper.service', () => ({
   },
 }));
 
-vi.mock('../../../../../src/components/PdfViewer', () => ({
-  PdfViewer: ({ url }: { url: string }) => <div data-testid="pdf-viewer">{url}</div>,
-}));
+vi.mock('../../../../../src/components/PdfViewer', () => {
+  const Mock = ({ url }: { url: string }) => <div data-testid="pdf-viewer">{url}</div>;
+  return {
+    PdfViewer: Mock,
+    default: Mock,
+  };
+});
 
 import { ReviewRequestDetailsModal } from '../../../../../src/components/reviewer/ReviewRequestDetailsModal';
 import type { ReviewRequest } from '../../../../../src/services/reviewRequest.service';
