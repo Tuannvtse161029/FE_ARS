@@ -28,10 +28,19 @@ import type { VerificationStatus } from '../types/auth';
 // by AuthContext during persistAuthAndNavigate and rehydrated from localStorage
 // on the next page load). Falls back to storedUser for the brief window before
 // the context rehydrates.
+//
+// Agent 30 (regression) — `verificationStatus` is treated as a tri-state
+// (`'Pending' | 'Accepted' | 'Rejected' | null`). A `null` value means the
+// BE has not yet produced a verification result — for example, a brand-new
+// first-time Google user that has not been through the role-request
+// lifecycle. We MUST NOT coerce `null` to `'Pending'` here: doing so would
+// silently route a first-time user to `/forum` (because `isFullyApproved`
+// would see `verificationStatus !== 'Accepted'`) and bypass the
+// `/complete-google-registration` page.
 
 const isFullyApproved = (
   isActive: boolean | undefined,
-  verificationStatus: VerificationStatus | undefined
+  verificationStatus: VerificationStatus | null | undefined
 ): boolean => {
   // The user must have ALL three conditions satisfied:
   //   1. isActive === true      (Admin activated the account)
@@ -64,10 +73,17 @@ export const useVerifiedGuard = () => {
 
     // Check the complete state machine. Use auth-store values first, then
     // fall back to stored values (for the brief window before rehydration).
+    // Agent 30 (regression) — preserve the BE-supplied `null`
+    // `verificationStatus` as `null`; do NOT coerce it to `'Pending'`.
+    // A first-time Google user has not been through the role-request
+    // lifecycle yet, so routing them to `/forum` based on a coerced
+    // `'Pending'` would silently bypass the onboarding page.
     const isActive = user?.isActive ?? stored?.isActive ?? false;
-    const rawStatus = user?.verificationStatus ?? stored?.verificationStatus ?? 'Pending';
-    const verificationStatus: VerificationStatus =
-      rawStatus === 'Accepted' || rawStatus === 'Rejected' ? rawStatus : 'Pending';
+    const rawStatus = user?.verificationStatus ?? stored?.verificationStatus ?? null;
+    const verificationStatus =
+      rawStatus === 'Accepted' || rawStatus === 'Rejected' || rawStatus === 'Pending'
+        ? rawStatus
+        : null;
 
     if (isFullyApproved(isActive, verificationStatus)) return;
 

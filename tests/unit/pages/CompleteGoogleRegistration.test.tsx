@@ -234,34 +234,43 @@ describe('CompleteGoogleRegistration — pre-submit guards', () => {
   it('does NOT fabricate a fake roleName or roleId on the user record', async () => {
     mountWithAuth();
 
+    // The role selector is populated from the FE-owned constant — the
+    // page does not call out to GET /api/Role for the user-selectable set.
     await waitFor(() => {
-      expect(fetchBusinessRolesMock).toHaveBeenCalled();
+      const roleSelect = document.querySelector('select#role') as HTMLSelectElement | null;
+      expect(roleSelect).not.toBeNull();
+      expect(roleSelect?.options.length).toBe(5); // placeholder + 4 roles
     });
 
     // The role field is required to enable submit; no PUT happens.
     const submit = screen.getByRole('button', { name: /Submit role request/i });
     expect(submit).toBeDisabled();
     expect(updateMock).not.toHaveBeenCalled();
+    // No GET /api/Role call is generated from the page itself.
+    expect(fetchBusinessRolesMock).not.toHaveBeenCalled();
   });
 
   it('does NOT call /api/Auth/register from the onboarding page', async () => {
     mountWithAuth();
 
     await waitFor(() => {
-      expect(fetchBusinessRolesMock).toHaveBeenCalled();
+      const roleSelect = document.querySelector('select#role') as HTMLSelectElement | null;
+      expect(roleSelect?.options.length).toBe(5);
     });
 
     // The page does not render a register CTA and does not POST.
     expect(screen.queryByText(/register/i)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
+    expect(fetchBusinessRolesMock).not.toHaveBeenCalled();
   });
 
   it('does NOT duplicate the app token into a Google-only session key', async () => {
     mountWithAuth();
 
     await waitFor(() => {
-      expect(fetchBusinessRolesMock).toHaveBeenCalled();
+      const roleSelect = document.querySelector('select#role') as HTMLSelectElement | null;
+      expect(roleSelect?.options.length).toBe(5);
     });
 
     // The page never reads or writes `ars_google_onboarding_session`.
@@ -273,7 +282,8 @@ describe('CompleteGoogleRegistration — pre-submit guards', () => {
     mountWithAuth();
 
     await waitFor(() => {
-      expect(fetchBusinessRolesMock).toHaveBeenCalled();
+      const roleSelect = document.querySelector('select#role') as HTMLSelectElement | null;
+      expect(roleSelect?.options.length).toBe(5);
     });
 
     fireEvent.click(screen.getByTestId('upload'));
@@ -357,12 +367,16 @@ describe('CompleteGoogleRegistration — session handoff', () => {
     mountWithAuth();
 
     await waitFor(() => {
-      expect(fetchBusinessRolesMock).toHaveBeenCalled();
+      // Role selector is populated from the FE-owned constant.
+      const roleSelect = document.querySelector('select#role') as HTMLSelectElement | null;
+      expect(roleSelect?.options.length).toBe(5);
     });
 
     // Page renders, not the login redirect.
     expect(screen.queryByTestId('login')).toBeNull();
     expect(screen.getByTestId('complete-google-registration')).toBeInTheDocument();
+    // No GET /api/Role round-trip from the page itself.
+    expect(fetchBusinessRolesMock).not.toHaveBeenCalled();
   });
 
   it('redirects to /login when the persisted user record lacks a positive userId', async () => {

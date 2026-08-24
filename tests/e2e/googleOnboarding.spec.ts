@@ -105,19 +105,6 @@ async function mockBackend(page: Page, opts: {
     });
   });
 
-  await page.route('**/api/Role/business*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        'Researcher',
-        'Reviewer',
-        'Lecturer',
-        'Graduate Student',
-      ]),
-    });
-  });
-
   await page.route('**/api/Auth/complete-google-registration', async (route) => {
     const request = route.request();
     const body = request.postDataJSON() as Record<string, unknown>;
@@ -412,7 +399,6 @@ test('authenticated role-null user landing on /login is routed to /complete-goog
 
   // Give the Zustand persist rehydration one tick to settle.
   await page.waitForTimeout(500);
-
   await expect(page.getByTestId('complete-google-registration')).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveURL(/\/complete-google-registration/);
 
@@ -422,4 +408,122 @@ test('authenticated role-null user landing on /login is routed to /complete-goog
   );
   expect(onboardingIndex).toBeGreaterThanOrEqual(0);
   expect(visited.slice(0, onboardingIndex + 1)).not.toContain('/forum');
+});
+
+// Agent 30 (regression) — the screenshot payload observed on the live
+// deployment for duyphuong2000.dpp@gmail.com:
+//   effectiveRole: null, isActive: false, isNewUser: true,
+//   requiresOnboarding: true, role: null, roleId: null,
+//   verificationStatus: null, roles: [].
+//
+// The original deployment routed this exact payload to /forum because
+// (a) PublicRoute was missing `approvedRoles` and
+// (b) `verificationStatus: null` was being coerced to `'Pending'` in
+// `useVerifiedGuard` / `usePermissions`, which then mis-classified
+// the first-time user as a "pending Guest". The fix surfaces `null`
+// as null throughout, lets the exact AND-clause in `postAuthRoute`
+// win, and forwards `session.roles` (empty) into the snapshot.
+//
+// The Playwright test seeds the same exact payload into the auth
+// store and asserts the destination is /complete-google-registration.
+test('regression: screenshot payload (verificationStatus=null, effectiveRole=null, roles=[]) routes to onboarding', async ({ page }) => {
+  // Mock the BE so the /api/User/{id} refetch (which the AuthProvider
+  // fires on mount for an authenticated user) returns the same
+  // first-time shape — i.e. the BE still says "no role, not active,
+  // not verified".
+  await page.route('**/api/User/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 17,
+        username: 'duyphuong2000.dpp@gmail.com',
+        email: 'duyphuong2000.dpp@gmail.com',
+        fullName: 'Duy Phuong',
+        roleId: 0,
+        roleName: '',
+        isActive: false,
+        verificationStatus: null,
+        effectiveRole: null,
+        roles: [],
+        isNewUser: true,
+        requiresOnboarding: true,
+      }),
+    });
+  });
+
+  // Seed the post-Google-login state EXACTLY as AuthContext would
+  // persist it for the screenshot payload. Crucially:
+  //   - verificationStatus: null (NOT coerced to 'Pending')
+  //   - effectiveRole: null (NOT coerced to 'Guest')
+  //   - roles: []
+  //   - isActive: false
+  // Plus the explicit first-time signals on the persisted blob.
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('ars_token', 'mock-google-jwt');
+    window.sessionStorage.setItem(
+      'ars_user',
+      JSON.stringify({
+        id: 17,
+        username: 'duyphuong2000.dpp@gmail.com',
+        email: 'duyphuong2000.dpp@gmail.com',
+        fullName: 'Duy Phuong',
+        roleId: 0,
+        roleName: '',
+        isActive: false,
+        verificationStatus: null,
+        effectiveRole: null,
+        roles: [],
+        isNewUser: true,
+        requiresOnboarding: true,
+      }),
+    );
+    window.sessionStorage.setItem(
+      'ars-auth-storage',
+      JSON.stringify({
+        user: {
+          id: 17,
+          username: 'duyphuong2000.dpp@gmail.com',
+          email: 'duyphuong2000.dpp@gmail.com',
+          fullName: 'Duy Phuong',
+          roleId: 0,
+          roleName: '',
+          isActive: false,
+          verificationStatus: null,
+          accountTier: 'Free',
+          effectiveRole: null,
+          roles: [],
+          isNewUser: true,
+          requiresOnboarding: true,
+        },
+        token: 'mock-google-jwt',
+        isAuthenticated: true,
+        effectiveRole: null,
+      }),
+    );
+  });
+
+  const visited: string[] = [];
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      visited.push(new URL(frame.url()).pathname);
+    }
+  });
+
+  await page.goto(`${baseURL}/login`);
+  await page.waitForTimeout(500);
+
+  // The exact AND-clause MUST win: /complete-google-registration
+  // is rendered, not /forum.
+  await expect(page.getByTestId('complete-google-registration')).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page).toHaveURL(/\/complete-google-registration/);
+
+  // /forum must NOT have been visited at any point in this transition.
+  expect(visited).not.toContain('/forum');
+
+  // The role selector and the PDF upload field MUST be visible so
+  // the user can complete the onboarding flow.
+  await expect(page.locator('select#role')).toBeVisible();
 });

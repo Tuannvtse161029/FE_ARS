@@ -32,7 +32,7 @@ Return only for the assigned reviewer or authorized administrator.
   "policyAccepted": false,
   "acceptedAt": null,
   "policyDocument": {
-    "title": "Reviewer Confidentiality and Conduct Policy",
+    "title":  "Reviewer Confidentiality and Conduct Policy",
     "version": "2026-08-22",
     "contentUrl": "https://app.example/legal/reviewer-policy/2026-08-22"
   }

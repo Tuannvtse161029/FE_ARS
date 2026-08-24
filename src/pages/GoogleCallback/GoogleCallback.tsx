@@ -83,6 +83,12 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
 
   if (isFirstTimeOnboardingUser(payload)) {
     // First-time Google user. Persist a pending session WITHOUT fabricating a role.
+    // Agent 30 (regression) — the authStore state MUST mirror the storage state
+    // exactly. Earlier we wrote `payload.verificationStatus ?? 'Pending'` to
+    // the store while writing `?? null` to storage, which let `null` flow
+    // back out of the store for an instant and falsely re-classified the
+    // user as "pending Admin" via useVerifiedGuard / usePermissions.
+    // Both writes now use `?? null` so a BE-supplied `null` stays `null`.
     storage.setToken(safeToken);
     storage.setUser({
       id: safeUserId,
@@ -92,7 +98,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
       roleId: payload.roleId,
       roleName: payload.role,
       isActive: payload.isActive ?? false,
-      verificationStatus: payload.verificationStatus ?? 'Pending',
+      verificationStatus: payload.verificationStatus ?? null,
       accountTier: 'Free',
       effectiveRole: (payload.effectiveRole as EffectiveRole) ?? null,
     });
@@ -106,7 +112,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
         roleId: payload.roleId,
         roleName: payload.role,
         isActive: payload.isActive ?? false,
-        verificationStatus: payload.verificationStatus ?? 'Pending',
+        verificationStatus: payload.verificationStatus ?? null,
         accountTier: 'Free',
         effectiveRole: (payload.effectiveRole as EffectiveRole) ?? null,
       },
@@ -135,7 +141,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
     roleId: payload.roleId ?? undefined,
     roles: roles.length > 0 ? roles : [knownRole],
     isActive: payload.isActive ?? false,
-    verificationStatus: payload.verificationStatus ?? 'Pending',
+    verificationStatus: payload.verificationStatus ?? null,
     effectiveRole:
       (payload.effectiveRole as EffectiveRole) ??
       ((payload.isActive ?? false)
@@ -156,7 +162,7 @@ function writeSessionFromPayload(payload: GoogleOAuthCallbackPayload): boolean {
       roleId: authResponse.roleId ?? 0,
       roleName: knownRole,
       isActive: authResponse.isActive ?? false,
-      verificationStatus: authResponse.verificationStatus ?? 'Pending',
+      verificationStatus: authResponse.verificationStatus ?? null,
       accountTier: 'Free',
       effectiveRole: authResponse.effectiveRole,
     },

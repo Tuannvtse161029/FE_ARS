@@ -1,7 +1,13 @@
 // Verification and account state machine.
 // All new registrations go through: Registered → Email Verified → Admin Reviewed → Active.
 // The BE stores these as database fields; the FE mirrors them for route-gating.
-export type VerificationStatus = 'Pending' | 'Accepted' | 'Rejected';
+//
+// Agent 30 (regression) — a `null` `verificationStatus` means the BE
+// has not yet produced a verification result. The strict union is
+// extended to `| null` so a first-time Google user whose BE response
+// carries `verificationStatus: null` does NOT silently coerce to
+// `'Pending'` and falsely imply an Admin-review pipeline is in flight.
+export type VerificationStatus = 'Pending' | 'Accepted' | 'Rejected' | null;
 export type AccountTier = 'Free' | 'Premium' | 'Enterprise';
 
 export interface LoginRequest {
@@ -120,6 +126,20 @@ export interface AuthResponse {
    * establishes a Guest session.
    */
   effectiveRole?: EffectiveRole;
+  /**
+   * Agent 30 — first-time Google-user routing signals. Surfaced by the BE
+   * on `POST /api/Auth/google-login` (and the OAuth callback redirect).
+   * The `AuthContext` carries them through the auth mapping so the
+   * authenticated branch of `PublicRoute` can route a freshly-logged-in
+   * first-time user to `/complete-google-registration` without an
+   * additional `GET /api/User/{id}` round-trip.
+   *
+   * Both fields are optional so a session that did not flow through
+   * `/api/Auth/google-login` (e.g. the password-login path) has a valid
+   * (sentinel-free) auth blob.
+   */
+  isNewUser?: boolean;
+  requiresOnboarding?: boolean;
 }
 
 export interface User {
@@ -143,6 +163,18 @@ export interface User {
    * lockout sentinel.
    */
   roleName: string | null;
+  /**
+   * Agent 30 — full list of approved business roles returned by the BE
+   * on `POST /api/Auth/login` and `POST /api/Auth/google-login` (under
+   * `AuthResponse.roles`). The auth store mirrors this list so the
+   * centralized post-auth resolver can enforce the exact approved-role
+   * condition at runtime — e.g. when `isNewUser`/`requiresOnboarding`
+   * are explicit but the user already has at least one accepted role,
+   * the resolver routes to the workspace, not to the onboarding page.
+   * `undefined` / empty array ⇒ "no accepted role yet" (the lockout-
+   * safe state for first-time / unverified users).
+   */
+  roles?: UserRole[];
   // Mirrors `dbo.Users.isActive`. False until an Admin approves the role
   // request that was filed at registration time. Defaults to false (lockout-safe)
   // so a BE that hasn't shipped this field doesn't grant unregistered users access.
@@ -173,6 +205,26 @@ export interface User {
    * `EffectiveRole` and BTR-AGENT39-01.
    */
   effectiveRole?: EffectiveRole;
+  /**
+   * Agent 30 — explicit BE signals for first-time Google-user routing.
+   *
+   * Both fields are BE-derived at login time and MUST be preserved through
+   * the auth mapping so `PublicRoute` (and any other route-gate that reads
+   * the persisted `User`) can resolve `/complete-google-registration`
+   * without forcing a second network round-trip.
+   *
+   * - `isNewUser`            — the BE created the account during this login.
+   * - `requiresOnboarding`   — the account exists but the BE wants the user
+   *                            to complete the role-request flow before they
+   *                            can land on a workspace.
+   *
+   * Both are nullable so an existing approved user whose BE never
+   * surfaced the signals still has a valid (sentinel-free) auth blob. See
+   * `utils/postAuthRoute.ts#isFirstTimeOnboardingUser` for the priority
+   * rule that consumes these fields.
+   */
+  isNewUser?: boolean | null;
+  requiresOnboarding?: boolean | null;
 }
 
 export interface AuthState {

@@ -486,7 +486,11 @@ export const authService = {
         email: user.email,
         role: user.roleName,
         isActive,
-        verificationStatus: user.verificationStatus ?? 'Pending',
+        // Agent 30 (regression) — preserve the BE-supplied
+        // `verificationStatus` as `null` when the BE omitted it. The
+        // prior `'Pending'` default coerced a brand-new account
+        // into a false "Admin review in flight" state.
+        verificationStatus: user.verificationStatus ?? null,
         accountTier: user.accountTier ?? 'Free',
         effectiveRole:
           user.effectiveRole ??
@@ -514,7 +518,7 @@ export const authService = {
       // this is the critical fix for the Test 5 vulnerability.
       isActive: authResponse.isActive ?? false,
       // Mirror verificationStatus from BE; default to 'Pending' (lockout-safe).
-      verificationStatus: authResponse.verificationStatus ?? 'Pending',
+      verificationStatus: authResponse.verificationStatus ?? null,
       // Mirror accountTier from BE; default to 'Free'.
       accountTier: authResponse.accountTier ?? 'Free',
       // Mirror effectiveRole from BE; default to derived (unverified ⇒ 'Guest').

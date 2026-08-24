@@ -56,6 +56,13 @@ export interface MockUseAuthOptions {
   fullName?: string;
   /** initial auth error — useful for the failed-login coverage. */
   error?: string | null;
+  /**
+   * Agent 30 — explicit BE signals for first-time Google-user routing.
+   * Forwarded through `useAuth().user` so PublicRoute can resolve
+   * /complete-google-registration without re-fetching from the BE.
+   */
+  isNewUser?: boolean | null;
+  requiresOnboarding?: boolean | null;
 }
 
 const ROLE_TO_ID: Record<string, number> = {
@@ -87,6 +94,8 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
     error = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fullName: _fullName = 'Mock User',
+    isNewUser = null,
+    requiresOnboarding = null,
   } = opts;
 
   const computedRoleId = roleId ?? (role ? ROLE_TO_ID[role] ?? 0 : 0);
@@ -115,6 +124,11 @@ export const buildMockAuth = (opts: MockUseAuthOptions = {}) => {
         verificationStatus,
         accountTier,
         effectiveRole: computedEffectiveRole ?? undefined,
+        // Agent 30 — first-time Google-user signals. `null` defaults to
+        // "not a first-time user" so existing happy-path tests continue
+        // to route through `PublicRoute` without an onboarding detour.
+        isNewUser: isNewUser ?? undefined,
+        requiresOnboarding: requiresOnboarding ?? undefined,
       }
     : null;
 

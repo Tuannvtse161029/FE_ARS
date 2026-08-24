@@ -1,147 +1,95 @@
 /**
- * Tests for Agent 52 — roleService (business-role directory).
+ * Tests for the role directory service after Agent 30 — the user-selectable
+ * roles are now FE-owned (see `src/utils/registrationRoles.ts`). The BE
+ * round-trip is gone, so the helper is purely a synchronous lookup
+ * surfacing the shared constant.
  *
  * Critical contracts:
- *   - `Guest` is NEVER included, even when the BE returns it (it's an
- *     effective-time variant, not a persisted role).
+ *   - `Guest` is NEVER included (it's an effective-time variant, not a
+ *     persisted role).
  *   - `Admin` is NEVER included (DB-provisioned only).
- *   - Empty / failed BE responses return `[]` (the page renders an honest
- *     error state — never falls back to a hardcoded list).
- *   - Duplicate entries are deduped, BE order is preserved.
+ *   - `Researcher`, `Reviewer`, `Lecturer`, and `Graduate Student` are the
+ *     only entries — and the list is FE-owned, so a BE outage cannot
+ *     leave the onboarding page with no role to choose.
+ *   - `isOnboardingSelectable` is true for those four roles and false
+ *     for Admin / Guest / unknown / null.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const getMock = vi.fn();
-
-vi.mock('../../../src/services/axios', () => ({
-  default: { get: (...args: unknown[]) => getMock(...args) },
-}));
-
+import { describe, it, expect } from 'vitest';
 import { roleService, ALLOWED_ONBOARDING_ROLES } from '../../../src/services/role.service';
+import {
+  REGISTRATION_ROLES,
+  isRequestableRole,
+} from '../../../src/utils/registrationRoles';
 
-describe('roleService.fetchBusinessRolesForOnboarding', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-  });
-
-  it('returns business roles from /api/Role', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [
-        { id: 1, name: 'Researcher' },
-        { id: 3, name: 'Reviewer' },
-        { id: 4, name: 'Lecturer' },
-        { id: 5, name: 'Graduate Student' },
-      ],
-    });
-
+describe('roleService.fetchBusinessRolesForOnboarding (FE-owned constant)', () => {
+  it('returns the four requestable roles in the documented display order', async () => {
     const roles = await roleService.fetchBusinessRolesForOnboarding();
     expect(roles).toEqual(['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student']);
   });
 
-  it('EXCLUDES Guest even when the BE returns it', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [
-        { id: 1, name: 'Researcher' },
-        { id: 6, name: 'Guest' },
-        { id: 3, name: 'Reviewer' },
-      ],
-    });
-
+  it('does NOT include Guest under any circumstances', async () => {
     const roles = await roleService.fetchBusinessRolesForOnboarding();
     expect(roles).not.toContain('Guest');
-    expect(roles).toEqual(['Researcher', 'Reviewer']);
   });
 
-  it('EXCLUDES Admin (DB-provisioned only)', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [
-        { id: 2, name: 'Admin' },
-        { id: 1, name: 'Researcher' },
-      ],
-    });
-
+  it('does NOT include Admin (DB-provisioned only)', async () => {
     const roles = await roleService.fetchBusinessRolesForOnboarding();
     expect(roles).not.toContain('Admin');
-    expect(roles).toEqual(['Researcher']);
   });
 
-  it('handles string-array BE responses', async () => {
-    getMock.mockResolvedValueOnce({
-      data: ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'],
-    });
+  it('does not perform any network round-trip — resolves synchronously', async () => {
+    // Promise.resolve microtask should be enough; the helper does no IO.
+    const p = roleService.fetchBusinessRolesForOnboarding();
+    expect(p).toBeInstanceOf(Promise);
+    await expect(p).resolves.toEqual([
+      'Researcher',
+      'Reviewer',
+      'Lecturer',
+      'Graduate Student',
+    ]);
+  });
 
+  it('matches the shared REGISTRATION_ROLES constant', () => {
+    expect([...ALLOWED_ONBOARDING_ROLES]).toEqual([...REGISTRATION_ROLES]);
+  });
+
+  it('contains exactly four entries', async () => {
     const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual(['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student']);
-  });
-
-  it('handles wrapped responses ({ items: [...] })', async () => {
-    getMock.mockResolvedValueOnce({
-      data: { items: [{ name: 'Researcher' }, { name: 'Reviewer' }] },
-    });
-
-    const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual(['Researcher', 'Reviewer']);
-  });
-
-  it('drops unknown role strings without coercing them to a known role', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [
-        { name: 'Researcher' },
-        { name: 'FooBar' }, // unknown — must be dropped
-        { name: 'Reviewer' },
-      ],
-    });
-
-    const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual(['Researcher', 'Reviewer']);
-  });
-
-  it('dedupes roles that appear twice', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [
-        { name: 'Researcher' },
-        { name: 'Researcher' },
-        { name: 'Reviewer' },
-      ],
-    });
-
-    const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual(['Researcher', 'Reviewer']);
-  });
-
-  it('preserves the BE order (no client-side sort)', async () => {
-    getMock.mockResolvedValueOnce({
-      data: [{ name: 'Reviewer' }, { name: 'Researcher' }, { name: 'Lecturer' }],
-    });
-
-    const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual(['Reviewer', 'Researcher', 'Lecturer']);
-  });
-
-  it('returns an empty array when the BE returns no usable roles (does not throw)', async () => {
-    getMock.mockResolvedValueOnce({ data: [] });
-    const roles = await roleService.fetchBusinessRolesForOnboarding();
-    expect(roles).toEqual([]);
-  });
-
-  it('propagates BE failures — never falls back to a hardcoded list', async () => {
-    getMock.mockRejectedValueOnce(new Error('BE down'));
-    await expect(roleService.fetchBusinessRolesForOnboarding()).rejects.toThrow('BE down');
+    expect(roles).toHaveLength(4);
   });
 });
 
 describe('roleService.isOnboardingSelectable', () => {
-  it('returns true for business roles on the allowed list', () => {
+  it('returns true for every business role on the allowed list', () => {
     for (const r of ALLOWED_ONBOARDING_ROLES) {
       expect(roleService.isOnboardingSelectable(r)).toBe(true);
     }
   });
 
-  it('returns false for Admin / Guest / unknown strings', () => {
+  it('returns false for Admin / Guest / unknown strings / null / undefined', () => {
     expect(roleService.isOnboardingSelectable('Admin')).toBe(false);
     expect(roleService.isOnboardingSelectable('Guest')).toBe(false);
     expect(roleService.isOnboardingSelectable('')).toBe(false);
     expect(roleService.isOnboardingSelectable(null)).toBe(false);
+    expect(roleService.isOnboardingSelectable(undefined)).toBe(false);
+    expect(roleService.isOnboardingSelectable('MysteryRole')).toBe(false);
+  });
+
+  it('is the same predicate as isRequestableRole from the shared util', () => {
+    for (const value of [
+      'Researcher',
+      'Reviewer',
+      'Lecturer',
+      'Graduate Student',
+      'Admin',
+      'Guest',
+      null,
+      undefined,
+    ] as const) {
+      expect(roleService.isOnboardingSelectable(value)).toBe(
+        isRequestableRole(value),
+      );
+    }
   });
 });

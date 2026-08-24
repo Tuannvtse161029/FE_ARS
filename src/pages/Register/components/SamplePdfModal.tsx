@@ -1,26 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../../components/Button';
-import type { UserRole } from '../../../types/auth';
 import styles from './SamplePdfModal.module.css';
 import { X } from '../../../assets/icons/XIcon';
+import {
+  REGISTRATION_ROLES,
+  type RequestableRole,
+} from '../../../utils/registrationRoles';
 
 interface SamplePdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialRole?: RequestableRole;
 }
-
-// Admin is provisioned directly in the DB and never goes through the
-// registration flow, so there is no sample verification document for it.
-// Tighten the modal's type so the compiler refuses to add Admin back.
-type RequestableRole = Exclude<UserRole, 'Admin'>;
-
-const ROLES: readonly RequestableRole[] = [
-  'Researcher',
-  'Reviewer',
-  'Lecturer',
-  'Graduate Student',
-];
 
 interface DocumentProfile {
   fullName: string;
@@ -188,7 +179,7 @@ export const SamplePdfModal = ({
         </div>
 
         <div className={styles.tabs} role="tablist">
-          {ROLES.map((role) => (
+          {REGISTRATION_ROLES.map((role) => (
             <button
               key={role}
               type="button"

@@ -16,31 +16,10 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
 import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
-
-const ROLE_OPTIONS: RequestableRole[] = [
-  'Researcher',
-  'Reviewer',
-  'Lecturer',
-  'Graduate Student',
-];
-
-const ROLE_REQUIREMENTS: Record<UserRole, string> = {
-  Researcher:
-    'Upload a PDF containing your academic profile, ORCID iD, publication record, and citation metrics. This document will be reviewed by an administrator before your Researcher role is granted.',
-  Reviewer:
-    'Upload a PDF summarizing your academic background, areas of expertise, and prior peer review service record. Administrator review is required before Reviewer privileges are activated.',
-  Lecturer:
-    'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. This supports verification of your Lecturer role.',
-  'Graduate Student':
-    'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
-  Admin:
-    'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
-};
-
-// Admin is provisioned directly in the DB and never appears in the
-// self-registration dropdown, so the form only ever carries the requestable
-// subset. The sample-modal copy and BE payload use the same type.
-type RequestableRole = Exclude<UserRole, 'Admin'>;
+import {
+  REGISTRATION_ROLES,
+  type RequestableRole,
+} from '../../utils/registrationRoles';
 
 interface FormState {
   fullName: string;
@@ -69,6 +48,23 @@ const phoneRegex = /^[+\d\s\-()]{8,20}$/;
 const passwordRegex = {
   hasUpper: /[A-Z]/,
   hasNumber: /[0-9]/,
+};
+
+// Per-role verification copy shown in the right-hand banner. Admin is
+// included so the compiler can prove the record covers every
+// `UserRole` literal, but the form never lets the user pick Admin
+// (see `REGISTRATION_ROLES`).
+const ROLE_REQUIREMENTS: Record<UserRole, string> = {
+  Researcher:
+    'Upload a PDF containing your academic profile, ORCID iD, publication record, and citation metrics. This document will be reviewed by an administrator before your Researcher role is granted.',
+  Reviewer:
+    'Upload a PDF summarizing your academic background, areas of expertise, and prior peer review service record. Administrator review is required before Reviewer privileges are activated.',
+  Lecturer:
+    'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. This supports verification of your Lecturer role.',
+  'Graduate Student':
+    'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
+  Admin:
+    'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
 };
 
 export const Register = () => {
@@ -440,7 +436,7 @@ export const Register = () => {
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
           >
-            {ROLE_OPTIONS.map((role) => (
+            {REGISTRATION_ROLES.map((role) => (
               <option key={role} value={role}>
                 {role}
               </option>

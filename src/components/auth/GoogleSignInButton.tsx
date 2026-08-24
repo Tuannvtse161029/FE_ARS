@@ -16,6 +16,7 @@ import { useEffect } from 'react';
 import { Button } from '../../components/Button';
 import { GoogleIcon } from '../../assets/icons/GoogleIcon';
 import { useGoogleIdentity } from '../../hooks/useGoogleIdentity';
+import { isGoogleLoginInFlight } from '../../utils/googleLoginGuard';
 import styles from './GoogleSignInButton.module.css';
 
 export interface GoogleSignInButtonProps {
@@ -101,10 +102,21 @@ export const GoogleSignInButton = ({
     };
   }, []);
 
+  // Agent 30 (regression) — while a Google-login exchange is in flight
+  // anywhere in the app, render an overlay on top of the button
+  // container so a rapid second click cannot fire a second credential
+  // callback. The shared `acquireGoogleLoginSession` guard dedupes
+  // the underlying POST; this overlay provides the visible "do not
+  // click again" affordance. We deliberately do NOT pass `disabled`
+  // into GIS itself — it would still receive the click and fire a
+  // second callback. The overlay sits above the GIS iframe and
+  // captures pointer events for the duration of the in-flight window.
+  const globalInFlight = isGoogleLoginInFlight();
+
   // When the credential handler is provided, render the GIS-mounted button.
   if (onCredential) {
     const visibleError = errorMessage ?? gisErrorMessage;
-    const showSpinner = pending || (gisStatus === 'loading' && !gisReady);
+    const showSpinner = pending || (gisStatus === 'loading' && !gisReady) || globalInFlight;
 
     return (
       <div className={styles.wrap}>
@@ -113,8 +125,22 @@ export const GoogleSignInButton = ({
           className={styles.gisMount}
           data-testid="google-gis-button"
           data-status={gisStatus}
-          aria-busy={gisStatus === 'loading'}
+          data-inflight={globalInFlight ? 'true' : 'false'}
+          aria-busy={gisStatus === 'loading' || globalInFlight}
         />
+        {/* In-flight overlay — covers the GIS button container so a
+            second click is intercepted before GIS can fire another
+            credential callback. The overlay sits at z-index above the
+            GIS iframe, is fully transparent for pointer events on the
+            underlying GIS button (it captures them itself) but captures
+            clicks for the duration of the in-flight exchange. */}
+        {globalInFlight ? (
+          <div
+            className={styles.inflightOverlay}
+            data-testid="google-inflight-overlay"
+            aria-hidden="true"
+          />
+        ) : null}
         {/* Fallback button — shown if GIS is unavailable so the user still has
             a non-Google path forward (the page already offers email/password). */}
         {gisStatus === 'unavailable' || gisStatus === 'no-client-id' ? (

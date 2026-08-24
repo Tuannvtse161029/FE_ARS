@@ -58,6 +58,13 @@ async function mockBackend(page: Page) {
     });
   });
   await page.route('**/api/Role/business*', async (route) => {
+    // Deprecated — Agent 30 stopped calling GET /api/Role from the
+    // onboarding flow. The shared FE-owned role constant
+    // (`src/utils/registrationRoles.ts`) is authoritative for the
+    // user-selectable set. This route is kept as a passive
+    // mock so a stale test runner still finds something to
+    // satisfy — a real navigation away from the dialog would be
+    // a regression.
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

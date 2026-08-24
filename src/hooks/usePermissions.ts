@@ -37,17 +37,32 @@ export const usePermissions = (): Permissions => {
   const stored = readStoredUser();
 
   const isActive = user?.isActive ?? stored?.isActive ?? false;
-  const verificationStatus =
-    (user?.verificationStatus as VerificationStatus | undefined) ??
-    (stored?.verificationStatus as VerificationStatus | undefined) ??
-    'Pending';
+  // Agent 30 (regression) — `verificationStatus` is a tri-state
+  // (`'Pending' | 'Accepted' | 'Rejected' | null`). A `null` value means
+  // the BE has not yet produced a verification result (e.g. a brand-new
+  // first-time Google user that has not been through the role-request
+  // lifecycle). We preserve `null` so the downstream `isVerified`
+  // derivation below sees `false` for both `isActive === false` and
+  // `verificationStatus === null` without falsely implying a submitted
+  // role request is awaiting Admin review.
+  const verificationStatus: VerificationStatus | null =
+    user?.verificationStatus === 'Accepted' ||
+    user?.verificationStatus === 'Rejected'
+      ? user.verificationStatus
+      : user?.verificationStatus === 'Pending'
+        ? 'Pending'
+        : stored?.verificationStatus === 'Accepted' ||
+            stored?.verificationStatus === 'Rejected'
+          ? stored.verificationStatus
+          : stored?.verificationStatus === 'Pending'
+            ? 'Pending'
+            : null;
 
   // User is fully approved only when all three conditions hold:
   //   isActive === true  AND  verificationStatus === 'Accepted'  AND  roleId !== 0
   // Defaults to false (lockout-safe) for any missing fields.
   const isVerified =
-    Boolean(isActive) &&
-    verificationStatus === 'Accepted';
+    Boolean(isActive) && verificationStatus === 'Accepted';
 
   // All verified users may post in the forum. (If a future ticket restricts
   // specific roles from posting, gate here on roleName/roleId.)

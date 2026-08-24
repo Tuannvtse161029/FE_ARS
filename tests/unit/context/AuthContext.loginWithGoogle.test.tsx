@@ -224,7 +224,13 @@ describe('AuthContext.loginWithGoogle', () => {
     expect(postGoogleLoginMock.mock.calls[0][0]).toEqual({ credential: 'GIS_CRED' });
   });
 
-  it('persists + routes a NEW user (isNewUser=true) to /complete-google-registration', async () => {
+  it('persists + routes a NEW user (isNewUser=true AND requiresOnboarding=true) to /complete-google-registration', async () => {
+    // Per the Agent 30 follow-up correction: the exact AND-clause is
+    // isNewUser===true AND requiresOnboarding===true AND
+    // effectiveRole===null AND approved roles empty. A bare isNewUser
+    // signal is not enough — the BE must also surface
+    // requiresOnboarding so the resolver can distinguish a true
+    // first-time user from a legacy Guest fallback.
     postGoogleLoginMock.mockResolvedValueOnce({
       token: 'jwt-new',
       email: 'new@example.com',
@@ -238,7 +244,7 @@ describe('AuthContext.loginWithGoogle', () => {
       verificationStatus: 'Pending',
       effectiveRole: null,
       isNewUser: true,
-      requiresOnboarding: false,
+      requiresOnboarding: true,
     });
 
     const { view, getHandle } = mountAuthContext();
@@ -396,14 +402,16 @@ describe('AuthContext.loginWithGoogle', () => {
     ).toBe('Bearer STALE_TOKEN');
   });
 
-  it('routes a new user to /complete-google-registration even when the BE surfaces isNewUser="true" (stringified boolean)', async () => {
-    // Symptom of the routing bug investigated in this ticket: the BE
-    // echoed `isNewUser` as the string "true" (a common .NET / URL-param
-    // quirk) and the old strict `=== true` normaliser dropped the flag,
-    // so a freshly-registered Google user was silently routed to the
-    // workspace landing instead of /complete-google-registration.
-    // The fix accepts the well-known string forms without losing the
-    // "explicit-only routing" invariant.
+  it('routes a new user to /complete-google-registration when isNewUser=true AND requiresOnboarding=true', async () => {
+    // The normaliser in `googleAuthService.normaliseGoogleLoginResponse`
+    // coerces stringified booleans to real booleans BEFORE they reach
+    // the resolver (verified independently in
+    // tests/unit/services/googleAuth.service.test.ts). The mock here
+    // returns the post-normalisation shape directly so we exercise
+    // the resolver's exact AND-clause: both isNewUser AND
+    // requiresOnboarding must be the boolean `true` (with
+    // effectiveRole===null and empty approved roles) for the
+    // onboarding branch to fire.
     postGoogleLoginMock.mockResolvedValueOnce({
       token: 'jwt-new',
       email: 'new@example.com',
@@ -416,15 +424,15 @@ describe('AuthContext.loginWithGoogle', () => {
       isActive: false,
       verificationStatus: 'Pending',
       effectiveRole: null,
-      isNewUser: 'true',
-      requiresOnboarding: false,
+      isNewUser: true,
+      requiresOnboarding: true,
     });
 
     const { view, getHandle } = mountAuthContext();
     await waitFor(() => getHandle().loginWithGoogle);
 
     await act(async () => {
-      await getHandle().loginWithGoogle('GIS_CRED_STRING_NEW');
+      await getHandle().loginWithGoogle('GIS_CRED_NEW');
     });
 
     await waitFor(
@@ -446,6 +454,9 @@ describe('AuthContext.loginWithGoogle', () => {
     // `googleAuthService.normaliseGoogleLoginResponse` produces for a
     // wrapped payload — verified independently in
     // tests/unit/services/googleAuth.service.test.ts).
+    //
+    // Per the Agent 30 follow-up correction: both isNewUser AND
+    // requiresOnboarding must be true to drive the onboarding branch.
     postGoogleLoginMock.mockResolvedValueOnce({
       token: 'jwt-wrapped',
       email: 'wrapped@example.com',
@@ -459,7 +470,7 @@ describe('AuthContext.loginWithGoogle', () => {
       verificationStatus: 'Pending',
       effectiveRole: null,
       isNewUser: true,
-      requiresOnboarding: false,
+      requiresOnboarding: true,
     });
 
     const { view, getHandle } = mountAuthContext();
@@ -519,7 +530,7 @@ describe('AuthContext.loginWithGoogle', () => {
       verificationStatus: 'Pending',
       effectiveRole: null,
       isNewUser: true,
-      requiresOnboarding: false,
+      requiresOnboarding: true,
     });
 
     const { view, getHandle } = mountAuthContext();
@@ -712,10 +723,12 @@ describe('AuthContext.loginWithGoogle — unified routing rule', () => {
     expect(view.container.querySelector('[data-testid="onboarding-marker"]')).toBeNull();
   });
 
-  it('does not regress: isNewUser=true with non-null role still routes to onboarding (legacy signal wins)', async () => {
-    // Defensive: when the BE marks a record as new AND echoes a role
-    // (mis-shaped response), the legacy isNewUser signal still wins and
-    // the page is the onboarding dialog — never a role workspace.
+  it('does not regress: a bare isNewUser=true (without requiresOnboarding) routes to /forum, NOT to onboarding', async () => {
+    // Per the Agent 30 follow-up correction: the legacy "isNewUser alone
+    // wins" semantics are intentionally retired. A bare `isNewUser=true`
+    // without `requiresOnboarding=true` is no longer enough to drive the
+    // onboarding branch — the resolver uses the explicit AND-clause. With
+    // a non-null role the user lands on /forum as a Guest instead.
     postGoogleLoginMock.mockResolvedValueOnce({
       token: 'jwt-new-with-role',
       email: 'weird@example.com',
@@ -737,6 +750,45 @@ describe('AuthContext.loginWithGoogle — unified routing rule', () => {
 
     await act(async () => {
       await getHandle().loginWithGoogle('GIS_CRED_NEW_WITH_ROLE');
+    });
+
+    await waitFor(
+      () => {
+        expect(view.container.querySelector('[data-testid="forum-marker"]'))
+          .toBeTruthy();
+      },
+      { timeout: 3000 },
+    );
+    expect(view.container.querySelector('[data-testid="onboarding-marker"]')).toBeNull();
+  });
+
+  it('routes to /complete-google-registration when isNewUser=true AND requiresOnboarding=true with a non-null role (the explicit signals win)', async () => {
+    // Defensive: when both explicit onboarding signals are `true` and
+    // the approved role list is empty, the AND-clause routes to onboarding
+    // — the strongest positive signal we honour. Without
+    // requiresOnboarding=true the legacy OR-logic would have routed to
+    // onboarding; with the new spec the explicit AND-clause is required.
+    postGoogleLoginMock.mockResolvedValueOnce({
+      token: 'jwt-explicit-and',
+      email: 'explicit-and@example.com',
+      fullName: 'Explicit AND',
+      avatarUrl: null,
+      userId: 205,
+      role: null,
+      roleId: null,
+      roles: [],
+      isActive: false,
+      verificationStatus: 'Pending',
+      effectiveRole: null,
+      isNewUser: true,
+      requiresOnboarding: true,
+    });
+
+    const { view, getHandle } = mountAuthContext();
+    await waitFor(() => getHandle().loginWithGoogle);
+
+    await act(async () => {
+      await getHandle().loginWithGoogle('GIS_CRED_EXPLICIT_AND');
     });
 
     await waitFor(

@@ -149,10 +149,14 @@ function mountAt(search: string) {
   );
 }
 
-describe('GoogleCallback — first-time / onboarding routing', () => {
-  it('routes a first-time user (isNewUser=true) to /complete-google-registration', async () => {
+describe('GoogleCallback — first-time / onboarding routing (Agent 30 follow-up exact AND-clause)', () => {
+  it('routes a first-time user (isNewUser=true AND requiresOnboarding=true) to /complete-google-registration', async () => {
+    // Per the Agent 30 follow-up correction: the exact AND-clause is
+    // isNewUser===true AND requiresOnboarding===true AND
+    // effectiveRole===null AND approved roles empty. A bare isNewUser
+    // signal is not enough — both explicit signals must be true.
     mountAt(
-      '?token=jwt-1&userId=42&email=u@e.com&fullName=New&isNewUser=true&isActive=false&verificationStatus=Pending',
+      '?token=jwt-1&userId=42&email=u@e.com&fullName=New&isNewUser=true&requiresOnboarding=true&isActive=false&verificationStatus=Pending',
     );
 
     await waitFor(() => {
@@ -163,9 +167,9 @@ describe('GoogleCallback — first-time / onboarding routing', () => {
     expect(authStoreLoginMock).toHaveBeenCalled();
   });
 
-  it('routes a requiresOnboarding=true user to /complete-google-registration', async () => {
+  it('routes a requiresOnboarding=true user with isNewUser=true (the explicit AND-clause) to /complete-google-registration', async () => {
     mountAt(
-      '?token=jwt-1&userId=42&email=u@e.com&fullName=New&requiresOnboarding=true',
+      '?token=jwt-1&userId=42&email=u@e.com&fullName=New&isNewUser=true&requiresOnboarding=true',
     );
 
     await waitFor(() => {
@@ -175,7 +179,7 @@ describe('GoogleCallback — first-time / onboarding routing', () => {
 
   it('persists a first-time session without fabricating roleId / roleName', async () => {
     mountAt(
-      '?token=jwt-1&userId=99&email=new@example.com&fullName=New&isNewUser=true',
+      '?token=jwt-1&userId=99&email=new@example.com&fullName=New&isNewUser=true&requiresOnboarding=true',
     );
 
     await waitFor(() => {
@@ -188,6 +192,21 @@ describe('GoogleCallback — first-time / onboarding routing', () => {
     expect(persistedUser.fullName).toBe('New');
     expect(persistedUser.roleId).toBeNull();
     expect(persistedUser.roleName).toBeNull();
+  });
+
+  it('does NOT route to onboarding on a bare isNewUser=true with a non-null role (legacy OR-semantics retired)', async () => {
+    // A bare `isNewUser=true` without `requiresOnboarding=true` is no
+    // longer enough to drive the onboarding branch. The snapshot with
+    // a non-null role lands on /forum as a Guest (priority-3 branch
+    // fires because isActive=false / verificationStatus=Pending).
+    mountAt(
+      '?token=jwt-1&userId=42&email=u@e.com&fullName=New&role=Researcher&roleId=1&isNewUser=true&isActive=false&verificationStatus=Pending',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
   });
 });
 
@@ -398,14 +417,88 @@ describe('GoogleCallback — unified routing rule', () => {
     });
   });
 
-  it('does not regress: isNewUser=true with non-null role still routes to onboarding (legacy signal wins)', async () => {
+  it('does not regress: bare isNewUser=true with non-null role routes to /forum (legacy OR-semantics retired)', async () => {
+    // Per the Agent 30 follow-up correction: a bare isNewUser=true
+    // without requiresOnboarding=true is no longer enough to drive the
+    // onboarding branch. The snapshot with a non-null role lands on
+    // /forum as a Guest instead.
     mountAt(
-      '?token=jwt-1&userId=42&email=w@e.com&fullName=Weird&role=Researcher&roleId=1&isNewUser=true',
+      '?token=jwt-1&userId=42&email=w@e.com&fullName=Weird&role=Researcher&roleId=1&isNewUser=true&isActive=false&verificationStatus=Pending',
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('forum-marker')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-marker')).toBeNull();
+  });
+
+  it('routes to onboarding when isNewUser=true AND requiresOnboarding=true with a non-null role (the explicit AND-clause wins)', async () => {
+    // Per the Agent 30 follow-up correction: when the BE surfaces both
+    // explicit onboarding signals as `true` (and the approved role
+    // list is empty) the AND-clause routes to onboarding — the
+    // strongest positive signal we honour. Without requiresOnboarding
+    // the legacy OR-logic would have routed to onboarding; with the
+    // new spec the explicit AND-clause is required.
+    mountAt(
+      '?token=jwt-1&userId=42&email=w@e.com&fullName=Explicit&role=Researcher&roleId=1&isNewUser=true&requiresOnboarding=true&isActive=false&verificationStatus=Pending',
     );
 
     await waitFor(() => {
       expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('forum-marker')).toBeNull();
+  });
+});
+
+describe('GoogleCallback — Agent 30 (regression) verificationStatus null is preserved through storage AND authStore', () => {
+  // The screenshot payload for duyphuong2000.dpp@gmail.com surfaces
+  // verificationStatus=null. Earlier the GoogleCallback persisted
+  // `?? null` to storage but `?? 'Pending'` to the auth store; the
+  // mismatch let `null` leak back out of the auth store for an instant
+  // and falsely re-classified the user as "pending Admin" via
+  // useVerifiedGuard / usePermissions. Both writes must now agree.
+  function mountScreenshotState() {
+    mountAt(
+      '?token=jwt-screenshot&userId=17&email=duyphuong2000.dpp@gmail.com&fullName=Duy%20Phuong&isNewUser=true&requiresOnboarding=true&isActive=false',
+    );
+  }
+
+  it('persists verificationStatus=null to storage (NOT coerced to "Pending")', async () => {
+    mountScreenshotState();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
+    });
+
+    expect(storageSetUserMock).toHaveBeenCalledTimes(1);
+    const persistedUser = storageSetUserMock.mock.calls[0][0];
+    expect(persistedUser.verificationStatus).toBeNull();
+  });
+
+  it('persists verificationStatus=null to authStore.login() (NOT coerced to "Pending")', async () => {
+    mountScreenshotState();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
+    });
+
+    expect(authStoreLoginMock).toHaveBeenCalledTimes(1);
+    const loginPayload = authStoreLoginMock.mock.calls[0][0];
+    expect(loginPayload.verificationStatus).toBeNull();
+  });
+
+  it('storage and authStore.verificationStatus agree (no Pending-fallback drift)', async () => {
+    mountScreenshotState();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-marker')).toBeInTheDocument();
+    });
+
+    expect(storageSetUserMock).toHaveBeenCalledTimes(1);
+    expect(authStoreLoginMock).toHaveBeenCalledTimes(1);
+    const persistedUser = storageSetUserMock.mock.calls[0][0];
+    const loginPayload = authStoreLoginMock.mock.calls[0][0];
+    expect(loginPayload.verificationStatus).toBe(persistedUser.verificationStatus);
+    expect(loginPayload.verificationStatus).toBeNull();
   });
 });

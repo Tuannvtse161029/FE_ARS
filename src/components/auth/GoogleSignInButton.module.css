@@ -60,3 +60,19 @@
   margin: 0;
   text-align: center;
 }
+
+/* Agent 30 (regression) — invisible overlay that sits over the
+   GIS-rendered button container during the in-flight window so a
+   rapid second click cannot fire a second credential callback. The
+   overlay captures pointer events; GIS underneath cannot receive a
+   second click for the duration. */
+.inflightOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+  cursor: progress;
+  /* The overlay is purely an event-capture surface; keep it invisible
+     so the GIS button looks unchanged visually while still blocking
+     a second click. */
+}

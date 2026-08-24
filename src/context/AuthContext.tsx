@@ -12,8 +12,14 @@ import { ROUTES } from '../routes/paths';
 import type { LoginRequest, AuthResponse, User, UserRole, EffectiveRole } from '../types/auth';
 import type { GoogleCredentialResponse } from '../types/googleAuth';
 import { isAdminUser, landingRouteForRoleName } from '../utils/roleNormalizer';
-import { isFirstTimeOnboardingUser, type PostAuthSnapshot } from '../utils/postAuthRoute';
+import {
+  isFirstTimeOnboardingUser,
+  type PostAuthSnapshot,
+} from '../utils/postAuthRoute';
 import { storage } from '../utils/storage';
+import {
+  acquireGoogleLoginSession,
+} from '../utils/googleLoginGuard';
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -224,6 +230,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const userId = freshUser?.id ?? response.userId ?? 0;
+      const persistedRoles: UserRole[] =
+        freshUser?.roles ?? response.roles ?? (roleToUse ? [roleToUse as UserRole] : []);
       const userToPersist = freshUser ?? {
         id: userId,
         username: response.username,
@@ -232,8 +240,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         roleId: response.roleId ?? 0,
         roleName: roleToUse,
         isActive: response.isActive ?? false,
-        verificationStatus: response.verificationStatus ?? 'Pending',
+        // Agent 30 (regression) — preserve the BE-supplied
+        // verificationStatus verbatim. A missing value stays `null`
+        // (rather than being coerced to `'Pending'`) so the
+        // null-aware downstream checks can recognise a fresh account
+        // that has not been through the role-request lifecycle yet.
+        verificationStatus: response.verificationStatus ?? null,
         accountTier: response.accountTier ?? 'Free',
+        // Agent 30 — mirror `AuthResponse.roles` on the persisted user
+        // so `PublicRoute` can enforce the exact approved-role-list
+        // condition at runtime. The list is sourced from the BE (freshUser
+        // or response) and falls back to a single-element array when the
+        // BE omits it so the post-auth resolver doesn't mis-classify an
+        // existing user as "first-time".
+        roles: persistedRoles,
       };
       storage.setUser(userToPersist);
 
@@ -258,13 +278,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Use the BE's authoritative isActive value; default to FALSE (lockout-safe).
           isActive: freshUser?.isActive ?? response.isActive ?? false,
           // Use the BE's authoritative verificationStatus value.
-          verificationStatus: freshUser?.verificationStatus ?? response.verificationStatus ?? 'Pending',
+          verificationStatus:
+            (freshUser?.verificationStatus ?? response.verificationStatus ?? null) as
+              | 'Pending'
+              | 'Accepted'
+              | 'Rejected'
+              | null,
           accountTier: freshUser?.accountTier ?? response.accountTier ?? 'Free',
           // Forward the BE-derived effective role so the verified-guard and
           // MainLayout can render the unverified-state UI without re-deriving
           // from `isActive`. Falls back to the derived value when the BE
           // doesn't surface the field (lockout-safe).
           effectiveRole: resolveEffectiveRole(freshUser, response, roleToUse),
+          // Agent 30 — mirror the BE's approved-roles list on the auth
+          // store so `PublicRoute` can enforce the exact approved-role
+          // condition at runtime (see `utils/postAuthRoute.ts`).
+          roles: persistedRoles,
         },
         response.token,
         resolveEffectiveRole(freshUser, response, roleToUse)
@@ -324,11 +353,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    *
    * Flow:
    *   1. POST `{ credential }` to `/api/Auth/google-login`.
-   *   2. Decide the destination from the BE-derived routing signals:
-   *        - `isNewUser || requiresOnboarding`           → onboarding page
-   *        - role/roleId both empty (no legacy signal)   → onboarding page
-   *        - role non-null but Pending / inactive        → /forum as Guest
-   *        - role non-null and Approved + active         → role landing route
+   *   2. Decide the destination via `utils/postAuthRoute.ts`
+   *      (Agent 30 — exact spec):
+   *        - isNewUser===true AND requiresOnboarding===true
+   *          AND effectiveRole===null AND approved roles empty
+   *                                               → /complete-google-registration
+   *        - role/roleId both empty (no legacy signal) → onboarding (compat)
+   *        - role non-null but Pending / inactive  → /forum as Guest
+   *        - role non-null and Approved + active   → role landing route
    *   3. Run the persistence + navigation pipeline used by the
    *      password-login flow (`persistAuthAndNavigate`).
    *
@@ -364,7 +396,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const session = await googleAuthService.postGoogleLogin({ credential });
+        // Agent 30 (regression) — wrap the POST in the shared remount-
+        // safe in-flight guard keyed by the credential. Duplicate GIS
+        // callbacks (StrictMode double-invoke, remount, rapid double-
+        // click) share the same exchange so the BE sees ONE request and
+        // we produce ONE routing decision. The slot clears on settle so
+        // a retry after a transient failure re-enters the BE.
+        const session = await acquireGoogleLoginSession(credential, () =>
+          googleAuthService.postGoogleLogin({ credential }),
+        );
 
         if (!session.token || !session.userId || !session.email) {
           // BE didn't surface enough fields to start a session. Treat as
@@ -436,6 +476,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           effectiveRole: session.effectiveRole,
           isNewUser: session.isNewUser,
           requiresOnboarding: session.requiresOnboarding,
+          // Agent 30 (regression) — forward the BE's approved-roles list
+          // so the post-auth resolver can enforce the exact AND-clause
+          // at runtime (a user with explicit onboarding signals but
+          // already an accepted role must NOT route to onboarding).
+          approvedRoles: session.roles ?? null,
         };
         const shouldOnboard = isFirstTimeOnboardingUser(onboardingSnapshot);
 
@@ -480,13 +525,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // for a "no role assigned yet" first-time Google user.
             roleId: session.roleId ?? 0,
             roleName: session.role ?? '',
+            // Agent 30 (regression) — preserve the BE-derived
+            // `isActive` and `verificationStatus` exactly as the BE
+            // returned them. Coercing a BE-supplied `null`
+            // `verificationStatus` to `'Pending'` would falsely imply
+            // a submitted request has been filed when the BE has only
+            // told us this is a brand-new account.
             isActive: session.isActive ?? false,
-            verificationStatus: session.verificationStatus ?? 'Pending',
+            verificationStatus: (session.verificationStatus ?? null) as
+              | 'Pending'
+              | 'Accepted'
+              | 'Rejected'
+              | null,
             accountTier: 'Free' as const,
             effectiveRole: (session.effectiveRole as EffectiveRole) ?? null,
+            // Agent 30 — preserve the BE-derived first-time signals on the
+            // persisted user blob so `PublicRoute` (and any other consumer
+            // that reads the persisted user) can route a freshly-logged-in
+            // first-time Google user to `/complete-google-registration`
+            // without an additional `GET /api/User/{id}` round-trip.
+            isNewUser: session.isNewUser ?? null,
+            requiresOnboarding: session.requiresOnboarding ?? null,
+            // Mirror the BE's approved-roles list so PublicRoute's exact
+            // AND-clause check sees the same list as the in-memory
+            // snapshot.
+            roles: (session.roles ?? []) as UserRole[],
           };
-          storage.setUser(onboardingUser);
-          authStore.login(onboardingUser, session.token, onboardingUser.effectiveRole);
+          storage.setUser(onboardingUser as unknown as Parameters<typeof storage.setUser>[0]);
+          authStore.login(onboardingUser as unknown as Parameters<typeof authStore.login>[0], session.token, onboardingUser.effectiveRole);
           useWelcomeSignal.getState().show();
           navigate(ROUTES.COMPLETE_GOOGLE_REGISTRATION, { replace: true });
           setIsLoading(false);
@@ -532,7 +598,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           roleId: session.roleId ?? undefined,
           roles: filteredRoles,
           isActive: session.isActive ?? false,
-          verificationStatus: session.verificationStatus ?? 'Pending',
+          // Agent 30 (regression) — preserve the BE-derived
+          // `verificationStatus` exactly as the BE returned it; do NOT
+          // coerce a missing value to `'Pending'`. The downstream
+          // `useVerifiedGuard` and `usePermissions` apply their own
+          // null-aware derivations.
+          verificationStatus: (session.verificationStatus ?? null) as
+            | 'Pending'
+            | 'Accepted'
+            | 'Rejected'
+            | null,
           effectiveRole:
             (session.effectiveRole as EffectiveRole) ??
             ((session.isActive ?? false) ? roleToUse : 'Guest'),
@@ -784,11 +859,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    * Runs only once per app session (no deps) and only when auth state is
    * rehydrated with a valid userId — the GET call will fail with 401 if the
    * token is invalid and we catch it silently.
+   *
+   * CRITICAL: Must NOT run when the user has just logged in via loginWithGoogle
+   * and has `isNewUser` or `requiresOnboarding` set to `true`. Those signals
+   * are only present on the login response and will be lost if we immediately
+   * overwrite with GET /api/User/{id} (which doesn't return them). Only sync
+   * from BE when rehydrating a stale session from storage.
    */
   useEffect(() => {
     const syncUserFromBE = async () => {
       const userId = authStore.user?.id;
       if (!authStore.isAuthenticated || !userId || userId === 0) return;
+
+      // Skip sync if this is a fresh first-time Google user — the login
+      // response already has the authoritative data and we must not lose
+      // the `isNewUser`/`requiresOnboarding` signals.
+      if (authStore.user?.isNewUser === true || authStore.user?.requiresOnboarding === true) {
+        return;
+      }
 
       try {
         const freshUser = await userService.getById(userId);
@@ -832,8 +920,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: authStore.user.email,
           role: authStore.user.roleName,
           isActive: authStore.user.isActive ?? false,
-          verificationStatus: authStore.user.verificationStatus ?? 'Pending',
+          // Agent 30 (regression) — preserve the BE-supplied
+          // `verificationStatus` as `null` when the BE omitted it.
+          // Coercing to `'Pending'` would falsely imply a submitted
+          // Admin-review request and silently suppress the
+          // `/complete-google-registration` onboarding branch.
+          verificationStatus: authStore.user.verificationStatus ?? null,
           effectiveRole: authStore.user.effectiveRole,
+          // Agent 30 — forward the BE-derived first-time signals from the
+          // persisted `User` blob so `PublicRoute` can route a freshly-
+          // logged-in first-time Google user to `/complete-google-registration`
+          // without an extra `GET /api/User/{id}` round-trip. When the
+          // persisted blob has no value we emit `undefined` so the snapshot
+          // falls back to the documented compatibility fallback in
+          // `utils/postAuthRoute.ts`.
+          isNewUser: authStore.user.isNewUser ?? undefined,
+          requiresOnboarding: authStore.user.requiresOnboarding ?? undefined,
+          // Agent 30 — forward the BE's approved-roles list so the post-
+          // auth resolver can enforce the exact approved-role-list
+          // condition at runtime (i.e. a user with explicit onboarding
+          // signals BUT already an accepted role is NOT a first-time
+          // candidate and must route to the workspace).
+          roles: authStore.user.roles,
         }
       : null,
     isAuthenticated: authStore.isAuthenticated,

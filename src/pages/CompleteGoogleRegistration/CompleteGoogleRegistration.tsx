@@ -54,13 +54,13 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { PdfDropzone } from '../Register/components/PdfDropzone';
 import { authService } from '../../services/auth.service';
-import { roleService, ALLOWED_ONBOARDING_ROLES } from '../../services/role.service';
 import { useAuthStore } from '../../store';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../utils/storage';
 import { ROUTES } from '../../routes/paths';
 import type { BusinessRole, EffectiveRole, UserRole } from '../../types/auth';
 import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
+import { REGISTRATION_ROLES } from '../../utils/registrationRoles';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
 
@@ -252,28 +252,18 @@ export const CompleteGoogleRegistration = () => {
     }
   }, [profile?.userId]);
 
-  // ── 3. Load the BE's role list (Guest / Admin excluded) ────────────────
+  // ── 3. Populate the role selector from the shared FE-owned constant ────
+  //
+  // The role list is owned by the FE (see `src/utils/registrationRoles.ts`)
+  // — we DO NOT call `GET /api/Role` here. The BE is authoritative for
+  // the *result* of the submission (the submitted role name is sent
+  // verbatim and the BE either accepts or rejects), but the selectable
+  // set is FE-owned so a transient BE outage cannot leave a freshly
+  // signed-in first-time Google user with no role to choose. Admin and
+  // Guest are deliberately excluded.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const roles = await roleService.fetchBusinessRolesForOnboarding();
-        if (cancelled) return;
-        const filtered = roles.filter((r) =>
-          (ALLOWED_ONBOARDING_ROLES as readonly BusinessRole[]).includes(r),
-        );
-        setAvailableRoles(filtered);
-        setRolesError(null);
-      } catch {
-        if (cancelled) return;
-        setRolesError(
-          'Could not load available roles. Please retry later.',
-        );
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setAvailableRoles([...REGISTRATION_ROLES]);
+    setRolesError(null);
   }, []);
 
   // ── 4. Handlers ─────────────────────────────────────────────────────────
@@ -482,6 +472,20 @@ export const CompleteGoogleRegistration = () => {
     profile.isActive === true &&
     profile.roleId != null &&
     profile.roleId > 0;
+
+  if (import.meta.env?.DEV) {
+    // eslint-disable-next-line no-console
+    console.info('[CompleteGoogleRegistration:diag] Profile check', {
+      profile,
+      alreadyApproved,
+      checks: {
+        isActive: profile.isActive === true,
+        roleIdNotNull: profile.roleId != null,
+        roleIdPositive: profile.roleId != null && profile.roleId > 0,
+      },
+    });
+  }
+
   if (alreadyApproved) {
     return <Navigate to={ROUTES.FORUM} replace />;
   }

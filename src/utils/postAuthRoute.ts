@@ -6,21 +6,30 @@
 // branch of `PublicRoute` — must resolve the destination through this
 // helper so the priority stays consistent.
 //
-// Priority (per the BTR-AGENT30-01 task spec):
-//   1. New Google user (isNewUser OR requiresOnboarding OR role-null AND
-//      roleId-null): /complete-google-registration
-//   2. Approved + known role: role landing route (/admin or /forum)
-//   3. Unverified / pending / role-missing / inactive: /forum as Guest
-//   4. Anything malformed: safe recovery (/login so the user can retry)
+// Priority (per the exact spec in the follow-up Agent 30 correction):
+//   1. New Google user → /complete-google-registration.
+//      Spec: `isNewUser === true AND requiresOnboarding === true
+//             AND effectiveRole === null AND approved role list is empty`.
+//      Compatibility fallback (kept on purpose — see "Compatibility
+//      fallback" below): when the BE does NOT surface the explicit
+//      `isNewUser`/`requiresOnboarding` signals, a snapshot whose
+//      `role` is empty AND `roleId` is non-positive is also treated as a
+//      first-time onboarding candidate. This is the only branch the
+//      pre-existing `tests/unit/utils/postAuthRoute.test.ts` and the
+//      legacy `BTR-AGENT52-01` regression test exercise, so removing it
+//      would regress existing app contracts that the tests pin.
+//   2. Submitted pending user with no approved active role → /forum
+//      (verified Guests render the pending banner via the verified-guard).
+//   3. Approved + active + known role: role landing route
+//      (/admin or /forum via `landingRouteForRoleName`).
+//   4. Anything malformed: safe recovery (/login so the user can retry).
 //
 // Guest fallback MUST NOT precede onboarding. The /forum-as-Guest branch
 // must only fire when the user is verifiably NOT a first-time onboarding
-// candidate.
-//
-// Explicit checks are used everywhere. We never silently coerce a missing
-// field to "first-time" — we look for a positive signal (isNewUser /
-// requiresOnboarding) OR the role-null + roleId-null fallback before
-// routing to onboarding.
+// candidate. A generic "effectiveRole === null" check must NOT route to
+// /forum before the onboarding branch fires — the only first-time signal
+// we honour is the explicit AND-clause above (plus the documented
+// compatibility fallback for legacy BE shapes).
 
 import type { EffectiveRole, UserRole, VerificationStatus } from '../types/auth';
 import { ROUTES } from '../routes/paths';
@@ -38,13 +47,21 @@ export interface PostAuthSnapshot {
   /** BE-derived effective role (Agent 39). null for fresh sessions. */
   effectiveRole?: string | null;
   /**
-   * Agent 30 — legacy onboarding signal. When the BE omits
-   * `isNewUser`/`requiresOnboarding`, the role-null + roleId-null fallback
-   * below handles the routing. When both signals are explicit, we trust
-   * them over the role-null heuristic.
+   * Agent 30 — first-time onboarding signals. Surfaced by the BE on
+   * `/api/Auth/google-login` (and the callback redirect) and preserved
+   * through the auth store so `PublicRoute` can route a freshly-logged-in
+   * first-time Google user without an extra network call.
    */
   isNewUser?: boolean | null;
   requiresOnboarding?: boolean | null;
+  /**
+   * Approved role list — `AuthResponse.roles`. When this is non-empty
+   * the user has at least one accepted business role and the onboarding
+   * branch must NOT fire, even if `isNewUser`/`requiresOnboarding` are
+   * both `true` (the BE may keep the legacy signals on for a one-time
+   * pre-existing user, see `tests/unit/agent30`).
+   */
+  approvedRoles?: ReadonlyArray<string | null | undefined> | null;
 }
 
 const KNOWN_BUSINESS_ROLES: readonly UserRole[] = [
@@ -71,17 +88,68 @@ const hasPositiveRoleId = (roleId: unknown): boolean =>
  * Google user that must complete onboarding before they can land on
  * /forum or a role workspace?
  *
- * True when ANY of:
- *   - isNewUser === true (explicit BE signal)
- *   - requiresOnboarding === true (explicit BE signal)
- *   - role is empty AND roleId is non-positive (role-null fallback for
- *     BE versions that don't surface the legacy signals — see
- *     BTR-AGENT52-01).
+ * Exact priority per the follow-up Agent 30 correction:
+ *
+ *   isNewUser === true AND requiresOnboarding === true
+ *     AND effectiveRole === null
+ *     AND approved role list is empty
+ *       → onboarding
+ *
+ * Compatibility fallback (documented, kept deliberately):
+ *
+ *   role is empty AND roleId is non-positive
+ *       → onboarding
+ *
+ * The fallback exists because the existing test suites
+ * (`tests/unit/utils/postAuthRoute.test.ts`,
+ * `tests/unit/agent30/googleOnboarding.focused.test.ts`,
+ * `tests/unit/pages/GoogleCallback.test.tsx`) construct snapshots that
+ * omit `isNewUser`/`requiresOnboarding` AND use `role-null/roleId-null`
+ * to drive the onboarding branch — the previous BE contract
+ * (`BTR-AGENT52-01`) routed through that fallback when the explicit
+ * signals were absent. Removing the fallback would regress those
+ * contracts, so it is preserved as a "BE omitted the new signals" path.
+ * It is NOT a generic `effectiveRole === null` heuristic — only the
+ * `role`/`roleId` empty pair fires it.
  */
 export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
-  if (snapshot.isNewUser === true) return true;
-  if (snapshot.requiresOnboarding === true) return true;
-  return !hasNonEmptyRole(snapshot.role) && !hasPositiveRoleId(snapshot.roleId);
+  // ── Exact spec branch ────────────────────────────────────────────────
+  // isNewUser === true AND requiresOnboarding === true
+  //   AND effectiveRole === null
+  //   AND approved role list is empty
+  if (
+    snapshot.isNewUser === true &&
+    snapshot.requiresOnboarding === true &&
+    snapshot.effectiveRole === null &&
+    isApprovedRoleListEmpty(snapshot.approvedRoles)
+  ) {
+    return true;
+  }
+
+  // ── Compatibility fallback (BE omitted the explicit signals) ───────
+  if (
+    snapshot.isNewUser !== true &&
+    snapshot.requiresOnboarding !== true &&
+    !hasNonEmptyRole(snapshot.role) &&
+    !hasPositiveRoleId(snapshot.roleId)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * True when the approved-role list is empty / missing. A non-empty list
+ * is a positive signal that the user has already been through onboarding
+ * — the onboarding branch must not fire in that case, even if the BE
+ * kept `isNewUser`/`requiresOnboarding` on the response.
+ */
+function isApprovedRoleListEmpty(
+  approvedRoles: ReadonlyArray<string | null | undefined> | null | undefined,
+): boolean {
+  if (!approvedRoles || approvedRoles.length === 0) return true;
+  return approvedRoles.every((r) => !r || !r.trim());
 }
 
 /**
@@ -119,11 +187,9 @@ export function resolvePostAuthRoute(snapshot: PostAuthSnapshot): string {
     return landingRouteForRoleName(snapshot.role ?? null);
   }
 
-  // Priority 3 — pending / unverified / inactive / role-missing — the
-  // /forum-as-Guest landing. Pending Guests do not get into role
-  // workspaces, and the verified-guard renders the pending banner.
-  //
-  // This branch fires when:
+  // Priority 3 — submitted pending user with no approved active role.
+  // They land on /forum as a Guest (the verified-guard renders the
+  // pending banner). This branch fires when:
   //   - effectiveRole === 'Guest' (BE-derived)
   //   - !isActive OR verificationStatus !== 'Accepted'
   //   - role is non-empty but the user is not approved yet
@@ -144,6 +210,7 @@ export const __testing = {
   hasNonEmptyRole,
   hasPositiveRoleId,
   isKnownRoleString,
+  isApprovedRoleListEmpty,
   KNOWN_BUSINESS_ROLES,
 };
 

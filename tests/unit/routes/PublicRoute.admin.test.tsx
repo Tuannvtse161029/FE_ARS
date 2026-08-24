@@ -249,4 +249,80 @@ describe('<PublicRoute> — first-time Google user lands on /complete-google-reg
     });
     expect(screen.queryByTestId('onboarding-landing')).not.toBeInTheDocument();
   });
+
+  // Agent 30 — verifies the exact approved-role-list condition from the
+  // follow-up correction. When ALL four exact-AND-clause conditions
+  // hold the user lands on /complete-google-registration, but when the
+  // BE's `roles` list is non-empty (the user already has an accepted
+  // role) they land on /forum as a Guest (the stronger approved-role
+  // signal wins). This guards against the bug where PublicRoute
+  // hard-codes `approvedRoles: null` — without forwarding `user.roles`
+  // the exact priority would degrade to a looser three-condition
+  // check and an explicit-onboarding-signal user with an accepted role
+  // would be silently sent to /complete-google-registration.
+  it('routes to /forum (not /complete-google-registration) when explicit onboarding signals are set BUT the user already has an accepted role', async () => {
+    useAuthMock.mockReturnValue(
+      buildMockAuth({
+        role: 'Researcher',
+        roleId: 1,
+        roles: ['Researcher' as const],
+        isActive: false,
+        verificationStatus: 'Pending',
+        effectiveRole: null,
+        isNewUser: true,
+        requiresOnboarding: true,
+        isAuthenticated: true,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[ROUTES.LOGIN]}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path={ROUTES.LOGIN} element={<LoginSurface />} />
+          </Route>
+          <Route path={ROUTES.COMPLETE_GOOGLE_REGISTRATION} element={<OnboardingLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('forum-landing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('onboarding-landing')).not.toBeInTheDocument();
+  });
+
+  it('routes to /complete-google-registration when the exact AND-clause holds AND the approved-roles list is empty', async () => {
+    useAuthMock.mockReturnValue(
+      buildMockAuth({
+        role: null,
+        roleId: 0,
+        roles: [],
+        isActive: false,
+        verificationStatus: 'Pending',
+        effectiveRole: null,
+        isNewUser: true,
+        requiresOnboarding: true,
+        isAuthenticated: true,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={[ROUTES.LOGIN]}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path={ROUTES.LOGIN} element={<LoginSurface />} />
+          </Route>
+          <Route path={ROUTES.COMPLETE_GOOGLE_REGISTRATION} element={<OnboardingLanding />} />
+          <Route path={ROUTES.FORUM} element={<ForumLanding />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('onboarding-landing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('forum-landing')).not.toBeInTheDocument();
+  });
 });
