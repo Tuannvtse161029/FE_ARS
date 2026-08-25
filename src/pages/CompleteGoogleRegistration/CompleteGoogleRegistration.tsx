@@ -272,7 +272,7 @@ export const CompleteGoogleRegistration = () => {
           const fetchedNames = roles
             .map((r) => r.name || r.roleName)
             .filter((name): name is BusinessRole =>
-              typeof name === 'string' && REGISTRATION_ROLES.includes(name as BusinessRole)
+              typeof name === 'string' && REGISTRATION_ROLES.includes(name as any)
             );
           if (fetchedNames.length > 0) {
             setAvailableRoles(fetchedNames);
