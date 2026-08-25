@@ -126,13 +126,16 @@ function resolveEffectiveRole(
   freshUser: User | null,
   response: AuthResponse,
   roleToUse: string,
-): EffectiveRole {
+): EffectiveRole | null {
   const fromFresh = freshUser?.effectiveRole;
   if (fromFresh) return fromFresh;
   const fromResponse = response.effectiveRole;
   if (fromResponse) return fromResponse;
+  const verificationStatus = freshUser?.verificationStatus ?? response.verificationStatus;
+  if (verificationStatus === 'Pending') return 'Guest';
   const isActive = freshUser?.isActive ?? response.isActive ?? false;
-  return isActive ? (roleToUse as EffectiveRole) : 'Guest';
+  if (isActive && roleToUse) return roleToUse as EffectiveRole;
+  return null;
 }
 
 /**

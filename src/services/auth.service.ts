@@ -504,31 +504,26 @@ export const authService = {
 
   setAuthData: (authResponse: AuthResponse): void => {
     storage.setToken(authResponse.token);
-    const user = {
-      id: 0,
+    const user: User = {
+      id: authResponse.userId ?? 0,
       username: authResponse.username,
       email: authResponse.email,
       fullName: authResponse.username,
-      // Persist the BE's authoritative roleId so subsequent loads (which
-      // hydrate from storage before BE is reachable) can still detect admin.
-      // Falls back to 0 when the BE didn't supply one.
-      roleId: authResponse.roleId ?? 0,
+      roleId: authResponse.roleId ?? null,
       roleName: authResponse.role,
-      // Default to false (lockout-safe) when the BE didn't echo this —
-      // this is the critical fix for the Test 5 vulnerability.
+      roles: authResponse.roles,
       isActive: authResponse.isActive ?? false,
-      // Mirror verificationStatus from BE; default to 'Pending' (lockout-safe).
       verificationStatus: authResponse.verificationStatus ?? null,
-      // Mirror accountTier from BE; default to 'Free'.
       accountTier: authResponse.accountTier ?? 'Free',
-      // Mirror effectiveRole from BE; default to derived (unverified ⇒ 'Guest').
-      // This is what MainLayout / Forum / verified-guard read when deciding
-      // whether to render the pending-state banner.
       effectiveRole:
         authResponse.effectiveRole ??
-        (authResponse.isActive
-          ? (authResponse.role as EffectiveRole)
-          : 'Guest'),
+        (authResponse.verificationStatus === 'Pending'
+          ? 'Guest'
+          : authResponse.isActive && authResponse.role
+            ? (authResponse.role as EffectiveRole)
+            : undefined),
+      isNewUser: authResponse.isNewUser,
+      requiresOnboarding: authResponse.requiresOnboarding,
     };
     storage.setUser(user);
   },
