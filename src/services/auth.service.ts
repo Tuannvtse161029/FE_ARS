@@ -556,13 +556,26 @@ export const authService = {
     await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: data.token } });
   },
 
-  sendApprovalEmail: async (data: SendApprovalEmailRequest): Promise<void> => {
-    await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email: data.email } });
+  // --- Dynamic Roles fetching from GET /api/Role ---
+  getRoles: async (): Promise<Array<{ id?: number; name?: string; roleName?: string; description?: string }>> => {
+    try {
+      const response = await api.get(API_ENDPOINTS.ROLE.GET_ALL);
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && Array.isArray(data.data)) {
+        return data.data;
+      }
+      if (data && Array.isArray(data.roles)) {
+        return data.roles;
+      }
+      return [];
+    } catch (err) {
+      console.warn('[authService] Failed to fetch roles from /api/Role:', err);
+      return [];
+    }
   },
-
-  // Removed in this revision: `setGoogleCredential` / `getGoogleCredential`.
-  // The onboarding completion endpoint authenticates via the ARS JWT
-  // only; the upstream Google ID token is not echoed into requests.
 };
 
 export default authService;

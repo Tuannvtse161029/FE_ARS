@@ -264,6 +264,27 @@ export const CompleteGoogleRegistration = () => {
   useEffect(() => {
     setAvailableRoles([...REGISTRATION_ROLES]);
     setRolesError(null);
+
+    authService
+      .getRoles()
+      .then((roles) => {
+        if (roles && Array.isArray(roles) && roles.length > 0) {
+          const fetchedNames = roles
+            .map((r) => r.name || r.roleName)
+            .filter((name): name is BusinessRole =>
+              typeof name === 'string' && REGISTRATION_ROLES.includes(name as BusinessRole)
+            );
+          if (fetchedNames.length > 0) {
+            setAvailableRoles(fetchedNames);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          '[CompleteGoogleRegistration] Failed to fetch dynamic roles from /api/Role, using default roles:',
+          err
+        );
+      });
   }, []);
 
   // ── 4. Handlers ─────────────────────────────────────────────────────────
