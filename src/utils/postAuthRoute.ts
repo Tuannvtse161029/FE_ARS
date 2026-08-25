@@ -58,7 +58,7 @@ const hasPositiveRoleId = (roleId: unknown): boolean =>
 export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
   // ── 1. Exact spec branch ─────────────────────────────────────────────
   // isNewUser === true AND requiresOnboarding === true
-  //   AND effectiveRole == null (null or undefined)
+  //   AND effectiveRole == null
   //   AND approved role list is empty
   if (
     snapshot.isNewUser === true &&
@@ -74,8 +74,7 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
     snapshot.isNewUser !== true &&
     snapshot.requiresOnboarding !== true &&
     !hasNonEmptyRole(snapshot.role) &&
-    !hasPositiveRoleId(snapshot.roleId) &&
-    snapshot.effectiveRole == null
+    !hasPositiveRoleId(snapshot.roleId)
   ) {
     return true;
   }
