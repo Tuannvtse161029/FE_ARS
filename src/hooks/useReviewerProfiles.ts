@@ -60,7 +60,7 @@ export function useReviewerAvailability(userId?: number): UseReviewerAvailabilit
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = async () => {
-    if (userId === undefined) {
+    if (!userId || userId <= 0) {
       setIsLoading(false);
       setIsAvailable(null);
       return;

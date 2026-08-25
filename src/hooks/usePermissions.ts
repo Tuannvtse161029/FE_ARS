@@ -86,6 +86,9 @@ export const usePermissions = (): Permissions => {
   const isGuest = isGuestUser({
     effectiveRole: effectiveRole ?? null,
     isActive,
+    verificationStatus,
+    requiresOnboarding: user?.requiresOnboarding ?? stored?.requiresOnboarding ?? null,
+    isNewUser: user?.isNewUser ?? stored?.isNewUser ?? null,
     canViewAdminPanel,
   });
 

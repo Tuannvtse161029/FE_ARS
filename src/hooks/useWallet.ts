@@ -37,6 +37,11 @@ export function useWallet(userId?: number): UseWalletResult {
   };
 
   useEffect(() => {
+    if (!userId || userId <= 0) {
+      setIsLoading(false);
+      setWallet(null);
+      return;
+    }
     void refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);

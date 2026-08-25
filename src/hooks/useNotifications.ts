@@ -57,7 +57,7 @@ export function useNotifications(
   const inFlightRef = useRef<boolean>(false);
 
   const fetchNotifications = useCallback(async (): Promise<void> => {
-    if (typeof userId !== 'number') {
+    if (typeof userId !== 'number' || userId <= 0) {
       setNotifications([]);
       setError(null);
       setIsLoading(false);

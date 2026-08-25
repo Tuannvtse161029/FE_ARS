@@ -8,9 +8,13 @@ const rememberBucket = (): Storage => (storage.getRememberMe() ? localStorage : 
 // We force-define `storage` object first, then call it from helpers.
 export const storage = {
   getToken: (): string | null => {
-    return storage.getRememberMe()
-      ? localStorage.getItem(STORAGE_KEYS.TOKEN)
-      : sessionStorage.getItem(STORAGE_KEYS.TOKEN);
+    return (
+      (storage.getRememberMe()
+        ? localStorage.getItem(STORAGE_KEYS.TOKEN)
+        : sessionStorage.getItem(STORAGE_KEYS.TOKEN)) ||
+      localStorage.getItem(STORAGE_KEYS.TOKEN) ||
+      sessionStorage.getItem(STORAGE_KEYS.TOKEN)
+    );
   },
 
   setToken: (token: string): void => {
@@ -23,9 +27,12 @@ export const storage = {
   },
 
   getUser: (): User | null => {
-    const raw = storage.getRememberMe()
-      ? localStorage.getItem(STORAGE_KEYS.USER)
-      : sessionStorage.getItem(STORAGE_KEYS.USER);
+    const raw =
+      (storage.getRememberMe()
+        ? localStorage.getItem(STORAGE_KEYS.USER)
+        : sessionStorage.getItem(STORAGE_KEYS.USER)) ||
+      localStorage.getItem(STORAGE_KEYS.USER) ||
+      sessionStorage.getItem(STORAGE_KEYS.USER);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as User;

@@ -64,13 +64,21 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
 export function isGuestUser(snapshot: {
   effectiveRole?: string | null;
   isActive?: boolean;
+  verificationStatus?: string | null;
+  requiresOnboarding?: boolean | null;
+  isNewUser?: boolean | null;
   canViewAdminPanel?: boolean;
 }): boolean {
+  if (snapshot.requiresOnboarding === true || snapshot.isNewUser === true) {
+    return false;
+  }
   if (snapshot.effectiveRole === 'Guest') return true;
   if (snapshot.effectiveRole) return false;
   // Derived fallback: pre-migration persisted blobs lack effectiveRole.
   return (
-    snapshot.isActive === false && snapshot.canViewAdminPanel === false
+    snapshot.verificationStatus === 'Pending' &&
+    snapshot.isActive === false &&
+    snapshot.canViewAdminPanel === false
   );
 }
 
