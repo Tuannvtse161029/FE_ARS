@@ -27,6 +27,8 @@ export interface StoredUserShape {
    * that window).
    */
   effectiveRole?: string;
+  requiresOnboarding?: boolean;
+  isNewUser?: boolean;
 }
 
 export const readStoredUser = <T extends StoredUserShape = StoredUserShape>(): T | null => {
