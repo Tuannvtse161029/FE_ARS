@@ -1,14 +1,9 @@
 import api from './axios';
-
-// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
-// under `API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.*` per the contract.
-const RESEARCH_GROUP_ENDPOINTS = {
-  GET_ALL: '/api/ResearchGroup',
-  GET_BY_ID: (id: number) => `/api/ResearchGroup/${id}`,
-  CREATE: '/api/ResearchGroup',
-  UPDATE: (id: number) => `/api/ResearchGroup/${id}`,
-  DELETE: (id: number) => `/api/ResearchGroup/${id}`,
-} as const;
+import { API_ENDPOINTS } from '../utils/constants';
+import type {
+  ResearchGroupCreateRequest,
+  ResearchGroupUpdateRequest,
+} from '../types/researchWorkflowDtos';
 
 // ResearchGroup status is DERIVED until BE ships the `Status` column per the
 // gap ticket §E.6. Until then, the FE computes `OPEN | ASSIGNED | COMPLETED`
@@ -16,6 +11,7 @@ const RESEARCH_GROUP_ENDPOINTS = {
 // separately by the caller — see `deriveGroupStatus` below).
 export type ResearchGroupDerivedStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED';
 
+// BE response shape (defensive — fields are all nullable per Swagger).
 export interface ResearchGroup {
   id?: number;
   researchGroupId?: number;
@@ -29,14 +25,13 @@ export interface ResearchGroup {
   updatedAt?: string;
 }
 
-export interface ResearchGroupCreateRequest {
-  lecturerId?: number | null;
-  topicId?: number | null;
-  name?: string | null;
-  description?: string | null;
-  deadline?: string | null;
-  assignedAt?: string | null;
-}
+const RESEARCH_GROUP_ENDPOINTS = {
+  GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.GET_ALL,
+  GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.GET_BY_ID,
+  CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.CREATE,
+  UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.UPDATE,
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.UPDATE(id),
+} as const;
 
 const normalizeResearchGroup = (raw: ResearchGroup): ResearchGroup => ({
   ...raw,
@@ -75,7 +70,7 @@ export const researchGroupService = {
 
   update: async (
     id: number,
-    payload: Partial<ResearchGroupCreateRequest>,
+    payload: ResearchGroupUpdateRequest,
   ): Promise<ResearchGroup> => {
     const response = await api.put<ResearchGroup>(
       RESEARCH_GROUP_ENDPOINTS.UPDATE(id),
@@ -124,7 +119,14 @@ export const assignTopicToGroups = async (
 ): Promise<GroupAssignOutcome[]> => {
   const settled = await Promise.allSettled(
     groupIds.map((groupId) =>
-      researchGroupService.update(groupId, { topicId }),
+      researchGroupService.update(groupId, {
+        lecturerId: null,
+        topicId,
+        name: null,
+        description: null,
+        deadline: null,
+        assignedAt: new Date().toISOString(),
+      }),
     ),
   );
   return settled.map((result, idx) => {

@@ -104,11 +104,14 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
 /**
  * Sidebar regression for the Graduate Student role.
  *
- * Contract (Agent-12, AGENT_12_GS_NAV_READY, updated for Forum-as-landing):
+ * Contract (Agent-12, AGENT_12_GS_NAV_READY, updated for Forum-as-landing,
+ * further updated for Agent admin-annual-fees):
  *   - Graduate Student sidebar MUST NOT expose `Paper` or `Browse Reviewers`
  *     — those routes are Researcher-only (see App.tsx RoleRouteGuard).
- *   - Graduate Student sidebar MUST retain `Research Groups`,
- *     `Submit Report`, and `Premium Package`.
+ *   - Graduate Student sidebar MUST retain `Research Groups` and
+ *     `Submit Report`. The `Premium Package` link is GATED on
+ *     `AppConfig.features.premiumPackagesEnabled` and is therefore
+ *     hidden while the BE-side annual-fee CRUD endpoint is outstanding.
  *   - Graduate Student sidebar MUST NOT expose a top-level `Dashboard`
  *     item — the role-based landing page is the Forum now (per
  *     landingRouteForRoleName), so the Graduate Student's dedicated
@@ -145,13 +148,21 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByText('Browse Reviewers')).toBeNull();
   });
 
-  it('Graduate Student sidebar retains Research Groups, Submit Report, and Premium Package', () => {
+  it('Graduate Student sidebar retains Research Groups and Submit Report', () => {
     setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByHref(ROUTES.STUDENT_RESEARCH_GROUPS)).not.toBeNull();
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).not.toBeNull();
-    expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).not.toBeNull();
+  });
+
+  it('Graduate Student sidebar hides Premium Package while premiumPackagesEnabled is false', () => {
+    setMockAuth({ role: 'Graduate Student' });
+    renderMainLayout(ROUTES.FORUM);
+
+    // Agent admin-annual-fees — the Premium Package link is hidden
+    // for every non-Admin role while the centralized flag is false.
+    expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).toBeNull();
   });
 
   it('Graduate Student sidebar does NOT expose a top-level Dashboard shortcut', () => {

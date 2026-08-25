@@ -42,6 +42,7 @@ import {
   ClipboardCheck,
   Upload,
   BriefcaseBusiness,
+  Receipt as AnnualFeesIcon,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -271,6 +272,13 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
           { to: ROUTES.ADMIN_PACKAGES, label: 'Packages', icon: <PackagesIcon size={20} /> },
+          // Agent admin-annual-fees — new Admin tab for the annual-fee
+          // CRUD surface. Currently rendered against the demo-data
+          // module (`src/data/annualFees.demo.ts`) while the BE-side
+          // contract is being finalized. The Admin always sees this tab;
+          // the feature flag gates the user-facing premium-packages
+          // surface, not the Admin surface.
+          { to: ROUTES.ADMIN_ANNUAL_FEES, label: 'Annual Fees', icon: <AnnualFeesIcon size={20} /> },
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: 'Audit Logs', icon: <AuditLogsIcon size={20} /> },
         ];
       case 'Reviewer':
@@ -281,24 +289,42 @@ export const MainLayout = () => {
           ...(AppConfig.features.enableWithdrawals
             ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
             : []),
-          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
+          // Agent admin-annual-fees — the premium-packages surface is
+          // temporarily hidden for non-Admin roles while the BE-side
+          // annual-fee CRUD endpoint is being finalized. The flag lives
+          // in src/config/app.ts so the rule has a single definition
+          // site (no scattered hardcoded booleans). The
+          // `AppConfig.features.premiumPackagesEnabled` check is the
+          // one — flipping it back to `true` reveals the entry for
+          // every non-Admin role below.
+          ...(AppConfig.features.premiumPackagesEnabled
+            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
+            : []),
         ];
       case 'Lecturer':
         return [
+          // Agent lecturer-navigation — required top-to-bottom Lecturer nav
+          // order: Forum → Seminar → Guidance Projects → Learning Materials →
+          // Research Topics → Research Groups → Milestones.
+          // Shared edit: the Lecturer nav block was re-ordered and the
+          // disabled "Shared Material" / "Wallet" stubs were removed (the
+          // former points to a page that does not exist and the latter
+          // belongs to Reviewer / Graduate Student flows). See
+          // docs/BACKEND_REQUESTS.md "Coordination — Agent Lecturer
+          // Navigation" for the coordination note.
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.RESEARCH_GROUP, label: 'Research Group', icon: <GroupIcon size={20} /> },
-          { to: ROUTES.LECTURER_EVALUATE_REPORTS, label: 'Evaluate Reports', icon: <ClipboardCheck size={20} /> },
-          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Configure Milestones', icon: <Settings size={20} /> },
-          // Lecturer nav (added in Phase C, Lead, lead-phase-c-contract.md §3.1 / L1).
-          // "Guidance Projects" is wired to the real Lecturer route now that
-          // Agent-1 has built the page (L1 of Phase C).
-          // The disabled placeholders below remain until the matching BE
-          // resources ship (gap ticket §C.2 / §D.2 / §E).
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
-          { to: '#shared-material', label: 'Shared Material', icon: <PapersIcon size={20} /> },
-          { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
+          { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
+          { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
+          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
+          // Agent admin-annual-fees — hidden for non-Admin roles while the
+          // BE-side annual-fee CRUD endpoint is being finalized. See the
+          // Reviewer block above for the single-source-of-truth flag.
+          ...(AppConfig.features.premiumPackagesEnabled
+            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
+            : []),
         ];
       case 'Graduate Student':
         return [
@@ -306,7 +332,11 @@ export const MainLayout = () => {
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
+          // Agent admin-annual-fees — see the Reviewer block above for the
+          // single-source-of-truth flag and the rationale.
+          ...(AppConfig.features.premiumPackagesEnabled
+            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
+            : []),
         ];
       case 'Researcher':
       default:
@@ -316,7 +346,11 @@ export const MainLayout = () => {
           { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon size={20} /> },
           { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
-          { to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> },
+          // Agent admin-annual-fees — see the Reviewer block above for the
+          // single-source-of-truth flag and the rationale.
+          ...(AppConfig.features.premiumPackagesEnabled
+            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
+            : []),
         ];
     }
   };

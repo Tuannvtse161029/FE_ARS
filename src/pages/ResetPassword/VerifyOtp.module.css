@@ -95,6 +95,11 @@
   background-color: var(--ars-paper);
 }
 
+.otpBoxError {
+  border-color: var(--ars-error, #b91c1c);
+  background-color: var(--ars-error-bg, #fee2e2);
+}
+
 .otpBox:disabled {
   opacity: 0.6;
   cursor: not-allowed;

@@ -982,6 +982,12 @@
   outline-offset: 2px;
 }
 
+.formInput.formInputError,
+.formTextarea.formInputError {
+  border-color: var(--ars-error, #b91c1c);
+  background-color: var(--ars-error-bg, #fee2e2);
+}
+
 .modalFooter {
   display: flex;
   gap: var(--space-3);

@@ -3,6 +3,7 @@ import { Button } from '../../../components/Button';
 import type { UserRole } from '../../../types/auth';
 import styles from './RegisterSuccessModal.module.css';
 import { Check } from '../../../assets/icons/CheckIcon';
+import { ROUTES } from '../../../routes/paths';
 
 interface RegisterSuccessModalProps {
   isOpen: boolean;
@@ -64,6 +65,21 @@ export const RegisterSuccessModal = ({
         <div className={styles.highlightBox}>
           We have sent a verification email to <strong>{email}</strong>
         </div>
+        <p className={styles.helperText}>
+          Open the link in that email to confirm your address. After verification
+          an administrator will review your role request.
+        </p>
+        <p className={styles.learnMore}>
+          Already verified?{' '}
+          <a
+            href={ROUTES.LOGIN}
+            className={styles.learnMoreLink}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Sign in instead
+          </a>
+          .
+        </p>
         <Button
           variant="primary"
           size="lg"

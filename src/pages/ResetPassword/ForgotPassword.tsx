@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { AxiosError } from 'axios';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
@@ -10,15 +11,33 @@ import {
   forgotPasswordSchema,
   type ForgotPasswordFormData,
 } from '../../utils/validation';
+import { extractServerMessage } from '../../utils/validationRules';
 import authService from '../../services/auth.service';
 import styles from './ForgotPassword.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
+
+/**
+ * Render a user-facing error for the `forgot-password` flow when the BE
+ * has not yet exposed the public (anonymous) surface. The live Swagger
+ * today only documents the auth-protected endpoints, so this flow
+ * returns 401 against the production backend. We surface that clearly
+ * to the user instead of letting axios's generic message leak in.
+ */
+function forgotPasswordError(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
+    return 'Password reset is not yet available. Please contact support or try again later.';
+  }
+  return extractServerMessage(err, fallback);
+}
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  // In-flight dedupe — block duplicate submits from rapid clicks while
+  // the BE request is still pending.
+  const inFlightRef = useRef(false);
 
   const {
     control,
@@ -30,6 +49,8 @@ const ForgotPassword = () => {
   });
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -37,11 +58,13 @@ const ForgotPassword = () => {
       setSubmittedEmail(data.email);
       navigate(ROUTES.VERIFY_OTP, { state: { email: data.email } });
     } catch (err: unknown) {
-      // Stubbed for now — surface the BE-not-ready error inline so the form
-      // remains usable once the backend is wired up.
-      const msg = err instanceof Error ? err.message : 'Unable to send reset code. Please try again.';
+      const msg = forgotPasswordError(
+        err,
+        'Unable to send reset code. Please try again.',
+      );
       setError(msg);
     } finally {
+      inFlightRef.current = false;
       setIsLoading(false);
     }
   };

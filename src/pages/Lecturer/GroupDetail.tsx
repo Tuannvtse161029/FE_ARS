@@ -53,6 +53,7 @@ import {
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { MilestoneProgress } from '../../components/research/MilestoneProgress';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
 import styles from './GroupDetail.module.css';
 
@@ -193,6 +194,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
+  const [editNameError, setEditNameError] = useState<string | null>(null);
+  const [editDeadlineError, setEditDeadlineError] = useState<string | null>(null);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [editGroupError, setEditGroupError] = useState<string | null>(null);
 
@@ -202,6 +205,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
     setEditDesc(typeof group.description === 'string' ? group.description : '');
     setEditDeadline(formatDeadlineForInput(group.deadline ?? null));
     setEditGroupError(null);
+    setEditNameError(null);
+    setEditDeadlineError(null);
     setShowEditModal(true);
   };
 
@@ -217,17 +222,25 @@ export const LecturerGroupDetail = (): JSX.Element => {
       return;
     }
     const trimmedName = editName.trim();
-    if (!trimmedName) {
-      setEditGroupError('Group name is required.');
-      return;
+    const nameErr = trimmedName ? null : 'Group name is required.';
+    let deadlineErr: string | null = null;
+    if (editDeadline) {
+      const ms = new Date(editDeadline).getTime();
+      if (Number.isNaN(ms)) deadlineErr = 'Deadline is not a valid date.';
     }
+    setEditNameError(nameErr);
+    setEditDeadlineError(deadlineErr);
+    if (nameErr || deadlineErr) return;
     setIsSavingGroup(true);
     setEditGroupError(null);
     try {
       await researchGroupService.update(group.id, {
+        lecturerId: group.lecturerId ?? null,
+        topicId: group.topicId ?? null,
         name: trimmedName,
         description: editDesc.trim() || null,
         deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+        assignedAt: group.assignedAt ?? null,
       });
       setShowEditModal(false);
       setBanner({
@@ -435,6 +448,58 @@ export const LecturerGroupDetail = (): JSX.Element => {
             {isReportsLoading ? ' (loading…)' : ''}
           </span>
         </div>
+      </section>
+
+      {/* ASSIGNED TOPIC SUMMARY (Lecturer Navigation Agent) — read-only link
+          to the canonical Research Topics page. CRUD for topics lives on
+          that page; this card is just the entry point from the group
+          detail view. */}
+      <section className={styles.card}>
+        <header className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>
+            Assigned topic
+          </h2>
+          <span className={styles.cardHint}>
+            The Research Topic this group is working on. Manage topics on the{' '}
+            <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link>{' '}
+            page.
+          </span>
+        </header>
+        {relatedTopic ? (
+          <div className={styles.cardInner} data-testid="group-detail-topic-summary">
+            <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
+            <span style={{ marginLeft: 12 }}>
+              <strong>{relatedTopic.title ?? `RT-${group.topicId}`}</strong>
+              {relatedTopic.description?.trim() && (
+                <div
+                  style={{
+                    color: '#475569',
+                    fontSize: 13,
+                    marginTop: 4,
+                  }}
+                >
+                  {relatedTopic.description}
+                </div>
+              )}
+            </span>
+            <Link
+              to={ROUTES.LECTURER_RESEARCH_TOPICS}
+              className={styles.openLink}
+              style={{ marginLeft: 'auto' }}
+              data-testid="group-detail-topic-link"
+            >
+              <ExternalLink size={14} aria-hidden /> Open topic
+            </Link>
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            <span>
+              No research topic has been assigned to this group yet. Open{' '}
+              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link>{' '}
+              to assign one.
+            </span>
+          </div>
+        )}
       </section>
 
       {/* MILESTONE SUMMARY (L2.e) */}
@@ -652,41 +717,53 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 <label className={styles.formLabel} htmlFor="groupName">
                   * Group name
                 </label>
-                <input
-                  id="groupName"
-                  type="text"
-                  className={styles.formInput}
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  required
-                />
-              </div>
+<input
+                id="groupName"
+                type="text"
+                className={`${styles.formInput} ${editNameError ? styles.formInputError : ''}`}
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editNameError) setEditNameError(null);
+                }}
+                aria-invalid={Boolean(editNameError)}
+                aria-describedby={editNameError ? 'gd-group-name-error' : undefined}
+                required
+              />
+              <FieldError id="gd-group-name-error" message={editNameError} testId="gd-group-name-error" />
+            </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="groupDesc">
-                  Description
-                </label>
-                <textarea
-                  id="groupDesc"
-                  className={styles.formTextarea}
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                  rows={3}
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor="groupDesc">
+                Description
+              </label>
+              <textarea
+                id="groupDesc"
+                className={styles.formTextarea}
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                rows={3}
+              />
+            </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="groupDeadline">
-                  Deadline
-                </label>
-                <input
-                  id="groupDeadline"
-                  type="date"
-                  className={styles.formInput}
-                  value={editDeadline}
-                  onChange={(e) => setEditDeadline(e.target.value)}
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor="groupDeadline">
+                Deadline
+              </label>
+              <input
+                id="groupDeadline"
+                type="date"
+                className={`${styles.formInput} ${editDeadlineError ? styles.formInputError : ''}`}
+                value={editDeadline}
+                onChange={(e) => {
+                  setEditDeadline(e.target.value);
+                  if (editDeadlineError) setEditDeadlineError(null);
+                }}
+                aria-invalid={Boolean(editDeadlineError)}
+                aria-describedby={editDeadlineError ? 'gd-deadline-error' : undefined}
+              />
+              <FieldError id="gd-deadline-error" message={editDeadlineError} testId="gd-deadline-error" />
+            </div>
 
               {editGroupError && (
                 <div className={styles.errorPanel} role="alert">

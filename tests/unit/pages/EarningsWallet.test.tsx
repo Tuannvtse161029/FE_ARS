@@ -242,7 +242,7 @@ describe('EarningsWallet – Create Withdrawal modal', () => {
     expect(accountNumberInput.value).toBe('');
 
     // The Target Bank select should show the "Select your bank" placeholder option as the current value
-    const bankSelect = screen.getByRole('combobox', { name: '' });
+    const bankSelect = screen.getByLabelText(/target bank selection/i);
     expect(bankSelect).toBeInTheDocument();
   });
 

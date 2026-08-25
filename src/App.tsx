@@ -18,6 +18,11 @@ import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
 import { GoogleCallback } from './pages/GoogleCallback';
 import { CompleteGoogleRegistration } from './pages/CompleteGoogleRegistration/CompleteGoogleRegistration';
+// Agent email-verification — public deep-link landing for the
+// registration email verification link. Lives inside `PublicRoute` +
+// `AuthLayout` because the recipient of the link is not authenticated
+// yet.
+import { EmailVerificationLanding } from './pages/Auth/EmailVerificationLanding';
 
 // Every authenticated page is split into its own chunk via React.lazy so
 // the initial bundle only carries the route the user opens. Recharts
@@ -33,6 +38,10 @@ const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilesto
 const EvaluateReports = lazy(() => import('./pages/Lecturer/EvaluateReports').then((m) => ({ default: m.EvaluateReports })));
 const LecturerGroupDetail = lazy(() => import('./pages/Lecturer/GroupDetail').then((m) => ({ default: m.LecturerGroupDetail })));
 const GuidanceProjects = lazy(() => import('./pages/Lecturer/GuidanceProjects').then((m) => ({ default: m.GuidanceProjects })));
+// Agent lecturer-navigation — top-level Lecturer surface for Research Topics.
+// Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
+const ResearchTopicsPage = lazy(() => import('./pages/Lecturer/ResearchTopics').then((m) => ({ default: m.ResearchTopicsPage })));
+const LecturerLearningMaterialsPage = lazy(() => import('./pages/Lecturer/LearningMaterials').then((m) => ({ default: m.LecturerLearningMaterialsPage })));
 const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').then((m) => ({ default: m.SubmitReport })));
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
@@ -50,6 +59,13 @@ const TransactionsManagement = lazy(() => import('./pages/Admin/TransactionsMana
 const ContentReports = lazy(() => import('./pages/Admin/ContentReports').then((m) => ({ default: m.default })));
 const PremiumPackages = lazy(() => import('./pages/Admin/PremiumPackages').then((m) => ({ default: m.default })));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ default: m.default })));
+// Agent admin-annual-fees — Admin Annual Fees tab. Renders against the
+// dedicated demo-data module (src/data/annualFees.demo.ts) until the BE
+// ships the annual-fee CRUD endpoint (see BTR-AF-01 in
+// docs/BACKEND_REQUESTS.md). The page itself carries the "Demo data —
+// awaiting backend API" banner; the lazy chunk keeps the new code off
+// the cold-load path.
+const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
 
@@ -90,6 +106,7 @@ const App = () => {
                 <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
                 <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtp />} />
                 <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+                <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationLanding />} />
               </Route>
             </Route>
 
@@ -122,6 +139,8 @@ const App = () => {
                   <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
                   <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
                   <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
+                  <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
+                  <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<LecturerLearningMaterialsPage />} />
                 </Route>
 
                 {/* Seminar workspace is shared by Lecturer (manage) and
@@ -170,9 +189,27 @@ const App = () => {
                 <Route path={ROUTES.ADMIN_TRANSACTIONS} element={<TransactionsManagement />} />
                 <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
                 <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
+                <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                 <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                 <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
-                <Route path={ROUTES.PREMIUM_PACKAGES} element={<PremiumPackagesPreview />} />
+                {/* Agent admin-annual-fees — the user-facing premium-packages
+                    surface is temporarily hidden for non-Admin roles while
+                    the BE-side annual-fee CRUD endpoint is being finalized.
+                    `AppConfig.features.premiumPackagesEnabled` is the single
+                    source of truth for this gate. Flipping the flag back to
+                    `true` re-enables the page for everyone; in the meantime
+                    direct navigation bounces to /forum. Admins use
+                    /admin/packages + /admin/annual-fees instead. */}
+                <Route
+                  path={ROUTES.PREMIUM_PACKAGES}
+                  element={
+                    AppConfig.features.premiumPackagesEnabled ? (
+                      <PremiumPackagesPreview />
+                    ) : (
+                      <Navigate to={ROUTES.FORUM} replace />
+                    )
+                  }
+                />
                 <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
               </Route>
             </Route>

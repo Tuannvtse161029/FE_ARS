@@ -13,6 +13,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ResearchGroup } from '../../../src/pages/Lecturer/ResearchGroup';
 import { buildMockAuth } from '../../../src/utils/mockAuth';
+import { ROUTES } from '../../../src/routes/paths';
 import styles from '../../../src/components/lecturer/StatusBadge.module.css';
 
 const { getAllGroupsMock, getAllTopicsMock, getAllMembersMock } = vi.hoisted(
@@ -120,7 +121,7 @@ describe('<ResearchGroup> page', () => {
       expect(badge.className).toContain(styles.assigned);
     });
 
-    it('renders COMPLETED badge when topic.status === COMPLETED', async () => {
+    it('does NOT render an in-page topics table (delegated to /lecturer/research-topics)', async () => {
       getAllTopicsMock.mockResolvedValueOnce([
         { id: 11, title: 'Topic T', status: 'COMPLETED' },
       ]);
@@ -129,10 +130,18 @@ describe('<ResearchGroup> page', () => {
       ]);
       renderPage();
       await waitFor(() => expect(screen.getByText('Topic T')).toBeInTheDocument());
-      // Both the group card AND the topic row render COMPLETED — use getAllByLabelText
+      // The COMPLETED badge still appears once — only on the group card,
+      // not on a second topics-table row. Per deriveGroupStatus, COMPLETED
+      // topic → group status COMPLETED, so the badge renders on the card.
       expect(
         screen.getAllByLabelText(/Status: COMPLETED/).length,
-      ).toBeGreaterThan(0);
+      ).toBe(1);
+      // The "Research Topics Library" section heading must NOT be present.
+      expect(screen.queryByText(/Research Topics Library/i)).toBeNull();
+      // The in-page create-topic button must NOT be present.
+      expect(
+        screen.queryByRole('button', { name: /Create Research Topic/i }),
+      ).toBeNull();
     });
 
     it('renders ASSIGNED badge when topic.status === CLOSED (treated as in-progress)', async () => {
@@ -144,12 +153,12 @@ describe('<ResearchGroup> page', () => {
       ]);
       renderPage();
       await waitFor(() => expect(screen.getByText(/Closed/)).toBeInTheDocument());
-      // The CLOSED topic renders as ASSIGNED on the group card (per deriveGroupStatus)
+      // The CLOSED topic renders as ASSIGNED on the group card (per deriveGroupStatus).
       expect(
         screen.getAllByLabelText(/Status: ASSIGNED/).length,
       ).toBeGreaterThan(0);
-      // The topic row in the topics table renders its CLOSED badge directly
-      expect(screen.getByLabelText(/Status: CLOSED/)).toBeInTheDocument();
+      // No CLOSED badge on the group card anymore — the topic table is gone.
+      expect(screen.queryByLabelText(/Status: CLOSED/)).toBeNull();
     });
   });
 
@@ -176,13 +185,18 @@ describe('<ResearchGroup> page', () => {
       );
     });
 
-    it('shows the topics empty state', async () => {
+    it('shows the topics empty state link to the dedicated page', async () => {
       getAllGroupsMock.mockResolvedValueOnce([]);
       getAllTopicsMock.mockResolvedValueOnce([]);
       renderPage();
       await waitFor(() =>
-        expect(screen.getByText(/No topics yet/)).toBeInTheDocument(),
+        expect(screen.getByText(/Research Topics/)).toBeInTheDocument(),
       );
+      // The page now points the user at the dedicated /lecturer/research-topics
+      // page instead of rendering an empty-state inline.
+      expect(
+        screen.getByRole('link', { name: /Research Topics/i }),
+      ).toHaveAttribute('href', ROUTES.LECTURER_RESEARCH_TOPICS);
     });
   });
 

@@ -37,6 +37,7 @@ import {
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
+import { validateVietnameseName } from '../../utils/validationRules';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -112,8 +113,12 @@ function isEmptyDraft(draft: DraftFields): boolean {
  */
 function validateDraft(draft: DraftFields): Partial<Record<keyof DraftFields, string>> {
   const errors: Partial<Record<keyof DraftFields, string>> = {};
-  if (draft.fullName.trim().length < PROFILE_VALIDATION.fullName.minLength) {
-    errors.fullName = 'Please enter your full name.';
+  // Vietnamese-name policy is centralised in utils/validationRules so it
+  // matches the rule used by the Register form. The Profile page keeps the
+  // length bounds in PROFILE_VALIDATION (different max for the bio/institution).
+  const nameErr = validateVietnameseName(draft.fullName);
+  if (nameErr) {
+    errors.fullName = nameErr;
   } else if (draft.fullName.length > PROFILE_VALIDATION.fullName.maxLength) {
     errors.fullName = `Please keep your full name under ${PROFILE_VALIDATION.fullName.maxLength} characters.`;
   }

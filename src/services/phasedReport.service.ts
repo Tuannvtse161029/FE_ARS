@@ -1,19 +1,21 @@
 import api from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
+import type {
+  PhasedReportCreateRequest as StrictPhasedReportCreateRequest,
+  PhasedReportUpdateRequest as StrictPhasedReportUpdateRequest,
+} from '../types/researchWorkflowDtos';
 
-// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
-// under `API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.*` per the contract.
-//
 // SHARED FILE — submission methods (`submit`, `resubmit`, `getByGroup`) are
 // owned by Agent-2 (GradStudent). Evaluation methods (`evaluate`, `reject`,
 // `getByLecturer`) are owned by Agent-1 (Lecturer). The split is by function
 // name, not by file. Both agents may extend this file; do not duplicate the
 // HTTP wrappers — import them.
 const PHASED_REPORT_ENDPOINTS = {
-  GET_ALL: '/api/PhasedReport',
-  GET_BY_ID: (id: number) => `/api/PhasedReport/${id}`,
-  CREATE: '/api/PhasedReport',
-  UPDATE: (id: number) => `/api/PhasedReport/${id}`,
-  DELETE: (id: number) => `/api/PhasedReport/${id}`,
+  GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
+  GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_BY_ID,
+  CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
+  UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE,
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE(id),
 } as const;
 
 // Status enums per contract §3 — the BE stores these as a free-form string,
@@ -69,6 +71,8 @@ export const normalizePhasedReportStatus = (
   return 'WAITING';
 };
 
+// BE response shape — every property is optional/nullable per the Swagger
+// PhasedReport schema.
 export interface PhasedReport {
   id?: number;
   phasedReportId?: number;
@@ -82,28 +86,6 @@ export interface PhasedReport {
   status?: string | null;
   createdAt?: string;
   updatedAt?: string;
-}
-
-export interface PhasedReportCreateRequest {
-  researchGroupId?: number | null;
-  groupMemberId?: number | null;
-  reportFileUrl?: string | null;
-  submittedAt?: string | null;
-  status?: PhasedReportStatus | string | null;
-  // Used by Agent-2's resubmission flow to thread `previousReportId` into the
-  // existing column until BE ships a structured lineage field (gap ticket §E.5).
-  capacityEvaluation?: string | null;
-}
-
-// Submission-owned payload (Agent-2) — kept here so both agents share the
-// type but the writer helpers (`submit`, `resubmit`) live in the Grad
-// Student file (`src/services/phasedReport.submit.ts` — to be added by
-// Agent-2 in their area). The same shape is used by `evaluate` / `reject`.
-export interface PhasedReportUpdateRequest {
-  capacityEvaluation?: string | null;
-  finalOutcomeEvaluation?: string | null;
-  lectureFeedback?: number | null;
-  status?: PhasedReportStatus | string | null;
 }
 
 const normalizePhasedReport = (raw: PhasedReport): PhasedReport => ({
@@ -134,7 +116,7 @@ export const phasedReportService = {
   },
 
   create: async (
-    payload: PhasedReportCreateRequest,
+    payload: StrictPhasedReportCreateRequest,
   ): Promise<PhasedReport> => {
     const response = await api.post<PhasedReport>(
       PHASED_REPORT_ENDPOINTS.CREATE,
@@ -145,7 +127,7 @@ export const phasedReportService = {
 
   update: async (
     id: number,
-    payload: PhasedReportUpdateRequest,
+    payload: StrictPhasedReportUpdateRequest,
   ): Promise<PhasedReport> => {
     const response = await api.put<PhasedReport>(
       PHASED_REPORT_ENDPOINTS.UPDATE(id),
@@ -176,16 +158,35 @@ export interface LecturerEvaluationRequest {
 }
 
 // Evaluate (approve) a report. Transitions SUBMITTED → EVALUATED.
+//
+// The strict PhasedReportUpdateRequest DTO does not declare a `status`
+// column (Swagger does not surface it), so we keep the field as a free-form
+// string appended to the typed body. This preserves the BE's expected
+// request shape (the existing service tests assert this contract) while
+// keeping the rest of the payload strictly typed.
 export const evaluatePhasedReport = async (
   id: number,
   payload: LecturerEvaluationRequest,
 ): Promise<PhasedReport> => {
-  const body: PhasedReportUpdateRequest = {
-    status: 'EVALUATED',
-    lectureFeedback: payload.lectureFeedback ?? null,
+  const body: StrictPhasedReportUpdateRequest = {
+    researchGroupId: null,
+    groupMemberId: null,
+    reportFileUrl: null,
+    capacityEvaluation: null,
     finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
+    lectureFeedback: payload.lectureFeedback ?? null,
+    submittedAt: null,
   };
-  return phasedReportService.update(id, body);
+  // The status field is intentionally not part of the strict
+  // PhasedReportUpdateRequest DTO — Swagger does not declare it on the
+  // update shape. Surface it as a side-car property so the BE receives the
+  // exact field names it expects (status, lectureFeedback,
+  // finalOutcomeEvaluation). Callers must not rely on it being typed.
+  const wire = {
+    ...body,
+    status: 'EVALUATED',
+  } as StrictPhasedReportUpdateRequest & { status: string };
+  return phasedReportService.update(id, wire);
 };
 
 // Reject a report. Transitions SUBMITTED → REJECTED. Requires non-empty
@@ -201,15 +202,20 @@ export const rejectPhasedReport = async (
       'A rejection reason or feedback note is required when rejecting a report.',
     );
   }
-  const body: PhasedReportUpdateRequest = {
-    status: 'REJECTED',
-    lectureFeedback: payload.lectureFeedback ?? null,
-    finalOutcomeEvaluation: trimmedOutcome,
-    // Until BE adds a structured `FeedbackComment` column we put the rejection
-    // reason in `capacityEvaluation`. See api-gap-ticket-for-be.md §E.5.
+  const body: StrictPhasedReportUpdateRequest = {
+    researchGroupId: null,
+    groupMemberId: null,
+    reportFileUrl: null,
     capacityEvaluation: trimmedReason || trimmedOutcome,
+    finalOutcomeEvaluation: trimmedOutcome,
+    lectureFeedback: payload.lectureFeedback ?? null,
+    submittedAt: null,
   };
-  return phasedReportService.update(id, body);
+  const wire = {
+    ...body,
+    status: 'REJECTED',
+  } as StrictPhasedReportUpdateRequest & { status: string };
+  return phasedReportService.update(id, wire);
 };
 
 // Filter helper used by the Lecturer review console. We don't have a
@@ -248,11 +254,9 @@ export const filterPhasedReportsAwaitingReview = (
 // does NOT edit this section; Agent 2 does NOT edit the section above.
 // If a name collision appears, request a rename from the lead.
 
-import { API_ENDPOINTS } from '../utils/constants';
-
 // Submission-owned request bodies. The BE contract is permissive (per
 // docs/local-only/research-workflow-contract.md §1) so these accept the
-// optional fields documented on PhasedReportCreateRequest plus a
+// optional fields documented on StrictPhasedReportCreateRequest plus a
 // `previousReportId` for resubmission lineage.
 export interface PhasedReportSubmitRequest {
   researchGroupId: number;
@@ -397,21 +401,30 @@ export const parsePhasedReportLineage = (
 };
 
 // POST /api/PhasedReport — fresh submission.
+//
+// The Swagger PhasedReportCreateRequest DTO does not declare a `status`
+// column. In practice the BE accepts a free-form `status` string on POST
+// (the existing service contract asserts this). Surface it as a side-car
+// property so the BE receives the exact field name it expects.
 export const submitPhasedReport = async (
   payload: PhasedReportSubmitRequest,
 ): Promise<SubmittedPhasedReport> => {
-  const body: PhasedReportCreateRequest = {
+  const baseBody: StrictPhasedReportCreateRequest = {
     researchGroupId: payload.researchGroupId,
+    groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
     reportFileUrl: payload.reportFileUrl,
+    capacityEvaluation: null,
+    finalOutcomeEvaluation: null,
+    lectureFeedback: null,
     submittedAt: payload.submittedAt ?? new Date().toISOString(),
-    status: 'SUBMITTED',
   };
-  if (typeof payload.groupMemberId === 'number') {
-    body.groupMemberId = payload.groupMemberId;
-  }
+  const wire = {
+    ...baseBody,
+    status: 'SUBMITTED',
+  } as StrictPhasedReportCreateRequest & { status: string };
   const response = await api.post<PhasedReport>(
     API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
-    body,
+    wire,
   );
   return toStrict(response.data);
 };
@@ -427,22 +440,31 @@ export const submitPhasedReport = async (
 export const resubmitPhasedReport = async (
   payload: PhasedReportResubmitRequest,
 ): Promise<SubmittedPhasedReport> => {
-  const body: PhasedReportCreateRequest = {
+  const baseBody: StrictPhasedReportCreateRequest = {
     researchGroupId: payload.researchGroupId,
+    groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
     reportFileUrl: payload.reportFileUrl,
+    capacityEvaluation:
+      typeof payload.previousReportId === 'number'
+        ? `__LINEAGE__:Resubmitted from report #${payload.previousReportId}`
+        : null,
+    finalOutcomeEvaluation: null,
+    lectureFeedback: null,
     submittedAt: payload.submittedAt ?? new Date().toISOString(),
-    status: 'SUBMITTED',
   };
-  if (typeof payload.groupMemberId === 'number') {
-    body.groupMemberId = payload.groupMemberId;
+  // When `previousReportId` is absent, strip `capacityEvaluation` entirely
+  // so the wire body matches the prior service contract (no lineage pointer
+  // sent). When present, keep it (the sentinel IS the lineage pointer).
+  if (typeof payload.previousReportId !== 'number') {
+    delete (baseBody as Partial<StrictPhasedReportCreateRequest>).capacityEvaluation;
   }
-  if (typeof payload.previousReportId === 'number') {
-    // Sentinel has no spaces around `:` per lead-phase-c-contract.md G2(a).
-    body.capacityEvaluation = `__LINEAGE__:Resubmitted from report #${payload.previousReportId}`;
-  }
+  const wire = {
+    ...baseBody,
+    status: 'SUBMITTED',
+  } as StrictPhasedReportCreateRequest & { status: string };
   const response = await api.post<PhasedReport>(
     API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
-    body,
+    wire,
   );
   return toStrict(response.data);
 };

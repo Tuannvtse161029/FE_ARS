@@ -1,0 +1,183 @@
+/**
+ * EmailVerificationLanding — ARS Research Constellation
+ *
+ * Landing surface for the `verify-email` deep link that arrives in the
+ * registration email. Reads `?token=...` from the URL exactly once,
+ * hands the token to `useEmailVerification`, and renders one of the
+ * three outcome states (verifying / verified / failed).
+ *
+ * Anti-patterns explicitly avoided:
+ *   - The token is NEVER persisted to localStorage / sessionStorage.
+ *   - The page never calls /api/Email/send-test.
+ *   - The page never re-triggers the verification effect after the
+ *     first attempt; React's strict-mode double-invoke is deduped by
+ *     the hook.
+ */
+.page {
+  width: 100%;
+}
+
+.logoHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.logoWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brandText {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-items: center;
+  text-align: center;
+  padding: var(--space-6) 0;
+}
+
+.iconCircle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconCircleSuccess {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.iconCirclePending {
+  background-color: rgba(0, 122, 255, 0.12);
+  color: var(--ars-blue);
+}
+
+.iconCircleError {
+  background-color: var(--ars-error-bg, #fee2e2);
+  color: var(--ars-error, #b91c1c);
+}
+
+.title {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--ars-ink);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  max-width: 360px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.primaryButton,
+.secondaryButton {
+  width: 100%;
+  font-weight: 600 !important;
+  border-radius: var(--radius-lg) !important;
+  min-height: 44px !important;
+  font-size: var(--font-size-base) !important;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primaryButton {
+  background-color: var(--ars-blue) !important;
+  border-color: var(--ars-blue) !important;
+  color: var(--ars-paper) !important;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background-color: var(--ars-blue-mid) !important;
+  border-color: var(--ars-blue-mid) !important;
+}
+
+.secondaryButton {
+  background-color: transparent !important;
+  border-color: var(--ars-node) !important;
+  color: var(--ars-ink) !important;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 122, 255, 0.2);
+  border-top-color: var(--ars-blue);
+  animation: verify-spin 0.8s linear infinite;
+}
+
+@keyframes verify-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorBox {
+  background-color: var(--ars-error-bg, #fee2e2);
+  color: var(--ars-error, #b91c1c);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  border: 1px solid rgba(153, 27, 27, 0.2);
+  width: 100%;
+  text-align: left;
+}
+
+.successBox {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  width: 100%;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .iconCircle {
+    width: 56px;
+    height: 56px;
+  }
+
+  .title {
+    font-size: var(--font-size-lg);
+  }
+}

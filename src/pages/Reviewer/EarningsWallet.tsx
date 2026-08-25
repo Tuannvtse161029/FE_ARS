@@ -14,6 +14,11 @@ import { WithdrawalSuccessModal } from './components/WithdrawalSuccessModal';
 import { useAuthStore } from '../../store/authSlice';
 import { useWallet } from '../../hooks/useWallet';
 import { AppConfig } from '../../config/app';
+import { FieldError } from '../../components/FieldError';
+import {
+  validatePositiveInteger,
+  validateVietnameseName,
+} from '../../utils/validationRules';
 
 // ── Centralized withdrawal feature gate (temporary) ─────────────────────────
 // While `AppConfig.features.enableWithdrawals` is `false`, the page renders
@@ -71,6 +76,12 @@ export const EarningsWallet = () => {
   const [narrative, setNarrative] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Inline field errors
+  const [targetBankError, setTargetBankError] = useState<string | null>(null);
+  const [accountNameError, setAccountNameError] = useState<string | null>(null);
+  const [accountNumberError, setAccountNumberError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
+
   const fetchRequests = useCallback(async () => {
     // Wait for authenticated user and wallet data before fetching
     if (!currentUserId || !walletId) {
@@ -125,24 +136,35 @@ export const EarningsWallet = () => {
     setAccountName('');
     setWithdrawalAmount('');
     setNarrative('');
+    setTargetBankError(null);
+    setAccountNameError(null);
+    setAccountNumberError(null);
+    setAmountError(null);
     setShowCreateModal(true);
   };
 
   const handleCreateWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetBank) {
-      alert('Please select a target bank.');
-      return;
+
+    // ── Inline validation ───────────────────────────────────────
+    const bankErr = targetBank ? null : 'Please select a target bank.';
+    const trimmedName = accountName.trim();
+    const nameErr = validateVietnameseName(trimmedName) ?? (trimmedName ? null : 'Account holder name is required.');
+    const trimmedAcct = accountNumber.trim();
+    const acctErr = trimmedAcct ? null : 'Account number is required.';
+    const amountValidation = validatePositiveInteger(withdrawalAmount);
+    let amtErr: string | null = amountValidation ?? null;
+    if (!amtErr) {
+      const amountNum = parseInt(withdrawalAmount, 10);
+      if (amountNum > unlockedBalance) amtErr = 'Insufficient unlocked balance.';
     }
+    setTargetBankError(bankErr);
+    setAccountNameError(nameErr);
+    setAccountNumberError(acctErr);
+    setAmountError(amtErr);
+    if (bankErr || nameErr || acctErr || amtErr) return;
+
     const amount = parseInt(withdrawalAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid amount.');
-      return;
-    }
-    if (amount > unlockedBalance) {
-      alert('Insufficient unlocked balance.');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -465,63 +487,88 @@ export const EarningsWallet = () => {
             <form onSubmit={handleCreateWithdrawal} className={styles.modalForm}>
               {/* Target Bank select */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Target Bank Selection</label>
+                <label className={styles.formLabel} htmlFor="wd-bank">* Target Bank Selection</label>
                 <select
+                  id="wd-bank"
                   className={styles.formSelect}
                   value={targetBank}
-                  onChange={(e) => setTargetBank(e.target.value)}
+                  onChange={(e) => {
+                    setTargetBank(e.target.value);
+                    if (targetBankError) setTargetBankError(null);
+                  }}
+                  aria-invalid={Boolean(targetBankError)}
+                  aria-describedby={targetBankError ? 'wd-bank-error' : undefined}
                 >
                   <option value="" disabled>Select your bank</option>
                   <option value="Vietcombank (VCB)">Vietcombank (VCB) - Joint Stock Commercial Bank for Foreign Trade of Vietnam</option>
                   <option value="BIDV">BIDV - Joint Stock Bank for Investment and Development of Vietnam</option>
                   <option value="Techcombank (TCB)">Techcombank (TCB) - Vietnam Technological &amp; Joint Stock Bank</option>
                 </select>
+                <FieldError id="wd-bank-error" message={targetBankError} testId="wd-bank-error" />
               </div>
 
               {/* Account Name */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Account Holder Name</label>
+                <label className={styles.formLabel} htmlFor="wd-account-name">* Account Holder Name</label>
                 <input
+                  id="wd-account-name"
                   type="text"
-                  className={styles.formInput}
+                  className={`${styles.formInput} ${accountNameError ? styles.formInputError : ''}`}
                   value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
+                  onChange={(e) => {
+                    setAccountName(e.target.value);
+                    if (accountNameError) setAccountNameError(null);
+                  }}
                   placeholder="Enter account holder name"
-                  required
+                  aria-invalid={Boolean(accountNameError)}
+                  aria-describedby={accountNameError ? 'wd-account-name-error' : undefined}
                 />
+                <FieldError id="wd-account-name-error" message={accountNameError} testId="wd-account-name-error" />
               </div>
 
               {/* Beneficiary bank account */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Beneficiary Bank Account Number</label>
+                <label className={styles.formLabel} htmlFor="wd-account-number">* Beneficiary Bank Account Number</label>
                 <input
+                  id="wd-account-number"
                   type="text"
-                  className={styles.formInput}
+                  className={`${styles.formInput} ${accountNumberError ? styles.formInputError : ''}`}
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
+                  onChange={(e) => {
+                    setAccountNumber(e.target.value);
+                    if (accountNumberError) setAccountNumberError(null);
+                  }}
                   placeholder="Enter your bank account number"
-                  required
+                  aria-invalid={Boolean(accountNumberError)}
+                  aria-describedby={accountNumberError ? 'wd-account-number-error' : undefined}
                 />
+                <FieldError id="wd-account-number-error" message={accountNumberError} testId="wd-account-number-error" />
               </div>
 
               {/* Withdrawal Amount */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Exact Withdrawal Amount (VND)</label>
+                <label className={styles.formLabel} htmlFor="wd-amount">* Exact Withdrawal Amount (VND)</label>
                 <div className={styles.amountInputWrapper}>
                   <input
+                    id="wd-amount"
                     type="number"
-                    className={styles.amountInput}
+                    className={`${styles.amountInput} ${amountError ? styles.formInputError : ''}`}
                     value={withdrawalAmount}
-                    onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    onChange={(e) => {
+                      setWithdrawalAmount(e.target.value);
+                      if (amountError) setAmountError(null);
+                    }}
                     max={unlockedBalance}
                     min={1}
-                    required
+                    aria-invalid={Boolean(amountError)}
+                    aria-describedby={amountError ? 'wd-amount-error' : undefined}
                   />
                   <span className={styles.amountSuffix}>VND</span>
                 </div>
                 <span className={styles.availableText}>
                   Available: {unlockedBalance.toLocaleString('vi-VN')} VND
                 </span>
+                <FieldError id="wd-amount-error" message={amountError} testId="wd-amount-error" />
               </div>
 
               {/* Narrative */}

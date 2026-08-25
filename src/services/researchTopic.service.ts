@@ -1,16 +1,13 @@
 import api from './axios';
-
-// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
-// under `API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.*` per the contract.
-// Until the lead adds them, we hard-code the Swagger paths here so the service
-// is fully self-contained and does not import a non-existent key.
-const RESEARCH_TOPIC_ENDPOINTS = {
-  GET_ALL: '/api/ResearchTopic',
-  GET_BY_ID: (id: number) => `/api/ResearchTopic/${id}`,
-  CREATE: '/api/ResearchTopic',
-  UPDATE: (id: number) => `/api/ResearchTopic/${id}`,
-  DELETE: (id: number) => `/api/ResearchTopic/${id}`,
-} as const;
+import { API_ENDPOINTS } from '../utils/constants';
+import {
+  normalizeResearchTopicStatus,
+  canTransitionResearchTopic,
+} from '../utils/researchStatus';
+import type {
+  ResearchTopicCreateRequest,
+  ResearchTopicUpdateRequest,
+} from '../types/researchWorkflowDtos';
 
 // Status enums per `docs/local-only/research-workflow-contract.md` §3.
 export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CLOSED';
@@ -22,21 +19,20 @@ export const RESEARCH_TOPIC_STATUSES: readonly ResearchTopicStatus[] = [
   'CLOSED',
 ] as const;
 
-const RESEARCH_TOPIC_TRANSITIONS: Record<
-  ResearchTopicStatus,
-  readonly ResearchTopicStatus[]
-> = {
-  OPEN: ['ASSIGNED', 'CLOSED'],
-  ASSIGNED: ['COMPLETED', 'CLOSED'],
-  COMPLETED: [],
-  CLOSED: [],
-};
+const RESEARCH_TOPIC_ENDPOINTS = {
+  GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.GET_ALL,
+  GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.GET_BY_ID,
+  CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.CREATE,
+  UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.UPDATE,
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.UPDATE(id),
+} as const;
 
-export const canTransitionResearchTopic = (
-  from: ResearchTopicStatus,
-  to: ResearchTopicStatus,
-): boolean => RESEARCH_TOPIC_TRANSITIONS[from].includes(to);
+// Re-export the canonical status-transition predicate from the shared status
+// utility so callers can import both surface names from this service file.
+export { canTransitionResearchTopic };
 
+// BE response shape — every property is optional/nullable per the Swagger
+// ResearchTopic schema (the BE does not yet ship a typed response body).
 export interface ResearchTopic {
   id?: number;
   topicId?: number;
@@ -48,13 +44,6 @@ export interface ResearchTopic {
   assignedGroupIds?: number[] | null;
   createdAt?: string;
   updatedAt?: string;
-}
-
-export interface ResearchTopicCreateRequest {
-  title?: string | null;
-  description?: string | null;
-  status?: ResearchTopicStatus | string | null;
-  materialsUrl?: string | null;
 }
 
 const normalizeResearchTopic = (raw: ResearchTopic): ResearchTopic => ({
@@ -94,7 +83,7 @@ export const researchTopicService = {
 
   update: async (
     id: number,
-    payload: Partial<ResearchTopicCreateRequest>,
+    payload: ResearchTopicUpdateRequest,
   ): Promise<ResearchTopic> => {
     const response = await api.put<ResearchTopic>(
       RESEARCH_TOPIC_ENDPOINTS.UPDATE(id),
@@ -112,5 +101,10 @@ export const researchTopicService = {
 export const getResearchTopicMaterialsUrl = (
   t: ResearchTopic | null | undefined,
 ): string => t?.materialsUrl ?? '';
+
+// Defensive helper for any caller that needs to read the topic status safely.
+export const getResearchTopicStatus = (
+  t: ResearchTopic | null | undefined,
+): ResearchTopicStatus => normalizeResearchTopicStatus(t?.status ?? null);
 
 export default researchTopicService;

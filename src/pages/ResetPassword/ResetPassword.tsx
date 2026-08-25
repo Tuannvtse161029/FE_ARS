@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { AxiosError } from 'axios';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
@@ -10,6 +11,7 @@ import {
   resetPasswordSchema,
   type ResetPasswordFormData,
 } from '../../utils/validation';
+import { extractServerMessage } from '../../utils/validationRules';
 import authService from '../../services/auth.service';
 import styles from './ResetPassword.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
@@ -17,6 +19,19 @@ import { Eye, EyeOff } from 'lucide-react';
 
 interface LocationState {
   resetToken?: string;
+}
+
+/**
+ * Render a user-facing error for the `reset-password` flow when the BE
+ * has not yet exposed the public (anonymous) surface. The live Swagger
+ * today only documents the auth-protected endpoints, so this flow
+ * returns 401 against the production backend.
+ */
+function resetPasswordError(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
+    return 'Password reset is not yet available. Please contact support or try again later.';
+  }
+  return extractServerMessage(err, fallback);
 }
 
 const ResetPassword = () => {
@@ -29,6 +44,7 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const inFlightRef = useRef(false);
 
   const {
     control,
@@ -40,15 +56,21 @@ const ResetPassword = () => {
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
       await authService.resetPassword({ resetToken, newPassword: data.newPassword });
       navigate(ROUTES.LOGIN, { replace: true });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unable to reset password. Please try again.';
+      const msg = resetPasswordError(
+        err,
+        'Unable to reset password. Please try again.',
+      );
       setError(msg);
     } finally {
+      inFlightRef.current = false;
       setIsLoading(false);
     }
   };

@@ -220,6 +220,14 @@ export const API_ENDPOINTS = {
       DELETE: (id: number) => `/api/PremiumPackage/${id}`,
       TOGGLE: (id: number) => `/api/PremiumPackage/${id}/toggle`,
     },
+    // Agent admin-annual-fees — endpoints reserved for the upcoming
+    // Annual Fees CRUD contract (BE has not shipped these yet; the
+    // `annualFeeService` stub short-circuits to demo data until then).
+    // Documented in docs/BACKEND_REQUESTS.md → BTR-AF-01.
+    ANNUAL_FEES: {
+      GET_ALL: '/api/AnnualFee',
+      GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,
+    },
     AUDIT_LOGS: {
       GET_ALL: '/api/AuditLog',
       EXPORT: '/api/AuditLog/export',

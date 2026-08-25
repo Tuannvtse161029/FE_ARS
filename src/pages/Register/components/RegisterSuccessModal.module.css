@@ -94,3 +94,28 @@
   width: 100%;
   max-width: 320px;
 }
+
+.helperText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-3) 0;
+  line-height: var(--line-height-relaxed);
+  text-align: center;
+}
+
+.learnMore {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-5) 0;
+  text-align: center;
+}
+
+.learnMoreLink {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+}
+
+.learnMoreLink:hover {
+  color: var(--color-primary-dark, #0056b3);
+}

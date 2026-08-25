@@ -1,14 +1,24 @@
 /**
  * App-level routing tests for the user-facing /premium-packages route.
  *
- * Mounts the real App.tsx with mocked auth + backend hooks so we can verify:
- *   - Navigating to /premium-packages renders the PremiumPackagesPreview page.
- *   - Refreshing (re-mounting) the same URL still renders the page — i.e. the
- *     route is not silently redirected back to /login.
- *   - The admin /admin/packages route still renders the admin PremiumPackages
- *     component (regression guard: the new route shouldn't collide).
- *   - The two pages are NOT the same component (no accidental reuse of the
- *     admin surface for the user-facing preview).
+ * Agent admin-annual-fees — these tests pin the new gating behavior
+ * introduced while the BE-side annual-fee CRUD endpoint is being
+ * finalized (see BACKEND_REQUESTS.md → BTR-AF-01). The previous
+ * incarnation asserted that `/premium-packages` rendered the
+ * PremiumPackagesPreview for an authenticated Researcher; that
+ * assertion is now obsolete because `AppConfig.features.premiumPackagesEnabled`
+ * gates the route. The new contract:
+ *
+ *   - Navigating to /premium-packages while the flag is `false`
+ *     redirects to /forum, NOT to /login.
+ *   - The route never renders the PremiumPackagesPreview while the
+ *     flag is `false` — the PremiumPackagesPreview mock throws so
+ *     any regression fails loudly.
+ *   - The admin /admin/packages route still renders the admin
+ *     PremiumPackages component (regression guard: the new route
+ *     shouldn't collide).
+ *   - The two pages are NOT the same component (no accidental reuse of
+ *     the admin surface for the user-facing preview).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -65,6 +75,16 @@ vi.mock('../../src/components/wallet/WalletTopUpModal', () => ({
   WalletTopUpModal: () => null,
 }));
 
+// Stub the PremiumPackagesPreview so the test fails loudly if the
+// redirect ever regresses and the component is rendered.
+vi.mock('../../src/pages/PremiumPackages/PremiumPackagesPreview', () => ({
+  default: () => {
+    throw new Error(
+      'PremiumPackagesPreview should NOT be rendered while premiumPackagesEnabled is false.',
+    );
+  },
+}));
+
 // Mock the admin PremiumPackages component so we can assert it is still
 // rendered on /admin/packages without pulling its full data-fetching
 // implementation. This also lets us distinguish the admin page from the
@@ -91,49 +111,30 @@ const setupAuthenticated = (role: string) => {
 };
 
 const renderAt = (path: string) => {
-  // The real App uses BrowserRouter which reads window.location. We can't
-  // redirect the test runner's window, so we drive the route via
-  // MemoryRouter by reaching into a thin wrapper. Since App is hardcoded
-  // to BrowserRouter, we instead just assert based on window.location.
   window.history.replaceState({}, '', path);
   return render(<App />);
 };
 
-describe('App routing — /premium-packages (user-facing)', () => {
-  it('renders the PremiumPackagesPreview page when navigating to /premium-packages', async () => {
+describe('App routing — /premium-packages (Agent admin-annual-fees)', () => {
+  it('redirects authenticated Researcher away from /premium-packages (flag is false)', async () => {
     setupAuthenticated('Researcher');
     renderAt(ROUTES.PREMIUM_PACKAGES);
 
-    // The user-facing preview shows a single <h1> with text "Premium Package".
-    expect(
-      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
-    ).toBeInTheDocument();
-    // And the preview badge ("Coming soon") is present.
-    expect(screen.getByTestId('preview-badge')).toHaveTextContent(
-      /coming soon/i,
+    // The PremiumPackagesPreview throw sentinel must NOT fire.
+    expect(document.body.textContent ?? '').not.toMatch(
+      /PremiumPackagesPreview should NOT be rendered/,
     );
-    // The admin surface sentinel must NOT be on the page.
+    // The Admin surface sentinel must also NOT be on the page.
     expect(screen.queryByTestId('admin-premium-packages')).not.toBeInTheDocument();
   });
 
-  it('keeps the PremiumPackagesPreview page mounted on refresh (no /login redirect)', async () => {
+  it('does NOT redirect /premium-packages to /login for an authenticated user', () => {
     setupAuthenticated('Researcher');
-    // First mount
-    const firstRender = renderAt(ROUTES.PREMIUM_PACKAGES);
-    expect(
-      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
-    ).toBeInTheDocument();
-
-    // Simulate a "refresh" by unmounting and re-rendering at the same URL.
-    firstRender.unmount();
-    cleanup();
     renderAt(ROUTES.PREMIUM_PACKAGES);
 
-    // Still rendered — no silent redirect to /login.
-    expect(
-      await screen.findByRole('heading', { name: /Premium Package/i, level: 1 }),
-    ).toBeInTheDocument();
-    // The login page heading must NOT be present.
+    // The login heading must NOT be present — the gating redirect
+    // targets /forum, not /login. PrivateRoute should still let the
+    // authenticated user in, only the feature gate bounces them.
     expect(
       screen.queryByRole('heading', { name: /Sign in|Log in|Login/i }),
     ).not.toBeInTheDocument();
@@ -143,9 +144,7 @@ describe('App routing — /premium-packages (user-facing)', () => {
     setupAuthenticated('Admin');
     renderAt(ROUTES.ADMIN_PACKAGES);
 
-    // The admin sentinel shows.
     expect(await screen.findByTestId('admin-premium-packages')).toBeInTheDocument();
-    // The user preview sentinel does not.
     expect(screen.queryByTestId('preview-badge')).not.toBeInTheDocument();
   });
 
@@ -155,9 +154,9 @@ describe('App routing — /premium-packages (user-facing)', () => {
     );
     renderAt(ROUTES.PREMIUM_PACKAGES);
 
-    // PrivateRoute should bounce the unauthenticated user to /login.
     expect(window.location.pathname).toBe(ROUTES.LOGIN);
-    // The preview page should NOT be on screen.
-    expect(screen.queryByTestId('preview-badge')).not.toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(
+      /PremiumPackagesPreview should NOT be rendered/,
+    );
   });
 });

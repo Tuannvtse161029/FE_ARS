@@ -991,6 +991,12 @@
   outline-offset: 2px;
 }
 
+.formInputError,
+.formTextarea.formInputError {
+  border-color: var(--ars-error, #b91c1c);
+  background-color: var(--ars-error-bg, #fee2e2);
+}
+
 .materialsBox {
   display: flex;
   flex-direction: column;

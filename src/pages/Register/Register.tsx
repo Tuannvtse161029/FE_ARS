@@ -20,6 +20,17 @@ import {
   REGISTRATION_ROLES,
   type RequestableRole,
 } from '../../utils/registrationRoles';
+import { FieldError } from '../../components/FieldError';
+import {
+  EMAIL_REGEX,
+  PHONE_REGEX,
+  PASSWORD_HAS_NUMBER,
+  PASSWORD_HAS_UPPER,
+  PASSWORD_MIN_LENGTH,
+  extractServerFieldErrors,
+  extractServerMessage,
+  validateVietnameseName,
+} from '../../utils/validationRules';
 
 interface FormState {
   fullName: string;
@@ -43,12 +54,8 @@ const initialForm: FormState = {
   consentAccepted: false,
 };
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phoneRegex = /^[+\d\s\-()]{8,20}$/;
-const passwordRegex = {
-  hasUpper: /[A-Z]/,
-  hasNumber: /[0-9]/,
-};
+// Inline name regex is centralised in `src/utils/validationRules.ts` to keep
+// the rule single-sourced and testable in isolation.
 
 // Per-role verification copy shown in the right-hand banner. Admin is
 // included so the compiler can prove the record covers every
@@ -105,29 +112,28 @@ export const Register = () => {
   const validate = (): boolean => {
     const next: Partial<Record<keyof FormState, string>> = {};
 
-    if (!form.fullName.trim() || form.fullName.trim().length < 2) {
-      next.fullName = 'Full name must be at least 2 characters';
-    }
+    const nameError = validateVietnameseName(form.fullName);
+    if (nameError) next.fullName = nameError;
 
     if (!form.email.trim()) {
       next.email = 'Email is required';
-    } else if (!emailRegex.test(form.email)) {
+    } else if (!EMAIL_REGEX.test(form.email)) {
       next.email = 'Invalid email format';
     }
 
     if (!form.phoneNumber.trim()) {
       next.phoneNumber = 'Phone number is required';
-    } else if (!phoneRegex.test(form.phoneNumber)) {
+    } else if (!PHONE_REGEX.test(form.phoneNumber)) {
       next.phoneNumber = 'Invalid phone number format';
     }
 
     if (!form.password) {
       next.password = 'Password is required';
-    } else if (form.password.length < 8) {
-      next.password = 'Password must be at least 8 characters';
-    } else if (!passwordRegex.hasUpper.test(form.password)) {
+    } else if (form.password.length < PASSWORD_MIN_LENGTH) {
+      next.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    } else if (!PASSWORD_HAS_UPPER.test(form.password)) {
       next.password = 'Password must contain at least one uppercase letter';
-    } else if (!passwordRegex.hasNumber.test(form.password)) {
+    } else if (!PASSWORD_HAS_NUMBER.test(form.password)) {
       next.password = 'Password must contain at least one number';
     }
 
@@ -157,12 +163,12 @@ export const Register = () => {
   };
 
   const isFormValid = (() => {
-    if (!form.fullName.trim() || form.fullName.trim().length < 2) return false;
-    if (!emailRegex.test(form.email)) return false;
-    if (!phoneRegex.test(form.phoneNumber)) return false;
-    if (form.password.length < 8) return false;
-    if (!passwordRegex.hasUpper.test(form.password)) return false;
-    if (!passwordRegex.hasNumber.test(form.password)) return false;
+    if (validateVietnameseName(form.fullName)) return false;
+    if (!EMAIL_REGEX.test(form.email)) return false;
+    if (!PHONE_REGEX.test(form.phoneNumber)) return false;
+    if (form.password.length < PASSWORD_MIN_LENGTH) return false;
+    if (!PASSWORD_HAS_UPPER.test(form.password)) return false;
+    if (!PASSWORD_HAS_NUMBER.test(form.password)) return false;
     if (form.password !== form.retypePassword) return false;
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
@@ -230,9 +236,24 @@ export const Register = () => {
 
       setIsSuccessOpen(true);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Registration failed. Please try again.';
-      setSubmitError(message);
+      const fieldErrors = extractServerFieldErrors(err, [
+        'fullName',
+        'email',
+        'phoneNumber',
+        'password',
+        'role',
+        'pdfUrl',
+      ]);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        setSubmitError(null);
+      } else {
+        const message = extractServerMessage(
+          err,
+          'Registration failed. Please try again.',
+        );
+        setSubmitError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -320,10 +341,20 @@ export const Register = () => {
             placeholder="e.g., Dr. Nguyen Van A"
             value={form.fullName}
             onChange={handleChange}
+            onBlur={() => {
+              const msg = validateVietnameseName(form.fullName);
+              if (msg) setErrors((prev) => ({ ...prev, fullName: msg }));
+            }}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="name"
+            aria-invalid={Boolean(errors.fullName)}
+            aria-describedby={errors.fullName ? 'fullName-error' : undefined}
           />
-          {errors.fullName && <p className={styles.errorText}>{errors.fullName}</p>}
+          <FieldError
+            id="fullName-error"
+            message={errors.fullName}
+            testId="register-error-fullName"
+          />
         </div>
 
         <div className={styles.fieldGroup}>
@@ -343,8 +374,14 @@ export const Register = () => {
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="email"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
-          {errors.email && <p className={styles.errorText}>{errors.email}</p>}
+          <FieldError
+            id="email-error"
+            message={errors.email}
+            testId="register-error-email"
+          />
         </div>
 
         <div className={styles.fieldGroup}>
@@ -364,10 +401,14 @@ export const Register = () => {
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="tel"
+            aria-invalid={Boolean(errors.phoneNumber)}
+            aria-describedby={errors.phoneNumber ? 'phoneNumber-error' : undefined}
           />
-          {errors.phoneNumber && (
-            <p className={styles.errorText}>{errors.phoneNumber}</p>
-          )}
+          <FieldError
+            id="phoneNumber-error"
+            message={errors.phoneNumber}
+            testId="register-error-phoneNumber"
+          />
         </div>
 
         <div className={styles.passwordRow}>
@@ -378,20 +419,24 @@ export const Register = () => {
             >
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className={`${styles.nativeInput} ${errors.password ? styles['nativeInput--error'] : ''}`}
-              placeholder="Create a password"
-              value={form.password}
-              onChange={handleChange}
+<input
+            id="password"
+            name="password"
+            type="password"
+            className={`${styles.nativeInput} ${errors.password ? styles['nativeInput--error'] : ''}`}
+            placeholder="Create a password"
+            value={form.password}
+            onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="new-password"
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? 'password-error' : 'password-helper'}
           />
-          {errors.password && (
-            <p className={styles.errorText}>{errors.password}</p>
-          )}
+          <FieldError
+            id="password-error"
+            message={errors.password}
+            testId="register-error-password"
+          />
         </div>
 
         <div className={styles.fieldGroup}>
@@ -401,7 +446,7 @@ export const Register = () => {
           >
             Retype Password
           </label>
-          <input
+<input
             id="retypePassword"
             name="retypePassword"
             type="password"
@@ -411,10 +456,14 @@ export const Register = () => {
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="new-password"
-            />
-            {errors.retypePassword && (
-              <p className={styles.errorText}>{errors.retypePassword}</p>
-            )}
+            aria-invalid={Boolean(errors.retypePassword)}
+            aria-describedby={errors.retypePassword ? 'retypePassword-error' : undefined}
+          />
+          <FieldError
+            id="retypePassword-error"
+            message={errors.retypePassword}
+            testId="register-error-retypePassword"
+          />
           </div>
         </div>
         <p className={styles.passwordHelper}>
@@ -435,6 +484,8 @@ export const Register = () => {
             value={form.role}
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
+            aria-invalid={Boolean(errors.role)}
+            aria-describedby={errors.role ? 'role-error' : undefined}
           >
             {REGISTRATION_ROLES.map((role) => (
               <option key={role} value={role}>
@@ -442,7 +493,7 @@ export const Register = () => {
               </option>
             ))}
           </select>
-          {errors.role && <p className={styles.errorText}>{errors.role}</p>}
+          <FieldError id="role-error" message={errors.role} />
         </div>
 
         {form.role === 'Reviewer' && (
@@ -471,7 +522,7 @@ export const Register = () => {
               Enter your canonical ORCID iD or full ORCID URL. ARS validates the checksum and
               uses the normalized value only for future reviewer verification support.
             </p>
-            {errors.orcidId && <p className={styles.errorText}>{errors.orcidId}</p>}
+            <FieldError id="orcidId-error" message={errors.orcidId} testId="register-error-orcidId" />
           </div>
         )}
 

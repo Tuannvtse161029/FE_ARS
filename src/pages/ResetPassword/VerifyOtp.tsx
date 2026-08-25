@@ -1,17 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AxiosError } from 'axios';
 import { Button } from '../../components/Button';
+import { FieldError } from '../../components/FieldError';
 import { StepIndicator } from './components/StepIndicator';
 import { ROUTES } from '../../routes/paths';
+import { validateOtp } from '../../utils/validationRules';
 import authService from '../../services/auth.service';
+import { extractServerMessage } from '../../utils/validationRules';
 import styles from './VerifyOtp.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 
-const OTP_LENGTH = 6;
+const OTP_CELL_COUNT = 6;
 const RESEND_COOLDOWN = 60;
 
 interface LocationState {
   email?: string;
+}
+
+/**
+ * Render a user-facing error for the `forgot-password` / `verify-otp` /
+ * `reset-password` endpoints when the BE has not yet exposed a public
+ * (anonymous) surface. The live Swagger today only documents the auth-
+ * protected `/api/Auth/send-approval-email?email=...` endpoint, so the
+ * existing password-reset flow returns 401. We surface that clearly to
+ * the user instead of letting axios's generic "Request failed with
+ * status code 401" leak into the UI.
+ */
+function authFlowError(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
+    return 'Password reset is not yet available. Please contact support or try again later.';
+  }
+  return extractServerMessage(err, fallback);
 }
 
 const VerifyOtp = () => {
@@ -21,10 +41,18 @@ const VerifyOtp = () => {
   const email = state.email ?? '';
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [otp, setOtp] = useState<string[]>(Array(OTP_CELL_COUNT).fill(''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpError, setOtpError] = useState<string | null>(null);
+
+  // In-flight dedupe refs — guard against double-submit from rapid clicks
+  // and from React 18 strict-mode double-invokes. The values persist for
+  // the lifetime of the component; resending / verifying while a prior
+  // request is still in-flight is a no-op.
+  const verifyInFlightRef = useRef(false);
+  const resendInFlightRef = useRef(false);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -49,7 +77,7 @@ const VerifyOtp = () => {
       next[index] = digit;
       return next;
     });
-    if (digit && index < OTP_LENGTH - 1) {
+    if (digit && index < OTP_CELL_COUNT - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -59,57 +87,68 @@ const VerifyOtp = () => {
       inputRefs.current[index - 1]?.focus();
     } else if (e.key === 'ArrowLeft' && index > 0) {
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+    } else if (e.key === 'ArrowRight' && index < OTP_CELL_COUNT - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_CELL_COUNT);
     if (!pasted) return;
-    const next = Array(OTP_LENGTH).fill('');
+    const next = Array(OTP_CELL_COUNT).fill('');
     pasted.split('').forEach((char, i) => {
       next[i] = char;
     });
     setOtp(next);
-    const lastFilled = Math.min(pasted.length, OTP_LENGTH - 1);
+    const lastFilled = Math.min(pasted.length, OTP_CELL_COUNT - 1);
     inputRefs.current[lastFilled]?.focus();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (verifyInFlightRef.current || isLoading) return;
     const code = otp.join('');
-    if (code.length !== OTP_LENGTH) {
-      setError('Please enter the complete 6-digit code');
+    const otpValidation = validateOtp(code);
+    if (otpValidation) {
+      setOtpError(otpValidation);
+      setError(null);
       return;
     }
-    setIsLoading(true);
+    setOtpError(null);
     setError(null);
+    verifyInFlightRef.current = true;
+    setIsLoading(true);
     try {
       const { resetToken } = await authService.verifyOtp({ email, otp: code });
       navigate(ROUTES.RESET_PASSWORD, { state: { resetToken } });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Invalid or expired code. Please try again.';
+      const msg = authFlowError(err, 'Invalid or expired code. Please try again.');
       setError(msg);
-      setOtp(Array(OTP_LENGTH).fill(''));
+      setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();
     } finally {
+      verifyInFlightRef.current = false;
       setIsLoading(false);
     }
   };
 
   const handleResend = async () => {
     if (resendCooldown > 0) return;
+    if (resendInFlightRef.current) return;
+    resendInFlightRef.current = true;
     setError(null);
+    setOtpError(null);
     try {
       await authService.forgotPassword({ email });
       setResendCooldown(RESEND_COOLDOWN);
-      setOtp(Array(OTP_LENGTH).fill(''));
+      setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unable to resend code. Please try again.';
+      const msg = authFlowError(err, 'Unable to resend code. Please try again.');
       setError(msg);
+    } finally {
+      resendInFlightRef.current = false;
     }
   };
 
@@ -151,15 +190,21 @@ const VerifyOtp = () => {
               inputMode="numeric"
               maxLength={1}
               value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
+              onChange={(e) => {
+                handleChange(index, e.target.value);
+                if (otpError) setOtpError(null);
+              }}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={isLoading}
-              className={`${styles.otpBox} ${digit ? styles.otpBoxFilled : ''}`}
+              className={`${styles.otpBox} ${digit ? styles.otpBoxFilled : ''} ${otpError ? styles.otpBoxError : ''}`}
               aria-label={`Digit ${index + 1}`}
+              aria-invalid={Boolean(otpError)}
+              aria-describedby={otpError ? 'otp-error' : undefined}
             />
           ))}
         </div>
+        <FieldError id="otp-error" message={otpError} testId="verify-otp-error" />
 
         <Button
           type="submit"

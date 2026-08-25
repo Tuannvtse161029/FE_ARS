@@ -1,0 +1,155 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 40px;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.demoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px dashed #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.demoBannerIcon {
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+.demoBannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demoBannerTitle {
+  font-weight: 700;
+  color: #78350f;
+}
+
+.demoBannerSubtitle {
+  font-size: 13px;
+  color: #92400e;
+}
+
+.tableCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 4px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr.inactive td {
+  color: #94a3b8;
+}
+
+.rolePill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e0ecff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusPill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusActive {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusInactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.cycleBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.emptyState {
+  padding: 32px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.errorState {
+  padding: 18px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+}

@@ -1,15 +1,20 @@
 import api from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
+import type {
+  LearningMaterialCreateRequest,
+  LearningMaterialUpdateRequest,
+} from '../types/researchWorkflowDtos';
 
-// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
-// under `API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.*` per the contract.
 const LEARNING_MATERIAL_ENDPOINTS = {
-  GET_ALL: '/api/LearningMaterial',
-  GET_BY_ID: (id: number) => `/api/LearningMaterial/${id}`,
-  CREATE: '/api/LearningMaterial',
-  UPDATE: (id: number) => `/api/LearningMaterial/${id}`,
-  DELETE: (id: number) => `/api/LearningMaterial/${id}`,
+  GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.GET_ALL,
+  GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.GET_BY_ID,
+  CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.CREATE,
+  UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.UPDATE,
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.LEARNING_MATERIAL.UPDATE(id),
 } as const;
 
+// BE response shape — every property is optional/nullable per the Swagger
+// LearningMaterial schema.
 export interface LearningMaterial {
   id?: number;
   learningMaterialId?: number;
@@ -20,14 +25,6 @@ export interface LearningMaterial {
   subFieldId?: number | null;
   createdAt?: string;
   updatedAt?: string;
-}
-
-export interface LearningMaterialCreateRequest {
-  lecturerId?: number | null;
-  title?: string | null;
-  fileUrl?: string | null;
-  description?: string | null;
-  subFieldId?: number | null;
 }
 
 const normalizeLearningMaterial = (raw: LearningMaterial): LearningMaterial => ({
@@ -71,7 +68,7 @@ export const learningMaterialService = {
 
   update: async (
     id: number,
-    payload: Partial<LearningMaterialCreateRequest>,
+    payload: LearningMaterialUpdateRequest,
   ): Promise<LearningMaterial> => {
     const response = await api.put<LearningMaterial>(
       LEARNING_MATERIAL_ENDPOINTS.UPDATE(id),

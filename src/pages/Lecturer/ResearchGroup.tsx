@@ -1,3 +1,15 @@
+// Lecturer — Research Groups (groups-only)
+//
+// Per the Coordinator brief, this page is now groups-only. The Topics CRUD
+// was moved to a dedicated top-level page (`src/pages/Lecturer/ResearchTopics.tsx`)
+// reachable from the sidebar. This page keeps the assigned-topic summary
+// on every group card and links to the topic's row on the new page so the
+// lecturer can navigate Groups → Topic without a back/forward dance.
+//
+// All data is fetched from the live API. No mock records. No hardcoded
+// "Topic 1" data. Active strict-DTO call-site widening is preserved
+// (see researchWorkflowDtos.ts and the strict-DTO services for context).
+
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -5,34 +17,24 @@ import {
   Check,
   X,
   Users,
-  Pencil,
   Trash2,
-  BookOpen,
-  Settings,
-  Lightbulb,
-  FileText,
   Loader,
   AlertTriangle,
   RefreshCw,
   Inbox,
-  ToggleRight,
-  ToggleLeft,
-  CheckCircle2,
-  Library,
+  ArrowRight,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
 import { researchGroupService, deriveGroupStatus } from '../../services/researchGroup.service';
-import { researchTopicService, type ResearchTopic } from '../../services/researchTopic.service';
-import { canTransitionResearchTopic } from '../../utils/researchStatus';
-import type { ResearchTopicStatus } from '../../types/research';
+import type { ResearchTopic } from '../../types/research';
 import { groupMemberService, indexGroupMembersByGroupId } from '../../services/groupMember.service';
 import type { GroupMember } from '../../services/groupMember.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
-import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
-import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
+import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -43,12 +45,11 @@ import styles from './ResearchGroup.module.css';
 interface BannerState {
   visible: boolean;
   text: string;
+  variant: 'success' | 'error';
 }
 
 const formatGroupId = (id: number): string =>
   `RG-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
-const formatTopicId = (id: number): string =>
-  `RT-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 const initialsOf = (raw: string): string =>
   raw
@@ -71,7 +72,6 @@ export const ResearchGroup = () => {
     refetch: refetchGroups,
   } = useResearchGroups({ lecturerId });
 
-  // Newest first by assignedAt.
   const sortedGroups = useMemo(
     () =>
       [...groups].sort(
@@ -81,6 +81,9 @@ export const ResearchGroup = () => {
     [groups],
   );
 
+  // Topics are now only read for the per-group "Assigned topic" summary
+  // pill. No mutation happens on this page anymore — see
+  // `ResearchTopics.tsx` for the canonical CRUD surface.
   const {
     topics,
     isLoading: isLoadingTopics,
@@ -130,97 +133,79 @@ export const ResearchGroup = () => {
 
   // ── Modal state ────────────────────────────────────────────────────────
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [topicForAssign, setTopicForAssign] = useState<ResearchTopic | null>(null);
-  // Edit topic modal (L3.a)
-  const [topicForEdit, setTopicForEdit] = useState<ResearchTopic | null>(null);
-  // Manage materials modal (L3.c)
-  const [topicForMaterials, setTopicForMaterials] = useState<ResearchTopic | null>(
-    null,
-  );
+  // (AssignTopicModal was removed — assignment is no longer wired on this
+  // page. The canonical "assign topic to group" flow now belongs to the
+  // dedicated Research Topics page once BE ships an assignment endpoint.)
 
   // ── Banner state ────────────────────────────────────────────────────────
-  const [banner, setBanner] = useState<BannerState>({ visible: false, text: '' });
+  const [banner, setBanner] = useState<BannerState>({
+    visible: false,
+    text: '',
+    variant: 'success',
+  });
 
   // ── Create Group form state ────────────────────────────────────────────
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [groupDeadline, setGroupDeadline] = useState('');
+  const [groupNameError, setGroupNameError] = useState<string | null>(null);
+  const [groupDeadlineError, setGroupDeadlineError] = useState<string | null>(null);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupError, setCreateGroupError] = useState<string | null>(null);
 
-  // ── Create Topic form state ────────────────────────────────────────────
-  const [topicName, setTopicName] = useState('');
-  const [topicDesc, setTopicDesc] = useState('');
-  const [topicMaterialsUrl, setTopicMaterialsUrl] = useState('');
-  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
-  const [createTopicError, setCreateTopicError] = useState<string | null>(null);
+  // ── Toolbar: search + refresh state for the groups grid ──────────────────
+  const [groupSearch, setGroupSearch] = useState('');
+  const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
 
-  // ── Edit Topic form state (L3.a) ─────────────────────────────────────
-  const [editTopicTitle, setEditTopicTitle] = useState('');
-  const [editTopicDesc, setEditTopicDesc] = useState('');
-  const [editTopicMaterialsUrl, setEditTopicMaterialsUrl] = useState('');
-  const [isEditingTopic, setIsEditingTopic] = useState(false);
-  const [editTopicError, setEditTopicError] = useState<string | null>(null);
-
-  // Toolbar: search + refresh state for the topics table
-  const [topicSearch, setTopicSearch] = useState('');
-  const [isRefreshingTopics, setIsRefreshingTopics] = useState(false);
-
-  const filteredTopics = useMemo(() => {
-    const query = topicSearch.trim().toLowerCase();
-    if (!query) return topics;
-    return topics.filter((t) =>
-      [t.title ?? '', t.description ?? '', t.status ?? '']
+  const filteredGroups = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase();
+    if (!query) return sortedGroups;
+    return sortedGroups.filter((g) => {
+      const t = g.topicId ? topicById.get(g.topicId) : null;
+      const topicTitle = t?.title ?? '';
+      return [g.name ?? '', g.description ?? '', topicTitle]
         .join(' ')
         .toLowerCase()
-        .includes(query),
-    );
-  }, [topics, topicSearch]);
+        .includes(query);
+    });
+  }, [sortedGroups, groupSearch, topicById]);
 
   const {
-    page: topicPage,
-    totalPages: topicTotalPages,
-    totalItems: topicTotalItems,
-    startIndex: topicStartIndex,
-    endIndex: topicEndIndex,
-    pageItems: pagedTopics,
-    setPage: setTopicPage,
-    next: nextTopicPage,
-    prev: prevTopicPage,
-    resetPage: resetTopicPage,
-  } = usePagination<ResearchTopic>(filteredTopics, DEFAULT_PAGE_SIZE);
+    page: groupPage,
+    totalPages: groupTotalPages,
+    totalItems: groupTotalItems,
+    startIndex: groupStartIndex,
+    endIndex: groupEndIndex,
+    pageItems: pagedGroups,
+    setPage: setGroupPage,
+    next: nextGroupPage,
+    prev: prevGroupPage,
+    resetPage: resetGroupPage,
+  } = usePagination(filteredGroups, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
-    resetTopicPage();
-  }, [topicSearch, resetTopicPage]);
+    resetGroupPage();
+  }, [groupSearch, resetGroupPage]);
 
-  const handleRefreshTopics = async () => {
-    if (isRefreshingTopics) return;
-    setIsRefreshingTopics(true);
+  const handleRefreshGroups = async () => {
+    if (isRefreshingGroups) return;
+    setIsRefreshingGroups(true);
     try {
-      await refetchTopics();
+      await refetchGroups();
     } finally {
-      setIsRefreshingTopics(false);
+      setIsRefreshingGroups(false);
     }
   };
 
-  // Per-row status-transition inflight (L3.a open/close/complete).
-  const [topicTransition, setTopicTransition] = useState<{
-    id: number;
-    to: ResearchTopicStatus;
-  } | null>(null);
-
-  const showBanner = (text: string) => {
-    setBanner({ visible: true, text });
-    // Auto-dismiss after 4s (matches existing SeminarWorkspace behaviour).
-    window.setTimeout(() => setBanner({ visible: false, text: '' }), 4000);
-  };
-
-  const handleOpenAssignModal = (topic: ResearchTopic) => {
-    setTopicForAssign(topic);
-    setShowAssignModal(true);
+  const showBanner = (
+    text: string,
+    variant: 'success' | 'error' = 'success',
+  ) => {
+    setBanner({ visible: true, text, variant });
+    window.setTimeout(
+      () => setBanner({ visible: false, text: '', variant: 'success' }),
+      4000,
+    );
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
@@ -235,7 +220,7 @@ export const ResearchGroup = () => {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to delete the group.';
-      showBanner(`Delete failed: ${message}`);
+      showBanner(`Delete failed: ${message}`, 'error');
     }
   };
 
@@ -245,16 +230,23 @@ export const ResearchGroup = () => {
       setCreateGroupError('No lecturer session — please sign in again.');
       return;
     }
-    if (!groupName.trim()) {
-      setCreateGroupError('Group name is required.');
-      return;
+    const trimmedName = groupName.trim();
+    const nameErr = trimmedName ? null : 'Group name is required.';
+    let deadlineErr: string | null = null;
+    if (groupDeadline) {
+      const ms = new Date(groupDeadline).getTime();
+      if (Number.isNaN(ms)) deadlineErr = 'Deadline is not a valid date.';
     }
+    setGroupNameError(nameErr);
+    setGroupDeadlineError(deadlineErr);
+    if (nameErr || deadlineErr) return;
     setIsCreatingGroup(true);
     setCreateGroupError(null);
     try {
       const created = await researchGroupService.create({
         lecturerId,
-        name: groupName.trim(),
+        topicId: null,
+        name: trimmedName,
         description: groupDesc.trim() || null,
         deadline: groupDeadline ? new Date(groupDeadline).toISOString() : null,
         assignedAt: null,
@@ -263,6 +255,8 @@ export const ResearchGroup = () => {
       setGroupName('');
       setGroupDesc('');
       setGroupDeadline('');
+      setGroupNameError(null);
+      setGroupDeadlineError(null);
       const idLabel = typeof created.id === 'number' ? formatGroupId(created.id) : '';
       showBanner(`Research Group ${idLabel} ("${created.name ?? groupName}") created successfully.`);
       await refetchGroups();
@@ -275,144 +269,32 @@ export const ResearchGroup = () => {
     }
   };
 
-  const handleCreateTopicSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topicName.trim()) {
-      setCreateTopicError('Topic name is required.');
-      return;
-    }
-    setIsCreatingTopic(true);
-    setCreateTopicError(null);
-    try {
-      const created = await researchTopicService.create({
-        title: topicName.trim(),
-        description: topicDesc.trim() || null,
-        materialsUrl: topicMaterialsUrl.trim() || null,
-        status: 'OPEN',
-      });
-      setShowCreateTopicModal(false);
-      setTopicName('');
-      setTopicDesc('');
-      setTopicMaterialsUrl('');
-      const idLabel = typeof created.id === 'number' ? formatTopicId(created.id) : '';
-      showBanner(`Research Topic ${idLabel} ("${created.title ?? topicName}") created successfully.`);
-      await refetchTopics();
-    } catch (err) {
-      setCreateTopicError(
-        err instanceof Error ? err.message : 'Failed to create the topic.',
-      );
-    } finally {
-      setIsCreatingTopic(false);
-    }
-  };
-
   const refreshAll = async () => {
     await Promise.all([refetchGroups(), refetchTopics(), refetchProjects(), loadMembers()]);
   };
 
-  // Open the edit-topic modal and seed its form with the current row.
-  const handleOpenEditTopic = (topic: ResearchTopic) => {
-    setTopicForEdit(topic);
-    setEditTopicTitle(typeof topic.title === 'string' ? topic.title : '');
-    setEditTopicDesc(typeof topic.description === 'string' ? topic.description : '');
-    setEditTopicMaterialsUrl(
-      typeof topic.materialsUrl === 'string' ? topic.materialsUrl : '',
-    );
-    setEditTopicError(null);
-  };
-
-  const handleCloseEditTopic = () => {
-    if (isEditingTopic) return;
-    setTopicForEdit(null);
-  };
-
-  const handleEditTopicSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topicForEdit || typeof topicForEdit.id !== 'number') {
-      setEditTopicError('Topic has no id; cannot be saved.');
-      return;
-    }
-    const title = editTopicTitle.trim();
-    if (!title) {
-      setEditTopicError('Title is required.');
-      return;
-    }
-    setIsEditingTopic(true);
-    setEditTopicError(null);
-    try {
-      await researchTopicService.update(topicForEdit.id, {
-        title,
-        description: editTopicDesc.trim() || null,
-        materialsUrl: editTopicMaterialsUrl.trim() || null,
-      });
-      setTopicForEdit(null);
-      showBanner(`Research Topic RT-${formatTopicId(topicForEdit.id).slice(3)} ("${title}") updated successfully.`);
-      await refetchTopics();
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Server rejected the topic update.';
-      setEditTopicError(message);
-    } finally {
-      setIsEditingTopic(false);
-    }
-  };
-
-  // L3.a — Open/Close/Mark Completed transitions, all gated by
-  // `canTransitionResearchTopic`.
-  const handleTopicTransition = async (
-    topic: ResearchTopic,
-    to: ResearchTopicStatus,
-  ) => {
-    if (typeof topic.id !== 'number') return;
-    const fromStatus = (topic.status ?? 'OPEN') as ResearchTopicStatus;
-    if (!canTransitionResearchTopic(fromStatus, to)) {
-      showBanner(
-        `Cannot transition this topic from ${fromStatus} to ${to} — not allowed by the workflow contract.`,
-      );
-      return;
-    }
-    setTopicTransition({ id: topic.id, to });
-    try {
-      await researchTopicService.update(topic.id, { status: to });
-      showBanner(
-        `Topic "${topic.title ?? `RT-${topic.id}`}" marked as ${to}.`,
-      );
-      await refetchTopics();
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'The transition was rejected by the server.';
-      showBanner(`Transition failed: ${message}`);
-    } finally {
-      setTopicTransition(null);
-    }
-  };
-
-  // L3.c — opens the per-topic materials manager.
-  const handleOpenMaterials = (topic: ResearchTopic) => {
-    setTopicForMaterials(topic);
-  };
-
-  const handleCloseMaterials = () => {
-    setTopicForMaterials(null);
-  };
-
   return (
-    <div className={styles.researchGroupPage}>
+    <div className={styles.researchGroupPage} data-testid="lecturer-research-groups">
       {/* Breadcrumbs */}
       <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Research Management</span>
+        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
+        <span className={styles.activeBreadcrumb}>Research Groups</span>
       </div>
 
       {/* Page Header */}
       <div className={styles.pageHeader}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Research Groups &amp; Topics Management</h1>
+          <h1 className={styles.pageTitle}>Research Groups</h1>
           <p className={styles.pageSubtitle}>
-            Manage active research groups, assign topics, and track member progress.
+            Manage active research groups and the topics assigned to them.
+            Topics themselves live on the{' '}
+            <Link
+              to={ROUTES.LECTURER_RESEARCH_TOPICS}
+              className={styles.activeBreadcrumb}
+            >
+              Research Topics
+            </Link>{' '}
+            page.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -437,15 +319,21 @@ export const ResearchGroup = () => {
         </div>
       </div>
 
-      {/* SUCCESS TOAST BANNER */}
+      {/* BANNER */}
       {banner.visible && (
         <div className={styles.successToastBanner}>
           <div className={styles.toastLeft}>
             <span className={styles.toastCheckIcon}>
-              <Check size={14} strokeWidth={3} aria-hidden />
+              {banner.variant === 'success' ? (
+                <Check size={14} strokeWidth={3} aria-hidden />
+              ) : (
+                <AlertTriangle size={14} aria-hidden />
+              )}
             </span>
             <div>
-              <span className={styles.toastTitle}>Action Successful</span>
+              <span className={styles.toastTitle}>
+                {banner.variant === 'success' ? 'Action Successful' : 'Action Failed'}
+              </span>
               <p className={styles.toastSub}>{banner.text}</p>
             </div>
           </div>
@@ -453,7 +341,9 @@ export const ResearchGroup = () => {
             <button
               type="button"
               className={styles.toastCloseBtn}
-              onClick={() => setBanner({ visible: false, text: '' })}
+              onClick={() =>
+                setBanner({ visible: false, text: '', variant: 'success' })
+              }
               aria-label="Dismiss"
             >
               <X size={14} aria-hidden />
@@ -486,9 +376,22 @@ export const ResearchGroup = () => {
         <div className={styles.sectionTitleBlock}>
           <Users size={18} className={styles.sectionIcon} aria-hidden />
           <h3 className={styles.sectionTitle}>Active Research Groups</h3>
-          <span className={styles.countBadge}>{groups.length} Groups</span>
+          <span className={styles.countBadge}>
+            {groupSearch.trim()
+              ? `${groupTotalItems} / ${groups.length} Groups`
+              : `${groups.length} Groups`}
+          </span>
         </div>
       </div>
+
+      <TableToolbar
+        search={groupSearch}
+        onSearchChange={setGroupSearch}
+        onRefresh={handleRefreshGroups}
+        isRefreshing={isRefreshingGroups}
+        searchPlaceholder="Search groups by name, description, or assigned topic"
+        refreshLabel="Refresh"
+      />
 
       {/* Groups Grid */}
       <div className={styles.groupsGrid}>
@@ -505,8 +408,16 @@ export const ResearchGroup = () => {
               Click "Create Research Group" to start a new one.
             </p>
           </div>
+        ) : groupTotalItems === 0 ? (
+          <div className={styles.emptyCard}>
+            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
+            <h4 className={styles.emptyTitle}>No matches</h4>
+            <p className={styles.emptyText}>
+              No groups match "{groupSearch.trim()}".
+            </p>
+          </div>
         ) : (
-          sortedGroups.map((grp) => {
+          pagedGroups.map((grp) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
             const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
@@ -531,8 +442,30 @@ export const ResearchGroup = () => {
                 </div>
 
                 <h4 className={styles.groupCardTitle}>{grp.name ?? '(untitled group)'}</h4>
+
+                {/* Assigned-topic summary — read-only link to the canonical
+                    Research Topics page. The CRUD lives on the new page;
+                    this row is the entry point for "what topic is this
+                    group working on?" */}
                 <div className={styles.groupTopicText}>
-                  Topic: {topic ? topic.title ?? `RT-${grp.topicId}` : 'Unassigned'}
+                  <Lightbulb
+                    size={12}
+                    aria-hidden
+                    style={{ marginRight: 4 }}
+                  />
+                  Topic:{' '}
+                  {topic ? (
+                    <Link
+                      to={ROUTES.LECTURER_RESEARCH_TOPICS}
+                      className={styles.activeBreadcrumb}
+                      data-testid="assigned-topic-link"
+                    >
+                      {topic.title ?? `RT-${grp.topicId}`}
+                      <ArrowRight size={10} aria-hidden style={{ marginLeft: 2 }} />
+                    </Link>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>Unassigned</span>
+                  )}
                 </div>
                 <p className={styles.groupDescText}>
                   {grp.description?.trim() ||
@@ -583,15 +516,6 @@ export const ResearchGroup = () => {
                     <button
                       type="button"
                       className={styles.actionIconBtn}
-                      title="Edit group (coming soon)"
-                      aria-label="Edit group"
-                      disabled
-                    >
-                      <Pencil size={14} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.actionIconBtn}
                       title="Delete group"
                       aria-label="Delete group"
                       onClick={() => handleDeleteGroup(gid, grp.name ?? idLabel)}
@@ -638,239 +562,19 @@ export const ResearchGroup = () => {
         </div>
       </div>
 
-      {/* SECTION 2: Research Topics Library */}
-      <div className={styles.sectionHeaderRow} style={{ marginTop: '24px' }}>
-        <div className={styles.sectionTitleBlock}>
-          <BookOpen size={18} className={styles.sectionIcon} aria-hidden />
-          <h3 className={styles.sectionTitle}>Research Topics Library</h3>
-          <span className={styles.countBadge}>
-            {topicSearch.trim() ? `${topicTotalItems} / ${topics.length} Topics` : `${topics.length} Topics`}
-          </span>
-        </div>
-        <button
-          type="button"
-          className={styles.createTopicOutlineBtn}
-          onClick={() => setShowCreateTopicModal(true)}
-        >
-          <Plus size={14} aria-hidden />
-          Create Research Topic
-        </button>
-      </div>
-
-      {/* Topics Table Card */}
-      <TableToolbar
-        search={topicSearch}
-        onSearchChange={setTopicSearch}
-        onRefresh={handleRefreshTopics}
-        isRefreshing={isRefreshingTopics}
-        searchPlaceholder="Search topics by title, description, or status"
-        refreshLabel="Refresh"
-      />
-      <div className={styles.tableCard}>
-        {topicsError ? (
-          <div className={styles.tableEmpty} role="alert" data-testid="topics-error">
-            <AlertTriangle size={16} aria-hidden /> {topicsError.message}
-          </div>
-        ) : isLoadingTopics ? (
-          <div className={styles.tableEmpty} role="status" data-testid="topics-loading">
-            <Loader size={16} className={styles.spinningIcon} aria-hidden />
-            Loading topics…
-          </div>
-        ) : topics.length === 0 ? (
-          <div className={styles.tableEmpty} data-testid="topics-empty">
-            No topics yet. Click "Create Research Topic" to add one.
-          </div>
-        ) : topicTotalItems === 0 ? (
-          <div className={styles.tableEmpty} data-testid="topics-empty-search">
-            No topics match "{topicSearch.trim()}".
-          </div>
-        ) : (
-          <>
-            <div className={styles.tableResponsive}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>TOPIC ID &amp; NAME</th>
-                    <th>DESCRIPTION</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedTopics.map((topic) => {
-                  const tid = typeof topic.id === 'number' ? topic.id : -1;
-                  const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
-                  const topicStatus =
-                    (topic.status ?? 'OPEN') as ResearchTopicStatus;
-                  const canOpen = canTransitionResearchTopic(
-                    topicStatus,
-                    'OPEN',
-                  );
-                  const canClose = canTransitionResearchTopic(
-                    topicStatus,
-                    'CLOSED',
-                  );
-                  const canComplete = canTransitionResearchTopic(
-                    topicStatus,
-                    'COMPLETED',
-                  );
-                  const inflight =
-                    topicTransition && topicTransition.id === tid
-                      ? topicTransition.to
-                      : null;
-                  return (
-                    <tr key={tid}>
-                      <td>
-                        <span className={styles.topicIdBadge}>{idLabel}</span>
-                        <span className={styles.topicNameText}>
-                          {topic.title ?? '(untitled topic)'}
-                        </span>
-                      </td>
-                      <td className={styles.topicDescText}>
-                        {topic.description?.trim() || '—'}
-                      </td>
-                      <td>
-                        <StatusBadge status={topicStatus} />
-                      </td>
-                      <td>
-                        <div className={styles.topicActionStack}>
-                          <button
-                            type="button"
-                            className={styles.assignGroupBtn}
-                            onClick={() => handleOpenAssignModal(topic)}
-                            disabled={!topic.id}
-                            title={
-                              !topic.id
-                                ? 'Topic has no id; cannot be assigned.'
-                                : undefined
-                            }
-                          >
-                            <Settings size={14} aria-hidden />
-                            Assign to Group
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.editTopicBtn}
-                            onClick={() => handleOpenEditTopic(topic)}
-                            disabled={!topic.id}
-                            title="Edit title / description / materials URL"
-                          >
-                            <Pencil size={14} aria-hidden />
-                            Edit
-                          </button>
-                          {topicStatus === 'OPEN' ? (
-                            <button
-                              type="button"
-                              className={styles.closeTopicBtn}
-                              onClick={() =>
-                                void handleTopicTransition(topic, 'CLOSED')
-                              }
-                              disabled={
-                                !topic.id || !canClose || inflight !== null
-                              }
-                              title={
-                                canClose
-                                  ? 'Close this topic — students will no longer be able to join.'
-                                  : 'Closing is not allowed in the current status.'
-                              }
-                            >
-                              {inflight === 'CLOSED' ? (
-                                <Loader
-                                  size={14}
-                                  className={styles.spinningIcon}
-                                  aria-hidden
-                                />
-                              ) : (
-                                <ToggleRight size={14} aria-hidden />
-                              )}
-                              Close
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className={styles.openTopicBtn}
-                              onClick={() =>
-                                void handleTopicTransition(topic, 'OPEN')
-                              }
-                              disabled={
-                                !topic.id || !canOpen || inflight !== null
-                              }
-                              title={
-                                canOpen
-                                  ? 'Re-open this topic.'
-                                  : 'Re-opening is not allowed in the current status.'
-                              }
-                            >
-                              {inflight === 'OPEN' ? (
-                                <Loader
-                                  size={14}
-                                  className={styles.spinningIcon}
-                                  aria-hidden
-                                />
-                              ) : (
-                                <ToggleLeft size={14} aria-hidden />
-                              )}
-                              Reopen
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className={styles.completeTopicBtn}
-                            onClick={() =>
-                              void handleTopicTransition(topic, 'COMPLETED')
-                            }
-                            disabled={
-                              !topic.id || !canComplete || inflight !== null
-                            }
-                            title={
-                              canComplete
-                                ? 'Mark this topic as completed — archival step.'
-                                : 'Topic must be in ASSIGNED status to be marked as completed.'
-                            }
-                          >
-                            {inflight === 'COMPLETED' ? (
-                              <Loader
-                                size={14}
-                                className={styles.spinningIcon}
-                                aria-hidden
-                              />
-                            ) : (
-                              <CheckCircle2 size={14} aria-hidden />
-                            )}
-                            Mark Completed
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.materialsTopicBtn}
-                            onClick={() => handleOpenMaterials(topic)}
-                            disabled={!topic.id}
-                            title="Manage the learning materials scoped to this topic"
-                          >
-                            <Library size={14} aria-hidden />
-                            Manage Materials
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-            <TablePagination
-              page={topicPage}
-              totalPages={topicTotalPages}
-              totalItems={topicTotalItems}
-              startIndex={topicStartIndex}
-              endIndex={topicEndIndex}
-              onPrev={prevTopicPage}
-              onNext={nextTopicPage}
-              onPage={setTopicPage}
-              itemLabel="topics"
-            />
-          </>
-        )}
-      </div>
+      {groupTotalPages > 1 && (
+        <TablePagination
+          page={groupPage}
+          totalPages={groupTotalPages}
+          totalItems={groupTotalItems}
+          startIndex={groupStartIndex}
+          endIndex={groupEndIndex}
+          onPrev={prevGroupPage}
+          onNext={nextGroupPage}
+          onPage={setGroupPage}
+          itemLabel="groups"
+        />
+      )}
 
       {/* CREATE GROUP MODAL */}
       {showCreateGroupModal && (
@@ -903,46 +607,58 @@ export const ResearchGroup = () => {
                 <label className={styles.formLabel} htmlFor="groupName">
                   * Research Group Name
                 </label>
-                <input
-                  id="groupName"
-                  type="text"
-                  className={styles.formInput}
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="AI Speech-to-Text Research Team"
-                  required
-                />
-              </div>
+<input
+              id="groupName"
+              type="text"
+              className={`${styles.formInput} ${groupNameError ? styles.formInputError : ''}`}
+              value={groupName}
+              onChange={(e) => {
+                setGroupName(e.target.value);
+                if (groupNameError) setGroupNameError(null);
+              }}
+              placeholder="AI Speech-to-Text Research Team"
+              aria-invalid={Boolean(groupNameError)}
+              aria-describedby={groupNameError ? 'group-name-error' : undefined}
+              required
+            />
+            <FieldError id="group-name-error" message={groupNameError} testId="rg-group-name-error" />
+          </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="groupDesc">
-                  Description
-                </label>
-                <textarea
-                  id="groupDesc"
-                  className={styles.formTextarea}
-                  value={groupDesc}
-                  onChange={(e) => setGroupDesc(e.target.value)}
-                  placeholder="Investigating Whisper AI model accuracy across regional dialects."
-                  rows={3}
-                />
-              </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor="groupDesc">
+              Description
+            </label>
+            <textarea
+              id="groupDesc"
+              className={styles.formTextarea}
+              value={groupDesc}
+              onChange={(e) => setGroupDesc(e.target.value)}
+              placeholder="Investigating Whisper AI model accuracy across regional dialects."
+              rows={3}
+            />
+          </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="groupDeadline">
-                  Deadline (optional)
-                </label>
-                <input
-                  id="groupDeadline"
-                  type="date"
-                  className={styles.formInput}
-                  value={groupDeadline}
-                  onChange={(e) => setGroupDeadline(e.target.value)}
-                />
-                <span className={styles.helperText}>
-                  ISO timestamp is sent to the BE. Leave blank if not yet decided.
-                </span>
-              </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor="groupDeadline">
+              Deadline (optional)
+            </label>
+            <input
+              id="groupDeadline"
+              type="date"
+              className={`${styles.formInput} ${groupDeadlineError ? styles.formInputError : ''}`}
+              value={groupDeadline}
+              onChange={(e) => {
+                setGroupDeadline(e.target.value);
+                if (groupDeadlineError) setGroupDeadlineError(null);
+              }}
+              aria-invalid={Boolean(groupDeadlineError)}
+              aria-describedby={groupDeadlineError ? 'group-deadline-error' : 'group-deadline-helper'}
+            />
+            <span className={styles.helperText} id="group-deadline-helper">
+              ISO timestamp is sent to the BE. Leave blank if not yet decided.
+            </span>
+            <FieldError id="group-deadline-error" message={groupDeadlineError} testId="rg-group-deadline-error" />
+          </div>
 
               {createGroupError && (
                 <div className={styles.errorBanner} role="alert">
@@ -978,255 +694,9 @@ export const ResearchGroup = () => {
         </div>
       )}
 
-      {/* CREATE TOPIC MODAL */}
-      {showCreateTopicModal && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modalCard}>
-            <div className={styles.modalHeaderRow}>
-              <div className={styles.modalTitleBlock}>
-                <span
-                  className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
-                >
-                  <Lightbulb size={18} aria-hidden />
-                </span>
-                <div>
-                  <h3 className={styles.modalTitle}>Create New Research Topic</h3>
-                  <span className={styles.modalSubtitle}>
-                    Define a topic to be assigned to research groups
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                onClick={() => setShowCreateTopicModal(false)}
-                aria-label="Close"
-              >
-                <X size={18} aria-hidden />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTopicSubmit} className={styles.modalForm}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="topicName">
-                  * Topic Name
-                </label>
-                <input
-                  id="topicName"
-                  type="text"
-                  className={styles.formInput}
-                  value={topicName}
-                  onChange={(e) => setTopicName(e.target.value)}
-                  placeholder="High-Concurrency Load Balancing in Microservices"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="topicDesc">
-                  Description
-                </label>
-                <textarea
-                  id="topicDesc"
-                  className={styles.formTextarea}
-                  value={topicDesc}
-                  onChange={(e) => setTopicDesc(e.target.value)}
-                  placeholder="Architectural strategies for decoupling routing logic from orchestration layers."
-                  rows={3}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="topicMaterialsUrl">
-                  Reference Materials URL
-                </label>
-                <div className={styles.materialsBox}>
-                  <input
-                    id="topicMaterialsUrl"
-                    type="url"
-                    className={styles.materialsInput}
-                    value={topicMaterialsUrl}
-                    onChange={(e) => setTopicMaterialsUrl(e.target.value)}
-                    placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
-                  />
-                  <div className={styles.materialsHint}>
-                    <FileText size={12} aria-hidden style={{ marginRight: 4 }} />
-                    Paste a single Firebase Storage URL. Multiple-file uploads land
-                    in a future sprint — for now, link to a single canonical PDF.
-                  </div>
-                </div>
-              </div>
-
-              {createTopicError && (
-                <div className={styles.errorBanner} role="alert">
-                  <AlertTriangle size={14} aria-hidden />
-                  <span>{createTopicError}</span>
-                </div>
-              )}
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={() => setShowCreateTopicModal(false)}
-                  disabled={isCreatingTopic}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.submitNavyBtn}
-                  disabled={isCreatingTopic}
-                >
-                  {isCreatingTopic ? (
-                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
-                  ) : (
-                    <Check size={14} aria-hidden />
-                  )}
-                  {isCreatingTopic ? 'Creating…' : 'Create Research Topic'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGN TOPIC MODAL */}
-      <AssignTopicModal
-        isOpen={showAssignModal}
-        topic={topicForAssign}
-        groups={groups}
-        onClose={() => setShowAssignModal(false)}
-        onSuccess={(outcomes) => {
-          const ok = outcomes.filter((o) => o.ok).length;
-          showBanner(`Topic assigned to ${ok} group(s).`);
-          void refreshAll();
-        }}
-      />
-
-      {/* EDIT TOPIC MODAL (L3.a) — reuses the same shell as Create Topic */}
-      {topicForEdit && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modalCard}>
-            <div className={styles.modalHeaderRow}>
-              <div className={styles.modalTitleBlock}>
-                <span
-                  className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
-                >
-                  <Lightbulb size={18} aria-hidden />
-                </span>
-                <div>
-                  <h3 className={styles.modalTitle}>Edit Research Topic</h3>
-                  <span className={styles.modalSubtitle}>
-                    Topic #{topicForEdit.id ?? '—'} — title, description and reference URL
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                onClick={handleCloseEditTopic}
-                aria-label="Close edit topic modal"
-                disabled={isEditingTopic}
-              >
-                <X size={18} aria-hidden />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditTopicSubmit} className={styles.modalForm}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="editTopicTitle">
-                  * Topic Name
-                </label>
-                <input
-                  id="editTopicTitle"
-                  type="text"
-                  className={styles.formInput}
-                  value={editTopicTitle}
-                  onChange={(e) => setEditTopicTitle(e.target.value)}
-                  placeholder="Topic title"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="editTopicDesc">
-                  Description
-                </label>
-                <textarea
-                  id="editTopicDesc"
-                  className={styles.formTextarea}
-                  value={editTopicDesc}
-                  onChange={(e) => setEditTopicDesc(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="editTopicMaterialsUrl">
-                  Reference Materials URL
-                </label>
-                <div className={styles.materialsBox}>
-                  <input
-                    id="editTopicMaterialsUrl"
-                    type="url"
-                    className={styles.materialsInput}
-                    value={editTopicMaterialsUrl}
-                    onChange={(e) =>
-                      setEditTopicMaterialsUrl(e.target.value)
-                    }
-                    placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
-                  />
-                </div>
-              </div>
-
-              {editTopicError && (
-                <div className={styles.errorBanner} role="alert">
-                  <AlertTriangle size={14} aria-hidden />
-                  <span>{editTopicError}</span>
-                </div>
-              )}
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={handleCloseEditTopic}
-                  disabled={isEditingTopic}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.submitNavyBtn}
-                  disabled={isEditingTopic}
-                >
-                  {isEditingTopic ? (
-                    <Loader
-                      size={14}
-                      className={styles.spinningIcon}
-                      aria-hidden
-                    />
-                  ) : (
-                    <Check size={14} aria-hidden />
-                  )}
-                  {isEditingTopic ? 'Saving…' : 'Save Topic'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MANAGE TOPIC MATERIALS MODAL (L3.c) */}
-      <LearningMaterialModal
-        isOpen={topicForMaterials !== null}
-        topic={topicForMaterials}
-        onClose={handleCloseMaterials}
-        onSuccess={() => void refetchTopics()}
-      />
+      {/* Assign-topic modal removed — assignment is no longer triggered
+          from the Research Groups page. See the module-level comment for
+          the canonical CRUD location. */}
     </div>
   );
 };

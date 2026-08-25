@@ -1,8 +1,10 @@
 import api from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
+import type {
+  GroupMemberCreateRequest,
+  GroupMemberUpdateRequest,
+} from '../types/researchWorkflowDtos';
 
-// TODO(lead): the canonical endpoint constants live in `src/utils/constants.ts`
-// under `API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.*` per the contract.
-//
 // SHARED SERVICE — both Agent-1 (Lecturer) and Agent-2 (GradStudent) read
 // from this file. To avoid coupling the two views, this file ONLY exposes
 // the raw CRUD plus a defensive client-side filter helper for the
@@ -12,24 +14,20 @@ import api from './axios';
 // formatting) here — those belong in `src/components/lecturer/`. The Grad
 // student side has its own `gradstudent/` folder with a parallel helper if
 // the two diverge.
+
 const GROUP_MEMBER_ENDPOINTS = {
-  GET_ALL: '/api/GroupMember',
-  GET_BY_ID: (id: number) => `/api/GroupMember/${id}`,
-  CREATE: '/api/GroupMember',
-  UPDATE: (id: number) => `/api/GroupMember/${id}`,
-  DELETE: (id: number) => `/api/GroupMember/${id}`,
+  GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_ALL,
+  GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_BY_ID,
+  CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.CREATE,
+  UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE,
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE(id),
 } as const;
 
+// BE response shape — every property is optional/nullable per the Swagger
+// GroupMember schema.
 export interface GroupMember {
   id?: number;
   groupMemberId?: number;
-  researchGroupId?: number | null;
-  studentId?: number | null;
-  activityStatus?: string | null;
-  joinedAt?: string | null;
-}
-
-export interface GroupMemberCreateRequest {
   researchGroupId?: number | null;
   studentId?: number | null;
   activityStatus?: string | null;
@@ -71,7 +69,7 @@ export const groupMemberService = {
 
   update: async (
     id: number,
-    payload: Partial<GroupMemberCreateRequest>,
+    payload: GroupMemberUpdateRequest,
   ): Promise<GroupMember> => {
     const response = await api.put<GroupMember>(
       GROUP_MEMBER_ENDPOINTS.UPDATE(id),

@@ -963,6 +963,14 @@
   outline-offset: 2px;
 }
 
+.formInput.formInputError,
+.formSelect.formInputError,
+.formTextarea.formInputError,
+.amountInput.formInputError {
+  border-color: var(--ars-error, #b91c1c);
+  background-color: var(--ars-error-bg, #fee2e2);
+}
+
 .amountInputWrapper {
   display: flex;
   align-items: center;

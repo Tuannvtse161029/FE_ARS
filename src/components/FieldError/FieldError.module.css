@@ -1,0 +1,15 @@
+.error {
+  margin: 4px 0 0;
+  color: var(--ars-error, #b91c1c);
+  font-size: var(--font-size-xs, 12px);
+  line-height: 1.35;
+  font-weight: var(--font-weight-medium, 500);
+  display: block;
+}
+
+.error::before {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+}

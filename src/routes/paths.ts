@@ -24,12 +24,28 @@ export const ROUTES = {
   LECTURER_EVALUATE_REPORTS: '/lecturer/evaluate-reports',
   LECTURER_GROUP_DETAIL: '/lecturer/groups/:groupId',
   LECTURER_GUIDANCE_PROJECTS: '/lecturer/guidance-projects',
+  // Agent lecturer-navigation — top-level Lecturer surface for the Research
+  // Topics CRUD (previously a nested section inside Research Groups).
+  // Shared edit: only an additive constant was appended. See
+  // docs/BACKEND_REQUESTS.md under "Coordination — Agent Lecturer Navigation".
+  LECTURER_RESEARCH_TOPICS: '/lecturer/research-topics',
+  // Agent lecturer-navigation — top-level Lecturer surface for Learning
+  // Materials. Previously the CRUD lived only inside the per-topic modal.
+  // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
+  LECTURER_LEARNING_MATERIALS: '/lecturer/learning-materials',
   ADMIN: '/admin',
   ADMIN_ROLE_REQUESTS: '/admin/role-requests',
   ADMIN_ACCOUNTS: '/admin/accounts',
   ADMIN_TRANSACTIONS: '/admin/transactions',
   ADMIN_REPORTS: '/admin/reports',
   ADMIN_PACKAGES: '/admin/packages',
+  // Agent admin-annual-fees — Admin Annual Fees tab. Mounted at
+  // /admin/annual-fees and exposed only when the Admin user is signed
+  // in; other roles cannot reach this route. Backend request:
+  // docs/BACKEND_REQUESTS.md → BTR-AF-01 (BE has not shipped the
+  // annual-fee CRUD endpoint yet — the page renders against
+  // src/data/annualFees.demo.ts).
+  ADMIN_ANNUAL_FEES: '/admin/annual-fees',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   PAYMENT_RETURN: '/payment/return',
   PREMIUM_PACKAGES: '/premium-packages',
@@ -47,6 +63,12 @@ export const ROUTES = {
   // workspace / onboarding / rejection route — it does NOT keep the
   // `code` in the address bar or in sessionStorage after rendering.
   GOOGLE_OAUTH_CALLBACK: '/auth/google/callback',
+  // Agent email-verification — public deep-link landing for the
+  // registration email. The BE redirects the user here with `?token=...`
+  // after they click the verification link. The page forwards the token
+  // exactly once to `POST /api/Auth/verify-email?token=...` and renders
+  // one of three outcomes (verified / expired / malformed).
+  VERIFY_EMAIL: '/verify-email',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

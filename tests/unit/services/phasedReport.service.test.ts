@@ -78,9 +78,14 @@ describe('phasedReportService', () => {
         finalOutcomeEvaluation: 'Solid work',
       });
       expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5', {
-        status: 'EVALUATED',
-        lectureFeedback: 9,
+        researchGroupId: null,
+        groupMemberId: null,
+        reportFileUrl: null,
+        capacityEvaluation: null,
         finalOutcomeEvaluation: 'Solid work',
+        lectureFeedback: 9,
+        submittedAt: null,
+        status: 'EVALUATED',
       });
       expect(result.status).toBe('EVALUATED');
     });
@@ -91,9 +96,14 @@ describe('phasedReportService', () => {
       });
       await evaluatePhasedReport(5, { finalOutcomeEvaluation: 'OK' });
       expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5', {
-        status: 'EVALUATED',
-        lectureFeedback: null,
+        researchGroupId: null,
+        groupMemberId: null,
+        reportFileUrl: null,
+        capacityEvaluation: null,
         finalOutcomeEvaluation: 'OK',
+        lectureFeedback: null,
+        submittedAt: null,
+        status: 'EVALUATED',
       });
     });
   });

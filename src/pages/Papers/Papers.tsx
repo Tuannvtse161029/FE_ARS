@@ -12,10 +12,16 @@ import { usePaperReviewLocks } from '../../hooks/usePaperReviewLocks';
 import { useCompletedReviewRequestForPaper } from '../../hooks/useCompletedReviewRequestForPaper';
 import { useAuthenticatedResearcher } from '../../hooks/useAuthenticatedResearcher';
 import { PaperLockBadge } from '../../components/researcher/PaperLockBadge';
+import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import {
+  MAX_FILE_SIZE_BYTES,
+  ACCEPT_FILE_MIME,
+  validatePdfFile,
+} from '../../utils/validationRules';
 import {
   CheckCircle2,
   AlertCircle,
@@ -202,8 +208,9 @@ export const Papers = () => {
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [titleError, setTitleError] = useState(false);
-  const [abstractError, setAbstractError] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [abstractError, setAbstractError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Word count for abstract
@@ -223,7 +230,25 @@ export const Papers = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.name.endsWith('.pdf')) {
+    if (file) {
+      const fileResult = validatePdfFile(file);
+      if (!fileResult.ok) {
+        setFileError(fileResult.message ?? 'Invalid PDF file.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      setFileError(null);
+      // MIME sniffing is more reliable than the file extension, so check both.
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== ACCEPT_FILE_MIME) {
+        setFileError('Only PDF files are accepted.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setFileError('File exceeds the 10 MB limit.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
       setSelectedFile(file);
       setSelectedMajorId(null);
       setSelectedSubfieldId(null);
@@ -235,10 +260,12 @@ export const Papers = () => {
   };
 
   const handleUploadPaper = () => {
-    if (!paperTitle.trim()) {
-      setTitleError(true);
+    const trimmedTitle = paperTitle.trim();
+    if (!trimmedTitle) {
+      setTitleError('Title is required.');
       return;
     }
+    setTitleError(null);
     if (!selectedSubfieldId) return; // Subfield is required
     setUploadPhase('confirm');
   };
@@ -249,16 +276,26 @@ export const Papers = () => {
     let hasError = false;
 
     if (!trimmedTitle) {
-      setTitleError(true);
+      setTitleError('Title is required.');
       hasError = true;
+    } else {
+      setTitleError(null);
     }
     if (!trimmedAbstract) {
-      setAbstractError(true);
+      setAbstractError('Abstract is required.');
       hasError = true;
+    } else {
+      setAbstractError(null);
     }
     if (hasError) return;
 
     if (!selectedFile || !selectedSubfieldId || !storage) return;
+    const fileResult = validatePdfFile(selectedFile);
+    if (!fileResult.ok) {
+      setFileError(fileResult.message);
+      setUploadPhase('preview');
+      return;
+    }
     setIsUploading(true);
 
     const storageRef = ref(storage, `papers/${Date.now()}_${selectedFile.name}`);
@@ -325,7 +362,9 @@ export const Papers = () => {
     setSelectedSubfieldId(null);
     setPaperTitle('');
     setPaperAbstract('');
-    setTitleError(false);
+    setTitleError(null);
+    setAbstractError(null);
+    setFileError(null);
     setUploadPhase('idle');
   };
 
@@ -393,7 +432,7 @@ export const Papers = () => {
   };
 
   const handleCancelPopup = () => {
-    setTitleError(false);
+    setTitleError(null);
     setUploadPhase('preview');
   };
 
@@ -720,6 +759,7 @@ export const Papers = () => {
             Browse Files
           </button>
         </div>
+        <FieldError id="papers-file-error" message={fileError} testId="papers-file-error" />
       </div>
 
       {/* Scorecard Modal — shows live evaluation data when a completed review request
@@ -785,18 +825,19 @@ export const Papers = () => {
                     </label>
                     <input
                       type="text"
+                      id="paper-title"
                       className={`${styles.paperMetaInput} ${titleError ? styles.paperMetaInputError : ''}`}
                       placeholder="e.g., A Modular Backend Network Protocol..."
                       value={paperTitle}
                       onChange={(e) => {
                         setPaperTitle(e.target.value);
-                        if (e.target.value.trim()) setTitleError(false);
-                        setAbstractError(false);
+                        if (e.target.value.trim()) setTitleError(null);
+                        setAbstractError(null);
                       }}
+                      aria-invalid={Boolean(titleError)}
+                      aria-describedby={titleError ? 'paper-title-error' : undefined}
                     />
-                    {titleError && (
-                      <span className={styles.paperMetaError}>Title is required.</span>
-                    )}
+                    <FieldError id="paper-title-error" message={titleError} testId="papers-title-error" />
                   </div>
 
                   {/* Abstract textarea (optional, word-limited) */}
@@ -813,13 +854,13 @@ export const Papers = () => {
                         if (words <= MAX_ABSTRACT_WORDS) {
                           setPaperAbstract(e.target.value);
                         }
-                        setAbstractError(false);
+                        setAbstractError(null);
                       }}
                       rows={4}
+                      aria-invalid={Boolean(abstractError)}
+                      aria-describedby={abstractError ? 'paper-abstract-error' : undefined}
                     />
-                    {abstractError && (
-                      <span className={styles.paperMetaError}>Abstract is required.</span>
-                    )}
+                    <FieldError id="paper-abstract-error" message={abstractError} testId="papers-abstract-error" />
                     <span className={`${styles.wordCount} ${abstractWordCount > MAX_ABSTRACT_WORDS ? styles.wordCountError : ''}`}>
                       {abstractWordCount} / {MAX_ABSTRACT_WORDS} words
                     </span>

@@ -102,73 +102,45 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
   return null;
 };
 /**
- * Sidebar nav regression: every non-Admin role exposes a real
- * `/premium-packages` link (singular label), Admin does NOT expose that
- * link, and Admin still owns the legacy `/admin/packages` route.
+ * Sidebar nav regression: every non-Admin role hides the
+ * `/premium-packages` link while the central `premiumPackagesEnabled`
+ * feature flag is `false` (Agent admin-annual-fees — the BE-side
+ * annual-fee CRUD endpoint is being finalized, so the surface is
+ * temporarily unavailable to non-Admin roles). Admin does NOT expose
+ * that link and still owns the legacy `/admin/packages` route plus the
+ * new `/admin/annual-fees` tab.
  *
- * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
- * aren't duplicated from the other MainLayout tests.
+ * When the flag is restored to `true`, the link reappears for every
+ * non-Admin role; the positive-path coverage is preserved by the
+ * sibling tests/unit/layouts/MainLayout.premiumRoute.test.tsx file.
+ *
+ * Uses the shared `renderMainLayout` test harness so hook mocks and
+ * helpers aren't duplicated from the other MainLayout tests.
  */
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 import { MainLayout } from '../../../src/layouts/MainLayout';
-const renderMainLayoutWithSentinel = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <MainLayout />
-      <Routes>
-        <Route
-          path={ROUTES.PREMIUM_PACKAGES}
-          element={<div data-testid="premium-page-reached" />}
-        />
-      </Routes>
-    </MemoryRouter>,
-  );
+import { ROUTES } from '../../../src/routes/paths';
 
-describe('MainLayout — Premium Package sidebar item', () => {
-  it.each([
-    'Researcher',
-    'Reviewer',
-    'Lecturer',
-    'Graduate Student',
-  ])('%s sidebar contains a real-path /premium-packages link', (role) => {
-    setMockAuth({ role });
-    renderMainLayout('/premium-packages');
-
-    const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
-    expect(link).not.toBeNull();
-    expect(link).toBeInstanceOf(HTMLAnchorElement);
-    expect(link?.getAttribute('href')).toBe('/premium-packages');
-    // The legacy plural "Premium Packages" placeholder must not survive.
-    expect(link?.textContent ?? '').toMatch(/Premium Package/);
-    expect(link?.textContent ?? '').not.toMatch(/Premium Packages/);
-  });
-
+describe('MainLayout — Premium Package sidebar gating (Agent admin-annual-fees)', () => {
   it.each([
     'Researcher',
     'Reviewer',
     'Lecturer',
     'Graduate Student',
   ])(
-    '%s sidebar does NOT expose a #premium-packages hash placeholder',
+    '%s sidebar hides the /premium-packages link while premiumPackagesEnabled is false',
     (role) => {
       setMockAuth({ role });
       renderMainLayout('/forum');
 
-      const hashLink = document.querySelector(
-        'aside a[href="#premium-packages"]',
-      );
-      expect(hashLink).toBeNull();
+      const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
+      expect(link).toBeNull();
 
-      // The hash placeholder must also not leak as a disabled nav row.
       const sidebar = document.querySelector('aside');
-      expect(sidebar?.textContent ?? '').not.toMatch(/#premium-packages/);
-      // The real-path link is in the sidebar though.
-      const realLink = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
-      expect(realLink).not.toBeNull();
+      expect(sidebar?.textContent ?? '').not.toMatch(/Premium Package/i);
     },
   );
 
@@ -176,43 +148,24 @@ describe('MainLayout — Premium Package sidebar item', () => {
     setMockAuth({ role: 'Admin', roleId: 2 });
     renderMainLayout(ROUTES.ADMIN_PACKAGES);
 
-    // Admin legacy packages link still present.
     const adminLink = findSidebarLinkByHref(ROUTES.ADMIN_PACKAGES);
     expect(adminLink).not.toBeNull();
     expect(adminLink?.textContent ?? '').toMatch(/Packages/i);
 
-    // The new user-facing route must NOT appear in Admin's sidebar.
     const userLink = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
     expect(userLink).toBeNull();
   });
 
-  it('clicking the sidebar link navigates to /premium-packages and applies the active class', async () => {
-    const user = userEvent.setup();
-    setMockAuth({ role: 'Researcher' });
-    renderMainLayoutWithSentinel('/forum');
+  it('Guest sidebar hides the /premium-packages link', () => {
+    setMockAuth({
+      role: 'Researcher',
+      isActive: false,
+      verificationStatus: 'Pending',
+    });
+    renderMainLayout('/forum');
 
     const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
-    expect(link).not.toBeNull();
-    if (!link) return;
-
-    await user.click(link);
-
-    // The MemoryRouter advanced: the sentinel route is now mounted.
-    expect(screen.getByTestId('premium-page-reached')).toBeInTheDocument();
-    // The active class should be applied to the same link.
-    const activeLink = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
-    expect(activeLink?.className ?? '').toMatch(/navItemActive/);
-  });
-
-  it('renders an accessible label "Premium Package" on the sidebar link', () => {
-    setMockAuth({ role: 'Graduate Student' });
-    renderMainLayout(ROUTES.FORUM);
-
-    const link = findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES);
-    expect(link).not.toBeNull();
-    // The link's accessible name comes from its visible text.
-    const labelEl = within(link as HTMLElement).getByText(/Premium Package/i);
-    expect(labelEl).toBeInTheDocument();
+    expect(link).toBeNull();
   });
 });
 
