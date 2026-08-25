@@ -16,6 +16,7 @@ import type {
   VerificationStatus,
   AccountTier,
   EffectiveRole,
+  User,
 } from '../types/auth';
 
 /**
@@ -517,11 +518,11 @@ export const authService = {
       accountTier: authResponse.accountTier ?? 'Free',
       effectiveRole:
         authResponse.effectiveRole ??
-        (authResponse.verificationStatus === 'Pending'
-          ? 'Guest'
+        (authResponse.isNewUser || authResponse.requiresOnboarding
+          ? undefined
           : authResponse.isActive && authResponse.role
             ? (authResponse.role as EffectiveRole)
-            : undefined),
+            : 'Guest'),
       isNewUser: authResponse.isNewUser,
       requiresOnboarding: authResponse.requiresOnboarding,
     };

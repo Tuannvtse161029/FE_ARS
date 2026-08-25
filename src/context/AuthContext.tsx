@@ -292,14 +292,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // MainLayout can render the unverified-state UI without re-deriving
           // from `isActive`. Falls back to the derived value when the BE
           // doesn't surface the field (lockout-safe).
-          effectiveRole: resolveEffectiveRole(freshUser, response, roleToUse),
+          effectiveRole: resolveEffectiveRole(freshUser, response, roleToUse) ?? undefined,
           // Agent 30 — mirror the BE's approved-roles list on the auth
           // store so `PublicRoute` can enforce the exact approved-role
           // condition at runtime (see `utils/postAuthRoute.ts`).
           roles: persistedRoles,
         },
         response.token,
-        resolveEffectiveRole(freshUser, response, roleToUse)
+        resolveEffectiveRole(freshUser, response, roleToUse) ?? undefined
       );
 
       // Flip the welcome-back signal ONLY after the auth store has the new
