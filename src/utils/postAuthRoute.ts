@@ -46,7 +46,9 @@ const isKnownRoleString = (value: string | null | undefined): value is UserRole 
 };
 
 const hasNonEmptyRole = (role: unknown): boolean =>
-  typeof role === 'string' && role.trim().length > 0;
+  typeof role === 'string' &&
+  role.trim().length > 0 &&
+  role.trim().toLowerCase() !== 'guest';
 
 const hasPositiveRoleId = (roleId: unknown): boolean =>
   typeof roleId === 'number' && Number.isFinite(roleId) && roleId > 0;
@@ -60,21 +62,22 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
     return false;
   }
 
-  // ── 1. Exact spec branch ─────────────────────────────────────────────
+  // ── 1. Explicit spec branch ─────────────────────────────────────────────
   if (
-    snapshot.isNewUser === true &&
-    snapshot.requiresOnboarding === true &&
-    snapshot.effectiveRole == null &&
+    (snapshot.isNewUser === true || snapshot.requiresOnboarding === true) &&
     isApprovedRoleListEmpty(snapshot.approvedRoles)
   ) {
     return true;
   }
 
-  // ── 2. Compatibility fallback (unassigned role without existing Guest approval) ───────
+  // ── 2. Compatibility fallback (unassigned business role & unverified) ───
   if (
     !hasNonEmptyRole(snapshot.role) &&
     !hasPositiveRoleId(snapshot.roleId) &&
-    snapshot.effectiveRole !== 'Guest'
+    (snapshot.verificationStatus === null ||
+      snapshot.verificationStatus === undefined ||
+      snapshot.isNewUser === true ||
+      snapshot.requiresOnboarding === true)
   ) {
     return true;
   }
@@ -83,13 +86,15 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
 }
 
 /**
- * True when the approved-role list is empty / missing.
+ * True when the approved-role list is empty / missing / contains only Guest.
  */
 function isApprovedRoleListEmpty(
   approvedRoles: ReadonlyArray<string | null | undefined> | null | undefined,
 ): boolean {
   if (!approvedRoles || approvedRoles.length === 0) return true;
-  return approvedRoles.every((r) => !r || !r.trim());
+  return approvedRoles.every(
+    (r) => !r || !r.trim() || r.trim().toLowerCase() === 'guest',
+  );
 }
 
 /**
