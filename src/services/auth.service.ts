@@ -556,6 +556,10 @@ export const authService = {
     await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: data.token } });
   },
 
+  sendApprovalEmail: async (data: SendApprovalEmailRequest): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email: data.email } });
+  },
+
   // --- Dynamic Roles fetching from GET /api/Role ---
   getRoles: async (): Promise<Array<{ id?: number; name?: string; roleName?: string; description?: string }>> => {
     try {
