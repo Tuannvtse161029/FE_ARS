@@ -56,10 +56,11 @@ const hasPositiveRoleId = (roleId: unknown): boolean =>
  * Google user that must complete onboarding before landing on /forum or a workspace?
  */
 export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
+  if (isApprovedActiveUser(snapshot)) {
+    return false;
+  }
+
   // ── 1. Exact spec branch ─────────────────────────────────────────────
-  // isNewUser === true AND requiresOnboarding === true
-  //   AND effectiveRole == null
-  //   AND approved role list is empty
   if (
     snapshot.isNewUser === true &&
     snapshot.requiresOnboarding === true &&
@@ -69,12 +70,11 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
     return true;
   }
 
-  // ── 2. Compatibility fallback (BE omitted the explicit signals) ───────
+  // ── 2. Compatibility fallback (unassigned role without existing Guest approval) ───────
   if (
-    snapshot.isNewUser !== true &&
-    snapshot.requiresOnboarding !== true &&
     !hasNonEmptyRole(snapshot.role) &&
-    !hasPositiveRoleId(snapshot.roleId)
+    !hasPositiveRoleId(snapshot.roleId) &&
+    snapshot.effectiveRole !== 'Guest'
   ) {
     return true;
   }

@@ -145,14 +145,12 @@ export const CompleteGoogleRegistration = () => {
     const userId = storedUserId > 0 ? storedUserId : authUserId > 0 ? authUserId : 0;
     const email = stored?.email ?? user?.email ?? storeUser?.email ?? '';
     const fullName =
-      stored?.fullName ?? user?.username ?? storeUser?.fullName ?? '';
+      stored?.fullName ?? user?.username ?? storeUser?.fullName ?? email ?? 'Google User';
     if (!token) return null;
-    if (userId <= 0) return null;
     if (!email) return null;
-    if (!fullName) return null;
     return {
       email,
-      fullName,
+      fullName: fullName || email || 'Google User',
       userId,
       isActive:
         stored?.isActive ?? user?.isActive ?? storeUser?.isActive ?? false,
