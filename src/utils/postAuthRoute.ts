@@ -5,19 +5,6 @@
 // `AuthContext.loginWithGoogle`, `GoogleCallback`, the authenticated-user
 // branch of `PublicRoute` — resolves the destination through this
 // helper so the priority stays consistent.
-//
-// Priority (per the exact spec in the follow-up Agent 30 correction):
-//   1. New Google user → /complete-google-registration.
-//      Spec: `isNewUser === true AND requiresOnboarding === true
-//             AND effectiveRole === null AND approved role list is empty`.
-//      Compatibility fallback: when the BE does NOT surface explicit signals,
-//      a snapshot whose `role` is empty AND `roleId` is non-positive AND
-//      `effectiveRole === null` is also treated as a first-time onboarding candidate.
-//   2. Submitted pending user with no approved active role → /forum
-//      (verified Guests render the pending banner via the verified-guard).
-//   3. Approved + active + known role: role landing route
-//      (/admin or /forum via `landingRouteForRoleName`).
-//   4. Anything malformed: safe recovery (/login so the user can retry).
 
 import type { EffectiveRole, UserRole, VerificationStatus } from '../types/auth';
 import { ROUTES } from '../routes/paths';
@@ -40,9 +27,7 @@ export interface PostAuthSnapshot {
   isNewUser?: boolean | null;
   requiresOnboarding?: boolean | null;
   /**
-   * Approved role list — `AuthResponse.roles`. When this is non-empty
-   * the user has at least one accepted business role and the onboarding
-   * branch must NOT fire.
+   * Approved role list — `AuthResponse.roles`.
    */
   approvedRoles?: ReadonlyArray<string | null | undefined> | null;
 }
@@ -73,12 +58,12 @@ const hasPositiveRoleId = (roleId: unknown): boolean =>
 export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
   // ── 1. Exact spec branch ─────────────────────────────────────────────
   // isNewUser === true AND requiresOnboarding === true
-  //   AND effectiveRole === null
+  //   AND effectiveRole == null (null or undefined)
   //   AND approved role list is empty
   if (
     snapshot.isNewUser === true &&
     snapshot.requiresOnboarding === true &&
-    snapshot.effectiveRole === null &&
+    snapshot.effectiveRole == null &&
     isApprovedRoleListEmpty(snapshot.approvedRoles)
   ) {
     return true;
@@ -90,7 +75,7 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
     snapshot.requiresOnboarding !== true &&
     !hasNonEmptyRole(snapshot.role) &&
     !hasPositiveRoleId(snapshot.roleId) &&
-    snapshot.effectiveRole === null
+    snapshot.effectiveRole == null
   ) {
     return true;
   }
@@ -137,7 +122,6 @@ export function resolvePostAuthRoute(snapshot: PostAuthSnapshot): string {
   }
 
   // Priority 3 — submitted pending user with no approved active role.
-  // They land on /forum as a Guest (the verified-guard renders the pending banner).
   if (
     snapshot.effectiveRole === 'Guest' ||
     snapshot.isActive === false ||
