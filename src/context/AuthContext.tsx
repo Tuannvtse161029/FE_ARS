@@ -398,6 +398,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('ars_google_credential', credential);
+        } catch {
+          /* ignore */
+        }
+      }
+
       try {
         // Agent 30 (regression) — wrap the POST in the shared remount-
         // safe in-flight guard keyed by the credential. Duplicate GIS
@@ -677,12 +685,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role: string | null;
       effectiveRole: string | null;
     }> => {
-      const userId = authStore.user?.id ?? 0;
-      if (!userId) {
-        throw new Error(
-          'No authenticated user is associated with this onboarding request.',
-        );
-      }
+      const stored = storage.getUser();
+      const userId = authStore.user?.id ?? stored?.id ?? 0;
+      const credential =
+        (typeof window !== 'undefined'
+          ? sessionStorage.getItem('ars_google_credential')
+          : null) || undefined;
 
       setIsLoading(true);
       setError(null);
@@ -690,18 +698,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response: CompleteGoogleRegistrationResponse =
           await googleAuthService.postCompleteGoogleRegistration({
             payload: {
+              credential,
               pdfUrl: payload.pdfUrl,
               phoneNumber: payload.phoneNumber ?? '',
               role: payload.role,
               orcidId: payload.role === 'Reviewer' ? payload.orcidId : undefined,
               consents: payload.consents,
             },
-            // Per-call idempotency so a double-submit on the same page
-            // mount is deduped by the BE (and recognised as the same call
-            // locally). Survives a refresh because the page reads it from
-            // the sessionStorage-adjacent `ars_google_onboarding_submitted`
-            // sentinel.
-            idempotencyKey: `complete-google-registration-${userId}`,
+            idempotencyKey: `complete-google-registration-${userId || Date.now()}`,
           });
 
         // Refetch the authoritative user so the in-memory store reflects

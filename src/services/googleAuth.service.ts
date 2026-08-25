@@ -482,6 +482,8 @@ export async function postGoogleLogin({
 // returns 400. We omit `credential` / `code` / `redirect_uri` from the
 // body — the BE either accepts the ARS session or rejects the request.
 export interface CompleteGoogleRegistrationRequest {
+  /** Google ID token (JWT) required by backend Swagger schema. */
+  credential?: string;
   /** Verification PDF URL (Firebase Storage getDownloadURL). */
   pdfUrl: string;
   /** E.164-ish phone number (`+XX XXXXXXX`). Optional — pass empty string if unknown. */
@@ -537,18 +539,8 @@ export class CompleteGoogleRegistrationError extends Error {
 }
 
 /**
- * POST the verified PDF URL + role + (Reviewer) ORCID to the documented
+ * POST the verified PDF URL + role + (Reviewer) ORCID + credential to the documented
  * onboarding-completion endpoint.
- *
- * Hard rules:
- *   1. The `credential` is the original opaque Google ID token. We never
- *      log it, decode it, or echo it back.
- *   2. Idempotency-Key header is attached so a double-submit (e.g. the
- *      user clicks the Submit button twice before the first request
- *      resolves) is deduplicated server-side.
- *   3. Errors are normalised to a discriminated `CompleteGoogleRegistrationError`
- *      so the page can show a recoverable UI state without leaking the
- *      request body into the message.
  */
 export async function postCompleteGoogleRegistration({
   payload,
@@ -586,14 +578,14 @@ export async function postCompleteGoogleRegistration({
     );
   }
 
-  // Build the request body with only the fields the BE has acknowledged.
-  // The BE derives the user id from the JWT subject (see
-  // `BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`), so we never echo the
-  // Google ID token, the OAuth code, or a user id into the body.
-  // `additionalProperties: false` on the BE schema means any extra
-  // property returns 400; we strip `orcidId` and `consents` unless the
-  // caller provided them.
+  const credential =
+    payload.credential ||
+    (typeof window !== 'undefined'
+      ? sessionStorage.getItem('ars_google_credential') || ''
+      : '');
+
   const body: Record<string, unknown> = {
+    credential,
     pdfUrl: payload.pdfUrl,
     phoneNumber: payload.phoneNumber ?? '',
     role: payload.role,
