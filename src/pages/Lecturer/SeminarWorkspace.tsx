@@ -14,10 +14,12 @@ import {
   ClipboardList,
   Mail,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import {
   deriveEffectiveStatus,
   isValidMeetLink,
+  ownsSeminar,
   type SeminarCard,
 } from '../../services/seminar.service';
 import {
@@ -25,6 +27,7 @@ import {
   useCreateSeminar,
   useSendReminder,
   useSeminarParticipants,
+  useSeminarRoleContext,
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import styles from './SeminarWorkspace.module.css';
@@ -54,8 +57,27 @@ export const SeminarWorkspace = () => {
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
   // ── Seminar data via hooks ───────────────────────────────────────────────────
-  const { seminars, isLoading: isLoadingSeminars, error: loadSeminarsError, refetch } =
+  const { seminars, isLoading: isLoadingSeminars, error: loadSeminarsError, refetch, backendAvailability } =
     useSeminars();
+
+  // ── Role context (preserves Lecturer-only writes; surfaces read-only caps) ───
+  // `canModify` gates every write affordance below. Researchers, Reviewers and
+  // Graduate Students that ever reach this page (the current App.tsx guard
+  // is Lecturer+ Graduate Student) see a read-only surface — the BE is still
+  // the authority on authorization. See `ownsSeminar()` for the per-row
+  // ownership predicate used by the Feedback & Grading modal.
+  //
+  // `backendAvailability` is the privacy-preserving state documented in
+  // PUBLICATION_FLOW_API_BLOCKERS.md §3.8. For non-Lecturer roles it is
+  // `'awaiting_participant_scoped_endpoint'` and the hook has intentionally
+  // skipped every global /api/Seminar and /api/SeminarParticipant call so we
+  // do not leak the BE-wide participant list to a Researcher / Reviewer /
+  // Graduate Student. The page renders a banner instead of a card list.
+  const {
+    currentRole,
+    currentUserId,
+    canModify,
+  } = useSeminarRoleContext();
 
   // ── Create seminar ────────────────────────────────────────────────────────────
   const handleCreateSuccess = useCallback(
@@ -197,7 +219,9 @@ export const SeminarWorkspace = () => {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Seminar & Workshop Management</h1>
           <p className={styles.pageSubtitle}>
-            Manage your scheduled seminars, share resources, and collect feedback.
+            {canModify
+              ? 'Manage your scheduled seminars, share resources, and collect feedback.'
+              : 'Browse upcoming and completed seminars you have been invited to.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -215,10 +239,12 @@ export const SeminarWorkspace = () => {
             )}
             {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
           </button>
-          <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} aria-hidden />
-            Create Seminar
-          </button>
+          {canModify && (
+            <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} aria-hidden />
+              Create Seminar
+            </button>
+          )}
         </div>
       </div>
 
@@ -285,6 +311,37 @@ export const SeminarWorkspace = () => {
         </span>
       </div>
 
+      {/* PRIVACY-SAFE READ-ONLY BANNER (PUBLICATION_FLOW_API_BLOCKERS.md §3.8)
+          Rendered ONLY for non-Lecturer roles. The hook has intentionally
+          skipped every global /api/Seminar and /api/SeminarParticipant call
+          for these roles so we do not leak the BE-wide participant list. The
+          banner is explicit and honest: it tells the user (and any reviewer)
+          that the surface is intentionally empty until the BE ships a
+          participant-scoped read. We do not invent data and we do not claim
+          the user can view seminars based on unsafe global rows. */}
+      {backendAvailability !== 'full' && (
+        <div className={styles.backendAvailabilityBanner} role="status" aria-live="polite">
+          <span className={styles.backendAvailabilityIcon}>
+            <Lock size={14} aria-hidden />
+          </span>
+          <div className={styles.backendAvailabilityBody}>
+            <span className={styles.backendAvailabilityTitle}>
+              Seminar list unavailable for your role
+            </span>
+            <p className={styles.backendAvailabilityText}>
+              The seminar list is currently only available to the seminar organizer
+              (Lecturer role). Showing the BE-wide seminar and participant rows to a
+              Researcher, Reviewer, or Graduate Student would expose every
+              participant's name and email across the platform, which this build
+              refuses to do. The platform team has logged this as a backend gap
+              (see <code>docs/PUBLICATION_FLOW_API_BLOCKERS.md §3.8</code>). Once
+              the BE ships a participant-scoped read, this surface will populate
+              automatically — no code change is required on your end.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Seminar list */}
       <div className={styles.seminarsList}>
         {loadSeminarsError && (
@@ -307,6 +364,21 @@ export const SeminarWorkspace = () => {
           <div className={styles.emptyDrafts}>
             <Loader size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>Loading seminars…</h4>
+          </div>
+        ) : backendAvailability !== 'full' ? (
+          // Belt-and-suspenders: the banner above already explains the state,
+          // but if a non-Lecturer caller bypasses the hook for any reason we
+          // still refuse to render the BE-wide list. The empty state copy is
+          // explicit so it is obvious in a screenshot that this is an
+          // intentional privacy posture, not a bug.
+          <div className={styles.emptyDrafts}>
+            <Lock size={28} className={styles.emptyIcon} aria-hidden />
+            <h4 className={styles.emptyTitle}>Seminars are not visible for your role</h4>
+            <p className={styles.emptyText}>
+              This page is intentionally empty until the platform team enables a
+              participant-scoped seminar read for non-Lecturer roles. See
+              docs/PUBLICATION_FLOW_API_BLOCKERS.md §3.8 for the contract.
+            </p>
           </div>
         ) : activeTab === 'drafts' ? (
           <div className={styles.emptyDrafts}>
@@ -406,20 +478,29 @@ export const SeminarWorkspace = () => {
               <div className={styles.cardActionsRow}>
                 {sem.status === 'COMPLETED' ? (
                   <>
-                    <button
-                      className={styles.viewNotesBtn}
-                      onClick={() => handleOpenAiSummary(sem)}
-                    >
-                      <Eye size={14} aria-hidden />
-                      View Notes
-                    </button>
-                    <button
-                      className={styles.feedbackGradingBtn}
-                      onClick={() => handleOpenFeedbackModal(sem)}
-                    >
-                      <ClipboardList size={14} aria-hidden />
-                      Form Feedback & Grading
-                    </button>
+                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
+                      <button
+                        className={styles.viewNotesBtn}
+                        onClick={() => handleOpenAiSummary(sem)}
+                      >
+                        <Eye size={14} aria-hidden />
+                        View Notes
+                      </button>
+                    )}
+                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
+                      <button
+                        className={styles.feedbackGradingBtn}
+                        onClick={() => handleOpenFeedbackModal(sem)}
+                      >
+                        <ClipboardList size={14} aria-hidden />
+                        Form Feedback & Grading
+                      </button>
+                    )}
+                    {!canModify && (
+                      <span className={styles.viewerNoteText}>
+                        Read-only — feedback & grading are visible only to the seminar organizer.
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>
@@ -431,17 +512,19 @@ export const SeminarWorkspace = () => {
                       <Video size={14} aria-hidden />
                       Join Google Meet
                     </button>
-                    <button
-                      className={styles.sendInviteBtn}
-                      onClick={() => {
-                        navigator.clipboard.writeText(sem.onlineLink);
-                        alert('Copied invite link!');
-                      }}
-                      disabled={!isValidMeetLink(sem.onlineLink)}
-                    >
-                      <Mail size={14} aria-hidden />
-                      Send Invite Link
-                    </button>
+                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
+                      <button
+                        className={styles.sendInviteBtn}
+                        onClick={() => {
+                          navigator.clipboard.writeText(sem.onlineLink);
+                          alert('Copied invite link!');
+                        }}
+                        disabled={!isValidMeetLink(sem.onlineLink)}
+                      >
+                        <Mail size={14} aria-hidden />
+                        Send Invite Link
+                      </button>
+                    )}
                     <button className={styles.feedbackDisabledBtn} disabled>
                       Form Feedback (Available after completion)
                     </button>
@@ -821,25 +904,27 @@ export const SeminarWorkspace = () => {
 
             {/* Footer */}
             <div className={styles.feedbackModalFooter}>
-              <button
-                className={styles.remindPendingBtn}
-                onClick={() =>
-                  selectedSeminarForFeedback &&
-                  void handleRemindPending(selectedSeminarForFeedback.seminarId)
-                }
-                disabled={
-                  isSendingReminder ||
-                  allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted')
-                    .length === 0
-                }
-              >
-                {isSendingReminder ? (
-                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
-                ) : (
-                  <Mail size={14} aria-hidden />
-                )}
-                Remind Pending ({allParticipants.length})
-              </button>
+              {canModify && ownsSeminar(selectedSeminarForFeedback, currentUserId, currentRole) && (
+                <button
+                  className={styles.remindPendingBtn}
+                  onClick={() =>
+                    selectedSeminarForFeedback &&
+                    void handleRemindPending(selectedSeminarForFeedback.seminarId)
+                  }
+                  disabled={
+                    isSendingReminder ||
+                    allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted')
+                      .length === 0
+                  }
+                >
+                  {isSendingReminder ? (
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  ) : (
+                    <Mail size={14} aria-hidden />
+                  )}
+                  Remind Pending ({allParticipants.length})
+                </button>
+              )}
               <button className={styles.modalCloseNavyBtn} onClick={() => setShowFeedbackModal(false)}>
                 Close
               </button>

@@ -1,110 +1,922 @@
-.page {
-  color: #162033;
+/* Publication Shared Styles
+   Single source of visual primitives shared across all publication-feature
+   pages. Reads tokens from src/styles/ars-tokens.css (--ars-*). Do not
+   inline gradients, orbs, or hard-coded brand hex outside this file's
+   scoped status palette, which mirrors the ars-tokens semantic sets. */
+
+/* The .page and .panel root classes are exposed as :global(...) so
+   descendant :global() overrides further down (targeting inline-styled
+   table/h2/article/etc. elements that the TSX cannot be edited to
+   scope) can match the publication-feature root class. Because the
+   names are global, `shared.page` and `shared.panel` from the TSX
+   resolve to the literal class strings 'page' and 'panel' — which
+   is exactly what the existing TSX code expects. No collision risk:
+   all other '.page' rules in the codebase live in *other* .module.css
+   files where they remain hashed locally. */
+:global(.page) {
+  color: var(--ars-ink);
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
+/* ── Header ─────────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-thin);
 }
 
 .header h1 {
   margin: 0;
-  font-size: 26px;
-  letter-spacing: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.01em;
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
 }
 
 .header p {
-  color: #5f6b7a;
-  margin: 6px 0 0;
+  color: var(--ars-ink-soft);
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ── Demo banner ─────────────────────────────────────────── */
 .demoBanner {
-  border: 1px solid #e3a008;
-  background: #fff8db;
-  color: #7a4e00;
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--ars-warning);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
 }
 
+.demoBanner::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ars-warning);
+}
+
+/* ── Status pill ─────────────────────────────────────────── */
 .status {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: fit-content;
   border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 12px;
-  font-weight: 700;
-  background: #e9eef5;
-  color: #39475a;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--ars-blue-light);
+  color: var(--ars-ink-soft);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
-.statusPublished { background: #ddf5e7; color: #176b3a; }
-.statusWarning { background: #fff4d6; color: #8c5c00; }
-.statusDanger { background: #fee5e7; color: #a01c2a; }
+/* Neutral / informational */
+.statusNeutral { background: var(--ars-blue-light); color: var(--ars-ink-soft); }
 
-.panel {
-  border: 1px solid #dce3ed;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 18px;
+/* Lifecycle groupings — readable, accessible contrast */
+.statusDraft   { background: #eef0f4; color: #3a4156; }
+.statusSubmitted { background: #e0e7ff; color: #1e3a8a; }
+.statusScreening { background: #ede9fe; color: #5b21b6; }
+.statusVerification { background: #fef3c7; color: #92400e; }
+.statusReadyForReviewer { background: #dbeafe; color: #1e40af; }
+.statusReviewerAssigned { background: #dbeafe; color: #1e40af; }
+.statusUnderReview { background: #dbeafe; color: #1e40af; }
+.statusRevisionRequired { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.statusResubmitted { background: #fef3c7; color: #92400e; }
+
+.statusRecommendedAccept {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+.statusRecommendedReject {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
 }
 
+.statusApproved { background: #ccfbf1; color: #115e59; }
+.statusPublished {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+.statusRejected {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+.statusWithdrawn {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* Legacy aliases so existing TSX that references statusWarning /
+   statusDanger / statusPublished (the original three-variant system)
+   continues to resolve. Identical to the lifecycle status values
+   they replace. */
+.statusWarning { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.statusDanger { background: var(--ars-error-bg); color: var(--ars-error); }
+
+/* ── Panel ───────────────────────────────────────────────── */
+/* .panel is also exposed globally for the same reason as .page —
+   so descendant :global() rules below can target inline-styled
+   article / h2 / p descendants that are children of any .panel. */
+:global(.panel) {
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  background: var(--ars-paper-alt);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-thin);
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+}
+
+.panelSubtitle {
+  margin: 2px 0 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
 .button {
-  border: 0;
-  border-radius: 6px;
-  background: #007aff;
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--ars-blue);
+  border-radius: var(--radius-md);
+  background: var(--ars-blue);
+  color: var(--ars-paper);
   cursor: pointer;
   min-height: 36px;
-  padding: 8px 12px;
-  font-weight: 700;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.01em;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.button:disabled { cursor: not-allowed; opacity: .55; }
+.button:hover:not(:disabled) {
+  background: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
+  box-shadow: var(--shadow-sm);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
 
 .buttonSecondary {
-  border: 1px solid #c8d2df;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #28384d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
   cursor: pointer;
   min-height: 36px;
-  padding: 8px 12px;
-  font-weight: 700;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.empty, .error, .loading {
-  border: 1px dashed #cbd5e1;
-  border-radius: 6px;
-  color: #64748b;
-  padding: 24px;
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--ars-paper);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.buttonSecondary:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+}
+
+.buttonSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.buttonGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ars-blue);
+  cursor: pointer;
+  min-height: 32px;
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.buttonGhost:hover { background: var(--ars-blue-light); color: var(--ars-blue); }
+.buttonGhost:focus-visible { outline: 2px solid var(--ars-blue-mid); outline-offset: 2px; }
+
+.buttonDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--ars-error);
+  border-radius: var(--radius-md);
+  background: var(--ars-error);
+  color: var(--ars-paper);
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.buttonDanger:hover:not(:disabled) {
+  background: #7f1d1d;
+  border-color: #7f1d1d;
+}
+
+.buttonDanger:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* ── Empty / error / loading states ─────────────────────── */
+.empty,
+.error,
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px dashed var(--ars-network);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  padding: var(--space-8) var(--space-5);
   text-align: center;
+  background: var(--ars-paper-alt);
+  font-size: var(--font-size-sm);
 }
 
-.error { border-color: #f3b6bb; background: #fff5f5; color: #a01c2a; }
+.empty { color: var(--ars-ink-soft); }
 
+.error {
+  border-color: var(--ars-error);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  font-weight: var(--font-weight-medium);
+}
+
+.loading {
+  border-color: var(--ars-blue-light);
+  background: var(--ars-blue-light);
+  color: var(--ars-ink-soft);
+  font-weight: var(--font-weight-medium);
+}
+
+.loading::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid var(--ars-blue-light);
+  border-top-color: var(--ars-blue);
+  animation: publicationSpin 0.8s linear infinite;
+}
+
+@keyframes publicationSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading::before { animation: none; border-top-color: var(--ars-blue-light); }
+}
+
+/* ── Form primitives ─────────────────────────────────────── */
 .field {
   display: grid;
   gap: 6px;
 }
 
-.field label { color: #324158; font-size: 13px; font-weight: 700; }
-.field input, .field textarea, .field select {
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
-  font: inherit;
-  padding: 9px;
+.field label {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
 }
 
-.formGrid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.full { grid-column: 1 / -1; }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  font: inherit;
+  font-size: var(--font-size-base);
+  padding: 9px 11px;
+  min-height: 36px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
 
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-blue-mid);
+  background: var(--ars-paper);
+}
+
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.field textarea { min-height: 96px; resize: vertical; line-height: var(--line-height-normal); }
+
+.field select { padding-right: 28px; }
+
+.fieldHint {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.full { grid-column: 1 / -1; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.actionsEnd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.actionsStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+/* ── Tabs ────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--ars-network);
+  padding: 0;
+  margin: 0;
+}
+
+.tab {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background: transparent;
+  color: var(--ars-ink-soft);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 9px 14px;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tab:hover { background: var(--ars-blue-light); color: var(--ars-ink); }
+
+.tabActive {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  border-color: var(--ars-network);
+  border-bottom-color: var(--ars-paper-alt);
+  position: relative;
+  top: 1px;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+}
+
+/* ── Tab panel area ──────────────────────────────────────── */
+.tabPanel {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-top: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+  padding: var(--space-5);
+}
+
+/* ── Section markers ─────────────────────────────────────── */
+.sectionMarker {
+  display: inline-block;
+  font-size: var(--section-marker);
+  font-weight: var(--section-marker-weight);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--section-marker-color);
+  margin-bottom: var(--space-2);
+}
+
+/* ── Data card / detail list ─────────────────────────────── */
+.detailList {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 8px var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.detailList dt {
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--font-size-xs);
+}
+
+.detailList dd {
+  margin: 0;
+  color: var(--ars-ink);
+}
+
+/* ── Inline metadata list (used by status lines) ─────────── */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  align-items: center;
+}
+
+.metaItem { display: inline-flex; align-items: center; gap: 6px; }
+.metaItem + .metaItem::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ars-ink-muted);
+  margin-right: var(--space-2);
+  opacity: 0.6;
+}
+
+/* ── Tags / chips ────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ars-blue-light);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ars-blue);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+}
+
+.tagNeutral { background: #eef0f4; color: var(--ars-ink-soft); }
+.tagSuccess { background: var(--ars-success-bg); color: var(--ars-success); }
+.tagWarning { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.tagDanger  { background: var(--ars-error-bg); color: var(--ars-error); }
+.tagInfo    { background: var(--ars-info-bg); color: var(--ars-info); }
+
+/* ── Divider ─────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--ars-network);
+  border: 0;
+  margin: var(--space-3) 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 760px) {
   .header { display: grid; }
+  .headerActions { width: 100%; }
   .formGrid { grid-template-columns: 1fr; }
+  :global(.panel) { padding: var(--space-4); }
+}
+
+@media (max-width: 480px) {
+  .detailList { grid-template-columns: 1fr; gap: 4px; }
+  .detailList dt { font-size: 10px; }
+}
+
+/* ── Focus policy for keyboard users ─────────────────────── */
+.button:focus-visible,
+.buttonSecondary:focus-visible,
+.buttonGhost:focus-visible,
+.buttonDanger:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Global overrides for inline-styled elements
+   ──────────────────────────────────────────────────────────
+   Several publication TSX files set inline `style={{...}}` on table,
+   td, article, h2, div elements. Inline styles win over class rules
+   unless `!important` is used. The selectors below are scoped to
+   descendants of this module's `.page` class (which is mounted on
+   every publication page), so they cannot leak to non-publication
+   pages. They replace the legacy inline-style values with proper
+   tokens, focus/hover behavior, and responsive rules.
+
+   IMPORTANT: Do not edit the TSX files to remove these inline
+   styles — that would violate the visual-only scope of this work.
+   Document any new inline styles introduced by future TSX changes
+   here as well. */
+
+/* Tables — ResearcherSubmissions, AdminPaperSubmissions.
+   The TSX sets inline width='100%' / borderCollapse='collapse' /
+   td padding on these tables. The width and border-collapse values
+   already match our token-driven values, so no override is needed
+   there. The td padding (`padding: '14px 8px'` / `'12px 8px'`) is
+   token-mismatched, so we use !important to deliver consistent
+   spacing across all publication tables. */
+:global(.page table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  background: var(--ars-paper-alt);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+:global(.page table thead th) {
+  text-align: left;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+  padding: 12px 14px;
+  background: var(--ars-paper-inset);
+  border-bottom: 1px solid var(--ars-network);
+  white-space: nowrap;
+}
+
+:global(.page table tbody td) {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--ars-network);
+  vertical-align: top;
+  color: var(--ars-ink);
+  line-height: var(--line-height-normal);
+}
+
+:global(.page table tbody tr:last-child td) {
+  border-bottom: 0;
+}
+
+:global(.page table tbody tr:hover) {
+  background: var(--ars-blue-light);
+}
+
+:global(.page table tbody tr:focus-within) {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: -2px;
+}
+
+:global(.page table tbody td small) {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.02em;
+}
+
+:global(.page table tbody td strong) {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--font-size-sm);
+}
+
+/* ReviewerAssignments article list.
+   The TSX sets inline `borderBottom: '1px solid #e4e9f0', padding: '14px 0'`
+   on the <article> elements. Use !important on the rules we want to
+   own so the article list reads as a single coherent unit instead of
+   mixing token + inline values. */
+:global(.panel article) {
+  border-bottom: 1px solid var(--ars-network) !important;
+  padding: 16px 0 !important;
+  display: grid;
+  gap: var(--space-2);
+}
+
+:global(.panel article:last-child) {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+:global(.panel article:first-child) {
+  padding-top: 0;
+}
+
+:global(.panel article h2) {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+:global(.panel article p) {
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+/* ReviewerAssignmentDetail & ResearcherSubmissionDetail inner panels —
+   AdminPaperSubmissionDetail uses a nested <section className="panel">
+   with an <h2> child */
+:global(.panel section h2),
+:global(.panel .panel h2) {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+  margin: 0 0 var(--space-2);
+}
+
+/* Inline-style h2 inside AdminPaperSubmissionDetail's nested panel */
+:global(.panel h2[style*="font-size"]) {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+}
+
+/* Inline-style h2 inside ReviewerAssignments article */
+:global(.panel article h2[style*="font-size"]) {
+  font-size: var(--font-size-lg);
+}
+
+@media (max-width: 760px) {
+  :global(.page table) {
+    font-size: var(--font-size-xs);
+  }
+  :global(.page table thead th),
+  :global(.page table tbody td) {
+    padding: 10px;
+  }
+}
+
+/* Plain <a> tags inside publication panels (manuscript file link, etc.) */
+:global(.panel a:not([class*="button"]):not([class*="status"])),
+:global(.page a:not([class*="button"]):not([class*="status"])) {
+  color: var(--ars-blue);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+:global(.panel a:not([class*="button"]):not([class*="status"]):hover),
+:global(.page a:not([class*="button"]):not([class*="status"]):hover) {
+  color: var(--ars-blue-mid);
+  text-decoration-thickness: 2px;
+}
+
+:global(.panel a:focus-visible),
+:global(.page a:focus-visible) {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Detail paragraphs inside panels — ResearcherSubmissionDetail,
+   AdminPaperSubmissionDetail, ReviewerAssignmentDetail */
+:global(.panel > p),
+:global(.page .panel > p) {
+  margin: 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+:global(.panel > p + p),
+:global(.page .panel > p + p) {
+  margin-top: var(--space-2);
+}
+
+:global(.panel > p strong),
+:global(.page .panel > p strong) {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  margin-right: 4px;
+}
+
+/* Filter field — AdminPaperSubmissions uses <label className="field">
+   wrapping <span> + <select> */
+:global(.panel .field span) {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+/* Bare <input> inside publication actions — AdminPaperSubmissionDetail
+   uses <input aria-label="Reviewer name"> without .field wrapper */
+:global(.actions input[type="text"]),
+:global(.actions input:not([type])[aria-label]) {
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 8px 11px;
+  min-height: 36px;
+  min-width: 220px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+:global(.actions input[type="text"]:hover),
+:global(.actions input:not([type])[aria-label]:hover) {
+  border-color: var(--ars-ink-muted);
+}
+
+:global(.actions input[type="text"]:focus),
+:global(.actions input:not([type])[aria-label]:focus) {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-blue-mid);
+}
+
+:global(.actions input[type="text"]::placeholder),
+:global(.actions input:not([type])[aria-label]::placeholder) {
+  color: var(--ars-ink-muted);
+}
+
+@media (max-width: 600px) {
+  :global(.actions input[type="text"]),
+  :global(.actions input:not([type])[aria-label]) {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* Inline-style <div className="actions"> wrappers that set
+   marginTop:18 in ResearcherSubmissionForm, alignItems:end in
+   ReviewerAssignmentDetail. Use normal CSS to deliver equivalent
+   spacing. The TSX inline `marginTop: 18` and `alignItems: end` will
+   keep applying, but the class still wins for everything else. We
+   intentionally don't use !important — the visual hierarchy is
+   already correct and overriding would change layout flow. */
+:global(.page form) {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Section / panel marker helper — used at the top of inner sections */
+:global(.panel > h2) {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0 0 var(--space-2);
+  line-height: var(--line-height-tight);
+}
+
+/* AdminPaperSubmissionDetail renders a nested <section className="panel">
+   that holds the private reviewer recommendation. Style it as a focused
+   sub-card with the reviewer-color accent so it visually separates from
+   the parent detail panel. */
+:global(.panel > section.panel) {
+  background: var(--ars-success-bg);
+  border-color: var(--ars-reviewer-light);
+  padding: var(--space-4);
+}
+
+:global(.panel > section.panel > h2) {
+  color: var(--ars-reviewer);
+  margin: 0 0 var(--space-2);
+}
+
+:global(.panel header h1),
+:global(.panel header h2) {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+}
+
+:global(.panel header p) {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  margin: 4px 0 0;
+}
+
+/* Publication Demo banner placement — the banner itself is already
+   styled via the local .demoBanner rule. Use a structure-stable
+   attribute selector that doesn't depend on the hashed class name. */
+:global(.page > [role="status"]) {
+  margin: 0;
+}
+
+/* Reduced motion: kill any inherited table-row transitions */
+@media (prefers-reduced-motion: reduce) {
+  :global(.page table tbody tr) {
+    transition: none;
+  }
 }

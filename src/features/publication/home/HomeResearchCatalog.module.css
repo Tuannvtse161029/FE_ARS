@@ -1,24 +1,135 @@
-.catalog { max-width: 1180px; margin: 0 auto; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.search { flex: 1 1 420px; min-height: 42px; display: flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; padding: 0 11px; }
-.search input { border: 0; outline: 0; width: 100%; font: inherit; }
-.filter { min-height: 42px; display: flex; align-items: center; gap: 6px; color: #4b596d; font-size: 13px; }
-.filter select { border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; padding: 8px; font: inherit; }
-.results { display: grid; gap: 12px; }
-.paper { border: 1px solid #dce3ed; border-radius: 8px; background: #fff; padding: 20px; }
-.paper h2 { font-size: 19px; line-height: 1.35; margin: 8px 0; }
-.paperMeta, .details { display: flex; flex-wrap: wrap; gap: 10px; color: #5f6b7a; font-size: 13px; }
-.paperMeta span { border-right: 1px solid #d8dee8; padding-right: 10px; }
-.authors { color: #007aff; margin: 6px 0; font-weight: 600; }
-.institutions { color: #59687b; margin: 5px 0; }
-.abstract { color: #39475a; line-height: 1.55; margin: 14px 0; }
-.tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.tags span { background: #edf4ff; border-radius: 4px; color: #205a9e; font-size: 12px; padding: 4px 7px; }
-.details { margin: 16px 0 0; }
-.details div { min-width: 170px; }
-.details dt { color: #77869a; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.details dd { color: #25344a; margin: 3px 0 0; }
-.pagination { align-items: center; display: flex; justify-content: space-between; gap: 12px; color: #64748b; font-size: 13px; }
-.pagination div { align-items: center; display: flex; gap: 10px; }
-.pagination button { align-items: center; display: inline-flex; justify-content: center; min-width: 36px; padding: 5px; }
-@media (max-width: 680px) { .pagination { align-items: flex-start; flex-direction: column; } }
+/* Home Research Catalog — page-level layout only.
+   Individual paper cards are styled in PublishedPaperCard.module.css.
+   This file scopes the toolbar (search + filters), the empty results
+   region, and the pagination footer. Token-driven; no gradients or
+   orbs; readable typography; focusable controls. */
+
+.catalog {
+  max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Toolbar (search + filter dropdowns) ─────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+}
+
+.search {
+  flex: 1 1 320px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  padding: 0 12px;
+  color: var(--ars-ink-muted);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search:focus-within {
+  border-color: var(--ars-blue-mid);
+  box-shadow: 0 0 0 2px var(--ars-blue-light);
+}
+
+.search input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ars-ink);
+  padding: 9px 0;
+  min-height: 38px;
+}
+
+.search input::placeholder { color: var(--ars-ink-muted); }
+
+.filter {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.filter select {
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.filter select:hover { border-color: var(--ars-ink-muted); }
+
+.filter select:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-blue-mid);
+}
+
+/* ── Results container — list of PublishedPaperCard articles ── */
+.results {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  padding: var(--space-3) 0;
+  border-top: var(--border-thin);
+}
+
+.pagination > div {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+@media (max-width: 680px) {
+  .toolbar { padding: var(--space-3); }
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  .pagination > div { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+  .toolbar { gap: var(--space-2); }
+  .search { flex-basis: 100%; }
+}

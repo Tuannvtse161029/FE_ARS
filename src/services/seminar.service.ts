@@ -1,11 +1,115 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+import type { UserRole } from '../types/auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Semantic seminar status — canonical set for the UI.
 // The BE stores this as a free-form string. Normalize via `mapSeminarStatus()`.
 // ─────────────────────────────────────────────────────────────────────────────
 export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Role-aware access predicates.
+//
+// These helpers are the FE-side authorization layer for the seminar surface.
+// They DO NOT bypass the BE: every write goes through the documented Swagger
+// contract (`POST/PUT/DELETE /api/Seminar/{id}`), and the BE enforces its own
+// authorization server-side. The predicates exist so the UI:
+//   • hides mutating affordances from non-Lecturer roles
+//   • shows read-only cards for invitees (Researcher / Reviewer / Graduate
+//     Student) when the BE exposes them to a seminar
+//   • flags the Lecturer as the only role that can `create`, `update`, and
+//     `delete` a seminar row, and as the only role that can send reminders
+//     and view the full feedback table
+//
+// Researcher / Reviewer / Graduate Student read-only access is granted ONLY
+// for seminars where the BE's `GET /api/Seminar` / `GET /api/SeminarParticipant`
+// payload surfaces them as a participant. If the BE restricts the read to
+// organizer-only, the FE will simply render an empty list — it will not
+// synthesize access.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Roles that may create / update / delete seminars and send reminders. */
+export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer'] as const;
+
+/** Roles that may view the seminar list (read-only). Includes the mutator. */
+export const SEMINAR_VIEWER_ROLES: readonly UserRole[] = [
+  'Lecturer',
+  'Graduate Student',
+  'Researcher',
+  'Reviewer',
+] as const;
+
+/**
+ * Returns true when `role` may create / update / delete seminars and
+ * trigger reminders.
+ */
+export const canMutateSeminar = (role: UserRole | string | null | undefined): boolean => {
+  if (!role) return false;
+  return (SEMINAR_MUTATOR_ROLES as readonly string[]).includes(role);
+};
+
+/**
+ * Returns true when `role` may view the seminar list. Read-only viewers
+ * still see the same `GET /api/Seminar` payload the BE exposes — the FE
+ * never fabricates seminars.
+ */
+export const canViewSeminar = (role: UserRole | string | null | undefined): boolean => {
+  if (!role) return false;
+  return (SEMINAR_VIEWER_ROLES as readonly string[]).includes(role);
+};
+
+/**
+ * Ownership predicate for a seminar row. Returns true ONLY when the current
+ * user is a Lecturer AND the BE-supplied `organizerId` matches
+ * `currentUserId`. Used to decide whether the UI exposes the Feedback &
+ * Grading modal (which contains participant evaluations and reminder
+ * controls) to the current viewer.
+ *
+ * `currentUserId === null` is intentionally treated as "ownership
+ * unverifiable" and returns `false` — the UI must NOT assume ownership
+ * when the BE has not yet populated the JWT subject claim (see BE-S2).
+ */
+export const ownsSeminar = (
+  seminar: Pick<Seminar, 'organizerId'>,
+  currentUserId: number | null | undefined,
+  role: UserRole | string | null | undefined,
+): boolean => {
+  if (!canMutateSeminar(role)) return false;
+  if (currentUserId == null) return false;
+  if (seminar.organizerId == null) return false;
+  return seminar.organizerId === currentUserId;
+};
+
+/**
+ * Filter a seminar list down to the rows a Researcher / Reviewer /
+ * Graduate Student should see — i.e. seminars where the current user
+ * appears as a `SeminarParticipant`. For a Lecturer the function returns
+ * the input unchanged (the BE's organizer-scoped payload already filters
+ * for them).
+ *
+ * The filter is client-side because the BE has no participant-filter
+ * query parameter (see research-workflow-contract §2). A future BE
+ * enhancement (`GET /api/Seminar?participantId=`) can replace this
+ * function without changing the call site.
+ */
+export const filterSeminarsForViewer = (
+  seminars: Seminar[],
+  participants: SeminarParticipant[],
+  currentUserId: number | null | undefined,
+  role: UserRole | string | null | undefined,
+): Seminar[] => {
+  if (canMutateSeminar(role)) return seminars;
+  if (!canViewSeminar(role)) return [];
+  if (currentUserId == null) return [];
+  const invitedSeminarIds = new Set<number>();
+  for (const p of participants) {
+    if (p.userId === currentUserId && p.seminarId != null) {
+      invitedSeminarIds.add(p.seminarId);
+    }
+  }
+  return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Participant invitation status — canonical set for the UI.

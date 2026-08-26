@@ -705,6 +705,79 @@
   opacity: 0.7;
 }
 
+/* ── Read-only viewer note (Researcher / Reviewer / Grad Student) ─── */
+.viewerNoteText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-style: dashed;
+  border-radius: var(--radius-md);
+}
+
+/* ── Backend-availability banner (non-Lecturer safe state, §3.8) ──── */
+.backendAvailabilityBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--ars-info-bg);
+  border: 1px solid var(--ars-info);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-info);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.backendAvailabilityIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-info);
+  color: var(--ars-info);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.backendAvailabilityBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.backendAvailabilityTitle {
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-info);
+  font-size: var(--font-size-sm);
+}
+
+.backendAvailabilityText {
+  margin: 0;
+  color: var(--ars-info);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  opacity: 0.92;
+}
+
+.backendAvailabilityText code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  background: var(--ars-paper);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
 .viewNotesBtn {
   display: inline-flex;
   align-items: center;
