@@ -136,8 +136,7 @@ export const buildEmptyEvaluationDraft = (): ReviewerEvaluationDraft => ({
 // content private to Admin + the submitting researcher. Reviewers see
 // the paper metadata + their own form only; they must not read each
 // other's bodies.
-export const shouldRenderPrivatePriorReview = (status: string): boolean =>
-  false;
+export const shouldRenderPrivatePriorReview = (_status: string): boolean => false;
 
 // Status predicates — centralised so the detail page and the tests
 // agree on what "actionable for evaluation" means.

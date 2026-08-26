@@ -50,9 +50,6 @@ const FieldPath = ({ paper }: { readonly paper: PublicationPaper }) => {
   return <span className={card.fieldPath}>{path}</span>;
 };
 
-const fieldPathFor = (paper: PublicationPaper): string =>
-  [paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ');
-
 /**
  * Single scannable paper card.
  *
@@ -68,7 +65,6 @@ export const PublishedPaperCard = ({ paper, publicReviewerName }: PublishedPaper
   const orderedAuthors = [...paper.authors].sort((left, right) => left.order - right.order);
   const paperExternalLinks = collectPaperExternalLinks(paper);
   const arxivBadge = buildArxivBadge(paper.externalIdentifier);
-  const fieldPath = fieldPathFor(paper);
 
   return (
     <article className={card.paper} data-testid="public-paper-card" data-paper-id={paper.id}>

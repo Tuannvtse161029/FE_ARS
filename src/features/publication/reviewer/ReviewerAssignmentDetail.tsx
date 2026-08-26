@@ -276,7 +276,7 @@ export const ReviewerAssignmentDetail = () => {
     );
   };
 
-  const renderEvaluationForm = (paperToRender: PublicationPaper) => {
+  const renderEvaluationForm = () => {
     if (!canReview) return null;
     return (
       <form
@@ -531,12 +531,11 @@ export const ReviewerAssignmentDetail = () => {
               <h2 style={{ fontSize: 17, margin: '18px 0 6px' }}>
                 Evaluate Paper
               </h2>
-              {renderEvaluationForm(paperToRender)}
+              {renderEvaluationForm()}
             </>
           )}
           {submitted && renderSubmitted(paperToRender)}
-          {!shouldRenderPrivatePriorReview(paperToRender.status) &&
-            !canReview &&
+          {!shouldRenderPrivatePriorReview(paperToRender.status) && !canReview &&
             !submitted &&
             !awaitingResponse && (
               <div className={shared.empty}>

@@ -421,7 +421,6 @@ export const ResearcherSubmissionForm = () => {
                   type="button"
                   className={shared.buttonGhost}
                   data-testid="submission-openalex-skip"
-                  disabled={openAlexState.stage === 'skipped'}
                   onClick={handleSkipOpenAlex}
                 >
                   Skip
