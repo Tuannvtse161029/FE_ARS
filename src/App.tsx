@@ -29,8 +29,17 @@ import { EmailVerificationLanding } from './pages/Auth/EmailVerificationLanding'
 // (AdminDashboard), pdfjs (any PDF-bearing review/research page), and the
 // larger role dashboards only download when their route activates.
 const Forum = lazy(() => import('./pages/Forum/Forum').then((m) => ({ default: m.Forum })));
+const HomeResearchCatalog = lazy(() => import('./features/publication/home/HomeResearchCatalog'));
+const ResearcherSubmissions = lazy(() => import('./features/publication/researcher/ResearcherSubmissions'));
+const ResearcherSubmissionForm = lazy(() => import('./features/publication/researcher/ResearcherSubmissionForm'));
+const ResearcherSubmissionDetail = lazy(() => import('./features/publication/researcher/ResearcherSubmissionDetail'));
+const ReviewerAssignments = lazy(() => import('./features/publication/reviewer/ReviewerAssignments'));
+const ReviewerAssignmentDetail = lazy(() => import('./features/publication/reviewer/ReviewerAssignmentDetail'));
+const AdminPaperSubmissions = lazy(() => import('./features/publication/admin/AdminPaperSubmissions'));
+const AdminPaperSubmissionDetail = lazy(() => import('./features/publication/admin/AdminPaperSubmissionDetail'));
+const AdminReviewerAssignments = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminReviewerAssignments })));
+const AdminPublishedPapers = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminPublishedPapers })));
 const Papers = lazy(() => import('./pages/Papers/Papers').then((m) => ({ default: m.Papers })));
-const DiscoverReviewers = lazy(() => import('./pages/Researcher/DiscoverReviewers').then((m) => ({ default: m.DiscoverReviewers })));
 const EvaluationDesk = lazy(() => import('./pages/Reviewer/EvaluationDesk').then((m) => ({ default: m.EvaluationDesk })));
 const SeminarWorkspace = lazy(() => import('./pages/Lecturer/SeminarWorkspace').then((m) => ({ default: m.SeminarWorkspace })));
 const ResearchGroup = lazy(() => import('./pages/Lecturer/ResearchGroup').then((m) => ({ default: m.ResearchGroup })));
@@ -159,15 +168,33 @@ const App = () => {
                   <Route path={ROUTES.GRADUATE_STUDENT_DASHBOARD} element={<GraduateStudentDashboard />} />
                 </Route>
 
-                {/* Researcher-only routes */}
+                {/* Researcher-only publication routes. Reviewer selection is Admin-owned. */}
                 <Route element={<RoleRouteGuard allow={['Researcher']} />}>
                   <Route path={ROUTES.PAPERS} element={<Papers />} />
-                  <Route path={ROUTES.REVIEWERS} element={<DiscoverReviewers />} />
+                  <Route path={ROUTES.RESEARCHER_SUBMISSIONS} element={<ResearcherSubmissions />} />
+                  <Route path={ROUTES.RESEARCHER_SUBMISSION_NEW} element={<ResearcherSubmissionForm />} />
+                  <Route path={ROUTES.RESEARCHER_SUBMISSION_DETAIL} element={<ResearcherSubmissionDetail />} />
+                  <Route path={ROUTES.REVIEWERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
                 </Route>
 
-                {/* Reviewer-only routes */}
+                {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}
                 <Route element={<RoleRouteGuard allow={['Reviewer']} />}>
                   <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
+                  <Route path={ROUTES.REVIEWER_ASSIGNMENTS} element={<ReviewerAssignments />} />
+                  <Route path={ROUTES.REVIEWER_ASSIGNMENT_DETAIL} element={<ReviewerAssignmentDetail />} />
+                </Route>
+
+                {/* Admin-only editorial routes. */}
+                <Route element={<RoleRouteGuard allow={['Admin']} />}>
+                  <Route path={ROUTES.ADMIN_PAPER_SUBMISSIONS} element={<AdminPaperSubmissions />} />
+                  <Route path={ROUTES.ADMIN_PAPER_SUBMISSION_DETAIL} element={<AdminPaperSubmissionDetail />} />
+                  <Route path={ROUTES.ADMIN_REVIEWER_ASSIGNMENTS} element={<AdminReviewerAssignments />} />
+                  <Route path={ROUTES.ADMIN_PUBLISHED_PAPERS} element={<AdminPublishedPapers />} />
+                </Route>
+
+                {/* Authenticated discovery catalog. */}
+                <Route element={<RoleRouteGuard allow={['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student']} />}>
+                  <Route path={ROUTES.HOME} element={<HomeResearchCatalog />} />
                 </Route>
 
                 {/* Shared / cross-role routes */}
@@ -210,7 +237,7 @@ const App = () => {
                     )
                   }
                 />
-                <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.FORUM} replace />} />
+                <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
               </Route>
             </Route>
 

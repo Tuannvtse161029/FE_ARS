@@ -1,0 +1,110 @@
+.page {
+  color: #162033;
+  display: grid;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0;
+}
+
+.header p {
+  color: #5f6b7a;
+  margin: 6px 0 0;
+}
+
+.demoBanner {
+  border: 1px solid #e3a008;
+  background: #fff8db;
+  color: #7a4e00;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.status {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #e9eef5;
+  color: #39475a;
+}
+
+.statusPublished { background: #ddf5e7; color: #176b3a; }
+.statusWarning { background: #fff4d6; color: #8c5c00; }
+.statusDanger { background: #fee5e7; color: #a01c2a; }
+
+.panel {
+  border: 1px solid #dce3ed;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.button {
+  border: 0;
+  border-radius: 6px;
+  background: #007aff;
+  color: #ffffff;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.button:disabled { cursor: not-allowed; opacity: .55; }
+
+.buttonSecondary {
+  border: 1px solid #c8d2df;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #28384d;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.empty, .error, .loading {
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  color: #64748b;
+  padding: 24px;
+  text-align: center;
+}
+
+.error { border-color: #f3b6bb; background: #fff5f5; color: #a01c2a; }
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label { color: #324158; font-size: 13px; font-weight: 700; }
+.field input, .field textarea, .field select {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  font: inherit;
+  padding: 9px;
+}
+
+.formGrid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.full { grid-column: 1 / -1; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+@media (max-width: 760px) {
+  .header { display: grid; }
+  .formGrid { grid-template-columns: 1fr; }
+}
