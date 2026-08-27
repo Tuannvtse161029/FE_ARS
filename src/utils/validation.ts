@@ -13,12 +13,12 @@ export const loginSchema = yup.object({
   rememberMe: yup.boolean().optional().default(false),
   selectedRole: yup
     .string()
-    .required('Please select your role')
+    .optional()
     .oneOf(
-      ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'],
+      ['', 'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'],
       'Invalid role'
     )
-    .default('Researcher'),
+    .default(''),
 });
 
 export const registerSchema = yup.object({

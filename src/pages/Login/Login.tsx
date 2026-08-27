@@ -53,7 +53,7 @@ const Login = () => {
     defaultValues: {
       username: '',
       password: '',
-      selectedRole: 'Researcher',
+      selectedRole: '',
       // rememberMe is now managed by react-hook-form (and forwarded to
       // AuthContext.login()). Storage bucket selection happens in
       // persistAuthAndNavigate, which calls storage.setRememberMe() BEFORE
@@ -70,7 +70,7 @@ const Login = () => {
   const handleFastLogin = (
     email: string,
     password: string,
-    role?: 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'
+    role?: '' | 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'
   ) => {
     setValue('username', email);
     setValue('password', password);
@@ -101,6 +101,7 @@ const Login = () => {
   //     errors.
   //   - The legacy Authorization Code redirect flow (Agent 54) is no longer
   //     invoked from the Login page.
+  // ── End GIS credential Google sign-in handler ───────────────────────────
   const handleGoogleCredential = async (
     response: GoogleCredentialResponse,
   ): Promise<void> => {
@@ -131,16 +132,19 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
+      {/* Brand & Logo Header */}
       <div className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research Sharing</span>
+        <span className={styles.brandText}>Academic Research System</span>
       </div>
 
+      {/* Page Title */}
       <div className={styles.header}>
         <h1 className={styles.title}>Nice to see you again</h1>
       </div>
 
-      <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
+      {/* Login Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
         {error && (
           <div className={styles.formError} role="alert">
             {error}
@@ -194,12 +198,12 @@ const Login = () => {
 
         <div className={styles.roleFieldWrapper}>
           <label className={styles.fieldLabel} htmlFor="selectedRole">
-            Select Role *
+            Sign in as Role <span className={styles.optionalTag}>(Optional)</span>
           </label>
           <Controller
             name="selectedRole"
             control={control}
-            defaultValue="Researcher"
+            defaultValue=""
             render={({ field }) => (
               <select
                 {...field}
@@ -207,6 +211,7 @@ const Login = () => {
                 className={styles.roleSelect}
                 disabled={isLoading || googlePending}
               >
+                <option value="">Auto-detect Role (Default)</option>
                 <option value="Researcher">Researcher</option>
                 <option value="Reviewer">Reviewer</option>
                 <option value="Lecturer">Lecturer</option>
@@ -218,7 +223,7 @@ const Login = () => {
             <span className={styles.fieldError}>{errors.selectedRole.message}</span>
           )}
           <span className={styles.fieldHint}>
-            Choose the role you want to enter. To switch roles, log out and select another role here.
+            Holding multiple roles? Select your role here. You can log out anytime to switch roles.
           </span>
         </div>
 
