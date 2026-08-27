@@ -221,6 +221,41 @@
   box-shadow: none;
 }
 
+.buttonOpenAlex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid #111827;
+  border-radius: var(--radius-md);
+  background: #111827;
+  color: #ffffff;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.buttonOpenAlex:hover:not(:disabled) {
+  background: #000000;
+  border-color: #000000;
+  box-shadow: var(--shadow-sm);
+}
+
+.buttonOpenAlex:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 2px;
+}
+
+.buttonOpenAlex:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .buttonSecondary {
   display: inline-flex;
   align-items: center;

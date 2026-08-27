@@ -1,3 +1,7 @@
+.pageSpacing {
+  padding-bottom: 40px;
+}
+
 .metadataGrid {
   display: grid;
   gap: 8px 18px;
@@ -131,6 +135,36 @@
   margin: 0 0 6px;
   font-size: 18px;
   color: #162033;
+}
+
+.openAssignmentButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: fit-content;
+  padding: 9px 16px;
+  border-radius: 6px;
+  background: #007aff;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.openAssignmentButton:hover {
+  background: #005ecb;
+  box-shadow: 0 3px 8px rgba(0, 122, 255, 0.24);
+}
+
+.openAssignmentButton:active {
+  transform: translateY(1px);
+}
+
+.openAssignmentButton:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 3px;
 }
 
 .deadlineChip {

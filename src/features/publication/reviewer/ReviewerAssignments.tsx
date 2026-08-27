@@ -70,7 +70,7 @@ export const ReviewerAssignments = () => {
   );
 
   return (
-    <section className={shared.page}>
+    <section className={`${shared.page} ${reviewer.pageSpacing}`}>
       <header className={shared.header}>
         <div>
           <h1>Review Assignments</h1>
@@ -119,7 +119,12 @@ export const ReviewerAssignments = () => {
                 <strong>Paper type:</strong> {paper.paperType || 'Not supplied'} ·{' '}
                 <strong>Version:</strong> {paper.version}
               </p>
-              <Link to={`/reviewer/assignments/${paper.id}`}>Open assignment</Link>
+              <Link
+                className={reviewer.openAssignmentButton}
+                to={`/reviewer/assignments/${paper.id}`}
+              >
+                Open assignment
+              </Link>
             </article>
           ))}
         </div>

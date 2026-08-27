@@ -402,7 +402,11 @@ export const ResearcherSubmissionForm = () => {
               <div className={shared.actions} style={{ marginTop: 8 }}>
                 <button
                   type="button"
-                  className={shared.buttonSecondary}
+                  className={
+                    openAlexDraft.trim() && !openAlexScanning
+                      ? shared.buttonOpenAlex
+                      : shared.buttonSecondary
+                  }
                   data-testid="submission-openalex-scan"
                   disabled={!openAlexDraft.trim() || openAlexScanning}
                   onClick={() => void handleScanOpenAlex()}
