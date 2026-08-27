@@ -309,14 +309,20 @@
 
 .consentLink {
   color: var(--color-primary);
-  text-decoration: none;
+  text-decoration: underline;
   font-weight: var(--font-weight-medium);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  display: inline;
   transition: color var(--transition-fast);
 }
 
 .consentLink:hover {
   color: var(--color-primary-hover);
-  text-decoration: underline;
 }
 
 @media (max-width: 480px) {

@@ -2,6 +2,8 @@ export const ROUTES = {
   HOME: '/home',
   LOGIN: '/login',
   REGISTER: '/register',
+  PRIVACY_POLICY: '/privacy-policy',
+  TERMS_OF_SERVICE: '/terms-of-service',
   FORGOT_PASSWORD: '/forgot-password',
   VERIFY_OTP: '/forgot-password/verify',
   RESET_PASSWORD: '/reset-password',

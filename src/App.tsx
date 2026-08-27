@@ -77,6 +77,7 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
+const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => ({ default: m.LegalPolicy })));
 
 /**
  * Suspense fallback used by every lazy route. Keep it intentionally neutral
@@ -118,6 +119,10 @@ const App = () => {
                 <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationLanding />} />
               </Route>
             </Route>
+
+            {/* Legal pages - Publicly accessible */}
+            <Route path={ROUTES.PRIVACY_POLICY} element={<LegalPolicy />} />
+            <Route path={ROUTES.TERMS_OF_SERVICE} element={<LegalPolicy />} />
 
             {/* Agent 52 — First-time Google-user onboarding. Renders outside
                 the AuthLayout / PublicRoute chain because the page controls
