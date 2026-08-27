@@ -11,7 +11,14 @@ export const loginSchema = yup.object({
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
   rememberMe: yup.boolean().optional().default(false),
-  selectedRole: yup.string().optional().default(''),
+  selectedRole: yup
+    .string()
+    .required('Please select your role')
+    .oneOf(
+      ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'],
+      'Invalid role'
+    )
+    .default('Researcher'),
 });
 
 export const registerSchema = yup.object({

@@ -320,6 +320,12 @@
   cursor: not-allowed;
 }
 
+.fieldError {
+  font-size: 12px;
+  color: var(--ars-error, #b91c1c);
+  margin-top: 2px;
+}
+
 .fieldHint {
   font-size: 11px;
   color: var(--ars-ink-muted);

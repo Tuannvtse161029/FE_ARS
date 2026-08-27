@@ -19,7 +19,6 @@ import { authService } from '../../services/auth.service';
 const FAST_LOGIN_USERS = [
   { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234', role: 'Researcher' },
   { label: 'Reviewer', email: 'reviewer1.ars@arsplatform.test', password: 'Reviewer1234', role: 'Reviewer' },
-  { label: 'Admin', email: 'admin@arsplatform.com', password: 'Password123', role: 'Admin' },
   { label: 'Lecturer', email: 'lecturer@arsplatform.com', password: 'Lecturer1234', role: 'Lecturer' },
   { label: 'Grad Student', email: 'gradstudent@arsplatform.com', password: 'Student1234', role: 'Graduate Student' },
 ] as const;
@@ -54,7 +53,7 @@ const Login = () => {
     defaultValues: {
       username: '',
       password: '',
-      selectedRole: '',
+      selectedRole: 'Researcher',
       // rememberMe is now managed by react-hook-form (and forwarded to
       // AuthContext.login()). Storage bucket selection happens in
       // persistAuthAndNavigate, which calls storage.setRememberMe() BEFORE
@@ -191,12 +190,12 @@ const Login = () => {
 
         <div className={styles.roleFieldWrapper}>
           <label className={styles.fieldLabel} htmlFor="selectedRole">
-            Sign in as Role <span className={styles.optionalTag}>(Optional)</span>
+            Select Role *
           </label>
           <Controller
             name="selectedRole"
             control={control}
-            defaultValue=""
+            defaultValue="Researcher"
             render={({ field }) => (
               <select
                 {...field}
@@ -204,17 +203,18 @@ const Login = () => {
                 className={styles.roleSelect}
                 disabled={isLoading || googlePending}
               >
-                <option value="">Auto-detect Role (Default)</option>
                 <option value="Researcher">Researcher</option>
                 <option value="Reviewer">Reviewer</option>
                 <option value="Lecturer">Lecturer</option>
                 <option value="Graduate Student">Graduate Student</option>
-                <option value="Admin">Administrator</option>
               </select>
             )}
           />
+          {errors.selectedRole?.message && (
+            <span className={styles.fieldError}>{errors.selectedRole.message}</span>
+          )}
           <span className={styles.fieldHint}>
-            Holding multiple roles? Select your role here. You can log out anytime to switch roles.
+            Choose the role you want to enter. To switch roles, log out and select another role here.
           </span>
         </div>
 
