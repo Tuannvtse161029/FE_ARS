@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from './paths';
 import { resolvePostAuthRoute, type PostAuthSnapshot } from '../utils/postAuthRoute';
@@ -9,25 +9,20 @@ export const PrivateRoute = () => {
   return isAuthenticated ? <Outlet /> : <Navigate to={ROUTES.LOGIN} replace />;
 };
 
-// Agent 30 — Route authenticated users to their role-appropriate landing
-// page through the centralized `resolvePostAuthRoute` helper. This used to
-// hard-code ROUTES.FORUM here (sending Admin users to /forum instead of
-// /admin, see Phase C defect 3A) AND silently routed first-time Google
-// users to /forum (bypassing the /complete-google-registration onboarding
-// page that `AuthContext.loginWithGoogle` was in the middle of pushing
-// them to). The unified resolver now applies the same priority rule
-// across every auth entry path so a freshly-logged-in user never lands
-// on /forum before they have completed onboarding.
-//
-// The previous behaviour (defect 3A fix) is preserved — an Admin who
-// opens a stale /login tab lands on /admin, not /forum. The new behaviour
-// (Agent 30) is additive — a first-time Google user lands on
-// /complete-google-registration instead of /forum, even when the
-// `PublicRoute` re-renders during the in-flight login transition.
 export const PublicRoute = () => {
   const { user, isAuthenticated, effectiveRole } = useAuth();
+  const location = useLocation();
 
-  if (!isAuthenticated) return <Outlet />;
+  // If the user is unauthenticated OR is explicitly on an auth action route,
+  // do NOT intercept and redirect them.
+  const isAuthActionPath =
+    location.pathname === ROUTES.REGISTER ||
+    location.pathname === ROUTES.VERIFY_EMAIL ||
+    location.pathname === ROUTES.FORGOT_PASSWORD ||
+    location.pathname === ROUTES.VERIFY_OTP ||
+    location.pathname === ROUTES.RESET_PASSWORD;
+
+  if (!isAuthenticated || isAuthActionPath) return <Outlet />;
 
   // Build the snapshot the centralized resolver expects. We forward
   // every BE-derived routing signal we have on the persisted user blob so

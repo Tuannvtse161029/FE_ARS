@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useRef, useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
@@ -91,6 +91,10 @@ export const Register = () => {
   const googleInFlightRef = useRef(false);
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    authService.logout();
+  }, []);
 
   const isOrcidRole = (role: RequestableRole) =>
     role === 'Researcher' || role === 'Reviewer';
@@ -282,6 +286,9 @@ export const Register = () => {
       };
 
       await authService.registerUser(payload);
+
+      // Clear any session artifacts so the user is purely in unauthenticated verification state
+      authService.logout();
 
       // Trigger sending registration verification email / OTP
       void authService.sendRegistrationOtp(form.email.trim());
