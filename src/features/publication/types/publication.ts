@@ -117,8 +117,21 @@ export interface SubmissionInput {
   fileUrl?: string;
 }
 
+export const normalizePublicationStatus = (status: string): PublicationStatus | null => {
+  const normalized = status.trim().toUpperCase().replace(/[ -]+/g, '_');
+  return (PUBLICATION_STATUSES as readonly string[]).includes(normalized)
+    ? normalized as PublicationStatus
+    : null;
+};
+
+export const isTerminalPublicationStatus = (status: PublicationStatus): boolean =>
+  status === 'PUBLISHED' || status === 'ADMIN_REJECTED' || status === 'WITHDRAWN';
+
 export const canAppearInPublicCatalog = (paper: PublicationPaper): boolean =>
-  paper.status === 'PUBLISHED' && paper.visibility === 'PUBLIC';
+  normalizePublicationStatus(paper.status) === 'PUBLISHED' && paper.visibility === 'PUBLIC';
+
+export const publicReviewerName = (paper: Pick<PublicationPaper, 'reviewerIdentityPublic' | 'reviewer'>): string | null =>
+  paper.reviewerIdentityPublic ? paper.reviewer?.reviewerName ?? null : null;
 
 export const statusLabel = (status: PublicationStatus): string =>
   status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());

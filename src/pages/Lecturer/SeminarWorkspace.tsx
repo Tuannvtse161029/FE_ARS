@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -128,8 +128,15 @@ export const SeminarWorkspace = () => {
     return { startTime: now.toISOString(), endTime: end.toISOString() };
   };
 
+  const seminarCounts = useMemo(() => seminars.reduce((counts, seminar) => {
+    const effective = deriveEffectiveStatus(seminar.status, seminar.endTime);
+    counts.upcoming += effective === 'UPCOMING' || effective === 'IN PROGRESS' ? 1 : 0;
+    counts.completed += effective === 'COMPLETED' ? 1 : 0;
+    return counts;
+  }, { upcoming: 0, completed: 0 }), [seminars]);
+
   // Tab filtering — uses effectiveStatus so past-endTime seminars appear in "Completed"
-  const filteredSeminars = seminars.filter((sem) => {
+  const filteredSeminars = useMemo(() => seminars.filter((sem) => {
     const effective = deriveEffectiveStatus(sem.status, sem.endTime);
     if (activeTab === 'upcoming') {
       return effective === 'UPCOMING' || effective === 'IN PROGRESS';
@@ -141,7 +148,13 @@ export const SeminarWorkspace = () => {
       return effective === 'DRAFT';
     }
     return true;
-  });
+  }), [activeTab, seminars]);
+
+  const minDateTime = useMemo(() => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16), []);
+  const announce = useCallback((message: string) => {
+    setBannerText(message);
+    setShowSuccessBanner(true);
+  }, []);
 
   // Email invite helpers
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -160,14 +173,14 @@ export const SeminarWorkspace = () => {
   // Create submit
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!seminarName.trim()) { alert('Please enter a seminar name.'); return; }
-    if (!dateTime.trim())   { alert('Please select a date and time.'); return; }
-    if (!seminarDetails.trim()) { alert('Please enter seminar details.'); return; }
+    if (!seminarName.trim()) { announce('Please enter a seminar name.'); return; }
+    if (!dateTime.trim())   { announce('Please select a date and time.'); return; }
+    if (!seminarDetails.trim()) { announce('Please enter seminar details.'); return; }
 
     // Enforce at least 1-hour-in-advance rule (belt-and-suspenders over the min attribute).
     const minTime = new Date(Date.now() + 60 * 60 * 1000);
     if (new Date(dateTime) < minTime) {
-      alert('Seminars must be scheduled at least 1 hour in advance.');
+      announce('Seminars must be scheduled at least 1 hour in advance.');
       return;
     }
 
@@ -193,9 +206,9 @@ export const SeminarWorkspace = () => {
     reminderInFlightRef.current = true;
     try {
       await doSendReminder(seminarId);
-      alert('Reminder sent successfully!');
+      announce('Reminder sent successfully.');
     } catch {
-      alert('Failed to send reminder. Please try again.');
+      announce('Failed to send reminder. Please try again.');
     } finally {
       reminderInFlightRef.current = false;
     }
@@ -285,19 +298,13 @@ export const SeminarWorkspace = () => {
           className={`${styles.tabBtn} ${activeTab === 'upcoming' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('upcoming')}
         >
-          Upcoming ({seminars.filter((s) => {
-            const eff = deriveEffectiveStatus(s.status, s.endTime);
-            return eff === 'UPCOMING' || eff === 'IN PROGRESS';
-          }).length})
+          Upcoming ({seminarCounts.upcoming})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'completed' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('completed')}
         >
-          Completed ({seminars.filter((s) => {
-            const eff = deriveEffectiveStatus(s.status, s.endTime);
-            return eff === 'COMPLETED';
-          }).length})
+          Completed ({seminarCounts.completed})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'drafts' ? styles.activeTab : ''}`}
@@ -517,7 +524,7 @@ export const SeminarWorkspace = () => {
                         className={styles.sendInviteBtn}
                         onClick={() => {
                           navigator.clipboard.writeText(sem.onlineLink);
-                          alert('Copied invite link!');
+                          announce('Invite link copied.');
                         }}
                         disabled={!isValidMeetLink(sem.onlineLink)}
                       >
@@ -581,11 +588,7 @@ export const SeminarWorkspace = () => {
                   type="datetime-local"
                   className={styles.formInput}
                   value={dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''}
-                  min={(() => {
-                    // Seminar must be scheduled at least 1 hour in advance.
-                    const minDate = new Date(Date.now() + 60 * 60 * 1000);
-                    return minDate.toISOString().slice(0, 16);
-                  })()}
+                  min={minDateTime}
                   onChange={(e) => {
                     const localValue = e.target.value; // "2026-07-29T10:00"
                     if (!localValue) { setDateTime(''); return; }
@@ -710,7 +713,7 @@ export const SeminarWorkspace = () => {
                   className={styles.copyLinkBlueBtn}
                   onClick={() => {
                     navigator.clipboard.writeText(generatedMeetLink);
-                    alert('Copied Google Meet link!');
+                    announce('Google Meet link copied.');
                   }}
                 >
                   <FileText size={14} aria-hidden />
