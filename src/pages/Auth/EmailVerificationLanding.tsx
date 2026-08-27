@@ -5,6 +5,8 @@ import { ROUTES } from '../../routes/paths';
 import { useEmailVerification } from '../../hooks/useEmailVerification';
 import { isVerifyEmailToken } from '../../services/emailVerification.service';
 import authService from '../../services/auth.service';
+import { useAuthStore } from '../../store';
+import { storage } from '../../utils/storage';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Check, Mail, ArrowLeft } from 'lucide-react';
 import styles from './EmailVerificationLanding.module.css';
@@ -24,9 +26,14 @@ export const EmailVerificationLanding = (): JSX.Element => {
   const rawToken = searchParams.get('token') ?? '';
 
   const locationState = (location.state ?? {}) as LocationState;
-  const [email] = useState<string>(
-    locationState.email || searchParams.get('email') || ''
-  );
+  const [email, setEmail] = useState<string>(() => {
+    return (
+      locationState.email ||
+      searchParams.get('email') ||
+      sessionStorage.getItem('ars_registered_email') ||
+      ''
+    );
+  });
 
   // Deep-link verification hook
   const { state: linkState, verify: verifyLink } = useEmailVerification();
@@ -104,6 +111,12 @@ export const EmailVerificationLanding = (): JSX.Element => {
   // Submit OTP Verification
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMessage('Please enter your registered email address.');
+      return;
+    }
+
     const code = otp.join('');
     if (code.length !== OTP_CELL_COUNT) {
       setErrorMessage(`Please enter all ${OTP_CELL_COUNT} digits of your OTP code.`);
@@ -114,8 +127,41 @@ export const EmailVerificationLanding = (): JSX.Element => {
     setErrorMessage(null);
 
     try {
-      await authService.verifyRegistrationOtp(email, code);
+      const response = await authService.verifyRegistrationOtp(cleanEmail, code);
       setOtpSuccess(true);
+
+      // Hydrate user session with pending verification status
+      const token = response?.token || storage.getToken() || `ars-verified-${Date.now()}`;
+      const username = response?.username || cleanEmail.split('@')[0];
+      const userId = response?.userId || 0;
+
+      const verifiedUser = {
+        id: userId,
+        username,
+        email: cleanEmail,
+        fullName: response?.fullName || username,
+        roleId: 0,
+        roleName: 'Guest',
+        isActive: false,
+        verificationStatus: 'Pending' as const,
+        accountTier: 'Free' as const,
+        effectiveRole: 'Guest' as const,
+      };
+
+      storage.setToken(token);
+      storage.setUser(verifiedUser as any);
+      useAuthStore.getState().login(verifiedUser as any, token, 'Guest');
+
+      try {
+        sessionStorage.removeItem('ars_registered_email');
+      } catch {
+        /* ignore */
+      }
+
+      // Automatically navigate into /forum where pending approval banner is displayed
+      setTimeout(() => {
+        navigate(ROUTES.FORUM, { replace: true });
+      }, 1500);
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -129,13 +175,14 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
   // Resend OTP Code
   const handleResendCode = async () => {
-    if (resendCooldown > 0 || isResending || !email) return;
+    const cleanEmail = email.trim();
+    if (resendCooldown > 0 || isResending || !cleanEmail) return;
     setIsResending(true);
     setErrorMessage(null);
     setResendSuccess(false);
 
     try {
-      await authService.sendRegistrationOtp(email);
+      await authService.sendRegistrationOtp(cleanEmail);
       setResendSuccess(true);
       setResendCooldown(RESEND_COOLDOWN);
       setTimeout(() => setResendSuccess(false), 5000);
@@ -171,17 +218,26 @@ export const EmailVerificationLanding = (): JSX.Element => {
             </div>
             <h1 className={styles.title}>Email verified successfully!</h1>
             <p className={styles.subtitle}>
-              Thank you for verifying your email address. Your account is now confirmed.
+              Thank you for verifying your email address. Your account is now confirmed and waiting for admin approval.
             </p>
             <div className={styles.actions}>
               <Button
                 variant="primary"
                 size="lg"
                 fullWidth
-                onClick={() => navigate(ROUTES.LOGIN, { replace: true })}
+                onClick={() => navigate(ROUTES.FORUM, { replace: true })}
                 className={styles.primaryButton}
               >
-                Proceed to Sign In
+                Go to Forum (Pending Approval)
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                onClick={() => navigate(ROUTES.LOGIN, { replace: true })}
+                className={styles.secondaryButton}
+              >
+                Sign In Instead
               </Button>
             </div>
           </div>
@@ -207,17 +263,17 @@ export const EmailVerificationLanding = (): JSX.Element => {
           </div>
           <h1 className={styles.title}>Email Verified!</h1>
           <p className={styles.subtitle}>
-            Your email <strong>{email}</strong> has been successfully verified. Your account registration is complete and is in queue for administrator activation.
+            Your email <strong>{email}</strong> has been successfully verified. Entering the system in read-only mode while waiting for administrator review...
           </p>
           <div className={styles.actions}>
             <Button
               variant="primary"
               size="lg"
               fullWidth
-              onClick={() => navigate(ROUTES.LOGIN, { replace: true })}
+              onClick={() => navigate(ROUTES.FORUM, { replace: true })}
               className={styles.primaryButton}
             >
-              Sign In to Your Account
+              Go to Forum (Pending Approval)
             </Button>
           </div>
         </div>
@@ -261,6 +317,29 @@ export const EmailVerificationLanding = (): JSX.Element => {
         {resendSuccess && (
           <div className={styles.successBox} role="status">
             A new 6-digit verification code has been sent to your email!
+          </div>
+        )}
+
+        {/* If email is empty, show input field */}
+        {!email && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4, color: 'var(--ars-ink, #0f172a)' }}>
+              Registered Email Address
+            </label>
+            <input
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1.5px solid var(--ars-node, #cbd5e1)',
+                fontSize: 14,
+                boxSizing: 'border-box'
+              }}
+            />
           </div>
         )}
 

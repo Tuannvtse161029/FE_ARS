@@ -564,13 +564,20 @@ export const authService = {
     }
   },
 
-  verifyRegistrationOtp: async (email: string, otp: string): Promise<void> => {
+  verifyRegistrationOtp: async (email: string, otpCode: string): Promise<any> => {
     try {
-      await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: otp } });
+      const response = await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, {
+        email: email.trim(),
+        otpCode: otpCode.trim(),
+      });
+      return response.data;
     } catch (err: any) {
-      // If verify-email with token param fails, try verify-otp body fallback
+      // If verify-otp fails, try fallback to verify-email query param
       try {
-        await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, { email, otp });
+        const fallbackRes = await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, {
+          params: { token: otpCode.trim() },
+        });
+        return fallbackRes.data;
       } catch {
         throw err;
       }

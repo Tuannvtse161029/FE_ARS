@@ -287,6 +287,13 @@ export const Register = () => {
 
       await authService.registerUser(payload);
 
+      // Store registered email for OTP page reload safety
+      try {
+        sessionStorage.setItem('ars_registered_email', form.email.trim());
+      } catch {
+        /* ignore */
+      }
+
       // Clear any session artifacts so the user is purely in unauthenticated verification state
       authService.logout();
 
