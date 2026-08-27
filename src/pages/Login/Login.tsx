@@ -67,7 +67,11 @@ const Login = () => {
     await login(data);
   };
 
-  const handleFastLogin = (email: string, password: string, role?: string) => {
+  const handleFastLogin = (
+    email: string,
+    password: string,
+    role?: 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'
+  ) => {
     setValue('username', email);
     setValue('password', password);
     if (role) {
