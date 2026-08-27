@@ -11,6 +11,7 @@ import type { AuthResponse, UserRole, RegisterPayload } from '../../types/auth';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
 import { RegisterSuccessModal } from './components/RegisterSuccessModal';
+import { PolicyModal, type PolicyTab } from './components/PolicyModal';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
@@ -87,6 +88,7 @@ export const Register = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [policyTab, setPolicyTab] = useState<PolicyTab | null>(null);
 
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
   // Login page so rapid clicks cannot fire the GIS callback twice.
@@ -276,7 +278,7 @@ export const Register = () => {
         phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
-        ...(isOrcidRole(form.role) && normalizedOrcid ? { orcidId: normalizedOrcid } : {}),
+        ...(form.role === 'Reviewer' && normalizedOrcid ? { orcidId: normalizedOrcid } : {}),
         // Mirror the auth-service payload contract: new accounts start
         // pending (isActive: false) until an Admin approves the role
         // request. The BE echoes this on the response.
@@ -650,27 +652,36 @@ export const Register = () => {
             />
             <span className={styles.consentText} id="consent-description">
               I have read and agree to the{' '}
-              <a
-                href="/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className={styles.consentLink}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPolicyTab('privacy');
+                }}
               >
                 Privacy Policy
-              </a>{' '}
+              </button>{' '}
               and{' '}
-              <a
-                href="/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className={styles.consentLink}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPolicyTab('terms');
+                }}
               >
                 Terms of Service
-              </a>
+              </button>
             </span>
           </label>
+          <FieldError
+            id="consent-error"
+            message={errors.consentAccepted}
+            testId="register-error-consentAccepted"
+          />
         </div>
 
         <Button
@@ -713,6 +724,13 @@ export const Register = () => {
           </p>
         </div>
       </form>
+
+      <PolicyModal
+        isOpen={policyTab !== null}
+        initialTab={policyTab || 'privacy'}
+        onClose={() => setPolicyTab(null)}
+        onAccept={() => setForm((prev) => ({ ...prev, consentAccepted: true }))}
+      />
 
       <SamplePdfModal
         isOpen={isSampleOpen}
