@@ -547,13 +547,34 @@ export const authService = {
     await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
   },
 
-  // --- Email verification / admin approval trigger ---
+  // --- Email verification / OTP trigger ---
   verifyEmail: async (data: VerifyEmailRequest): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: data.token } });
   },
 
   sendApprovalEmail: async (data: SendApprovalEmailRequest): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email: data.email } });
+  },
+
+  sendRegistrationOtp: async (email: string): Promise<void> => {
+    try {
+      await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email } });
+    } catch (err) {
+      console.warn('[authService] sendRegistrationOtp notification:', err);
+    }
+  },
+
+  verifyRegistrationOtp: async (email: string, otp: string): Promise<void> => {
+    try {
+      await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, { params: { token: otp } });
+    } catch (err: any) {
+      // If verify-email with token param fails, try verify-otp body fallback
+      try {
+        await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, { email, otp });
+      } catch {
+        throw err;
+      }
+    }
   },
 
   // --- Dynamic Roles fetching from GET /api/Role ---

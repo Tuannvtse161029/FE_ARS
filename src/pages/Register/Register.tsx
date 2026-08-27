@@ -5,12 +5,10 @@ import { authService } from '../../services/auth.service';
 import { useAuth } from '../../context/AuthContext';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
-import { useAuthStore } from '../../store';
-import { ROUTES } from '../../utils/constants';
-import type { AuthResponse, UserRole, RegisterPayload } from '../../types/auth';
+import { ROUTES } from '../../routes/paths';
+import type { UserRole, RegisterPayload } from '../../types/auth';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
-import { RegisterSuccessModal } from './components/RegisterSuccessModal';
 import { PolicyModal, type PolicyTab } from './components/PolicyModal';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
@@ -75,7 +73,6 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
 
 export const Register = () => {
   const navigate = useNavigate();
-  const authStore = useAuthStore();
   const { loginWithGoogle } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
@@ -87,7 +84,6 @@ export const Register = () => {
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
-  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [policyTab, setPolicyTab] = useState<PolicyTab | null>(null);
 
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
@@ -285,29 +281,19 @@ export const Register = () => {
         isActive: false,
       };
 
-      const response: AuthResponse = await authService.registerUser(payload);
+      await authService.registerUser(payload);
 
-      // Persist the auth state so the user is recognised as authenticated
-      // when they land on /forum. The Zustand store + storage both need
-      // updating so route guards (which read from storage during rehydrate)
-      // and the React tree (which reads from the store) see the same data.
-      // `isActive` defaults to false here because the spec says new
-      // registrations stay pending until an Admin approves the role request.
-      authService.setAuthData(response);
-      authStore.login(
-        {
-          id: 0,
-          username: response.username,
-          email: response.email,
-          fullName: response.username,
-          roleId: response.roleId ?? 0,
-          roleName: response.role,
-          isActive: response.isActive ?? false,
+      // Trigger sending registration verification email / OTP
+      void authService.sendRegistrationOtp(form.email.trim());
+
+      // Navigate to /verify-email with the registered email in state
+      navigate(ROUTES.VERIFY_EMAIL, {
+        replace: true,
+        state: {
+          email: form.email.trim(),
+          fullName: form.fullName.trim(),
         },
-        response.token
-      );
-
-      setIsSuccessOpen(true);
+      });
     } catch (err) {
       const fieldErrors = extractServerFieldErrors(err, [
         'fullName',
@@ -736,21 +722,6 @@ export const Register = () => {
         isOpen={isSampleOpen}
         onClose={() => setIsSampleOpen(false)}
         initialRole={form.role}
-      />
-
-      <RegisterSuccessModal
-        isOpen={isSuccessOpen}
-        email={form.email}
-        role={form.role}
-        onClose={() => {
-          setIsSuccessOpen(false);
-          setForm(initialForm);
-          // The user is now authenticated but pending (isActive: false).
-          // /forum is the only route they can access; the verified-guard
-          // in MainLayout will bounce them back here if they try anything
-          // else, and the Forum page shows the pending banner.
-          navigate(ROUTES.FORUM, { replace: true });
-        }}
       />
     </div>
   );
