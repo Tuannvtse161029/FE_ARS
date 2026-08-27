@@ -174,9 +174,21 @@ export async function clearAuthSession(): Promise<void> {
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     try {
+      // Chuẩn hoá role gửi lên BE:
+      // Nếu user chọn Auto-detect hoặc không chọn hoặc role là Guest -> gửi null
+      // Nếu user chọn role cụ thể ('Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin') -> gửi role string
+      const roleToSend =
+        credentials.selectedRole &&
+        credentials.selectedRole.trim() &&
+        credentials.selectedRole.trim().toLowerCase() !== 'guest' &&
+        credentials.selectedRole.trim().toLowerCase() !== 'null'
+          ? credentials.selectedRole.trim()
+          : null;
+
       const response = await api.post<any>(API_ENDPOINTS.AUTH.LOGIN, {
         email: credentials.username,
         password: credentials.password,
+        role: roleToSend,
       });
 
       const data = response.data;
@@ -199,7 +211,7 @@ export const authService = {
         data?.roleName ||
         data?.user?.role ||
         data?.user?.roleName ||
-        'Researcher';
+        (data?.verificationStatus === 'Pending' || data?.isActive === false ? 'Guest' : 'Researcher');
 
       const userId =
         data?.userId ??

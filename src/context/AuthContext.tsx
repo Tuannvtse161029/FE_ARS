@@ -323,6 +323,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authService.login(credentials);
       const assignedRoles: UserRole[] = response.roles ?? [];
 
+      // If BE returns Guest or user is pending approval, persist Guest and navigate to Forum
+      if (response.role === 'Guest' || response.verificationStatus === 'Pending' || !response.isActive) {
+        await persistAuthAndNavigate(response, 'Guest', credentials.rememberMe ?? false);
+        return;
+      }
+
       // If user explicitly picked a role on the login form, sign in with that role
       if (credentials.selectedRole && credentials.selectedRole.trim()) {
         const chosenRole = credentials.selectedRole.trim();
@@ -347,7 +353,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Single-role (or zero — fall back to BE's `role`) — proceed.
-      const roleToUse = assignedRoles[0] ?? response.role;
+      const roleToUse = response.role ?? assignedRoles[0] ?? 'Researcher';
       await persistAuthAndNavigate(response, roleToUse, credentials.rememberMe ?? false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
