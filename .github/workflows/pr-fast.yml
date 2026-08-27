@@ -1,0 +1,84 @@
+name: PR fast checks
+
+# Cancellable: only one PR-fast run at a time per PR. Stale runs are killed.
+concurrency:
+  group: pr-fast-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [main]
+
+# Required checks: install → build → lint → affected → smoke.
+# No `paths:` filter — required checks must run on every PR so they are never
+# permanently "pending" because of a missing diff line.
+
+jobs:
+  fast-checks:
+    name: PR fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Mocked BE for any test that accidentally reads env. NEVER a real URL.
+      VITE_API_BASE_URL: http://127.0.0.1:4173
+      # Skip the global `npm install` postinstall scripts that require
+      # network or platform-specific binaries (Playwright/Firebase). We
+      # only need lint + Vitest in this job; browser deps come from the
+      # nightly + release workflows.
+      npm_config_audit: 'false'
+      CI: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so `git merge-base origin/main` works for affected
+          # selection. Default `fetch-depth: 1` is shallow and breaks this.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+        env:
+          # Re-enable scripts ONLY for the lockfile-allowed allow-list
+          # (see package.json `allowScripts`). Prevents accidental
+          # postinstall from running anything network-dependent.
+          npm_config_ignore_scripts: 'true'
+
+      - name: Build (typecheck + Vite build)
+        run: npm run build
+        env:
+          # Make tsc + Vite emit deterministic output.
+          CI: 'true'
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Affected tests (PR gate)
+        id: affected
+        run: npm run test:affected
+        env:
+          # Use a deterministic base so the action doesn't depend on
+          # the runner fetching origin/main over the network.
+          BASE_REF: '${{ github.base_ref }}'
+          FORCE_FULL: ''
+
+      - name: Smoke tests (curated critical-path)
+        run: npm run test:smoke
+
+      - name: Upload coverage (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-fast-coverage
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 7

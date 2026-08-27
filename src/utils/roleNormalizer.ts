@@ -101,8 +101,8 @@ export function isGuestUser(snapshot: {
 export function landingRouteForRoleName(
   role: string | null | undefined,
   options?: { isAdminOverride?: boolean },
-): '/admin' | '/forum' {
+): '/admin' | '/home' {
   if (options?.isAdminOverride) return '/admin';
   if (isAdminUser({ roleName: role ?? null })) return '/admin';
-  return '/forum';
+  return '/home';
 }

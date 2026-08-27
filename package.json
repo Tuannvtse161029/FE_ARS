@@ -7,16 +7,26 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+
     "preview": "vite preview",
-    "test": "vitest run",
+
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:list": "playwright test --list",
+    "test:e2e": "playwright test --config playwright.e2e.config.ts",
+    "test:e2e:ui": "playwright test --config playwright.e2e.config.ts --ui",
+    "test:e2e:list": "playwright test --config playwright.e2e.config.ts --list",
+    "test:smoke": "node scripts/run-smoke.mjs",
+    "test:affected": "node scripts/run-affected-tests.mjs",
+    "test:full": "node scripts/run-all-tests.mjs",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts",
+
     "e2e:production": "playwright test --config playwright.config.ts",
     "e2e:researcher-reviewer": "playwright test --config playwright.reviewer-flow.config.ts",
-    "e2e:reviewer-withdrawal": "playwright test --config playwright.withdrawal-flow.config.ts"
+    "e2e:reviewer-withdrawal": "playwright test --config playwright.withdrawal-flow.config.ts",
+    "e2e:google-onboarding": "playwright test --config playwright.google-onboarding.config.ts",
+    "e2e:google-onboarding:headed": "playwright test --config playwright.google-onboarding.headed.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

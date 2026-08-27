@@ -21,7 +21,6 @@ import {
   Plus,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
-  Users as BrowseReviewersIcon,
   Calendar as SeminarIcon,
   Users as GroupIcon,
   Settings,
@@ -43,6 +42,9 @@ import {
   Upload,
   BriefcaseBusiness,
   Receipt as AnnualFeesIcon,
+  Home as HomeIcon,
+  ClipboardList as AssignmentsIcon,
+  FileCheck2 as PublicationIcon,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -267,7 +269,10 @@ export const MainLayout = () => {
           // keep Dashboard highlighted on every admin page (Phase C
           // defect 3B).
           { to: ROUTES.ADMIN, label: 'Dashboard', icon: <DashboardIcon size={20} />, end: true },
-          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'Role Requests', icon: <RoleRequestsIcon size={20} /> },
+          { to: ROUTES.ADMIN_PAPER_SUBMISSIONS, label: 'Paper Submissions', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: 'Reviewer Assignments', icon: <AssignmentsIcon size={20} /> },
+          { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: 'Published Papers', icon: <PublicationIcon size={20} /> },
+          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'User Verification', icon: <RoleRequestsIcon size={20} /> },
           { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts', icon: <AccountsIcon size={20} /> },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
@@ -283,8 +288,9 @@ export const MainLayout = () => {
         ];
       case 'Reviewer':
         return [
+          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.REVIEW_TASKS, label: 'Review Paper', icon: <PapersIcon size={20} />, badge: '2' },
+          { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
           ...(AppConfig.features.enableWithdrawals
             ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
@@ -312,6 +318,7 @@ export const MainLayout = () => {
           // belongs to Reviewer / Graduate Student flows). See
           // docs/BACKEND_REQUESTS.md "Coordination — Agent Lecturer
           // Navigation" for the coordination note.
+          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
@@ -328,6 +335,7 @@ export const MainLayout = () => {
         ];
       case 'Graduate Student':
         return [
+          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
@@ -341,9 +349,9 @@ export const MainLayout = () => {
       case 'Researcher':
       default:
         return [
+          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
-          { to: ROUTES.PAPERS, label: 'Paper', icon: <PapersIcon size={20} /> },
-          { to: ROUTES.REVIEWERS, label: 'Reviewers', icon: <BrowseReviewersIcon size={20} /> },
+          { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
           { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
           // Agent admin-annual-fees — see the Reviewer block above for the
