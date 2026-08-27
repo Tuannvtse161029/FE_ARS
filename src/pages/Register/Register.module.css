@@ -163,8 +163,25 @@
   cursor: not-allowed;
 }
 
-.nativeInput--error {
-  border-color: var(--color-error);
+.nativeInput--error,
+.nativeInput--error:focus {
+  border-color: #ef4444 !important;
+  background-color: #fff8f8;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.nativeSelect--error,
+.nativeSelect--error:focus {
+  border-color: #ef4444 !important;
+  background-color: #fff8f8;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.optionalText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: normal;
+  margin-left: 4px;
 }
 
 .nativeSelect {
