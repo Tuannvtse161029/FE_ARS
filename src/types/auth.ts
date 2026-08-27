@@ -13,12 +13,8 @@ export type AccountTier = 'Free' | 'Premium' | 'Enterprise';
 export interface LoginRequest {
   username: string;
   password: string;
-  // When true, persist token/user to localStorage (survives browser restart).
-  // When false/undefined, persist to sessionStorage (cleared when tab closes).
-  // The AuthContext flips the storage bucket via storage.setRememberMe() BEFORE
-  // writing the token so storage.setToken/setUser route to the correct
-  // backing store without changing their signatures.
   rememberMe?: boolean;
+  selectedRole?: string;
 }
 
 // BusinessRole — the persisted role set (renamed from UserRole for clarity

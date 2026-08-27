@@ -323,6 +323,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authService.login(credentials);
       const assignedRoles: UserRole[] = response.roles ?? [];
 
+      // If user explicitly picked a role on the login form, sign in with that role
+      if (credentials.selectedRole && credentials.selectedRole.trim()) {
+        const chosenRole = credentials.selectedRole.trim();
+        await persistAuthAndNavigate(response, chosenRole, credentials.rememberMe ?? false);
+        return;
+      }
+
       if (assignedRoles.length > 1) {
         // Multi-role user — show picker. Don't persist auth yet; we wait for
         // the user to pick a role. The picker modal calls confirmRoleSelection

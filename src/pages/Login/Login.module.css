@@ -269,6 +269,64 @@
   cursor: not-allowed;
 }
 
+/* ── Role Selector Field ──────────────────────────────────── */
+.roleFieldWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ars-ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.optionalTag {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-weight: normal;
+}
+
+.roleSelect {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: var(--ars-paper-alt);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-lg);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.roleSelect:focus {
+  border-color: var(--ars-blue);
+  background-color: var(--ars-paper);
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+}
+
+.roleSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fieldHint {
+  font-size: 11px;
+  color: var(--ars-ink-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
 /* ── Footer ─────────────────────────────────────────────── */
 .footer {
   margin-top: var(--space-4);
