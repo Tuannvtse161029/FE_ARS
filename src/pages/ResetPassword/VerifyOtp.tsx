@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AxiosError } from 'axios';
 import { Button } from '../../components/Button';
 import { FieldError } from '../../components/FieldError';
 import { StepIndicator } from './components/StepIndicator';
