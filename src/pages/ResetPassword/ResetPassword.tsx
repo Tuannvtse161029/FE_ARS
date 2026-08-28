@@ -34,6 +34,7 @@ const ResetPassword = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const inFlightRef = useRef(false);
@@ -58,16 +59,20 @@ const ResetPassword = () => {
     inFlightRef.current = true;
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
     try {
       await authService.resetPassword({
-        email,
-        otpCode,
+        email: email.trim(),
+        otpCode: otpCode.trim(),
         newPassword: data.newPassword,
         confirmPassword: data.confirmPassword,
       });
       sessionStorage.removeItem('ars_forgot_email');
       sessionStorage.removeItem('ars_forgot_otp');
-      navigate(ROUTES.LOGIN, { replace: true });
+      setSuccessMessage('Password reset successfully! Redirecting to login...');
+      setTimeout(() => {
+        navigate(ROUTES.LOGIN, { replace: true });
+      }, 1500);
     } catch (err: unknown) {
       const msg = resetPasswordError(
         err,
@@ -102,6 +107,12 @@ const ResetPassword = () => {
         {error && (
           <div className={styles.formError} role="alert">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className={styles.formSuccess} role="status">
+            {successMessage}
           </div>
         )}
 
