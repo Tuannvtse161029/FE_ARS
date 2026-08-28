@@ -74,8 +74,8 @@ export type NotificationKind =
   | 'role-request-rejected'
   | 'account-status-changed'
   | 'account-platform-update'
+  | 'follower-new'
   | 'system-update'
-  // Catch-all
   | 'unknown';
 
 interface NotificationRouteSpec {
@@ -339,6 +339,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     kind: 'system-update',
     prefix: '[System]',
     spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+
+  // ── Follower events (all roles) ──────────────────────────────────────────
+  {
+    kind: 'follower-new',
+    prefix: '[Follower]',
+    spec: { path: ROUTES.PROFILE, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'follower-new',
+    prefix: 'theo dõi',
+    spec: { path: ROUTES.PROFILE, roles: [
       'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
     ] },
   },
