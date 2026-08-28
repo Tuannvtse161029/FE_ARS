@@ -41,23 +41,23 @@ export const useFirebaseUpload = (
   }, []);
 
   const uploadPdf = useCallback(
-    async (file: File): Promise<void> => {
+    async (file: File): Promise<string | null> => {
       if (!isFirebaseConfigured()) {
         setError('Firebase storage is not configured. Please add your Firebase credentials to the .env file.');
         setPdfUrl(null);
-        return;
+        return null;
       }
 
       if (!storage) {
         setError('Firebase storage is not initialized.');
         setPdfUrl(null);
-        return;
+        return null;
       }
 
       if (file.type !== PDF_MIME_TYPE) {
         setError('Only PDF files are allowed.');
         setPdfUrl(null);
-        return;
+        return null;
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {

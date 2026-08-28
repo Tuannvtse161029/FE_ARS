@@ -41,29 +41,29 @@ export const useImageUpload = (
   }, []);
 
   const uploadImage = useCallback(
-    async (file: File): Promise<void> => {
+    async (file: File): Promise<string | null> => {
       if (!isFirebaseConfigured()) {
         setError('Firebase storage is not configured. Please add your Firebase credentials to the .env file.');
         setImageUrl(null);
-        return;
+        return null;
       }
 
       if (!storage) {
         setError('Firebase storage is not initialized.');
         setImageUrl(null);
-        return;
+        return null;
       }
 
       if (!IMAGE_MIME_TYPES.includes(file.type)) {
         setError('Only JPEG, PNG, GIF, and WebP images are allowed.');
         setImageUrl(null);
-        return;
+        return null;
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setError('File size must be 10 MB or less.');
         setImageUrl(null);
-        return;
+        return null;
       }
 
       try {
