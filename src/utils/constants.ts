@@ -134,9 +134,13 @@ export const API_ENDPOINTS = {
   NOTIFICATION: {
     BASE: '/api/Notification',
     GET_ALL: '/api/Notification',
+    GET_PAGED: '/api/Notification/paged',
     CREATE: '/api/Notification',
     GET_BY_ID: (id: number) => `/api/Notification/${id}`,
     UPDATE: (id: number) => `/api/Notification/${id}`,
+    MARK_READ: (id: number) => `/api/Notification/${id}/read`,
+    MARK_ALL_READ: '/api/Notification/mark-all-read',
+    UNREAD_COUNT: '/api/Notification/unread-count',
     DELETE: (id: number) => `/api/Notification/${id}`,
   },
   USER_ROLE: {

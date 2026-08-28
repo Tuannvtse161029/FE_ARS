@@ -132,16 +132,30 @@ export interface FollowerPagedResult {
 }
 
 // ── Notification ─────────────────────────────────────────────────────────────
-// Strict shape derived from the live Swagger contract
-// (`/api/Notification`). The Swagger schema only exposes `id`, `userId`,
-// `message`, `isRead`, and an optional `createdAt`. There is intentionally
-// NO `type`, NO `targetUrl`, NO `relatedEntityId`, NO bulk endpoints.
+// Strict shape aligned with live Swagger contract (`/api/Notification`).
 export interface NotificationItem {
   id: number;
-  userId: number;
-  message: string;
-  isRead: boolean;
-  createdAt?: string;
+  notificationId?: number;
+  userId?: number | null;
+  message?: string | null;
+  isRead?: boolean | null;
+  createdAt?: string | null;
+}
+
+export interface NotificationResponse extends NotificationItem {}
+
+export interface UnreadNotificationCountResponse {
+  unreadCount: number;
+}
+
+export interface NotificationResponsePagedResult {
+  items?: NotificationResponse[] | null;
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
 }
 
 export interface NotificationCreateRequest {

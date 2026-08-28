@@ -24,25 +24,40 @@ import type {
 // The FE must not fabricate notifications with localStorage or component
 // state — every notification in the UI comes from a backend-authored row.
 export const notificationService = {
-  // GET /api/Notification — returns the BE-owned list for the authenticated
-  // user. The BE filters by userId on the JWT subject; the optional `userId`
-  // query is kept for parity with the existing FE surface, but the FE
-  // service layer is responsible for verifying that the returned list only
-  // contains rows that belong to the currently authenticated user before
-  // rendering them.
+  /**
+   * Lấy danh sách thông báo của người dùng hiện tại (tự động theo JWT token).
+   */
   getAll: async (userId?: number): Promise<NotificationItem[]> => {
-    const params = userId !== undefined ? { userId } : undefined;
-    const response = await api.get<NotificationItem[]>(
-      API_ENDPOINTS.NOTIFICATION.GET_ALL,
-      { params },
-    );
-    const raw = Array.isArray(response.data) ? response.data : [];
-    return raw.map(normalizeNotification);
+    try {
+      const params = userId !== undefined ? { userId } : undefined;
+      const response = await api.get<NotificationItem[]>(
+        API_ENDPOINTS.NOTIFICATION.GET_ALL,
+        { params },
+      );
+      const raw = Array.isArray(response.data) ? response.data : [];
+      return raw.map(normalizeNotification);
+    } catch {
+      return [];
+    }
   },
 
-  // GET /api/Notification/{id} — fetch a single notification. Returns
-  // `null` when the BE responds with 404 so callers can decide whether to
-  // surface "notification not found" or simply drop it.
+  /**
+   * Lấy số lượng thông báo chưa đọc của người dùng hiện tại.
+   */
+  getUnreadCount: async (): Promise<number> => {
+    try {
+      const response = await api.get<{ unreadCount: number }>(
+        API_ENDPOINTS.NOTIFICATION.UNREAD_COUNT,
+      );
+      return Number(response.data?.unreadCount ?? 0);
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Lấy chi tiết một thông báo theo ID.
+   */
   getById: async (id: number): Promise<NotificationItem | null> => {
     try {
       const response = await api.get<NotificationItem>(
@@ -50,8 +65,6 @@ export const notificationService = {
       );
       return normalizeNotification(response.data);
     } catch (err) {
-      // 404 means the notification was deleted or never existed; surface
-      // a `null` so the UI can clear stale state without throwing.
       if (
         err !== null &&
         typeof err === 'object' &&
@@ -64,55 +77,69 @@ export const notificationService = {
     }
   },
 
-  // PUT /api/Notification/{id} with `{ isRead: true }` — mark a single
-  // notification as read. The BE keeps the rest of the row untouched
-  // (userId, message). Returns the updated row.
+  /**
+   * Đánh dấu 1 thông báo cụ thể là đã đọc.
+   */
   markRead: async (id: number): Promise<NotificationItem> => {
-    const body: NotificationUpdateRequest = { isRead: true };
-    const response = await api.put<NotificationItem>(
-      API_ENDPOINTS.NOTIFICATION.UPDATE(id),
-      body,
-    );
-    return normalizeNotification(response.data);
+    try {
+      // Ưu tiên endpoint PUT /api/Notification/{id}/read
+      const response = await api.put<NotificationItem>(
+        API_ENDPOINTS.NOTIFICATION.MARK_READ(id),
+      );
+      return normalizeNotification(response.data);
+    } catch {
+      // Fallback sang PUT /api/Notification/{id} với { isRead: true }
+      const body: NotificationUpdateRequest = { isRead: true };
+      const fallbackRes = await api.put<NotificationItem>(
+        API_ENDPOINTS.NOTIFICATION.UPDATE(id),
+        body,
+      );
+      return normalizeNotification(fallbackRes.data);
+    }
   },
 
-  // Fan-out `PUT /api/Notification/{id}` for every unread row. The BE has
-  // no bulk endpoint, so we walk the list and patch each one. We never
-  // throw out of the loop — partial failures bubble up via `failures` so
-  // the caller can decide whether to refetch the list.
-  //
-  // Returns:
-  //   `{ updated: NotificationItem[]; failures: number[] }`
+  /**
+   * Đánh dấu tất cả thông báo của người dùng hiện tại là đã đọc (Single Atomic Request).
+   */
   markAllRead: async (
-    notifications: NotificationItem[],
+    notifications?: NotificationItem[],
   ): Promise<{ updated: NotificationItem[]; failures: number[] }> => {
-    const unread = notifications.filter((n) => !n.isRead);
-    const results = await Promise.allSettled(
-      unread.map((n) => notificationService.markRead(n.id)),
-    );
-    const updated: NotificationItem[] = [];
-    const failures: number[] = [];
-    results.forEach((r, idx) => {
-      const id = unread[idx]?.id;
-      if (r.status === 'fulfilled') {
-        updated.push(r.value);
-      } else if (typeof id === 'number') {
-        failures.push(id);
-      }
-    });
-    return { updated, failures };
+    try {
+      await api.put(API_ENDPOINTS.NOTIFICATION.MARK_ALL_READ);
+      return {
+        updated: (notifications ?? []).map((n) => ({ ...n, isRead: true })),
+        failures: [],
+      };
+    } catch {
+      // Fallback nếu endpoint mark-all-read lỗi: gọi song song từng thông báo
+      const unread = (notifications ?? []).filter((n) => !n.isRead);
+      const results = await Promise.allSettled(
+        unread.map((n) => notificationService.markRead(n.id)),
+      );
+      const updated: NotificationItem[] = [];
+      const failures: number[] = [];
+      results.forEach((r, idx) => {
+        const id = unread[idx]?.id;
+        if (r.status === 'fulfilled') {
+          updated.push(r.value);
+        } else if (typeof id === 'number') {
+          failures.push(id);
+        }
+      });
+      return { updated, failures };
+    }
   },
 
-  // DELETE /api/Notification/{id} — remove a notification permanently.
+  /**
+   * Xóa một thông báo.
+   */
   delete: async (id: number): Promise<void> => {
     await api.delete(API_ENDPOINTS.NOTIFICATION.DELETE(id));
   },
 
-  // POST /api/Notification — BE-owned creation path. The FE exposes this
-  // helper for completeness / future server-driven workflows but does not
-  // invoke it from the user-facing notification center; the rule is that
-  // notification creation lives on the BE so users see the same rows across
-  // devices.
+  /**
+   * Tạo mới một thông báo thủ công.
+   */
   create: async (data: {
     userId?: number | null;
     message?: string | null;
