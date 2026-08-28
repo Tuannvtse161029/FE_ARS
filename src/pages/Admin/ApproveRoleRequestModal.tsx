@@ -41,10 +41,14 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
     setSubmitting(true);
     setError(null);
     try {
-      const updated = await adminService.decideRoleRequest(request.id, {
-        status: 'APPROVED',
-        notes: notes.trim() || undefined,
-      });
+      const updated = await adminService.decideRoleRequest(
+        request.id,
+        {
+          status: 'APPROVED',
+          notes: notes.trim() || 'Hồ sơ hợp lệ',
+        },
+        request.email,
+      );
       onActioned(updated);
       onClose();
     } catch (submissionError) {

@@ -49,7 +49,11 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
     setApiError(null);
     setSubmitting(true);
     try {
-      const updated = await adminService.decideRoleRequest(request.id, { status: 'DENIED', notes: normalized });
+      const updated = await adminService.decideRoleRequest(
+        request.id,
+        { status: 'DENIED', notes: normalized },
+        request.email,
+      );
       onActioned(updated);
       onClose();
     } catch (submissionError) {
