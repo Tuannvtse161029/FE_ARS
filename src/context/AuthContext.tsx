@@ -795,44 +795,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [authStore, navigate]);
 
   const logout = () => {
-    // Agent 53 — null-safe for Guest sessions. `authStore.logout()` and
-    // `clearAuthSession()` are both safe to call when there is no token
-    // or no user — Guest users have a hydrated `effectiveRole: 'Guest'`
-    // and `user: null`, and the cleanup routine no-ops on empty storage.
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
-      // Dev-only: log the logout decision so a "Guest clicks logout but
-      // stays on the page" bug surfaces immediately in the console. We
-      // intentionally include neither the token nor the email — only
-      // the derived session bucket + the effective role so the trace is
-      // useful without leaking sensitive state.
-      if (import.meta.env?.DEV) {
-        const isAuthenticated = authStore.isAuthenticated;
-        const storedToken =
-          typeof window !== 'undefined'
-            ? sessionStorage.getItem('ars_token') ??
-              localStorage.getItem('ars_token')
-            : null;
-        // eslint-disable-next-line no-console
-        console.info('[auth:logout] Guest-aware logout dispatched', {
-          effectiveRole: authStore.effectiveRole,
-          hasStoredToken: storedToken !== null,
-          isAuthenticated,
-          willNavigateTo: ROUTES.LOGIN,
-        });
-      }
-      // Clear the welcome-back signal alongside the rest of the auth state.
-      // The next successful login will flip it back to true for the new user
-      // — the banner must never linger across a logout/login boundary.
+      setIsLoading(false);
+      setError(null);
       useWelcomeSignal.getState().reset();
-      void clearAuthSession();
+      clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
       navigate(ROUTES.LOGIN, { replace: true });
     } finally {
-      // Release the guard on the next tick so the user can re-trigger
-      // logout from another surface (e.g. after a session recovery).
       queueMicrotask(() => {
         logoutInFlightRef.current = false;
       });
@@ -852,10 +825,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
-      // Force-clear the welcome signal too. A 401/403-driven wipe must
-      // leave no trace of the previous user's session.
+      setIsLoading(false);
+      setError(null);
       useWelcomeSignal.getState().reset();
-      void clearAuthSession();
+      clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
     } finally {

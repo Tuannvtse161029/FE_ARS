@@ -116,8 +116,8 @@ function disableGoogleAutoSelectIfAvailable(): void {
  * No call to `localStorage.clear()` — that would wipe unrelated domain
  * data (wallet, reviewer balance, etc.) and break cross-session state.
  */
-export async function clearAuthSession(): Promise<void> {
-  // ── Synchronous cleanup (must run before the await) ───────────────────────
+export function clearAuthSession(): void {
+  // ── Synchronous cleanup ───────────────────────
   try {
     ARS_AUTH_STORAGE_KEYS.forEach((key) => {
       try {
@@ -163,12 +163,6 @@ export async function clearAuthSession(): Promise<void> {
   } catch {
     /* swallow — the synchronous cleanup is best-effort */
   }
-
-  // ── Local cleanup only ───────────────────────────────────────────────────
-  // The BE has no documented logout/revocation contract. More importantly,
-  // calling a protected logout endpoint after clearing the token would make
-  // its 401 response re-enter the Axios 401 interceptor indefinitely.
-  return;
 }
 
 export const authService = {

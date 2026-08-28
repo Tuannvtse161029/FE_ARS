@@ -55,7 +55,12 @@ api.interceptors.response.use(
       currentPath.startsWith('/forgot-password') ||
       currentPath === '/reset-password';
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled) {
+    const hasToken = Boolean(
+      typeof window !== 'undefined' &&
+      (localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token'))
+    );
+
+    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled && hasToken) {
       sessionFailureHandled = true;
       clearAuthSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
