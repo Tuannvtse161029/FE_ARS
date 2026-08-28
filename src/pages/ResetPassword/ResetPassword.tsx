@@ -188,7 +188,11 @@ const ResetPassword = () => {
           Reset Password
         </Button>
 
-        <div className={styles.footer}>
+        <div className={styles.footer} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+          <Link to={ROUTES.VERIFY_OTP} className={styles.backLink}>
+            Re-enter code
+          </Link>
+          <span style={{ color: '#94a3b8' }}>•</span>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
             Back to login
           </Link>

@@ -116,12 +116,11 @@ const VerifyOtp = () => {
     verifyInFlightRef.current = true;
     setIsLoading(true);
     try {
-      await authService.verifyOtp({ email, otpCode: code });
       sessionStorage.setItem('ars_forgot_otp', code);
       sessionStorage.setItem('ars_forgot_email', email);
       navigate(ROUTES.RESET_PASSWORD, { state: { email, otpCode: code } });
     } catch (err: unknown) {
-      const msg = authFlowError(err, 'Invalid or expired code. Please try again.');
+      const msg = authFlowError(err, 'Invalid code. Please try again.');
       setError(msg);
       setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();
