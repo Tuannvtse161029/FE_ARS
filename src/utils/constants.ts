@@ -37,12 +37,12 @@ export const API_ENDPOINTS = {
     // the schema is strict.
     COMPLETE_GOOGLE_REGISTRATION: '/api/auth/complete-google-registration',
     REFRESH: '/api/auth/refresh',
-    LOGOUT: '/api/auth/logout',
-    FORGOT_PASSWORD: '/api/auth/forgot-password',
-    VERIFY_OTP: '/api/auth/verify-otp',
-    RESET_PASSWORD: '/api/auth/reset-password',
-    VERIFY_EMAIL: '/api/auth/verify-email',
-    SEND_APPROVAL_EMAIL: '/api/auth/send-approval-email',
+    FORGOT_PASSWORD: '/api/Auth/forgot-password',
+    VERIFY_OTP: '/api/Auth/verify-otp',
+    RESET_PASSWORD: '/api/Auth/reset-password',
+    RESEND_OTP: '/api/Auth/resend-otp',
+    VERIFY_EMAIL: '/api/Auth/verify-email',
+    SEND_APPROVAL_EMAIL: '/api/Auth/send-approval-email',
   },
   ROLE: {
     GET_ALL: '/api/Role',

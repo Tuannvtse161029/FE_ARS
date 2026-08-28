@@ -244,16 +244,20 @@ export interface ForgotPasswordRequest {
 
 export interface VerifyOtpRequest {
   email: string;
-  otp: string;
+  otpCode: string;
 }
 
 export interface VerifyOtpResponse {
-  resetToken: string;
+  message?: string;
+  token?: string;
+  resetToken?: string;
 }
 
 export interface ResetPasswordRequest {
-  resetToken: string;
+  email: string;
+  otpCode: string;
   newPassword: string;
+  confirmPassword?: string;
 }
 
 export interface VerifyEmailRequest {

@@ -28,9 +28,6 @@ interface LocationState {
  * status code 401" leak into the UI.
  */
 function authFlowError(err: unknown, fallback: string): string {
-  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
-    return 'Password reset is not yet available. Please contact support or try again later.';
-  }
   return extractServerMessage(err, fallback);
 }
 
@@ -38,7 +35,7 @@ const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
-  const email = state.email ?? '';
+  const email = state.email || sessionStorage.getItem('ars_forgot_email') || '';
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [otp, setOtp] = useState<string[]>(Array(OTP_CELL_COUNT).fill(''));
@@ -120,8 +117,10 @@ const VerifyOtp = () => {
     verifyInFlightRef.current = true;
     setIsLoading(true);
     try {
-      const { resetToken } = await authService.verifyOtp({ email, otp: code });
-      navigate(ROUTES.RESET_PASSWORD, { state: { resetToken } });
+      await authService.verifyOtp({ email, otpCode: code });
+      sessionStorage.setItem('ars_forgot_otp', code);
+      sessionStorage.setItem('ars_forgot_email', email);
+      navigate(ROUTES.RESET_PASSWORD, { state: { email, otpCode: code } });
     } catch (err: unknown) {
       const msg = authFlowError(err, 'Invalid or expired code. Please try again.');
       setError(msg);
@@ -140,7 +139,7 @@ const VerifyOtp = () => {
     setError(null);
     setOtpError(null);
     try {
-      await authService.forgotPassword({ email });
+      await authService.resendOtp(email);
       setResendCooldown(RESEND_COOLDOWN);
       setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();

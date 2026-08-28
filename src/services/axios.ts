@@ -52,7 +52,7 @@ api.interceptors.response.use(
       currentPath === '/login' ||
       currentPath === '/register' ||
       currentPath === '/verify-email' ||
-      currentPath === '/forgot-password' ||
+      currentPath.startsWith('/forgot-password') ||
       currentPath === '/reset-password';
 
     if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled) {

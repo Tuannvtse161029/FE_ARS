@@ -546,17 +546,47 @@ export const authService = {
   },
 
   // --- Reset password flow (real BE calls) ---
-  forgotPassword: async (data: ForgotPasswordRequest): Promise<void> => {
-    await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, data);
-  },
-
-  verifyOtp: async (data: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
-    const response = await api.post<VerifyOtpResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
+  // Luồng 1: POST /api/Auth/forgot-password { email: string }
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<{ message?: string }> => {
+    const response = await api.post<{ message?: string }>(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+      email: data.email.trim(),
+    });
     return response.data;
   },
 
-  resetPassword: async (data: ResetPasswordRequest): Promise<void> => {
-    await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
+  // Verify OTP: POST /api/Auth/verify-otp { email: string, otpCode: string }
+  verifyOtp: async (data: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
+    const response = await api.post<VerifyOtpResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, {
+      email: data.email.trim(),
+      otpCode: data.otpCode.trim(),
+    });
+    return response.data;
+  },
+
+  // Resend OTP: POST /api/Auth/resend-otp?email=...
+  resendOtp: async (email: string): Promise<any> => {
+    try {
+      const response = await api.post(API_ENDPOINTS.AUTH.RESEND_OTP, null, {
+        params: { email: email.trim() },
+      });
+      return response.data;
+    } catch {
+      const response = await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+        email: email.trim(),
+      });
+      return response.data;
+    }
+  },
+
+  // Luồng 2: POST /api/Auth/reset-password { email, otpCode, newPassword, confirmPassword }
+  resetPassword: async (data: ResetPasswordRequest): Promise<{ message?: string }> => {
+    const response = await api.post<{ message?: string }>(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+      email: data.email.trim(),
+      otpCode: data.otpCode.trim(),
+      newPassword: data.newPassword,
+      confirmPassword: data.confirmPassword || data.newPassword,
+    });
+    return response.data;
   },
 
   // --- Email verification / OTP trigger ---
