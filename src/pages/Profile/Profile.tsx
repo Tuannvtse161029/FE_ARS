@@ -37,8 +37,8 @@ import {
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
-import { validateVietnameseName } from '../../utils/validationRules';
 import { useFollowCounts } from '../../hooks/useFollowers';
+import { FollowListModal } from '../../components/profile/FollowListModal';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -255,7 +255,10 @@ export const Profile = () => {
     clearSaveError,
   } = useProfile(authenticatedUserId);
 
-  const { followersCount, followingCount } = useFollowCounts(authenticatedUserId);
+  const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(authenticatedUserId);
+
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState<boolean>(false);
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers');
 
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<DraftFields>(EMPTY_DRAFT);
@@ -496,9 +499,49 @@ export const Profile = () => {
             </p>
           ) : null}
           <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', fontSize: '0.875rem', color: '#64748b' }}>
-            <span><strong style={{ color: '#0f172a', fontWeight: 600 }}>{followersCount}</strong> Followers</span>
+            <button
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '2px 6px',
+                margin: '-2px -6px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+                transition: 'background-color 0.15s ease',
+              }}
+              onClick={() => {
+                setFollowModalTab('followers');
+                setIsFollowModalOpen(true);
+              }}
+              title="View your followers"
+            >
+              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followersCount}</strong> Followers
+            </button>
             <span>·</span>
-            <span><strong style={{ color: '#0f172a', fontWeight: 600 }}>{followingCount}</strong> Following</span>
+            <button
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '2px 6px',
+                margin: '-2px -6px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+                transition: 'background-color 0.15s ease',
+              }}
+              onClick={() => {
+                setFollowModalTab('following');
+                setIsFollowModalOpen(true);
+              }}
+              title="View people you follow"
+            >
+              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followingCount}</strong> Following
+            </button>
           </div>
         </div>
       </section>
@@ -569,6 +612,16 @@ export const Profile = () => {
           onRemoveKeyword={handleRemoveKeyword}
           onSubmit={handleSave}
           onCancel={handleCancelEdit}
+        />
+      )}
+
+      {authenticatedUserId && (
+        <FollowListModal
+          isOpen={isFollowModalOpen}
+          initialTab={followModalTab}
+          userId={authenticatedUserId}
+          onClose={() => setIsFollowModalOpen(false)}
+          onCountsChanged={refetchCounts}
         />
       )}
     </div>
