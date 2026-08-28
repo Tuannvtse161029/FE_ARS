@@ -63,7 +63,7 @@ export const useFirebaseUpload = (
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setError('File size must be 10 MB or less.');
         setPdfUrl(null);
-        return;
+        return null;
       }
 
       try {
