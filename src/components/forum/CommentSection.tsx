@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ReportModal } from './ReportModal';
+import { formatRelativeTime } from '../../utils/formatDate';
 import type { ForumComment } from '../../types/forum.types';
 import styles from './CommentSection.module.css';
 
@@ -283,7 +284,7 @@ export const CommentSection = ({
                       </span>
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>
-                          {new Date(comment.createdAt).toLocaleString()}
+                          {formatRelativeTime(comment.createdAt)}
                         </span>
                       )}
                     </div>
