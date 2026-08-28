@@ -854,15 +854,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userId = authStore.user?.id;
       if (!authStore.isAuthenticated || !userId || userId <= 0) return;
 
-      // Skip sync if this is a fresh first-time Google user or an unapproved Guest account —
-      // the BE /api/User/{id} controller requires an approved role and returns 403 Forbidden for Guests.
-      if (
-        authStore.user?.isNewUser === true ||
-        authStore.user?.requiresOnboarding === true ||
-        authStore.user?.roleName === 'Guest' ||
-        authStore.effectiveRole === 'Guest' ||
-        authStore.user?.isActive === false
-      ) {
+      // Strictly skip sync unless the user is already an APPROVED, ACTIVE business role.
+      // Unapproved users (Guest, Pending verification, isActive=false/null, first-time Google)
+      // will always receive 403 Forbidden from /api/User/{id} on the backend.
+      const isApprovedActive =
+        authStore.user?.isActive === true &&
+        (authStore.user?.verificationStatus === 'Accepted' || authStore.user?.verificationStatus === 'Approved') &&
+        Boolean(authStore.user?.roleName) &&
+        authStore.user?.roleName !== 'Guest' &&
+        authStore.effectiveRole !== 'Guest' &&
+        authStore.user?.isNewUser !== true &&
+        authStore.user?.requiresOnboarding !== true;
+
+      if (!isApprovedActive) {
         return;
       }
 
