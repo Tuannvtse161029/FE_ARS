@@ -25,6 +25,21 @@ const sanitizeForumError = (err: unknown): Error => {
   let isServerSideFailure = false;
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
+    if (status === 400 && err.response?.data) {
+      const data = err.response.data as any;
+      if (data.errors && typeof data.errors === 'object') {
+        const firstErrorKey = Object.keys(data.errors)[0];
+        const firstError = data.errors[firstErrorKey];
+        const msg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+        return new Error(msg || 'Invalid post data. Please verify all inputs.');
+      }
+      if (typeof data.message === 'string') {
+        return new Error(data.message);
+      }
+      if (typeof data.title === 'string') {
+        return new Error(data.title);
+      }
+    }
     if (status === 403) {
       return new Error('Forum posts are restricted for unapproved guest accounts.');
     }

@@ -9,7 +9,7 @@ import {
 import { storage, isFirebaseConfigured } from '../firebase';
 
 export interface UseFirebaseUploadReturn {
-  uploadPdf: (file: File) => Promise<void>;
+  uploadPdf: (file: File) => Promise<string | null>;
   progress: number;
   isUploading: boolean;
   error: string | null;
@@ -101,6 +101,7 @@ export const useFirebaseUpload = (
         setPdfUrl(url);
         setIsUploading(false);
         uploadTaskRef.current = null;
+        return url;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Upload failed. Please try again.';
@@ -108,6 +109,7 @@ export const useFirebaseUpload = (
         setIsUploading(false);
         setPdfUrl(null);
         uploadTaskRef.current = null;
+        return null;
       }
     },
     [folderPath, storage]

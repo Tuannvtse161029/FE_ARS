@@ -397,8 +397,8 @@ const CreatePostModal = ({
     try {
       // 1. Upload attachments to Firebase (if any), in parallel
       const [pdfUrl, imageUrl] = await Promise.all([
-        attachedPdf ? pdfUpload.uploadPdf(attachedPdf).then(() => pdfUpload.pdfUrl) : Promise.resolve(null),
-        attachedImage ? imageUpload.uploadImage(attachedImage).then(() => imageUpload.imageUrl) : Promise.resolve(null),
+        attachedPdf ? pdfUpload.uploadPdf(attachedPdf) : Promise.resolve(null),
+        attachedImage ? imageUpload.uploadImage(attachedImage) : Promise.resolve(null),
       ]);
 
       // 2. Create the post with the resolved public URLs
@@ -407,14 +407,16 @@ const CreatePostModal = ({
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+      const effectiveTitle = title.trim() || trimmedContent.slice(0, 60).trim() || 'General Post';
+
       const result = await create({
-        title: title.trim() || null,
+        title: effectiveTitle,
         content: trimmedContent,
         abstract: abstract.trim() || null,
         category: category.trim() || null,
         tags: tags.length > 0 ? tags : null,
-        attachedPdfUrl: pdfUrl,
-        attachedImageUrl: imageUrl,
+        attachedPdfUrl: pdfUrl || null,
+        attachedImageUrl: imageUrl || null,
       });
 
       setSubmitting(false);
@@ -422,10 +424,7 @@ const CreatePostModal = ({
         reset();
         onPublished();
       } else {
-        // The hook already sanitizes the message; prefer it over a hardcoded
-        // string so the user sees the same "temporarily unavailable" copy
-        // as the list banner.
-        setSubmitError(createError?.message ?? 'Failed to publish post. Please try again.');
+        setSubmitError(createError?.message ?? 'Failed to publish post. Please verify all inputs and try again.');
       }
     } catch (err) {
       setSubmitting(false);
@@ -462,7 +461,7 @@ const CreatePostModal = ({
           <input
             type="text"
             className={styles.titleInput}
-            placeholder="Post title (optional)"
+            placeholder="Post title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={140}

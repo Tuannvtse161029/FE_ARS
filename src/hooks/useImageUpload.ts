@@ -9,7 +9,7 @@ import {
 import { storage, isFirebaseConfigured } from '../firebase';
 
 export interface UseImageUploadReturn {
-  uploadImage: (file: File) => Promise<void>;
+  uploadImage: (file: File) => Promise<string | null>;
   progress: number;
   isUploading: boolean;
   error: string | null;
@@ -101,6 +101,7 @@ export const useImageUpload = (
         setImageUrl(url);
         setIsUploading(false);
         uploadTaskRef.current = null;
+        return url;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Upload failed. Please try again.';
@@ -108,6 +109,7 @@ export const useImageUpload = (
         setIsUploading(false);
         setImageUrl(null);
         uploadTaskRef.current = null;
+        return null;
       }
     },
     [folderPath, storage]
