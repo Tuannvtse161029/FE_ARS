@@ -859,7 +859,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // will always receive 403 Forbidden from /api/User/{id} on the backend.
       const isApprovedActive =
         authStore.user?.isActive === true &&
-        (authStore.user?.verificationStatus === 'Accepted' || authStore.user?.verificationStatus === 'Approved') &&
+        authStore.user?.verificationStatus === 'Accepted' &&
         Boolean(authStore.user?.roleName) &&
         authStore.user?.roleName !== 'Guest' &&
         authStore.effectiveRole !== 'Guest' &&
