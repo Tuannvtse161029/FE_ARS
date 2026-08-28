@@ -77,6 +77,7 @@ export interface ForumPostCreateRequest {
 // the fallback.
 export interface ForumComment {
   id: number;
+  forumCommentId?: number;
   userId?: number | null;
   paperId?: number | null;
   forumPostId?: number | null;
@@ -84,6 +85,7 @@ export interface ForumComment {
   replyId?: number | null;
   upvoteCount?: number | null;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ForumCommentCreateRequest {

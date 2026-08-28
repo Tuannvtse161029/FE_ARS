@@ -151,7 +151,8 @@ export const CommentSection = ({
   };
 
   const startEdit = (comment: ForumComment) => {
-    setEditingId(comment.id);
+    const targetId = comment.id || comment.forumCommentId || 0;
+    setEditingId(targetId);
     setEditDraft(comment.content ?? '');
     setActionError(null);
   };
@@ -162,11 +163,13 @@ export const CommentSection = ({
   };
 
   const saveEdit = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId) return;
     const trimmed = editDraft.trim();
     if (!trimmed) return;
     setSubmitting(true);
     setActionError(null);
-    const result = await update(comment.id, {
+    const result = await update(targetId, {
       userId: comment.userId ?? currentUserId ?? undefined,
       content: trimmed,
       replyId: comment.replyId ?? undefined,
@@ -183,11 +186,13 @@ export const CommentSection = ({
   };
 
   const deleteComment = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId) return;
     const confirmed = window.confirm('Delete this comment? This cannot be undone.');
     if (!confirmed) return;
     setSubmitting(true);
     setActionError(null);
-    const ok = await remove(comment.id);
+    const ok = await remove(targetId);
     setSubmitting(false);
     if (ok) {
       await refetch();
