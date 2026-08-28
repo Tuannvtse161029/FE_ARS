@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Send,
@@ -106,6 +106,7 @@ export const CommentSection = ({
   const refetch =
     externalRefetch ?? (() => fetched.refetch() as unknown as Promise<void>);
   const { create, update, remove } = useForumCommentMutations();
+  const [localComments, setLocalComments] = useState<ForumComment[]>(comments);
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -115,6 +116,11 @@ export const CommentSection = ({
     id: number;
     preview: string;
   } | null>(null);
+
+  useEffect(() => {
+    setLocalComments(comments);
+  }, [comments]);
+
   // Backward-compatible state: the section still works in isolation when
   // no parent opts into controlled mode.
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -144,7 +150,8 @@ export const CommentSection = ({
     setSubmitting(false);
     if (result) {
       setDraft('');
-      await refetch();
+      setLocalComments((prev) => [...prev, result]);
+      void refetch();
     } else {
       setActionError('Failed to post comment. Please try again.');
     }
@@ -179,7 +186,14 @@ export const CommentSection = ({
     if (result) {
       setEditingId(null);
       setEditDraft('');
-      await refetch();
+      setLocalComments((prev) =>
+        prev.map((c) =>
+          c.id === targetId || c.forumCommentId === targetId
+            ? { ...c, content: trimmed, updatedAt: new Date().toISOString() }
+            : c,
+        ),
+      );
+      void refetch();
     } else {
       setActionError('Failed to update comment. Please try again.');
     }
@@ -195,7 +209,10 @@ export const CommentSection = ({
     const ok = await remove(targetId);
     setSubmitting(false);
     if (ok) {
-      await refetch();
+      setLocalComments((prev) =>
+        prev.filter((c) => c.id !== targetId && c.forumCommentId !== targetId),
+      );
+      void refetch();
     } else {
       setActionError('Failed to delete comment. Please try again.');
     }
@@ -220,7 +237,7 @@ export const CommentSection = ({
       >
         <MessageSquare size={16} />
         <span>
-          {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
+          {localComments.length} {localComments.length === 1 ? 'Comment' : 'Comments'}
         </span>
         {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
       </button>
@@ -246,18 +263,18 @@ export const CommentSection = ({
             </div>
           )}
 
-          {!isLoading && !error && comments.length === 0 && (
+          {!isLoading && !error && localComments.length === 0 && (
             <div className={styles.stateMessage}>
               No comments yet. Be the first to start the conversation.
             </div>
           )}
 
-          {!isLoading && !error && comments.length > 0 && (
+          {!isLoading && !error && localComments.length > 0 && (
             <ul className={styles.commentList}>
-              {comments.map((comment) => {
+              {localComments.map((comment) => {
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
-                const isEditing = editingId === comment.id;
+                const isEditing = editingId === (comment.id || comment.forumCommentId);
                 return (
                   <li key={comment.id} className={styles.commentItem}>
                     <div className={styles.commentMeta}>

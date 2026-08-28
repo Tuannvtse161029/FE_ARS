@@ -60,7 +60,12 @@ export const ForumPostCard = ({
   // post. We intentionally do not call this twice for the same post — the
   // `<CommentSection>` instance below reuses the same hook and React
   // batches the state.
-  const { comments } = useForumComments(post.id);
+  const {
+    comments,
+    isLoading: isLoadingComments,
+    error: errorComments,
+    refetch: refetchComments,
+  } = useForumComments(post.id);
 
   const avatarColor = PALETTE[post.id % PALETTE.length];
 
@@ -197,10 +202,14 @@ export const ForumPostCard = ({
             second fetch for the same data. */}
         <CommentSection
           postId={post.id}
+          authorDisplayByUserId={undefined}
           collapsed={commentsCollapsed}
           rootId={`forum-post-comments-${post.id}`}
           onToggle={handleToggleComments}
           comments={comments}
+          isLoading={isLoadingComments}
+          error={errorComments}
+          onRefetch={refetchComments}
         />
       </div>
 
