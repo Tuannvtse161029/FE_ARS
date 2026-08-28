@@ -26,7 +26,8 @@ interface NotificationCenterProps {
 // owns no global state, no localStorage, and no fabricated rows.
 export function NotificationCenter({ userId, onNavigate }: NotificationCenterProps): JSX.Element {
   const { user } = useAuth();
-  const resolvedUserId = typeof userId === 'number' ? userId : user?.userId ?? null;
+  const isGuest = user?.role === 'Guest' || !user?.isActive;
+  const resolvedUserId = isGuest ? null : (typeof userId === 'number' ? userId : user?.userId ?? null);
   const role = user?.role ?? null;
 
   const {
