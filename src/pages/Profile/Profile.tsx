@@ -37,6 +37,7 @@ import {
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
+import { validateVietnameseName } from '../../utils/validationRules';
 import { useFollowCounts } from '../../hooks/useFollowers';
 import { FollowListModal } from '../../components/profile/FollowListModal';
 import styles from './Profile.module.css';

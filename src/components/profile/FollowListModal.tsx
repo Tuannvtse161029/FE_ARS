@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { X, UserX, Users } from 'lucide-react';
+import { X, Users } from 'lucide-react';
 import { followerService } from '../../services/follower.service';
 import { useAuth } from '../../context/AuthContext';
 import type { FollowerResponse } from '../../types/domain';
