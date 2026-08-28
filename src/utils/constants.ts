@@ -177,6 +177,8 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/ForumPost',
     GET_BY_ID: (id: number) => `/api/ForumPost/${id}`,
     CREATE: '/api/ForumPost',
+    TOGGLE_LIKE: (id: number) => `/api/ForumPost/${id}/like`,
+    MY_LIKES: '/api/ForumPost/my-likes',
   },
   FORUM_COMMENT: {
     BASE: '/api/ForumComment',
