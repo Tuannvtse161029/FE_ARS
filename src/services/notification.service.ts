@@ -159,10 +159,13 @@ export const notificationService = {
 // scattering null checks across components.
 function normalizeNotification(raw: unknown): NotificationItem {
   const record = (raw ?? {}) as Partial<NotificationItem> & {
+    notificationId?: unknown;
     isRead?: unknown;
   };
+  const resolvedId = Number(record.notificationId ?? record.id ?? 0);
   return {
-    id: Number(record.id ?? 0),
+    id: resolvedId,
+    notificationId: resolvedId,
     userId: Number(record.userId ?? 0),
     message: typeof record.message === 'string' ? record.message : '',
     isRead: Boolean(record.isRead),

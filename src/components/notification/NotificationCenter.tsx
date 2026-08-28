@@ -85,18 +85,9 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
           // Only mark-read for unread rows. Reading the BE on an already-read
           // row is wasted bandwidth and would re-bump the unread badge if the
           // BE round-trips a fresh optimistic row.
-          if (!notification.isRead) {
-            const ok = await markRead(notification.id);
-            if (!ok) {
-              // The BE refused the update — keep the dropdown open so the
-              // user can retry. Navigation must NOT happen on a failed
-              // mark-read so the optimistic flip doesn't lie to the user.
-              return;
-            }
+          if (!notification.isRead && notification.id > 0) {
+            void markRead(notification.id);
           }
-          // The resolver always returns a route (a safe fallback at minimum),
-          // so the dropdown closes consistently and the user lands on a
-          // page they can actually reach.
           const target = resolveNotificationRoute(notification.message ?? '', role);
           setIsOpen(false);
           onNavigate(target);
