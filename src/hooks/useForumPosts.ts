@@ -25,6 +25,9 @@ const sanitizeForumError = (err: unknown): Error => {
   let isServerSideFailure = false;
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
+    if (status === 403) {
+      return new Error('Forum posts are restricted for unapproved guest accounts.');
+    }
     if (status === undefined || status >= 500) {
       isServerSideFailure = true;
     }

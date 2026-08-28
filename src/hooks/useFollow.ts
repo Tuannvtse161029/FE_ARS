@@ -80,7 +80,8 @@ export function useFollow(): UseFollowResult {
   }, [followersRaw, currentUserId]);
 
   const refetch = useCallback(async () => {
-    if (!isAuthenticated) {
+    const isGuest = user?.role === 'Guest' || !user?.isActive;
+    if (!isAuthenticated || isGuest) {
       setFollowersRaw([]);
       setError(null);
       return;
@@ -98,7 +99,7 @@ export function useFollow(): UseFollowResult {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role, user?.isActive]);
 
   // Refetch on auth / userId transitions. The first mount is treated as
   // a transition so we don't sit on a stale (empty) followingIds Set

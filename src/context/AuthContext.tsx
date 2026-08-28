@@ -872,12 +872,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const syncUserFromBE = async () => {
       const userId = authStore.user?.id;
-      if (!authStore.isAuthenticated || !userId || userId === 0) return;
-
-      // Skip sync if this is a fresh first-time Google user — the login
-      // response already has the authoritative data and we must not lose
-      // the `isNewUser`/`requiresOnboarding` signals.
-      if (authStore.user?.isNewUser === true || authStore.user?.requiresOnboarding === true) {
+      // Skip sync if this is a fresh first-time Google user or an unapproved Guest account —
+      // the BE /api/User/{id} controller requires an approved role and returns 403 Forbidden for Guests.
+      if (
+        authStore.user?.isNewUser === true ||
+        authStore.user?.requiresOnboarding === true ||
+        authStore.user?.roleName === 'Guest' ||
+        authStore.effectiveRole === 'Guest' ||
+        authStore.user?.isActive === false
+      ) {
         return;
       }
 
