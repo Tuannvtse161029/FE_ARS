@@ -721,6 +721,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             idempotencyKey: `complete-google-registration-${userId || Date.now()}`,
           });
 
+        // Update store with pending Guest state
+        authStore.updateUser({
+          roleName: 'Guest',
+          isActive: false,
+          verificationStatus: 'Pending',
+          effectiveRole: 'Guest',
+          isNewUser: false,
+          requiresOnboarding: false,
+        });
+        authStore.setEffectiveRole('Guest');
+
         // Refetch the authoritative user so the in-memory store reflects
         // the BE's new pending state. We swallow errors so a transient
         // BE blip doesn't break the navigation.
@@ -729,12 +740,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (fresh) {
             storage.setUser(fresh);
             authStore.updateUser({
-              roleName: fresh.roleName ?? null,
+              roleName: fresh.roleName ?? 'Guest',
               roleId: fresh.roleId ?? null,
               isActive: fresh.isActive,
-              verificationStatus: fresh.verificationStatus,
+              verificationStatus: fresh.verificationStatus ?? 'Pending',
               accountTier: fresh.accountTier,
-              effectiveRole: fresh.effectiveRole,
+              effectiveRole: fresh.effectiveRole ?? 'Guest',
+              isNewUser: false,
+              requiresOnboarding: false,
             });
             if (fresh.effectiveRole) {
               authStore.setEffectiveRole(fresh.effectiveRole);
@@ -744,10 +757,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           /* defensive — the user is already past the submit gate */
         }
 
-        // The new account is expected to remain pending until Admin
-        // approval. route the user to /forum so the verified-guard
-        // renders the pending banner. We do NOT navigate to a role
-        // workspace — the role-request lifecycle is gated server-side.
+        // Route immediately to /forum with Pending approval banner
         navigate(ROUTES.FORUM, { replace: true });
 
         return {
