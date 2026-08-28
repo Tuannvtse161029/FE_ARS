@@ -97,14 +97,38 @@ export interface PayOSWebhookRequest {
 
 // ── Follower ─────────────────────────────────────────────────────────────────
 export interface Follower {
-  id: number;
+  id?: number;
   followerId: number;
+  followerName?: string | null;
+  followerEmail?: string | null;
+  followerAvatarUrl?: string | null;
   followedId: number;
-  createdAt?: string;
+  followedName?: string | null;
+  followedEmail?: string | null;
+  followedAvatarUrl?: string | null;
+  createdAt?: string | null;
 }
+
+export interface FollowerResponse extends Follower {}
 
 export interface FollowerCreateRequest {
   followedId: number;
+}
+
+export interface FollowCountsResponse {
+  userId: number;
+  followersCount: number;
+  followingCount: number;
+}
+
+export interface FollowerPagedResult {
+  items?: FollowerResponse[] | null;
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
 }
 
 // ── Notification ─────────────────────────────────────────────────────────────

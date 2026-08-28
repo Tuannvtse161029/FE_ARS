@@ -122,8 +122,14 @@ export const API_ENDPOINTS = {
   FOLLOWER: {
     BASE: '/api/Follower',
     GET_ALL: '/api/Follower',
+    GET_PAGED: '/api/Follower/paged',
     CREATE: '/api/Follower',
-    DELETE: (id: number) => `/api/Follower/${id}`,
+    DELETE: (followedId: number) => `/api/Follower/${followedId}`,
+    TOGGLE: (followedId: number) => `/api/Follower/toggle/${followedId}`,
+    IS_FOLLOWING: (followedId: number) => `/api/Follower/is-following/${followedId}`,
+    COUNTS: (userId: number) => `/api/Follower/counts/${userId}`,
+    FOLLOWERS_PAGED: (userId: number) => `/api/Follower/followers/${userId}/paged`,
+    FOLLOWING_PAGED: (userId: number) => `/api/Follower/following/${userId}/paged`,
   },
   NOTIFICATION: {
     BASE: '/api/Notification',

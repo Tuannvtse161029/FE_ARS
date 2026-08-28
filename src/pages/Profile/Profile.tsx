@@ -38,6 +38,7 @@ import {
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
 import { validateVietnameseName } from '../../utils/validationRules';
+import { useFollowCounts } from '../../hooks/useFollowers';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -253,6 +254,8 @@ export const Profile = () => {
     save,
     clearSaveError,
   } = useProfile(authenticatedUserId);
+
+  const { followersCount, followingCount } = useFollowCounts(authenticatedUserId);
 
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<DraftFields>(EMPTY_DRAFT);
@@ -492,6 +495,11 @@ export const Profile = () => {
               {displayEmail}
             </p>
           ) : null}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <span><strong style={{ color: '#0f172a', fontWeight: 600 }}>{followersCount}</strong> Followers</span>
+            <span>·</span>
+            <span><strong style={{ color: '#0f172a', fontWeight: 600 }}>{followingCount}</strong> Following</span>
+          </div>
         </div>
       </section>
 

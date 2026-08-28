@@ -163,33 +163,11 @@ export function useFollow(): UseFollowResult {
 
       try {
         if (wasFollowing) {
-          // Find the follower row id that represents this (follower, followed)
-          // pair so we can DELETE /api/Follower/{id}. We may not have it in
-          // the local cache (e.g. someone else's session left the row in the
-          // BE); fall back to a refetch which surfaces the canonical list.
-          const row = followersRaw.find(
-            (f) => f.followerId === currentUserId && f.followedId === userId,
-          );
-          if (row) {
-            await followerService.unfollow(row.id);
-          } else {
-            await refetch();
-            // After refetch, look up the id again.
-            const refreshed = await followerService.getAll();
-            const fresh = refreshed.find(
-              (f) => f.followerId === currentUserId && f.followedId === userId,
-            );
-            if (fresh) {
-              await followerService.unfollow(fresh.id);
-            } else {
-              // Row not present anymore — treat as success (idempotent).
-            }
-          }
+          await followerService.unfollow(userId);
         } else {
           await followerService.follow({ followedId: userId });
         }
-        // Pull the authoritative list so any rows added by other clients
-        // (e.g. someone followed us back) are reflected.
+        // Pull the authoritative list
         await refetch();
       } catch (err) {
         // Roll back optimistic flip on failure.
