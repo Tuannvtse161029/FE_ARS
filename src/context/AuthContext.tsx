@@ -721,41 +721,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             idempotencyKey: `complete-google-registration-${userId || Date.now()}`,
           });
 
-        // Update store with pending Guest state
-        authStore.updateUser({
+        // Update store and storage with pending Guest state directly from response
+        const guestUser = {
+          ...(authStore.user || {}),
+          id: userId,
           roleName: 'Guest',
+          roleId: 0,
           isActive: false,
-          verificationStatus: 'Pending',
-          effectiveRole: 'Guest',
+          verificationStatus: 'Pending' as const,
+          effectiveRole: 'Guest' as const,
           isNewUser: false,
           requiresOnboarding: false,
-        });
+        };
+        storage.setUser(guestUser as any);
+        authStore.updateUser(guestUser);
         authStore.setEffectiveRole('Guest');
-
-        // Refetch the authoritative user so the in-memory store reflects
-        // the BE's new pending state. We swallow errors so a transient
-        // BE blip doesn't break the navigation.
-        try {
-          const fresh = await userService.getById(userId);
-          if (fresh) {
-            storage.setUser(fresh);
-            authStore.updateUser({
-              roleName: fresh.roleName ?? 'Guest',
-              roleId: fresh.roleId ?? null,
-              isActive: fresh.isActive,
-              verificationStatus: fresh.verificationStatus ?? 'Pending',
-              accountTier: fresh.accountTier,
-              effectiveRole: fresh.effectiveRole ?? 'Guest',
-              isNewUser: false,
-              requiresOnboarding: false,
-            });
-            if (fresh.effectiveRole) {
-              authStore.setEffectiveRole(fresh.effectiveRole);
-            }
-          }
-        } catch {
-          /* defensive — the user is already past the submit gate */
-        }
 
         // Route immediately to /forum with Pending approval banner
         navigate(ROUTES.FORUM, { replace: true });
