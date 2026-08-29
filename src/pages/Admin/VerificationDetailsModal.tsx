@@ -85,7 +85,7 @@ export const VerificationDetailsModal = ({
                 <dt>ORCID iD</dt>
                 <dd>
                   {normalizedOrcid ?? orcidId ?? (
-                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not provided</span>
+                    <span className={styles.missing}>Not provided</span>
                   )}
                 </dd>
               </div>

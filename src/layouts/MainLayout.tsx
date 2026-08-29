@@ -45,6 +45,7 @@ import {
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
   FileCheck2 as PublicationIcon,
+  Menu as MenuIcon,
 } from 'lucide-react';
 
 const ProfileDropdown = ({
@@ -116,7 +117,13 @@ const ProfileDropdown = ({
 };
 
 const ARSPlatformLogo = () => (
-  <img src={arsLogo} alt="ARS Platform Logo" style={{ borderRadius: 8 }} />
+  <div className={styles.logoContainer}>
+    <img src={arsLogo} alt="ARS Platform" />
+    <div className={styles.logoText}>
+      <span className={styles.logoTitle}>ARS</span>
+      <span className={styles.logoSubtitle}>Research</span>
+    </div>
+  </div>
 );
 
 interface NavItem {
@@ -156,11 +163,17 @@ export const MainLayout = () => {
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
-  // Auto-dismiss toast after 2 seconds
+  // Close mobile drawer on route change so navigating between roles hides it.
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [navigate]);
+
+  // Auto-dismiss toast after 3 seconds
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 2000);
+      const timer = setTimeout(() => setToastMessage(null), 3000);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -322,12 +335,25 @@ export const MainLayout = () => {
 
   return (
     <div className={styles.mainContainer}>
+      {/* Backdrop for mobile drawer */}
+      <div
+        className={`${styles.backdrop} ${isMobileNavOpen ? styles.backdropVisible : ''}`}
+        onClick={() => setIsMobileNavOpen(false)}
+        aria-hidden
+      />
+
       {/* Sidebar */}
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHeader}>
-          <div className={styles.logoContainer}>
-            <ARSPlatformLogo />
-          </div>
+          <ARSPlatformLogo />
+          <button
+            type="button"
+            className={styles.sidebarClose}
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <nav className={styles.sidebarNav}>
@@ -357,6 +383,25 @@ export const MainLayout = () => {
             );
           })}
         </nav>
+
+        <div className={styles.sidebarFooter}>
+          <div className={styles.sidebarFooterUser}>
+            <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
+            <div className={styles.sidebarFooterMeta}>
+              <span className={styles.sidebarFooterName}>{displayName}</span>
+              <span className={styles.sidebarFooterRole}>{displayedRole}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.sidebarSignOut}
+            onClick={handleLogout}
+            aria-label="Sign out"
+          >
+            <LogOut size={14} />
+            Sign out
+          </button>
+        </div>
       </aside>
 
       {/* Right Column (Header + Content) */}
@@ -378,6 +423,17 @@ export const MainLayout = () => {
             </div>
           )}
 
+          {/* Mobile menu toggle — only visible <= 768px via CSS */}
+          <button
+            type="button"
+            className={styles.menuToggle}
+            onClick={() => setIsMobileNavOpen(true)}
+            aria-label="Open navigation"
+            aria-expanded={isMobileNavOpen}
+          >
+            <MenuIcon size={18} />
+          </button>
+
           {/* Search bar */}
           <div className={styles.searchContainer}>
             <span className={styles.searchIcon}><Search size={18} /></span>
@@ -385,6 +441,7 @@ export const MainLayout = () => {
               type="text"
               placeholder="Search Papers..."
               className={styles.searchInput}
+              aria-label="Search papers"
             />
           </div>
 

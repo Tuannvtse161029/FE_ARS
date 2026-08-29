@@ -1,232 +1,124 @@
+/**
+ * PremiumPackagesPreview — ARS Research Constellation
+ *
+ * Honest marketing surface for the live /api/PremiumPackage response.
+ * The page never claims a purchase is possible unless the BE endpoint
+ * exists. The AppConfig gate keeps the page disabled end-to-end.
+ */
+
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-8);
-  padding: var(--spacing-8);
-  max-width: 1180px;
-  margin: 0 auto;
+  gap: var(--space-6);
 }
 
-/* ── Page header ─────────────────────────────────────────────────────────── */
-
-.pageHeader {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-}
-
-.breadcrumb {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  flex-wrap: wrap;
-}
-
-.breadcrumbCurrent {
-  color: var(--color-text-primary);
+.breadcrumbsActive {
   font-weight: var(--font-weight-semibold);
-}
-
-.headerRow {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
-  flex-wrap: wrap;
-}
-
-.title {
-  margin: 0;
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-}
-
-.titleIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  background-color: #fef3c7;
-  color: #b45309;
-}
-
-.subtitle {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  max-width: 720px;
-  line-height: var(--line-height-relaxed);
+  color: var(--ars-ink);
 }
 
 .previewBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-1) var(--spacing-3);
-  border-radius: var(--radius-full);
-  background-color: #fef3c7;
-  color: #92400e;
+  gap: 4px;
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border: 1px solid #fde68a;
+  border: 1px solid var(--ars-warning);
 }
 
-/* ── Current plan summary ────────────────────────────────────────────────── */
-
-.currentPlanCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-4);
-  padding: var(--spacing-5) var(--spacing-6);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  flex-wrap: wrap;
-}
-
-.currentPlanLabel {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--spacing-2) 0;
-}
-
-.currentPlanValue {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-}
-
-.currentPlanRole {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: var(--spacing-1) 0 0 0;
-}
-
-.currentPlanMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-2) var(--spacing-4);
-  background-color: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* ── Plan comparison grid ────────────────────────────────────────────────── */
+/* ── Plan grid ────────────────────────────────────────────── */
 
 .planGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--spacing-6);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
 }
 
 .planCard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
-  padding: var(--spacing-6);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background-color: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
   position: relative;
-}
-
-.planCardPremium {
-  border-color: #fcd34d;
-  background-color: #fffdf7;
-  box-shadow: var(--shadow-md);
 }
 
 .planHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--spacing-3);
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .planTitle {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
 }
 
 .planSubtitle {
-  margin: var(--spacing-1) 0 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  margin: var(--space-1) 0 0 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .planStatusBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-1);
-  padding: var(--spacing-1) var(--spacing-3);
-  border-radius: var(--radius-full);
+  gap: 4px;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.planStatusFree {
-  background-color: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-}
-
 .planStatusPremium {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background-color: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border: 1px solid var(--ars-warning);
 }
 
 .pricingRow {
   display: flex;
   align-items: baseline;
-  gap: var(--spacing-2);
-  padding: var(--spacing-3) 0;
-  border-top: 1px solid var(--color-border-light);
-  border-bottom: 1px solid var(--color-border-light);
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--ars-network);
 }
 
 .pricingAmount {
-  font-size: var(--font-size-2xl);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--ars-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .pricingCycle {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.pricingNotice {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  font-style: italic;
-  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .featureList {
@@ -235,15 +127,16 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--space-2);
 }
 
 .featureItem {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-3);
+  gap: var(--space-2);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
+  color: var(--ars-ink);
   line-height: var(--line-height-normal);
 }
 
@@ -252,111 +145,66 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .featureIconAvailable {
-  color: #047857;
-}
-
-.featureIconLocked {
-  color: var(--color-text-muted);
+  color: var(--ars-success);
 }
 
 .featureBody {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-1);
+  gap: 2px;
 }
 
 .featureTitle {
   margin: 0;
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.featureDescription {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-normal);
-}
-
-/* ── Disabled upgrade control ────────────────────────────────────────────── */
-
-.upgradeControl {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  margin-top: auto;
-  padding-top: var(--spacing-4);
-  border-top: 1px solid var(--color-border-light);
-}
-
-.upgradeButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-3) var(--spacing-5);
-  background-color: #f1f5f9;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: not-allowed;
-}
-
-.upgradeButton:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
+  font-weight: var(--font-weight-medium);
+  color: var(--ars-ink);
 }
 
 .upgradeHelp {
   margin: 0;
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  color: var(--ars-ink-muted);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--ars-node);
+  line-height: 1.5;
+}
+
+.footNote {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
   text-align: center;
+  margin: var(--space-4) 0 0;
 }
 
-/* ── Notice ──────────────────────────────────────────────────────────────── */
-
-.notice {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-3);
-  padding: var(--spacing-4) var(--spacing-5);
-  background-color: var(--color-info-bg);
-  border: 1px solid #bae6fd;
-  border-radius: var(--radius-lg);
-  color: #075985;
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
+.footLink {
+  color: var(--ars-blue);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-.noticeIcon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #0284c7;
+.footLink:hover {
+  color: var(--ars-blue-mid);
 }
+
+.footLink:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .page {
-    padding: var(--spacing-5);
-  }
-
-  .currentPlanCard {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .headerRow {
-    flex-direction: column;
-    align-items: flex-start;
+  .planGrid {
+    grid-template-columns: 1fr;
   }
 }

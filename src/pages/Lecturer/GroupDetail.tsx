@@ -526,16 +526,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {relatedTopic ? (
           <div className={styles.cardInner} data-testid="group-detail-topic-summary">
             <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
-            <span style={{ marginLeft: 12 }}>
+            <span className={styles.topicSummaryText}>
               <strong>{relatedTopic.title ?? `RT-${group.topicId}`}</strong>
               {relatedTopic.description?.trim() && (
-                <div
-                  style={{
-                    color: '#475569',
-                    fontSize: 13,
-                    marginTop: 4,
-                  }}
-                >
+                <div className={styles.topicSummaryDesc}>
                   {relatedTopic.description}
                 </div>
               )}
@@ -543,7 +537,6 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <Link
               to={ROUTES.LECTURER_RESEARCH_TOPICS}
               className={styles.openLink}
-              style={{ marginLeft: 'auto' }}
               data-testid="group-detail-topic-link"
             >
               <ExternalLink size={14} aria-hidden /> Open topic
@@ -609,15 +602,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {/* MEMBERS LIST (L2.b) */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div className={styles.cardHeaderRow}>
             <h2 className={styles.cardTitle}>
               <Users size={16} aria-hidden /> Group members ({members.length})
             </h2>
             <button
               type="button"
-              className={styles.primaryBtn}
+              className={styles.inviteStudentsBtn}
               onClick={openInviteModal}
-              style={{ fontSize: 13, padding: '6px 12px', gap: 6 }}
             >
               <UserPlus size={14} aria-hidden /> Invite students
             </button>
@@ -911,7 +903,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   }}
                   disabled={isInviting}
                 />
-                <span className={styles.cardHint} style={{ marginTop: 4 }}>
+                <span className={styles.cardHint}>
                   The system will automatically find student accounts and add them as group members.
                 </span>
               </div>

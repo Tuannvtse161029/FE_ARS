@@ -1,7 +1,20 @@
 /**
- * GraduateStudentDashboard — ARS Research Constellation
- * Research Journey landing page for Graduate Students
+ * GraduateStudentDashboard — Research Journey
+ * ARS Research Constellation — Graduate Student Landing Page
+ *
+ * Notes:
+ * - All sizes, colors, and radii come from `src/styles/ars-tokens.css`.
+ * - Shared surfaces (`PageHeader`, `EmptyState`, `ErrorBanner`, `SkeletonRow`,
+ *   `Button`, `MetricCard`, `StatusBadge`) handle their own styling.
+ * - Page CSS owns only the layout: metric grid, two-column, callout,
+ *   info/success cards.
  */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Page Shell ─────────────────────────────────────────── */
 .page {
   width: 100%;
   display: flex;
@@ -25,19 +38,6 @@
   padding: var(--space-6) var(--space-8);
 }
 
-.metricSkeleton {
-  height: 100px;
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-radius: var(--radius-lg);
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
 /* ── Metric Grid ─────────────────────────────────────────── */
 .metricGrid {
   display: grid;
@@ -53,18 +53,8 @@
   opacity: 0.7;
 }
 
-/* ── Error Banner ───────────────────────────────────────── */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-error-bg);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  color: var(--ars-error);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+.spin {
+  animation: spin 0.9s linear infinite;
 }
 
 /* ── Two Column Layout ─────────────────────────────────── */
@@ -81,41 +71,6 @@
   gap: var(--space-5);
 }
 
-/* ── Refresh Button ─────────────────────────────────────── */
-.refreshBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: 1px solid rgba(250, 248, 243, 0.2);
-  color: rgba(250, 248, 243, 0.8);
-  padding: 6px var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.refreshBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--ars-paper);
-}
-
-.refreshBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spin {
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ── Project Card ──────────────────────────────────────── */
 .projectCard {
   background: var(--ars-paper-alt);
@@ -124,6 +79,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  border-radius: var(--radius-lg);
 }
 
 .cardHeader {
@@ -158,17 +114,18 @@
   margin: 0;
 }
 
-/* ── Status Badge ───────────────────────────────────────── */
+/* ── Status Badge (inline fallback for guidance statuses) ─── */
 .statusBadge {
   display: inline-flex;
   align-items: center;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  padding: 3px 10px;
-  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   width: fit-content;
+  white-space: nowrap;
 }
 
 .statusSubmitted { background: var(--ars-info-bg); color: var(--ars-info); }
@@ -176,43 +133,7 @@
 .statusEvaluated { background: var(--ars-success-bg); color: var(--ars-success); }
 .statusRejected { background: var(--ars-error-bg); color: var(--ars-error); }
 
-/* ── Status Inline (for activity feed) ─────────────────── */
-.statusInline {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.65rem;
-  font-weight: var(--font-weight-bold);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.statusInlineWaiting { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusInlineSubmitted { background: var(--ars-info-bg); color: var(--ars-info); }
-.statusInlineEvaluated { background: var(--ars-success-bg); color: var(--ars-success); }
-.statusInlineRejected { background: var(--ars-error-bg); color: var(--ars-error); }
-
-/* ── Info / Success / Warn / Empty Cards ──────────────── */
-.emptyCard {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--ars-paper);
-  border: 1px dashed rgba(26, 31, 54, 0.2);
-  color: var(--ars-ink-muted);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-relaxed);
-}
-
-.emptyCard svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  opacity: 0.6;
-}
-
+/* ── Info / Success Cards ────────────────────────────── */
 .infoCard {
   display: flex;
   gap: var(--space-3);
@@ -273,36 +194,6 @@
   opacity: 0.85;
 }
 
-.warnCard {
-  display: flex;
-  gap: var(--space-3);
-  background: var(--ars-warning-bg);
-  border: 1px solid rgba(146, 64, 14, 0.2);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-md);
-}
-
-.warnIcon {
-  color: var(--ars-warning);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.warnTitle {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-warning);
-  margin: 0 0 var(--space-1);
-}
-
-.warnBody {
-  font-size: var(--font-size-sm);
-  color: var(--ars-warning);
-  line-height: var(--line-height-relaxed);
-  margin: 0;
-  opacity: 0.85;
-}
-
 /* ── Action Row ────────────────────────────────────────── */
 .actionRow {
   display: flex;
@@ -313,62 +204,13 @@
   border-top: var(--border-thin);
 }
 
-.primaryBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--ars-ink);
-  border: none;
-  color: var(--ars-paper);
-  padding: 8px var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.primaryBtn:hover:not(:disabled) {
-  background: var(--ars-ink-soft);
-}
-
-.primaryBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.secondaryBtn {
-  display: inline-flex;
-  align-items: center;
-  background: transparent;
-  border: 1px solid rgba(26, 31, 54, 0.2);
-  color: var(--ars-ink-muted);
-  padding: 8px var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.secondaryBtn:hover:not(:disabled) {
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink);
-}
-
-.secondaryBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* ── Status Callout ────────────────────────────────────── */
 .statusCallout {
   background: var(--ars-paper-alt);
   border: var(--border-thin);
   border-left: 3px solid var(--ars-gradstudent-mid);
   padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
 }
 
 .calloutHeader {
@@ -432,11 +274,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .metricSkeleton {
-    animation: none;
-    opacity: 0.5;
-  }
-
   .spin {
     animation: none;
   }

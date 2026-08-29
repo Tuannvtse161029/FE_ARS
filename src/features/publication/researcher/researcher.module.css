@@ -1,0 +1,688 @@
+/* Researcher — ARS Research Constellation
+   Researcher role accent: var(--ars-researcher, #b45309)
+   Tokens are globally available via src/styles/ars-tokens.css
+   File ownership: subagent "Researcher + Home Catalog" — page-level
+   styles only. Status-badge / button / input / page-header shapes
+   live in shared components. */
+
+.page {
+  display: grid;
+  gap: var(--space-5);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+}
+
+/* ── Toolbar (search + status filter) ──────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.searchField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.searchLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.searchInput {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.searchInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--ars-researcher);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+}
+
+.statusField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.statusSelect {
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.statusSelect:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.statusSelect:focus {
+  outline: none;
+  border-color: var(--ars-researcher);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+}
+
+.count {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  white-space: nowrap;
+}
+
+/* ── Table ─────────────────────────────────────────────────── */
+.tableWrap {
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table thead th {
+  text-align: left;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-inset);
+  border-bottom: 1px solid var(--ars-network);
+  white-space: nowrap;
+}
+
+.thTitle {
+  min-width: 240px;
+}
+
+.thActions {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  vertical-align: middle;
+  line-height: var(--line-height-normal);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover {
+  background: var(--ars-paper-inset);
+}
+
+.tdTitle {
+  min-width: 240px;
+  max-width: 380px;
+}
+
+.titleLink {
+  display: block;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  word-break: break-word;
+  line-height: var(--line-height-tight);
+}
+
+.titleLink:hover {
+  color: var(--ars-researcher);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.titleLink:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.titleMeta {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.reviewerCell {
+  display: grid;
+  gap: 2px;
+}
+
+.reviewerName {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+}
+
+.reviewerHint {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+}
+
+.tdActions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .searchField,
+  .statusField {
+    max-width: 100%;
+  }
+  .table thead th,
+  .table tbody td {
+    padding: var(--space-3);
+  }
+}
+
+/* ── Submission Form ─────────────────────────────────────── */
+.formCard {
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-5);
+}
+
+.formIntro {
+  margin: 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.formSection {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.formSectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.formSectionTitle {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-researcher);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.formSectionHint {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin: 0;
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field label {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font: inherit;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  padding: 0 var(--space-3);
+  min-height: 36px;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.field textarea {
+  min-height: 96px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: var(--line-height-normal);
+}
+
+.field select {
+  padding-right: var(--space-8);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--ars-researcher);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+}
+
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.fieldHint {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.fieldFile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldFile input[type="file"] {
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.fieldFile input[type="file"]:hover {
+  border-color: var(--ars-researcher);
+  background: var(--ars-paper-alt);
+}
+
+.fieldFile input[type="file"]:focus {
+  outline: none;
+  border-color: var(--ars-researcher);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+}
+
+.fileStatusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+}
+
+.fileStatusRow strong {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+}
+
+.progressBar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-paper-inset);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--ars-researcher);
+  border-radius: 999px;
+  transition: width var(--transition-fast);
+  /* Width is set inline via --progress-fill so we don't put a
+     `style={{ width: ... }}` on the JSX element. */
+  width: var(--progress-fill, 0%);
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.openAlexConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+}
+
+.openAlexConfirm strong {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+}
+
+.openAlexLink {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  color: var(--ars-researcher);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.openAlexLink:hover {
+  color: var(--ars-researcher-mid);
+}
+
+.formFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+}
+
+.formHint {
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  max-width: 60ch;
+}
+
+.formActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .formFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ── Submission Detail ─────────────────────────────────────── */
+.detailLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .detailLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailSection {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.detailHeading {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+}
+
+.timelineComplete {
+  color: var(--ars-success);
+  font-weight: var(--font-weight-semibold);
+}
+
+.timelinePending {
+  color: var(--ars-ink-muted);
+}
+
+.timelineDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.detailMeta {
+  display: grid;
+  gap: var(--space-3) var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.detailMeta dt {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.05em;
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.detailMeta dd {
+  margin: 0 0 var(--space-2);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  word-break: break-word;
+}
+
+@media (max-width: 600px) {
+  .detailMeta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ars-network);
+}
+
+.feedbackPanel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--ars-researcher-light);
+  border: 1px solid var(--ars-researcher-light);
+  border-radius: var(--radius-md);
+}
+
+.feedbackTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-researcher);
+}
+
+.feedbackBody {
+  margin: 0;
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.feedbackEmpty {
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  font-size: var(--font-size-sm);
+}
+
+.publishedBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border: 1px solid var(--ars-success-bg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pdfLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  height: 36px;
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pdfLink:hover {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-researcher);
+}
+
+.pdfLink:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
+}
+
+.pdfDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  height: 36px;
+  border: 1px dashed var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}

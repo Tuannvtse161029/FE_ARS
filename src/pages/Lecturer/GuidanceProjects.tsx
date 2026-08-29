@@ -33,6 +33,8 @@ import { canTransitionGuidanceProject, normalizeGuidanceProjectStatus } from '..
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import type {
@@ -312,22 +314,16 @@ export const GuidanceProjects = () => {
 
   return (
     <div className={styles.projectsPage}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Guidance Projects</span>
-      </div>
-
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Guidance Projects</h1>
-          <p className={styles.pageSubtitle}>
-            Track every supervision relationship you have proposed, taken on, or
-            completed.
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.createBtn}
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Guidance Projects"
+        description="Track every supervision relationship you have proposed, taken on, or completed."
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            className={styles.lecturerPrimary}
+            leftIcon={<Plus size={14} aria-hidden />}
             onClick={handleOpenCreate}
             disabled={lecturerId === null}
             title={
@@ -336,10 +332,14 @@ export const GuidanceProjects = () => {
                 : 'Create a new guidance project proposal.'
             }
           >
-            <Plus size={14} aria-hidden />
             Create Proposal
-          </button>
-        </div>
+          </Button>
+        }
+        accent="var(--ars-lecturer)"
+      />
+
+      <div className={styles.breadcrumbs}>
+        Home &gt; <span className={styles.activeBreadcrumb}>Guidance Projects</span>
       </div>
 
       {banner.visible && (

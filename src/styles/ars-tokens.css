@@ -128,8 +128,8 @@
   --transition-slow: 350ms ease;
 
   /* ── Layout ─────────────────────────────────────────────── */
-  --sidebar-width: 228px;
-  --header-height: 60px;
+  --sidebar-width: 232px;
+  --header-height: 56px;
   --content-max-width: 1200px;
 
   /* ── Section Marker Style ───────────────────────────────── */

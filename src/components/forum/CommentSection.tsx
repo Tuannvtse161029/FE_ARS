@@ -6,10 +6,11 @@ import {
   Edit2,
   Trash2,
   Flag,
-  AlertCircle,
   ChevronDown,
   ChevronUp,
   ThumbsUp,
+  Inbox,
+  Loader2,
 } from 'lucide-react';
 import api from '../../services/axios';
 import {
@@ -18,7 +19,10 @@ import {
 } from '../../hooks/useForumComments';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { ErrorBanner } from '../ErrorBanner';
+import { EmptyState } from '../EmptyState';
 import { ReportModal } from './ReportModal';
+import { Button } from '../Button';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { storage } from '../../utils/storage';
 import type { ForumComment } from '../../types/forum.types';
@@ -354,29 +358,43 @@ export const CommentSection = ({
 
       {!collapsed && (
         <>
-          {/* Error banner */}
+          {/* Error banner — now uses the shared ErrorBanner.
+              We keep both an actionError and a list-level error copy. */}
           {actionError && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={14} />
-              {actionError}
+            <ErrorBanner
+              tone="error"
+              title="Comment action failed"
+              message={actionError}
+            />
+          )}
+
+          {/* List-level error — shared ErrorBanner */}
+          {!actionError && error && (
+            <ErrorBanner
+              tone="error"
+              title="Couldn't load comments"
+              message="Refresh and try again."
+            />
+          )}
+
+          {/* Loading state — inline neutral message (SkeletonRow would feel
+              heavy for a comment list; a single line matches the rhythm
+              of the thread). */}
+          {isLoading && !error && (
+            <div className={styles.stateMessage} role="status" aria-live="polite">
+              <Loader2 size={12} className={styles.stateSpinner} aria-hidden />
+              <span>Loading comments…</span>
             </div>
           )}
 
-          {/* Loading / empty / error states for the list itself */}
-          {isLoading && (
-            <div className={styles.stateMessage}>Loading comments…</div>
-          )}
-
-          {!isLoading && error && (
-            <div className={styles.stateMessage} role="alert">
-              Failed to load comments.
-            </div>
-          )}
-
+          {/* Empty state — shared EmptyState (compact mode) */}
           {!isLoading && !error && localComments.length === 0 && (
-            <div className={styles.stateMessage}>
-              No comments yet. Be the first to start the conversation.
-            </div>
+            <EmptyState
+              icon={<Inbox size={18} />}
+              title="No comments yet"
+              description="Be the first to start the conversation."
+              compact
+            />
           )}
 
           {!isLoading && !error && localComments.length > 0 && (
@@ -388,14 +406,17 @@ export const CommentSection = ({
                 return (
                   <li key={comment.id} className={styles.commentItem}>
                     <div className={styles.commentMeta}>
-                      <span
+                      <button
+                        type="button"
                         className={styles.commentAuthor}
                         onClick={() => handleCommenterClick(comment.userId)}
-                        style={{ cursor: comment.userId ? 'pointer' : 'default' }}
                         title={comment.userId ? `View ${renderAuthorLabel(comment)}'s profile` : undefined}
                       >
                         {renderAuthorLabel(comment)}
-                      </span>
+                      </button>
+                      {isOwner && (
+                        <span className={styles.commentOwnerBadge}>You</span>
+                      )}
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>
                           {formatRelativeTime(comment.createdAt)}
@@ -413,22 +434,23 @@ export const CommentSection = ({
                           disabled={submitting}
                         />
                         <div className={styles.editActions}>
-                          <button
-                            type="button"
-                            className={styles.cancelBtn}
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={cancelEdit}
                             disabled={submitting}
                           >
                             Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.saveBtn}
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
                             onClick={() => saveEdit(comment)}
                             disabled={submitting || !editDraft.trim()}
+                            isLoading={submitting}
                           >
                             Save
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
@@ -515,15 +537,17 @@ export const CommentSection = ({
                 onChange={(e) => setDraft(e.target.value)}
                 disabled={submitting}
               />
-              <button
-                type="button"
-                className={styles.submitBtn}
+              <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Send size={12} />}
                 onClick={submitNewComment}
                 disabled={submitting || !draft.trim()}
+                isLoading={submitting}
+                className={styles.submitBtn}
               >
-                <Send size={14} />
-                {submitting ? 'Posting…' : 'Post'}
-              </button>
+                Post
+              </Button>
             </div>
           )}
 

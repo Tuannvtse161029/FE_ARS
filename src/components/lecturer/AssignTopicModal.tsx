@@ -191,7 +191,7 @@ export const AssignTopicModal = ({
                       {group.name ?? '(unnamed group)'}
                     </span>
                     <span className={styles.checkboxMembersCount}>
-                      <Users size={12} aria-hidden style={{ marginRight: 4 }} />
+                      <Users size={12} aria-hidden />
                       {group.deadline
                         ? `Due ${new Date(group.deadline).toISOString().slice(0, 10)}`
                         : 'No deadline'}

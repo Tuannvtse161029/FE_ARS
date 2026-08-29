@@ -1,11 +1,25 @@
+/**
+ * SubmitReport — Research Journey
+ * ARS Research Constellation — Graduate Student workspace
+ *
+ * Guided, sectioned milestone submission page. Two-column layout:
+ *  - Milestone Details (group, topic, lecturer, workspace label)
+ *  - Artifact Submission (current report + submit button)
+ *
+ * Design rules applied:
+ *  - PageHeader + role accent `--ars-gradstudent`
+ *  - `EmptyState`, `ErrorBanner`, `SkeletonRow`, `Button` for shared surfaces
+ *  - No inline styles in JSX (CSS Modules only)
+ *  - The 5-phase dropdown is replaced by a single "Workspace label" text
+ *    input (gap ticket §E.5). The label ONLY drives the Firebase folder
+ *    path; it is not persisted in the milestone row.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle,
   Calendar,
   Clock,
   FileText,
   Inbox,
-  Loader2,
   Tag,
   Users,
 } from 'lucide-react';
@@ -16,34 +30,21 @@ import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button';
 import styles from './SubmitReport.module.css';
 
-// Real-data rewrite of the Submit Report page. Per
-// docs/local-only/research-workflow-contract.md and the Phase C contract
-// G3 + G6:
-//
-//   - The 5-phase dropdown is replaced by a single "Workspace label" text
-//     input. The input ONLY drives the Firebase folder path
-//     (`research-groups/{groupId}/phased-reports/{label}/`) — there is no
-//     persisted `phase` column on `PhasedReports` (gap ticket §E.5).
-//   - `groupMemberId` is sourced from `joinedGroups[].membershipId` via the
-//     shared `getPrimaryMembershipId` helper (G1).
-//   - After a successful submit or resubmit, the page refreshes BOTH the
-//     student-groups state AND the phased-reports list so the table reflects
-//     the new row immediately (G6(c)).
-//   - Rejection banner still renders from the latest REJECTED report of the
-//     active group.
-
 const DEFAULT_FOLDER_KEY = 'milestone';
+const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 const formatDate = (iso?: string): string => {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'medium' });
 };
 
-// Workspace label normalization — Firebase folder paths must avoid `/`,
-// whitespace, and non-ASCII to remain portable. We never strip the user's
-// intent; we just produce a safe folder segment.
 const normalizeWorkspaceLabel = (raw: string): string => {
   const cleaned = raw
     .normalize('NFKC')
@@ -83,7 +84,6 @@ export const SubmitReport = (): JSX.Element => {
   const lecturerId = guidanceProject?.lecturerId ?? primaryGroup?.lecturerId ?? null;
 
   const activePhaseReport = useMemo(() => {
-    // Most recent report submitted for THIS group (across status types).
     return reports
       .filter((r) => r.submittedAt !== undefined)
       .sort((a, b) => {
@@ -98,7 +98,6 @@ export const SubmitReport = (): JSX.Element => {
     [reports],
   );
 
-  // Reset resubmit + lastSubmitted state when the modal closes.
   useEffect(() => {
     if (!submitting) {
       setResubmitting(null);
@@ -107,9 +106,6 @@ export const SubmitReport = (): JSX.Element => {
 
   const handleSubmitted = async (report: SubmittedPhasedReport): Promise<void> => {
     setLastSubmitted(report);
-    // G6(c): refresh both student-groups (the new submission may have changed
-    // membership activity timestamps etc.) and phased-reports (so the table
-    // below this card picks up the new row immediately).
     await Promise.all([refetchStudentGroups(), refetchReports()]);
   };
 
@@ -120,20 +116,14 @@ export const SubmitReport = (): JSX.Element => {
   if (!user) {
     return (
       <div className={styles.page}>
-        <div className={styles.errorBanner}>
-          <AlertCircle size={16} />
-          <span>Please sign in to submit a milestone report.</span>
-        </div>
+        <ErrorBanner
+          tone="error"
+          message="Please sign in to submit a milestone report."
+        />
       </div>
     );
   }
 
-  // The folder key ONLY drives the Firebase path; the page derives a sensible
-  // default from what the student can see (primary topic title, then group
-  // name, then a generic "milestone" fallback). The user can override via the
-  // "Workspace label" input — useful when a group has multiple submissions
-  // for the same topic and the student wants to keep them segregated in
-  // storage (e.g. "draft-v2" vs "draft-v3").
   const phaseKey = normalizeWorkspaceLabel(
     workspaceLabel.trim().length > 0
       ? workspaceLabel
@@ -142,27 +132,15 @@ export const SubmitReport = (): JSX.Element => {
 
   return (
     <div className={styles.page}>
-      <nav className={styles.breadcrumbs}>
-        Home &gt; Collaborative Workspace &gt;{' '}
-        {primaryGroup?.name ?? 'Research Group'} &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Submit Report</span>
-      </nav>
-
-      <header className={styles.headerRow}>
-        <div>
-          <h1 className={styles.pageTitle}>Submit Milestone Research Report</h1>
-          <p className={styles.pageSubtitle}>
-            Upload a PDF for review. Your lecturer will receive the file via
-            secure storage and respond on the Reports tab.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="SUBMIT REPORT"
+        title="Submit Milestone Research Report"
+        description="Upload a PDF for review. Your lecturer will receive the file via secure storage and respond on the Reports tab."
+        accent={ROLE_ACCENT}
+      />
 
       {error ? (
-        <div className={styles.errorBanner} role="alert">
-          <AlertCircle size={16} />
-          <span>{error.message}</span>
-        </div>
+        <ErrorBanner tone="error" message={error.message} />
       ) : null}
 
       <div className={styles.grid}>
@@ -170,18 +148,14 @@ export const SubmitReport = (): JSX.Element => {
           <h3 className={styles.cardTitle}>Milestone Details</h3>
 
           {isLoading ? (
-            <div className={styles.detailRow}>
-              <Loader2 size={14} className={styles.spin} />
-              <span>Loading your context…</span>
-            </div>
+            <SkeletonRow count={4} rowHeight={36} gap={12} />
           ) : !primaryGroup ? (
-            <div className={styles.emptyState}>
-              <Inbox size={18} />
-              <span>
-                You haven&apos;t joined a research group yet. Once a lecturer
-                adds you to one, you can submit milestones here.
-              </span>
-            </div>
+            <EmptyState
+              icon={<Inbox size={24} />}
+              title="No research group yet"
+              description="Once a lecturer adds you to a group, you can submit milestones here."
+              compact
+            />
           ) : (
             <>
               <div className={styles.detailRow}>
@@ -258,10 +232,7 @@ export const SubmitReport = (): JSX.Element => {
           ) : null}
 
           {reportsLoading ? (
-            <div className={styles.detailRow}>
-              <Loader2 size={14} className={styles.spin} />
-              <span>Loading previous reports…</span>
-            </div>
+            <SkeletonRow count={3} rowHeight={48} gap={12} />
           ) : activePhaseReport ? (
             <div className={styles.activeReportCard}>
               <div className={styles.activeReportHeader}>
@@ -285,8 +256,8 @@ export const SubmitReport = (): JSX.Element => {
                 {formatDate(activePhaseReport.submittedAt)}.
                 {activePhaseReport.status === 'SUBMITTED' ? (
                   <>
-                    {' '}Your lecturer is is reviewing it. You&apos;ll be notified
-                    when feedback is available.
+                    {' '}Your lecturer is reviewing it. You&apos;ll be
+                    notified when feedback is available.
                   </>
                 ) : activePhaseReport.status === 'EVALUATED' ? (
                   <>
@@ -306,27 +277,24 @@ export const SubmitReport = (): JSX.Element => {
               </p>
             </div>
           ) : (
-            <div className={styles.emptyState}>
-              <Clock size={18} />
-              <span>
-                No prior submission for this group yet. Click{' '}
-                <strong>Submit report</strong> below to upload your first PDF.
-              </span>
-            </div>
+            <EmptyState
+              icon={<Clock size={24} />}
+              title="No prior submission"
+              description="Click Submit report below to upload your first PDF for this group."
+              compact
+            />
           )}
 
           <div className={styles.actionCenter}>
-            <button
-              type="button"
-              className={styles.submitBtn}
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<FileText size={14} />}
               onClick={() => setSubmitting(true)}
               disabled={!primaryGroup || isLoading}
             >
-              <FileText size={14} />
-              <span>
-                {activePhaseReport ? 'Update submission' : 'Submit report'}
-              </span>
-            </button>
+              {activePhaseReport ? 'Update submission' : 'Submit report'}
+            </Button>
           </div>
 
           {lastSubmitted ? (

@@ -143,7 +143,7 @@ export const ConfigureMilestones = () => {
             <h1 className={styles.pageTitle}>CONFIGURE MILESTONE TARGETS</h1>
           </div>
           <span className={styles.draftBadge}>
-            <Circle size={8} fill="currentColor" aria-hidden style={{ marginRight: 4 }} />
+            <Circle size={8} fill="currentColor" aria-hidden />
             DRAFT (PREVIEW)
           </span>
         </div>
@@ -211,34 +211,38 @@ export const ConfigureMilestones = () => {
 
           {/* Dates */}
           <div className={styles.rowFormGroup}>
-            <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label className={styles.formLabel} htmlFor="openDate">
-                Open Date (optional)
-              </label>
-              <input
-                id="openDate"
-                type="datetime-local"
-                className={styles.formInput}
-                value={openDate}
-                onChange={(e) => setOpenDate(e.target.value)}
-              />
+            <div className={styles.formCol}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="openDate">
+                  Open Date (optional)
+                </label>
+                <input
+                  id="openDate"
+                  type="datetime-local"
+                  className={styles.formInput}
+                  value={openDate}
+                  onChange={(e) => setOpenDate(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label className={styles.formLabel} htmlFor="dueDate">
-                * Hard Due Date &amp; Timeline Boundary
-              </label>
-              <input
-                id="dueDate"
-                type="datetime-local"
-                className={styles.formInput}
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-              <span className={styles.helperText}>
-                UTC. Submissions received after this boundary will be flagged as
-                non-compliant.
-              </span>
+            <div className={styles.formCol}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="dueDate">
+                  * Hard Due Date &amp; Timeline Boundary
+                </label>
+                <input
+                  id="dueDate"
+                  type="datetime-local"
+                  className={styles.formInput}
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+                <span className={styles.helperText}>
+                  UTC. Submissions received after this boundary will be flagged as
+                  non-compliant.
+                </span>
+              </div>
             </div>
 
             {daysRemainingLabel && (
@@ -274,7 +278,7 @@ export const ConfigureMilestones = () => {
                 <input
                   type="file"
                   accept="application/pdf"
-                  style={{ display: 'none' }}
+                  className={styles.hiddenFileInput}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void handleAttachPdf(file);

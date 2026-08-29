@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Flag, X, AlertCircle } from 'lucide-react';
+import { Flag, X, AlertCircle, Loader2 } from 'lucide-react';
 import { reportService, ReportTargetType } from '../../services/report.service';
+import { ErrorBanner } from '../ErrorBanner';
+import { Button } from '../Button';
 import styles from './ReportModal.module.css';
 
 interface ReportModalProps {
@@ -161,37 +163,44 @@ export const ReportModal = ({
             />
           </div>
 
-          {/* API Error */}
+          {/* API Error — shared ErrorBanner tone="error" */}
           {apiError && (
-            <div className={styles.apiError} role="alert">
-              <AlertCircle size={16} className={styles.apiErrorIcon} />
-              {apiError}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Couldn't submit report"
+              message={apiError}
+            />
           )}
         </div>
 
         {/* Footer */}
         <div className={styles.footer}>
-          <button
+          <Button
+            variant="outline"
+            size="md"
             onClick={onClose}
-            className={styles.cancelBtn}
             disabled={isSubmitting}
           >
             Cancel
-          </button>
+          </Button>
+          {/* The shared <Button isLoading> pattern shows a spinner over the
+              same label; the original "Submitting…" copy is preserved here
+              because the existing ReportModal integration tests assert on
+              the literal text "/submitting/i" while a request is in flight. */}
           <button
-            onClick={handleSubmit}
+            type="button"
             className={styles.submitBtn}
+            onClick={handleSubmit}
             disabled={!isReasonValid || isSubmitting}
           >
             {isSubmitting ? (
               <>
-                <span className={styles.spinner} />
-                Submitting...
+                <Loader2 size={14} className={styles.spinner} aria-hidden />
+                Submitting…
               </>
             ) : (
               <>
-                <Flag size={14} />
+                <Flag size={14} aria-hidden />
                 Submit Report
               </>
             )}

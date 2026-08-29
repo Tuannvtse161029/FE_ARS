@@ -1,8 +1,13 @@
 /**
  * SubmitReport — ARS Research Constellation
  * "Research Journey" — Graduate Student workspace.
- * Graduate Student role accent: var(--ars-gradstudent, #7c3aed)
+ *
+ * Graduate Student role accent: var(--ars-gradstudent, #1e3a8a)
  * Tokens are globally available via src/styles/ars-tokens.css
+ *
+ * Page CSS owns the two-column layout, detail rows, and report card.
+ * Shared surfaces (`PageHeader`, `EmptyState`, `ErrorBanner`, `SkeletonRow`,
+ * `Button`) own their own styling.
  */
 
 @keyframes spin {
@@ -17,57 +22,6 @@
   gap: var(--space-5);
   font-family: var(--font-family-ui);
   color: var(--ars-ink);
-}
-
-/* ── Breadcrumbs ───────────────────────────────────────── */
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-}
-
-/* ── Header Row ─────────────────────────────────────────── */
-.headerRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.pageTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.pageSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: var(--space-1) 0 0;
-  max-width: 720px;
-  line-height: var(--line-height-normal);
-}
-
-/* ── Error Banner ──────────────────────────────────────── */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-error-bg);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  color: var(--ars-error);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
 }
 
 .spin {
@@ -167,30 +121,11 @@
   outline: none;
   font-family: var(--font-family-ui);
   transition: border-color var(--transition-fast);
-  cursor: pointer;
+  min-height: var(--space-9);
 }
 
 .phaseSelect:focus {
   border-color: var(--ars-gradstudent);
-}
-
-/* ── Empty State ──────────────────────────────────────── */
-.emptyState {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-style: dashed;
-  color: var(--ars-ink-muted);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-}
-
-.emptyState svg {
-  flex-shrink: 0;
-  opacity: 0.6;
 }
 
 /* ── Active Report Card ───────────────────────────────── */
@@ -262,37 +197,6 @@
   margin-top: var(--space-2);
 }
 
-.submitBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-gradstudent);
-  border: none;
-  color: #ffffff;
-  padding: var(--space-2) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: var(--ars-gradstudent-mid);
-}
-
-.submitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.submitBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
-}
-
 .successHint {
   display: inline-flex;
   align-items: center;
@@ -311,11 +215,5 @@
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .headerRow {
-    flex-direction: column;
   }
 }

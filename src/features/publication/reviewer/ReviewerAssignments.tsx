@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import shared from '../components/PublicationShared.module.css';
 import reviewer from './reviewer.module.css';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import {
@@ -9,6 +9,12 @@ import {
   isReviewerActionable,
   isReviewerSubmitted,
 } from './reviewerCriteria';
+import { PageHeader } from '../../../components/PageHeader';
+import { EmptyState } from '../../../components/EmptyState';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { SkeletonRow } from '../../../components/SkeletonRow';
+import { StatusBadge } from '../../../components/lecturer/StatusBadge';
+import { Button } from '../../../components/Button/Button';
 
 // ReviewerAssignments — Reviewer-only list of Admin-assigned papers.
 //
@@ -23,6 +29,8 @@ import {
 // Privacy: this page never renders `PublicationReview.privateComments`
 // or `PublicationReview.privateScores`. The reviewer can only see their
 // own work product from inside the detail page after they submit.
+
+const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
@@ -43,10 +51,19 @@ const actionableLabel = (paper: PublicationPaper): string => {
   return 'Not actionable yet';
 };
 
+const actionableTone = (paper: PublicationPaper): 'submitted' | 'evaluated' | 'waiting' | 'unknown' => {
+  if (isReviewerSubmitted(paper.status)) return 'submitted';
+  if (isReviewerActionable(paper.status)) return 'evaluated';
+  if (isAwaitingReviewerResponse(paper.status)) return 'waiting';
+  return 'unknown';
+};
+
 export const ReviewerAssignments = () => {
+  const navigate = useNavigate();
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -68,82 +85,155 @@ export const ReviewerAssignments = () => {
     };
   }, []);
 
+  const visiblePapers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return papers;
+    return papers.filter((paper) => {
+      const haystack = [
+        paper.title,
+        paper.abstract,
+        paper.paperType,
+        paper.domain,
+        paper.field,
+        paper.subfield,
+        ...paper.authors.map((author) => author.name),
+        ...paper.institutions.map((institution) => institution.name),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [papers, search]);
+
   const rows = useMemo(
     () =>
-      papers.map((paper) => ({
+      visiblePapers.map((paper) => ({
         paper,
         actionable: actionableLabel(paper),
+        actionableTone: actionableTone(paper),
         assignedAt: formatDate(paper.assignmentCreatedAt ?? paper.submittedAt),
         deadline: formatDate(paper.reviewDeadline),
       })),
-    [papers],
+    [visiblePapers],
   );
 
   return (
-    <section className={`${shared.page} ${reviewer.pageSpacing}`}>
-      <header className={shared.header}>
-        <div>
-          <h1>Review Assignments</h1>
-          <p>
-            Accept or decline Admin assignments, then submit a private recommendation to Admin.
-            Your review content is never published to the catalog.
-          </p>
-        </div>
-      </header>
+    <section className={reviewer.page}>
+      <PageHeader
+        eyebrow="REVIEWER WORKSPACE"
+        title="Review Assignments"
+        description="Accept or decline Admin assignments, then submit a private recommendation to Admin. Your review content is never published to the catalog."
+        accent={REVIEWER_ACCENT}
+      />
+
       {loading ? (
-        <div className={shared.loading}>Loading assignments...</div>
+        <SkeletonRow count={5} withHeader />
       ) : error ? (
-        <div className={shared.error} role="alert">{error}</div>
-      ) : rows.length === 0 ? (
-        <div className={shared.empty} data-testid="empty-assignments">
-          No reviewer assignments are ready.
-        </div>
+        <ErrorBanner
+          tone="error"
+          title="Could not load assignments"
+          message={error}
+        />
       ) : (
-        <div className={shared.panel}>
-          {rows.map(({ paper, actionable, assignedAt, deadline }) => (
-            <article
-              key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
-              data-testid="assignment-row"
-              data-paper-id={paper.id}
-              style={{ borderBottom: '1px solid #e4e9f0', padding: '14px 0' }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  marginBottom: 6,
-                }}
-              >
-                <span className={shared.status}>{statusLabel(paper.status)}</span>
-                <span className={reviewer.deadlineChip} aria-label="Assigned">
-                  Assigned: {assignedAt}
+        <>
+          {papers.length > 0 && (
+            <div className={reviewer.toolbar} role="search">
+              <label className={reviewer.searchField}>
+                <span className={reviewer.searchLabel} id="reviewer-search-label">
+                  Search assignments
                 </span>
-                <span className={reviewer.deadlineChip} aria-label="Deadline">
-                  Deadline: {deadline}
-                </span>
-                <span className={reviewer.deadlineChip} aria-label="Actionability">
-                  {actionable}
-                </span>
-              </div>
-              <h2 style={{ fontSize: 18, margin: '4px 0 6px' }}>{paper.title}</h2>
-              <p style={{ margin: '0 0 8px', color: '#5f6b7a' }}>{paper.abstract}</p>
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#324158' }}>
-                <strong>Review type:</strong> {paper.reviewType || 'Not supplied'} ·{' '}
-                <strong>Fee:</strong> {formatFee(paper.reviewFee)} ·{' '}
-                <strong>AI recommended:</strong>{' '}
-                {paper.aiRecommended == null ? 'Not supplied' : paper.aiRecommended ? 'Yes' : 'No'}
-              </p>
-              <Link
-                className={reviewer.openAssignmentButton}
-                to={`/reviewer/assignments/${paper.id}`}
-              >
-                Open assignment
-              </Link>
-            </article>
-          ))}
-        </div>
+                <input
+                  type="search"
+                  className={reviewer.searchInput}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search title, author, or institution…"
+                  aria-labelledby="reviewer-search-label"
+                />
+              </label>
+              <span className={reviewer.count} aria-live="polite">
+                {visiblePapers.length} of {papers.length} assignment{papers.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          )}
+
+          {rows.length === 0 ? (
+            <EmptyState
+              icon={<Inbox size={20} aria-hidden />}
+              title={search ? 'No assignments match your search' : 'No reviewer assignments are ready'}
+              description={
+                search
+                  ? 'Try a different keyword, or clear the search to see every assignment.'
+                  : 'New Admin assignments appear here automatically. Accept or decline them from the row.'
+              }
+              data-testid="empty-assignments"
+            />
+          ) : (
+            <div className={reviewer.tableWrap}>
+              <table className={reviewer.table}>
+                <thead>
+                  <tr>
+                    <th scope="col" className={reviewer.thTitle}>Title</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actionability</th>
+                    <th scope="col">Assigned</th>
+                    <th scope="col">Deadline</th>
+                    <th scope="col">Fee</th>
+                    <th scope="col" className={reviewer.thActions}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ paper, actionable, actionableTone, assignedAt, deadline }) => (
+                    <tr
+                      key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
+                      data-testid="assignment-row"
+                      data-paper-id={paper.id}
+                    >
+                      <td className={reviewer.tdTitle}>
+                        <Link
+                          to={`/reviewer/assignments/${paper.id}`}
+                          className={reviewer.titleLink}
+                        >
+                          {paper.title}
+                        </Link>
+                        <span className={reviewer.titleMeta}>
+                          {paper.paperType || 'Not supplied'}
+                          {paper.reviewType ? ` · ${paper.reviewType}` : ''}
+                          {paper.aiRecommended != null
+                            ? ` · AI recommended: ${paper.aiRecommended ? 'Yes' : 'No'}`
+                            : ''}
+                        </span>
+                      </td>
+                      <td>
+                        <StatusBadge status={paper.status} label={statusLabel(paper.status)} size="sm" />
+                      </td>
+                      <td>
+                        <StatusBadge status={actionableTone} label={actionable} size="sm" />
+                      </td>
+                      <td>
+                        <span className={reviewer.mono}>{assignedAt}</span>
+                      </td>
+                      <td>
+                        <span className={reviewer.mono}>{deadline}</span>
+                      </td>
+                      <td className={reviewer.tdNumeric}>{formatFee(paper.reviewFee)}</td>
+                      <td className={reviewer.tdActions}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(`/reviewer/assignments/${paper.id}`)}
+                        >
+                          Open
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

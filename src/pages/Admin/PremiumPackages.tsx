@@ -1,11 +1,26 @@
+/**
+ * PremiumPackages — Admin subscription catalog management.
+ *
+ * Card-grid layout. Each card displays one package with role pill, price,
+ * feature list, and toggle/delete actions. Uses shared PageHeader + Button.
+ */
 import { useCallback, useEffect, useState } from 'react';
+import { Inbox, Plus } from 'lucide-react';
 import styles from './PremiumPackages.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { CreatePackageModal } from '../../components/admin/CreatePackageModal';
+import { useAdminGuard } from '../../hooks/useAdminGuard';
 import type {
   PremiumPackage,
   PremiumPackageInput,
 } from '../../types/adminAuxiliary';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
+
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const ROLE_LABEL: Record<PremiumPackage['targetRole'], string> = {
   RESEARCHER: 'Researcher',
@@ -14,6 +29,8 @@ const ROLE_LABEL: Record<PremiumPackage['targetRole'], string> = {
 };
 
 export default function PremiumPackages(): JSX.Element {
+  useAdminGuard();
+
   const [packages, setPackages] = useState<PremiumPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,31 +100,61 @@ export default function PremiumPackages(): JSX.Element {
   };
 
   return (
-    <section className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.title}>Premium Packages</h1>
-          <p className={styles.subtitle}>
-            Create, toggle, and edit subscription packages offered to each role.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={styles.createButton}
-          onClick={() => setCreateOpen(true)}
-        >
-          ＋ Create New Package
-        </button>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        eyebrow="ADMIN · SUBSCRIPTIONS"
+        title="Premium Packages"
+        description="Create, toggle, and edit subscription packages offered to each role."
+        accent={ROLE_ACCENT}
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Plus size={14} />}
+            onClick={() => setCreateOpen(true)}
+            data-testid="open-create-package"
+          >
+            Create New Package
+          </Button>
+        }
+      />
 
       {loading ? (
-        <div className={styles.placeholder}>Loading packages…</div>
-      ) : error ? (
-        <div className={styles.errorState}>Failed to load: {error}</div>
-      ) : packages.length === 0 ? (
-        <div className={styles.placeholder}>
-          No packages yet. Create your first one to get started.
+        <div className={styles.placeholder} role="status">
+          <SkeletonRow count={3} rowHeight={120} />
         </div>
+      ) : error ? (
+        <ErrorBanner
+          tone="error"
+          title="Could not load packages"
+          message={error}
+          retry={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              {loading ? 'Retrying…' : 'Retry'}
+            </Button>
+          }
+        />
+      ) : packages.length === 0 ? (
+        <EmptyState
+          icon={<Inbox size={20} />}
+          title="No packages yet"
+          description="Create your first premium package to start offering subscriptions to researchers, reviewers, or lecturers."
+          action={
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              Create a Package
+            </Button>
+          }
+        />
       ) : (
         <div className={styles.grid}>
           {packages.map((pkg) => {
@@ -118,8 +165,10 @@ export default function PremiumPackages(): JSX.Element {
                 className={`${styles.card} ${pkg.isActive ? '' : styles.cardInactive}`}
               >
                 <header className={styles.cardHeader}>
-                  <div>
-                    <span className={styles.rolePill}>{ROLE_LABEL[pkg.targetRole]}</span>
+                  <div className={styles.cardTitleBlock}>
+                    <span className={styles.rolePill}>
+                      {ROLE_LABEL[pkg.targetRole]}
+                    </span>
                     <h2 className={styles.cardTitle}>{pkg.title}</h2>
                   </div>
                   <span
@@ -154,7 +203,8 @@ export default function PremiumPackages(): JSX.Element {
 
                 <footer className={styles.cardFooter}>
                   <span className={styles.subscriberCount}>
-                    <strong>{pkg.subscriberCount.toLocaleString('vi-VN')}</strong> subscribers
+                    <strong>{pkg.subscriberCount.toLocaleString('vi-VN')}</strong>{' '}
+                    subscribers
                   </span>
                   <div className={styles.cardActions}>
                     <button
@@ -191,6 +241,6 @@ export default function PremiumPackages(): JSX.Element {
         }}
         onConfirm={handleCreate}
       />
-    </section>
+    </div>
   );
 }

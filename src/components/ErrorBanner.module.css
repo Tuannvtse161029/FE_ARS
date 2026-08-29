@@ -1,0 +1,55 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.error {
+  background: var(--ars-error-bg);
+  border-color: rgba(153, 27, 27, 0.2);
+  color: var(--ars-error);
+}
+
+.warning {
+  background: var(--ars-warning-bg);
+  border-color: rgba(146, 64, 14, 0.2);
+  color: var(--ars-warning);
+}
+
+.info {
+  background: var(--ars-info-bg);
+  border-color: rgba(30, 64, 175, 0.2);
+  color: var(--ars-info);
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.message {
+  color: inherit;
+  opacity: 0.92;
+}
+
+.retry {
+  flex-shrink: 0;
+}

@@ -1,7 +1,12 @@
 /**
  * FollowButton — ARS Research Constellation
- * Pill-shaped toggle used on forum post cards to follow / unfollow.
+ *
+ * Pill-shaped toggle rendered on ForumPostCard author rows. Uses
+ * --ars-blue accent by default; per-role accent flows through only when
+ * the parent overrides the button's container styles. Disabled when the
+ * viewer can't follow (unauthenticated, unverified, self, mid-request).
  */
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -9,7 +14,7 @@
   gap: 6px;
   border-radius: 999px;
   font-family: var(--font-family-ui);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   cursor: pointer;
   user-select: none;
@@ -17,22 +22,19 @@
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
+    border-color var(--transition-fast);
 }
 
-/* Sizes */
 .sizeSm {
   font-size: var(--font-size-xs);
-  padding: 4px 12px;
+  padding: 0 var(--space-3);
   min-height: 28px;
 }
 
 .sizeMd {
   font-size: var(--font-size-sm);
-  padding: 6px 16px;
-  min-height: 34px;
+  padding: 0 var(--space-4);
+  min-height: 36px;
 }
 
 /* "Not following" state — outlined */
@@ -44,11 +46,6 @@
 
 .follow:hover:not(:disabled) {
   background-color: var(--ars-blue-light);
-  transform: translateY(-1px);
-}
-
-.follow:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .follow:focus-visible {
@@ -66,11 +63,6 @@
 .following:hover:not(:disabled) {
   background-color: var(--ars-blue-mid);
   border-color: var(--ars-blue-mid);
-  transform: translateY(-1px);
-}
-
-.following:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .following:focus-visible {
@@ -85,8 +77,6 @@
   color: var(--ars-ink-muted);
   border-color: var(--ars-node);
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
   opacity: 0.7;
 }
 

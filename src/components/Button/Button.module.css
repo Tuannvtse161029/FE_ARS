@@ -10,18 +10,18 @@
   gap: var(--space-2);
   font-family: var(--font-family-ui);
   font-weight: var(--font-weight-semibold);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+    box-shadow var(--transition-fast);
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  letter-spacing: -0.005em;
 }
 
 /* ── Disabled State ─────────────────────────────────────── */
@@ -39,22 +39,30 @@
 }
 
 /* ── Button Sizes ─────────────────────────────────────────── */
+/* Compact rhythm — drops `lg` from 52px to 40px and `md` from 44px to 36px
+   so table rows and form fields stay aligned. `sm` is for inline tertiary
+   actions (e.g. "Resubmit" links next to a status). No translateY on hover
+   anymore; we only shift background-color / border-color to avoid the
+   pillowy lift that read as AI-generated. */
 .button--sm {
-  padding: var(--space-2) var(--space-3);
+  padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
-  min-height: 32px;
+  min-height: 28px;
+  border-width: 1px;
 }
 
 .button--md {
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--font-size-base);
-  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  border-width: 1px;
 }
 
 .button--lg {
-  padding: var(--space-4) var(--space-6);
-  font-size: var(--font-size-lg);
-  min-height: 52px;
+  padding: 0 var(--space-5);
+  font-size: var(--font-size-base);
+  min-height: 40px;
+  border-width: 1px;
 }
 
 /* ── Primary Variant (ARS Blue) ─────────────────────────── */
@@ -67,13 +75,11 @@
 .button--primary:hover:not(:disabled) {
   background-color: var(--ars-blue-mid);
   border-color: var(--ars-blue-mid);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .button--primary:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--ars-ink);
+  border-color: var(--ars-ink);
 }
 
 /* ── Secondary Variant (Reviewer Green) ────────────────── */
@@ -86,13 +92,11 @@
 .button--secondary:hover:not(:disabled) {
   background-color: var(--ars-reviewer-mid);
   border-color: var(--ars-reviewer-mid);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .button--secondary:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--ars-ink);
+  border-color: var(--ars-ink);
 }
 
 /* ── Outline Variant ────────────────────────────────────── */
@@ -103,15 +107,12 @@
 }
 
 .button--outline:hover:not(:disabled) {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: var(--ars-blue-light);
+  color: var(--ars-ink);
 }
 
 .button--outline:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--ars-node);
 }
 
 /* ── Ghost Variant ──────────────────────────────────────── */
@@ -138,16 +139,13 @@
 }
 
 .button--danger:hover:not(:disabled) {
-  background-color: var(--ars-error-bg);
-  border-color: var(--ars-error-bg);
-  color: var(--ars-error);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: #b91c1c;
+  border-color: #b91c1c;
 }
 
 .button--danger:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: #7f1d1d;
+  border-color: #7f1d1d;
 }
 
 /* ── Full Width ─────────────────────────────────────────── */
