@@ -491,7 +491,7 @@ export const SeminarWorkspace = () => {
 
               {/* Card Actions */}
               <div className={styles.cardActionsRow}>
-                {sem.status === 'COMPLETED' ? (
+                {(sem.effectiveStatus === 'COMPLETED' || sem.status === 'COMPLETED') ? (
                   <>
                     {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
                       <button
