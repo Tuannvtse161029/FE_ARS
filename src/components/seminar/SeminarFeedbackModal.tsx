@@ -28,7 +28,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
   seminarId,
   seminarTitle,
   participantId,
-  currentUserId,
+  currentUserId: _currentUserId,
   existingEvaluation,
   onSuccess,
 }) => {
