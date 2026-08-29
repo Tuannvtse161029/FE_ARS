@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ReportModal } from './ReportModal';
 import { formatRelativeTime } from '../../utils/formatDate';
+import { storage } from '../../utils/storage';
 import type { ForumComment } from '../../types/forum.types';
 import styles from './CommentSection.module.css';
 
@@ -93,6 +94,10 @@ export const CommentSection = ({
 }: CommentSectionProps) => {
   const { user } = useAuth();
   const { isVerified } = usePermissions();
+  const stored = storage.getUser();
+  const currentUserId = user?.userId ?? stored?.id ?? null;
+  const currentUserName =
+    stored?.fullName ?? user?.username ?? stored?.username ?? 'You';
   // Only call the hook when the parent has NOT supplied a comments list.
   // When the parent supplies one (Agent 42 single-fetch pattern), we still
   // call the hook but ignore its data — this keeps the section's
