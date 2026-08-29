@@ -208,67 +208,6 @@
   gap: var(--space-2);
 }
 
-/* ── Dev-Only Divider ──────────────────────────────────── */
-.devDivider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
-.devDividerLine {
-  flex: 1;
-  height: 1px;
-  background-color: var(--ars-network);
-}
-
-.devDividerText {
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-/* ── Fast Login Grid ─────────────────────────────────────── */
-.fastLoginGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.fastLoginBtn {
-  flex: 1;
-  min-width: 90px;
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--ars-paper-alt);
-  border: 1.5px solid var(--ars-node);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--ars-ink);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.fastLoginBtn:hover:not(:disabled) {
-  background-color: var(--ars-node);
-  border-color: var(--ars-ink-muted);
-}
-
-.fastLoginBtn:focus-visible {
-  outline: 2px solid var(--ars-blue);
-  outline-offset: 2px;
-}
-
-.fastLoginBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* ── Role Selector Field ──────────────────────────────────── */
 .roleFieldWrapper {
   display: flex;

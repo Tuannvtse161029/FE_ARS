@@ -35,7 +35,7 @@ import { useProfile } from '../../hooks/useProfile';
 import {
   PROFILE_VALIDATION,
   resolveRoleProfileMeta,
-  type Profile as UserProfileType,
+  type Profile as ProfileDto,
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
@@ -681,7 +681,7 @@ interface ProfileViewProps {
   avatarInitials: string;
   updatedAt: string | null | undefined;
   isEmpty: boolean;
-  profile?: UserProfileType | null;
+  profile?: ProfileDto | null;
 }
 
 const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: ProfileViewProps) => {

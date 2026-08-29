@@ -2,8 +2,8 @@
 // paper-submission form.
 //
 // ── Scope ────────────────────────────────────────────────────────────────────
-// The publication UI runs against the demo adapter today
-// (see docs/PUBLICATION_FLOW_API_BLOCKERS.md §3.2). The BE has not shipped a
+// The publication UI uses this client-side validation boundary because the BE
+// has not shipped a
 // typed OpenAlex lookup endpoint yet, and the OpenAlex public API must not be
 // called from the browser (CORS, rate-limiting, key handling). This module is
 // therefore an **additive, FE-only boundary** that:
@@ -21,7 +21,7 @@
 //   - canonical example:  W2741809807
 //   - bare example:       2741809807
 //   - URL form:           https://api.openalex.org/works/W2741809807
-//   - DOI form:           doi:10.5555/ars.demo.2026.001
+//   - DOI form:           doi:10.5555/ars.example.2026.001
 // We only validate the `W...` short form (work IDs); the DOI and URL forms
 // are rejected with a distinct error so the researcher types the correct
 // identifier.
@@ -118,43 +118,6 @@ export const normalizeOpenAlexId = (raw: string): string => {
 export const isValidOpenAlexId = (raw: string): boolean =>
   normalizeOpenAlexId(raw).length > 0;
 
-export interface OpenAlexScanPreview {
-  /** Canonical OpenAlex ID (e.g. W2741809807) */
-  id: string;
-  /** Stable preview derived from the ID — no network involved. */
-  display: {
-    title: string;
-    summary: string;
-    source: 'demo' | 'api';
-    sourceLabel: string;
-  };
-}
-
-/**
- * Build a deterministic, ID-derived preview that the form shows to the
- * researcher **before** the BE proxy ships. The preview intentionally does
- * NOT call OpenAlex from the browser; the moment the BE proxy lands, this
- * helper will be replaced by a typed adapter call.
- *
- * The shape mirrors what the future BE proxy will return so the form does not
- * need to be rewritten when the endpoint ships.
- */
-export const buildOpenAlexScanPreview = (id: string): OpenAlexScanPreview => {
-  if (!OPENALEX_ID_REGEX.test(id)) {
-    throw new OpenAlexInvalidFormatError(id);
-  }
-  return {
-    id,
-    display: {
-      title: `OpenAlex record ${id}`,
-      summary:
-        'Identifier recognised. Metadata enrichment will be supplied by the backend publication proxy when it ships.',
-      source: 'demo',
-      sourceLabel: 'Identifier preview (no live OpenAlex call)',
-    },
-  };
-};
-
 /**
  * Throw the appropriate error for an input the form should reject.
  * Used by the form's confirm/edit flow to surface distinct copy for:
@@ -183,7 +146,6 @@ export default {
   normalizeOpenAlexId,
   isValidOpenAlexId,
   classifyOpenAlexCandidate,
-  buildOpenAlexScanPreview,
   rejectInvalidOpenAlexId,
   openAlexErrors,
 };

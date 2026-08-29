@@ -122,7 +122,7 @@ export const userService = {
     }
     return userService.update(id, {
       fullName,
-      avatarUrl: current.orcidId ?? current.username ?? null,
+      avatarUrl: current.avatarUrl ?? null,
       isActive,
     });
   },

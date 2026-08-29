@@ -26,6 +26,7 @@ export interface GuidanceProjectCreateRequest {
   description: string | null;
   status: string | null;
   studentId: number | null;
+  researchGroupId?: number | null;
 }
 
 export interface GuidanceProjectUpdateRequest {
@@ -34,6 +35,7 @@ export interface GuidanceProjectUpdateRequest {
   description: string | null;
   status: string | null;
   studentId: number | null;
+  researchGroupId?: number | null;
 }
 
 // ---------- ResearchGroup ----------
@@ -78,6 +80,7 @@ export interface ResearchTopicCreateRequest {
   description: string | null;
   status: string | null;
   materialsUrl: string | null;
+  lecturerId?: number | null;
 }
 
 export interface ResearchTopicUpdateRequest {
@@ -86,6 +89,7 @@ export interface ResearchTopicUpdateRequest {
   description: string | null;
   status: string | null;
   materialsUrl: string | null;
+  lecturerId?: number | null;
 }
 
 // ---------- GroupMember ----------
@@ -131,6 +135,9 @@ export interface PhasedReportCreateRequest {
   capacityEvaluation: string | null;
   finalOutcomeEvaluation: string | null;
   lectureFeedback: number | null;
+  phaseNumber?: number | null;
+  milestoneTitle?: string | null;
+  status?: string | null;
   submittedAt: string | null;
 }
 
@@ -141,6 +148,9 @@ export interface PhasedReportUpdateRequest {
   capacityEvaluation: string | null;
   finalOutcomeEvaluation: string | null;
   lectureFeedback: number | null;
+  phaseNumber?: number | null;
+  milestoneTitle?: string | null;
+  status?: string | null;
   submittedAt: string | null;
 }
 

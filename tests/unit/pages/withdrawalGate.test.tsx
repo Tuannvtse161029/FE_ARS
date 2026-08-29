@@ -295,34 +295,3 @@ describe('TransactionsManagement — withdrawal gate', () => {
   });
 });
 
-// ─── Unrelated wallet behavior is not impacted by the gate ───────────────────
-
-describe('WalletTopUpModal — unaffected by withdrawal gate', () => {
-  it('renders the top-up shell when withdrawal gate is disabled', async () => {
-    setFlag(false);
-    const { walletService } = await import('../../../src/services/wallet.service');
-    vi.spyOn(walletService, 'autoFund').mockResolvedValue({
-      id: 99,
-      userId: 18,
-      balance: 250000,
-      walletId: 42,
-    } as any);
-
-    const { WalletTopUpModal } = await import(
-      '../../../src/components/wallet/WalletTopUpModal'
-    );
-    render(
-      <WalletTopUpModal
-        isOpen
-        currentUserId={18}
-        currentWalletId={42}
-        currentBalance={100000}
-        onSuccess={vi.fn()}
-        onMessage={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('confirm-pay-button')).toBeInTheDocument();
-  });
-});

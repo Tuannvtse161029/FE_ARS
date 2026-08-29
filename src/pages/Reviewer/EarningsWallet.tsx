@@ -179,7 +179,10 @@ export const EarningsWallet = () => {
       });
 
       const returnedId = result.id ?? result.withdrawalRequestId;
-      const displayId = returnedId ? `#WR-${String(returnedId).padStart(6, '0')}` : `#WR-${Date.now()}`;
+      if (typeof returnedId !== 'number' || returnedId <= 0) {
+        throw new Error('Withdrawal request was created without an identifier.');
+      }
+      const displayId = `#WR-${String(returnedId).padStart(6, '0')}`;
       setSuccessRequestId(displayId);
 
       await fetchRequests();

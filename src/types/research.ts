@@ -17,8 +17,8 @@ export type PhasedReportStatus =
 
 export interface GuidanceProject {
   id: number;
-  lecturerId: number;
-  studentId: number;
+  lecturerId: number | null;
+  studentId: number | null;
   title: string;
   description?: string;
   status: GuidanceProjectStatus;
@@ -39,7 +39,7 @@ export interface ResearchTopic {
 
 export interface ResearchGroup {
   id: number;
-  lecturerId: number;
+  lecturerId: number | null;
   topicId?: number | null;
   name: string;
   description?: string;

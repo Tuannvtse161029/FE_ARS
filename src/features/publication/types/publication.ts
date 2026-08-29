@@ -59,7 +59,7 @@ export interface PublicationPaper {
   topics: string[];
   keywords: string[];
   fileUrl?: string;
-  version: number;
+  version: number | null;
   status: PublicationStatus;
   visibility: PublicationVisibility;
   createdAt: string;
@@ -70,6 +70,13 @@ export interface PublicationPaper {
   researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
   adminNote?: string;
   researcherFeedback?: string;
+  reviewRequestId?: number;
+  reviewerId?: number;
+  reviewDeadline?: string;
+  assignmentCreatedAt?: string;
+  reviewFee?: number | null;
+  reviewType?: string | null;
+  aiRecommended?: boolean | null;
 }
 
 export interface PublicationNotification {

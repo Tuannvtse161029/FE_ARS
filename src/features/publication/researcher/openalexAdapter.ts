@@ -7,31 +7,27 @@
 //   - No OpenAlex network call is ever issued from the browser today.
 //
 // The boundary is **strictly FE-local**. It does NOT mutate the shared
-// publication adapter or the demo fixtures. It is consumed only by
+// publication adapter. It is consumed only by
 // ResearcherSubmissionForm.tsx.
 
 import {
-  buildOpenAlexScanPreview,
   normalizeOpenAlexId,
   OpenAlexInvalidFormatError,
   OpenAlexUnsupportedVariantError,
-  type OpenAlexScanPreview,
 } from './openalex';
 
 export type OpenAlexLookupOutcome =
-  | { status: 'preview'; preview: OpenAlexScanPreview }
   | { status: 'invalid_format'; message: string }
   | { status: 'unsupported_variant'; message: string }
   | { status: 'unavailable'; message: string };
 
 /**
  * Lookup entry point used by the form. The implementation deliberately
- * does **not** call OpenAlex — it produces a deterministic, format-derived
- * preview that mirrors the future server-side response shape.
+ * does **not** call OpenAlex from the browser. Valid identifiers return an
+ * explicit unavailable state until the backend proxy exists.
  *
  * When the BE proxy ships, replace the body of this function with a
- * `paperService.lookupOpenAlex(id)` call. The return type is already shaped
- * for that swap.
+ * `paperService.lookupOpenAlex(id)` call when the backend ticket is shipped.
  */
 export const lookupOpenAlexPreview = async (rawId: string): Promise<OpenAlexLookupOutcome> => {
   const candidate = normalizeOpenAlexId(rawId);
@@ -43,8 +39,11 @@ export const lookupOpenAlexPreview = async (rawId: string): Promise<OpenAlexLook
     const message = new OpenAlexInvalidFormatError(rawId).message;
     return { status: 'invalid_format', message };
   }
-  const preview = buildOpenAlexScanPreview(candidate);
-  return { status: 'preview', preview };
+  return {
+    status: 'unavailable',
+    message:
+      `OpenAlex work ${candidate} is valid, but metadata scanning is unavailable until the backend OpenAlex proxy is implemented. See tickets/backend/BE_OPENALEX_PROXY_TICKET.md. You can enter the identifier manually.`,
+  };
 };
 
 export interface OpenAlexAdapterBoundary {

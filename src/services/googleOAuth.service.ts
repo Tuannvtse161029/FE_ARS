@@ -35,7 +35,7 @@
 //      shape it got by checking for `{ error }` vs `{ token, userId, ... }`
 //      and never assumes a single contract.
 
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 
 export type GoogleOAuthErrorCode =
   | 'NETWORK'
@@ -208,7 +208,7 @@ export function normaliseGoogleOAuthCallback(
 export function buildGoogleOAuthLoginUrl(redirectUri?: string | null): string {
   // `API_BASE_URL` already provides the BE base.
   let base = API_BASE_URL.replace(/\/+$/, '');
-  const path = '/api/Auth/google-oauth-login';
+  const path = API_ENDPOINTS.AUTH.GOOGLE_OAUTH_LOGIN;
   let url = `${base}${path}`;
   if (redirectUri && typeof redirectUri === 'string' && redirectUri.trim() !== '') {
     const trimmed = redirectUri.trim();

@@ -54,25 +54,24 @@ export type RoleIdValue = (typeof ROLE_IDS)[keyof typeof ROLE_IDS];
 export type EffectiveRole = BusinessRole | 'Guest';
 
 export interface RegisterPayload {
-  username: string;
   email: string;
   password: string;
   fullName: string;
   phoneNumber: string;
   role: UserRole;
   pdfUrl: string;
-  // The BE seeds new accounts as pending (isActive: false) until an Admin
-  // approves the role request. The FE sends this so BE-side validation can
-  // echo it back unchanged; the FE also falls back to `false` when BE omits
-  // the field on the response.
-  isActive?: boolean;
+  /** Backend RegisterRequest field (the API currently names this ORCID ticket). */
+  orcidTicket?: string;
 }
 
 export interface RegisterRequest {
-  username: string;
   email: string;
   password: string;
   fullName: string;
+  phoneNumber: string;
+  role: UserRole;
+  pdfUrl: string;
+  orcidTicket?: string;
 }
 
 export interface AuthResponse {
@@ -143,6 +142,7 @@ export interface User {
   username: string;
   email: string;
   fullName: string;
+  avatarUrl?: string | null;
   orcidId?: string;
   /**
    * BE-derived business-role identifier (see ROLE_IDS). The FE accepts

@@ -54,9 +54,7 @@ export const ROUTES = {
   // Agent admin-annual-fees — Admin Annual Fees tab. Mounted at
   // /admin/annual-fees and exposed only when the Admin user is signed
   // in; other roles cannot reach this route. Backend request:
-  // docs/BACKEND_REQUESTS.md → BTR-AF-01 (BE has not shipped the
-  // annual-fee CRUD endpoint yet — the page renders against
-  // src/data/annualFees.demo.ts).
+  // tickets/backend/BE_ANNUAL_FEE_API_TICKET.md.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   PAYMENT_RETURN: '/payment/return',

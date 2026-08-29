@@ -54,13 +54,13 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { PdfDropzone } from '../Register/components/PdfDropzone';
 import { authService } from '../../services/auth.service';
+import { roleService } from '../../services/role.service';
 import { useAuthStore } from '../../store';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../utils/storage';
 import { ROUTES } from '../../routes/paths';
 import type { BusinessRole, EffectiveRole, UserRole } from '../../types/auth';
 import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
-import { REGISTRATION_ROLES } from '../../utils/registrationRoles';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
 
@@ -250,41 +250,22 @@ export const CompleteGoogleRegistration = () => {
     }
   }, [profile?.userId]);
 
-  // ── 3. Populate the role selector from the shared FE-owned constant ────
-  //
-  // The role list is owned by the FE (see `src/utils/registrationRoles.ts`)
-  // — we DO NOT call `GET /api/Role` here. The BE is authoritative for
-  // the *result* of the submission (the submitted role name is sent
-  // verbatim and the BE either accepts or rejects), but the selectable
-  // set is FE-owned so a transient BE outage cannot leave a freshly
-  // signed-in first-time Google user with no role to choose. Admin and
-  // Guest are deliberately excluded.
+  // ── 3. Populate the role selector from the live role directory ─────────
+  // Admin and Guest are filtered by roleService because they are not
+  // self-requestable onboarding roles.
   useEffect(() => {
-    setAvailableRoles([...REGISTRATION_ROLES]);
+    let cancelled = false;
     setRolesError(null);
-
-    if (typeof authService.getRoles === 'function') {
-      authService
-        .getRoles()
-        .then((roles) => {
-          if (roles && Array.isArray(roles) && roles.length > 0) {
-            const fetchedNames = roles
-              .map((r) => r.name || r.roleName)
-              .filter((name): name is BusinessRole =>
-                typeof name === 'string' && REGISTRATION_ROLES.includes(name as any)
-              );
-            if (fetchedNames.length > 0) {
-              setAvailableRoles(fetchedNames);
-            }
-          }
-        })
-        .catch((err) => {
-          console.warn(
-            '[CompleteGoogleRegistration] Failed to fetch dynamic roles from /api/Role, using default roles:',
-            err
-          );
-        });
-    }
+    void roleService.fetchBusinessRolesForOnboarding()
+      .then((roles) => {
+        if (!cancelled) setAvailableRoles(roles);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAvailableRoles([]);
+        setRolesError(err instanceof Error ? err.message : 'Unable to load available roles.');
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // ── 4. Handlers ─────────────────────────────────────────────────────────
@@ -370,7 +351,9 @@ export const CompleteGoogleRegistration = () => {
   const validate = useCallback((): boolean => {
     const next: Partial<Record<keyof FormState, string>> = {};
 
-    if (form.phoneNumber && !PHONE_REGEX.test(form.phoneNumber)) {
+    if (!form.phoneNumber.trim()) {
+      next.phoneNumber = 'Phone number is required by the registration service.';
+    } else if (!PHONE_REGEX.test(form.phoneNumber)) {
       next.phoneNumber =
         'Phone number must use digits, spaces, dashes or parentheses (8–20 chars).';
     }
@@ -404,7 +387,7 @@ export const CompleteGoogleRegistration = () => {
       const normalized = normalizeOrcid(form.orcidId);
       if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
     }
-    if (form.phoneNumber && !PHONE_REGEX.test(form.phoneNumber)) return false;
+    if (!form.phoneNumber.trim() || !PHONE_REGEX.test(form.phoneNumber)) return false;
     if (!form.pdfUrl) return false;
     return true;
   }, [isUploadingPdf, form]);
@@ -554,7 +537,7 @@ export const CompleteGoogleRegistration = () => {
 
           <div className={styles.fieldGroup}>
             <label htmlFor="phoneNumber" className={styles.fieldLabel}>
-              Phone Number (optional)
+              Phone Number <span aria-hidden="true">*</span>
             </label>
             <Input
               id="phoneNumber"

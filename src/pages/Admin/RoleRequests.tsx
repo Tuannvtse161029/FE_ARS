@@ -16,6 +16,7 @@ import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import RoleRequestDetailsModal from './RoleRequestDetailsModal';
+import OrcidCheckModal from './OrcidCheckModal';
 import ApproveRoleRequestModal from './ApproveRoleRequestModal';
 import DenyRoleRequestModal from './DenyRoleRequestModal';
 import styles from './RoleRequests.module.css';
@@ -55,6 +56,7 @@ export const RoleRequests = () => {
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selected, setSelected] = useState<RoleRequest | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
+  const [orcidCheckOpen, setOrcidCheckOpen] = useState(false);
 
   // Auto-dismiss toast after 4 seconds
   useEffect(() => {
@@ -391,6 +393,22 @@ export const RoleRequests = () => {
         request={selected}
         open={modal === 'details'}
         onClose={() => setModal(null)}
+        onOpenOrcidCheck={() => {
+          setModal(null);
+          setOrcidCheckOpen(true);
+        }}
+      />
+
+      <OrcidCheckModal
+        user={selected ? {
+          id: selected.userId,
+          roleRequestId: selected.id,
+          fullName: selected.userName,
+          email: selected.email,
+          orcidId: selected.orcidId,
+        } : { id: 0, email: '' }}
+        open={orcidCheckOpen}
+        onClose={() => setOrcidCheckOpen(false)}
       />
 
       {/* Approve modal */}

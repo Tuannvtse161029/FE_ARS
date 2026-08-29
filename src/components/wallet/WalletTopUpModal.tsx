@@ -1,19 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, QrCode, Wallet as WalletIcon, Plus, ArrowLeft, ExternalLink } from 'lucide-react';
-import { walletService } from '../../services/wallet.service';
+import { X, QrCode, Wallet as WalletIcon, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useCreatePaymentLink } from '../../hooks/useCreatePaymentLink';
 import { ROUTES } from '../../routes/paths';
 import styles from './WalletTopUpModal.module.css';
-
-// Static QR generator — no `react-qr-code` dependency required (the task
-// spec allows either approach). The data payload embeds the amount and the
-// locally-generated reference so any downstream reconciliation tooling can
-// match the QR scan back to the intended top-up.
-//
-// This static QR is the FALLBACK when the BE is unavailable or doesn't
-// return its own QR / checkout URL. The primary path is the live POST to
-// `/api/Payment/create-link` (PayOS) via `useCreatePaymentLink`.
-const QR_API_BASE = 'https://api.qrserver.com/v1/create-qr-code/';
 
 const QUICK_AMOUNTS_VND = [50_000, 100_000, 200_000, 500_000, 1_000_000];
 const MIN_AMOUNT_VND = 10_000;
@@ -40,32 +29,19 @@ type Step = 'amount' | 'qr';
 
 interface PendingTopUp {
   amountVnd: number;
-  // Locally-generated reference used as the fallback-QR data payload.
   reference: string;
   createdAt: number;
   // ── BE response fields (PaymentLink from src/types/domain.ts) ──
   // `orderCode` is the PayOS-side transaction reference returned by
   // `/api/Payment/create-link`.
   orderCode?: string | number;
-  // `qrCode` is a base64 PNG / SVG returned by the BE. When present we
-  // render it directly instead of the static QR fallback.
+  // `qrCode` is a base64 PNG / SVG returned by the BE.
   qrCode?: string;
-  // `checkoutUrl` is the PayOS redirect URL. When present we redirect the
-  // user to it (no auto-redirect when missing — we keep the static-QR
-  // fallback visible so the user can scan manually).
+  // `checkoutUrl` is the PayOS redirect URL returned by the BE.
   checkoutUrl?: string;
 }
 
 const formatVnd = (n: number): string => n.toLocaleString('vi-VN');
-
-// Locally-generated reference. Kept for the fallback QR path even when the
-// BE returns its own orderCode. Uses the ARS-POS- prefix (PayOS Online
-// Session) to distinguish from the legacy ARS-VNP- prefix.
-const generateReference = (amount: number): string => {
-  const stamp = Date.now().toString(36).toUpperCase();
-  const amt = amount.toString(36).toUpperCase();
-  return `ARS-POS-${stamp}-${amt}`;
-};
 
 const isAbsoluteHttpUrl = (s: string): boolean => {
   try {
@@ -89,6 +65,7 @@ export function WalletTopUpModal({
   // previous VNPay flow; the PayOS success path no longer computes a local
   // balance — the parent always re-fetches the wallet after onSuccess.
   void currentBalance;
+  void onSuccess;
   const [step, setStep] = useState<Step>('amount');
   const [amountText, setAmountText] = useState('100,000');
   const [pending, setPending] = useState<PendingTopUp | null>(null);
@@ -125,19 +102,6 @@ export function WalletTopUpModal({
     parsedAmount >= MIN_AMOUNT_VND &&
     parsedAmount <= MAX_AMOUNT_VND;
 
-  // Builds the static QR image URL. Encoding the reference in the data lets
-  // the future BE scan-callback match the QR to a payment record.
-  const qrImageUrl = useMemo(() => {
-    if (!pending) return '';
-    const payload = JSON.stringify({
-      ref: pending.reference,
-      amount: pending.amountVnd,
-      gateway: 'PayOS',
-    });
-    const data = encodeURIComponent(payload);
-    return `${QR_API_BASE}?size=200x200&data=${data}`;
-  }, [pending]);
-
   const handleConfirmPay = async (): Promise<void> => {
     if (!isAmountValid || parsedAmount === null) return;
     // Reject when wallet is missing — never fall back to 0.
@@ -148,14 +112,12 @@ export function WalletTopUpModal({
     // Disable duplicate submission while the request is in flight.
     if (submitGuard || isCreatingLink) return;
     const amount = parsedAmount;
-    const reference = generateReference(amount);
-
     // The return URL points at the existing /payment/return route. The
     // CheckoutReturn page will confirm with the BE before showing success.
     const returnPath = ROUTES.PAYMENT_RETURN;
     const baseUrl = window.location.origin;
-    const returnUrl = `${baseUrl}${returnPath}?status=success&orderCode={orderCode}&ref=${encodeURIComponent(reference)}`;
-    const cancelUrl = `${baseUrl}${returnPath}?status=CANCELLED&ref=${encodeURIComponent(reference)}`;
+    const returnUrl = `${baseUrl}${returnPath}?status=success&orderCode={orderCode}`;
+    const cancelUrl = `${baseUrl}${returnPath}?status=CANCELLED&orderCode={orderCode}`;
 
     setSubmitGuard(true);
     const beLink = await createPaymentLink({
@@ -169,17 +131,14 @@ export function WalletTopUpModal({
     setSubmitGuard(false);
 
     const link = beLink ?? null;
-    const usedFallback = link === null || !link.checkoutUrl;
-    if (usedFallback) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[WalletTopUpModal] /api/Payment/create-link did not return a usable PayOS link; showing offline fallback.',
-      );
+    if (!link || (!link.checkoutUrl && !link.qrCode)) {
+      onMessage('PayOS did not return a usable checkout link or QR code. Please try again.', 'error');
+      return;
     }
 
     const next: PendingTopUp = {
       amountVnd: amount,
-      reference,
+      reference: String(link.orderCode),
       createdAt: Date.now(),
       orderCode: link?.orderCode,
       qrCode: link?.qrCode,
@@ -189,12 +148,6 @@ export function WalletTopUpModal({
     setPending(next);
     setStep('qr');
 
-    if (usedFallback) {
-      onMessage(
-        'Could not reach the PayOS gateway. Showing an offline fallback QR for testing.',
-        'error',
-      );
-    }
   };
 
   const handleRedirectToPayOS = (): void => {
@@ -206,36 +159,6 @@ export function WalletTopUpModal({
     // Intended browser behavior: top-level navigation so PayOS can manage the
     // redirect back to /payment/return with ?status=…&orderCode=… appended.
     window.location.assign(url);
-  };
-
-  const handleDevAutoFund = async (): Promise<void> => {
-    if (!isAmountValid || parsedAmount === null) return;
-    if (currentUserId === undefined || currentUserId === null) {
-      onMessage('Cannot auto-fund: no signed-in user found.', 'error');
-      return;
-    }
-    setSubmitGuard(true);
-    try {
-      const updated = await walletService.autoFund({
-        userId: currentUserId,
-        balance: parsedAmount,
-      });
-      onSuccess(updated.balance);
-      onMessage(
-        `DEV: Wallet funded ${formatVnd(parsedAmount)} VND (id #${updated.id}).`,
-        'success',
-      );
-      onClose();
-    } catch (err) {
-      onMessage(
-        err instanceof Error
-          ? `DEV auto-fund failed: ${err.message}`
-          : 'DEV auto-fund failed.',
-        'error',
-      );
-    } finally {
-      setSubmitGuard(false);
-    }
   };
 
   const handleBack = (): void => {
@@ -351,53 +274,15 @@ export function WalletTopUpModal({
               })}
             </div>
 
-            {/* DEV-only quick auto-fund. Hidden in production builds because
-                `import.meta.env.DEV` is statically false when building with
-                `vite build`. The button directly POSTs `/api/Wallet` which
-                bypasses PayOS — see docs/local-only/admin-suite-be-gap-report.md. */}
-            {import.meta.env.DEV && currentUserId !== undefined && currentUserId !== null ? (
-              <div className={styles.devBox}>
-                <span className={styles.devLabel}>
-                  DEV ONLY (hidden in production)
-                </span>
-                <p className={styles.devDescription}>
-                  POST {`/api/Wallet`} directly. Use this for local UI testing
-                  when PayOS is unavailable.
-                </p>
-                <button
-                  type="button"
-                  className={styles.devButton}
-                  onClick={() => void handleDevAutoFund()}
-                  disabled={!isAmountValid || submitGuard}
-                  data-testid="dev-auto-fund-button"
-                >
-                  <Plus size={14} />
-                  {submitGuard
-                    ? 'Funding…'
-                    : `Instant Auto-Fund (POST /api/Wallet — ${parsedAmount && isAmountValid ? formatVnd(parsedAmount) : '0'} VND)`}
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : (
           <div className={styles.body}>
             <div className={styles.qrPanel}>
-              {/* Prefer the BE-supplied QR image when present
-                  (`PaymentLink.qrCode`). Falls back to the static
-                  qrserver.com generator so the UX still works without
-                  BE — useful in local dev and the existing test suite. */}
+              {/* Prefer the BE-supplied QR image when present. */}
               {pending?.qrCode ? (
                 <img
                   src={pending.qrCode}
                   alt="PayOS QR code"
-                  className={styles.qrImage}
-                  width={200}
-                  height={200}
-                />
-              ) : qrImageUrl ? (
-                <img
-                  src={qrImageUrl}
-                  alt="PayOS fallback QR code"
                   className={styles.qrImage}
                   width={200}
                   height={200}
@@ -408,7 +293,7 @@ export function WalletTopUpModal({
                 </div>
               )}
               <span className={styles.qrBadge}>
-                {pending?.qrCode ? 'PayOS QR' : 'Fallback PayOS QR'}
+                {pending?.qrCode ? 'PayOS QR' : 'QR unavailable'}
               </span>
             </div>
 
