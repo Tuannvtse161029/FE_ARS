@@ -173,7 +173,7 @@ export const SeminarWorkspace = () => {
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canModify) {
-      announce('Chỉ Giảng viên (Lecturer) mới có quyền tạo Seminar.');
+      announce('Bạn không có quyền tạo Seminar.');
       return;
     }
     if (!seminarName.trim()) { announce('Please enter a seminar name.'); return; }
