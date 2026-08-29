@@ -158,11 +158,8 @@ const App = () => {
                 </Route>
 
                 {/* Seminar workspace is shared by Lecturer (manage) and
-                    Graduate Student (accept / decline invitation, view
-                    schedule). Per the notification-routing spec the dropdown
-                    only marks-as-read and navigates — accept / decline lives
-                    on the seminar page itself. */}
-                <Route element={<RoleRouteGuard allow={['Lecturer', 'Graduate Student', 'Researcher', 'Reviewer']} />}>
+                    Researcher (view schedule, join Meet, submit feedback). */}
+                <Route element={<RoleRouteGuard allow={['Lecturer', 'Researcher']} />}>
                   <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
                 </Route>
 
