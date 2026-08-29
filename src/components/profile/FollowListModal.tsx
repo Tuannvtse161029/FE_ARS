@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Users } from 'lucide-react';
 import { followerService } from '../../services/follower.service';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +30,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   onClose,
   onCountsChanged,
 }) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const currentUserId = user?.userId ?? null;
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
@@ -147,9 +149,20 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
                 const isFollowing = Boolean(followingMap[targetId]);
                 const isBusy = Boolean(actionInProgress[targetId]);
 
+                const handleUserClick = () => {
+                  if (!targetId) return;
+                  onClose();
+                  navigate(`/profile/${targetId}`);
+                };
+
                 return (
                   <li key={item.id ?? `${item.followerId}_${item.followedId}`} className={styles.userItem}>
-                    <div className={styles.userInfo}>
+                    <div
+                      className={styles.userInfo}
+                      onClick={handleUserClick}
+                      style={{ cursor: 'pointer' }}
+                      title={`View ${targetName || 'user'}'s profile`}
+                    >
                       <div className={styles.userAvatar} style={{ backgroundColor: avatarColor }}>
                         {initials}
                       </div>

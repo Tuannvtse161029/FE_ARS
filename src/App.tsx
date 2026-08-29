@@ -217,6 +217,9 @@ const App = () => {
                 />
                 <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
+                <Route path="/profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile" element={<Profile />} />
                 <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
                 <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
                 <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />

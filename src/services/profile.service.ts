@@ -101,16 +101,43 @@ function coerceProfile(raw: unknown, authenticatedUserId: number): Profile {
     return m ? m[1] : v;
   };
 
+  const asNumber = (key: string): number | null => {
+    const v = obj[key];
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string' && v.trim() !== '') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  };
+
+  const asBoolean = (key: string): boolean | null => {
+    const v = obj[key];
+    return typeof v === 'boolean' ? v : null;
+  };
+
   return {
     id: numericId,
     userId: numericUserId,
     fullName: asString('fullName'),
+    email: asString('email'),
+    avatarUrl: asString('avatarUrl'),
+    roleName: asString('roleName'),
     academicTitle: asString('academicTitle'),
     phoneNumber: asString('phoneNumber'),
     institution: asString('institution'),
     bio: asString('bio'),
     keywords,
     avatarInitials: asString('avatarInitials'),
+    hindex: asNumber('hindex'),
+    totalCitations: asNumber('totalCitations'),
+    publicationCount: asNumber('publicationCount'),
+    majorFieldName: asString('majorFieldName'),
+    subFieldName: asString('subFieldName'),
+    reviewFee: asNumber('reviewFee'),
+    isAvailable: asBoolean('isAvailable'),
+    isOrcidVerified: asBoolean('isOrcidVerified'),
+    orcidId: asString('orcidId'),
     dateOfBirth: asDateString('dateOfBirth'),
     gender: asString('gender'),
     address: asString('address'),
@@ -127,14 +154,46 @@ export const profileService = {
    * a fresh empty profile with the authenticated id.
    */
   async getCurrent(authenticatedUserId: number): Promise<Profile> {
-    const response = await api.get(API_ENDPOINTS.PROFILE.GET_CURRENT);
-    return coerceProfile(response.data, authenticatedUserId);
+    try {
+      const response = await api.get(API_ENDPOINTS.PROFILE.GET_CURRENT);
+      const payload = Array.isArray(response.data) ? response.data[0] : response.data;
+      return coerceProfile(payload, authenticatedUserId);
+    } catch {
+      return this.getByUserId(authenticatedUserId);
+    }
   },
 
   /**
-   * Fetch a profile by id. Admin / lookup surface — the FE never reads
-   * the id from a route param or query string on its own pages. Callers
-   * that need this must pass an authenticated, server-validated id.
+   * Fetch a user's professional profile by user ID.
+   * Resolves through `GET /api/ProfessionalProfile/{userId}` or `GET /api/Profile/{userId}`.
+   */
+  async getByUserId(userId: number): Promise<Profile> {
+    // 1. Try GET /api/ProfessionalProfile/{userId}
+    try {
+      const response = await api.get(`${API_ENDPOINTS.PROFESSIONAL_PROFILE.BASE}/${userId}`);
+      if (response.data) {
+        return coerceProfile(response.data, userId);
+      }
+    } catch {
+      /* continue to fallback */
+    }
+
+    // 2. Try GET /api/Profile/{userId}
+    try {
+      const response = await api.get(API_ENDPOINTS.PROFILE.GET_BY_ID(userId));
+      if (response.data) {
+        return coerceProfile(response.data, userId);
+      }
+    } catch {
+      /* continue to fallback */
+    }
+
+    // 3. Fallback to basic stub
+    return coerceProfile({ userId, fullName: `User #${userId}` }, userId);
+  },
+
+  /**
+   * Fetch a profile by id. Admin / lookup surface.
    */
   async getById(id: number, authenticatedUserId: number): Promise<Profile> {
     const response = await api.get(API_ENDPOINTS.PROFILE.GET_BY_ID(id));
@@ -145,10 +204,6 @@ export const profileService = {
    * Update the current user's profile. Always targets the authenticated
    * user's actual profile id (the BE matches `userId` in the body against
    * the bearer token) — never a client-supplied id.
-   *
-   * The body is filtered through `pickProfileUpdateFields` so we never
-   * ship a key the BE didn't publish. `authenticatedUserId` is the single
-   * source of truth for the user id embedded in the payload.
    */
   async update(
     authenticatedUserId: number,
