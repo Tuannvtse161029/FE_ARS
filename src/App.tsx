@@ -66,8 +66,8 @@ const TransactionsManagement = lazy(() => import('./pages/Admin/TransactionsMana
 const ContentReports = lazy(() => import('./pages/Admin/ContentReports').then((m) => ({ default: m.default })));
 const PremiumPackages = lazy(() => import('./pages/Admin/PremiumPackages').then((m) => ({ default: m.default })));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ default: m.default })));
-  // Admin Annual Fees tab. It renders an honest backend-unavailable state
-  // until the AnnualFee API ticket is implemented.
+// Admin Annual Fees tab. It renders an honest backend-unavailable state
+// until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
@@ -211,6 +211,9 @@ const App = () => {
                 />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
                 <Route element={<RoleRouteGuard allow={['Admin']} />}>
+                  <Route path="/profile/:userId" element={<Profile />} />
+                  <Route path="/professional-profile/:userId" element={<Profile />} />
+                  <Route path="/professional-profile" element={<Profile />} />
                   <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
                   <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
                   <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />

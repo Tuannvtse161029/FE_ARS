@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Image as ImageIcon,
@@ -45,6 +46,7 @@ export const ForumPostCard = ({
   currentUserId,
   currentUserName,
 }: ForumPostCardProps) => {
+  const navigate = useNavigate();
   const [openMenuId, setOpenMenuId] = useState(false);
   const [reportTarget, setReportTarget] = useState<{
     id: number;
@@ -137,6 +139,12 @@ export const ForumPostCard = ({
     }
   };
 
+  const handleAuthorClick = () => {
+    if (post.authorId) {
+      navigate(`/profile/${post.authorId}`);
+    }
+  };
+
   return (
     <div className={styles.postCardWrapper}>
       <div className={styles.postCard}>
@@ -144,12 +152,27 @@ export const ForumPostCard = ({
         <div className={styles.postAuthorRow}>
           <div
             className={styles.postAvatar}
-            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
+            style={{
+              backgroundColor: avatarColor,
+              color: '#0f172a',
+              cursor: post.authorId ? 'pointer' : 'default',
+            }}
+            onClick={handleAuthorClick}
+            title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
           >
             {authorInitials}
           </div>
           <div className={styles.postAuthorInfo}>
-            <span className={styles.postAuthorName}>{authorLabel}</span>
+            <span
+              className={styles.postAuthorName}
+              onClick={handleAuthorClick}
+              style={{
+                cursor: post.authorId ? 'pointer' : 'default',
+              }}
+              title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
+            >
+              {authorLabel}
+            </span>
             <span className={styles.postTimestamp}>
               {formatRelativeTime(post.createdAt)}
             </span>

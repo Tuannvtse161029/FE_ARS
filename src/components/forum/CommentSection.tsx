@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Send,
@@ -10,6 +11,7 @@ import {
   ChevronUp,
   ThumbsUp,
 } from 'lucide-react';
+import api from '../../services/axios';
 import {
   useForumComments,
   useForumCommentMutations,
@@ -92,12 +94,37 @@ export const CommentSection = ({
   error: externalError,
   onRefetch: externalRefetch,
 }: CommentSectionProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isVerified } = usePermissions();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
   const currentUserName =
     stored?.fullName ?? user?.username ?? stored?.username ?? 'You';
+
+  const [resolvedNames, setResolvedNames] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadNames() {
+      try {
+        const res = await api.get('/api/ProfessionalProfile');
+        if (!cancelled && Array.isArray(res.data)) {
+          const map: Record<number, string> = {};
+          for (const item of res.data) {
+            if (item.userId && item.fullName) {
+              map[item.userId] = item.fullName;
+            }
+          }
+          setResolvedNames((prev) => ({ ...map, ...prev }));
+        }
+      } catch {}
+    }
+    loadNames();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Only call the hook when the parent has NOT supplied a comments list.
   // When the parent supplies one (Agent 42 single-fetch pattern), we still
   // call the hook but ignore its data — this keeps the section's
@@ -292,10 +319,19 @@ export const CommentSection = ({
     if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
       return authorDisplayByUserId[comment.userId];
     }
+    if (comment.userId != null && resolvedNames[comment.userId]) {
+      return resolvedNames[comment.userId];
+    }
     if (comment.userId != null) {
       return `User #${comment.userId}`;
     }
     return 'Anonymous';
+  };
+
+  const handleCommenterClick = (userId?: number | null) => {
+    if (userId) {
+      navigate(`/profile/${userId}`);
+    }
   };
 
   return (
@@ -352,7 +388,12 @@ export const CommentSection = ({
                 return (
                   <li key={comment.id} className={styles.commentItem}>
                     <div className={styles.commentMeta}>
-                      <span className={styles.commentAuthor}>
+                      <span
+                        className={styles.commentAuthor}
+                        onClick={() => handleCommenterClick(comment.userId)}
+                        style={{ cursor: comment.userId ? 'pointer' : 'default' }}
+                        title={comment.userId ? `View ${renderAuthorLabel(comment)}'s profile` : undefined}
+                      >
                         {renderAuthorLabel(comment)}
                       </span>
                       {comment.createdAt && (

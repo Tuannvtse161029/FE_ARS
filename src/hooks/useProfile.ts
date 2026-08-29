@@ -84,12 +84,12 @@ export function useProfile(authenticatedUserId: number | null | undefined): UseP
     setIsLoading(true);
     setError(null);
     try {
-      const next = await profileService.getCurrent(authenticatedUserId as number);
+      const next = await profileService.getByUserId(authenticatedUserId as number);
       if (token !== fetchTokenRef.current) return;
       setProfile(next);
     } catch (err) {
       if (token !== fetchTokenRef.current) return;
-      setError(toError(err, 'We could not load your profile. Please try again.'));
+      setError(toError(err, 'We could not load this profile. Please try again.'));
       setProfile(null);
     } finally {
       if (token === fetchTokenRef.current) {
