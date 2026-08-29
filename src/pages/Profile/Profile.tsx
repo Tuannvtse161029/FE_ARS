@@ -29,13 +29,13 @@
 //   can re-enter edit mode to make further changes.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
 import {
   PROFILE_VALIDATION,
   resolveRoleProfileMeta,
-  type Profile as UserProfileType,
+  type Profile,
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
@@ -681,7 +681,7 @@ interface ProfileViewProps {
   avatarInitials: string;
   updatedAt: string | null | undefined;
   isEmpty: boolean;
-  profile?: UserProfileType | null;
+  profile?: Profile | null;
 }
 
 const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: ProfileViewProps) => {
