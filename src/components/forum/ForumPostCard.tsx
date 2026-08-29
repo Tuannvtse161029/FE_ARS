@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Image as ImageIcon,
@@ -10,6 +10,7 @@ import { FollowButton } from './FollowButton';
 import { ReportModal } from './ReportModal';
 import { ForumPostEngagementRow } from './ForumPostEngagementRow';
 import { useForumComments } from '../../hooks/useForumComments';
+import { forumPostService } from '../../services/forumPost.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
 import { initialsFromName, formatRelativeTime, PALETTE } from '../../pages/Forum/forum.utils';
@@ -55,12 +56,28 @@ export const ForumPostCard = ({
   // working.
   const [commentsCollapsed, setCommentsCollapsed] = useState(false);
 
+  const initialLiked = Boolean(post.isLiked ?? post.isLikedByCurrentUser);
+  const initialCount = Number(post.likes ?? post.likeCount ?? 0);
+  const [isLiked, setIsLiked] = useState<boolean>(initialLiked);
+  const [likesCount, setLikesCount] = useState<number>(initialCount);
+  const [likeInFlight, setLikeInFlight] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsLiked(Boolean(post.isLiked ?? post.isLikedByCurrentUser));
+    setLikesCount(Number(post.likes ?? post.likeCount ?? 0));
+  }, [post.isLiked, post.isLikedByCurrentUser, post.likes, post.likeCount]);
+
   // Re-use the canonical comments hook so the engagement row's
   // `commentCount` reflects whatever the BE actually loaded for this
   // post. We intentionally do not call this twice for the same post — the
   // `<CommentSection>` instance below reuses the same hook and React
   // batches the state.
-  const { comments } = useForumComments(post.id);
+  const {
+    comments,
+    isLoading: isLoadingComments,
+    error: errorComments,
+    refetch: refetchComments,
+  } = useForumComments(post.id);
 
   const avatarColor = PALETTE[post.id % PALETTE.length];
 
@@ -77,7 +94,13 @@ export const ForumPostCard = ({
   const authorInitials = initialsFromName(authorLabel);
 
   const viewModel = buildForumPostViewModel({
-    post,
+    post: {
+      ...post,
+      likes: likesCount,
+      likeCount: likesCount,
+      isLiked,
+      isLikedByCurrentUser: isLiked,
+    },
     commentCount: comments.length,
   });
 
@@ -85,17 +108,32 @@ export const ForumPostCard = ({
     setCommentsCollapsed((prev) => !prev);
   };
 
-  const handleLikeClick = () => {
-    // BTR-AGENT42-A: Like mutation is unavailable until the BE ships it.
-    // This branch is reachable only when the row's internal `likeEnabled`
-    // returns true — meaning the BE has published both a mutation and a
-    // per-viewer like state. When that happens, replace this no-op with
-    // the optimistic + rollback pattern from useFollow.ts.
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[ForumPostCard] Like click reached but no Like mutation endpoint is wired. See BTR-AGENT42-A.',
-      );
+  const handleLikeClick = async () => {
+    if (!currentUserId || !isVerified || likeInFlight) return;
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+    const nextLiked = !prevLiked;
+    const nextCount = nextLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    // Optimistic instant update
+    setIsLiked(nextLiked);
+    setLikesCount(nextCount);
+    setLikeInFlight(true);
+
+    try {
+      const res = await forumPostService.toggleLike(post.id);
+      if (res && typeof res.isLiked === 'boolean') {
+        setIsLiked(res.isLiked);
+        if (typeof res.likes === 'number') {
+          setLikesCount(res.likes);
+        }
+      }
+    } catch {
+      // Rollback on error
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
+    } finally {
+      setLikeInFlight(false);
     }
   };
 
@@ -187,6 +225,7 @@ export const ForumPostCard = ({
           commentsExpanded={!commentsCollapsed}
           onToggleComments={handleToggleComments}
           onLikeClick={handleLikeClick}
+          likeInFlight={likeInFlight}
         />
 
         {/* Comments thread — controlled by the engagement row's
@@ -197,10 +236,14 @@ export const ForumPostCard = ({
             second fetch for the same data. */}
         <CommentSection
           postId={post.id}
+          authorDisplayByUserId={undefined}
           collapsed={commentsCollapsed}
           rootId={`forum-post-comments-${post.id}`}
           onToggle={handleToggleComments}
           comments={comments}
+          isLoading={isLoadingComments}
+          error={errorComments}
+          onRefetch={refetchComments}
         />
       </div>
 

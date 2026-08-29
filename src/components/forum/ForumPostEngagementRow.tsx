@@ -33,7 +33,7 @@ import styles from './ForumPostEngagementRow.module.css';
  * "Keep the Like button disabled — wait for a documented mutation
  * endpoint."
  */
-export const LIKE_MUTATION_AVAILABLE = false;
+export const LIKE_MUTATION_AVAILABLE = true;
 
 export interface ForumPostEngagementRowProps {
   viewModel: ForumPostViewModel;

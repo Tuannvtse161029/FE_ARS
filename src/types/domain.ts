@@ -97,27 +97,65 @@ export interface PayOSWebhookRequest {
 
 // ── Follower ─────────────────────────────────────────────────────────────────
 export interface Follower {
-  id: number;
+  id?: number;
   followerId: number;
+  followerName?: string | null;
+  followerEmail?: string | null;
+  followerAvatarUrl?: string | null;
   followedId: number;
-  createdAt?: string;
+  followedName?: string | null;
+  followedEmail?: string | null;
+  followedAvatarUrl?: string | null;
+  createdAt?: string | null;
 }
+
+export interface FollowerResponse extends Follower {}
 
 export interface FollowerCreateRequest {
   followedId: number;
 }
 
+export interface FollowCountsResponse {
+  userId: number;
+  followersCount: number;
+  followingCount: number;
+}
+
+export interface FollowerPagedResult {
+  items?: FollowerResponse[] | null;
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
 // ── Notification ─────────────────────────────────────────────────────────────
-// Strict shape derived from the live Swagger contract
-// (`/api/Notification`). The Swagger schema only exposes `id`, `userId`,
-// `message`, `isRead`, and an optional `createdAt`. There is intentionally
-// NO `type`, NO `targetUrl`, NO `relatedEntityId`, NO bulk endpoints.
+// Strict shape aligned with live Swagger contract (`/api/Notification`).
 export interface NotificationItem {
   id: number;
-  userId: number;
-  message: string;
-  isRead: boolean;
-  createdAt?: string;
+  notificationId?: number;
+  userId?: number | null;
+  message?: string | null;
+  isRead?: boolean | null;
+  createdAt?: string | null;
+}
+
+export interface NotificationResponse extends NotificationItem {}
+
+export interface UnreadNotificationCountResponse {
+  unreadCount: number;
+}
+
+export interface NotificationResponsePagedResult {
+  items?: NotificationResponse[] | null;
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
 }
 
 export interface NotificationCreateRequest {

@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { AxiosError } from 'axios';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
@@ -24,9 +23,6 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
  * to the user instead of letting axios's generic message leak in.
  */
 function forgotPasswordError(err: unknown, fallback: string): string {
-  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
-    return 'Password reset is not yet available. Please contact support or try again later.';
-  }
   return extractServerMessage(err, fallback);
 }
 
@@ -54,9 +50,11 @@ const ForgotPassword = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await authService.forgotPassword({ email: data.email });
-      setSubmittedEmail(data.email);
-      navigate(ROUTES.VERIFY_OTP, { state: { email: data.email } });
+      const cleanEmail = data.email.trim();
+      await authService.forgotPassword({ email: cleanEmail });
+      sessionStorage.setItem('ars_forgot_email', cleanEmail);
+      setSubmittedEmail(cleanEmail);
+      navigate(ROUTES.VERIFY_OTP, { state: { email: cleanEmail } });
     } catch (err: unknown) {
       const msg = forgotPasswordError(
         err,

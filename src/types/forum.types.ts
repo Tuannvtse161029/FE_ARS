@@ -47,17 +47,21 @@ export interface ForumPost {
   authorId?: number;
   createdAt?: string;
   updatedAt?: string;
-  // ── Engagement counters (live BE — not yet in published Swagger) ──────
-  // `likeCount` / `viewCount` / `commentCount` are integer totals the BE
-  // populates server-side. The FE renders these as-is (zeros are valid).
+  // ── Engagement counters ──────────────────────────────────────────────
+  likes?: number;
+  comments?: number;
+  views?: number;
   likeCount?: number;
   viewCount?: number;
   commentCount?: number;
-  // `isLikedByCurrentUser` is the per-viewer liked state. The BE may
-  // return `true` only for authenticated, non-Guest viewers. Until the
-  // BE ships a Like mutation endpoint (BTR-AGENT42-A), the FE still
-  // disables the Like button even when this is `true`.
+  isLiked?: boolean;
   isLikedByCurrentUser?: boolean;
+}
+
+export interface ForumPostLikeToggleResponse {
+  postId: number;
+  likes: number;
+  isLiked: boolean;
 }
 
 export interface ForumPostCreateRequest {
@@ -77,6 +81,7 @@ export interface ForumPostCreateRequest {
 // the fallback.
 export interface ForumComment {
   id: number;
+  forumCommentId?: number;
   userId?: number | null;
   paperId?: number | null;
   forumPostId?: number | null;
@@ -84,6 +89,7 @@ export interface ForumComment {
   replyId?: number | null;
   upvoteCount?: number | null;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ForumCommentCreateRequest {

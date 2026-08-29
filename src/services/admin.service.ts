@@ -132,12 +132,43 @@ const sanitize = (fallback: string, err: unknown): Error => {
 async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
   if (USE_MOCK_DATA) return delay(clone(roleRequestStore));
   try {
-    // TODO: Replace mock data with live endpoint once backend is updated.
-    const response = await api.get<RoleRequest[]>(
+    const response = await api.get<any>(
       API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL,
       { signal },
     );
-    return response.data ?? [];
+    const raw = response.data;
+    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
+    return list.map((item: any) => ({
+      id: item.id,
+      userId: item.userId ?? item.id,
+      userName: item.userName || item.fullName || `User #${item.userId ?? item.id}`,
+      email: item.email || '',
+      phone: item.phone || '',
+      affiliation: item.affiliation || '',
+      department: item.department || '',
+      currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles : item.roleName ? [item.roleName] : [],
+      requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles)
+        ? item.requestedAdditionalRoles
+        : Array.isArray(item.requestedRoles)
+          ? item.requestedRoles
+          : item.requestedRole
+            ? [item.requestedRole]
+            : [],
+      requestType: item.requestType || 'INITIAL_REGISTRATION',
+      requestedRoles: Array.isArray(item.requestedRoles)
+        ? item.requestedRoles
+        : Array.isArray(item.requestedAdditionalRoles)
+          ? item.requestedAdditionalRoles
+          : [],
+      proofDocumentUrl: item.proofDocumentUrl || '',
+      submissionDate: item.submissionDate || item.createdAt || new Date().toISOString(),
+      status: (item.status?.toUpperCase() === 'APPROVED' || item.status?.toUpperCase() === 'ACCEPTED')
+        ? 'APPROVED'
+        : (item.status?.toUpperCase() === 'DENIED' || item.status?.toUpperCase() === 'REJECTED')
+          ? 'DENIED'
+          : 'PENDING',
+      notes: item.notes || '',
+    }));
   } catch (err) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag('getRoleRequests failed', err);
@@ -151,7 +182,6 @@ async function getRoleRequest(id: number): Promise<RoleRequest | null> {
     return delay(hit ? clone(hit) : null);
   }
   try {
-    // TODO: Replace mock data with live endpoint once backend is updated.
     const response = await api.get<RoleRequest>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_BY_ID(id));
     return response.data ?? null;
   } catch (err) {
@@ -164,6 +194,7 @@ async function getRoleRequest(id: number): Promise<RoleRequest | null> {
 async function decideRoleRequest(
   id: number,
   decision: RoleRequestDecision,
+  email?: string,
 ): Promise<RoleRequest> {
   if (USE_MOCK_DATA) {
     const idx = roleRequestStore.findIndex((r) => r.id === id);
@@ -182,12 +213,6 @@ async function decideRoleRequest(
       details: updated.notes ?? '',
     });
 
-    // When the Admin approves a role request, mirror the BE-side
-    // `dbo.Users.isActive = true` flip on the matching AccountItem so the
-    // mock store stays consistent with what a real BE would do. Match by
-    // userId first, then by email as a fallback for users who don't yet
-    // have an AccountItem row (newly-registered users get one created
-    // by the BE on first login).
     if (updated.status === 'APPROVED') {
       const accountIdx = accountStore.findIndex((a) => a.id === updated.userId);
       if (accountIdx !== -1) {
@@ -211,17 +236,36 @@ async function decideRoleRequest(
     return delay(clone(updated));
   }
   try {
-    // TODO: Replace mock data with live endpoint once backend is updated.
     const path =
       decision.status === 'APPROVED'
         ? API_ENDPOINTS.ADMIN.ROLE_REQUESTS.APPROVE(id)
         : API_ENDPOINTS.ADMIN.ROLE_REQUESTS.DENY(id);
-    const response = await api.post<RoleRequest>(path, { notes: decision.notes ?? '' });
-    return response.data;
-  } catch (err) {
+    const response = await api.post<any>(path, {
+      notes: decision.notes ?? (decision.status === 'APPROVED' ? 'Hồ sơ hợp lệ' : ''),
+    });
+
+    // If approved and email is supplied, optionally trigger the send-approval-email endpoint
+    if (decision.status === 'APPROVED' && email) {
+      try {
+        await api.post(`/api/Auth/send-approval-email`, null, {
+          params: { email },
+        });
+      } catch (emailErr) {
+        logDiag('sendApprovalEmail failed', emailErr);
+      }
+    }
+
+    const resData = response.data;
+    return (
+      resData && typeof resData === 'object' && resData.id
+        ? resData
+        : { id, status: decision.status, notes: decision.notes }
+    ) as RoleRequest;
+  } catch (err: any) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag(`decideRoleRequest(${id}) failed`, err);
-    throw sanitize(ACTION_FAILED_MESSAGE, err);
+    const backendMsg = err?.response?.data?.message || err?.message;
+    throw sanitize(backendMsg || ACTION_FAILED_MESSAGE, err);
   }
 }
 

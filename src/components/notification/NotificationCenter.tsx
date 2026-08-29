@@ -26,7 +26,8 @@ interface NotificationCenterProps {
 // owns no global state, no localStorage, and no fabricated rows.
 export function NotificationCenter({ userId, onNavigate }: NotificationCenterProps): JSX.Element {
   const { user } = useAuth();
-  const resolvedUserId = typeof userId === 'number' ? userId : user?.userId ?? null;
+  const isGuest = user?.role === 'Guest' || !user?.isActive;
+  const resolvedUserId = isGuest ? null : (typeof userId === 'number' ? userId : user?.userId ?? null);
   const role = user?.role ?? null;
 
   const {
@@ -84,19 +85,10 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
           // Only mark-read for unread rows. Reading the BE on an already-read
           // row is wasted bandwidth and would re-bump the unread badge if the
           // BE round-trips a fresh optimistic row.
-          if (!notification.isRead) {
-            const ok = await markRead(notification.id);
-            if (!ok) {
-              // The BE refused the update — keep the dropdown open so the
-              // user can retry. Navigation must NOT happen on a failed
-              // mark-read so the optimistic flip doesn't lie to the user.
-              return;
-            }
+          if (!notification.isRead && notification.id > 0) {
+            void markRead(notification.id);
           }
-          // The resolver always returns a route (a safe fallback at minimum),
-          // so the dropdown closes consistently and the user lands on a
-          // page they can actually reach.
-          const target = resolveNotificationRoute(notification.message, role);
+          const target = resolveNotificationRoute(notification.message ?? '', role);
           setIsOpen(false);
           onNavigate(target);
         } finally {
@@ -209,7 +201,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
             ) : (
               <ul className={styles.itemList} data-testid="notification-list">
                 {notifications.map((n) => {
-                  const kind = inferNotificationKind(n.message);
+                  const kind = inferNotificationKind(n.message ?? '');
                   return (
                     <li key={n.id} style={{ listStyle: 'none' }}>
                       <button

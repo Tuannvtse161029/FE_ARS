@@ -93,8 +93,7 @@ export function useNotifications(
     void fetchNotifications();
   }, [userId, fetchNotifications]);
 
-  // Window-focus refetch — picks up notifications that arrived while the
-  // tab was hidden. We use the in-flight guard above to avoid duplicates.
+  // Window-focus refetch & 30s periodic polling — keeps notifications in sync
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onFocus = () => {
@@ -104,11 +103,19 @@ export function useNotifications(
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
+
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible' && typeof userId === 'number' && userId > 0) {
+        void fetchNotifications();
+      }
+    }, 30000);
+
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
+      clearInterval(intervalId);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, userId]);
 
   // Snapshot ref used to roll back optimistic updates on failure. Kept in
   // a ref so React 18 strict-mode double-invocation of state updaters

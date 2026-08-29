@@ -1,81 +1,78 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Eye, FileText, Inbox, Search, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  Eye,
+  Inbox,
+  Search,
+  X,
+} from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
-import { adminUserService } from '../../services/adminUser.service';
-import type { User } from '../../types/auth';
-import { displayAccountTier } from '../../services/user.service';
+import { adminService } from '../../services/admin.service';
+import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import VerificationDetailsModal from './VerificationDetailsModal';
-import OrcidCheckModal from './OrcidCheckModal';
+import RoleRequestDetailsModal from './RoleRequestDetailsModal';
+import ApproveRoleRequestModal from './ApproveRoleRequestModal';
+import DenyRoleRequestModal from './DenyRoleRequestModal';
 import styles from './RoleRequests.module.css';
 
-// ── Agent 40 — verification management page ────────────────────────────────
-//
-// Source: `GET /api/User` (`swagger.json:3688-3716`). The original
-// `/api/RoleRequest` endpoint does not exist in the current BE contract
-// (BTR-AGENT29-C). Pending verification users are derived from the User
-// response by `adminUserService.listPendingVerification`.
-//
-// The page deliberately renders the sidebar label "Role Requests" so we do
-// not break existing deep-links while the BE contracts are still landing.
-//
-// IMPORTANT: Accept / Reject buttons are **disabled with explanatory copy**
-// because the Swagger contract does NOT expose a verification-mutation
-// endpoint. Flipping `verificationStatus` server-side requires BE work
-// (BTR-AGENT29-C). Until then the UI stays honest and the Admin sees the
-// reason inline.
+type StatusFilter = 'PENDING' | 'APPROVED' | 'DENIED';
+type ModalKind = 'details' | 'approve' | 'deny' | null;
 
-type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
-type ModalKind = 'details' | 'orcid' | null;
+const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'APPROVED', 'DENIED'];
 
-const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
-
-const statusClass = (raw: string): string => {
-  switch (raw) {
-    case 'Accepted':
+const statusClass = (status: RoleRequestStatus | string): string => {
+  switch (status?.toUpperCase()) {
+    case 'APPROVED':
+    case 'ACCEPTED':
       return styles.statusAPPROVED;
-    case 'Rejected':
+    case 'DENIED':
+    case 'REJECTED':
       return styles.statusDENIED;
-    case 'Pending':
+    case 'PENDING':
     default:
       return styles.statusPENDING;
   }
 };
 
-const formatRole = (roleName: string | null | undefined): string => {
-  if (!roleName) return 'Pending role assignment';
-  return roleName;
+const formatRoles = (roles?: string[]): string => {
+  if (!roles || roles.length === 0) return 'Pending role assignment';
+  return roles.join(', ');
 };
-
-const formatTier = (tier: User['accountTier']): string => displayAccountTier(tier);
-
-const formatEmailState = (user: User): string =>
-  user.isEmailVerified ? 'Verified' : 'Not verified';
 
 export const RoleRequests = () => {
   useAdminGuard();
-  const [rows, setRows] = useState<User[]>([]);
+  const [rows, setRows] = useState<RoleRequest[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('PENDING');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<User | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selected, setSelected] = useState<RoleRequest | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
+
+  // Auto-dismiss toast after 4 seconds
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const aggregate = await adminUserService.listAllUsers();
-      setRows(aggregate.rows);
+      const data = await adminService.getRoleRequests();
+      setRows(data);
     } catch (loadError) {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Users could not be loaded. The Admin User API contract may have changed.',
+          : 'Role requests could not be loaded. Please try again.',
       );
     } finally {
       setLoading(false);
@@ -90,17 +87,20 @@ export const RoleRequests = () => {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const base = rows.filter((row) => {
-      const rowStatus =
-        typeof row.verificationStatus === 'string' ? row.verificationStatus.toUpperCase() : '';
+      const rowStatus = (row.status || 'PENDING').toUpperCase();
       if (status === 'PENDING' && rowStatus !== 'PENDING') return false;
-      if (status === 'ACCEPTED' && rowStatus !== 'ACCEPTED') return false;
-      if (status === 'REJECTED' && rowStatus !== 'REJECTED') return false;
+      if (status === 'APPROVED' && rowStatus !== 'APPROVED' && rowStatus !== 'ACCEPTED') return false;
+      if (status === 'DENIED' && rowStatus !== 'DENIED' && rowStatus !== 'REJECTED') return false;
       if (!query) return true;
       const searchable = [
-        row.fullName,
+        row.userName,
         row.email,
         String(row.id),
-        row.roleName ?? '',
+        String(row.userId),
+        row.affiliation ?? '',
+        row.department ?? '',
+        (row.requestedAdditionalRoles || []).join(' '),
+        (row.requestedRoles || []).join(' '),
       ]
         .join(' ')
         .toLowerCase();
@@ -108,7 +108,7 @@ export const RoleRequests = () => {
     });
     return base.sort(
       (a, b) =>
-        new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+        new Date(b.submissionDate || 0).getTime() - new Date(a.submissionDate || 0).getTime(),
     );
   }, [rows, search, status]);
 
@@ -123,15 +123,42 @@ export const RoleRequests = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<User>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<RoleRequest>(filtered, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
   }, [search, status, resetPage]);
 
-  const openModal = (row: User) => {
+  const handleOpenDetails = (row: RoleRequest) => {
     setSelected(row);
     setModal('details');
+  };
+
+  const handleOpenApprove = (row: RoleRequest) => {
+    setSelected(row);
+    setModal('approve');
+  };
+
+  const handleOpenDeny = (row: RoleRequest) => {
+    setSelected(row);
+    setModal('deny');
+  };
+
+  const handleActioned = (updated: RoleRequest) => {
+    setRows((prev) =>
+      prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+    );
+    if (updated.status === 'APPROVED') {
+      setToastMessage({
+        type: 'success',
+        text: 'Phê duyệt vai trò thành công!',
+      });
+    } else if (updated.status === 'DENIED') {
+      setToastMessage({
+        type: 'success',
+        text: 'Đã từ chối yêu cầu vai trò.',
+      });
+    }
   };
 
   const hasNoMatch =
@@ -146,15 +173,34 @@ export const RoleRequests = () => {
         Home &gt; Admin &gt;{' '}
         <span className={styles.activeBreadcrumb}>Role Requests</span>
       </div>
+
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Role Requests</h1>
           <p className={styles.pageSubtitle}>
-            Inspect pending verification, then approve or deny after the
-            Admin User API exposes the mutation endpoints.
+            Review and process user role verification requests.
           </p>
         </div>
       </div>
+
+      {toastMessage && (
+        <div
+          className={toastMessage.type === 'success' ? styles.toastSuccess : styles.toastError}
+          role="status"
+          aria-live="polite"
+        >
+          {toastMessage.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          <span>{toastMessage.text}</span>
+          <button
+            className={styles.toastClose}
+            onClick={() => setToastMessage(null)}
+            type="button"
+            aria-label="Close notification"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <TableToolbar
         search={search}
@@ -183,9 +229,9 @@ export const RoleRequests = () => {
                 <option key={filterStatus} value={filterStatus}>
                   {filterStatus === 'PENDING'
                     ? 'Pending'
-                    : filterStatus === 'ACCEPTED'
-                      ? 'Accepted'
-                      : 'Rejected'}
+                    : filterStatus === 'APPROVED'
+                      ? 'Approved'
+                      : 'Denied'}
                 </option>
               ))}
             </select>
@@ -237,73 +283,91 @@ export const RoleRequests = () => {
                   <tr>
                     <th>User</th>
                     <th>Email</th>
-                    <th>Assigned / Pending Role</th>
-                    <th>Email Verification</th>
+                    <th>Requested Role</th>
+                    <th>Affiliation / Dept</th>
                     <th>Submitted</th>
-                    <th>Verification Status</th>
+                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <div className={styles.userCell}>
-                          <span className={styles.userName}>{row.fullName}</span>
-                          <span className={styles.userEmail}>ID #{row.id}</span>
-                        </div>
-                      </td>
-                      <td>{row.email}</td>
-                      <td>{formatRole(row.roleName)}</td>
-                      <td>{formatEmailState(row)}</td>
-                      <td>
-                        {row.createdAt
-                          ? new Date(row.createdAt).toLocaleDateString('vi-VN')
-                          : '—'}
-                      </td>
-                      <td>
-                        <span
-                          className={`${styles.statusPill} ${statusClass(
-                            row.verificationStatus ?? 'Pending',
-                          )}`}
-                        >
-                          {row.verificationStatus ?? 'Pending'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.actions}>
-                          <button
-                            className={`${styles.actionButton} ${styles.inspectButton}`}
-                            onClick={() => openModal(row)}
-                            type="button"
+                  {pageItems.map((row) => {
+                    const isPending = (row.status || 'PENDING').toUpperCase() === 'PENDING';
+                    const requestedRolesList =
+                      row.requestedAdditionalRoles?.length
+                        ? row.requestedAdditionalRoles
+                        : row.requestedRoles?.length
+                          ? row.requestedRoles
+                          : [];
+
+                    return (
+                      <tr key={row.id}>
+                        <td>
+                          <div className={styles.userCell}>
+                            <span className={styles.userName}>{row.userName}</span>
+                            <span className={styles.userEmail}>ID #{row.userId ?? row.id}</span>
+                          </div>
+                        </td>
+                        <td>{row.email}</td>
+                        <td>{formatRoles(requestedRolesList)}</td>
+                        <td>
+                          {row.affiliation || row.department
+                            ? `${row.affiliation || ''}${row.affiliation && row.department ? ' · ' : ''}${row.department || ''}`
+                            : '—'}
+                        </td>
+                        <td>
+                          {row.submissionDate
+                            ? new Date(row.submissionDate).toLocaleDateString('vi-VN')
+                            : '—'}
+                        </td>
+                        <td>
+                          <span
+                            className={`${styles.statusPill} ${statusClass(row.status || 'PENDING')}`}
                           >
-                            <Eye size={14} />
-                            View Details
-                          </button>
-                          <button
-                            className={`${styles.actionButton} ${styles.approveButton}`}
-                            disabled
-                            type="button"
-                            title="Accept is unavailable until the Admin User API exposes a verification-mutation endpoint. See BTR-AGENT29-C."
-                            data-testid="role-requests-accept"
-                          >
-                            <Check size={14} />
-                            Accept
-                          </button>
-                          <button
-                            className={`${styles.actionButton} ${styles.denyButton}`}
-                            disabled
-                            type="button"
-                            title="Reject is unavailable until the Admin User API exposes a verification-mutation endpoint. See BTR-AGENT29-C."
-                            data-testid="role-requests-reject"
-                          >
-                            <X size={14} />
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {row.status || 'Pending'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className={styles.actions}>
+                            <button
+                              className={`${styles.actionButton} ${styles.inspectButton}`}
+                              onClick={() => handleOpenDetails(row)}
+                              type="button"
+                              title="View full submission details & proof document"
+                            >
+                              <Eye size={14} />
+                              View Details
+                            </button>
+
+                            {isPending && (
+                              <>
+                                <button
+                                  className={`${styles.actionButton} ${styles.approveButton}`}
+                                  onClick={() => handleOpenApprove(row)}
+                                  type="button"
+                                  title="Phê duyệt vai trò"
+                                  data-testid="role-requests-accept"
+                                >
+                                  <Check size={14} />
+                                  Accept
+                                </button>
+                                <button
+                                  className={`${styles.actionButton} ${styles.denyButton}`}
+                                  onClick={() => handleOpenDeny(row)}
+                                  type="button"
+                                  title="Từ chối vai trò"
+                                  data-testid="role-requests-reject"
+                                >
+                                  <X size={14} />
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -322,38 +386,30 @@ export const RoleRequests = () => {
         )}
       </div>
 
-      <VerificationDetailsModal
-        user={selected}
+      {/* Details modal */}
+      <RoleRequestDetailsModal
+        request={selected}
         open={modal === 'details'}
         onClose={() => setModal(null)}
-        onOpenOrcidCheck={() => setModal('orcid')}
       />
 
-      <OrcidCheckModal
-        user={
-          selected
-            ? {
-                id: selected.id,
-                fullName: selected.fullName,
-                email: selected.email,
-                orcidId: selected.orcidId,
-              }
-            : { id: 0, email: '', orcidId: '' }
-        }
-        open={modal === 'orcid'}
+      {/* Approve modal */}
+      <ApproveRoleRequestModal
+        request={selected}
+        open={modal === 'approve'}
         onClose={() => setModal(null)}
+        onActioned={handleActioned}
+      />
+
+      {/* Deny modal */}
+      <DenyRoleRequestModal
+        request={selected}
+        open={modal === 'deny'}
+        onClose={() => setModal(null)}
+        onActioned={handleActioned}
       />
     </div>
   );
 };
-
-// Re-export so the modal can be exercised in unit tests without exposing
-// the modal component in two places.
-export { formatRole, formatTier, statusClass };
-
-// Hint to the linter: `FileText` is reserved for future "no proof document
-// attached" copy updates; removing the import would require re-introducing
-// it later, so the import stays here as a single reference.
-void FileText;
 
 export default RoleRequests;
