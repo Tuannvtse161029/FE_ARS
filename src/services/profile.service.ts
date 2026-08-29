@@ -170,7 +170,7 @@ export const profileService = {
   async getByUserId(userId: number): Promise<Profile> {
     // 1. Try GET /api/ProfessionalProfile/{userId}
     try {
-      const response = await api.get(`${API_ENDPOINTS.PROFESSIONAL_PROFILE.BASE}/${userId}`);
+      const response = await api.get(API_ENDPOINTS.PROFESSIONAL_PROFILE.GET_BY_ID(userId));
       if (response.data) {
         return coerceProfile(response.data, userId);
       }

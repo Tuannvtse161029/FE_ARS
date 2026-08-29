@@ -35,6 +35,7 @@ import { useProfile } from '../../hooks/useProfile';
 import {
   PROFILE_VALIDATION,
   resolveRoleProfileMeta,
+  type Profile,
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
@@ -237,7 +238,6 @@ function draftFromProfile(p: {
 
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const authenticatedUserId = user?.userId ?? null;
   const parsedTargetId = routeUserId ? Number(routeUserId) : null;
@@ -245,11 +245,6 @@ export const Profile = () => {
     ? parsedTargetId
     : (authenticatedUserId ?? null);
   const isOwner = authenticatedUserId != null && targetUserId === authenticatedUserId;
-
-  const roleName = isOwner ? (user?.role ?? null) : (profile?.roleName ?? null);
-  const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
-  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : (roleName || 'Researcher');
-  const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const {
     profile,
@@ -262,6 +257,11 @@ export const Profile = () => {
     save,
     clearSaveError,
   } = useProfile(targetUserId);
+
+  const roleName = isOwner ? (user?.role ?? null) : (profile?.roleName ?? null);
+  const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
+  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : (roleName || 'Researcher');
+  const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
 
