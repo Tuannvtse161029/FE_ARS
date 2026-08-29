@@ -90,9 +90,9 @@ export function buildForumPostViewModel({
   post,
   commentCount,
 }: BuildForumPostViewModelInput): ForumPostViewModel {
-  const wireLike = toCountOrNull(post.likeCount);
-  const wireView = toCountOrNull(post.viewCount);
-  const wireComment = toCountOrNull(post.commentCount);
+  const wireLike = toCountOrNull(post.likes ?? post.likeCount ?? 0);
+  const wireView = toCountOrNull(post.views ?? post.viewCount ?? 0);
+  const wireComment = toCountOrNull(post.comments ?? post.commentCount);
 
   // Compute the comment-count value:
   //   1. If the wire supplies a number, use it (clamped to >= 0).
@@ -104,17 +104,21 @@ export function buildForumPostViewModel({
   } else if (commentCount !== undefined && commentCount !== null) {
     commentCountValue = clampNonNegative(toCountOrNull(commentCount));
   } else {
-    commentCountValue = null;
+    commentCountValue = 0;
   }
+
+  const isLikedValue =
+    typeof post.isLiked === 'boolean'
+      ? post.isLiked
+      : typeof post.isLikedByCurrentUser === 'boolean'
+        ? post.isLikedByCurrentUser
+        : false;
 
   return {
     postId: post.id,
     likeCount: clampNonNegative(wireLike),
     commentCount: commentCountValue,
     viewCount: clampNonNegative(wireView),
-    isLikedByCurrentUser:
-      typeof post.isLikedByCurrentUser === 'boolean'
-        ? post.isLikedByCurrentUser
-        : null,
+    isLikedByCurrentUser: isLikedValue,
   };
 }

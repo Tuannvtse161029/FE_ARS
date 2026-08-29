@@ -6,8 +6,11 @@ import {
   FileText,
   Inbox,
   Loader2,
-  Tag,
   Users,
+  Crown,
+  CheckCircle2,
+  ExternalLink,
+  Upload,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
@@ -15,35 +18,27 @@ import { usePhasedReports } from '../../hooks/usePhasedReports';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
-import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
+import {
+  phasedReportService,
+  type PhasedReport,
+  type SubmittedPhasedReport,
+} from '../../services/phasedReport.service';
+import type { GroupMember } from '../../services/groupMember.service';
 import styles from './SubmitReport.module.css';
-
-// Real-data rewrite of the Submit Report page. Per
-// docs/local-only/research-workflow-contract.md and the Phase C contract
-// G3 + G6:
-//
-//   - The 5-phase dropdown is replaced by a single "Workspace label" text
-//     input. The input ONLY drives the Firebase folder path
-//     (`research-groups/{groupId}/phased-reports/{label}/`) — there is no
-//     persisted `phase` column on `PhasedReports` (gap ticket §E.5).
-//   - `groupMemberId` is sourced from `joinedGroups[].membershipId` via the
-//     shared `getPrimaryMembershipId` helper (G1).
-//   - After a successful submit or resubmit, the page refreshes BOTH the
-//     student-groups state AND the phased-reports list so the table reflects
-//     the new row immediately (G6(c)).
-//   - Rejection banner still renders from the latest REJECTED report of the
-//     active group.
 
 const DEFAULT_FOLDER_KEY = 'milestone';
 
-const formatDate = (iso?: string): string => {
+const formatDate = (iso?: string | null): string => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'medium' });
+  return new Date(iso).toLocaleDateString('vi-VN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
-// Workspace label normalization — Firebase folder paths must avoid `/`,
-// whitespace, and non-ASCII to remain portable. We never strip the user's
-// intent; we just produce a safe folder segment.
 const normalizeWorkspaceLabel = (raw: string): string => {
   const cleaned = raw
     .normalize('NFKC')
@@ -69,48 +64,109 @@ export const SubmitReport = (): JSX.Element => {
     refetch: refetchStudentGroups,
   } = useStudentGroups(studentId);
 
-  const [workspaceLabel, setWorkspaceLabel] = useState<string>(
-    DEFAULT_FOLDER_KEY,
-  );
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [targetPhase, setTargetPhase] = useState<{
+    phaseNumber: number;
+    phasedReportId?: number;
+    title: string;
+  } | null>(null);
+
   const [resubmitting, setResubmitting] = useState<SubmittedPhasedReport | null>(null);
   const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
 
   const primaryGroupId = primaryGroup?.id ?? null;
-  const { reports, isLoading: reportsLoading, refetch: refetchReports } =
-    usePhasedReports(primaryGroupId);
+  const topicId = primaryTopic?.id ?? primaryGroup?.topicId ?? null;
+
+  const { refetch: refetchReports } = usePhasedReports(primaryGroupId);
+
+  const [topicPhases, setTopicPhases] = useState<PhasedReport[]>([]);
+  const [topicMembers, setTopicMembers] = useState<GroupMember[]>([]);
+  const [isLoadingTopicDetails, setIsLoadingTopicDetails] = useState<boolean>(false);
 
   const lecturerId = guidanceProject?.lecturerId ?? primaryGroup?.lecturerId ?? null;
 
-  const activePhaseReport = useMemo(() => {
-    // Most recent report submitted for THIS group (across status types).
-    return reports
-      .filter((r) => r.submittedAt !== undefined)
-      .sort((a, b) => {
-        const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-        const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-        return bTime - aTime;
-      })[0] ?? null;
-  }, [reports]);
+  // Load 5 topic phases & members when topicId is available
+  const loadTopicDetails = async (tId: number) => {
+    setIsLoadingTopicDetails(true);
+    try {
+      const [phases, members] = await Promise.all([
+        phasedReportService.getByTopic(tId).catch(() => []),
+        phasedReportService.getMembersByTopic(tId).catch(() => []),
+      ]);
+      setTopicPhases(phases);
+      setTopicMembers(members);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingTopicDetails(false);
+    }
+  };
 
-  const rejection = useMemo<SubmittedPhasedReport | null>(
-    () => reports.find((r) => r.status === 'REJECTED') ?? null,
-    [reports],
-  );
+  useEffect(() => {
+    if (topicId) {
+      void loadTopicDetails(topicId);
+    }
+  }, [topicId]);
 
-  // Reset resubmit + lastSubmitted state when the modal closes.
+  // Determine leader information
+  const leaderMember = useMemo(() => {
+    return topicMembers.find((m) => m.isLeader) ?? null;
+  }, [topicMembers]);
+
+  const isCurrentUserLeader = useMemo(() => {
+    if (!studentId) return false;
+    const current = topicMembers.find((m) => m.studentId === studentId);
+    if (current?.isLeader) return true;
+    // Fallback check on joinedGroups
+    const joined = joinedGroups.find((g) => g.id === primaryGroupId);
+    return Boolean(joined?.membershipId && leaderMember?.studentId === studentId);
+  }, [studentId, topicMembers, joinedGroups, primaryGroupId, leaderMember]);
+
+  const currentMembershipId = useMemo(() => {
+    if (!studentId) return undefined;
+    const current = topicMembers.find((m) => m.studentId === studentId);
+    return current?.groupMemberId ?? current?.id ?? getPrimaryMembershipId(joinedGroups) ?? undefined;
+  }, [studentId, topicMembers, joinedGroups]);
+
+  const rejection = useMemo<SubmittedPhasedReport | null>(() => {
+    const found = topicPhases.find((r) => r.status === 'REJECTED' || r.status === 'Rejected');
+    if (!found) return null;
+    return {
+      id: found.phasedReportId || found.id || 0,
+      researchGroupId: found.researchGroupId || primaryGroupId || 0,
+      groupMemberId: found.groupMemberId ?? undefined,
+      reportFileUrl: found.reportFileUrl ?? undefined,
+      capacityEvaluation: found.capacityEvaluation ?? undefined,
+      finalOutcomeEvaluation: found.finalOutcomeEvaluation ?? undefined,
+      lectureFeedback: found.lectureFeedback ?? undefined,
+      submittedAt: found.submittedAt ?? undefined,
+      status: 'REJECTED',
+    };
+  }, [topicPhases, primaryGroupId]);
+
   useEffect(() => {
     if (!submitting) {
       setResubmitting(null);
+      setTargetPhase(null);
     }
   }, [submitting]);
 
   const handleSubmitted = async (report: SubmittedPhasedReport): Promise<void> => {
     setLastSubmitted(report);
-    // G6(c): refresh both student-groups (the new submission may have changed
-    // membership activity timestamps etc.) and phased-reports (so the table
-    // below this card picks up the new row immediately).
-    await Promise.all([refetchStudentGroups(), refetchReports()]);
+    await Promise.all([
+      refetchStudentGroups(),
+      refetchReports(),
+      topicId ? loadTopicDetails(topicId) : Promise.resolve(),
+    ]);
+  };
+
+  const handleOpenPhaseSubmit = (phaseNumber: number, phasedReportId?: number, title?: string) => {
+    setTargetPhase({
+      phaseNumber,
+      phasedReportId,
+      title: title || `Phase ${phaseNumber}`,
+    });
+    setSubmitting(true);
   };
 
   const handleCloseSubmit = (): void => {
@@ -122,38 +178,47 @@ export const SubmitReport = (): JSX.Element => {
       <div className={styles.page}>
         <div className={styles.errorBanner}>
           <AlertCircle size={16} />
-          <span>Please sign in to submit a milestone report.</span>
+          <span>Vui lòng đăng nhập để xem và nộp báo cáo nghiên cứu.</span>
         </div>
       </div>
     );
   }
 
-  // The folder key ONLY drives the Firebase path; the page derives a sensible
-  // default from what the student can see (primary topic title, then group
-  // name, then a generic "milestone" fallback). The user can override via the
-  // "Workspace label" input — useful when a group has multiple submissions
-  // for the same topic and the student wants to keep them segregated in
-  // storage (e.g. "draft-v2" vs "draft-v3").
   const phaseKey = normalizeWorkspaceLabel(
-    workspaceLabel.trim().length > 0
-      ? workspaceLabel
-      : (primaryTopic?.title ?? primaryGroup?.name ?? DEFAULT_FOLDER_KEY),
+    targetPhase?.title ??
+      primaryTopic?.title ??
+      primaryGroup?.name ??
+      DEFAULT_FOLDER_KEY,
   );
+
+  const getStatusBadgeStyle = (status?: string | null) => {
+    switch (status) {
+      case 'Passed':
+        return { bg: '#dcfce7', text: '#15803d', border: '#bbf7d0', label: 'Đạt (Passed)' };
+      case 'OnTime':
+        return { bg: '#e0e7ff', text: '#3730a3', border: '#c7d2fe', label: 'Đúng hạn (On Time)' };
+      case 'Overdue':
+        return { bg: '#fee2e2', text: '#b91c1c', border: '#fecaca', label: 'Quá hạn (Overdue)' };
+      case 'Rejected':
+        return { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5', label: 'Cần sửa đổi (Rejected)' };
+      default:
+        return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0', label: 'Chưa nộp (Pending)' };
+    }
+  };
 
   return (
     <div className={styles.page}>
       <nav className={styles.breadcrumbs}>
         Home &gt; Collaborative Workspace &gt;{' '}
         {primaryGroup?.name ?? 'Research Group'} &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Submit Report</span>
+        <span className={styles.activeBreadcrumb}>Nộp Báo Cáo Tiến Độ (5 Phases)</span>
       </nav>
 
       <header className={styles.headerRow}>
         <div>
-          <h1 className={styles.pageTitle}>Submit Milestone Research Report</h1>
+          <h1 className={styles.pageTitle}>Nộp Báo Cáo Nghiên Cứu Theo Giai Đoạn (5 Phases)</h1>
           <p className={styles.pageSubtitle}>
-            Upload a PDF for review. Your lecturer will receive the file via
-            secure storage and respond on the Reports tab.
+            Theo dõi 5 cột mốc tiến độ của đề tài và nộp báo cáo định kỳ. Giảng viên hướng dẫn sẽ đánh giá và phản hồi trực tiếp.
           </p>
         </div>
       </header>
@@ -165,87 +230,98 @@ export const SubmitReport = (): JSX.Element => {
         </div>
       ) : null}
 
+      {/* Leader status alert */}
+      {primaryGroup && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.875rem 1.25rem',
+            borderRadius: '8px',
+            backgroundColor: isCurrentUserLeader ? '#fefce8' : '#f8fafc',
+            border: `1px solid ${isCurrentUserLeader ? '#fef08a' : '#e2e8f0'}`,
+            color: isCurrentUserLeader ? '#854d0e' : '#334155',
+            fontSize: '0.9rem',
+          }}
+        >
+          <Crown size={18} color={isCurrentUserLeader ? '#ca8a04' : '#64748b'} />
+          <div>
+            {isCurrentUserLeader ? (
+              <span>
+                <strong>Bạn là Trưởng nhóm (Leader):</strong> Bạn có quyền đại diện nhóm nộp các bài báo cáo tiến độ (Phase 1-5).
+              </span>
+            ) : leaderMember ? (
+              <span>
+                Trưởng nhóm phụ trách nộp bài: <strong>{leaderMember.studentName || `Sinh viên #${leaderMember.studentId}`}</strong> ({leaderMember.studentEmail || 'Chưa cập nhật email'}).
+              </span>
+            ) : (
+              <span>
+                Nhóm chưa có Trưởng nhóm. Vui lòng liên hệ Giảng viên hướng dẫn để gán vai trò Trưởng nhóm (Leader) trước khi nộp bài.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className={styles.grid}>
+        {/* Topic & Group Info */}
         <section className={styles.card}>
-          <h3 className={styles.cardTitle}>Milestone Details</h3>
+          <h3 className={styles.cardTitle}>Thông Tin Đề Tài & Nhóm</h3>
 
           {isLoading ? (
             <div className={styles.detailRow}>
               <Loader2 size={14} className={styles.spin} />
-              <span>Loading your context…</span>
+              <span>Đang tải thông tin nhóm…</span>
             </div>
           ) : !primaryGroup ? (
             <div className={styles.emptyState}>
               <Inbox size={18} />
               <span>
-                You haven&apos;t joined a research group yet. Once a lecturer
-                adds you to one, you can submit milestones here.
+                Bạn chưa tham gia nhóm nghiên cứu nào. Khi được Giảng viên phân công vào nhóm, bạn sẽ có thể nộp báo cáo tại đây.
               </span>
             </div>
           ) : (
             <>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Assigned by</span>
+                <span className={styles.detailLabel}>Giảng viên HD</span>
                 <span className={styles.detailVal}>
                   <Users size={12} />
                   {typeof lecturerId === 'number'
                     ? `Lecturer #${lecturerId}`
-                    : 'Not assigned'}
+                    : 'Chưa phân công'}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Topic</span>
+                <span className={styles.detailLabel}>Đề tài (Topic)</span>
                 <span className={styles.detailVal}>
                   <FileText size={12} />
-                  {primaryTopic?.title ?? 'No topic assigned yet'}
+                  {primaryTopic?.title ?? `Topic #${topicId ?? '—'}`}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Group</span>
+                <span className={styles.detailLabel}>Nhóm nghiên cứu</span>
                 <span className={styles.detailVal}>
                   <Users size={12} />
                   {primaryGroup.name}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Deadline</span>
+                <span className={styles.detailLabel}>Hạn chót toàn dự án</span>
                 <span className={styles.detailVal}>
                   <Calendar size={12} />
                   {primaryGroup.deadline
                     ? formatDate(primaryGroup.deadline)
-                    : 'No deadline set'}
-                </span>
-              </div>
-
-              <div className={styles.phasePicker}>
-                <label className={styles.phaseLabel} htmlFor="workspace-label">
-                  <Tag size={12} aria-hidden />
-                  <span>Workspace label</span>
-                </label>
-                <input
-                  id="workspace-label"
-                  className={styles.phaseSelect}
-                  type="text"
-                  value={workspaceLabel}
-                  placeholder={
-                    primaryTopic?.title ??
-                    primaryGroup.name ??
-                    DEFAULT_FOLDER_KEY
-                  }
-                  onChange={(e) => setWorkspaceLabel(e.target.value)}
-                  maxLength={64}
-                />
-                <span className={styles.phaseHint}>
-                  Used only for the Firebase folder path — it is not persisted
-                  in the milestone row.
+                    : 'Chưa đặt hạn chót'}
                 </span>
               </div>
             </>
           )}
         </section>
 
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>Artifact Submission</h3>
+        {/* 5 Phases List */}
+        <section className={styles.card} style={{ gridColumn: 'span 2' }}>
+          <h3 className={styles.cardTitle}>Danh Sách 5 Giai Đoạn Báo Cáo (Phase Milestones)</h3>
 
           {rejection ? (
             <RejectionFeedbackBanner
@@ -257,86 +333,154 @@ export const SubmitReport = (): JSX.Element => {
             />
           ) : null}
 
-          {reportsLoading ? (
+          {isLoadingTopicDetails ? (
             <div className={styles.detailRow}>
               <Loader2 size={14} className={styles.spin} />
-              <span>Loading previous reports…</span>
+              <span>Đang tải danh sách cột mốc Phase…</span>
             </div>
-          ) : activePhaseReport ? (
-            <div className={styles.activeReportCard}>
-              <div className={styles.activeReportHeader}>
-                <span className={styles.activeReportTitle}>
-                  <FileText size={14} />
-                  Report #{activePhaseReport.id} — {activePhaseReport.status}
-                </span>
-                {activePhaseReport.reportFileUrl ? (
-                  <a
-                    href={activePhaseReport.reportFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.linkBtn}
-                  >
-                    Open current PDF
-                  </a>
-                ) : null}
-              </div>
-              <p className={styles.activeReportBody}>
-                Submitted on{' '}
-                {formatDate(activePhaseReport.submittedAt)}.
-                {activePhaseReport.status === 'SUBMITTED' ? (
-                  <>
-                    {' '}Your lecturer is is reviewing it. You&apos;ll be notified
-                    when feedback is available.
-                  </>
-                ) : activePhaseReport.status === 'EVALUATED' ? (
-                  <>
-                    {' '}This milestone has been approved
-                    {typeof activePhaseReport.lectureFeedback === 'number'
-                      ? ` with a grade of ${activePhaseReport.lectureFeedback}/10`
-                      : ''}
-                    .
-                  </>
-                ) : activePhaseReport.status === 'REJECTED' ? (
-                  <>
-                    {' '}See the rejection banner above for the lecturer&apos;s
-                    feedback. Use <strong>Resubmit</strong> to upload a revised
-                    version.
-                  </>
-                ) : null}
-              </p>
-            </div>
-          ) : (
+          ) : topicPhases.length === 0 ? (
             <div className={styles.emptyState}>
               <Clock size={18} />
               <span>
-                No prior submission for this group yet. Click{' '}
-                <strong>Submit report</strong> below to upload your first PDF.
+                Giảng viên chưa thiết lập 5 cột mốc Phase cho Đề tài này. Vui lòng nhắc Giảng viên cấu hình tại trang Thiết lập cột mốc.
               </span>
             </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+              {topicPhases.map((phase) => {
+                const pNum = phase.phaseNumber ?? 1;
+                const statusStyle = getStatusBadgeStyle(phase.status);
+                const isPassed = phase.status === 'Passed';
+                const hasFile = Boolean(phase.reportFileUrl);
+
+                return (
+                  <div
+                    key={`phase-${phase.phasedReportId || pNum}`}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '1.25rem',
+                      backgroundColor: isPassed ? '#f0fdf4' : '#ffffff',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <span
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: '50%',
+                            backgroundColor: isPassed ? '#15803d' : '#0f172a',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {pNum}
+                        </span>
+                        <strong style={{ fontSize: '1rem', color: '#0f172a' }}>
+                          {phase.milestoneTitle || `Phase ${pNum}`}
+                        </strong>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            backgroundColor: statusStyle.bg,
+                            color: statusStyle.text,
+                            border: `1px solid ${statusStyle.border}`,
+                          }}
+                        >
+                          {statusStyle.label}
+                        </span>
+                        {phase.lectureFeedback != null && (
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#15803d' }}>
+                            Điểm: {phase.lectureFeedback}/10
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', fontSize: '0.85rem', color: '#475569' }}>
+                      <div>
+                        <strong>Hạn nộp:</strong> {formatDate(phase.deadlineAt)}
+                      </div>
+                      {phase.submittedAt && (
+                        <div>
+                          <strong>Đã nộp lúc:</strong> {formatDate(phase.submittedAt)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Submitted File Link */}
+                    {hasFile && (
+                      <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <FileText size={14} color="#0284c7" />
+                        <span>File báo cáo đã nộp:</span>
+                        <a
+                          href={phase.reportFileUrl!}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: '#0284c7', textDecoration: 'underline', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                        >
+                          Xem file PDF <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Lecturer Feedback */}
+                    {phase.lecturerDescription && (
+                      <div style={{ backgroundColor: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.825rem', color: '#334155' }}>
+                        <strong>Nhận xét của Giảng viên:</strong> {phase.lecturerDescription}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                      {isPassed ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803d', fontSize: '0.85rem', fontWeight: 600 }}>
+                          <CheckCircle2 size={16} /> Giai đoạn này đã hoàn thành
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            backgroundColor: isCurrentUserLeader ? '#0f172a' : '#e2e8f0',
+                            color: isCurrentUserLeader ? '#ffffff' : '#94a3b8',
+                            border: 'none',
+                            cursor: isCurrentUserLeader ? 'pointer' : 'not-allowed',
+                          }}
+                          onClick={() => handleOpenPhaseSubmit(pNum, phase.phasedReportId, phase.milestoneTitle || undefined)}
+                          disabled={!isCurrentUserLeader}
+                          title={isCurrentUserLeader ? 'Nhấn để nộp bài báo cáo cho giai đoạn này' : 'Chỉ Trưởng nhóm (Leader) mới có quyền nộp bài'}
+                        >
+                          <Upload size={14} />
+                          {hasFile ? 'Nộp lại bài báo cáo (Resubmit)' : 'Nộp bài báo cáo (Submit)'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-
-          <div className={styles.actionCenter}>
-            <button
-              type="button"
-              className={styles.submitBtn}
-              onClick={() => setSubmitting(true)}
-              disabled={!primaryGroup || isLoading}
-            >
-              <FileText size={14} />
-              <span>
-                {activePhaseReport ? 'Update submission' : 'Submit report'}
-              </span>
-            </button>
-          </div>
-
-          {lastSubmitted ? (
-            <p className={styles.successHint} role="status">
-              <Clock size={12} />
-              Last successful submission: Report #{lastSubmitted.id}
-              {' · '}
-              {formatDate(lastSubmitted.submittedAt)}
-            </p>
-          ) : null}
         </section>
       </div>
 
@@ -344,9 +488,13 @@ export const SubmitReport = (): JSX.Element => {
         <SubmitReportModal
           isOpen={submitting}
           researchGroupId={primaryGroup.id}
-          groupMemberId={getPrimaryMembershipId(joinedGroups) ?? undefined}
+          groupMemberId={currentMembershipId}
+          topicId={topicId ?? undefined}
+          phaseNumber={targetPhase?.phaseNumber}
+          phasedReportId={targetPhase?.phasedReportId}
           phaseKey={phaseKey}
           phaseTitle={
+            targetPhase?.title ??
             primaryTopic?.title ??
             primaryGroup.name ??
             `Group #${primaryGroup.id}`
@@ -365,4 +513,4 @@ export const SubmitReport = (): JSX.Element => {
   );
 };
 
-export default SubmitReport;
+export default SubmitReport;

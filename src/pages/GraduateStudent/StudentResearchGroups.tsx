@@ -53,6 +53,10 @@ const STATUS_PALETTE: Record<PhasedReportStatus, string> = {
   SUBMITTED: styles.statusSubmitted,
   EVALUATED: styles.statusEvaluated,
   REJECTED: styles.statusRejected,
+  Pending: styles.statusWaiting,
+  OnTime: styles.statusSubmitted,
+  Overdue: styles.statusRejected,
+  Passed: styles.statusEvaluated,
 };
 
 export const StudentResearchGroups = (): JSX.Element => {

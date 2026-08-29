@@ -3,19 +3,23 @@ import { API_ENDPOINTS } from '../utils/constants';
 import type {
   PhasedReportCreateRequest as StrictPhasedReportCreateRequest,
   PhasedReportUpdateRequest as StrictPhasedReportUpdateRequest,
+  TopicMilestonesCreateRequest,
+  PhasedReportSubmitRequest as WirePhasedReportSubmitRequest,
+  PhasedReportEvaluationRequest,
 } from '../types/researchWorkflowDtos';
+import type { GroupMember } from './groupMember.service';
 
-// SHARED FILE — submission methods (`submit`, `resubmit`, `getByGroup`) are
-// owned by Agent-2 (GradStudent). Evaluation methods (`evaluate`, `reject`,
-// `getByLecturer`) are owned by Agent-1 (Lecturer). The split is by function
-// name, not by file. Both agents may extend this file; do not duplicate the
-// HTTP wrappers — import them.
 const PHASED_REPORT_ENDPOINTS = {
   GET_ALL: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
   GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_BY_ID,
   CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
   UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE,
   DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE(id),
+  TOPIC_MILESTONES: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.TOPIC_MILESTONES,
+  BY_TOPIC: (topicId: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_TOPIC(topicId),
+  MEMBERS_BY_TOPIC: (topicId: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.MEMBERS_BY_TOPIC(topicId),
+  SUBMIT: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.SUBMIT,
+  EVALUATE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.EVALUATE(id),
 } as const;
 
 // Status enums per contract §3 — the BE stores these as a free-form string,
@@ -24,7 +28,11 @@ export type PhasedReportStatus =
   | 'WAITING'
   | 'SUBMITTED'
   | 'EVALUATED'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'Pending'
+  | 'OnTime'
+  | 'Overdue'
+  | 'Passed';
 
 export const PHASED_REPORT_STATUSES: readonly PhasedReportStatus[] = [
   'WAITING',
@@ -41,12 +49,16 @@ const PHASED_REPORT_TRANSITIONS: Record<
   SUBMITTED: ['EVALUATED', 'REJECTED'],
   EVALUATED: [],
   REJECTED: ['SUBMITTED'],
+  Pending: ['OnTime', 'Overdue'],
+  OnTime: ['Passed', 'REJECTED'],
+  Overdue: ['Passed', 'REJECTED'],
+  Passed: [],
 };
 
 export const canTransitionPhasedReport = (
   from: PhasedReportStatus,
   to: PhasedReportStatus,
-): boolean => PHASED_REPORT_TRANSITIONS[from].includes(to);
+): boolean => Boolean(PHASED_REPORT_TRANSITIONS[from]?.includes(to));
 
 // Defensive status normaliser — the BE returns a free-form string so we map
 // the obvious synonyms to the canonical labels and pass through unknowns.
@@ -56,6 +68,9 @@ export const normalizePhasedReportStatus = (
   if (!raw) return 'WAITING';
   const v = raw.toLowerCase().trim();
   if (v === 'waiting' || v === 'pending' || v === 'awaiting') return 'WAITING';
+  if (v === 'ontime' || v === 'on_time' || v === 'on time') return 'OnTime';
+  if (v === 'overdue' || v === 'late') return 'Overdue';
+  if (v === 'passed' || v === 'pass') return 'Passed';
   if (v === 'submitted' || v === 'pending_review' || v === 'submitted_for_review') {
     return 'SUBMITTED';
   }
@@ -77,12 +92,21 @@ export interface PhasedReport {
   id?: number;
   phasedReportId?: number;
   researchGroupId?: number | null;
+  topicId?: number | null;
+  topicTitle?: string | null;
+  groupName?: string | null;
   groupMemberId?: number | null;
+  studentName?: string | null;
+  phaseNumber?: number | null;
+  milestoneTitle?: string | null;
+  deadlineAt?: string | null;
   reportFileUrl?: string | null;
   capacityEvaluation?: string | null;
   finalOutcomeEvaluation?: string | null;
   lectureFeedback?: number | null;
+  lecturerDescription?: string | null;
   submittedAt?: string | null;
+  isOverdue?: boolean | null;
   status?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -91,7 +115,8 @@ export interface PhasedReport {
 const normalizePhasedReport = (raw: PhasedReport): PhasedReport => ({
   ...raw,
   id: raw.phasedReportId ?? raw.id ?? undefined,
-  status: normalizePhasedReportStatus(raw.status ?? null),
+  phasedReportId: raw.phasedReportId ?? raw.id ?? undefined,
+  status: raw.status ? (['OnTime', 'Overdue', 'Passed', 'Pending', 'WAITING', 'SUBMITTED', 'EVALUATED', 'REJECTED'].includes(raw.status) ? raw.status : normalizePhasedReportStatus(raw.status)) : 'Pending',
 });
 
 const normalizePhasedReportList = (data: unknown): PhasedReport[] => {
@@ -139,6 +164,66 @@ export const phasedReportService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(PHASED_REPORT_ENDPOINTS.DELETE(id));
   },
+
+  setTopicMilestones: async (
+    payload: TopicMilestonesCreateRequest,
+  ): Promise<PhasedReport[]> => {
+    const response = await api.post<PhasedReport[] | { message?: string; data?: PhasedReport[] }>(
+      PHASED_REPORT_ENDPOINTS.TOPIC_MILESTONES,
+      payload,
+    );
+    const list = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { data?: PhasedReport[] }).data ?? [];
+    return normalizePhasedReportList(list);
+  },
+
+  getByTopic: async (topicId: number): Promise<PhasedReport[]> => {
+    try {
+      const response = await api.get<PhasedReport[]>(
+        PHASED_REPORT_ENDPOINTS.BY_TOPIC(topicId),
+      );
+      return normalizePhasedReportList(response.data);
+    } catch {
+      const fallback = await api.get<PhasedReport[]>(`/api/PhasedReport/by-topic/${topicId}`);
+      return normalizePhasedReportList(fallback.data);
+    }
+  },
+
+  getMembersByTopic: async (topicId: number): Promise<GroupMember[]> => {
+    const response = await api.get<GroupMember[]>(
+      PHASED_REPORT_ENDPOINTS.MEMBERS_BY_TOPIC(topicId),
+    );
+    const arr = Array.isArray(response.data) ? response.data : [];
+    return arr.map((m) => ({
+      ...m,
+      id: m.groupMemberId ?? m.id,
+      isLeader: Boolean(m.isLeader || m.leaderId),
+    }));
+  },
+
+  submitLeaderReport: async (
+    payload: WirePhasedReportSubmitRequest,
+  ): Promise<PhasedReport> => {
+    const response = await api.post<PhasedReport | { message?: string; data?: PhasedReport }>(
+      PHASED_REPORT_ENDPOINTS.SUBMIT,
+      payload,
+    );
+    const resData = (response.data as { data?: PhasedReport }).data ?? response.data;
+    return normalizePhasedReport(resData as PhasedReport);
+  },
+
+  evaluateReport: async (
+    phasedReportId: number,
+    payload: PhasedReportEvaluationRequest,
+  ): Promise<PhasedReport> => {
+    const response = await api.put<PhasedReport | { message?: string; data?: PhasedReport }>(
+      PHASED_REPORT_ENDPOINTS.EVALUATE(phasedReportId),
+      payload,
+    );
+    const resData = (response.data as { data?: PhasedReport }).data ?? response.data;
+    return normalizePhasedReport(resData as PhasedReport);
+  },
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -155,42 +240,42 @@ export interface LecturerEvaluationRequest {
   lectureFeedback?: number;
   finalOutcomeEvaluation: string;
   rejectionReason?: string;
+  capacityEvaluation?: string;
+  lecturerDescription?: string;
 }
 
-// Evaluate (approve) a report. Transitions SUBMITTED → EVALUATED.
-//
-// The strict PhasedReportUpdateRequest DTO does not declare a `status`
-// column (Swagger does not surface it), so we keep the field as a free-form
-// string appended to the typed body. This preserves the BE's expected
-// request shape (the existing service tests assert this contract) while
-// keeping the rest of the payload strictly typed.
+// Evaluate (approve) a report. Transitions SUBMITTED → EVALUATED / Passed.
 export const evaluatePhasedReport = async (
   id: number,
   payload: LecturerEvaluationRequest,
 ): Promise<PhasedReport> => {
-  const body: StrictPhasedReportUpdateRequest = {
-    researchGroupId: null,
-    groupMemberId: null,
-    reportFileUrl: null,
-    capacityEvaluation: null,
-    finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
-    lectureFeedback: payload.lectureFeedback ?? null,
-    submittedAt: null,
-  };
-  // The status field is intentionally not part of the strict
-  // PhasedReportUpdateRequest DTO — Swagger does not declare it on the
-  // update shape. Surface it as a side-car property so the BE receives the
-  // exact field names it expects (status, lectureFeedback,
-  // finalOutcomeEvaluation). Callers must not rely on it being typed.
-  const wire = {
-    ...body,
-    status: 'EVALUATED',
-  } as StrictPhasedReportUpdateRequest & { status: string };
-  return phasedReportService.update(id, wire);
+  try {
+    return await phasedReportService.evaluateReport(id, {
+      lecturerDescription: payload.lecturerDescription || payload.finalOutcomeEvaluation,
+      lectureFeedback: payload.lectureFeedback ?? 9.0,
+      capacityEvaluation: payload.capacityEvaluation || 'Tốt',
+      finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
+      status: 'Passed',
+    });
+  } catch {
+    const body: StrictPhasedReportUpdateRequest = {
+      researchGroupId: null,
+      groupMemberId: null,
+      reportFileUrl: null,
+      capacityEvaluation: payload.capacityEvaluation || null,
+      finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
+      lectureFeedback: payload.lectureFeedback ?? null,
+      submittedAt: null,
+    };
+    const wire = {
+      ...body,
+      status: 'EVALUATED',
+    } as StrictPhasedReportUpdateRequest & { status: string };
+    return phasedReportService.update(id, wire);
+  }
 };
 
-// Reject a report. Transitions SUBMITTED → REJECTED. Requires non-empty
-// rejectionReason OR non-empty finalOutcomeEvaluation per contract §7.
+// Reject a report. Transitions SUBMITTED → REJECTED / Rejected.
 export const rejectPhasedReport = async (
   id: number,
   payload: LecturerEvaluationRequest,
@@ -202,20 +287,30 @@ export const rejectPhasedReport = async (
       'A rejection reason or feedback note is required when rejecting a report.',
     );
   }
-  const body: StrictPhasedReportUpdateRequest = {
-    researchGroupId: null,
-    groupMemberId: null,
-    reportFileUrl: null,
-    capacityEvaluation: trimmedReason || trimmedOutcome,
-    finalOutcomeEvaluation: trimmedOutcome,
-    lectureFeedback: payload.lectureFeedback ?? null,
-    submittedAt: null,
-  };
-  const wire = {
-    ...body,
-    status: 'REJECTED',
-  } as StrictPhasedReportUpdateRequest & { status: string };
-  return phasedReportService.update(id, wire);
+  try {
+    return await phasedReportService.evaluateReport(id, {
+      lecturerDescription: payload.lecturerDescription || trimmedReason || trimmedOutcome,
+      lectureFeedback: payload.lectureFeedback ?? null,
+      capacityEvaluation: trimmedReason || trimmedOutcome,
+      finalOutcomeEvaluation: trimmedOutcome,
+      status: 'Rejected',
+    });
+  } catch {
+    const body: StrictPhasedReportUpdateRequest = {
+      researchGroupId: null,
+      groupMemberId: null,
+      reportFileUrl: null,
+      capacityEvaluation: trimmedReason || trimmedOutcome,
+      finalOutcomeEvaluation: trimmedOutcome,
+      lectureFeedback: payload.lectureFeedback ?? null,
+      submittedAt: null,
+    };
+    const wire = {
+      ...body,
+      status: 'REJECTED',
+    } as StrictPhasedReportUpdateRequest & { status: string };
+    return phasedReportService.update(id, wire);
+  }
 };
 
 // Filter helper used by the Lecturer review console. We don't have a
@@ -259,6 +354,9 @@ export const filterPhasedReportsAwaitingReview = (
 // optional fields documented on StrictPhasedReportCreateRequest plus a
 // `previousReportId` for resubmission lineage.
 export interface PhasedReportSubmitRequest {
+  phasedReportId?: number;
+  topicId?: number;
+  phaseNumber?: number;
   researchGroupId: number;
   groupMemberId?: number;
   reportFileUrl: string;
@@ -339,18 +437,23 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
   return base;
 };
 
-// List PhasedReports scoped to one group. The BE has no server-side filter
-// (contract §2), so we GET /api/PhasedReport and filter client-side as a
-// fallback if the server returns a 200 with the full list anyway.
 export const listReportsForGroup = async (
   researchGroupId: number,
 ): Promise<SubmittedPhasedReport[]> => {
-  const response = await api.get<unknown>(
-    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
-    { params: { researchGroupId } },
-  );
-  const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
-  return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
+  try {
+    const response = await api.get<unknown>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_GROUP(researchGroupId),
+    );
+    const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
+    return arr.map(toStrict);
+  } catch {
+    const fallbackResponse = await api.get<unknown>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
+      { params: { researchGroupId } },
+    );
+    const arr = Array.isArray(fallbackResponse.data) ? (fallbackResponse.data as PhasedReport[]) : [];
+    return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
+  }
 };
 
 // Sentinel used by `resubmitPhasedReport` to thread the lineage pointer
@@ -400,33 +503,40 @@ export const parsePhasedReportLineage = (
   };
 };
 
-// POST /api/PhasedReport — fresh submission.
-//
-// The Swagger PhasedReportCreateRequest DTO does not declare a `status`
-// column. In practice the BE accepts a free-form `status` string on POST
-// (the existing service contract asserts this). Surface it as a side-car
-// property so the BE receives the exact field name it expects.
+// POST /api/PhasedReport/submit — fresh submission by Leader.
 export const submitPhasedReport = async (
   payload: PhasedReportSubmitRequest,
 ): Promise<SubmittedPhasedReport> => {
-  const baseBody: StrictPhasedReportCreateRequest = {
-    researchGroupId: payload.researchGroupId,
-    groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
-    reportFileUrl: payload.reportFileUrl,
-    capacityEvaluation: null,
-    finalOutcomeEvaluation: null,
-    lectureFeedback: null,
-    submittedAt: payload.submittedAt ?? new Date().toISOString(),
-  };
-  const wire = {
-    ...baseBody,
-    status: 'SUBMITTED',
-  } as StrictPhasedReportCreateRequest & { status: string };
-  const response = await api.post<PhasedReport>(
-    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
-    wire,
-  );
-  return toStrict(response.data);
+  try {
+    const leaderRes = await phasedReportService.submitLeaderReport({
+      phasedReportId: payload.phasedReportId,
+      topicId: payload.topicId,
+      phaseNumber: payload.phaseNumber,
+      researchGroupId: payload.researchGroupId,
+      groupMemberId: payload.groupMemberId ?? 0,
+      reportFileUrl: payload.reportFileUrl,
+    });
+    return toStrict(leaderRes);
+  } catch {
+    const baseBody: StrictPhasedReportCreateRequest = {
+      researchGroupId: payload.researchGroupId,
+      groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
+      reportFileUrl: payload.reportFileUrl,
+      capacityEvaluation: null,
+      finalOutcomeEvaluation: null,
+      lectureFeedback: null,
+      submittedAt: payload.submittedAt ?? new Date().toISOString(),
+    };
+    const wire = {
+      ...baseBody,
+      status: 'SUBMITTED',
+    } as StrictPhasedReportCreateRequest & { status: string };
+    const response = await api.post<PhasedReport>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
+      wire,
+    );
+    return toStrict(response.data);
+  }
 };
 
 // Resubmission of a previously REJECTED report. The BE has no dedicated

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -30,6 +30,7 @@ import {
   useSeminarRoleContext,
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
+import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
 import styles from './SeminarWorkspace.module.css';
 
 export const SeminarWorkspace = () => {
@@ -37,6 +38,8 @@ export const SeminarWorkspace = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showAttendeeFeedbackModal, setShowAttendeeFeedbackModal] = useState(false);
+  const [selectedSeminarForAttendeeFeedback, setSelectedSeminarForAttendeeFeedback] = useState<SeminarCard | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [bannerText, setBannerText] = useState('');
   const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<SeminarCard | null>(null);
@@ -128,8 +131,15 @@ export const SeminarWorkspace = () => {
     return { startTime: now.toISOString(), endTime: end.toISOString() };
   };
 
+  const seminarCounts = useMemo(() => seminars.reduce((counts, seminar) => {
+    const effective = deriveEffectiveStatus(seminar.status, seminar.endTime);
+    counts.upcoming += effective === 'UPCOMING' || effective === 'IN PROGRESS' ? 1 : 0;
+    counts.completed += effective === 'COMPLETED' ? 1 : 0;
+    return counts;
+  }, { upcoming: 0, completed: 0 }), [seminars]);
+
   // Tab filtering — uses effectiveStatus so past-endTime seminars appear in "Completed"
-  const filteredSeminars = seminars.filter((sem) => {
+  const filteredSeminars = useMemo(() => seminars.filter((sem) => {
     const effective = deriveEffectiveStatus(sem.status, sem.endTime);
     if (activeTab === 'upcoming') {
       return effective === 'UPCOMING' || effective === 'IN PROGRESS';
@@ -141,7 +151,13 @@ export const SeminarWorkspace = () => {
       return effective === 'DRAFT';
     }
     return true;
-  });
+  }), [activeTab, seminars]);
+
+  const minDateTime = useMemo(() => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16), []);
+  const announce = useCallback((message: string) => {
+    setBannerText(message);
+    setShowSuccessBanner(true);
+  }, []);
 
   // Email invite helpers
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -160,22 +176,31 @@ export const SeminarWorkspace = () => {
   // Create submit
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!seminarName.trim()) { alert('Please enter a seminar name.'); return; }
-    if (!dateTime.trim())   { alert('Please select a date and time.'); return; }
-    if (!seminarDetails.trim()) { alert('Please enter seminar details.'); return; }
+    if (!canModify) {
+      announce('Bạn không có quyền tạo Seminar.');
+      return;
+    }
+    if (!seminarName.trim()) { announce('Please enter a seminar name.'); return; }
+    if (!dateTime.trim())   { announce('Please select a date and time.'); return; }
+    if (!seminarDetails.trim()) { announce('Please enter seminar details.'); return; }
 
     // Enforce at least 1-hour-in-advance rule (belt-and-suspenders over the min attribute).
     const minTime = new Date(Date.now() + 60 * 60 * 1000);
     if (new Date(dateTime) < minTime) {
-      alert('Seminars must be scheduled at least 1 hour in advance.');
+      announce('Seminars must be scheduled at least 1 hour in advance.');
       return;
     }
 
     const { startTime, endTime } = parseDateTimeRange(dateTime);
+    const fullContent = seminarName.trim()
+      ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
+      : seminarDetails.trim();
+
     await createSeminar({
       startTime,
       endTime,
-      content: seminarDetails.trim(),
+      content: fullContent,
+      guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
       isReminderSent: sendReminder,
       status: 'Upcoming',
     });
@@ -193,9 +218,9 @@ export const SeminarWorkspace = () => {
     reminderInFlightRef.current = true;
     try {
       await doSendReminder(seminarId);
-      alert('Reminder sent successfully!');
+      announce('Reminder sent successfully.');
     } catch {
-      alert('Failed to send reminder. Please try again.');
+      announce('Failed to send reminder. Please try again.');
     } finally {
       reminderInFlightRef.current = false;
     }
@@ -285,19 +310,13 @@ export const SeminarWorkspace = () => {
           className={`${styles.tabBtn} ${activeTab === 'upcoming' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('upcoming')}
         >
-          Upcoming ({seminars.filter((s) => {
-            const eff = deriveEffectiveStatus(s.status, s.endTime);
-            return eff === 'UPCOMING' || eff === 'IN PROGRESS';
-          }).length})
+          Upcoming ({seminarCounts.upcoming})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'completed' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('completed')}
         >
-          Completed ({seminars.filter((s) => {
-            const eff = deriveEffectiveStatus(s.status, s.endTime);
-            return eff === 'COMPLETED';
-          }).length})
+          Completed ({seminarCounts.completed})
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'drafts' ? styles.activeTab : ''}`}
@@ -390,7 +409,11 @@ export const SeminarWorkspace = () => {
           <div className={styles.emptyDrafts}>
             <Inbox size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>No seminars yet</h4>
-            <p className={styles.emptyText}>Click "+ Create Seminar" to schedule your first one.</p>
+            <p className={styles.emptyText}>
+              {canModify
+                ? 'Click "+ Create Seminar" to schedule your first one.'
+                : 'No seminars scheduled or invited at this time.'}
+            </p>
           </div>
         ) : (
           filteredSeminars.map((sem) => {
@@ -476,7 +499,7 @@ export const SeminarWorkspace = () => {
 
               {/* Card Actions */}
               <div className={styles.cardActionsRow}>
-                {sem.status === 'COMPLETED' ? (
+                {(sem.effectiveStatus === 'COMPLETED' || sem.status === 'COMPLETED') ? (
                   <>
                     {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
                       <button
@@ -487,7 +510,7 @@ export const SeminarWorkspace = () => {
                         View Notes
                       </button>
                     )}
-                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
+                    {canModify && ownsSeminar(sem, currentUserId, currentRole) ? (
                       <button
                         className={styles.feedbackGradingBtn}
                         onClick={() => handleOpenFeedbackModal(sem)}
@@ -495,11 +518,17 @@ export const SeminarWorkspace = () => {
                         <ClipboardList size={14} aria-hidden />
                         Form Feedback & Grading
                       </button>
-                    )}
-                    {!canModify && (
-                      <span className={styles.viewerNoteText}>
-                        Read-only — feedback & grading are visible only to the seminar organizer.
-                      </span>
+                    ) : (
+                      <button
+                        className={styles.feedbackGradingBtn}
+                        onClick={() => {
+                          setSelectedSeminarForAttendeeFeedback(sem);
+                          setShowAttendeeFeedbackModal(true);
+                        }}
+                      >
+                        <ClipboardList size={14} aria-hidden />
+                        Gửi Form Feedback
+                      </button>
                     )}
                   </>
                 ) : (
@@ -517,7 +546,7 @@ export const SeminarWorkspace = () => {
                         className={styles.sendInviteBtn}
                         onClick={() => {
                           navigator.clipboard.writeText(sem.onlineLink);
-                          alert('Copied invite link!');
+                          announce('Invite link copied.');
                         }}
                         disabled={!isValidMeetLink(sem.onlineLink)}
                       >
@@ -581,11 +610,7 @@ export const SeminarWorkspace = () => {
                   type="datetime-local"
                   className={styles.formInput}
                   value={dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''}
-                  min={(() => {
-                    // Seminar must be scheduled at least 1 hour in advance.
-                    const minDate = new Date(Date.now() + 60 * 60 * 1000);
-                    return minDate.toISOString().slice(0, 16);
-                  })()}
+                  min={minDateTime}
                   onChange={(e) => {
                     const localValue = e.target.value; // "2026-07-29T10:00"
                     if (!localValue) { setDateTime(''); return; }
@@ -710,7 +735,7 @@ export const SeminarWorkspace = () => {
                   className={styles.copyLinkBlueBtn}
                   onClick={() => {
                     navigator.clipboard.writeText(generatedMeetLink);
-                    alert('Copied Google Meet link!');
+                    announce('Google Meet link copied.');
                   }}
                 >
                   <FileText size={14} aria-hidden />
@@ -943,6 +968,20 @@ export const SeminarWorkspace = () => {
           onSuccess={(id) => {
             void refetch(); // Refresh so aiSummary appears on card
             void id;
+          }}
+        />
+      )}
+
+      {/* Attendee / Student Feedback Modal */}
+      {showAttendeeFeedbackModal && selectedSeminarForAttendeeFeedback && (
+        <SeminarFeedbackModal
+          isOpen={showAttendeeFeedbackModal}
+          onClose={() => setShowAttendeeFeedbackModal(false)}
+          seminarId={selectedSeminarForAttendeeFeedback.seminarId}
+          seminarTitle={selectedSeminarForAttendeeFeedback.title}
+          currentUserId={currentUserId}
+          onSuccess={() => {
+            void refetch();
           }}
         />
       )}

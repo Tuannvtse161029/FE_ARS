@@ -85,7 +85,36 @@ export function validateVietnameseName(raw: string | undefined | null): string |
 export function validateEmail(raw: string | undefined | null): string | null {
   const value = (raw ?? '').trim();
   if (value.length === 0) return 'Email is required';
-  if (!EMAIL_REGEX.test(value)) return 'Invalid email format';
+  if (!value.includes('@')) return 'Email must contain @';
+  if (!EMAIL_REGEX.test(value)) return 'Invalid email format (e.g. user@example.com)';
+  return null;
+}
+
+export function validatePhoneNumber(raw: string | undefined | null): string | null {
+  const value = (raw ?? '').trim();
+  if (value.length === 0) return 'Phone number is required';
+  const cleanDigits = value.replace(/[\s\-()]/g, '');
+  if (!cleanDigits.startsWith('0')) {
+    return 'Phone number must start with 0';
+  }
+  if (!/^0\d{8,10}$/.test(cleanDigits)) {
+    return 'Phone number must start with 0 and contain 9–11 digits';
+  }
+  return null;
+}
+
+export function validatePassword(password: string | undefined | null): string | null {
+  const value = password ?? '';
+  if (value.length === 0) return 'Password is required';
+  if (value.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+  }
+  if (!PASSWORD_HAS_UPPER.test(value)) {
+    return 'Password must contain at least 1 uppercase letter';
+  }
+  if (!PASSWORD_HAS_NUMBER.test(value)) {
+    return 'Password must contain at least 1 number';
+  }
   return null;
 }
 

@@ -17,11 +17,10 @@ import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { authService } from '../../services/auth.service';
 
 const FAST_LOGIN_USERS = [
-  { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234' },
-  { label: 'Reviewer', email: 'reviewer1.ars@arsplatform.test', password: 'Reviewer1234' },
-  { label: 'Admin', email: 'admin@arsplatform.com', password: 'Password123' },
-  { label: 'Lecturer', email: 'lecturer@arsplatform.com', password: 'Lecturer1234' },
-  { label: 'Grad Student', email: 'gradstudent@arsplatform.com', password: 'Student1234' },
+  { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234', role: 'Researcher' },
+  { label: 'Reviewer', email: 'reviewer1.ars@arsplatform.test', password: 'Reviewer1234', role: 'Reviewer' },
+  { label: 'Lecturer', email: 'lecturer@arsplatform.com', password: 'Lecturer1234', role: 'Lecturer' },
+  { label: 'Grad Student', email: 'gradstudent@arsplatform.com', password: 'Student1234', role: 'Graduate Student' },
 ] as const;
 
 const Login = () => {
@@ -54,6 +53,7 @@ const Login = () => {
     defaultValues: {
       username: '',
       password: '',
+      selectedRole: '',
       // rememberMe is now managed by react-hook-form (and forwarded to
       // AuthContext.login()). Storage bucket selection happens in
       // persistAuthAndNavigate, which calls storage.setRememberMe() BEFORE
@@ -63,15 +63,20 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    // Pass the full form payload (now including rememberMe) through to the
-    // AuthContext. Yup's default keeps rememberMe as a real boolean even
-    // when the user never touched the checkbox, so this is safe.
+    // Pass the full form payload (now including rememberMe and selectedRole) through to the AuthContext.
     await login(data);
   };
 
-  const handleFastLogin = (email: string, password: string) => {
+  const handleFastLogin = (
+    email: string,
+    password: string,
+    role?: '' | 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'
+  ) => {
     setValue('username', email);
     setValue('password', password);
+    if (role) {
+      setValue('selectedRole', role);
+    }
   };
 
   // ── GIS credential Google sign-in handler ───────────────────────────────
@@ -96,6 +101,7 @@ const Login = () => {
   //     errors.
   //   - The legacy Authorization Code redirect flow (Agent 54) is no longer
   //     invoked from the Login page.
+  // ── End GIS credential Google sign-in handler ───────────────────────────
   const handleGoogleCredential = async (
     response: GoogleCredentialResponse,
   ): Promise<void> => {
@@ -126,16 +132,19 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
+      {/* Brand & Logo Header */}
       <div className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research Sharing</span>
+        <span className={styles.brandText}>Academic Research System</span>
       </div>
 
+      {/* Page Title */}
       <div className={styles.header}>
         <h1 className={styles.title}>Nice to see you again</h1>
       </div>
 
-      <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
+      {/* Login Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
         {error && (
           <div className={styles.formError} role="alert">
             {error}
@@ -185,6 +194,37 @@ const Login = () => {
               />
             )}
           />
+        </div>
+
+        <div className={styles.roleFieldWrapper}>
+          <label className={styles.fieldLabel} htmlFor="selectedRole">
+            Sign in as Role <span className={styles.optionalTag}>(Optional)</span>
+          </label>
+          <Controller
+            name="selectedRole"
+            control={control}
+            defaultValue=""
+            render={({ field }) => (
+              <select
+                {...field}
+                id="selectedRole"
+                className={styles.roleSelect}
+                disabled={isLoading || googlePending}
+              >
+                <option value="">Auto-detect Role (Default)</option>
+                <option value="Researcher">Researcher</option>
+                <option value="Reviewer">Reviewer</option>
+                <option value="Lecturer">Lecturer</option>
+                <option value="Graduate Student">Graduate Student</option>
+              </select>
+            )}
+          />
+          {errors.selectedRole?.message && (
+            <span className={styles.fieldError}>{errors.selectedRole.message}</span>
+          )}
+          <span className={styles.fieldHint}>
+            Holding multiple roles? Select your role here. You can log out anytime to switch roles.
+          </span>
         </div>
 
         <div className={styles.rememberRow}>
@@ -253,7 +293,7 @@ const Login = () => {
                   key={user.label}
                   type="button"
                   className={styles.fastLoginBtn}
-                  onClick={() => handleFastLogin(user.email, user.password)}
+                  onClick={() => handleFastLogin(user.email, user.password, user.role)}
                   disabled={isLoading}
                 >
                   {user.label}

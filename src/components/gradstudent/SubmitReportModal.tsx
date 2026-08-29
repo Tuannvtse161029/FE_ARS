@@ -21,6 +21,9 @@ export interface SubmitReportModalProps {
   // The target group + phase the student is submitting against.
   researchGroupId: number;
   groupMemberId?: number;
+  topicId?: number;
+  phaseNumber?: number;
+  phasedReportId?: number;
   // Phase identifier used in the Firebase folder path
   // (research-groups/{groupId}/phased-reports/{phaseKey}/{ts}_{name}).
   phaseKey: string;
@@ -51,6 +54,9 @@ export function SubmitReportModal({
   isOpen,
   researchGroupId,
   groupMemberId,
+  topicId,
+  phaseNumber,
+  phasedReportId,
   phaseKey,
   phaseTitle,
   lecturerName,
@@ -139,6 +145,9 @@ export function SubmitReportModal({
     const result = await submitState.submit(pickedFile, {
       researchGroupId,
       phaseKey,
+      topicId,
+      phaseNumber,
+      phasedReportId: phasedReportId ?? resubmittingReport?.id,
       isResubmission: Boolean(resubmittingReport),
       previousReportId: resubmittingReport?.id,
       ...(typeof groupMemberId === 'number' ? { groupMemberId } : {}),

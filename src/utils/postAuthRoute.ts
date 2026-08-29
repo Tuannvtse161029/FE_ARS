@@ -62,22 +62,12 @@ export function isFirstTimeOnboardingUser(snapshot: PostAuthSnapshot): boolean {
     return false;
   }
 
-  // ── 1. Explicit spec branch ─────────────────────────────────────────────
+  // ── 1. Explicit Google onboarding spec branch ───────────────────────────
+  // ONLY true when the backend explicitly returned isNewUser: true or requiresOnboarding: true
+  // from the Google login endpoint (/api/Auth/google-login)
   if (
     (snapshot.isNewUser === true || snapshot.requiresOnboarding === true) &&
     isApprovedRoleListEmpty(snapshot.approvedRoles)
-  ) {
-    return true;
-  }
-
-  // ── 2. Compatibility fallback (unassigned business role & unverified) ───
-  if (
-    !hasNonEmptyRole(snapshot.role) &&
-    !hasPositiveRoleId(snapshot.roleId) &&
-    (snapshot.verificationStatus === null ||
-      snapshot.verificationStatus === undefined ||
-      snapshot.isNewUser === true ||
-      snapshot.requiresOnboarding === true)
   ) {
     return true;
   }

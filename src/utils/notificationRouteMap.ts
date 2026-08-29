@@ -74,8 +74,8 @@ export type NotificationKind =
   | 'role-request-rejected'
   | 'account-status-changed'
   | 'account-platform-update'
+  | 'follower-new'
   | 'system-update'
-  // Catch-all
   | 'unknown';
 
 interface NotificationRouteSpec {
@@ -343,6 +343,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     ] },
   },
 
+  // ── Follower events (all roles) ──────────────────────────────────────────
+  {
+    kind: 'follower-new',
+    prefix: '[Follower]',
+    spec: { path: ROUTES.PROFILE, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'follower-new',
+    prefix: 'theo dõi',
+    spec: { path: ROUTES.PROFILE, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+
   // ── Forum / reply (all roles) ─────────────────────────────────────────────
   {
     kind: 'forum-reply',
@@ -353,17 +369,37 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   },
 ];
 
-// Infer a notification kind from the BE-supplied message text. The BE
-// authors the message, so the prefixes are a contract — if the BE changes
-// the wording, this function will return `unknown` and the UI falls back
-// to the safe destination. This is safer than guessing.
 export function inferNotificationKind(message: string): NotificationKind {
-  const normalized = (message ?? '').trim();
+  const normalized = (message ?? '').trim().toLowerCase();
   for (const { kind, prefix } of ROUTE_SPECS) {
-    if (normalized.toLowerCase().startsWith(prefix.toLowerCase())) {
+    if (normalized.startsWith(prefix.toLowerCase())) {
       return kind;
     }
   }
+
+  // Fallback keyword inspection for natural language BE notifications
+  if (normalized.includes('theo dõi') || normalized.includes('follow')) {
+    return 'follower-new';
+  }
+  if (normalized.includes('vai trò') || normalized.includes('phê duyệt') || normalized.includes('role')) {
+    return 'role-request-accepted';
+  }
+  if (normalized.includes('phản biện') || normalized.includes('review')) {
+    return 'new-review-request';
+  }
+  if (normalized.includes('hội thảo') || normalized.includes('seminar')) {
+    return 'seminar-invitation';
+  }
+  if (normalized.includes('bình luận') || normalized.includes('bài viết') || normalized.includes('diễn đàn') || normalized.includes('forum')) {
+    return 'forum-reply';
+  }
+  if (normalized.includes('báo cáo') || normalized.includes('giai đoạn') || normalized.includes('report')) {
+    return 'student-report-submitted';
+  }
+  if (normalized.includes('tiền') || normalized.includes('ví') || normalized.includes('thanh toán') || normalized.includes('wallet')) {
+    return 'payment-result';
+  }
+
   return 'unknown';
 }
 

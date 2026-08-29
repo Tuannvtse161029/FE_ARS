@@ -466,9 +466,8 @@ export const CompleteGoogleRegistration = () => {
           requestStatus: result.requestStatus,
         });
 
-        // The AuthContext method already navigated to /forum. We don't
-        // navigate again — just release the local submit lock so the
-        // dialog can show the success state if React re-renders.
+        // Navigate immediately to /forum with Pending Approval banner
+        navigate(ROUTES.FORUM, { replace: true });
       } catch (err: unknown) {
         const message =
           err instanceof Error && err.message
@@ -480,7 +479,7 @@ export const CompleteGoogleRegistration = () => {
         setIsSubmitting(false);
       }
     },
-    [profile, validate, form, completeGoogleRegistration],
+    [profile, validate, form, completeGoogleRegistration, navigate],
   );
 
   // ── 7. Render guards ───────────────────────────────────────────────────
@@ -488,74 +487,17 @@ export const CompleteGoogleRegistration = () => {
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
-  // Approved users with an active business role must not see the dialog.
+  // Approved users or users who have already submitted onboarding must not see the dialog.
   const alreadyApproved =
     profile.isActive === true &&
     profile.roleId != null &&
     profile.roleId > 0;
 
-  if (import.meta.env?.DEV) {
-    // eslint-disable-next-line no-console
-    console.info('[CompleteGoogleRegistration:diag] Profile check', {
-      profile,
-      alreadyApproved,
-      checks: {
-        isActive: profile.isActive === true,
-        roleIdNotNull: profile.roleId != null,
-        roleIdPositive: profile.roleId != null && profile.roleId > 0,
-      },
-    });
-  }
-
-  if (alreadyApproved) {
+  if (alreadyApproved || (submission && submission.status === 'submitted')) {
     return <Navigate to={ROUTES.FORUM} replace />;
   }
 
   const initials = buildInitials(profile.fullName);
-
-  // Submitted-then-refreshed: show success + redirect to /forum.
-  if (submission && submission.status === 'submitted') {
-    return (
-      <div className={styles.page}>
-        <div
-          className={styles.card}
-          data-testid="onboarding-submitted"
-          role="status"
-          aria-live="polite"
-        >
-          <header className={styles.header}>
-            <img src={ARSLogo} alt="ARS" className={styles.logo} />
-            <h1 className={styles.title}>Your role request has been submitted</h1>
-            <p className={styles.subtitle}>
-              An administrator will review your request and activate your
-              role. You currently have read-only access to the Forum while
-              we wait.
-            </p>
-          </header>
-          <div className={styles.actions}>
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={() => navigate(ROUTES.FORUM, { replace: true })}
-            >
-              Go to the Forum
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              fullWidth
-              onClick={handleSignOut}
-            >
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Non-dismissible dialog — the only escape is the explicit Sign out.
   return (

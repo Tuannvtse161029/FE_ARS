@@ -34,6 +34,12 @@ export interface Profile {
   userId: number;
   /** Full display name. Nullable per the BE contract. */
   fullName?: string | null;
+  /** Contact email. Nullable per the BE contract. */
+  email?: string | null;
+  /** Avatar public image URL. Nullable. */
+  avatarUrl?: string | null;
+  /** Primary role name (e.g. Researcher, Lecturer, Reviewer). */
+  roleName?: string | null;
   /** Academic / professional title. Nullable per the BE contract. */
   academicTitle?: string | null;
   /** Phone number (international format expected). Nullable per the BE contract. */
@@ -46,6 +52,23 @@ export interface Profile {
   keywords?: string[] | null;
   /** Short display string used for the avatar badge (e.g. "ND"). Nullable. */
   avatarInitials?: string | null;
+  /** Professional H-Index metric */
+  hindex?: number | null;
+  /** Total citations across publications */
+  totalCitations?: number | null;
+  /** Total published papers count */
+  publicationCount?: number | null;
+  /** Research major field */
+  majorFieldName?: string | null;
+  /** Research subfield */
+  subFieldName?: string | null;
+  /** Review fee in VND */
+  reviewFee?: number | null;
+  /** Reviewer availability flag */
+  isAvailable?: boolean | null;
+  /** ORCID identifier and verification */
+  orcidId?: string | null;
+  isOrcidVerified?: boolean | null;
   /** ISO 8601 date string (`YYYY-MM-DD`). Nullable. */
   dateOfBirth?: string | null;
   /** Free-form gender string (BE doesn't publish an enum). Nullable. */

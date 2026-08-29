@@ -323,6 +323,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authService.login(credentials);
       const assignedRoles: UserRole[] = response.roles ?? [];
 
+      // If BE returns Guest or user is pending approval, persist Guest and navigate to Forum
+      if (response.role === 'Guest' || response.verificationStatus === 'Pending' || !response.isActive) {
+        await persistAuthAndNavigate(response, 'Guest', credentials.rememberMe ?? false);
+        return;
+      }
+
+      // If user explicitly picked a role on the login form, sign in with that role
+      if (credentials.selectedRole && credentials.selectedRole.trim()) {
+        const chosenRole = credentials.selectedRole.trim();
+        await persistAuthAndNavigate(response, chosenRole, credentials.rememberMe ?? false);
+        return;
+      }
+
       if (assignedRoles.length > 1) {
         // Multi-role user — show picker. Don't persist auth yet; we wait for
         // the user to pick a role. The picker modal calls confirmRoleSelection
@@ -340,7 +353,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Single-role (or zero — fall back to BE's `role`) — proceed.
-      const roleToUse = assignedRoles[0] ?? response.role;
+      const roleToUse = response.role ?? assignedRoles[0] ?? 'Researcher';
       await persistAuthAndNavigate(response, roleToUse, credentials.rememberMe ?? false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
@@ -708,33 +721,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             idempotencyKey: `complete-google-registration-${userId || Date.now()}`,
           });
 
-        // Refetch the authoritative user so the in-memory store reflects
-        // the BE's new pending state. We swallow errors so a transient
-        // BE blip doesn't break the navigation.
-        try {
-          const fresh = await userService.getById(userId);
-          if (fresh) {
-            storage.setUser(fresh);
-            authStore.updateUser({
-              roleName: fresh.roleName ?? null,
-              roleId: fresh.roleId ?? null,
-              isActive: fresh.isActive,
-              verificationStatus: fresh.verificationStatus,
-              accountTier: fresh.accountTier,
-              effectiveRole: fresh.effectiveRole,
-            });
-            if (fresh.effectiveRole) {
-              authStore.setEffectiveRole(fresh.effectiveRole);
-            }
-          }
-        } catch {
-          /* defensive — the user is already past the submit gate */
-        }
+        // Update store and storage with pending Guest state directly from response
+        const guestUser = {
+          ...(authStore.user || {}),
+          id: userId,
+          roleName: 'Guest',
+          roleId: 0,
+          isActive: false,
+          verificationStatus: 'Pending' as const,
+          effectiveRole: 'Guest' as const,
+          isNewUser: false,
+          requiresOnboarding: false,
+        };
+        storage.setUser(guestUser as any);
+        authStore.updateUser(guestUser);
+        authStore.setEffectiveRole('Guest');
 
-        // The new account is expected to remain pending until Admin
-        // approval. route the user to /forum so the verified-guard
-        // renders the pending banner. We do NOT navigate to a role
-        // workspace — the role-request lifecycle is gated server-side.
+        // Route immediately to /forum with Pending approval banner
         navigate(ROUTES.FORUM, { replace: true });
 
         return {
@@ -782,44 +785,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [authStore, navigate]);
 
   const logout = () => {
-    // Agent 53 — null-safe for Guest sessions. `authStore.logout()` and
-    // `clearAuthSession()` are both safe to call when there is no token
-    // or no user — Guest users have a hydrated `effectiveRole: 'Guest'`
-    // and `user: null`, and the cleanup routine no-ops on empty storage.
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
-      // Dev-only: log the logout decision so a "Guest clicks logout but
-      // stays on the page" bug surfaces immediately in the console. We
-      // intentionally include neither the token nor the email — only
-      // the derived session bucket + the effective role so the trace is
-      // useful without leaking sensitive state.
-      if (import.meta.env?.DEV) {
-        const isAuthenticated = authStore.isAuthenticated;
-        const storedToken =
-          typeof window !== 'undefined'
-            ? sessionStorage.getItem('ars_token') ??
-              localStorage.getItem('ars_token')
-            : null;
-        // eslint-disable-next-line no-console
-        console.info('[auth:logout] Guest-aware logout dispatched', {
-          effectiveRole: authStore.effectiveRole,
-          hasStoredToken: storedToken !== null,
-          isAuthenticated,
-          willNavigateTo: ROUTES.LOGIN,
-        });
-      }
-      // Clear the welcome-back signal alongside the rest of the auth state.
-      // The next successful login will flip it back to true for the new user
-      // — the banner must never linger across a logout/login boundary.
+      setIsLoading(false);
+      setError(null);
       useWelcomeSignal.getState().reset();
-      void clearAuthSession();
+      clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
       navigate(ROUTES.LOGIN, { replace: true });
     } finally {
-      // Release the guard on the next tick so the user can re-trigger
-      // logout from another surface (e.g. after a session recovery).
       queueMicrotask(() => {
         logoutInFlightRef.current = false;
       });
@@ -839,10 +815,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
     try {
-      // Force-clear the welcome signal too. A 401/403-driven wipe must
-      // leave no trace of the previous user's session.
+      setIsLoading(false);
+      setError(null);
       useWelcomeSignal.getState().reset();
-      void clearAuthSession();
+      clearAuthSession();
       authStore.logout();
       setPendingRoleSelection(null);
     } finally {
@@ -876,12 +852,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const syncUserFromBE = async () => {
       const userId = authStore.user?.id;
-      if (!authStore.isAuthenticated || !userId || userId === 0) return;
+      if (!authStore.isAuthenticated || !userId || userId <= 0) return;
 
-      // Skip sync if this is a fresh first-time Google user — the login
-      // response already has the authoritative data and we must not lose
-      // the `isNewUser`/`requiresOnboarding` signals.
-      if (authStore.user?.isNewUser === true || authStore.user?.requiresOnboarding === true) {
+      // Strictly skip sync unless the user is already an APPROVED, ACTIVE business role.
+      // Unapproved users (Guest, Pending verification, isActive=false/null, first-time Google)
+      // will always receive 403 Forbidden from /api/User/{id} on the backend.
+      const isApprovedActive =
+        authStore.user?.isActive === true &&
+        authStore.user?.verificationStatus === 'Accepted' &&
+        Boolean(authStore.user?.roleName) &&
+        authStore.user?.roleName !== 'Guest' &&
+        authStore.effectiveRole !== 'Guest' &&
+        authStore.user?.isNewUser !== true &&
+        authStore.user?.requiresOnboarding !== true;
+
+      if (!isApprovedActive) {
         return;
       }
 

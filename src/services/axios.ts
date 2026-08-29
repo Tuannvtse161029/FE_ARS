@@ -35,21 +35,33 @@ api.interceptors.request.use(
 // the navigation happens immediately after.
 api.interceptors.response.use(
   (response) => {
-    const url = response.config.url ?? '';
-    if (url.includes('/api/auth/login') || url.includes('/api/auth/google-login') || url.includes('/api/auth/register')) {
+    const url = (response.config.url ?? '').toLowerCase();
+    if (url.includes('/api/auth/')) {
       sessionFailureHandled = false;
     }
     return response;
   },
   (error: AxiosError<AxiosErrorResponse>) => {
-    if (error.response?.status === 401 && !sessionFailureHandled) {
+    const requestUrl = (error.config?.url ?? '').toLowerCase();
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    // Auth endpoints (login, register, verify-otp, send-approval-email, etc.) and
+    // unauthenticated auth pages (/verify-email, /register, /login) must NOT trigger hard redirect to /login on 401.
+    const isAuthEndpoint = requestUrl.includes('/api/auth/') || requestUrl.includes('/api/email/');
+    const isAuthPage =
+      currentPath === '/login' ||
+      currentPath === '/register' ||
+      currentPath === '/verify-email' ||
+      currentPath.startsWith('/forgot-password') ||
+      currentPath === '/reset-password';
+
+    const hasToken = Boolean(
+      typeof window !== 'undefined' &&
+      (localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token'))
+    );
+
+    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled && hasToken) {
       sessionFailureHandled = true;
-      // Fire-and-forget — local cleanup removes the token and the redirect
-      // happens immediately. Repeated 401s from in-flight requests are
-      // rejected without starting another cleanup/redirect cycle.
-      // Static import keeps Rollup from emitting a separate dynamic chunk
-      // (and removes the "dynamically imported but also statically imported"
-      // warning that Vercel surfaces on cold builds).
       clearAuthSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';

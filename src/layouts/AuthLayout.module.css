@@ -9,14 +9,12 @@
   width: 100%;
   background-color: var(--ars-paper);
   font-family: var(--font-family-ui);
-  overflow: hidden;
 }
 
 .authCard {
   display: flex;
   width: 100%;
   min-height: 100vh;
-  overflow: hidden;
 }
 
 /* ── Left Panel — Branded Wallpaper ─────────────────────────── */
@@ -47,11 +45,14 @@
 .rightPanel {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: var(--space-8) var(--space-6);
   background-color: var(--ars-paper);
   position: relative;
+  overflow-y: auto;
+  max-height: 100vh;
+  box-sizing: border-box;
 }
 
 /* Thin constellation accent on panel edge */
@@ -73,7 +74,9 @@
 
 .formContainer {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-4) 0;
 }
 
 /* ── Tablet ──────────────────────────────────────────────── */

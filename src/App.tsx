@@ -13,6 +13,7 @@ import './styles/globals.css';
 // on one of them and they share no heavy dependencies with each other.
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { Landing } from './pages/Landing';
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
@@ -77,6 +78,7 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
+const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => ({ default: m.LegalPolicy })));
 
 /**
  * Suspense fallback used by every lazy route. Keep it intentionally neutral
@@ -107,6 +109,10 @@ const App = () => {
       <AuthProvider>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
+            {/* Public project introduction. It intentionally sits outside
+                PublicRoute so both signed-out and returning users can visit it. */}
+            <Route path={ROUTES.LANDING} element={<Landing />} />
+
             {/* Public Routes */}
             <Route element={<PublicRoute />}>
               <Route element={<AuthLayout />}>
@@ -118,6 +124,10 @@ const App = () => {
                 <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationLanding />} />
               </Route>
             </Route>
+
+            {/* Legal pages - Publicly accessible */}
+            <Route path={ROUTES.PRIVACY_POLICY} element={<LegalPolicy />} />
+            <Route path={ROUTES.TERMS_OF_SERVICE} element={<LegalPolicy />} />
 
             {/* Agent 52 — First-time Google-user onboarding. Renders outside
                 the AuthLayout / PublicRoute chain because the page controls
@@ -153,11 +163,8 @@ const App = () => {
                 </Route>
 
                 {/* Seminar workspace is shared by Lecturer (manage) and
-                    Graduate Student (accept / decline invitation, view
-                    schedule). Per the notification-routing spec the dropdown
-                    only marks-as-read and navigates — accept / decline lives
-                    on the seminar page itself. */}
-                <Route element={<RoleRouteGuard allow={['Lecturer', 'Graduate Student']} />}>
+                    Researcher (view schedule, join Meet, submit feedback). */}
+                <Route element={<RoleRouteGuard allow={['Lecturer', 'Researcher']} />}>
                   <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
                 </Route>
 
@@ -210,6 +217,9 @@ const App = () => {
                 />
                 <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
+                <Route path="/profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile" element={<Profile />} />
                 <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
                 <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
                 <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />
@@ -237,7 +247,6 @@ const App = () => {
                     )
                   }
                 />
-                <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
               </Route>
             </Route>
 

@@ -34,6 +34,9 @@ export interface SubmitOptions {
   researchGroupId: number;
   phaseKey: string;
   groupMemberId?: number;
+  phasedReportId?: number;
+  topicId?: number;
+  phaseNumber?: number;
   isResubmission?: boolean;
   previousReportId?: number;
 }
@@ -111,6 +114,9 @@ export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
           researchGroupId: options.researchGroupId,
           reportFileUrl: pdfUrl,
           submittedAt: new Date().toISOString(),
+          ...(typeof options.phasedReportId === 'number' ? { phasedReportId: options.phasedReportId } : {}),
+          ...(typeof options.topicId === 'number' ? { topicId: options.topicId } : {}),
+          ...(typeof options.phaseNumber === 'number' ? { phaseNumber: options.phaseNumber } : {}),
         };
         if (typeof options.groupMemberId === 'number') {
           request.groupMemberId = options.groupMemberId;

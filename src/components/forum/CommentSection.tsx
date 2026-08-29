@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Send,
@@ -8,7 +9,9 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  ThumbsUp,
 } from 'lucide-react';
+import api from '../../services/axios';
 import {
   useForumComments,
   useForumCommentMutations,
@@ -16,6 +19,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ReportModal } from './ReportModal';
+import { formatRelativeTime } from '../../utils/formatDate';
+import { storage } from '../../utils/storage';
 import type { ForumComment } from '../../types/forum.types';
 import styles from './CommentSection.module.css';
 
@@ -89,8 +94,37 @@ export const CommentSection = ({
   error: externalError,
   onRefetch: externalRefetch,
 }: CommentSectionProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isVerified } = usePermissions();
+  const stored = storage.getUser();
+  const currentUserId = user?.userId ?? stored?.id ?? null;
+  const currentUserName =
+    stored?.fullName ?? user?.username ?? stored?.username ?? 'You';
+
+  const [resolvedNames, setResolvedNames] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadNames() {
+      try {
+        const res = await api.get('/api/ProfessionalProfile');
+        if (!cancelled && Array.isArray(res.data)) {
+          const map: Record<number, string> = {};
+          for (const item of res.data) {
+            if (item.userId && item.fullName) {
+              map[item.userId] = item.fullName;
+            }
+          }
+          setResolvedNames((prev) => ({ ...map, ...prev }));
+        }
+      } catch {}
+    }
+    loadNames();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Only call the hook when the parent has NOT supplied a comments list.
   // When the parent supplies one (Agent 42 single-fetch pattern), we still
   // call the hook but ignore its data — this keeps the section's
@@ -105,7 +139,8 @@ export const CommentSection = ({
   const error = externalError ?? fetched.error;
   const refetch =
     externalRefetch ?? (() => fetched.refetch() as unknown as Promise<void>);
-  const { create, update, remove } = useForumCommentMutations();
+  const { create, update, remove, toggleVote } = useForumCommentMutations();
+  const [localComments, setLocalComments] = useState<ForumComment[]>(comments);
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -115,6 +150,11 @@ export const CommentSection = ({
     id: number;
     preview: string;
   } | null>(null);
+
+  useEffect(() => {
+    setLocalComments(comments);
+  }, [comments]);
+
   // Backward-compatible state: the section still works in isolation when
   // no parent opts into controlled mode.
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -129,7 +169,61 @@ export const CommentSection = ({
     }
   };
 
-  const currentUserId = user?.userId;
+  const handleToggleVote = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId || !isVerified || !currentUserId) return;
+
+    const previousIsUpvoted = Boolean(comment.isUpvoted);
+    const previousCount = comment.upvoteCount ?? 0;
+    const optimisticIsUpvoted = !previousIsUpvoted;
+    const optimisticCount = optimisticIsUpvoted
+      ? previousCount + 1
+      : Math.max(0, previousCount - 1);
+
+    // Optimistic update
+    setLocalComments((prev) =>
+      prev.map((c) =>
+        c.id === targetId || c.forumCommentId === targetId
+          ? { ...c, isUpvoted: optimisticIsUpvoted, upvoteCount: optimisticCount }
+          : c
+      )
+    );
+
+    try {
+      const response = await toggleVote(targetId);
+      if (response) {
+        setLocalComments((prev) =>
+          prev.map((c) =>
+            c.id === targetId || c.forumCommentId === targetId
+              ? {
+                  ...c,
+                  isUpvoted: response.isUpvoted,
+                  upvoteCount: response.upvoteCount,
+                }
+              : c
+          )
+        );
+      } else {
+        // Rollback on failure
+        setLocalComments((prev) =>
+          prev.map((c) =>
+            c.id === targetId || c.forumCommentId === targetId
+              ? { ...c, isUpvoted: previousIsUpvoted, upvoteCount: previousCount }
+              : c
+          )
+        );
+      }
+    } catch {
+      // Rollback on error
+      setLocalComments((prev) =>
+        prev.map((c) =>
+          c.id === targetId || c.forumCommentId === targetId
+            ? { ...c, isUpvoted: previousIsUpvoted, upvoteCount: previousCount }
+            : c
+        )
+      );
+    }
+  };
 
   const submitNewComment = async () => {
     const trimmed = draft.trim();
@@ -144,14 +238,16 @@ export const CommentSection = ({
     setSubmitting(false);
     if (result) {
       setDraft('');
-      await refetch();
+      setLocalComments((prev) => [...prev, result]);
+      void refetch();
     } else {
       setActionError('Failed to post comment. Please try again.');
     }
   };
 
   const startEdit = (comment: ForumComment) => {
-    setEditingId(comment.id);
+    const targetId = comment.id || comment.forumCommentId || 0;
+    setEditingId(targetId);
     setEditDraft(comment.content ?? '');
     setActionError(null);
   };
@@ -162,11 +258,13 @@ export const CommentSection = ({
   };
 
   const saveEdit = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId) return;
     const trimmed = editDraft.trim();
     if (!trimmed) return;
     setSubmitting(true);
     setActionError(null);
-    const result = await update(comment.id, {
+    const result = await update(targetId, {
       userId: comment.userId ?? currentUserId ?? undefined,
       content: trimmed,
       replyId: comment.replyId ?? undefined,
@@ -176,30 +274,64 @@ export const CommentSection = ({
     if (result) {
       setEditingId(null);
       setEditDraft('');
-      await refetch();
+      setLocalComments((prev) =>
+        prev.map((c) =>
+          c.id === targetId || c.forumCommentId === targetId
+            ? { ...c, content: trimmed, updatedAt: new Date().toISOString() }
+            : c,
+        ),
+      );
+      void refetch();
     } else {
       setActionError('Failed to update comment. Please try again.');
     }
   };
 
   const deleteComment = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId) return;
     const confirmed = window.confirm('Delete this comment? This cannot be undone.');
     if (!confirmed) return;
     setSubmitting(true);
     setActionError(null);
-    const ok = await remove(comment.id);
+    const ok = await remove(targetId);
     setSubmitting(false);
     if (ok) {
-      await refetch();
+      setLocalComments((prev) =>
+        prev.filter((c) => c.id !== targetId && c.forumCommentId !== targetId),
+      );
+      void refetch();
     } else {
       setActionError('Failed to delete comment. Please try again.');
     }
   };
 
   const renderAuthorLabel = (comment: ForumComment): string => {
-    if (comment.userId == null) return 'Anonymous';
-    const cached = authorDisplayByUserId?.[comment.userId];
-    return cached ?? `User ${comment.userId}`;
+    if (typeof comment.fullName === 'string' && comment.fullName.trim()) {
+      return comment.fullName.trim();
+    }
+    if (typeof comment.author === 'string' && comment.author.trim()) {
+      return comment.author.trim();
+    }
+    if (currentUserId != null && comment.userId === currentUserId) {
+      return currentUserName;
+    }
+    if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
+      return authorDisplayByUserId[comment.userId];
+    }
+    if (comment.userId != null && resolvedNames[comment.userId]) {
+      return resolvedNames[comment.userId];
+    }
+    if (comment.userId != null) {
+      return `User #${comment.userId}`;
+    }
+    return 'Anonymous';
+  };
+
+  const handleCommenterClick = (userId?: number | null) => {
+    if (userId) {
+      navigate(`/profile/${userId}`);
+    }
   };
 
   return (
@@ -215,7 +347,7 @@ export const CommentSection = ({
       >
         <MessageSquare size={16} />
         <span>
-          {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
+          {localComments.length} {localComments.length === 1 ? 'Comment' : 'Comments'}
         </span>
         {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
       </button>
@@ -241,27 +373,32 @@ export const CommentSection = ({
             </div>
           )}
 
-          {!isLoading && !error && comments.length === 0 && (
+          {!isLoading && !error && localComments.length === 0 && (
             <div className={styles.stateMessage}>
               No comments yet. Be the first to start the conversation.
             </div>
           )}
 
-          {!isLoading && !error && comments.length > 0 && (
+          {!isLoading && !error && localComments.length > 0 && (
             <ul className={styles.commentList}>
-              {comments.map((comment) => {
+              {localComments.map((comment) => {
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
-                const isEditing = editingId === comment.id;
+                const isEditing = editingId === (comment.id || comment.forumCommentId);
                 return (
                   <li key={comment.id} className={styles.commentItem}>
                     <div className={styles.commentMeta}>
-                      <span className={styles.commentAuthor}>
+                      <span
+                        className={styles.commentAuthor}
+                        onClick={() => handleCommenterClick(comment.userId)}
+                        style={{ cursor: comment.userId ? 'pointer' : 'default' }}
+                        title={comment.userId ? `View ${renderAuthorLabel(comment)}'s profile` : undefined}
+                      >
                         {renderAuthorLabel(comment)}
                       </span>
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>
-                          {new Date(comment.createdAt).toLocaleString()}
+                          {formatRelativeTime(comment.createdAt)}
                         </span>
                       )}
                     </div>
@@ -300,8 +437,26 @@ export const CommentSection = ({
                       </p>
                     )}
 
-                    {!isEditing && isVerified && (
+                    {!isEditing && (
                       <div className={styles.commentActions}>
+                        {isVerified && (
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnUpvote} ${
+                              comment.isUpvoted ? styles.actionBtnUpvoted : ''
+                            }`}
+                            onClick={() => handleToggleVote(comment)}
+                            aria-label={comment.isUpvoted ? 'Unlike comment' : 'Like comment'}
+                            title={comment.isUpvoted ? 'Bỏ thích bình luận' : 'Thích bình luận'}
+                          >
+                            <ThumbsUp
+                              size={14}
+                              fill={comment.isUpvoted ? 'currentColor' : 'none'}
+                            />
+                            <span>{comment.upvoteCount ?? 0}</span>
+                          </button>
+                        )}
+
                         {isOwner && (
                           <>
                             <button
@@ -325,20 +480,22 @@ export const CommentSection = ({
                             </button>
                           </>
                         )}
-                        <button
-                          type="button"
-                          className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                          onClick={() =>
-                            setReportTarget({
-                              id: comment.id,
-                              preview: (comment.content ?? '').slice(0, 60),
-                            })
-                          }
-                          aria-label="Report comment"
-                        >
-                          <Flag size={14} />
-                          Report
-                        </button>
+                        {isVerified && (
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                            onClick={() =>
+                              setReportTarget({
+                                id: comment.id,
+                                preview: (comment.content ?? '').slice(0, 60),
+                              })
+                            }
+                            aria-label="Report comment"
+                          >
+                            <Flag size={14} />
+                            Report
+                          </button>
+                        )}
                       </div>
                     )}
                   </li>

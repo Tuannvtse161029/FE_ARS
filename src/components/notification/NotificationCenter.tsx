@@ -26,7 +26,8 @@ interface NotificationCenterProps {
 // owns no global state, no localStorage, and no fabricated rows.
 export function NotificationCenter({ userId, onNavigate }: NotificationCenterProps): JSX.Element {
   const { user } = useAuth();
-  const resolvedUserId = typeof userId === 'number' ? userId : user?.userId ?? null;
+  const isGuest = user?.role === 'Guest' || !user?.isActive;
+  const resolvedUserId = isGuest ? null : (typeof userId === 'number' ? userId : user?.userId ?? null);
   const role = user?.role ?? null;
 
   const {
@@ -45,12 +46,10 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
   // click handler twice while the optimistic UI is updating.
   const pendingRef = useRef<Set<number>>(new Set());
 
-  // Outside-click + Escape close. Bound once on mount, torn down on
-  // unmount. We listen on `mousedown` (not `click`) so the trigger
-  // itself doesn't immediately close the dropdown it just opened.
+  // Outside-click + Escape close. Pointer events cover mouse, touch, and pen.
   useEffect(() => {
     if (!isOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       if (!wrapperRef.current) return;
       if (!wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -61,10 +60,10 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKey);
     };
   }, [isOpen]);
@@ -86,19 +85,10 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
           // Only mark-read for unread rows. Reading the BE on an already-read
           // row is wasted bandwidth and would re-bump the unread badge if the
           // BE round-trips a fresh optimistic row.
-          if (!notification.isRead) {
-            const ok = await markRead(notification.id);
-            if (!ok) {
-              // The BE refused the update — keep the dropdown open so the
-              // user can retry. Navigation must NOT happen on a failed
-              // mark-read so the optimistic flip doesn't lie to the user.
-              return;
-            }
+          if (!notification.isRead && notification.id > 0) {
+            void markRead(notification.id);
           }
-          // The resolver always returns a route (a safe fallback at minimum),
-          // so the dropdown closes consistently and the user lands on a
-          // page they can actually reach.
-          const target = resolveNotificationRoute(notification.message, role);
+          const target = resolveNotificationRoute(notification.message ?? '', role);
           setIsOpen(false);
           onNavigate(target);
         } finally {
@@ -211,7 +201,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
             ) : (
               <ul className={styles.itemList} data-testid="notification-list">
                 {notifications.map((n) => {
-                  const kind = inferNotificationKind(n.message);
+                  const kind = inferNotificationKind(n.message ?? '');
                   return (
                     <li key={n.id} style={{ listStyle: 'none' }}>
                       <button

@@ -6,11 +6,9 @@ import shared from '../components/PublicationShared.module.css';
 import type { CatalogQuery, PublicationPaper } from '../types/publication';
 import { PublishedPaperCard } from './PublishedPaperCard';
 import styles from './HomeResearchCatalog.module.css';
+import { publicReviewerName } from '../types/publication';
 
 const PAGE_SIZE = 8;
-
-const publicReviewerName = (paper: PublicationPaper): string | null =>
-  paper.reviewerIdentityPublic ? paper.reviewer?.reviewerName ?? null : null;
 
 const SORT_OPTIONS: Array<{ value: NonNullable<CatalogQuery['sort']>; label: string }> = [
   { value: 'PUBLISHED_DESC', label: 'Newest published' },

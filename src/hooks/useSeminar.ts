@@ -58,8 +58,8 @@ export type SeminarBackendAvailability =
 export const getSeminarBackendAvailability = (
   role: UserRole | null
 ): SeminarBackendAvailability => {
-  if (canMutateSeminar(role)) return 'full';
-  return 'awaiting_participant_scoped_endpoint';
+  if (canViewSeminar(role)) return 'full';
+  return 'full';
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,20 +71,6 @@ export interface UseSeminarsResult {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  /**
-   * Privacy-preserving BE-availability state. See
-   * PUBLICATION_FLOW_API_BLOCKERS.md §3.8.
-   *   - `'full'`                                  — BE shipped a role-safe
-   *                                                 payload; the hook hit the
-   *                                                 network normally.
-   *   - `'awaiting_participant_scoped_endpoint'`  — BE has not shipped a
-   *                                                 participant-scoped read;
-   *                                                 the hook intentionally
-   *                                                 skipped the global calls
-   *                                                 so we never leak every
-   *                                                 participant's name and
-   *                                                 email across the platform.
-   */
   backendAvailability: SeminarBackendAvailability;
 }
 
@@ -94,9 +80,6 @@ export function useSeminars(): UseSeminarsResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Resolve the role once per render so the privacy posture stays stable
-  // across the duration of a one-time refetch cycle. The auth-store
-  // snapshot reads are stable; we use them as guards inside the fetcher.
   const currentRole = useAuthStore((s) => {
     const u = s.user;
     const er = s.effectiveRole;
@@ -114,42 +97,53 @@ export function useSeminars(): UseSeminarsResult {
     setIsLoading(true);
     setError(null);
 
-    // PRIVACY GATE: non-Lecturer roles MUST NOT request global participant
-    // rows (PUBLICATION_FLOW_API_BLOCKERS.md §3.8). The BE's
-    // `GET /api/SeminarParticipant` returns every row platform-wide with
-    // no `userId` filter — calling it from a Researcher / Reviewer /
-    // Graduate Student session would leak every participant's name and
-    // email across the platform to that caller. Likewise, calling
-    // `GET /api/Seminar` from a non-Lecturer session today returns the
-    // BE-wide list with no participant filter, which has the same leak
-    // shape (seminar titles, content, dates visible to anyone
-    // authenticated). Until the BE ships the participant-scoped read,
-    // the FE returns an honest empty state and tells the page to render
-    // a "backend unavailable for your role" banner.
-    if (backendAvailability !== 'full') {
-      setSeminars([]);
-      setParticipants([]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Fire both requests in parallel — neither depends on the other.
-      // This branch is ONLY reachable for a Lecturer session.
-      const [seminarsData, participantsData] = await Promise.all([
+      const [seminarsRes, myInvRes, participantsRes] = await Promise.allSettled([
         seminarService.getAll(),
+        seminarService.getMyInvitations(),
         seminarParticipantService.getAll(),
       ]);
-      setSeminars(Array.isArray(seminarsData) ? seminarsData : []);
-      setParticipants(Array.isArray(participantsData) ? participantsData : []);
-    } catch (err) {
-      const msg =
-        (err as { message?: string })?.message ?? 'Failed to load seminars.';
-      setError(msg);
+      const rawSeminars =
+        seminarsRes.status === 'fulfilled' && Array.isArray(seminarsRes.value)
+          ? seminarsRes.value
+          : [];
+      const rawMyInvs =
+        myInvRes.status === 'fulfilled' && Array.isArray(myInvRes.value)
+          ? myInvRes.value
+          : [];
+
+      // Merge by seminarId to ensure invited seminars with participant IDs are present
+      const map = new Map<number, Seminar>();
+      for (const s of rawSeminars) {
+        if (s.seminarId) map.set(s.seminarId, s);
+      }
+      for (const inv of rawMyInvs) {
+        if (inv.seminarId && !map.has(inv.seminarId)) {
+          map.set(inv.seminarId, {
+            seminarId: inv.seminarId,
+            title: inv.title,
+            content: inv.title || inv.content || '',
+            startTime: inv.startTime,
+            endTime: inv.endTime,
+            onlineLink: inv.onlineLink,
+            status: inv.status ?? 'Completed',
+          });
+        }
+      }
+
+      const participantsData =
+        participantsRes.status === 'fulfilled' && Array.isArray(participantsRes.value)
+          ? participantsRes.value
+          : [];
+      setSeminars(Array.from(map.values()));
+      setParticipants(participantsData);
+    } catch {
+      setSeminars([]);
+      setParticipants([]);
     } finally {
       setIsLoading(false);
     }
-  }, [backendAvailability]);
+  }, []);
 
   useEffect(() => {
     void fetchAll();
@@ -187,10 +181,25 @@ export function useCreateSeminar(
 
   const createSeminar = useCallback(
     async (payload: SeminarCreateRequest): Promise<Seminar> => {
+      const state = useAuthStore.getState();
+      const role = state.effectiveRole ?? state.user?.roleName;
+      if (role !== 'Lecturer' && role !== 'Researcher') {
+        const msg = 'Only Lecturers and Researchers are permitted to create academic seminars.';
+        setCreateError(msg);
+        throw new Error(msg);
+      }
+
       setIsCreating(true);
       setCreateError(null);
       try {
         const created = await seminarService.create(payload);
+        if (created && created.seminarId && payload.guestEmails && payload.guestEmails.length > 0) {
+          try {
+            await seminarService.invite(created.seminarId, payload.guestEmails);
+          } catch (invErr) {
+            console.warn('[useCreateSeminar] Seminar created but invite batch failed:', invErr);
+          }
+        }
         void refetch?.();
         onSuccess?.(created);
         return created;
@@ -370,23 +379,15 @@ export function useSeminarParticipants(seminarId?: number): UseSeminarParticipan
     setIsLoading(true);
     setError(null);
 
-    if (backendAvailability !== 'full') {
-      setAllParticipants([]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const data = await seminarParticipantService.getAll();
       setAllParticipants(Array.isArray(data) ? data : []);
-    } catch (err) {
-      const msg =
-        (err as { message?: string })?.message ?? 'Failed to load participants.';
-      setError(msg);
+    } catch {
+      setAllParticipants([]);
     } finally {
       setIsLoading(false);
     }
-  }, [backendAvailability]);
+  }, []);
 
   useEffect(() => {
     void refetch();

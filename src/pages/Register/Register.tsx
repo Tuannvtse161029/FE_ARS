@@ -1,16 +1,15 @@
-import { useRef, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useRef, useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
 import { useAuth } from '../../context/AuthContext';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
-import { useAuthStore } from '../../store';
-import { ROUTES } from '../../utils/constants';
-import type { AuthResponse, UserRole, RegisterPayload } from '../../types/auth';
+import { ROUTES } from '../../routes/paths';
+import type { UserRole, RegisterPayload } from '../../types/auth';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
-import { RegisterSuccessModal } from './components/RegisterSuccessModal';
+import { PolicyModal, type PolicyTab } from './components/PolicyModal';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
@@ -22,14 +21,12 @@ import {
 } from '../../utils/registrationRoles';
 import { FieldError } from '../../components/FieldError';
 import {
-  EMAIL_REGEX,
-  PHONE_REGEX,
-  PASSWORD_HAS_NUMBER,
-  PASSWORD_HAS_UPPER,
-  PASSWORD_MIN_LENGTH,
   extractServerFieldErrors,
   extractServerMessage,
   validateVietnameseName,
+  validateEmail,
+  validatePhoneNumber,
+  validatePassword,
 } from '../../utils/validationRules';
 
 interface FormState {
@@ -76,7 +73,6 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
 
 export const Register = () => {
   const navigate = useNavigate();
-  const authStore = useAuthStore();
   const { loginWithGoogle } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
@@ -88,7 +84,7 @@ export const Register = () => {
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
-  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [policyTab, setPolicyTab] = useState<PolicyTab | null>(null);
 
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
   // Login page so rapid clicks cannot fire the GIS callback twice.
@@ -96,17 +92,85 @@ export const Register = () => {
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
+  useEffect(() => {
+    authService.logout();
+  }, []);
+
+  const isOrcidRole = (role: RequestableRole) =>
+    role === 'Researcher' || role === 'Reviewer';
+
+  const validateField = (
+    field: keyof FormState,
+    value: any,
+    currentForm: FormState = form
+  ): string | undefined => {
+    switch (field) {
+      case 'fullName':
+        return validateVietnameseName(value) || undefined;
+      case 'email':
+        return validateEmail(value) || undefined;
+      case 'phoneNumber':
+        return validatePhoneNumber(value) || undefined;
+      case 'password':
+        return validatePassword(value) || undefined;
+      case 'retypePassword': {
+        if (!value) return 'Please retype your password';
+        if (value !== currentForm.password) return 'Passwords must match';
+        return undefined;
+      }
+      case 'orcidId': {
+        if (currentForm.role === 'Reviewer') {
+          if (!value || !value.trim()) {
+            return 'ORCID iD is required for Reviewers';
+          }
+          const normalizedOrcid = normalizeOrcid(value);
+          if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
+            return 'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
+          }
+        } else if (currentForm.role === 'Researcher' && value.trim()) {
+          const normalizedOrcid = normalizeOrcid(value);
+          if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
+            return 'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
+          }
+        }
+        return undefined;
+      }
+      case 'consentAccepted':
+        return !value
+          ? 'You must accept the Privacy Policy and Terms before registering.'
+          : undefined;
+      default:
+        return undefined;
+    }
+  };
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
+    const nextValue = type === 'checkbox' ? checked : value;
+    const nextRole = (name === 'role' ? value : form.role) as RequestableRole;
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-      ...(name === 'role' && value !== 'Reviewer' ? { orcidId: '' } : {}),
+      [name]: nextValue,
+      ...(name === 'role' && !isOrcidRole(nextRole) ? { orcidId: '' } : {}),
     }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
+
+    if (errors[name as keyof FormState]) {
+      const fieldError = validateField(name as keyof FormState, nextValue, {
+        ...form,
+        [name]: nextValue,
+        ...(name === 'role' && !isOrcidRole(nextRole) ? { orcidId: '' } : {}),
+      });
+      setErrors((prev) => ({ ...prev, [name]: fieldError }));
+    }
+  };
+
+  const handleBlur = (field: keyof FormState) => {
+    const fieldError = validateField(field, form[field]);
+    setErrors((prev) => ({ ...prev, [field]: fieldError }));
   };
 
   const validate = (): boolean => {
@@ -115,27 +179,14 @@ export const Register = () => {
     const nameError = validateVietnameseName(form.fullName);
     if (nameError) next.fullName = nameError;
 
-    if (!form.email.trim()) {
-      next.email = 'Email is required';
-    } else if (!EMAIL_REGEX.test(form.email)) {
-      next.email = 'Invalid email format';
-    }
+    const emailError = validateEmail(form.email);
+    if (emailError) next.email = emailError;
 
-    if (!form.phoneNumber.trim()) {
-      next.phoneNumber = 'Phone number is required';
-    } else if (!PHONE_REGEX.test(form.phoneNumber)) {
-      next.phoneNumber = 'Invalid phone number format';
-    }
+    const phoneError = validatePhoneNumber(form.phoneNumber);
+    if (phoneError) next.phoneNumber = phoneError;
 
-    if (!form.password) {
-      next.password = 'Password is required';
-    } else if (form.password.length < PASSWORD_MIN_LENGTH) {
-      next.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
-    } else if (!PASSWORD_HAS_UPPER.test(form.password)) {
-      next.password = 'Password must contain at least one uppercase letter';
-    } else if (!PASSWORD_HAS_NUMBER.test(form.password)) {
-      next.password = 'Password must contain at least one number';
-    }
+    const passwordError = validatePassword(form.password);
+    if (passwordError) next.password = passwordError;
 
     if (!form.retypePassword) {
       next.retypePassword = 'Please retype your password';
@@ -148,14 +199,26 @@ export const Register = () => {
     }
 
     if (form.role === 'Reviewer') {
+      if (!form.orcidId.trim()) {
+        next.orcidId = 'ORCID iD is required for Reviewers';
+      } else {
+        const normalizedOrcid = normalizeOrcid(form.orcidId);
+        if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
+          next.orcidId =
+            'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
+        }
+      }
+    } else if (form.role === 'Researcher' && form.orcidId.trim()) {
       const normalizedOrcid = normalizeOrcid(form.orcidId);
       if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
-        next.orcidId = 'Enter a valid ORCID iD with a valid checksum.';
+        next.orcidId =
+          'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
       }
     }
 
     if (!form.consentAccepted) {
-      next.consentAccepted = 'You must accept the Privacy Policy and Terms before registering.';
+      next.consentAccepted =
+        'You must accept the Privacy Policy and Terms before registering.';
     }
 
     setErrors(next);
@@ -164,15 +227,20 @@ export const Register = () => {
 
   const isFormValid = (() => {
     if (validateVietnameseName(form.fullName)) return false;
-    if (!EMAIL_REGEX.test(form.email)) return false;
-    if (!PHONE_REGEX.test(form.phoneNumber)) return false;
-    if (form.password.length < PASSWORD_MIN_LENGTH) return false;
-    if (!PASSWORD_HAS_UPPER.test(form.password)) return false;
-    if (!PASSWORD_HAS_NUMBER.test(form.password)) return false;
+    if (validateEmail(form.email)) return false;
+    if (validatePhoneNumber(form.phoneNumber)) return false;
+    if (validatePassword(form.password)) return false;
     if (form.password !== form.retypePassword) return false;
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
-    if (form.role === 'Reviewer' && !normalizeOrcid(form.orcidId)) return false;
+    if (form.role === 'Reviewer') {
+      if (!form.orcidId.trim()) return false;
+      const normalized = normalizeOrcid(form.orcidId);
+      if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
+    } else if (form.role === 'Researcher' && form.orcidId.trim()) {
+      const normalized = normalizeOrcid(form.orcidId);
+      if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
+    }
     if (!form.consentAccepted) return false;
     return true;
   })();
@@ -198,43 +266,48 @@ export const Register = () => {
 
     setIsSubmitting(true);
     try {
+      const normalizedOrcid = form.orcidId.trim()
+        ? normalizeOrcid(form.orcidId) || form.orcidId.trim()
+        : undefined;
+
       const payload: RegisterPayload = {
         username: form.email.trim(),
         email: form.email.trim(),
         password: form.password,
         fullName: form.fullName.trim(),
-        phoneNumber: form.phoneNumber.trim(),
+        phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
+        ...(form.role === 'Reviewer' && normalizedOrcid ? { orcidId: normalizedOrcid } : {}),
         // Mirror the auth-service payload contract: new accounts start
         // pending (isActive: false) until an Admin approves the role
         // request. The BE echoes this on the response.
         isActive: false,
       };
 
-      const response: AuthResponse = await authService.registerUser(payload);
+      await authService.registerUser(payload);
 
-      // Persist the auth state so the user is recognised as authenticated
-      // when they land on /forum. The Zustand store + storage both need
-      // updating so route guards (which read from storage during rehydrate)
-      // and the React tree (which reads from the store) see the same data.
-      // `isActive` defaults to false here because the spec says new
-      // registrations stay pending until an Admin approves the role request.
-      authService.setAuthData(response);
-      authStore.login(
-        {
-          id: 0,
-          username: response.username,
-          email: response.email,
-          fullName: response.username,
-          roleId: response.roleId ?? 0,
-          roleName: response.role,
-          isActive: response.isActive ?? false,
+      // Store registered email for OTP page reload safety
+      try {
+        sessionStorage.setItem('ars_registered_email', form.email.trim());
+      } catch {
+        /* ignore */
+      }
+
+      // Clear any session artifacts so the user is purely in unauthenticated verification state
+      authService.logout();
+
+      // Trigger sending registration verification email / OTP
+      void authService.sendRegistrationOtp(form.email.trim());
+
+      // Navigate to /verify-email with the registered email in state
+      navigate(ROUTES.VERIFY_EMAIL, {
+        replace: true,
+        state: {
+          email: form.email.trim(),
+          fullName: form.fullName.trim(),
         },
-        response.token
-      );
-
-      setIsSuccessOpen(true);
+      });
     } catch (err) {
       const fieldErrors = extractServerFieldErrors(err, [
         'fullName',
@@ -341,10 +414,7 @@ export const Register = () => {
             placeholder="e.g., Dr. Nguyen Van A"
             value={form.fullName}
             onChange={handleChange}
-            onBlur={() => {
-              const msg = validateVietnameseName(form.fullName);
-              if (msg) setErrors((prev) => ({ ...prev, fullName: msg }));
-            }}
+            onBlur={() => handleBlur('fullName')}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="name"
             aria-invalid={Boolean(errors.fullName)}
@@ -372,6 +442,7 @@ export const Register = () => {
             placeholder="email@example.com"
             value={form.email}
             onChange={handleChange}
+            onBlur={() => handleBlur('email')}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="email"
             aria-invalid={Boolean(errors.email)}
@@ -396,9 +467,10 @@ export const Register = () => {
             name="phoneNumber"
             type="tel"
             className={`${styles.nativeInput} ${errors.phoneNumber ? styles['nativeInput--error'] : ''}`}
-            placeholder="+84 90 123 4567"
+            placeholder="0901234567"
             value={form.phoneNumber}
             onChange={handleChange}
+            onBlur={() => handleBlur('phoneNumber')}
             disabled={isSubmitting || isUploadingPdf}
             autoComplete="tel"
             aria-invalid={Boolean(errors.phoneNumber)}
@@ -419,51 +491,53 @@ export const Register = () => {
             >
               Password
             </label>
-<input
-            id="password"
-            name="password"
-            type="password"
-            className={`${styles.nativeInput} ${errors.password ? styles['nativeInput--error'] : ''}`}
-            placeholder="Create a password"
-            value={form.password}
-            onChange={handleChange}
-            disabled={isSubmitting || isUploadingPdf}
-            autoComplete="new-password"
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby={errors.password ? 'password-error' : 'password-helper'}
-          />
-          <FieldError
-            id="password-error"
-            message={errors.password}
-            testId="register-error-password"
-          />
-        </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className={`${styles.nativeInput} ${errors.password ? styles['nativeInput--error'] : ''}`}
+              placeholder="Create a password"
+              value={form.password}
+              onChange={handleChange}
+              onBlur={() => handleBlur('password')}
+              disabled={isSubmitting || isUploadingPdf}
+              autoComplete="new-password"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? 'password-error' : 'password-helper'}
+            />
+            <FieldError
+              id="password-error"
+              message={errors.password}
+              testId="register-error-password"
+            />
+          </div>
 
-        <div className={styles.fieldGroup}>
-          <label
-            htmlFor="retypePassword"
-            className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
-          >
-            Retype Password
-          </label>
-<input
-            id="retypePassword"
-            name="retypePassword"
-            type="password"
-            className={`${styles.nativeInput} ${errors.retypePassword ? styles['nativeInput--error'] : ''}`}
-            placeholder="Retype your password"
-            value={form.retypePassword}
-            onChange={handleChange}
-            disabled={isSubmitting || isUploadingPdf}
-            autoComplete="new-password"
-            aria-invalid={Boolean(errors.retypePassword)}
-            aria-describedby={errors.retypePassword ? 'retypePassword-error' : undefined}
-          />
-          <FieldError
-            id="retypePassword-error"
-            message={errors.retypePassword}
-            testId="register-error-retypePassword"
-          />
+          <div className={styles.fieldGroup}>
+            <label
+              htmlFor="retypePassword"
+              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+            >
+              Retype Password
+            </label>
+            <input
+              id="retypePassword"
+              name="retypePassword"
+              type="password"
+              className={`${styles.nativeInput} ${errors.retypePassword ? styles['nativeInput--error'] : ''}`}
+              placeholder="Retype your password"
+              value={form.retypePassword}
+              onChange={handleChange}
+              onBlur={() => handleBlur('retypePassword')}
+              disabled={isSubmitting || isUploadingPdf}
+              autoComplete="new-password"
+              aria-invalid={Boolean(errors.retypePassword)}
+              aria-describedby={errors.retypePassword ? 'retypePassword-error' : undefined}
+            />
+            <FieldError
+              id="retypePassword-error"
+              message={errors.retypePassword}
+              testId="register-error-retypePassword"
+            />
           </div>
         </div>
         <p className={styles.passwordHelper}>
@@ -480,7 +554,7 @@ export const Register = () => {
           <select
             id="role"
             name="role"
-            className={styles.nativeSelect}
+            className={`${styles.nativeSelect} ${errors.role ? styles['nativeSelect--error'] : ''}`}
             value={form.role}
             onChange={handleChange}
             disabled={isSubmitting || isUploadingPdf}
@@ -496,13 +570,13 @@ export const Register = () => {
           <FieldError id="role-error" message={errors.role} />
         </div>
 
-        {form.role === 'Reviewer' && (
+        {(form.role === 'Researcher' || form.role === 'Reviewer') && (
           <div className={styles.fieldGroup}>
             <label
               htmlFor="orcidId"
-              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+              className={`${styles.fieldLabel} ${form.role === 'Reviewer' ? styles['fieldLabel--required'] : ''}`}
             >
-              ORCID iD
+              ORCID iD {form.role === 'Researcher' && <span className={styles.optionalText}>(Optional)</span>}
             </label>
             <input
               id="orcidId"
@@ -513,14 +587,14 @@ export const Register = () => {
               placeholder="0000-0000-0000-0000 or https://orcid.org/..."
               value={form.orcidId}
               onChange={handleChange}
+              onBlur={() => handleBlur('orcidId')}
               disabled={isSubmitting || isUploadingPdf}
               aria-describedby="orcid-help"
               aria-invalid={Boolean(errors.orcidId)}
               className={`${styles.nativeInput} ${errors.orcidId ? styles['nativeInput--error'] : ''}`}
             />
             <p className={styles.passwordHelper} id="orcid-help">
-              Enter your canonical ORCID iD or full ORCID URL. ARS validates the checksum and
-              uses the normalized value only for future reviewer verification support.
+              Enter your canonical ORCID iD or full ORCID URL (e.g. 0000-0002-1825-0097).
             </p>
             <FieldError id="orcidId-error" message={errors.orcidId} testId="register-error-orcidId" />
           </div>
@@ -578,27 +652,36 @@ export const Register = () => {
             />
             <span className={styles.consentText} id="consent-description">
               I have read and agree to the{' '}
-              <a
-                href="/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className={styles.consentLink}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPolicyTab('privacy');
+                }}
               >
                 Privacy Policy
-              </a>{' '}
+              </button>{' '}
               and{' '}
-              <a
-                href="/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className={styles.consentLink}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPolicyTab('terms');
+                }}
               >
                 Terms of Service
-              </a>
+              </button>
             </span>
           </label>
+          <FieldError
+            id="consent-error"
+            message={errors.consentAccepted}
+            testId="register-error-consentAccepted"
+          />
         </div>
 
         <Button
@@ -642,25 +725,17 @@ export const Register = () => {
         </div>
       </form>
 
+      <PolicyModal
+        isOpen={policyTab !== null}
+        initialTab={policyTab || 'privacy'}
+        onClose={() => setPolicyTab(null)}
+        onAccept={() => setForm((prev) => ({ ...prev, consentAccepted: true }))}
+      />
+
       <SamplePdfModal
         isOpen={isSampleOpen}
         onClose={() => setIsSampleOpen(false)}
         initialRole={form.role}
-      />
-
-      <RegisterSuccessModal
-        isOpen={isSuccessOpen}
-        email={form.email}
-        role={form.role}
-        onClose={() => {
-          setIsSuccessOpen(false);
-          setForm(initialForm);
-          // The user is now authenticated but pending (isActive: false).
-          // /forum is the only route they can access; the verified-guard
-          // in MainLayout will bounce them back here if they try anything
-          // else, and the Forum page shows the pending banner.
-          navigate(ROUTES.FORUM, { replace: true });
-        }}
       />
     </div>
   );

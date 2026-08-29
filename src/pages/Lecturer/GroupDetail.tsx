@@ -38,6 +38,8 @@ import {
   ExternalLink,
   Library,
   CheckCircle2,
+  UserPlus,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -257,6 +259,113 @@ export const LecturerGroupDetail = (): JSX.Element => {
       setEditGroupError(message);
     } finally {
       setIsSavingGroup(false);
+    }
+  };
+
+  // ── Invite members modal state ──────────────────────────────────────────
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [inviteEmailsInput, setInviteEmailsInput] = useState<string>('');
+  const [isInviting, setIsInviting] = useState<boolean>(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const openInviteModal = () => {
+    setInviteEmailsInput('');
+    setInviteError(null);
+    setShowInviteModal(true);
+  };
+
+  const closeInviteModal = () => {
+    if (isInviting) return;
+    setShowInviteModal(false);
+  };
+
+  const handleInviteStudents = async (e: FormEvent) => {
+    e.preventDefault();
+    if (parsedGroupId === null) return;
+    const emails = inviteEmailsInput
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (emails.length === 0) {
+      setInviteError('Please enter at least one valid email address.');
+      return;
+    }
+
+    setIsInviting(true);
+    setInviteError(null);
+    try {
+      const res = await researchGroupService.invite(parsedGroupId, emails);
+      setShowInviteModal(false);
+      setInviteEmailsInput('');
+      const successCount = res.successEmails?.length ?? res.totalInvited ?? 0;
+      const notFoundCount = res.notFoundEmails?.length ?? 0;
+      let msg = `Successfully invited ${successCount} student(s) to the group.`;
+      if (notFoundCount > 0) {
+        msg += ` (${notFoundCount} email(s) not found in system: ${res.notFoundEmails?.join(', ')})`;
+      }
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err) {
+      setInviteError(
+        err instanceof Error ? err.message : 'Failed to send invitations.',
+      );
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const [leaderActionLoading, setLeaderActionLoading] = useState<number | null>(null);
+
+  const handleSetLeader = async (member: GroupMember) => {
+    const memberId = member.groupMemberId ?? member.id;
+    if (!memberId) return;
+    setLeaderActionLoading(memberId);
+    try {
+      await groupMemberService.setLeader(memberId, member.studentId ?? undefined);
+      setBanner({
+        visible: true,
+        text: `Đã gán vai trò Trưởng nhóm (Leader) cho ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể gán vai trò Trưởng nhóm.';
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'error',
+      });
+    } finally {
+      setLeaderActionLoading(null);
+    }
+  };
+
+  const handleRemoveLeader = async (member: GroupMember) => {
+    const memberId = member.groupMemberId ?? member.id;
+    if (!memberId) return;
+    setLeaderActionLoading(memberId);
+    try {
+      await groupMemberService.removeLeader(memberId);
+      setBanner({
+        visible: true,
+        text: `Đã hủy vai trò Trưởng nhóm của ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể hủy vai trò Trưởng nhóm.';
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'error',
+      });
+    } finally {
+      setLeaderActionLoading(null);
     }
   };
 
@@ -551,12 +660,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {/* MEMBERS LIST (L2.b) */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <Users size={16} aria-hidden /> Group members
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <h2 className={styles.cardTitle}>
+              <Users size={16} aria-hidden /> Group members ({members.length})
+            </h2>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={openInviteModal}
+              style={{ fontSize: 13, padding: '6px 12px', gap: 6 }}
+            >
+              <UserPlus size={14} aria-hidden /> Invite students
+            </button>
+          </div>
           <span className={styles.cardHint}>
-            Student IDs joined this group. BE has no server-side filter
-            (<code>?researchGroupId=</code>), so we filter client-side.
+            Manage student members in this group. You can invite new students directly by email.
           </span>
         </header>
         {membersError && (
@@ -589,21 +707,105 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <ul className={styles.memberList}>
             {members.map((m) => {
               const mid = typeof m.id === 'number' ? m.id : -1;
+              const isBusy = leaderActionLoading === mid;
               return (
-                <li key={`member-${mid}`} className={styles.memberRow}>
-                  <span className={styles.memberId}>
-                    Member #{mid >= 0 ? mid : '—'}
-                  </span>
-                  <span className={styles.memberStudent}>
-                    Student #{m.studentId ?? '—'}
-                  </span>
-                  <span className={styles.memberStatus}>
-                    {m.activityStatus ?? 'ACTIVE'}
-                  </span>
-                  <span className={styles.memberJoined}>
-                    joined{' '}
-                    {formatDateOnly(m.joinedAt ?? null)}
-                  </span>
+                <li key={`member-${mid}`} className={styles.memberRow} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        backgroundColor: m.isLeader ? '#fef3c7' : '#e0e7ff',
+                        color: m.isLeader ? '#b45309' : '#3730a3',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {m.isLeader ? <Crown size={18} /> : (m.studentName ? m.studentName.slice(0, 2).toUpperCase() : 'ST')}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
+                          {m.studentName || `Student #${m.studentId ?? mid}`}
+                        </strong>
+                        {m.isLeader && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              backgroundColor: '#fef3c7',
+                              color: '#92400e',
+                              border: '1px solid #fde68a',
+                            }}
+                          >
+                            <Crown size={12} /> Trưởng nhóm (Leader)
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                        {m.studentEmail && <span>{m.studentEmail} · </span>}
+                        <span>Status: <strong>{m.activityStatus ?? 'Joined'}</strong></span>
+                        <span> · Joined {formatDateOnly(m.joinedAt ?? null)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    {m.isLeader ? (
+                      <button
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #fca5a5',
+                          backgroundColor: '#fef2f2',
+                          color: '#b91c1c',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          cursor: isBusy ? 'not-allowed' : 'pointer',
+                        }}
+                        onClick={() => void handleRemoveLeader(m)}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <X size={14} />}
+                        Hủy Trưởng nhóm
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          cursor: isBusy ? 'not-allowed' : 'pointer',
+                        }}
+                        onClick={() => void handleSetLeader(m)}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <Crown size={14} color="#d97706" />}
+                        Gán Trưởng nhóm
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -796,6 +998,86 @@ export const LecturerGroupDetail = (): JSX.Element => {
                     <Check size={14} aria-hidden />
                   )}
                   {isSavingGroup ? 'Saving…' : 'Save group'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* INVITE STUDENTS MODAL */}
+      {showInviteModal && (
+        <div
+          className={styles.modalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inviteStudentsModalTitle"
+        >
+          <div className={styles.modal}>
+            <header className={styles.modalHeader}>
+              <h2 id="inviteStudentsModalTitle" className={styles.modalTitle}>
+                <UserPlus size={18} aria-hidden /> Invite Students to Research Group
+              </h2>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={closeInviteModal}
+                disabled={isInviting}
+                aria-label="Close modal"
+              >
+                <X size={16} aria-hidden />
+              </button>
+            </header>
+
+            <form onSubmit={handleInviteStudents} className={styles.modalForm} noValidate>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="inviteEmails">
+                  Student Email Addresses (separated by commas or newlines)
+                </label>
+                <textarea
+                  id="inviteEmails"
+                  className={styles.formTextarea}
+                  rows={4}
+                  placeholder="student1@gmail.com, student2@fpt.edu.vn"
+                  value={inviteEmailsInput}
+                  onChange={(e) => {
+                    setInviteEmailsInput(e.target.value);
+                    if (inviteError) setInviteError(null);
+                  }}
+                  disabled={isInviting}
+                />
+                <span className={styles.cardHint} style={{ marginTop: 4 }}>
+                  The system will automatically find student accounts and add them as group members.
+                </span>
+              </div>
+
+              {inviteError && (
+                <div className={styles.errorPanel} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{inviteError}</span>
+                </div>
+              )}
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.cancelBtn}
+                  onClick={closeInviteModal}
+                  disabled={isInviting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={styles.primaryBtn}
+                  disabled={isInviting || !inviteEmailsInput.trim()}
+                >
+                  {isInviting ? (
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  ) : (
+                    <Check size={14} aria-hidden />
+                  )}
+                  {isInviting ? 'Sending Invites…' : 'Send Invitations'}
                 </button>
               </div>
             </form>

@@ -1,8 +1,10 @@
 import { ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
 import type { PublicationAuthor, PublicationPaper } from '../types/publication';
+import { CitationActions } from '../components/CitationActions';
 import shared from '../components/PublicationShared.module.css';
 import {
   buildArxivBadge,
+  buildSafeResourceLink,
   collectPaperExternalLinks,
   resolveAuthorLinks,
 } from './publicationLinks';
@@ -192,6 +194,16 @@ export const PublishedPaperCard = ({ paper, publicReviewerName }: PublishedPaper
           </div>
         )}
       </section>
+
+      <footer className={card.actions}>
+        <CitationActions paper={paper} />
+        {buildSafeResourceLink(paper.fileUrl) && (
+          <a className={shared.buttonSecondary} href={buildSafeResourceLink(paper.fileUrl) ?? undefined} target="_blank" rel="noopener noreferrer">
+            <FileText size={14} aria-hidden="true" />
+            Read PDF
+          </a>
+        )}
+      </footer>
     </article>
   );
 };

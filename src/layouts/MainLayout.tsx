@@ -137,37 +137,20 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Wallet balance comes from the BE — render placeholder until it loads.
-  // We also pull the full `wallet` object so we can pass the `walletId`
-  // through to WalletTopUpModal (which posts it as `walletId` on
-  // `POST /api/Payment/create-link`).
-  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
-
-  // Notifications are owned by <NotificationCenter /> below. The header
-  // bell button now renders the dropdown directly, so we no longer read
-  // `unreadCount` here — keeping a stale local copy would create two
-  // sources of truth for the same BE row.
-
-  // Reviewer availability comes from the BE (read-only here; toggle still calls update).
-  const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
-
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
-  // Role switching is no longer performed in-app — users with multiple roles re-login
-  // (and pick a role on the new JWT) instead.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Single source of truth for unverified-user gating. `canViewAdminPanel`
-  // collapses the dual-signal admin check (roleName OR roleId) that the
-  // Admin guards used to repeat. `hasWallet` collapses what used to be a
-  // `!isAdmin && !isGuest` check at every header / modal site into one
-  // derivation. `isGuest` is sourced from the BE-derived `effectiveRole`
-  // field (Agent 39) with the old `!isActive && !isAdmin` derivation as a
-  // fallback for pre-migration persisted blobs.
+  // Single source of truth for unverified-user gating.
   const { hasWallet, isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
 
-  // Bounce unverified users off every private route except /forum. Lives in
-  // its own hook so the verification rule has one definition site.
+  // Wallet balance comes from the BE — only for roles that have wallets (not Guest).
+  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(hasWallet && user?.userId ? user.userId : undefined);
+
+  // Reviewer availability comes from the BE (only for active Reviewers).
+  const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(activeRole === 'Reviewer' && user?.userId ? user.userId : undefined);
+
+  // Bounce unverified users off every private route except /forum.
   useVerifiedGuard();
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
@@ -295,29 +278,12 @@ export const MainLayout = () => {
           ...(AppConfig.features.enableWithdrawals
             ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
             : []),
-          // Agent admin-annual-fees — the premium-packages surface is
-          // temporarily hidden for non-Admin roles while the BE-side
-          // annual-fee CRUD endpoint is being finalized. The flag lives
-          // in src/config/app.ts so the rule has a single definition
-          // site (no scattered hardcoded booleans). The
-          // `AppConfig.features.premiumPackagesEnabled` check is the
-          // one — flipping it back to `true` reveals the entry for
-          // every non-Admin role below.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
         ];
       case 'Lecturer':
         return [
-          // Agent lecturer-navigation — required top-to-bottom Lecturer nav
-          // order: Forum → Seminar → Guidance Projects → Learning Materials →
-          // Research Topics → Research Groups → Milestones.
-          // Shared edit: the Lecturer nav block was re-ordered and the
-          // disabled "Shared Material" / "Wallet" stubs were removed (the
-          // former points to a page that does not exist and the latter
-          // belongs to Reviewer / Graduate Student flows). See
-          // docs/BACKEND_REQUESTS.md "Coordination — Agent Lecturer
-          // Navigation" for the coordination note.
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
@@ -326,9 +292,6 @@ export const MainLayout = () => {
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
-          // Agent admin-annual-fees — hidden for non-Admin roles while the
-          // BE-side annual-fee CRUD endpoint is being finalized. See the
-          // Reviewer block above for the single-source-of-truth flag.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
@@ -340,8 +303,6 @@ export const MainLayout = () => {
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          // Agent admin-annual-fees — see the Reviewer block above for the
-          // single-source-of-truth flag and the rationale.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
@@ -351,11 +312,9 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
-          { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
-          // Agent admin-annual-fees — see the Reviewer block above for the
-          // single-source-of-truth flag and the rationale.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),

@@ -95,6 +95,17 @@ export const researchTopicService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(RESEARCH_TOPIC_ENDPOINTS.DELETE(id));
   },
+
+  getMyTopics: async (): Promise<ResearchTopic[]> => {
+    try {
+      const response = await api.get<ResearchTopic[]>(
+        API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.MY_TOPICS,
+      );
+      return normalizeResearchTopicList(response.data);
+    } catch {
+      return researchTopicService.getAll();
+    }
+  },
 };
 
 // Defensive helper for any caller that needs to read the materials URL safely.

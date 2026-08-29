@@ -133,6 +133,29 @@
   background-color: var(--ars-error-bg);
 }
 
+.actionBtnUpvote {
+  color: var(--ars-ink-soft);
+  transition: all var(--transition-fast);
+}
+
+.actionBtnUpvote:hover {
+  border-color: var(--ars-blue, #2563eb);
+  color: var(--ars-blue, #2563eb);
+}
+
+.actionBtnUpvoted {
+  color: var(--ars-blue, #2563eb);
+  border-color: var(--ars-blue, #2563eb);
+  background-color: rgba(37, 99, 235, 0.08);
+  font-weight: 700;
+}
+
+.actionBtnUpvoted:hover {
+  background-color: rgba(37, 99, 235, 0.16);
+  border-color: var(--ars-blue, #2563eb);
+  color: var(--ars-blue, #2563eb);
+}
+
 .editBlock {
   display: flex;
   flex-direction: column;

@@ -6,28 +6,58 @@ import type {
   ForumCommentUpdateRequest,
 } from '../types/forum.types';
 
+function normalizeComment(raw: unknown): ForumComment {
+  const record = (raw ?? {}) as Partial<ForumComment> & {
+    forumCommentId?: unknown;
+    author?: unknown;
+    fullName?: unknown;
+    authorAvatar?: unknown;
+  };
+  const resolvedId = Number(record.forumCommentId ?? record.id ?? 0);
+  return {
+    id: resolvedId,
+    forumCommentId: resolvedId,
+    userId: record.userId != null ? Number(record.userId) : null,
+    author: typeof record.author === 'string' ? record.author : undefined,
+    fullName: typeof record.fullName === 'string' ? record.fullName : undefined,
+    authorAvatar: typeof record.authorAvatar === 'string' ? record.authorAvatar : undefined,
+    paperId: record.paperId != null ? Number(record.paperId) : null,
+    forumPostId: record.forumPostId != null ? Number(record.forumPostId) : null,
+    content: typeof record.content === 'string' ? record.content : '',
+    replyId: record.replyId != null ? Number(record.replyId) : null,
+    upvoteCount: record.upvoteCount != null ? Number(record.upvoteCount) : 0,
+    createdAt: typeof record.createdAt === 'string' ? record.createdAt : undefined,
+    updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
+  };
+}
+
 export const forumCommentService = {
   // GET /api/ForumComment
-  // The Swagger contract for this endpoint does NOT declare a `forumPostId`
-  // query parameter — the BE returns every comment in one shot. For
-  // per-post views we filter client-side. This is inefficient at scale but
-  // matches the current BE contract; if the BE later adds a
-  // `?forumPostId=` query param, prefer that.
-  // See "Backend Team Requests" in the agent-32 report.
   getByPostId: async (postId: number): Promise<ForumComment[]> => {
-    const response = await api.get<ForumComment[]>(
-      API_ENDPOINTS.FORUM_COMMENT.GET_ALL,
-    );
-    const all = Array.isArray(response.data) ? response.data : [];
-    return all.filter((c) => c.forumPostId === postId);
+    try {
+      const response = await api.get<ForumComment[]>(
+        API_ENDPOINTS.FORUM_COMMENT.GET_ALL,
+      );
+      const all = Array.isArray(response.data) ? response.data : [];
+      return all
+        .map(normalizeComment)
+        .filter((c) => c.forumPostId === postId);
+    } catch {
+      return [];
+    }
   },
 
   // GET /api/ForumComment (unfiltered — for admin / debug surfaces)
   getAll: async (): Promise<ForumComment[]> => {
-    const response = await api.get<ForumComment[]>(
-      API_ENDPOINTS.FORUM_COMMENT.GET_ALL,
-    );
-    return Array.isArray(response.data) ? response.data : [];
+    try {
+      const response = await api.get<ForumComment[]>(
+        API_ENDPOINTS.FORUM_COMMENT.GET_ALL,
+      );
+      const all = Array.isArray(response.data) ? response.data : [];
+      return all.map(normalizeComment);
+    } catch {
+      return [];
+    }
   },
 
   // GET /api/ForumComment/{id}
@@ -35,7 +65,7 @@ export const forumCommentService = {
     const response = await api.get<ForumComment>(
       API_ENDPOINTS.FORUM_COMMENT.GET_BY_ID(id),
     );
-    return response.data;
+    return normalizeComment(response.data);
   },
 
   // POST /api/ForumComment
@@ -44,7 +74,7 @@ export const forumCommentService = {
       API_ENDPOINTS.FORUM_COMMENT.CREATE,
       data,
     );
-    return response.data;
+    return normalizeComment(response.data);
   },
 
   // PUT /api/ForumComment/{id}
@@ -52,16 +82,42 @@ export const forumCommentService = {
     id: number,
     data: ForumCommentUpdateRequest,
   ): Promise<ForumComment> => {
+    if (!id || id <= 0) {
+      throw new Error('Invalid comment ID for update');
+    }
     const response = await api.put<ForumComment>(
       API_ENDPOINTS.FORUM_COMMENT.UPDATE(id),
       data,
     );
-    return response.data;
+    return normalizeComment(response.data);
   },
 
   // DELETE /api/ForumComment/{id}
   delete: async (id: number): Promise<void> => {
+    if (!id || id <= 0) {
+      throw new Error('Invalid comment ID for deletion');
+    }
     await api.delete(API_ENDPOINTS.FORUM_COMMENT.DELETE(id));
+  },
+
+  // POST /api/CommentVote/{commentId} (Toggle upvote/unvote)
+  toggleVote: async (commentId: number): Promise<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean }> => {
+    const response = await api.post<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean }>(
+      API_ENDPOINTS.COMMENT_VOTE.TOGGLE(commentId)
+    );
+    return response.data;
+  },
+
+  // GET /api/CommentVote/my-votes
+  getMyVotes: async (): Promise<number[]> => {
+    try {
+      const response = await api.get<number[]>(
+        API_ENDPOINTS.COMMENT_VOTE.MY_VOTES
+      );
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
+    }
   },
 };
 

@@ -10,12 +10,15 @@ export const loginSchema = yup.object({
     .string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
-  // When true, login() persists token/user to localStorage (persistent across
-  // browser restarts). When false/undefined, persists to sessionStorage (cleared
-  // when the tab closes). The AuthContext sets this bucket BEFORE writing the
-  // token via storage.setRememberMe(), so storage.setToken/setUser route
-  // correctly without changing their signatures.
   rememberMe: yup.boolean().optional().default(false),
+  selectedRole: yup
+    .string()
+    .optional()
+    .oneOf(
+      ['', 'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student'],
+      'Invalid role'
+    )
+    .default(''),
 });
 
 export const registerSchema = yup.object({

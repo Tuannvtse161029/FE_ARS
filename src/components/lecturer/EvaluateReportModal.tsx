@@ -93,6 +93,7 @@ export const EvaluateReportModal = ({
 }: EvaluateReportModalProps) => {
   const [mode, setMode] = useState<Mode>('approve');
   const [lectureFeedback, setLectureFeedback] = useState<string>('8');
+  const [capacityEvaluation, setCapacityEvaluation] = useState<string>('Tốt');
   const [finalOutcomeEvaluation, setFinalOutcomeEvaluation] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [showPdf, setShowPdf] = useState(false);
@@ -107,7 +108,8 @@ export const EvaluateReportModal = ({
     if (isOpen && report) {
       setMode('approve');
       setLectureFeedback('8');
-      setFinalOutcomeEvaluation(report.finalOutcomeEvaluation ?? '');
+      setCapacityEvaluation(report.capacityEvaluation || 'Tốt');
+      setFinalOutcomeEvaluation(report.finalOutcomeEvaluation ?? report.lecturerDescription ?? '');
       setRejectionReason('');
       setShowPdf(false);
       reset();
@@ -140,6 +142,8 @@ export const EvaluateReportModal = ({
     }
     await submit(mode, {
       lectureFeedback: grade,
+      lecturerDescription: trimmedReason || trimmedOutcome,
+      capacityEvaluation: capacityEvaluation || (isRejectMode ? trimmedReason : 'Tốt'),
       finalOutcomeEvaluation: trimmedOutcome,
       rejectionReason: trimmedReason,
     });
@@ -248,6 +252,24 @@ export const EvaluateReportModal = ({
             <span className={styles.helperText}>
               Numeric score stored on <code>lectureFeedback</code>.
             </span>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor="capacityEvaluation">
+              Đánh giá Năng lực (Capacity Evaluation)
+            </label>
+            <select
+              id="capacityEvaluation"
+              className={styles.formInput}
+              value={capacityEvaluation}
+              onChange={(e) => setCapacityEvaluation(e.target.value)}
+            >
+              <option value="Xuất sắc">Xuất sắc (Excellent)</option>
+              <option value="Tốt">Tốt (Good)</option>
+              <option value="Khá">Khá (Fair)</option>
+              <option value="Đạt yêu cầu">Đạt yêu cầu (Pass)</option>
+              <option value="Chưa đạt">Chưa đạt (Need Improvement)</option>
+            </select>
           </div>
 
           <div className={styles.formGroup}>

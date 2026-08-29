@@ -30,7 +30,7 @@ export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT'
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Roles that may create / update / delete seminars and send reminders. */
-export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer'] as const;
+export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer', 'Researcher'] as const;
 
 /** Roles that may view the seminar list (read-only). Includes the mutator. */
 export const SEMINAR_VIEWER_ROLES: readonly UserRole[] = [
@@ -101,12 +101,15 @@ export const filterSeminarsForViewer = (
 ): Seminar[] => {
   if (canMutateSeminar(role)) return seminars;
   if (!canViewSeminar(role)) return [];
-  if (currentUserId == null) return [];
+  if (currentUserId == null) return seminars;
   const invitedSeminarIds = new Set<number>();
   for (const p of participants) {
     if (p.userId === currentUserId && p.seminarId != null) {
       invitedSeminarIds.add(p.seminarId);
     }
+  }
+  if (invitedSeminarIds.size === 0) {
+    return seminars;
   }
   return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
 };
@@ -166,6 +169,7 @@ export interface SeminarCreateRequest {
   maxParticipants?: number | null;
   isReminderSent?: boolean | null;
   status?: string | null;
+  guestEmails?: string[] | null;
 }
 
 export type SeminarUpdateRequest = Partial<SeminarCreateRequest>;
@@ -241,6 +245,37 @@ export const seminarService = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(API_ENDPOINTS.SEMINAR.DELETE(id));
+  },
+
+  invite: async (id: number, emails: string[]): Promise<unknown> => {
+    const response = await api.post(API_ENDPOINTS.SEMINAR.INVITE(id), { emails });
+    return response.data;
+  },
+
+  submitFeedback: async (
+    seminarId: number,
+    payload: {
+      rating?: number | null;
+      participantEvaluation?: string | null;
+      invitationStatus?: string | null;
+    }
+  ): Promise<unknown> => {
+    const response = await api.post(
+      API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId),
+      payload
+    );
+    return response.data;
+  },
+
+  getMyInvitations: async (): Promise<Seminar[]> => {
+    try {
+      const response = await api.get<Seminar[]>(
+        API_ENDPOINTS.SEMINAR.MY_INVITATIONS
+      );
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
+    }
   },
 };
 

@@ -29,15 +29,20 @@
 //   can re-enter edit mode to make further changes.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
 import {
   PROFILE_VALIDATION,
   resolveRoleProfileMeta,
+  type Profile as UserProfileType,
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
 import { validateVietnameseName } from '../../utils/validationRules';
+import { useFollowCounts } from '../../hooks/useFollowers';
+import { followerService } from '../../services/follower.service';
+import { FollowListModal } from '../../components/profile/FollowListModal';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -232,15 +237,14 @@ function draftFromProfile(p: {
 }
 
 export const Profile = () => {
+  const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
-  // The authenticated user's id is the ONLY identifier used to read/write
-  // this profile. We never read a profile id from a route param, query
-  // string, or any other client-controlled source.
   const authenticatedUserId = user?.userId ?? null;
-  const roleName = user?.role ?? null;
-  const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
-  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : 'Researcher';
-  const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
+  const parsedTargetId = routeUserId ? Number(routeUserId) : null;
+  const targetUserId = parsedTargetId && Number.isFinite(parsedTargetId) && parsedTargetId > 0
+    ? parsedTargetId
+    : (authenticatedUserId ?? null);
+  const isOwner = authenticatedUserId != null && targetUserId === authenticatedUserId;
 
   const {
     profile,
@@ -252,7 +256,45 @@ export const Profile = () => {
     saveError,
     save,
     clearSaveError,
-  } = useProfile(authenticatedUserId);
+  } = useProfile(targetUserId);
+
+  const roleName = isOwner ? (user?.role ?? null) : (profile?.roleName ?? null);
+  const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
+  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : (roleName || 'Researcher');
+  const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
+
+  const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
+
+  const [isFollowingTarget, setIsFollowingTarget] = useState<boolean>(false);
+  const [isFollowActionLoading, setIsFollowActionLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOwner && targetUserId && authenticatedUserId) {
+      followerService.isFollowing(targetUserId).then(setIsFollowingTarget).catch(() => {});
+    }
+  }, [targetUserId, authenticatedUserId, isOwner]);
+
+  const handleToggleFollowTarget = async () => {
+    if (!targetUserId || !authenticatedUserId || isOwner || isFollowActionLoading) return;
+    setIsFollowActionLoading(true);
+    try {
+      const nextState = !isFollowingTarget;
+      setIsFollowingTarget(nextState);
+      if (isFollowingTarget) {
+        await followerService.unfollow(targetUserId);
+      } else {
+        await followerService.follow({ followedId: targetUserId });
+      }
+      refetchCounts();
+    } catch {
+      setIsFollowingTarget(isFollowingTarget);
+    } finally {
+      setIsFollowActionLoading(false);
+    }
+  };
+
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState<boolean>(false);
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers');
 
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<DraftFields>(EMPTY_DRAFT);
@@ -431,22 +473,22 @@ export const Profile = () => {
   // ── Main render ────────────────────────────────────────────────────
 
   const displayName =
-    profile?.fullName?.trim() || user?.username || user?.email || `User #${authenticatedUserId ?? '?'}`;
-  const displayEmail = user?.email ?? '';
+    profile?.fullName?.trim() || (isOwner ? (user?.username || user?.email) : '') || `User #${targetUserId ?? '?'}`;
+  const displayEmail = profile?.email || (isOwner ? user?.email : '') || '';
   const avatarInitials = profile?.avatarInitials?.trim() || deriveInitials(displayName);
 
   return (
     <div className={styles.page} style={accentStyle}>
       <div className={styles.breadcrumbs} role="navigation">
         Home <span aria-hidden>/</span>{' '}
-        <span className={styles.breadcrumbsActive}>Profile &amp; Account Settings</span>
+        <span className={styles.breadcrumbsActive}>{isOwner ? 'Profile & Account Settings' : `${displayName}'s Profile`}</span>
       </div>
 
       <header className={styles.header}>
         <div className={styles.headerCopy}>
-          <p className={styles.eyebrow}>{roleMeta.eyebrow}</p>
-          <h1 className={styles.title}>{roleMeta.title}</h1>
-          <p className={styles.subtitle}>{roleMeta.subtitle}</p>
+          <p className={styles.eyebrow}>{isOwner ? roleMeta.eyebrow : 'Professional Showcase'}</p>
+          <h1 className={styles.title}>{isOwner ? roleMeta.title : displayName}</h1>
+          <p className={styles.subtitle}>{isOwner ? roleMeta.subtitle : 'Public overview of academic publications, research expertise, and citations.'}</p>
         </div>
         <div className={styles.headerActions}>
           {mode === 'view' && (
@@ -460,14 +502,25 @@ export const Profile = () => {
               >
                 {isLoading ? 'Refreshing…' : 'Refresh'}
               </button>
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={handleEnterEdit}
-                data-testid="profile-edit-button"
-              >
-                Edit profile
-              </button>
+              {isOwner ? (
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={handleEnterEdit}
+                  data-testid="profile-edit-button"
+                >
+                  Edit profile
+                </button>
+              ) : authenticatedUserId && (
+                <button
+                  type="button"
+                  className={isFollowingTarget ? styles.secondaryButton : styles.primaryButton}
+                  onClick={handleToggleFollowTarget}
+                  disabled={isFollowActionLoading}
+                >
+                  {isFollowActionLoading ? '…' : isFollowingTarget ? 'Following' : '+ Follow'}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -483,7 +536,7 @@ export const Profile = () => {
           </h2>
           <p className={styles.identityRole}>
             <span className={styles.roleBadge}>{roleLabel}</span>
-            {isEmptyProfile ? (
+            {isEmptyProfile && isOwner ? (
               <span className={styles.emptyBadge}>Profile not yet configured</span>
             ) : null}
           </p>
@@ -492,6 +545,51 @@ export const Profile = () => {
               {displayEmail}
             </p>
           ) : null}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <button
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '2px 6px',
+                margin: '-2px -6px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+                transition: 'background-color 0.15s ease',
+              }}
+              onClick={() => {
+                setFollowModalTab('followers');
+                setIsFollowModalOpen(true);
+              }}
+              title="View your followers"
+            >
+              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followersCount}</strong> Followers
+            </button>
+            <span>·</span>
+            <button
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '2px 6px',
+                margin: '-2px -6px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+                transition: 'background-color 0.15s ease',
+              }}
+              onClick={() => {
+                setFollowModalTab('following');
+                setIsFollowModalOpen(true);
+              }}
+              title="View people you follow"
+            >
+              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followingCount}</strong> Following
+            </button>
+          </div>
         </div>
       </section>
 
@@ -545,6 +643,7 @@ export const Profile = () => {
           avatarInitials={avatarInitials}
           updatedAt={profile?.updatedAt}
           isEmpty={isEmptyProfile}
+          profile={profile}
         />
       ) : (
         <ProfileEditForm
@@ -563,6 +662,16 @@ export const Profile = () => {
           onCancel={handleCancelEdit}
         />
       )}
+
+      {targetUserId && (
+        <FollowListModal
+          isOpen={isFollowModalOpen}
+          initialTab={followModalTab}
+          userId={targetUserId}
+          onClose={() => setIsFollowModalOpen(false)}
+          onCountsChanged={refetchCounts}
+        />
+      )}
     </div>
   );
 };
@@ -572,9 +681,10 @@ interface ProfileViewProps {
   avatarInitials: string;
   updatedAt: string | null | undefined;
   isEmpty: boolean;
+  profile?: UserProfileType | null;
 }
 
-const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty }: ProfileViewProps) => {
+const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: ProfileViewProps) => {
   const showValue = (value: string, fallback = 'Not set') =>
     value.trim() === '' ? <span className={styles.viewEmpty}>{fallback}</span> : value;
 
@@ -661,6 +771,38 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty }: ProfileViewP
             </div>
           )}
         </div>
+        {profile?.hindex != null || profile?.totalCitations != null || profile?.publicationCount != null || profile?.majorFieldName ? (
+          <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
+            <span className={styles.viewLabel}>Academic &amp; Research Metrics</span>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>H-Index</span>
+                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.hindex ?? 0}</strong>
+              </div>
+              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Citations</span>
+                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.totalCitations ?? 0}</strong>
+              </div>
+              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Publications</span>
+                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.publicationCount ?? 0}</strong>
+              </div>
+              {profile.majorFieldName && (
+                <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '180px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Research Field</span>
+                  <strong style={{ fontSize: '1rem', color: '#0f172a', display: 'block' }}>
+                    {profile.majorFieldName}
+                  </strong>
+                  {profile.subFieldName && (
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      {profile.subFieldName}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
         {updatedAt ? (
           <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
             <span className={styles.viewLabel}>Last updated</span>

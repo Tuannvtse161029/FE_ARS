@@ -409,6 +409,10 @@ function StatusBadgeInline({ status }: { status: PhasedReportStatus }): JSX.Elem
     SUBMITTED: styles.statusInlineSubmitted,
     EVALUATED: styles.statusInlineEvaluated,
     REJECTED: styles.statusInlineRejected,
+    Pending: styles.statusInlineWaiting,
+    OnTime: styles.statusInlineSubmitted,
+    Overdue: styles.statusInlineRejected,
+    Passed: styles.statusInlineEvaluated,
   };
   return (
     <span className={`${styles.statusInline} ${palette[status]}`}>
