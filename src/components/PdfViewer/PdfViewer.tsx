@@ -34,7 +34,7 @@ interface PdfViewerProps {
    *   no download/print shortcuts, copy/cut/context-menu/drag blocked inside the
    *   viewer, and a confidential watermark/notice overlay is shown.
    *
-   * Applied only to reviewer-facing researcher-paper views (EvaluationDesk
+   * Applied only to reviewer-facing manuscript views
    * reviewer path).  NOT applied to researcher upload preview, researcher
    * viewing their own paper, admin proof-document review, or other PDF usages.
    */

@@ -12,9 +12,9 @@
 //   SubField · Transaction · User · UserRole · UserToken · Wallet ·
 //   WithdrawalRequest
 //
-// No tag exposing "ORCID", "OpenAlex", "Orcid", "orcid", "openalex", or any
-// lookup-enabling endpoint was found. All 6,784 lines of the swagger.json were
-// scanned.
+// The live API now exposes POST /api/Admin/orcid-lookup. It accepts a
+// roleRequestId and returns OpenAlex-backed metadata; the frontend must receive
+// that correlation ID from the Admin role-request payload before calling it.
 //
 // ── ProfessionalProfile schema (partial evidence) ─────────────────────────────
 // The Swagger does expose a `ProfessionalProfileCreateRequest` with an `orcidId`
@@ -23,10 +23,8 @@
 // Admin retrieve public ORCID metadata (name, works, affiliation, etc.).
 //
 // ── Decision ─────────────────────────────────────────────────────────────────
-// No ARS-backed ORCID lookup endpoint exists. The feature is implemented behind
-// a disabled feature flag. The UI shows a clear "Feature Unavailable" state.
-// When the BE team ships a dedicated endpoint, flip
-// `VITE_ORCID_CHECK_ENABLED=true` and implement the `_lookupViaBackend` path.
+import api from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
 //
 // ── ORCID public API notes ────────────────────────────────────────────────────
 // ORCID Public API base: https://pub.orcid.org/v3.0
@@ -41,15 +39,13 @@
 /**
  * Controls whether the ORCID Check button and modal are accessible.
  *
- * Currently `false` — no ARS endpoint is available to proxy the lookup.
- * Flip to `true` once the BE team ships the ORCID lookup endpoint and the
- * `_lookupViaBackend` stub below is implemented.
+ * Enabled by default because the live Admin ORCID lookup endpoint is now
+ * documented and implemented. Set `VITE_ORCID_CHECK_ENABLED=false` only while
+ * diagnosing a backend outage.
  *
- * Alternatively, set the env variable `VITE_ORCID_CHECK_ENABLED=true` to
- * override this default during local development / testing.
  */
 export const ORCID_CHECK_ENABLED =
-  import.meta.env.VITE_ORCID_CHECK_ENABLED === 'true';
+  import.meta.env.VITE_ORCID_CHECK_ENABLED !== 'false';
 
 /**
  * Thrown by `lookupOrcid` when the feature flag is disabled.
@@ -57,8 +53,8 @@ export const ORCID_CHECK_ENABLED =
  * from "network error during lookup".
  */
 export class OrcidCheckFeatureDisabledError extends Error {
-  constructor() {
-    super('ORCID Check is not yet available. The backend proxy endpoint has not been implemented.');
+  constructor(message = 'ORCID Check requires a role-request identifier from the backend.') {
+    super(message);
     this.name = 'OrcidCheckFeatureDisabledError';
   }
 }
@@ -248,11 +244,12 @@ export type OrcidLookupResponse = OrcidLookupResult | OrcidLookupFailure;
 /**
  * Look up public metadata for an ORCID iD.
  *
- * This implementation is BE-proxy-only (currently stubbed/unavailable).
+ * This implementation is BE-proxy-only; the live endpoint resolves the
+ * ORCID attached to an Admin role request and returns normalized metadata.
  * The FE must NOT call OpenAlex or ORCID Public API directly from the browser.
  *
  * ── Step 1 (current): BE proxy stub ───────────────────────────────────────
- * `POST /api/OrcidLookup` { orcid: string }
+ * `POST /api/Admin/orcid-lookup` { roleRequestId: number }
  * Expected BE response: OrcidPersonMetadata
  * Expected BE error responses: 404 (not found), 429 (rate limit), 5xx (error)
  *
@@ -265,27 +262,31 @@ export type OrcidLookupResponse = OrcidLookupResult | OrcidLookupFailure;
  * GET https://api.openalex.org/authors?orcid={orcid-id}
  * Returns OpenAlex Author object with works, citation counts, etc.
  *
- * Until the BE ships Step 1, this function always throws
- * `OrcidCheckFeatureDisabledError`.
  *
  * @param rawOrcid  The ORCID iD as entered by the user (any common format).
  *                  Will be normalized before lookup.
  */
-export const lookupOrcid = async (rawOrcid: string): Promise<OrcidLookupResponse> => {
+export const lookupOrcid = async (
+  rawOrcid: string,
+  roleRequestId?: number,
+): Promise<OrcidLookupResponse> => {
   // ── Guard: feature flag ────────────────────────────────────────────────────
   if (!ORCID_CHECK_ENABLED) {
     throw new OrcidCheckFeatureDisabledError();
   }
-
   // ── Guard: format validation (fast-fail before any network call) ────────────
   const normalized = normalizeOrcid(rawOrcid);
   if (!normalized) {
     throw new OrcidInvalidFormatError(rawOrcid);
   }
+  if (!Number.isInteger(roleRequestId) || Number(roleRequestId) <= 0) {
+    throw new OrcidCheckFeatureDisabledError();
+  }
+  const requestId = roleRequestId as number;
 
   // ── Step 1: ARS backend proxy (current stub) ───────────────────────────────
   try {
-    const result = await _lookupViaBackend(normalized);
+    const result = await _lookupViaBackend(normalized, requestId);
     return result;
   } catch (err) {
     // Re-throw known feature-disabled errors as-is
@@ -310,18 +311,70 @@ export const lookupOrcid = async (rawOrcid: string): Promise<OrcidLookupResponse
 };
 
 /**
- * Backend proxy stub — implement this once BE ships the endpoint.
+ * Backend proxy for the live Admin ORCID/OpenAlex lookup endpoint.
  *
- * Request:  POST /api/OrcidLookup { orcid: string }
+ * Request:  POST /api/Admin/orcid-lookup { roleRequestId: number }
  * Response: OrcidPersonMetadata
  * Errors:   404 → OrcidNotFoundError
  *           429 → OrcidRateLimitError
  *           5xx → OrcidApiError
  */
-async function _lookupViaBackend(_orcid: string): Promise<OrcidLookupResult> {
-  // TODO (BE Team): implement POST /api/OrcidLookup
-  // See "Backend Team Request" section in the feature PR description.
-  throw new OrcidCheckFeatureDisabledError();
+async function _lookupViaBackend(
+  _orcid: string,
+  roleRequestId: number,
+): Promise<OrcidLookupResult> {
+  try {
+    const response = await api.post(API_ENDPOINTS.ADMIN.ORCID_LOOKUP, {
+      roleRequestId,
+    });
+    const raw = (response.data ?? {}) as Record<string, unknown>;
+    const author = (raw.author ?? {}) as Record<string, unknown>;
+    const orcid = typeof raw.orcidId === 'string' ? raw.orcidId : _orcid;
+    const affiliations = Array.isArray(raw.affiliations)
+      ? raw.affiliations.map((item) => typeof item === 'object' && item ? (item as Record<string, unknown>).institutionName : null).filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+      : [];
+    const keywords = Array.isArray(raw.topics)
+      ? raw.topics.map((item) => typeof item === 'object' && item ? (item as Record<string, unknown>).topicName : null).filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+      : [];
+    const works: OrcidWork[] = Array.isArray(raw.works)
+      ? raw.works.map((item) => {
+          const work = (item ?? {}) as Record<string, unknown>;
+          if (typeof work.title !== 'string' || work.title.trim() === '') return null;
+          return {
+            title: work.title,
+            ...(typeof work.doi === 'string' ? { doi: work.doi } : {}),
+            ...(typeof work.publicationYear === 'number' ? { year: work.publicationYear } : {}),
+            ...(typeof work.type === 'string' ? { type: work.type } : {}),
+            ...(typeof work.externalUrl === 'string' ? { openalexUrl: work.externalUrl } : {}),
+          };
+        }).filter((item): item is OrcidWork => item !== null)
+      : [];
+    const lookupStatus = typeof raw.lookupStatus === 'string' ? raw.lookupStatus.trim().toLowerCase() : '';
+    return {
+      status: 'success',
+      meta: {
+        orcid,
+        displayName: typeof author.displayName === 'string'
+          ? author.displayName
+          : typeof author.fullName === 'string'
+            ? author.fullName
+            : undefined,
+        affiliations,
+        emails: [],
+        orcidUrl: `https://orcid.org/${orcid}`,
+        keywords,
+        works,
+        isIncomplete: (Array.isArray(raw.missingSections) && raw.missingSections.length > 0) || Boolean(lookupStatus && !['success', 'found', 'ok'].includes(lookupStatus)),
+      },
+    };
+  } catch (err: unknown) {
+    const status = typeof err === 'object' && err && 'response' in err
+      ? Number((err as { response?: { status?: unknown } }).response?.status)
+      : 0;
+    if (status === 404) throw new OrcidNotFoundError(_orcid);
+    if (status === 429) throw new OrcidRateLimitError();
+    throw new OrcidApiError(Number.isFinite(status) ? status : 0, _orcid);
+  }
 }
 
 // ── OpenAlex enrichment ──────────────────────────────────────────────────────
@@ -339,7 +392,7 @@ async function _lookupViaBackend(_orcid: string): Promise<OrcidLookupResult> {
  * Returns the same OrcidLookupResult enriched with works from OpenAlex, or the
  * original result if OpenAlex returns no match (not an error).
  *
- * Currently unimplemented — BE proxy would combine both sources server-side.
+ * The live BE combines the provider data server-side.
  */
 export const enrichWithOpenAlex = async (
   result: OrcidLookupResult,

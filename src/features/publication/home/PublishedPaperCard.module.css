@@ -1,6 +1,6 @@
 /* PublishedPaperCard — OpenAlex-inspired scannable card layout.
    Uses CSS variables from src/styles/ars-tokens.css. No hard-coded brand hex
-   outside the demo tokens; matches the editorial typography already used by
+   outside the shared tokens; matches the editorial typography already used by
    PublicationShared.module.css. */
 
 .paper {

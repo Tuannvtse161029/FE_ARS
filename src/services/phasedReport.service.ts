@@ -242,6 +242,8 @@ export interface LecturerEvaluationRequest {
   rejectionReason?: string;
   capacityEvaluation?: string;
   lecturerDescription?: string;
+  phaseNumber?: number | null;
+  milestoneTitle?: string | null;
 }
 
 // Evaluate (approve) a report. Transitions SUBMITTED → EVALUATED / Passed.
@@ -265,13 +267,12 @@ export const evaluatePhasedReport = async (
       capacityEvaluation: payload.capacityEvaluation || null,
       finalOutcomeEvaluation: payload.finalOutcomeEvaluation,
       lectureFeedback: payload.lectureFeedback ?? null,
+      phaseNumber: payload.phaseNumber ?? null,
+      milestoneTitle: payload.milestoneTitle ?? null,
+      status: 'EVALUATED',
       submittedAt: null,
     };
-    const wire = {
-      ...body,
-      status: 'EVALUATED',
-    } as StrictPhasedReportUpdateRequest & { status: string };
-    return phasedReportService.update(id, wire);
+    return phasedReportService.update(id, body);
   }
 };
 
@@ -303,13 +304,12 @@ export const rejectPhasedReport = async (
       capacityEvaluation: trimmedReason || trimmedOutcome,
       finalOutcomeEvaluation: trimmedOutcome,
       lectureFeedback: payload.lectureFeedback ?? null,
+      phaseNumber: payload.phaseNumber ?? null,
+      milestoneTitle: payload.milestoneTitle ?? null,
+      status: 'REJECTED',
       submittedAt: null,
     };
-    const wire = {
-      ...body,
-      status: 'REJECTED',
-    } as StrictPhasedReportUpdateRequest & { status: string };
-    return phasedReportService.update(id, wire);
+    return phasedReportService.update(id, body);
   }
 };
 
@@ -356,7 +356,8 @@ export const filterPhasedReportsAwaitingReview = (
 export interface PhasedReportSubmitRequest {
   phasedReportId?: number;
   topicId?: number;
-  phaseNumber?: number;
+  phaseNumber?: number | null;
+  milestoneTitle?: string | null;
   researchGroupId: number;
   groupMemberId?: number;
   reportFileUrl: string;
@@ -379,6 +380,8 @@ export interface SubmittedPhasedReport {
   lectureFeedback?: number;
   submittedAt?: string;
   status: PhasedReportStatus;
+  phaseNumber?: number;
+  milestoneTitle?: string;
   // Forward-compatible lineage pointer — populated by `resubmitPhasedReport`
   // when the BE echoes the structured `PreviousReportId` column back. Until
   // BE ships that column the sentinel-based detection in
@@ -423,6 +426,8 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
     ...(typeof raw.submittedAt === 'string'
       ? { submittedAt: raw.submittedAt }
       : {}),
+    ...(typeof raw.phaseNumber === 'number' ? { phaseNumber: raw.phaseNumber } : {}),
+    ...(typeof raw.milestoneTitle === 'string' ? { milestoneTitle: raw.milestoneTitle } : {}),
     status,
   };
   // BE echoes `previousReportId` (preferred over sentinel detection) when the
@@ -440,20 +445,11 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
 export const listReportsForGroup = async (
   researchGroupId: number,
 ): Promise<SubmittedPhasedReport[]> => {
-  try {
-    const response = await api.get<unknown>(
-      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_GROUP(researchGroupId),
-    );
-    const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
-    return arr.map(toStrict);
-  } catch {
-    const fallbackResponse = await api.get<unknown>(
-      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
-      { params: { researchGroupId } },
-    );
-    const arr = Array.isArray(fallbackResponse.data) ? (fallbackResponse.data as PhasedReport[]) : [];
-    return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
-  }
+  const response = await api.get<unknown>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_GROUP(researchGroupId),
+  );
+  const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
+  return arr.map(toStrict);
 };
 
 // Sentinel used by `resubmitPhasedReport` to thread the lineage pointer
@@ -525,15 +521,14 @@ export const submitPhasedReport = async (
       capacityEvaluation: null,
       finalOutcomeEvaluation: null,
       lectureFeedback: null,
+      phaseNumber: payload.phaseNumber ?? null,
+      milestoneTitle: payload.milestoneTitle ?? null,
+      status: 'SUBMITTED',
       submittedAt: payload.submittedAt ?? new Date().toISOString(),
     };
-    const wire = {
-      ...baseBody,
-      status: 'SUBMITTED',
-    } as StrictPhasedReportCreateRequest & { status: string };
     const response = await api.post<PhasedReport>(
       API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
-      wire,
+      baseBody,
     );
     return toStrict(response.data);
   }
@@ -560,6 +555,8 @@ export const resubmitPhasedReport = async (
         : null,
     finalOutcomeEvaluation: null,
     lectureFeedback: null,
+    phaseNumber: payload.phaseNumber ?? null,
+    milestoneTitle: payload.milestoneTitle ?? null,
     submittedAt: payload.submittedAt ?? new Date().toISOString(),
   };
   // When `previousReportId` is absent, strip `capacityEvaluation` entirely
@@ -568,13 +565,10 @@ export const resubmitPhasedReport = async (
   if (typeof payload.previousReportId !== 'number') {
     delete (baseBody as Partial<StrictPhasedReportCreateRequest>).capacityEvaluation;
   }
-  const wire = {
-    ...baseBody,
-    status: 'SUBMITTED',
-  } as StrictPhasedReportCreateRequest & { status: string };
+  baseBody.status = 'SUBMITTED';
   const response = await api.post<PhasedReport>(
     API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
-    wire,
+    baseBody,
   );
   return toStrict(response.data);
 };

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, FileText } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import {
@@ -25,16 +24,16 @@ import adminStyles from './AdminPublication.module.css';
  * render private review content (reviewer private comments, criterion
  * scores). Every other admin surface must hide those fields.
  *
- * Demo-only actions (`assignReviewer`, `publishPaper`) are exposed
- * exactly when the demo adapter contract permits them for the current
- * status. The page never invents endpoint calls — it only renders
- * action areas for what the demo adapter can actually do today.
+ * Unsupported actions (`assignReviewer`, `publishPaper`) are exposed
+ * exactly when the live adapter contract permits them for the current status.
+ * Unsupported transitions remain visibly unavailable until the backend ticket
+ * is implemented.
  */
 export const AdminPaperSubmissionDetail = () => {
   const { id } = useParams();
   const [paper, setPaper] = useState<PublicationPaper | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [reviewerName, setReviewerName] = useState('');
+  const [reviewerId, setReviewerId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +51,7 @@ export const AdminPaperSubmissionDetail = () => {
           return;
         }
         setPaper(match);
-        setReviewerName(match.reviewer?.reviewerName ?? '');
+        setReviewerId(match.reviewerId ? String(match.reviewerId) : '');
       })
       .catch(() => { if (active) setError('The editorial record could not be loaded.'); });
     return () => { active = false; };
@@ -61,13 +60,14 @@ export const AdminPaperSubmissionDetail = () => {
   const actions = useMemo(() => (paper ? adminActionsForStatus(paper) : []), [paper]);
 
   const assign = async () => {
-    if (!paper || !reviewerName.trim()) return;
+    const parsedReviewerId = Number(reviewerId);
+    if (!paper || !Number.isInteger(parsedReviewerId) || parsedReviewerId <= 0) return;
     setSaving(true);
     setError(null);
     try {
-      const updated = await publicationAdapter.assignReviewer(paper.id, reviewerName.trim());
+      const updated = await publicationAdapter.assignReviewer(paper.id, parsedReviewerId);
       setPaper(updated);
-      setReviewerName(updated.reviewer?.reviewerName ?? '');
+      setReviewerId(updated.reviewerId ? String(updated.reviewerId) : '');
     } catch {
       setError('The reviewer assignment could not be saved.');
     } finally {
@@ -95,10 +95,9 @@ export const AdminPaperSubmissionDetail = () => {
         <header className={shared.header}>
           <div>
             <h1>Editorial record not found</h1>
-            <p>The Admin submission record you requested is not in the demo dataset.</p>
+            <p>The Admin submission record you requested is unavailable.</p>
           </div>
         </header>
-        <PublicationDemoBanner />
         <div className={shared.empty}>
           <p>No paper matches id <code>{id}</code>.</p>
           <Link className={shared.buttonGhost} to="/admin/paper-submissions"><ChevronLeft size={14} aria-hidden="true" /> Back to submissions</Link>
@@ -139,8 +138,6 @@ export const AdminPaperSubmissionDetail = () => {
           </span>
         </div>
       </header>
-      <PublicationDemoBanner />
-
       {error && <div className={shared.error} role="alert">{error}</div>}
 
       <div className={shared.panel}>
@@ -148,7 +145,7 @@ export const AdminPaperSubmissionDetail = () => {
         <p className={shared.panelSubtitle}>Author, institution, taxonomy, and identifiers as supplied by the researcher.</p>
         <dl className={shared.detailList}>
           <dt>Paper type</dt><dd>{paper.paperType}</dd>
-          <dt>Version</dt><dd>v{paper.version}</dd>
+          <dt>Version</dt><dd>{paper.version != null ? `v${paper.version}` : 'Not supplied'}</dd>
           <dt>Visibility</dt><dd>{paper.visibility}</dd>
           <dt>Submitted</dt><dd>{paper.submittedAt?.slice(0, 10) ?? '—'}</dd>
           <dt>Published</dt><dd>{paper.publishedAt?.slice(0, 10) ?? '—'}</dd>
@@ -237,7 +234,7 @@ export const AdminPaperSubmissionDetail = () => {
       {hasActions && (
         <div className={shared.panel}>
           <h2 className={shared.panelTitle}>Editorial actions</h2>
-          <p className={shared.panelSubtitle}>Each action is gated by the current status. Demo-only — the demo adapter does not persist publication decisions.</p>
+          <p className={shared.panelSubtitle}>Each action is gated by the current status and persisted through a documented backend operation.</p>
           <div className={shared.actionsStack}>
             {canAssignReviewer(paper) && (
               <div className={adminStyles.actionZone}>
@@ -245,18 +242,19 @@ export const AdminPaperSubmissionDetail = () => {
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'assign')?.hint}</p>
                 <div className={adminStyles.assignForm}>
                   <label className={shared.field}>
-                    <span>Reviewer name</span>
+                    <span>Reviewer account ID</span>
                     <input
-                      aria-label="Reviewer name"
-                      placeholder="Reviewer name"
-                      value={reviewerName}
-                      onChange={(event) => setReviewerName(event.target.value)}
+                      aria-label="Reviewer account ID"
+                      inputMode="numeric"
+                      placeholder="Reviewer ID"
+                      value={reviewerId}
+                      onChange={(event) => setReviewerId(event.target.value.replace(/\D/g, ''))}
                     />
                   </label>
                   <button
                     type="button"
                     className={shared.button}
-                    disabled={saving || !reviewerName.trim()}
+                    disabled={saving || !Number.isInteger(Number(reviewerId)) || Number(reviewerId) <= 0}
                     onClick={() => void assign()}
                   >
                     {saving ? 'Saving...' : 'Assign reviewer'}
@@ -284,21 +282,21 @@ export const AdminPaperSubmissionDetail = () => {
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Request revision</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'requestRevision')?.hint}</p>
-                <p className={shared.fieldHint}>The revision request endpoint is not exposed by the demo adapter yet — see API blockers §3.3.</p>
+                <p className={shared.fieldHint}>Unavailable until the backend exposes a revision transition endpoint. See the backend publication ticket.</p>
               </div>
             )}
             {canReject(paper) && (
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Reject</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'reject')?.hint}</p>
-                <p className={shared.fieldHint}>The rejection endpoint is not exposed by the demo adapter yet — see API blockers §3.3.</p>
+                <p className={shared.fieldHint}>Unavailable until the backend exposes an Admin rejection endpoint. See the backend publication ticket.</p>
               </div>
             )}
             {canWithdraw(paper) && (
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>{actions.find((action) => action.id === 'withdraw')?.label}</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'withdraw')?.hint}</p>
-                <p className={shared.fieldHint}>The withdrawal endpoint is not exposed by the demo adapter yet — see API blockers §3.3.</p>
+                <p className={shared.fieldHint}>Unavailable until the backend exposes a publication withdrawal endpoint. See the backend publication ticket.</p>
               </div>
             )}
           </div>

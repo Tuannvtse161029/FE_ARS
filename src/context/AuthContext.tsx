@@ -353,7 +353,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Single-role (or zero — fall back to BE's `role`) — proceed.
-      const roleToUse = response.role ?? assignedRoles[0] ?? 'Researcher';
+      const roleToUse = response.role ?? assignedRoles[0] ?? null;
+      if (!roleToUse) {
+        throw new Error('Login response did not include an assigned role.');
+      }
       await persistAuthAndNavigate(response, roleToUse, credentials.rememberMe ?? false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
@@ -514,10 +517,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // /complete-google-registration page reads from the same storage
           // path so the existing onboarding UI continues to work.
           //
-          // The onboarding completion endpoint authenticates via the ARS
-          // JWT only — we deliberately do NOT cache the upstream Google
-          // ID token here (the BE forbids echoing identity-provider
-          // tokens; see BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md).
+          // Keep the short-lived GIS credential in sessionStorage for the
+          // completion request. It is never copied to localStorage or logged,
+          // and is removed after the request succeeds.
           //
           // Defensive cleanup: a stale `ars_google_onboarding_submitted`
           // sentinel from a previous (now-deleted) account must NOT survive
@@ -582,6 +584,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
           authStore.setLoading(false);
           return;
+        }
+
+        // Existing user no longer needs the GIS credential. Keep it only for
+        // the first-time onboarding handoff, where the live completion API
+        // requires it.
+        try {
+          sessionStorage.removeItem('ars_google_credential');
+        } catch {
+          /* ignore storage privacy errors */
         }
 
         // Existing user — delegate to the centralised persist + navigate
@@ -662,17 +673,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    * captured PDF URL, requested role, optional phone number, and (for
    * Reviewer) the canonical ORCID iD.
    *
-   * Authentication is forwarded implicitly through the SHARED ARS
-   * SESSION: `googleAuthService.postCompleteGoogleRegistration` posts
-   * through the shared axios instance, which carries the active
-   * `Authorization: Bearer <ars-jwt>` header populated from
-   * `storage.getToken()` (see `services/axios.ts` and
-   * `utils/storage.ts`). The BE derives the user id from the JWT
-   * subject server-side — we deliberately do NOT echo the upstream
-   * Google ID token, the OAuth code, or a client-supplied user id into
-   * the body. This is true for both the credential flow (Login →
-   * `POST /api/Auth/google-login`) and the legacy code-redirect flow
-   * (`/auth/google/callback`); both produce the same ARS session.
+   * The live completion contract requires the GIS credential in the request
+   * body as well as the active ARS JWT attached by the shared axios instance.
+   * The BE derives the user id from the JWT subject server-side; the frontend
+   * never sends a client-supplied user id or OAuth authorization code.
    *
    * The context:
    *   • posts the documented onboarding payload exactly once per call
@@ -700,6 +704,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }> => {
       const stored = storage.getUser();
       const userId = authStore.user?.id ?? stored?.id ?? 0;
+      if (!Number.isInteger(userId) || userId <= 0) {
+        throw new Error('A valid authenticated user is required to complete onboarding.');
+      }
       const credential =
         (typeof window !== 'undefined'
           ? sessionStorage.getItem('ars_google_credential')
@@ -718,34 +725,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               orcidId: payload.role === 'Reviewer' ? payload.orcidId : undefined,
               consents: payload.consents,
             },
-            idempotencyKey: `complete-google-registration-${userId || Date.now()}`,
+            idempotencyKey: `complete-google-registration-${userId}`,
           });
+        try {
+          sessionStorage.removeItem('ars_google_credential');
+        } catch {
+          /* ignore storage privacy errors */
+        }
 
-        // Update store and storage with pending Guest state directly from response
+        // Persist the backend response. When the endpoint omits optional state
+        // fields, retain the existing profile rather than inventing IDs or
+        // role values on the client.
+        const isActive = response.isActive ?? authStore.user?.isActive ?? false;
+        const roleName = response.role ?? authStore.user?.roleName ?? payload.role ?? null;
+        const effectiveRole = (response.effectiveRole as EffectiveRole | null | undefined)
+          ?? (isActive && roleName ? (roleName as EffectiveRole) : 'Guest');
         const guestUser = {
           ...(authStore.user || {}),
-          id: userId,
-          roleName: 'Guest',
-          roleId: 0,
-          isActive: false,
-          verificationStatus: 'Pending' as const,
-          effectiveRole: 'Guest' as const,
+          id: response.userId ?? userId,
+          roleName,
+          roleId: response.roleId ?? authStore.user?.roleId ?? null,
+          isActive,
+          verificationStatus: response.verificationStatus ?? authStore.user?.verificationStatus ?? null,
+          effectiveRole,
           isNewUser: false,
           requiresOnboarding: false,
         };
         storage.setUser(guestUser as any);
         authStore.updateUser(guestUser);
-        authStore.setEffectiveRole('Guest');
+        authStore.setEffectiveRole(effectiveRole);
 
         // Route immediately to /forum with Pending approval banner
         navigate(ROUTES.FORUM, { replace: true });
 
         return {
           status: 'submitted',
-          requestStatus: response.requestStatus ?? 'Pending',
-          onboardingStatus: response.onboardingStatus ?? 'Completed',
-          role: response.role ?? payload.role,
-          effectiveRole: response.effectiveRole ?? 'Guest',
+          requestStatus: response.requestStatus ?? null,
+          onboardingStatus: response.onboardingStatus ?? null,
+          role: response.role ?? payload.role ?? null,
+          effectiveRole: response.effectiveRole ?? effectiveRole,
         };
       } finally {
         setIsLoading(false);
@@ -757,6 +775,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const confirmRoleSelection = useCallback(
     async (role: UserRole) => {
       if (!pendingRoleSelection) return;
+      // The live BE exposes a dedicated role-selection endpoint for accounts
+      // with multiple approved roles. Persist the choice before storing the
+      // local session so JWT claims and the UI agree.
+      await authService.selectRole(role);
       // Persist using the stashed BE response, overriding `role` with the
       // user's choice. Token/email/username come from the original login.
       // Forward the original rememberMe choice so multi-role users get the

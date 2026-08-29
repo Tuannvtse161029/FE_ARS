@@ -56,7 +56,23 @@ export const resolveAuthorLinks = (author: Pick<PublicationAuthor, 'id' | 'orcid
   return orcid ? [{ authorId: author.id, orcid }] : [];
 };
 
-export const collectPaperExternalLinks = (paper: Pick<PublicationPaper, 'doi' | 'openAlexId'>): ResolvedExternalLink[] => {
+export const resolvePaperExternalLinks = (
+  paper: Pick<PublicationPaper, 'doi' | 'openAlexId' | 'externalIdentifier'>,
+): {
+  doi: ResolvedExternalLink | null;
+  openAlex: ResolvedExternalLink | null;
+  arxiv: string | null;
+} => ({
+  doi: buildDoiLink(paper.doi),
+  openAlex: buildOpenAlexLink(paper.openAlexId),
+  arxiv: buildArxivBadge(paper.externalIdentifier),
+});
+
+export const hasAuthorExternalLinks = (
+  author: Pick<PublicationAuthor, 'orcid'>,
+): boolean => Boolean(buildOrcidLink(author.orcid));
+
+export const collectPaperExternalLinks = (paper: Pick<PublicationPaper, 'doi' | 'openAlexId' | 'externalIdentifier'>): ResolvedExternalLink[] => {
   const links: ResolvedExternalLink[] = [];
   const doi = buildDoiLink(paper.doi);
   if (doi) links.push(doi);

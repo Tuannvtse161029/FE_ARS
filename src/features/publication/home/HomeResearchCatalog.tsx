@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import type { CatalogQuery, PublicationPaper } from '../types/publication';
 import { PublishedPaperCard } from './PublishedPaperCard';
 import styles from './HomeResearchCatalog.module.css';
 import { publicReviewerName } from '../types/publication';
+import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 
 const PAGE_SIZE = 8;
 
@@ -21,7 +21,7 @@ const SORT_OPTIONS: Array<{ value: NonNullable<CatalogQuery['sort']>; label: str
  *
  * Surfaces only papers that satisfy the public catalog predicate
  * (`status === 'PUBLISHED' && visibility === 'PUBLIC'`). The BE must apply
- * the same predicate server-side when the demo adapter is replaced —
+ * the same predicate server-side —
  * see `docs/PUBLICATION_FLOW_API_BLOCKERS.md` §3.1.
  */
 export const HomeResearchCatalog = () => {
@@ -30,6 +30,7 @@ export const HomeResearchCatalog = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -40,6 +41,7 @@ export const HomeResearchCatalog = () => {
         if (!active) return;
         setPapers(result.items);
         setTotal(result.totalCount);
+        setIsDemo(result.dataSource === 'demo');
       })
       .catch(() => active && setError('The research catalog could not be loaded.'))
       .finally(() => active && setLoading(false));
@@ -71,7 +73,7 @@ export const HomeResearchCatalog = () => {
           <p>Discover ARS publications across authors, institutions, topics, and research domains.</p>
         </div>
       </header>
-      <PublicationDemoBanner />
+      {isDemo && <PublicationDemoBanner />}
       <div className={styles.toolbar}>
         <label className={styles.search}>
           <Search size={18} aria-hidden="true" />

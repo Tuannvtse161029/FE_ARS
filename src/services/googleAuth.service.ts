@@ -458,25 +458,14 @@ export async function postGoogleLogin({
 // Per `tickets/backend/BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`
 // (BE-GOOGLE-ONBOARDING-03) the BE contract is:
 //
-//   "Require the authenticated Google account's JWT. The endpoint operates
-//    only on the token subject; do not accept a user ID that can target
-//    another user."
-//   "Do not expose Google identity-provider tokens in requests or
-//    responses."
-//
-// i.e. the ARS JWT (carried by the shared axios `Authorization` header)
-// is the ONLY credential the endpoint accepts. We do NOT echo the
-// upstream Google ID token into the request body — neither the
-// credential-flow (Login.tsx → POST /api/Auth/google-login) nor the
-// legacy code-redirect-flow (GoogleCallback.tsx → /auth/google/callback)
-// has the ID token available for forwarding anyway. The body therefore
-// carries only the documented onboarding fields. The BE derives the
-// user id from the JWT subject — we never trust a client-supplied id.
+// The live schema requires the GIS credential, together with pdfUrl,
+// phoneNumber, and role. The ARS JWT is also attached by the shared axios
+// interceptor and the backend derives the account subject from it; no user ID
+// is accepted from the frontend.
 //
 // Fields:
-//   • required by the BE: pdfUrl, phoneNumber, role
-//   • conditional: orcidId (Reviewer only)
-//   • optional: consents (versioned legal-consent receipts)
+//   • required by the BE: credential, pdfUrl, phoneNumber, role
+//   • not currently accepted by Swagger: orcidId and consents
 //
 // `additionalProperties: false` on the BE schema means any extra property
 // returns 400. We omit `credential` / `code` / `redirect_uri` from the
@@ -486,7 +475,7 @@ export interface CompleteGoogleRegistrationRequest {
   credential?: string;
   /** Verification PDF URL (Firebase Storage getDownloadURL). */
   pdfUrl: string;
-  /** E.164-ish phone number (`+XX XXXXXXX`). Optional — pass empty string if unknown. */
+  /** E.164-ish phone number (`+XX XXXXXXX`), required by the live schema. */
   phoneNumber: string;
   /** Requested business role name. */
   role: string;
@@ -590,12 +579,11 @@ export async function postCompleteGoogleRegistration({
     phoneNumber: payload.phoneNumber ?? '',
     role: payload.role,
   };
-  if (payload.role === 'Reviewer' && payload.orcidId) {
-    body.orcidId = payload.orcidId;
-  }
-  if (payload.consents && payload.consents.length > 0) {
-    body.consents = payload.consents;
-  }
+  // The live CompleteGoogleRegistrationRequest has additionalProperties:false
+  // and currently accepts only credential, pdfUrl, phoneNumber, and role.
+  // ORCID and consent persistence remains tracked in
+  // tickets/backend/BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md; sending those
+  // fields today would make the production request fail validation.
 
   try {
     const response = await api.post(

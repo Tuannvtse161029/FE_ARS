@@ -5,8 +5,6 @@ import { ROUTES } from '../../routes/paths';
 import { useEmailVerification } from '../../hooks/useEmailVerification';
 import { isVerifyEmailToken } from '../../services/emailVerification.service';
 import authService from '../../services/auth.service';
-import { useAuthStore } from '../../store';
-import { storage } from '../../utils/storage';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Check, Mail, ArrowLeft } from 'lucide-react';
 import styles from './EmailVerificationLanding.module.css';
@@ -127,30 +125,8 @@ export const EmailVerificationLanding = (): JSX.Element => {
     setErrorMessage(null);
 
     try {
-      const response = await authService.verifyRegistrationOtp(cleanEmail, code);
+      await authService.verifyRegistrationOtp(cleanEmail, code);
       setOtpSuccess(true);
-
-      // Hydrate user session with pending verification status
-      const token = response?.token || storage.getToken() || `ars-verified-${Date.now()}`;
-      const username = response?.username || cleanEmail.split('@')[0];
-      const userId = response?.userId || 0;
-
-      const verifiedUser = {
-        id: userId,
-        username,
-        email: cleanEmail,
-        fullName: response?.fullName || username,
-        roleId: 0,
-        roleName: 'Guest',
-        isActive: false,
-        verificationStatus: 'Pending' as const,
-        accountTier: 'Free' as const,
-        effectiveRole: 'Guest' as const,
-      };
-
-      storage.setToken(token);
-      storage.setUser(verifiedUser as any);
-      useAuthStore.getState().login(verifiedUser as any, token, 'Guest');
 
       try {
         sessionStorage.removeItem('ars_registered_email');
@@ -158,9 +134,10 @@ export const EmailVerificationLanding = (): JSX.Element => {
         /* ignore */
       }
 
-      // Automatically navigate into /forum where pending approval banner is displayed
+      // OTP verification does not issue an ARS session. Return to login so the
+      // user authenticates with the account that was just verified.
       setTimeout(() => {
-        navigate(ROUTES.FORUM, { replace: true });
+        navigate(ROUTES.LOGIN, { replace: true, state: { email: cleanEmail } });
       }, 1500);
     } catch (err: any) {
       const msg =

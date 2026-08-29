@@ -10,7 +10,7 @@ High
 
 ## Background
 
-Administrators need an `AI ORCID Check` action for Reviewer role requests. The browser must not call ORCID or OpenAlex directly because provider credentials, rate limits, request auditing, and response normalization belong on the server. Swagger currently has no documented endpoint for this capability.
+Administrators need an `AI ORCID Check` action for Reviewer role requests. The browser must not call ORCID or OpenAlex directly because provider credentials, rate limits, request auditing, and response normalization belong on the server. The endpoint is now present in live Swagger; the remaining integration gap is documented in `BE_ADMIN_ORCID_ROLE_REQUEST_ID_TICKET.md`.
 
 ## Goal
 
@@ -18,7 +18,7 @@ Provide an authenticated, auditable, admin-only endpoint that validates an ORCID
 
 ## API Contract
 
-Add `POST /api/Admin/orcid-lookup`.
+`POST /api/Admin/orcid-lookup` is now shipped. Keep this ticket as the implementation and contract record.
 
 ### Authorization
 
@@ -29,11 +29,12 @@ Add `POST /api/Admin/orcid-lookup`.
 
 ```json
 {
-  "orcidId": "0000-0002-1825-0097"
+  "roleRequestId": 123
 }
 ```
 
-Accept canonical IDs and full `https://orcid.org/...` URLs. Normalize before lookup.
+The server resolves and validates the ORCID attached to the role request. The
+frontend must not substitute a user ID for `roleRequestId`.
 
 ### Success Response
 
@@ -42,21 +43,23 @@ Accept canonical IDs and full `https://orcid.org/...` URLs. Normalize before loo
   "orcidId": "0000-0002-1825-0097",
   "lookupStatus": "Found",
   "sourceFetchedAt": "2026-08-22T15:00:00Z",
-  "person": {
+  "author": {
+    "openAlexId": "https://openalex.org/A123",
+    "orcid": "0000-0002-1825-0097",
     "displayName": "Public name when supplied",
-    "givenNames": "Optional",
-    "familyName": "Optional",
-    "biography": "Optional public biography",
-    "externalUrl": "https://orcid.org/0000-0002-1825-0097"
+    "fullName": "Optional"
   },
-  "employments": [
+  "metrics": {
+    "worksCount": 12,
+    "citedByCount": 85,
+    "hIndex": 5,
+    "i10Index": 4
+  },
+  "affiliations": [
     {
-      "organizationName": "Public institution",
-      "departmentName": "Optional",
-      "city": "Optional",
-      "country": "Optional",
-      "startYear": 2020,
-      "endYear": null
+      "institutionName": "Public institution",
+      "countryCode": "VN",
+      "years": [2020, 2021]
     }
   ],
   "works": [
@@ -67,13 +70,6 @@ Accept canonical IDs and full `https://orcid.org/...` URLs. Normalize before loo
       "externalUrl": "https://doi.org/10.0000/example"
     }
   ],
-  "openAlex": {
-    "authorId": "https://openalex.org/A123",
-    "worksCount": 12,
-    "citedByCount": 85,
-    "hIndex": 5,
-    "externalUrl": "https://openalex.org/A123"
-  },
   "missingSections": ["biography"],
   "providerWarnings": []
 }

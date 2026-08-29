@@ -24,20 +24,8 @@ export const AppConfig = {
     // Restore by flipping to `false`; the underlying components/hooks/services
     // are preserved verbatim and will resume immediately.
     enableWithdrawals: false,
-    // ── Premium packages feature flag (centralized gate) ───────────────────
-    // Premium package subscriptions + AI entitlements are temporarily
-    // disabled while the BE team's annual-fee CRUD endpoint is being
-    // finalized (see BACKEND_REQUESTS.md → Agent Admin Annual Fees).
-    // While this flag is `false`:
-    //   • Sidebar nav entry "Premium Package" is hidden for every
-    //     non-Admin role (Researcher, Lecturer, Reviewer, Graduate Student).
-    //   • Direct navigation to /premium-packages is redirected to /forum.
-    //   • PremiumPackagesPreview renders a "temporarily unavailable" notice.
-    // The Admin surface is NOT affected — Admins still see /admin/packages
-    // and the new /admin/annual-fees tab.
-    // Restore by flipping to `true`; the underlying components are preserved
-    // verbatim and resume immediately.
-    premiumPackagesEnabled: false,
+    // Premium package listing is backed by the live /api/PremiumPackage API.
+    premiumPackagesEnabled: true,
   },
 };
 

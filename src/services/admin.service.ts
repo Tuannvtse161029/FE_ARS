@@ -4,15 +4,7 @@ import { AppConfig } from '../config/app';
 import { WithdrawalFeatureDisabledError } from './withdrawal.service';
 import type { User } from '../types/auth';
 import { notificationService } from './notification.service';
-import { auditLog } from './auditLogStore';
 import { userService } from './user.service';
-import {
-  MOCK_ROLE_REQUESTS,
-  MOCK_ACCOUNTS,
-  MOCK_WITHDRAWALS,
-  MOCK_ANALYTICS_SUMMARY,
-  buildMockTimeseries,
-} from '../../tests/mocks/admin.mocks';
 import type {
   RoleRequest,
   RoleRequestDecision,
@@ -24,38 +16,6 @@ import type {
   AnalyticsRange,
   AnalyticsMetric,
 } from '../types/admin';
-
-// ── Mock toggle ────────────────────────────────────────────────────────────
-// TODO: Replace mock data with live endpoints once the BE ships the admin
-// endpoints described in docs/local-only/admin-suite-be-gap-report.md.
-// Flip this to `false` (or remove it entirely) to start hitting axios.
-// WARNING: Existing admin.service.test.ts mocks axios globally — when flipping
-// to false, those tests must also mock the axios paths for each method.
-const USE_MOCK_DATA = false;
-
-// Analytics surfaced through the live Swagger endpoints (live since BE shipped).
-const USE_ANALYTICS_MOCK = false;
-
-// Withdrawal-only narrow toggle (E2E override point). Defaults to true so
-// the existing Admin UX continues to render against the in-memory mock store
-// when no env is set. E2E suites can force the live axios path via either:
-//   1. Build-time: export `VITE_USE_ADMIN_WITHDRAWAL_MOCK=false` before the
-//      Vite build (works for locally-hosted dev runs).
-//   2. Runtime shim: set `window.__USE_ADMIN_WITHDRAWAL_MOCK__ = 'false'`
-//      from a Playwright `addInitScript` (works against the Vercel-built
-//      bundle where the env var was inlined at build time and we cannot
-//      change it without a redeploy).
-// The runtime shim takes precedence so E2E overrides always win.
-// See docs/local-only/agent-7-e2e-findings.md.
-const runtimeOverride =
-  typeof window !== 'undefined'
-    ? (window as unknown as { __USE_ADMIN_WITHDRAWAL_MOCK__?: string })
-        .__USE_ADMIN_WITHDRAWAL_MOCK__
-    : undefined;
-const USE_WITHDRAWAL_MOCK =
-  runtimeOverride !== undefined
-    ? runtimeOverride !== 'false'
-    : import.meta.env.VITE_USE_ADMIN_WITHDRAWAL_MOCK !== 'false';
 
 // Centralized withdrawal feature gate — mirrors withdrawal.service.ts. While
 // the flag is off, every admin-side withdrawal mutation short-circuits with
@@ -70,30 +30,6 @@ const guardAdminWithdrawalCall = (method: string) => {
     }
     throw new WithdrawalFeatureDisabledError();
   }
-};
-
-// Simulated latency so loading skeletons actually render.
-const MOCK_LATENCY_MS = 450;
-
-function delay<T>(value: T, ms: number = MOCK_LATENCY_MS): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-}
-
-// Deep clones keep mock mutations local to this module so reloads reset state.
-const clone = <T>(value: T): T =>
-  value == null || typeof value !== 'object' ? value : JSON.parse(JSON.stringify(value));
-
-// In-memory mutable copies of the mock fixtures.
-const roleRequestStore: RoleRequest[] = clone(MOCK_ROLE_REQUESTS);
-const accountStore: AccountItem[] = clone(MOCK_ACCOUNTS);
-const withdrawalStore: WithdrawalRequestItem[] = clone(MOCK_WITHDRAWALS);
-
-// Test-only helper. Resets in-memory mock stores to their fixture defaults.
-// Safe to call in production: USE_MOCK_DATA guards the actual fixtures in dev.
-export const __resetAdminMockStores = () => {
-  roleRequestStore.splice(0, roleRequestStore.length, ...clone(MOCK_ROLE_REQUESTS));
-  accountStore.splice(0, accountStore.length, ...clone(MOCK_ACCOUNTS));
-  withdrawalStore.splice(0, withdrawalStore.length, ...clone(MOCK_WITHDRAWALS));
 };
 
 // Surface-level messages: NEVER leak raw axios messages to admins.
@@ -129,46 +65,51 @@ const sanitize = (fallback: string, err: unknown): Error => {
 };
 
 // ── Role requests ──────────────────────────────────────────────────────────
+function normalizeRoleRequest(item: any): RoleRequest | null {
+  const id = Number(item?.id);
+  const userId = Number(item?.userId);
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(userId) || userId <= 0) return null;
+  const rawStatus = typeof item.status === 'string' ? item.status.toUpperCase() : 'PENDING';
+  const status = rawStatus === 'APPROVED' || rawStatus === 'ACCEPTED'
+    ? 'APPROVED'
+    : rawStatus === 'DENIED' || rawStatus === 'REJECTED'
+      ? 'DENIED'
+      : 'PENDING';
+  return {
+    id,
+    userId,
+    userName: typeof item.userName === 'string' ? item.userName : '',
+    email: typeof item.email === 'string' ? item.email : '',
+    phone: typeof item.phone === 'string' ? item.phone : undefined,
+    affiliation: typeof item.affiliation === 'string' ? item.affiliation : '',
+    department: typeof item.department === 'string' ? item.department : '',
+    currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles) ? item.requestedAdditionalRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    requestType: item.requestType === 'ADDITIONAL_ROLE' ? 'ADDITIONAL_ROLE' : item.requestType === 'INITIAL_REGISTRATION' ? 'INITIAL_REGISTRATION' : undefined,
+    requestedRoles: Array.isArray(item.requestedRoles) ? item.requestedRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    orcidId: typeof item.orcidId === 'string' ? item.orcidId : null,
+    isOrcidVerified: Boolean(item.isOrcidVerified),
+    orcidVerifiedAt: typeof item.orcidVerifiedAt === 'string' ? item.orcidVerifiedAt : null,
+    proofDocumentUrl: typeof item.proofDocumentUrl === 'string' ? item.proofDocumentUrl : '',
+    submissionDate: typeof item.submissionDate === 'string' ? item.submissionDate : '',
+    status,
+    notes: typeof item.notes === 'string' ? item.notes : undefined,
+  };
+}
+
 async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
-  if (USE_MOCK_DATA) return delay(clone(roleRequestStore));
   try {
     const response = await api.get<any>(
       API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_ALL,
       { signal },
     );
     const raw = response.data;
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
-    return list.map((item: any) => ({
-      id: item.id,
-      userId: item.userId ?? item.id,
-      userName: item.userName || item.fullName || `User #${item.userId ?? item.id}`,
-      email: item.email || '',
-      phone: item.phone || '',
-      affiliation: item.affiliation || '',
-      department: item.department || '',
-      currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles : item.roleName ? [item.roleName] : [],
-      requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles)
-        ? item.requestedAdditionalRoles
-        : Array.isArray(item.requestedRoles)
-          ? item.requestedRoles
-          : item.requestedRole
-            ? [item.requestedRole]
-            : [],
-      requestType: item.requestType || 'INITIAL_REGISTRATION',
-      requestedRoles: Array.isArray(item.requestedRoles)
-        ? item.requestedRoles
-        : Array.isArray(item.requestedAdditionalRoles)
-          ? item.requestedAdditionalRoles
-          : [],
-      proofDocumentUrl: item.proofDocumentUrl || '',
-      submissionDate: item.submissionDate || item.createdAt || new Date().toISOString(),
-      status: (item.status?.toUpperCase() === 'APPROVED' || item.status?.toUpperCase() === 'ACCEPTED')
-        ? 'APPROVED'
-        : (item.status?.toUpperCase() === 'DENIED' || item.status?.toUpperCase() === 'REJECTED')
-          ? 'DENIED'
-          : 'PENDING',
-      notes: item.notes || '',
-    }));
+    const list: unknown[] = Array.isArray(raw)
+      ? raw
+      : raw && Array.isArray(raw.items)
+        ? raw.items
+        : [];
+    return list.map(normalizeRoleRequest).filter((item): item is RoleRequest => item !== null);
   } catch (err) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag('getRoleRequests failed', err);
@@ -177,13 +118,9 @@ async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
 }
 
 async function getRoleRequest(id: number): Promise<RoleRequest | null> {
-  if (USE_MOCK_DATA) {
-    const hit = roleRequestStore.find((r) => r.id === id);
-    return delay(hit ? clone(hit) : null);
-  }
   try {
     const response = await api.get<RoleRequest>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_BY_ID(id));
-    return response.data ?? null;
+    return normalizeRoleRequest(response.data);
   } catch (err) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag(`getRoleRequest(${id}) failed`, err);
@@ -196,45 +133,6 @@ async function decideRoleRequest(
   decision: RoleRequestDecision,
   email?: string,
 ): Promise<RoleRequest> {
-  if (USE_MOCK_DATA) {
-    const idx = roleRequestStore.findIndex((r) => r.id === id);
-    if (idx === -1) {
-      await delay(null);
-      throw new Error(`Role request ${id} not found`);
-    }
-    const updated: RoleRequest = { ...roleRequestStore[idx], ...decision };
-    roleRequestStore[idx] = updated;
-    auditLog.append({
-      adminId: 0,
-      adminName: 'Admin User',
-      action: updated.status === 'APPROVED' ? 'APPROVED_ROLE_REQUEST' : 'DENIED_ROLE_REQUEST',
-      target: `User #${updated.userId} / ${updated.userName}`,
-      targetId: updated.userId,
-      details: updated.notes ?? '',
-    });
-
-    if (updated.status === 'APPROVED') {
-      const accountIdx = accountStore.findIndex((a) => a.id === updated.userId);
-      if (accountIdx !== -1) {
-        accountStore[accountIdx] = {
-          ...accountStore[accountIdx],
-          isActive: true,
-        };
-      } else {
-        const emailIdx = accountStore.findIndex(
-          (a) => a.email.toLowerCase() === updated.email.toLowerCase(),
-        );
-        if (emailIdx !== -1) {
-          accountStore[emailIdx] = {
-            ...accountStore[emailIdx],
-            isActive: true,
-          };
-        }
-      }
-    }
-
-    return delay(clone(updated));
-  }
   try {
     const path =
       decision.status === 'APPROVED'
@@ -247,7 +145,7 @@ async function decideRoleRequest(
     // If approved and email is supplied, optionally trigger the send-approval-email endpoint
     if (decision.status === 'APPROVED' && email) {
       try {
-        await api.post(`/api/Auth/send-approval-email`, null, {
+        await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, {
           params: { email },
         });
       } catch (emailErr) {
@@ -255,12 +153,11 @@ async function decideRoleRequest(
       }
     }
 
-    const resData = response.data;
-    return (
-      resData && typeof resData === 'object' && resData.id
-        ? resData
-        : { id, status: decision.status, notes: decision.notes }
-    ) as RoleRequest;
+    const normalized = normalizeRoleRequest(response.data);
+    if (normalized) return normalized;
+    const refreshed = await getRoleRequest(id);
+    if (!refreshed) throw new Error('The backend did not return the updated role request.');
+    return refreshed;
   } catch (err: any) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag(`decideRoleRequest(${id}) failed`, err);
@@ -277,19 +174,22 @@ async function decideRoleRequest(
 // unavoidable.  Role is stored as roleName on the row; plan maps
 // accountTier (null → FREE_TIER); status maps isActive (true → ACTIVE).
 function userToAccountItem(user: User): AccountItem {
+  const role = typeof user.roleName === 'string' ? user.roleName.toUpperCase().replace(/\s+/g, '_') : null;
+  const roles = role && ['LECTURER', 'RESEARCHER', 'GRADUATE_STUDENT', 'REVIEWER'].includes(role)
+    ? [role as AccountItem['roles'][number]]
+    : [];
   return {
     id: user.id,
-    name: user.fullName,
+    name: user.fullName ?? '',
     email: user.email,
-    roles: [user.roleName as AccountItem['roles'][number]],
+    roles,
     plan: (user.accountTier ?? 'Free') === 'Free' ? 'FREE_TIER' : 'PREMIUM',
     status: user.isActive ? 'ACTIVE' : 'SUSPENDED',
-    joinedDate: user.createdAt ?? new Date().toISOString(),
+    joinedDate: user.createdAt ?? '',
     isActive: user.isActive,
     // Carry through the BE-reported suspension deadline so the
     // AccountsManagement page can render the "Suspended until …" pill.
-    // The mock store synthesizes its own value via the violation-resolution
-    // path; live responses surface whatever `dbo.Users.suspendedUntil` holds.
+    // Live responses surface whatever `dbo.Users.suspendedUntil` holds.
     suspendedUntil: user.suspendedUntil ?? null,
   };
 }
@@ -307,7 +207,6 @@ async function getAccounts(query: AccountsQuery = {}): Promise<AccountItem[]> {
     return true;
   };
 
-  if (USE_MOCK_DATA) return delay(clone(accountStore).filter(filterFn));
 
   // Agent 29 (BTR-AGENT29-A): the User API does not yet support a
   // server-side search / role / plan / status filter. Walk every backend
@@ -345,33 +244,6 @@ async function mutateAccount(
   isActive: boolean,
   options?: { suspendedUntil?: string },
 ): Promise<AccountItem> {
-  if (USE_MOCK_DATA) {
-    const idx = accountStore.findIndex((a) => a.id === id);
-    if (idx === -1) {
-      await delay(null);
-      throw new Error(`Account ${id} not found`);
-    }
-    const updated: AccountItem = {
-      ...accountStore[idx],
-      status: isActive ? 'ACTIVE' : 'SUSPENDED',
-      suspendedUntil:
-        isActive
-          ? null
-          : options?.suspendedUntil ?? accountStore[idx].suspendedUntil ?? null,
-    };
-    accountStore[idx] = updated;
-    auditLog.append({
-      adminId: 0,
-      adminName: 'Admin User',
-      action: isActive ? 'UNSUSPENDED_ACCOUNT' : 'SUSPENDED_ACCOUNT',
-      target: `User #${updated.id} / ${updated.name}`,
-      targetId: updated.id,
-      details: options?.suspendedUntil
-        ? `Suspended until ${new Date(options.suspendedUntil).toLocaleDateString('vi-VN')}.`
-        : '',
-    });
-    return delay(clone(updated));
-  }
   try {
     // Issue `PUT /api/User/{id}` with `isActive` as the only mutation. The
     // helper reads the current User record first and constructs a full
@@ -392,14 +264,14 @@ async function mutateAccount(
 }
 
 // ── Withdrawals (3-state manual flow) ─────────────────────────────────────
-// Normalize a raw withdrawal row from either the mock fixture or the live BE
+// Normalize a raw withdrawal row from the live BE
 // into the Admin-facing shape. The BE returns the reviewer's submission
 // reason as `Note`; the Admin modal reads `requestReason`. We do the mapping
 // once here so downstream code never has to handle both spellings. (Phase C
 // defect 5 — see WithdrawalRequestItem.requestReason in src/types/admin.ts.)
 //
 // Exported so tests can verify the normalization in isolation without going
-// through the full mock store.
+// through the full service.
 export const normalizeWithdrawalItem = (
   raw: WithdrawalRequestItem,
 ): WithdrawalRequestItem => {
@@ -416,10 +288,6 @@ export const normalizeWithdrawalItem = (
 
 async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
   guardAdminWithdrawalCall('getReviewerWithdrawals');
-  if (USE_WITHDRAWAL_MOCK) {
-    return delay(clone(withdrawalStore).map(normalizeWithdrawalItem));
-  }
-  // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.get<WithdrawalRequestItem[]>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.GET_ALL,
   );
@@ -428,17 +296,6 @@ async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
 
 async function markWithdrawalProcessing(id: number): Promise<WithdrawalRequestItem> {
   guardAdminWithdrawalCall('markWithdrawalProcessing');
-  if (USE_WITHDRAWAL_MOCK) {
-    return delay(
-      normalizeWithdrawalItem(
-        updateWithdrawal(id, {
-          status: 'ACCEPTED_PROCESSING',
-          processingAt: new Date().toISOString(),
-        }),
-      ),
-    );
-  }
-  // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.ACCEPT(id),
     {},
@@ -460,24 +317,6 @@ async function completeWithdrawal(
   amountVnd: number,
 ): Promise<WithdrawalRequestItem> {
   guardAdminWithdrawalCall('completeWithdrawal');
-  if (USE_WITHDRAWAL_MOCK) {
-    const updated = updateWithdrawal(id, {
-      status: 'COMPLETED',
-      proofReceiptUrl,
-      completedAt: new Date().toISOString(),
-    });
-    auditLog.append({
-      adminId: 0,
-      adminName: 'Admin User',
-      action: 'COMPLETED_WITHDRAWAL',
-      target: `Withdrawal #${updated.txId} / ${updated.reviewerName}`,
-      targetId: updated.txId,
-      details: `${updated.amountVnd.toLocaleString('vi-VN')} VND — receipt uploaded`,
-    });
-    await notifyReviewer(reviewerId, reviewerName, amountVnd).catch(() => undefined);
-    return delay(normalizeWithdrawalItem(updated));
-  }
-  // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.COMPLETE(id),
     { proofReceiptUrl },
@@ -488,38 +327,11 @@ async function completeWithdrawal(
 
 async function denyWithdrawal(id: number, reason: string): Promise<WithdrawalRequestItem> {
   guardAdminWithdrawalCall('denyWithdrawal');
-  if (USE_WITHDRAWAL_MOCK) {
-    const updated = updateWithdrawal(id, {
-      status: 'DENIED',
-      rejectionReason: reason,
-    });
-    auditLog.append({
-      adminId: 0,
-      adminName: 'Admin User',
-      action: 'DENIED_WITHDRAWAL',
-      target: `Withdrawal #${updated.txId} / ${updated.reviewerName}`,
-      targetId: updated.txId,
-      details: reason,
-    });
-    return delay(normalizeWithdrawalItem(updated));
-  }
-  // TODO: Replace mock data with live endpoint once backend is updated.
   const response = await api.post<WithdrawalRequestItem>(
     API_ENDPOINTS.ADMIN.WITHDRAWALS.DENY(id),
     { reason },
   );
   return normalizeWithdrawalItem(response.data);
-}
-
-function updateWithdrawal(
-  id: number,
-  patch: Partial<WithdrawalRequestItem>,
-): WithdrawalRequestItem {
-  const idx = withdrawalStore.findIndex((w) => w.txId === id);
-  if (idx === -1) throw new Error(`Withdrawal ${id} not found`);
-  const updated: WithdrawalRequestItem = { ...withdrawalStore[idx], ...patch };
-  withdrawalStore[idx] = updated;
-  return updated;
 }
 
 async function notifyReviewer(
@@ -533,14 +345,12 @@ async function notifyReviewer(
     message: `Your withdrawal of ${formatted} VND has been completed. The transfer receipt is attached for your records.`,
     isRead: false,
   });
-  // `reviewerName` is accepted so we can swap to a personalized copy
-  // when BE grows a templated-message endpoint; the mock path doesn't use it.
+  // `reviewerName` is accepted for future templated-message support.
   void reviewerName;
 }
 
 // ── Analytics ──────────────────────────────────────────────────────────────
 async function getAnalyticsSummary(signal?: AbortSignal): Promise<AnalyticsSummary> {
-  if (USE_ANALYTICS_MOCK) return delay(MOCK_ANALYTICS_SUMMARY);
   try {
     const response = await api.get<AnalyticsSummary>(
       API_ENDPOINTS.ANALYTICS.SUMMARY,
@@ -559,7 +369,6 @@ async function getAnalyticsTimeseries(
   metric: AnalyticsMetric,
   signal?: AbortSignal,
 ): Promise<AnalyticsTimeSeries> {
-  if (USE_ANALYTICS_MOCK) return delay(buildMockTimeseries(range, metric));
   try {
     const response = await api.get<AnalyticsTimeSeries>(
       API_ENDPOINTS.ANALYTICS.TIMESERIES,
@@ -586,8 +395,9 @@ export const adminService = {
   denyWithdrawal,
   getAnalyticsSummary,
   getAnalyticsTimeseries,
-  // Dev-only escape hatch for the test suite.
-  __resetAdminMockStores,
+  // Kept as a no-op compatibility hook for legacy test doubles. Runtime data
+  // no longer uses an in-memory Admin store.
+  __resetAdminMockStores: (): void => undefined,
 };
 
 export default adminService;

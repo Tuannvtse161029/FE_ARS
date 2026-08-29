@@ -10,7 +10,12 @@ High
 
 ## Background
 
-The frontend currently consumes `POST /api/Auth/register`, whose documented `RegisterRequest` rejects additional properties. Reviewer onboarding now captures a locally validated ORCID iD and requires explicit acceptance of Privacy Policy and Terms, but neither value can be persisted through the current API.
+The live `POST /api/Auth/register` contract now accepts the required account
+fields and an optional `orcidTicket` string. It still does not accept the
+frontend's consent receipts, and the field name is ambiguous for a canonical
+ORCID iD. Reviewer onboarding captures a locally validated ORCID iD and
+requires explicit acceptance of Privacy Policy and Terms, but consent cannot
+be persisted through the current API.
 
 ## Goal
 
@@ -18,7 +23,10 @@ Allow an account registration to atomically persist the requested role, Reviewer
 
 ## API Contract
 
-Extend `POST /api/Auth/register` or introduce a versioned replacement such as `POST /api/Auth/register/v2`. Publish the final choice in Swagger.
+Extend `POST /api/Auth/register` (or introduce a versioned replacement) so the
+request explicitly documents `orcidId` and the versioned consent receipts.
+Either rename `orcidTicket` to `orcidId` or document that it is the canonical
+ORCID value. Publish the final choice in Swagger.
 
 ### Request
 

@@ -317,12 +317,11 @@ const UnavailableView = ({ onClose }: UnavailableViewProps) => (
   >
     <ArrowRightLeft size={40} className={styles.unavailableIcon} aria-hidden="true" />
     <p className={styles.unavailableTitle}>
-      ORCID Check not yet available
+      ORCID Check needs a role request ID
     </p>
     <p className={styles.unavailableMessage}>
-      The ARS platform does not yet expose an ORCID lookup endpoint.
-      The backend team needs to implement the lookup proxy before this feature
-      can be used.
+      The backend lookup is available, but this record does not include the
+      role-request identifier required to correlate the verified ORCID.
     </p>
     <aside
       className={styles.backendRequest}
@@ -332,29 +331,19 @@ const UnavailableView = ({ onClose }: UnavailableViewProps) => (
       <p className={styles.backendRequestTitle}>Backend Team Request</p>
       <ol className={styles.backendRequestList}>
         <li>
-          Add <code>POST /api/OrcidLookup</code> accepting{' '}
-          <code>{'{ orcid: string }'}</code>
+          Expose <code>roleRequestId</code> on the Admin role-request response,
+          or allow the lookup endpoint to resolve it from a user ID.
         </li>
         <li>
-          Server-side, call ORCID Public API:{' '}
-          <code>
-            GET https://pub.orcid.org/v3.0/
-            {'{orcid}'} (Accept: application/vnd.orcid+json)
-          </code>
+          Keep provider calls server-side and use the documented
+          <code>POST /api/Admin/orcid-lookup</code> contract.
         </li>
         <li>
-          Optionally enrich with OpenAlex:{' '}
-          <code>GET https://api.openalex.org/authors?orcid={'{orcid}'}</code>
+          Return the documented <code>OrcidLookupResponse</code> payload.
         </li>
         <li>
-          Return combined <code>OrcidPersonMetadata</code> shape (see{' '}
-          <code>src/services/orcid.service.ts</code>)
-        </li>
-        <li>
-          Handle 404 → not found, 429 → rate limit, 5xx → api error
-        </li>
-        <li>
-          Set <code>VITE_ORCID_CHECK_ENABLED=true</code> in environment
+          Track the remaining frontend/BE correlation work in{' '}
+          <code>tickets/backend/BE_ADMIN_ORCID_ROLE_REQUEST_ID_TICKET.md</code>.
         </li>
       </ol>
     </aside>
@@ -373,7 +362,7 @@ const UnavailableView = ({ onClose }: UnavailableViewProps) => (
 
 export interface OrcidCheckModalProps {
   /** User object from the Role Requests row */
-  user: { id: number; fullName?: string | null; email: string; orcidId?: string | null };
+  user: { id: number; roleRequestId?: number | null; fullName?: string | null; email: string; orcidId?: string | null };
   /** Whether the modal is open */
   open: boolean;
   /** Called when the modal should close */
@@ -434,7 +423,7 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
       setError(null);
 
       try {
-        const response: OrcidLookupResponse = await lookupOrcid(orcid);
+        const response: OrcidLookupResponse = await lookupOrcid(orcid, user.roleRequestId ?? undefined);
 
         if (response.status === 'success') {
           setMeta(response.meta);
