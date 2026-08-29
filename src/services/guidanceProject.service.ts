@@ -32,10 +32,8 @@ const toGuidanceProject = (raw: unknown): GuidanceProject | null => {
     (typeof r.id === 'number' && r.id) ||
     (typeof r.guidanceProjectId === 'number' && r.guidanceProjectId) ||
     0;
-  const lecturerIdCandidate =
-    (typeof r.lecturerId === 'number' && r.lecturerId) || 0;
-  const studentIdCandidate =
-    (typeof r.studentId === 'number' && r.studentId) || 0;
+  const lecturerIdCandidate = typeof r.lecturerId === 'number' ? r.lecturerId : null;
+  const studentIdCandidate = typeof r.studentId === 'number' ? r.studentId : null;
   if (idCandidate === 0) {
     return null;
   }

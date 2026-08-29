@@ -13,6 +13,7 @@ export const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
+    SELECT_ROLE: '/api/Auth/select-role',
     REGISTER: '/api/auth/register',
     // Primary Google sign-in endpoint. FE ↔ BE contract:
     //   POST { credential: <Google ID token JWT> } → BE validates the
@@ -25,18 +26,15 @@ export const API_ENDPOINTS = {
     // above is the agreed primary path.
     GOOGLE_OAUTH_LOGIN: '/api/auth/google-oauth-login',
     GOOGLE_CALLBACK: '/api/auth/google-callback',
-    // Agent 30 — documented in Swagger `paths./api/Auth/complete-google-registration`
-    // (schema `CompleteGoogleRegistrationRequest`). The request body fields
-    // the BE acknowledges are: `pdfUrl`, `phoneNumber`, `role` (required)
-    // plus `orcidId` (Reviewer-only) and `consents` (optional). The
-    // endpoint authenticates via the ARS JWT carried by the shared axios
-    // `Authorization` header, so we deliberately do NOT echo the upstream
-    // Google ID token (`credential`) — `additionalProperties: false` on
-    // the BE schema means any extra property returns 400. The FE sends the
-    // optional fields when present and lets the BE reject with 422 when
-    // the schema is strict.
+    // The live CompleteGoogleRegistrationRequest requires credential,
+    // pdfUrl, phoneNumber, and role. ORCID/consent persistence is tracked in
+    // tickets/backend/BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md until Swagger
+    // publishes those fields.
     COMPLETE_GOOGLE_REGISTRATION: '/api/auth/complete-google-registration',
-    REFRESH: '/api/auth/refresh',
+    ORCID_REGISTRATION_START: '/api/Auth/orcid/registration/start',
+    ORCID_ACCOUNT_START: '/api/Auth/orcid/account/start',
+    ORCID_STATUS: '/api/Auth/orcid/status',
+    ORCID_CALLBACK: '/api/Auth/orcid/callback',
     FORGOT_PASSWORD: '/api/Auth/forgot-password',
     VERIFY_OTP: '/api/Auth/verify-otp',
     RESET_PASSWORD: '/api/Auth/reset-password',
@@ -116,6 +114,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/SeminarParticipant/${id}`,
     UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
     DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
+    MY_SEMINARS: '/api/SeminarParticipant/my-seminars',
   },
   PAYMENT: {
     CREATE_LINK: '/api/Payment/create-link',
@@ -194,21 +193,19 @@ export const API_ENDPOINTS = {
     CREATE: '/api/ForumComment',
     UPDATE: (id: number) => `/api/ForumComment/${id}`,
     DELETE: (id: number) => `/api/ForumComment/${id}`,
+    TOGGLE_VOTE: (id: number) => `/api/ForumComment/${id}/vote`,
+    MY_VOTES: '/api/ForumComment/my-votes',
   },
   WALLET: {
     BASE: '/api/Wallet',
     GET_ALL: '/api/Wallet',
     GET_BY_ID: (id: number) => `/api/Wallet/${id}`,
-    // DEV-only shortcut: POST `/api/Wallet` with `{ userId, balance }` to
-    // fund a wallet instantly without going through the PayOS redirect flow.
-    // Hidden in production builds (see WalletTopUpModal). Documented in
-    // docs/local-only/admin-suite-be-gap-report.md (WALLET auto-fund).
-    AUTO_FUND: '/api/Wallet',
   },
-  // Admin surface — see docs/local-only/admin-suite-be-gap-report.md.
-  // All paths here are written against the upcoming Swagger contract; until BE
-  // ships them, `adminService` short-circuits to mock data via USE_MOCK_DATA.
+  // Admin surface — all paths below are production API contracts. Endpoints
+  // missing from live Swagger must remain unavailable in the UI and receive a
+  // backend ticket rather than a mock fallback.
   ADMIN: {
+    ORCID_LOOKUP: '/api/Admin/orcid-lookup',
     ROLE_REQUESTS: {
       GET_ALL: '/api/RoleRequest',
       GET_BY_ID: (id: number) => `/api/RoleRequest/${id}`,
@@ -239,10 +236,8 @@ export const API_ENDPOINTS = {
       DELETE: (id: number) => `/api/PremiumPackage/${id}`,
       TOGGLE: (id: number) => `/api/PremiumPackage/${id}/toggle`,
     },
-    // Agent admin-annual-fees — endpoints reserved for the upcoming
-    // Annual Fees CRUD contract (BE has not shipped these yet; the
-    // `annualFeeService` stub short-circuits to demo data until then).
-    // Documented in docs/BACKEND_REQUESTS.md → BTR-AF-01.
+    // Annual Fees contract is pending; the service surfaces an unavailable
+    // state until the backend ticket is implemented.
     ANNUAL_FEES: {
       GET_ALL: '/api/AnnualFee',
       GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,

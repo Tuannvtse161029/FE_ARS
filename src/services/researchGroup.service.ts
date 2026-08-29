@@ -23,6 +23,10 @@ export interface ResearchGroup {
   assignedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  lecturerName?: string | null;
+  topicTitle?: string | null;
+  memberCount?: number | null;
+  members?: unknown[] | null;
 }
 
 const RESEARCH_GROUP_ENDPOINTS = {
@@ -84,14 +88,10 @@ export const researchGroupService = {
   },
 
   getMyGroups: async (): Promise<ResearchGroup[]> => {
-    try {
-      const response = await api.get<ResearchGroup[]>(
-        API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.MY_GROUPS,
-      );
-      return normalizeResearchGroupList(response.data);
-    } catch {
-      return researchGroupService.getAll();
-    }
+    const response = await api.get<ResearchGroup[]>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.MY_GROUPS,
+    );
+    return normalizeResearchGroupList(response.data);
   },
 
   invite: async (

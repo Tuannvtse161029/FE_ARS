@@ -50,6 +50,9 @@ const ARS_AUTH_STORAGE_KEYS = [
   // should not re-submit the role request). Cleared on logout so a
   // *new* first-time user can complete onboarding from scratch.
   'ars_google_onboarding_submitted',
+  // Short-lived GIS credential required by the live onboarding-completion
+  // request. It is cleared after the login/onboarding exchange and on logout.
+  'ars_google_credential',
 ] as const;
 
 /**
@@ -61,14 +64,10 @@ const ARS_AUTH_STORAGE_KEYS = [
 const ARS_AUTH_ZUSTAND_KEY = 'ars-auth-storage';
 
 /**
- * Removed in this revision: the Agent 30 `ARS_GOOGLE_CREDENTIAL_KEY`
- * sessionStorage cache and its `setGoogleCredential` / `getGoogleCredential`
- * helpers. The onboarding completion endpoint authenticates via the ARS
- * JWT only — neither the credential-flow (Login → GIS) nor the legacy
- * code-redirect-flow (`/auth/google/callback`) has the upstream Google
- * ID token available for forwarding. The BE ticket
- * (`BE_GOOGLE_ONBOARDING_COMPLETION_TICKET.md`) explicitly forbids
- * echoing identity-provider tokens in requests.
+ * The live CompleteGoogleRegistrationRequest requires the one-time GIS
+ * credential. It is kept only in sessionStorage during the handoff and is
+ * removed by clearAuthSession after the exchange; it is never placed in
+ * localStorage or logged.
  */
 
 /**
@@ -186,11 +185,15 @@ export const authService = {
       });
 
       const data = response.data;
-      const token =
+      const tokenCandidate =
         data?.token ||
         data?.accessToken ||
         data?.jwt ||
-        (typeof data === 'string' ? data : 'ars-session-token-' + Date.now());
+        (typeof data === 'string' ? data : null);
+      if (typeof tokenCandidate !== 'string' || tokenCandidate.trim() === '') {
+        throw new Error('Login succeeded but the backend did not return a session token.');
+      }
+      const token = tokenCandidate;
 
       const email = data?.email || data?.user?.email || credentials.username;
       const username =
@@ -200,12 +203,14 @@ export const authService = {
         data?.user?.username ||
         credentials.username.split('@')[0];
 
-      const role =
+      const roleCandidate =
         data?.role ||
         data?.roleName ||
         data?.user?.role ||
-        data?.user?.roleName ||
-        (data?.verificationStatus === 'Pending' || data?.isActive === false ? 'Guest' : 'Researcher');
+        data?.user?.roleName;
+      const role = typeof roleCandidate === 'string' && roleCandidate.trim() !== ''
+        ? roleCandidate.trim()
+        : null;
 
       const userId =
         data?.userId ??
@@ -279,7 +284,7 @@ export const authService = {
         })
         .filter(isKnownRole);
 
-      const roles: UserRole[] = parsedRoles.length > 0 ? parsedRoles : isKnownRole(role) ? [role] : ['Researcher'];
+      const roles: UserRole[] = parsedRoles.length > 0 ? parsedRoles : isKnownRole(role) ? [role] : [];
 
       // `verificationStatus` mirrors `dbo.Users.verificationStatus`. Tracks where in
       // the registration lifecycle the user stands. Absent field → default to 'Pending'
@@ -356,23 +361,34 @@ export const authService = {
     }
   },
 
+  /** Persist the active role for a multi-role session through the BE. */
+  selectRole: async (role: UserRole): Promise<unknown> => {
+    const response = await api.post(API_ENDPOINTS.AUTH.SELECT_ROLE, { role });
+    return response.data;
+  },
+
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     try {
       const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, {
         email: data.email,
         password: data.password,
         fullName: data.fullName,
-        // New registrations start pending until an Admin approves the role
-        // request; echo it on the payload so BE-side validation can re-emit
-        // it on the response and the FE doesn't have to guess.
-        isActive: false,
+        phoneNumber: data.phoneNumber,
+        role: data.role,
+        pdfUrl: data.pdfUrl,
+        ...(data.orcidTicket ? { orcidTicket: data.orcidTicket } : {}),
       });
 
       const resData = response.data;
-      const token = resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now();
+      // The live registration endpoint may return only a confirmation body;
+      // registration does not establish a session, so an absent token is
+      // represented as an empty value and is never persisted.
+      const token = typeof (resData?.token || resData?.accessToken) === 'string'
+        ? (resData.token || resData.accessToken)
+        : '';
       const email = resData?.email || data.email;
       const username = resData?.fullName || data.fullName || data.email.split('@')[0];
-      const role = resData?.role || 'Researcher';
+      const role = resData?.role || data.role || null;
       // New registrations are always pending; trust the BE echo when it
       // provides one, otherwise default to false (lockout-safe).
       const isActive =
@@ -423,9 +439,13 @@ export const authService = {
   registerUser: async (payload: RegisterPayload): Promise<AuthResponse> => {
     try {
       const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, {
-        ...payload,
-        // Same as register(): new accounts start unverified.
-        isActive: false,
+        email: payload.email,
+        password: payload.password,
+        fullName: payload.fullName,
+        phoneNumber: payload.phoneNumber,
+        role: payload.role,
+        pdfUrl: payload.pdfUrl,
+        ...(payload.orcidTicket ? { orcidTicket: payload.orcidTicket } : {}),
       });
       const resData = response.data;
       const isActive =
@@ -451,13 +471,16 @@ export const authService = {
         ].includes(effectiveRoleRaw)
           ? (effectiveRoleRaw as EffectiveRole)
           : isActive
-            ? ((resData?.role || payload.role || 'Researcher') as EffectiveRole)
+            ? ((resData?.role || payload.role) as EffectiveRole)
             : 'Guest';
+      const tokenCandidate = typeof (resData?.token || resData?.accessToken) === 'string'
+        ? (resData.token || resData.accessToken)
+        : '';
       return {
-        token: resData?.token || resData?.accessToken || 'ars-session-token-' + Date.now(),
-        username: resData?.fullName || payload.fullName || payload.username,
+        token: tokenCandidate,
+        username: resData?.fullName || payload.fullName || payload.email.split('@')[0],
         email: resData?.email || payload.email,
-        role: resData?.role || payload.role || 'Researcher',
+        role: resData?.role || payload.role,
         isActive,
         verificationStatus,
         accountTier,
@@ -559,17 +582,10 @@ export const authService = {
 
   // Resend OTP: POST /api/Auth/resend-otp?email=...
   resendOtp: async (email: string): Promise<any> => {
-    try {
-      const response = await api.post(API_ENDPOINTS.AUTH.RESEND_OTP, null, {
-        params: { email: email.trim() },
-      });
-      return response.data;
-    } catch {
-      const response = await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
-        email: email.trim(),
-      });
-      return response.data;
-    }
+    const response = await api.post(API_ENDPOINTS.AUTH.RESEND_OTP, null, {
+      params: { email: email.trim() },
+    });
+    return response.data;
   },
 
   // Luồng 2: POST /api/Auth/reset-password { email, otpCode, newPassword, confirmPassword }
@@ -593,52 +609,15 @@ export const authService = {
   },
 
   sendRegistrationOtp: async (email: string): Promise<void> => {
-    try {
-      await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, { params: { email } });
-    } catch (err) {
-      console.warn('[authService] sendRegistrationOtp notification:', err);
-    }
+    await api.post(API_ENDPOINTS.AUTH.RESEND_OTP, null, { params: { email: email.trim() } });
   },
 
   verifyRegistrationOtp: async (email: string, otpCode: string): Promise<any> => {
-    try {
-      const response = await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, {
-        email: email.trim(),
-        otpCode: otpCode.trim(),
-      });
-      return response.data;
-    } catch (err: any) {
-      // If verify-otp fails, try fallback to verify-email query param
-      try {
-        const fallbackRes = await api.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, null, {
-          params: { token: otpCode.trim() },
-        });
-        return fallbackRes.data;
-      } catch {
-        throw err;
-      }
-    }
-  },
-
-  // --- Dynamic Roles fetching from GET /api/Role ---
-  getRoles: async (): Promise<Array<{ id?: number; name?: string; roleName?: string; description?: string }>> => {
-    try {
-      const response = await api.get(API_ENDPOINTS.ROLE.GET_ALL);
-      const data = response.data;
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (data && Array.isArray(data.data)) {
-        return data.data;
-      }
-      if (data && Array.isArray(data.roles)) {
-        return data.roles;
-      }
-      return [];
-    } catch (err) {
-      console.warn('[authService] Failed to fetch roles from /api/Role:', err);
-      return [];
-    }
+    const response = await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, {
+      email: email.trim(),
+      otpCode: otpCode.trim(),
+    });
+    return response.data;
   },
 };
 

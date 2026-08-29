@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
@@ -25,8 +24,7 @@ import {
 //   - `docs/PUBLICATION_FLOW_ARCHITECTURE_REVIEW.md` §3, §10 (reviewer
 //     must not see publication actions; private review content stays
 //     Admin + submitting researcher only).
-//   - `docs/PUBLICATION_FLOW_API_BLOCKERS.md` §3.4, §4 (demo adapter is
-//     the only data source today; do not invent API calls).
+//   - `docs/PUBLICATION_FLOW_API_BLOCKERS.md` §3.4 (backend gaps).
 //
 // The page:
 //   1. Resolves the assignment via `publicationAdapter.getReviewerAssignments()`.
@@ -49,9 +47,6 @@ import {
 //   6. After submit, transitions to "Review submitted / Awaiting Admin
 //      decision" copy and hides the form. The form never reappears
 //      for the same assignment.
-//   7. Stays inside the demo-adapter / demo-banner contract: we never
-//      fake persistence; the banner remains visible to make the demo
-//      label obvious to the reviewer.
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
@@ -182,24 +177,12 @@ export const ReviewerAssignmentDetail = () => {
     setSaving(true);
     setError(null);
     try {
-      // Persist the per-criterion scores through the existing demo
-      // adapter signature by concatenating criterion notes + general
-      // comments into a single private payload. The adapter contract
-      // is frozen (publication.adapter.ts §7 ownership), so we keep
-      // the call signature and pass criterion scores via the comments
-      // channel — the UI still binds each criterion to its own score
-      // so the reviewer's intent is preserved on the form.
-      const criterionBlock = REVIEWER_CRITERIA.map((criterion) => {
-        const note = draft.perCriterionNotes[criterion.key].trim();
-        const score = draft.scores[criterion.key];
-        const noteLine = note ? `\n  Note: ${note}` : '';
-        return `[${criterion.label}: ${score}/5]${noteLine}`;
-      }).join('\n');
-      const fullComments = `${draft.privateComments.trim()}\n\nCriterion breakdown:\n${criterionBlock}`;
       const updated = await publicationAdapter.submitReview(
         paper.id,
         draft.recommendation,
-        fullComments,
+        draft.privateComments.trim(),
+        draft.scores,
+        draft.perCriterionNotes,
       );
       setResolved({ status: 'authorised', paper: updated });
     } catch (caught) {
@@ -403,7 +386,7 @@ export const ReviewerAssignmentDetail = () => {
         <div className={`${reviewer.evaluationActions} ${shared.full}`}>
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
             Submitting sends your recommendation to Admin. You will not be
-            able to edit it afterwards in this demo.
+            able to edit it afterwards.
           </p>
           <button className={shared.button} disabled={saving} type="submit">
             Submit private review to Admin
@@ -495,7 +478,6 @@ export const ReviewerAssignmentDetail = () => {
             {renderInlineStatus(paperToRender.status)}
           </span>
         </header>
-        <PublicationDemoBanner />
         <div className={shared.panel}>
           {renderMetadata(paperToRender)}
           <h2 style={{ fontSize: 17, margin: '12px 0 6px' }}>Abstract</h2>

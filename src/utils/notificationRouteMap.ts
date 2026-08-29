@@ -100,37 +100,37 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   {
     kind: 'review-request-accepted',
     prefix: '[Review] accepted',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Researcher', 'Reviewer', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'review-request-rejected',
     prefix: '[Review] rejected',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Researcher', 'Reviewer', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'review-request-started',
     prefix: '[Review] started',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Researcher', 'Reviewer', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'review-request-completed',
     prefix: '[Review] completed',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Researcher', 'Reviewer', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'paper-status-changed',
     prefix: '[Paper] status changed',
-    spec: { path: ROUTES.PAPERS, roles: ['Researcher', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'review-result-available',
     prefix: '[Paper] review result',
-    spec: { path: ROUTES.PAPERS, roles: ['Researcher', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'paper-needs-revision',
     prefix: '[Paper] needs revision',
-    spec: { path: ROUTES.PAPERS, roles: ['Researcher', 'Admin'] },
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
   {
     kind: 'payment-result',
@@ -147,17 +147,17 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   {
     kind: 'new-review-request',
     prefix: '[Review] new request',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'], idPattern: /\b(\d+)\b/ },
+    spec: { path: ROUTES.REVIEWER_ASSIGNMENTS, roles: ['Reviewer'], idPattern: /\b(\d+)\b/ },
   },
   {
     kind: 'review-request-cancelled',
     prefix: '[Review] cancelled',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'] },
+    spec: { path: ROUTES.REVIEWER_ASSIGNMENTS, roles: ['Reviewer'] },
   },
   {
     kind: 'review-deadline-reminder',
     prefix: '[Review] deadline',
-    spec: { path: ROUTES.REVIEW_TASKS, roles: ['Reviewer', 'Admin'] },
+    spec: { path: ROUTES.REVIEWER_ASSIGNMENTS, roles: ['Reviewer'] },
   },
   {
     kind: 'reviewer-payment-result',

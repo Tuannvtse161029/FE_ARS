@@ -32,6 +32,8 @@ const ACTION_DESCRIPTIONS: Record<ViolationResolutionAction, string> = {
     'Remove the offending content and suspend the author\'s account for 14 days. The audit log records both actions.',
 };
 
+const AVAILABLE_ACTIONS: ViolationResolutionAction[] = ['DISMISS'];
+
 export function ResolveReportModal({
   report,
   isOpen,
@@ -142,7 +144,7 @@ export function ResolveReportModal({
           <section className={styles.rightPane}>
             <h3 className={styles.actionsHeading}>Choose resolution</h3>
             <div className={styles.actions}>
-              {(Object.keys(ACTION_LABELS) as ViolationResolutionAction[]).map((a) => {
+              {AVAILABLE_ACTIONS.map((a) => {
                 const selected = selectedAction === a;
                 return (
                   <button

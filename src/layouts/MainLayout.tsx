@@ -166,7 +166,7 @@ export const MainLayout = () => {
   }, [toastMessage]);
 
   // Mirror the BE reviewer availability into local state so the toggle works
-  // on the same source-of-truth that DiscoverReviewers reads from.
+  // on the same source-of-truth that the publication adapter reads from.
   // `null` here means "indeterminate / loading / error" — we must never render
   // a confirmed `Available` label during that window (see useReviewerProfiles
   // addendum §C). Until the BE answers, treat the toggle as off so the
@@ -260,12 +260,8 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
           { to: ROUTES.ADMIN_PACKAGES, label: 'Packages', icon: <PackagesIcon size={20} /> },
-          // Agent admin-annual-fees — new Admin tab for the annual-fee
-          // CRUD surface. Currently rendered against the demo-data
-          // module (`src/data/annualFees.demo.ts`) while the BE-side
-          // contract is being finalized. The Admin always sees this tab;
-          // the feature flag gates the user-facing premium-packages
-          // surface, not the Admin surface.
+          // Annual Fees stays visible as a production dependency state while
+          // its backend contract is being implemented.
           { to: ROUTES.ADMIN_ANNUAL_FEES, label: 'Annual Fees', icon: <AnnualFeesIcon size={20} /> },
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: 'Audit Logs', icon: <AuditLogsIcon size={20} /> },
         ];

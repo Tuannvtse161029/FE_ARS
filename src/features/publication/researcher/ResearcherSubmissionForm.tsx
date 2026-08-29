@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import { openAlexAdapter, type OpenAlexLookupOutcome } from './openalexAdapter';
 import shared from '../components/PublicationShared.module.css';
-import type { OpenAlexScanPreview } from './openalex';
 
 const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
 
@@ -13,7 +11,6 @@ type OpenAlexUiState =
   | { stage: 'idle' }
   | { stage: 'invalid'; message: string }
   | { stage: 'unsupported'; message: string }
-  | { stage: 'preview'; preview: OpenAlexScanPreview }
   | { stage: 'confirmed'; id: string }
   | { stage: 'skipped' };
 
@@ -135,9 +132,6 @@ export const ResearcherSubmissionForm = () => {
     try {
       const outcome: OpenAlexLookupOutcome = await openAlexAdapter.lookupPreview(openAlexDraft);
       switch (outcome.status) {
-        case 'preview':
-          setOpenAlexState({ stage: 'preview', preview: outcome.preview });
-          break;
         case 'invalid_format':
           setOpenAlexState({ stage: 'invalid', message: outcome.message });
           break;
@@ -151,16 +145,6 @@ export const ResearcherSubmissionForm = () => {
     } finally {
       setOpenAlexScanning(false);
     }
-  };
-
-  const handleConfirmOpenAlex = () => {
-    if (openAlexState.stage === 'preview') {
-      setOpenAlexState({ stage: 'confirmed', id: openAlexState.preview.id });
-    }
-  };
-
-  const handleEditOpenAlex = () => {
-    setOpenAlexState({ stage: 'idle' });
   };
 
   const handleSkipOpenAlex = () => {
@@ -212,13 +196,15 @@ export const ResearcherSubmissionForm = () => {
         abstract: abstract.trim(),
         authors: [
           {
-            id: 'current-author',
+            // The live Paper API derives the author from the JWT; it does not
+            // accept client-generated author or institution IDs.
+            id: '',
             name: authorName.trim(),
-            institutionIds: ['current-institution'],
+            institutionIds: [],
             order: 1,
           },
         ],
-        institutions: [{ id: 'current-institution', name: institution.trim() }],
+        institutions: [{ id: '', name: institution.trim() }],
         paperType,
         keywords: keywords
           .split(',')
@@ -250,7 +236,6 @@ export const ResearcherSubmissionForm = () => {
           <p>Prepare manuscript metadata for Admin screening. Reviewer selection is performed by Admin only.</p>
         </div>
       </header>
-      <PublicationDemoBanner />
       {error && (
         <div className={shared.error} role="alert">
           {error}
@@ -471,46 +456,6 @@ export const ResearcherSubmissionForm = () => {
                     onClick={handleManualFallbackOpenAlex}
                   >
                     Enter manually instead
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {openAlexState.stage === 'preview' && (
-              <div className={shared.panel} style={{ marginTop: 8 }} data-testid="submission-openalex-preview">
-                <p>
-                  <strong>ID:</strong> {openAlexState.preview.id}
-                </p>
-                <p>
-                  <strong>Title:</strong> {openAlexState.preview.display.title}
-                </p>
-                <p>
-                  <strong>Summary:</strong> {openAlexState.preview.display.summary}
-                </p>
-                <p className={shared.fieldHint}>{openAlexState.preview.display.sourceLabel}</p>
-                <div className={shared.actions} style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className={shared.button}
-                    data-testid="submission-openalex-confirm"
-                    onClick={handleConfirmOpenAlex}
-                  >
-                    Confirm OpenAlex ID
-                  </button>
-                  <button
-                    type="button"
-                    className={shared.buttonSecondary}
-                    data-testid="submission-openalex-edit"
-                    onClick={handleEditOpenAlex}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={shared.buttonGhost}
-                    onClick={handleManualFallbackOpenAlex}
-                  >
-                    Enter manually
                   </button>
                 </div>
               </div>

@@ -6,7 +6,7 @@
 // Why a separate file:
 //   - `src/utils/validation.ts` is owned by the auth-flow schemas and is
 //     READ-ONLY for this audit. New helpers that are reused by non-auth forms
-//     (Profile, Papers, Guidance Project, Research Group / Topic / Learning
+//     (Profile, publication submissions, Guidance Project, Research Group / Topic / Learning
 //     Material / Member, Earnings Wallet withdrawal, etc.) live here so we
 //     don't touch the auth schemas.
 //   - Keeping the rules pure-function (no React) means we can reuse them in

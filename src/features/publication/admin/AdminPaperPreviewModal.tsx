@@ -98,7 +98,7 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
             <dd>
               {fileHref
                 ? <a className={adminStyles.fileLink} href={fileHref} target="_blank" rel="noreferrer"><FileText size={14} aria-hidden="true" /> Open in new tab</a>
-                : '— (no file URL on this demo record)'}
+                : '— (no file URL on this record)'}
             </dd>
           </dl>
           <p className={shared.fieldHint}>

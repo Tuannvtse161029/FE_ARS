@@ -57,7 +57,7 @@ export const resolveIdentifiers = (paper: PublicationPaper): PaperIdentifiers =>
 
 /**
  * Build a stable DOI URL when the supplied DOI looks like a real DOI handle.
- * Falls back to a plain text label for non-canonical DOIs (eg. demo
+ * Falls back to a plain text label for non-canonical DOIs.
  * placeholders). The admin surface never links out to user-supplied URLs.
  */
 export const doiHref = (doi: string | undefined): string | null => {
@@ -118,7 +118,7 @@ const matchesVerification = (
 
 /**
  * Apply admin filters to a paper collection and paginate the result.
- * Paging is performed client-side because the demo adapter does not
+ * Paging is performed client-side because the current generic API response does not
  * expose a paginated admin endpoint.
  */
 export const paginateAdminPapers = (
@@ -190,8 +190,8 @@ export const isPrivateReview = (paper: PublicationPaper): boolean => {
 /**
  * Build the list of action areas an Admin can take for a given status.
  * Returns labels + a small hint message — the actual mutation is left
- * to the page because each admin action lives behind a different demo
- * adapter call (today only assignReviewer + publishPaper are exposed).
+ * to the page because each admin action lives behind a different backend
+ * contract (today only assignment and publish are exposed by the adapter).
  */
 export interface AdminActionDescriptor {
   id: 'assign' | 'publish' | 'withdraw' | 'reject' | 'requestRevision';

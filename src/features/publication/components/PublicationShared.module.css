@@ -4,19 +4,24 @@
    inline gradients, orbs, or hard-coded brand hex outside this file's
    scoped status palette, which mirrors the ars-tokens semantic sets. */
 
-/* The .page and .panel root classes are exposed as :global(...) so
-   descendant :global() overrides further down (targeting inline-styled
-   table/h2/article/etc. elements that the TSX cannot be edited to
-   scope) can match the publication-feature root class. Because the
-   names are global, `shared.page` and `shared.panel` from the TSX
-   resolve to the literal class strings 'page' and 'panel' — which
-   is exactly what the existing TSX code expects. No collision risk:
-   all other '.page' rules in the codebase live in *other* .module.css
-   files where they remain hashed locally. */
-:global(.page) {
+/* Export the local class and compose a stable global marker. Vite does not
+   export selectors declared only through :global(), so the previous rule made
+   `shared.page` and `shared.panel` undefined at runtime. */
+.page {
+  composes: publication-page from global;
   color: var(--ars-ink);
   display: grid;
   gap: var(--space-5);
+}
+
+.demoBanner {
+  border: 1px solid #d49a42;
+  background: #fff4c7;
+  color: #8a4b08;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* ── Header ─────────────────────────────────────────────── */
@@ -52,31 +57,6 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-}
-
-/* ── Demo banner ─────────────────────────────────────────── */
-.demoBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  border: 1px solid var(--ars-warning);
-  background: var(--ars-warning-bg);
-  color: var(--ars-warning);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-normal);
-}
-
-.demoBanner::before {
-  content: "";
-  display: inline-block;
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--ars-warning);
 }
 
 /* ── Status pill ─────────────────────────────────────────── */
@@ -143,10 +123,8 @@
 .statusDanger { background: var(--ars-error-bg); color: var(--ars-error); }
 
 /* ── Panel ───────────────────────────────────────────────── */
-/* .panel is also exposed globally for the same reason as .page —
-   so descendant :global() rules below can target inline-styled
-   article / h2 / p descendants that are children of any .panel. */
-:global(.panel) {
+.panel {
+  composes: publication-panel from global;
   border: var(--border-thin);
   border-radius: var(--radius-lg);
   background: var(--ars-paper-alt);
@@ -677,7 +655,7 @@
   .header { display: grid; }
   .headerActions { width: 100%; }
   .formGrid { grid-template-columns: 1fr; }
-  :global(.panel) { padding: var(--space-4); }
+  :global(.publication-panel) { padding: var(--space-4); }
 }
 
 @media (max-width: 480px) {
@@ -718,7 +696,7 @@
    there. The td padding (`padding: '14px 8px'` / `'12px 8px'`) is
    token-mismatched, so we use !important to deliver consistent
    spacing across all publication tables. */
-:global(.page table) {
+:global(.publication-page table) {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
@@ -728,7 +706,7 @@
   overflow: hidden;
 }
 
-:global(.page table thead th) {
+:global(.publication-page table thead th) {
   text-align: left;
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-xs);
@@ -741,7 +719,7 @@
   white-space: nowrap;
 }
 
-:global(.page table tbody td) {
+:global(.publication-page table tbody td) {
   padding: 12px 14px !important;
   border-bottom: 1px solid var(--ars-network);
   vertical-align: top;
@@ -749,26 +727,26 @@
   line-height: var(--line-height-normal);
 }
 
-:global(.page table tbody tr:last-child td) {
+:global(.publication-page table tbody tr:last-child td) {
   border-bottom: 0;
 }
 
-:global(.page table tbody tr:hover) {
+:global(.publication-page table tbody tr:hover) {
   background: var(--ars-blue-light);
 }
 
-:global(.page table tbody tr:focus-within) {
+:global(.publication-page table tbody tr:focus-within) {
   outline: 2px solid var(--ars-blue-mid);
   outline-offset: -2px;
 }
 
-:global(.page table tbody td small) {
+:global(.publication-page table tbody td small) {
   color: var(--ars-ink-muted);
   font-size: var(--font-size-xs);
   letter-spacing: 0.02em;
 }
 
-:global(.page table tbody td strong) {
+:global(.publication-page table tbody td strong) {
   color: var(--ars-ink);
   font-weight: var(--font-weight-semibold);
   display: block;
@@ -781,23 +759,23 @@
    on the <article> elements. Use !important on the rules we want to
    own so the article list reads as a single coherent unit instead of
    mixing token + inline values. */
-:global(.panel article) {
+:global(.publication-panel article) {
   border-bottom: 1px solid var(--ars-network) !important;
   padding: 16px 0 !important;
   display: grid;
   gap: var(--space-2);
 }
 
-:global(.panel article:last-child) {
+:global(.publication-panel article:last-child) {
   border-bottom: 0;
   padding-bottom: 0;
 }
 
-:global(.panel article:first-child) {
+:global(.publication-panel article:first-child) {
   padding-top: 0;
 }
 
-:global(.panel article h2) {
+:global(.publication-panel article h2) {
   font-family: var(--font-family-serif);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
@@ -806,7 +784,7 @@
   margin: 0;
 }
 
-:global(.panel article p) {
+:global(.publication-panel article p) {
   color: var(--ars-ink-soft);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
@@ -816,8 +794,8 @@
 /* ReviewerAssignmentDetail & ResearcherSubmissionDetail inner panels —
    AdminPaperSubmissionDetail uses a nested <section className="panel">
    with an <h2> child */
-:global(.panel section h2),
-:global(.panel .panel h2) {
+:global(.publication-panel section h2),
+:global(.publication-panel .publication-panel h2) {
   font-family: var(--font-family-serif);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
@@ -827,29 +805,29 @@
 }
 
 /* Inline-style h2 inside AdminPaperSubmissionDetail's nested panel */
-:global(.panel h2[style*="font-size"]) {
+:global(.publication-panel h2[style*="font-size"]) {
   font-family: var(--font-family-serif);
   font-size: var(--font-size-lg);
 }
 
 /* Inline-style h2 inside ReviewerAssignments article */
-:global(.panel article h2[style*="font-size"]) {
+:global(.publication-panel article h2[style*="font-size"]) {
   font-size: var(--font-size-lg);
 }
 
 @media (max-width: 760px) {
-  :global(.page table) {
+  :global(.publication-page table) {
     font-size: var(--font-size-xs);
   }
-  :global(.page table thead th),
-  :global(.page table tbody td) {
+  :global(.publication-page table thead th),
+  :global(.publication-page table tbody td) {
     padding: 10px;
   }
 }
 
 /* Plain <a> tags inside publication panels (manuscript file link, etc.) */
-:global(.panel a:not([class*="button"]):not([class*="status"])),
-:global(.page a:not([class*="button"]):not([class*="status"])) {
+:global(.publication-panel a:not([class*="button"]):not([class*="status"])),
+:global(.publication-page a:not([class*="button"]):not([class*="status"])) {
   color: var(--ars-blue);
   font-weight: var(--font-weight-semibold);
   text-decoration: underline;
@@ -857,14 +835,14 @@
   text-decoration-thickness: 1px;
 }
 
-:global(.panel a:not([class*="button"]):not([class*="status"]):hover),
-:global(.page a:not([class*="button"]):not([class*="status"]):hover) {
+:global(.publication-panel a:not([class*="button"]):not([class*="status"]):hover),
+:global(.publication-page a:not([class*="button"]):not([class*="status"]):hover) {
   color: var(--ars-blue-mid);
   text-decoration-thickness: 2px;
 }
 
-:global(.panel a:focus-visible),
-:global(.page a:focus-visible) {
+:global(.publication-panel a:focus-visible),
+:global(.publication-page a:focus-visible) {
   outline: 2px solid var(--ars-blue-mid);
   outline-offset: 2px;
   border-radius: 2px;
@@ -872,21 +850,21 @@
 
 /* Detail paragraphs inside panels — ResearcherSubmissionDetail,
    AdminPaperSubmissionDetail, ReviewerAssignmentDetail */
-:global(.panel > p),
-:global(.page .panel > p) {
+:global(.publication-panel > p),
+:global(.publication-page .publication-panel > p) {
   margin: 0;
   color: var(--ars-ink-soft);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
 }
 
-:global(.panel > p + p),
-:global(.page .panel > p + p) {
+:global(.publication-panel > p + p),
+:global(.publication-page .publication-panel > p + p) {
   margin-top: var(--space-2);
 }
 
-:global(.panel > p strong),
-:global(.page .panel > p strong) {
+:global(.publication-panel > p strong),
+:global(.publication-page .publication-panel > p strong) {
   color: var(--ars-ink);
   font-weight: var(--font-weight-semibold);
   margin-right: 4px;
@@ -894,7 +872,7 @@
 
 /* Filter field — AdminPaperSubmissions uses <label className="field">
    wrapping <span> + <select> */
-:global(.panel .field span) {
+:global(.publication-panel .field span) {
   color: var(--ars-ink);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -951,13 +929,13 @@
    keep applying, but the class still wins for everything else. We
    intentionally don't use !important — the visual hierarchy is
    already correct and overriding would change layout flow. */
-:global(.page form) {
+:global(.publication-page form) {
   display: grid;
   gap: var(--space-4);
 }
 
 /* Section / panel marker helper — used at the top of inner sections */
-:global(.panel > h2) {
+:global(.publication-panel > h2) {
   font-family: var(--font-family-serif);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
@@ -970,19 +948,19 @@
    that holds the private reviewer recommendation. Style it as a focused
    sub-card with the reviewer-color accent so it visually separates from
    the parent detail panel. */
-:global(.panel > section.panel) {
+:global(.publication-panel > section.publication-panel) {
   background: var(--ars-success-bg);
   border-color: var(--ars-reviewer-light);
   padding: var(--space-4);
 }
 
-:global(.panel > section.panel > h2) {
+:global(.publication-panel > section.publication-panel > h2) {
   color: var(--ars-reviewer);
   margin: 0 0 var(--space-2);
 }
 
-:global(.panel header h1),
-:global(.panel header h2) {
+:global(.publication-panel header h1),
+:global(.publication-panel header h2) {
   font-family: var(--font-family-serif);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
@@ -990,22 +968,15 @@
   margin: 0;
 }
 
-:global(.panel header p) {
+:global(.publication-panel header p) {
   color: var(--ars-ink-muted);
   font-size: var(--font-size-sm);
   margin: 4px 0 0;
 }
 
-/* Publication Demo banner placement — the banner itself is already
-   styled via the local .demoBanner rule. Use a structure-stable
-   attribute selector that doesn't depend on the hashed class name. */
-:global(.page > [role="status"]) {
-  margin: 0;
-}
-
 /* Reduced motion: kill any inherited table-row transitions */
 @media (prefers-reduced-motion: reduce) {
-  :global(.page table tbody tr) {
+  :global(.publication-page table tbody tr) {
     transition: none;
   }
 }

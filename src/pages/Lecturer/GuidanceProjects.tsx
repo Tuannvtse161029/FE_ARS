@@ -29,7 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
-import { canTransitionGuidanceProject } from '../../utils/researchStatus';
+import { canTransitionGuidanceProject, normalizeGuidanceProjectStatus } from '../../utils/researchStatus';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -69,7 +69,6 @@ interface CreateProposalForm {
 // list hook will re-normalise next time it refetches.
 const createdToGuidanceProject = (
   raw: unknown,
-  fallbackLecturerId: number,
 ): GuidanceProject | null => {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
@@ -78,23 +77,23 @@ const createdToGuidanceProject = (
     (typeof r.guidanceProjectId === 'number' && r.guidanceProjectId) ||
     0;
   const studentIdCandidate =
-    (typeof r.studentId === 'number' && r.studentId) || 0;
+    typeof r.studentId === 'number' ? r.studentId : null;
   if (idCandidate === 0) return null;
   return {
     id: idCandidate,
-    lecturerId: fallbackLecturerId,
+    lecturerId: typeof r.lecturerId === 'number' ? r.lecturerId : null,
     studentId: studentIdCandidate,
     title:
       typeof r.title === 'string' && r.title.trim().length > 0
         ? r.title
-        : `Project #${idCandidate}`,
+        : '',
     description:
       typeof r.description === 'string' ? r.description : undefined,
-    status: 'PROPOSED',
-    createdAt:
-      typeof r.createdAt === 'string' ? r.createdAt : new Date().toISOString(),
-    updatedAt:
-      typeof r.updatedAt === 'string' ? r.updatedAt : new Date().toISOString(),
+    status: normalizeGuidanceProjectStatus(typeof r.status === 'string' ? r.status : null),
+    ...(typeof r.createdAt === 'string' ? { createdAt: r.createdAt } : {}),
+    ...(typeof r.updatedAt === 'string' ? { updatedAt: r.updatedAt } : {}),
+    ...(typeof r.researchGroupId === 'number' ? { researchGroupId: r.researchGroupId } : {}),
+    ...(typeof r.researchGroupName === 'string' ? { researchGroupName: r.researchGroupName } : {}),
   };
 };
 
@@ -252,7 +251,7 @@ export const GuidanceProjects = () => {
         API_ENDPOINTS.RESEARCH_WORKFLOW.GUIDANCE_PROJECT.CREATE,
         body,
       );
-      const created = createdToGuidanceProject(response.data, lecturerId);
+      const created = createdToGuidanceProject(response.data);
       setShowCreate(false);
       setCreateForm({ title: '', description: '' });
       showBanner(
