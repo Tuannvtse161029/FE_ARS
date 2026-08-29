@@ -210,10 +210,14 @@ const App = () => {
                   }
                 />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
+                {/* Public profile viewing: forum authors/commenters of every
+                    authenticated role must be able to open another user's
+                    profile. Only the Admin workspace routes remain guarded
+                    below. */}
+                <Route path="/profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile/:userId" element={<Profile />} />
+                <Route path="/professional-profile" element={<Profile />} />
                 <Route element={<RoleRouteGuard allow={['Admin']} />}>
-                  <Route path="/profile/:userId" element={<Profile />} />
-                  <Route path="/professional-profile/:userId" element={<Profile />} />
-                  <Route path="/professional-profile" element={<Profile />} />
                   <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
                   <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
                   <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />

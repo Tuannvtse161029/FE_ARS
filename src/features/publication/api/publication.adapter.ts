@@ -18,6 +18,7 @@ import {
   type ReviewerRecommendation,
   type SubmissionInput,
 } from '../types/publication';
+import { demoPublicationPapers } from '../demo/publication.demo';
 
 export class PublicationBackendContractError extends Error {
   constructor(message: string) {
@@ -168,6 +169,49 @@ const listAllPapers = async (): Promise<Paper[]> => {
   return Array.isArray(result?.items) ? result.items : [];
 };
 
+const catalogMatches = (paper: PublicationPaper, query: CatalogQuery): boolean => {
+  const term = query.query?.trim().toLowerCase();
+  const haystack = [
+    paper.title,
+    paper.abstract,
+    paper.doi,
+    paper.openAlexId,
+    paper.externalIdentifier,
+    paper.domain,
+    paper.field,
+    paper.subfield,
+    ...paper.topics,
+    ...paper.keywords,
+    ...paper.authors.map((author) => author.name),
+    ...paper.institutions.map((institution) => institution.name),
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (term && !haystack.includes(term)) return false;
+  if (query.domain && paper.domain !== query.domain) return false;
+  if (query.field && paper.field !== query.field) return false;
+  if (query.subfield && paper.subfield !== query.subfield) return false;
+  if (query.topic && !paper.topics.includes(query.topic)) return false;
+  return true;
+};
+
+const demoCatalog = (query: CatalogQuery): PagedPublicationResult => {
+  const filtered = demoPublicationPapers
+    .filter((paper) => catalogMatches(paper, query))
+    .sort((left, right) => {
+      if (query.sort === 'TITLE_ASC') return left.title.localeCompare(right.title);
+      const leftDate = new Date(left.publishedAt ?? left.createdAt).getTime();
+      const rightDate = new Date(right.publishedAt ?? right.createdAt).getTime();
+      return query.sort === 'PUBLISHED_ASC' ? leftDate - rightDate : rightDate - leftDate;
+    });
+  const start = Math.max(0, (query.page - 1) * query.pageSize);
+  return {
+    items: filtered.slice(start, start + query.pageSize),
+    totalCount: filtered.length,
+    page: query.page,
+    pageSize: query.pageSize,
+    dataSource: 'demo',
+  };
+};
+
 const currentUserId = (): number | null => storage.getUser()?.id ?? null;
 
 const latestRequestByPaper = (requests: ReviewRequest[]): Map<string, ReviewRequest> => {
@@ -191,10 +235,46 @@ const evaluationFor = async (
 
 class ApiPublicationAdapter implements PublicationAdapter {
   async getPublicCatalog(query: CatalogQuery): Promise<PagedPublicationResult> {
-    void query;
-    throw new PublicationBackendContractError(
-      'The public catalog is unavailable until the backend ships a status- and visibility-scoped publication endpoint. See tickets/backend/BE_PUBLICATION_WORKFLOW_API_TICKET.md.',
-    );
+    let papers: PublicationPaper[] = [];
+    try {
+      papers = (await listAllPapers())
+        .filter((paper) => normalizedText(paper.status) === 'PUBLISHED')
+        .map((paper) => toPublicationPaper(paper));
+    } catch {
+      return demoCatalog(query);
+    }
+    // The live Paper API currently has no published catalog rows/contract.
+    // Keep the screen useful for product review while the BE implements it.
+    if (papers.length === 0) return demoCatalog(query);
+
+    const searchTerm = query.query?.trim().toLowerCase();
+    const filtered = papers
+      .filter((paper) => {
+        if (searchTerm) {
+          const haystack = [
+            paper.title,
+            paper.abstract,
+            ...paper.authors.map((author) => author.name),
+          ].join(' ').toLowerCase();
+          if (!haystack.includes(searchTerm)) return false;
+        }
+        return true;
+      })
+      .sort((left, right) => {
+        if (query.sort === 'TITLE_ASC') return left.title.localeCompare(right.title);
+        const leftDate = new Date(left.publishedAt ?? left.createdAt ?? 0).getTime();
+        const rightDate = new Date(right.publishedAt ?? right.createdAt ?? 0).getTime();
+        return query.sort === 'PUBLISHED_ASC' ? leftDate - rightDate : rightDate - leftDate;
+      });
+
+    const start = Math.max(0, (query.page - 1) * query.pageSize);
+    return {
+      items: filtered.slice(start, start + query.pageSize),
+      totalCount: filtered.length,
+      page: query.page,
+      pageSize: query.pageSize,
+      dataSource: 'api',
+    };
   }
 
   async getResearcherSubmissions(): Promise<PublicationPaper[]> {

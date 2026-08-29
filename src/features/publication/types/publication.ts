@@ -19,7 +19,7 @@ export const PUBLICATION_STATUSES = [
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 export type PublicationVisibility = 'PUBLIC' | 'PRIVATE';
 export type ReviewerRecommendation = 'ACCEPT' | 'REVISION_REQUIRED' | 'REJECT';
-export type DataSource = 'api';
+export type DataSource = 'api' | 'demo';
 
 export interface PublicationAuthor {
   id: string;

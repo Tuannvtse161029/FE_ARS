@@ -6,6 +6,7 @@ import type { CatalogQuery, PublicationPaper } from '../types/publication';
 import { PublishedPaperCard } from './PublishedPaperCard';
 import styles from './HomeResearchCatalog.module.css';
 import { publicReviewerName } from '../types/publication';
+import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 
 const PAGE_SIZE = 8;
 
@@ -29,6 +30,7 @@ export const HomeResearchCatalog = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -39,6 +41,7 @@ export const HomeResearchCatalog = () => {
         if (!active) return;
         setPapers(result.items);
         setTotal(result.totalCount);
+        setIsDemo(result.dataSource === 'demo');
       })
       .catch(() => active && setError('The research catalog could not be loaded.'))
       .finally(() => active && setLoading(false));
@@ -70,6 +73,7 @@ export const HomeResearchCatalog = () => {
           <p>Discover ARS publications across authors, institutions, topics, and research domains.</p>
         </div>
       </header>
+      {isDemo && <PublicationDemoBanner />}
       <div className={styles.toolbar}>
         <label className={styles.search}>
           <Search size={18} aria-hidden="true" />
