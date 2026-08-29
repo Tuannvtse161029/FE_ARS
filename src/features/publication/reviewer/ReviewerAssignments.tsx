@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import reviewer from './reviewer.module.css';
 import { statusLabel, type PublicationPaper } from '../types/publication';
@@ -15,7 +14,7 @@ import {
 //
 // Coordinator authority:
 //   - `docs/UI_PUBLICATION_FLOW_DECISIONS.md` §1, §3 (route is fixed at
-//     /reviewer/assignments; the list is filtered by status), §6 (demo
+//     /reviewer/assignments; the list is filtered by status), §6 (API
 //     banner remains).
 //   - `docs/PUBLICATION_FLOW_ARCHITECTURE_REVIEW.md` §10 (no reviewer
 //     review bodies leak into the list rendering — even when the paper
@@ -42,14 +41,19 @@ const actionableLabel = (paper: PublicationPaper): string => {
 export const ReviewerAssignments = () => {
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     publicationAdapter
       .getReviewerAssignments()
       .then((items) => {
         if (cancelled) return;
         setPapers(items);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Review assignments could not be loaded.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -80,9 +84,10 @@ export const ReviewerAssignments = () => {
           </p>
         </div>
       </header>
-      <PublicationDemoBanner />
       {loading ? (
         <div className={shared.loading}>Loading assignments...</div>
+      ) : error ? (
+        <div className={shared.error} role="alert">{error}</div>
       ) : rows.length === 0 ? (
         <div className={shared.empty} data-testid="empty-assignments">
           No reviewer assignments are ready.

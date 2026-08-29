@@ -1,8 +1,7 @@
 // Admin Auxiliary types.
 // Mirrors Figma screens 6-9 (image_d6b406.jpg through image_d6b09c.jpg) and
-// the gap report at docs/local-only/admin-suite-be-gap-report.md. Until BE
-// ships these endpoints, the adminAuxiliaryService layer falls back to mock
-// fixtures via the USE_MOCK_DATA toggle.
+// the backend API schemas. Runtime services use live endpoint responses and
+// surface an explicit unavailable state when a contract is missing.
 
 // ── Violation reports (Figma screens 7 + 8) ─────────────────────────────────
 export type ViolationReportType = 'FORUM_COMMENT' | 'RESEARCH_PAPER';

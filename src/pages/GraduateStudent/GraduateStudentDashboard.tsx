@@ -575,7 +575,7 @@ function GuidanceProjectCard({
             className={styles.secondaryBtn}
             disabled
             aria-disabled="true"
-            title="Withdraw is disabled in the demo build."
+            title="Withdraw is disabled in this build."
           >
             Withdraw
           </button>

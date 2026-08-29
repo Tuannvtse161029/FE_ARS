@@ -6,6 +6,7 @@ import type { AxiosRequestConfig } from 'axios';
 export interface Paper {
   id: string;
   title: string;
+  abstract?: string;
   name?: string;
   date?: string;
   status: string;

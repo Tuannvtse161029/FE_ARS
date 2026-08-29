@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminPaperPreviewModal } from '../../../../src/features/publication/admin/AdminPaperPreviewModal';
-import { demoPublicationPapers } from '../../../../src/features/publication/demo/publication.demo';
+import { publicationFixtures } from '../../../../tests/fixtures/publication.fixtures';
 import type { PublicationPaper } from '../../../../src/features/publication/types/publication';
 
 const buildPaper = (patch: Partial<PublicationPaper>): PublicationPaper => ({
-  ...demoPublicationPapers[0],
+  ...publicationFixtures[0],
   ...patch,
 });
 

@@ -104,7 +104,7 @@ function normalizeSubField(value: SubFieldApiResponse): SubField | null {
 export const subFieldService = {
   /**
    * Fetch a single SubField by its numeric id. Used by the Reviewer
-   * EvaluationDesk flow to read the paper's subField and its gradingRubric.
+   * Reviewer publication flow to read the paper's subField and its gradingRubric.
    */
   getById: async (id: number): Promise<SubField | null> => {
     if (!Number.isFinite(id) || id <= 0) return null;

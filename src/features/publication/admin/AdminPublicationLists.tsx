@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, FileText, ExternalLink } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
@@ -44,8 +43,7 @@ const PUBLISHED_PAPERS_CONFIG: AdminListConfig = {
  * Admin-only listing surface. Both `AdminReviewerAssignments` and
  * `AdminPublishedPapers` are exported from this module because they
  * share the same toolbar/table/pagination pattern. The only thing
- * that differs is the status filter applied on top of the demo
- * adapter feed.
+ * that differs is the status filter applied on top of the API feed.
  */
 const AdminList = ({ config }: { config: AdminListConfig }) => {
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
@@ -94,8 +92,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           <p>{config.subtitle}</p>
         </div>
       </header>
-      <PublicationDemoBanner />
-
       <div className={adminStyles.toolbar} role="search">
         <div className={adminStyles.toolbarGroup}>
           <label className={adminStyles.search}>

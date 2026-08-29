@@ -1,30 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { annualFeeService } from '../../services/annualFee.service';
-import { ANNUAL_FEES_DEMO_NOTICE } from '../../data/annualFees.demo';
 import type { AnnualFeeDto } from '../../types/annualFee';
 import styles from './AnnualFees.module.css';
 
 /**
  * Agent admin-annual-fees — Admin Annual Fees tab.
  *
- * The BE has not yet published the annual-fee CRUD endpoint (confirmed
- * against the live Swagger feed on 2026-08-25). Until the contract
- * lands, this tab renders against the dedicated demo-data module
- * (`src/data/annualFees.demo.ts`) and surfaces a prominent "Demo data
- * — awaiting backend API" banner so the Admin cannot mistake the
- * fixture values for live values.
- *
- * Two non-negotiable rules:
- *
- *   1. The demo values never flow into the production payment logic.
- *      This page is read-only UI; it never calls the payment service,
- *      the wallet debit endpoint, or the PayOS redirect.
- *
- *   2. The demo values are not scattered here. Every row is read
- *      through `annualFeeService.listAnnualFees()`, which itself
- *      short-circuits to the demo module. When the BE ships, only the
- *      service changes — this page does not need to.
+ * Production Annual Fees surface. It never fabricates prices when the backend
+ * contract is absent.
  */
 
 const ROLE_LABEL: Record<string, string> = {
@@ -81,26 +64,6 @@ const AnnualFees = (): JSX.Element => {
           </p>
         </div>
       </header>
-
-      <div
-        className={styles.demoBanner}
-        role="status"
-        aria-live="polite"
-        data-testid="annual-fees-demo-banner"
-      >
-        <span className={styles.demoBannerIcon} aria-hidden="true">
-          <AlertTriangle size={20} />
-        </span>
-        <span className={styles.demoBannerBody}>
-          <span className={styles.demoBannerTitle}>{ANNUAL_FEES_DEMO_NOTICE}</span>
-          <span className={styles.demoBannerSubtitle}>
-            The annual-fee CRUD endpoint has not been published yet. Rows below are
-            example fees for <strong>Researcher</strong> and <strong>Lecturer</strong>{' '}
-            only — every value is isolated to the demo-data module and is never sent
-            to the payment service.
-          </span>
-        </span>
-      </div>
 
       {loading ? (
         <div className={styles.emptyState} role="status">

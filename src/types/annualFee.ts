@@ -13,13 +13,9 @@
 // treats "absent" and "null" identically on both request and response
 // shapes — see the BE gap ticket for the documented gaps.
 //
-// Agent admin-annual-fees — the BE has not yet published this resource
-// (confirmed against the live Swagger feed on 2026-08-25). The FE
-// Annual Fees tab therefore renders against a dedicated demo-data
-// module (src/data/annualFees.demo.ts) and surfaces the
-// "Demo data — awaiting backend API" banner everywhere the data is
-// shown. When the BE ships the contract, swap the demo module for the
-// real service calls and remove the banner.
+// The live backend has not yet published this resource. The production FE
+// therefore renders an explicit unavailable state until the backend ticket is
+// implemented; it never fabricates fee rows.
 
 export type AnnualFeeBillingCycle = 'Annual' | 'SixMonth';
 

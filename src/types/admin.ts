@@ -1,8 +1,7 @@
 // Admin surface types.
 // Mirrors the Figma Admin Suite (5 screens) and the gap report at
 // docs/local-only/admin-suite-be-gap-report.md. Until BE ships the new endpoints,
-// these shapes are populated by `adminService` against mock data via a
-// USE_MOCK_DATA flag.
+// these shapes are populated by `adminService` against live API responses.
 
 // ── Role requests (Figma screen 2) ─────────────────────────────────────────
 export type RoleRequestStatus = 'PENDING' | 'APPROVED' | 'DENIED';
@@ -61,7 +60,7 @@ export interface AccountItem {
   // provisioned in the seed data (they were created by an Admin, not via
   // self-registration). Flipped to true by `decideRoleRequest` when a
   // pending registration's role request is APPROVED. Existing UI doesn't
-  // render this flag — it exists so the mock can simulate the BE-side
+  // render this flag — it mirrors the BE-side
   // isActive flip without breaking the admin AccountItem shape.
   isActive?: boolean;
 }

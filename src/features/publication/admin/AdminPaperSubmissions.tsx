@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ChevronLeft, ChevronRight, FileText, ExternalLink } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import shared from '../components/PublicationShared.module.css';
 import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
@@ -20,11 +19,9 @@ import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
 
 /**
- * Admin-only editorial intake. Every record returned by the demo
- * adapter is rendered (Admin can see drafts / private / withdrawn
- * records that the public catalog never sees). Demo actions on this
- * page are explicitly labeled — they are NOT persisted publication
- * decisions (see `PublicationDemoBanner`).
+ * Admin-only editorial intake. Every record returned by the live API adapter
+ * is rendered (Admin can see drafts / private / withdrawn records that the
+ * public catalog never sees).
  */
 export const AdminPaperSubmissions = () => {
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
@@ -66,8 +63,6 @@ export const AdminPaperSubmissions = () => {
           <p>Screen submissions, verify researcher identity, and prepare reviewer assignments.</p>
         </div>
       </header>
-      <PublicationDemoBanner />
-
       <div className={adminStyles.toolbar} role="search">
         <div className={adminStyles.toolbarGroup}>
           <label className={adminStyles.search}>

@@ -19,7 +19,7 @@ export const PUBLICATION_STATUSES = [
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 export type PublicationVisibility = 'PUBLIC' | 'PRIVATE';
 export type ReviewerRecommendation = 'ACCEPT' | 'REVISION_REQUIRED' | 'REJECT';
-export type DataSource = 'api' | 'demo';
+export type DataSource = 'api';
 
 export interface PublicationAuthor {
   id: string;
@@ -70,6 +70,9 @@ export interface PublicationPaper {
   researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
   adminNote?: string;
   researcherFeedback?: string;
+  reviewRequestId?: number;
+  reviewerId?: number;
+  reviewDeadline?: string;
 }
 
 export interface PublicationNotification {

@@ -198,9 +198,9 @@ export const API_ENDPOINTS = {
     // docs/local-only/admin-suite-be-gap-report.md (WALLET auto-fund).
     AUTO_FUND: '/api/Wallet',
   },
-  // Admin surface — see docs/local-only/admin-suite-be-gap-report.md.
-  // All paths here are written against the upcoming Swagger contract; until BE
-  // ships them, `adminService` short-circuits to mock data via USE_MOCK_DATA.
+  // Admin surface — all paths below are production API contracts. Endpoints
+  // missing from live Swagger must remain unavailable in the UI and receive a
+  // backend ticket rather than a mock fallback.
   ADMIN: {
     ROLE_REQUESTS: {
       GET_ALL: '/api/RoleRequest',
@@ -232,10 +232,8 @@ export const API_ENDPOINTS = {
       DELETE: (id: number) => `/api/PremiumPackage/${id}`,
       TOGGLE: (id: number) => `/api/PremiumPackage/${id}/toggle`,
     },
-    // Agent admin-annual-fees — endpoints reserved for the upcoming
-    // Annual Fees CRUD contract (BE has not shipped these yet; the
-    // `annualFeeService` stub short-circuits to demo data until then).
-    // Documented in docs/BACKEND_REQUESTS.md → BTR-AF-01.
+    // Annual Fees contract is pending; the service surfaces an unavailable
+    // state until the backend ticket is implemented.
     ANNUAL_FEES: {
       GET_ALL: '/api/AnnualFee',
       GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,

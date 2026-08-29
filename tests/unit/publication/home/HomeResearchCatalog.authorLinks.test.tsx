@@ -62,7 +62,7 @@ const buildResult = (items: PublicationPaper[]): PagedPublicationResult => ({
   totalCount: items.length,
   page: 1,
   pageSize: 8,
-  dataSource: 'demo',
+  dataSource: 'api',
 });
 
 describe('<HomeResearchCatalog> – canonical author links', () => {

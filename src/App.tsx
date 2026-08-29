@@ -40,8 +40,6 @@ const AdminPaperSubmissions = lazy(() => import('./features/publication/admin/Ad
 const AdminPaperSubmissionDetail = lazy(() => import('./features/publication/admin/AdminPaperSubmissionDetail'));
 const AdminReviewerAssignments = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminReviewerAssignments })));
 const AdminPublishedPapers = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminPublishedPapers })));
-const Papers = lazy(() => import('./pages/Papers/Papers').then((m) => ({ default: m.Papers })));
-const EvaluationDesk = lazy(() => import('./pages/Reviewer/EvaluationDesk').then((m) => ({ default: m.EvaluationDesk })));
 const SeminarWorkspace = lazy(() => import('./pages/Lecturer/SeminarWorkspace').then((m) => ({ default: m.SeminarWorkspace })));
 const ResearchGroup = lazy(() => import('./pages/Lecturer/ResearchGroup').then((m) => ({ default: m.ResearchGroup })));
 const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilestones').then((m) => ({ default: m.ConfigureMilestones })));
@@ -56,7 +54,6 @@ const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').t
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
 const EarningsWallet = lazy(() => import('./pages/Reviewer/EarningsWallet').then((m) => ({ default: m.EarningsWallet })));
-const AssignedReviews = lazy(() => import('./pages/Reviewer/AssignedReviews').then((m) => ({ default: m.AssignedReviews })));
 const Profile = lazy(() => import('./pages/Profile/Profile').then((m) => ({ default: m.Profile })));
 const ProfessionalProfile = lazy(() => import('./pages/Reviewer/ProfessionalProfile').then((m) => ({ default: m.ProfessionalProfile })));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
@@ -69,12 +66,8 @@ const TransactionsManagement = lazy(() => import('./pages/Admin/TransactionsMana
 const ContentReports = lazy(() => import('./pages/Admin/ContentReports').then((m) => ({ default: m.default })));
 const PremiumPackages = lazy(() => import('./pages/Admin/PremiumPackages').then((m) => ({ default: m.default })));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ default: m.default })));
-// Agent admin-annual-fees — Admin Annual Fees tab. Renders against the
-// dedicated demo-data module (src/data/annualFees.demo.ts) until the BE
-// ships the annual-fee CRUD endpoint (see BTR-AF-01 in
-// docs/BACKEND_REQUESTS.md). The page itself carries the "Demo data —
-// awaiting backend API" banner; the lazy chunk keeps the new code off
-// the cold-load path.
+  // Admin Annual Fees tab. It renders an honest backend-unavailable state
+  // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
@@ -180,7 +173,7 @@ const App = () => {
 
                 {/* Researcher-only publication routes. Reviewer selection is Admin-owned. */}
                 <Route element={<RoleRouteGuard allow={['Researcher']} />}>
-                  <Route path={ROUTES.PAPERS} element={<Papers />} />
+                  <Route path={ROUTES.PAPERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
                   <Route path={ROUTES.RESEARCHER_SUBMISSIONS} element={<ResearcherSubmissions />} />
                   <Route path={ROUTES.RESEARCHER_SUBMISSION_NEW} element={<ResearcherSubmissionForm />} />
                   <Route path={ROUTES.RESEARCHER_SUBMISSION_DETAIL} element={<ResearcherSubmissionDetail />} />
@@ -192,6 +185,8 @@ const App = () => {
                   <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
                   <Route path={ROUTES.REVIEWER_ASSIGNMENTS} element={<ReviewerAssignments />} />
                   <Route path={ROUTES.REVIEWER_ASSIGNMENT_DETAIL} element={<ReviewerAssignmentDetail />} />
+                  <Route path={ROUTES.EVALUATION} element={<Navigate to={ROUTES.REVIEWER_ASSIGNMENTS} replace />} />
+                  <Route path={ROUTES.REVIEW_TASKS} element={<Navigate to={ROUTES.REVIEWER_ASSIGNMENTS} replace />} />
                 </Route>
 
                 {/* Admin-only editorial routes. */}
@@ -209,7 +204,6 @@ const App = () => {
 
                 {/* Shared / cross-role routes */}
                 <Route path={ROUTES.FORUM} element={<Forum />} />
-                <Route path={ROUTES.EVALUATION} element={<EvaluationDesk />} />
                 <Route
                   path={ROUTES.EARNINGS_WALLET}
                   element={
@@ -218,16 +212,17 @@ const App = () => {
                       : <Navigate to={ROUTES.FORUM} replace />
                   }
                 />
-                <Route path={ROUTES.REVIEW_TASKS} element={<AssignedReviews />} />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
-                <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
-                <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
-                <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />
-                <Route path={ROUTES.ADMIN_TRANSACTIONS} element={<TransactionsManagement />} />
-                <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
-                <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
-                <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
-                <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
+                <Route element={<RoleRouteGuard allow={['Admin']} />}>
+                  <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
+                  <Route path={ROUTES.ADMIN_ROLE_REQUESTS} element={<RoleRequests />} />
+                  <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />
+                  <Route path={ROUTES.ADMIN_TRANSACTIONS} element={<TransactionsManagement />} />
+                  <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
+                  <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
+                  <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
+                  <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
+                </Route>
                 <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
                 {/* Agent admin-annual-fees — the user-facing premium-packages
                     surface is temporarily hidden for non-Admin roles while
