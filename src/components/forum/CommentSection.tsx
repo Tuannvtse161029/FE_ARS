@@ -277,9 +277,22 @@ export const CommentSection = ({
   };
 
   const renderAuthorLabel = (comment: ForumComment): string => {
-    if (comment.userId == null) return 'Anonymous';
-    const cached = authorDisplayByUserId?.[comment.userId];
-    return cached ?? `User ${comment.userId}`;
+    if (typeof comment.fullName === 'string' && comment.fullName.trim()) {
+      return comment.fullName.trim();
+    }
+    if (typeof comment.author === 'string' && comment.author.trim()) {
+      return comment.author.trim();
+    }
+    if (currentUserId != null && comment.userId === currentUserId) {
+      return currentUserName;
+    }
+    if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
+      return authorDisplayByUserId[comment.userId];
+    }
+    if (comment.userId != null) {
+      return `User #${comment.userId}`;
+    }
+    return 'Anonymous';
   };
 
   return (
