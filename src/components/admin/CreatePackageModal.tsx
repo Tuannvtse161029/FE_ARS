@@ -108,7 +108,7 @@ export function CreatePackageModal({
       <div className={styles.modal}>
         <header className={styles.header}>
           <h2 id="create-package-title" className={styles.title}>
-            Create Premium Package
+            Create Package
           </h2>
           <button
             type="button"

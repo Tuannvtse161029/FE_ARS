@@ -151,15 +151,46 @@ export const ForumPostCard = ({
             {formatRelativeTime(post.createdAt)}
           </span>
         </div>
-        {/* FollowButton — only verified viewers, only when we know the
-            authorId, and never on the viewer's own posts. */}
-        {isVerified &&
-          post.authorId != null &&
-          post.authorId !== currentUserId && (
-            <div className={styles.authorActions}>
+        {isVerified && (
+          <div className={styles.authorActions}>
+            {/* FollowButton — only verified viewers, only when we know the
+                authorId, and never on the viewer's own posts. */}
+            {post.authorId != null && post.authorId !== currentUserId && (
               <FollowButton authorId={post.authorId} size="sm" />
+            )}
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.menuTrigger}
+                onClick={() => setMenuOpen((prev) => !prev)}
+                aria-label="More options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <MoreHorizontal size={18} />
+              </button>
+
+              {menuOpen && (
+                <div className={styles.menuDropdown} role="menu">
+                  <button
+                    className={`${styles.menuItem} ${styles.menuItemReport}`}
+                    onClick={() => {
+                      setReportTarget({
+                        id: post.id,
+                        preview: post.title ?? '(untitled post)',
+                      });
+                      setMenuOpen(false);
+                    }}
+                    role="menuitem"
+                  >
+                    <Flag size={16} className={styles.menuIcon} />
+                    Report this post
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -233,41 +264,6 @@ export const ForumPostCard = ({
         error={errorComments}
         onRefetch={refetchComments}
       />
-
-      {/* Overflow menu — only verified viewers */}
-      {isVerified && (
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.menuTrigger}
-            onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label="More options"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-          >
-            <MoreHorizontal size={18} />
-          </button>
-
-          {menuOpen && (
-            <div className={styles.menuDropdown} role="menu">
-              <button
-                className={`${styles.menuItem} ${styles.menuItemReport}`}
-                onClick={() => {
-                  setReportTarget({
-                    id: post.id,
-                    preview: post.title ?? '(untitled post)',
-                  });
-                  setMenuOpen(false);
-                }}
-                role="menuitem"
-              >
-                <Flag size={16} className={styles.menuIcon} />
-                Report this post
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {reportTarget && currentUserId != null && (
         <ReportModal

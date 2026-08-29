@@ -3,7 +3,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-5) 0;
+  padding: var(--space-6) 0 var(--space-5);
   border-bottom: 1px solid var(--ars-network);
   margin-bottom: var(--space-5);
   position: relative;
@@ -14,10 +14,10 @@
   position: absolute;
   left: 0;
   bottom: -1px;
-  width: 32px;
-  height: 2px;
+  width: 52px;
+  height: 3px;
   background: var(--ph-accent, var(--ars-blue));
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
 }
 
 .left {
@@ -47,12 +47,12 @@
 
 .title {
   font-family: var(--font-family-ui);
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
+  font-size: clamp(var(--font-size-2xl), 2.5vw, var(--font-size-3xl));
+  font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   letter-spacing: -0.01em;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .description {
@@ -75,6 +75,10 @@
     flex-direction: column;
     align-items: stretch;
   }
+  .title {
+    font-size: var(--font-size-2xl);
+  }
+
   .actions {
     flex-wrap: wrap;
   }

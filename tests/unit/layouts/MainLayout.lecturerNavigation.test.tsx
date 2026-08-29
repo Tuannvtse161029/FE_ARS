@@ -4,7 +4,7 @@
  * Contract (AGENT_LECTURER_NAVIGATION_READY):
  *   - Lecturer sidebar shows top-level items in this exact order:
  *       Forums → Seminar → Guidance Projects → Learning Materials
- *       → Research Topics → Research Groups → Milestones → Premium Package
+ *       → Research Topics → Research Groups → Milestones
  *   - Lecturer sidebar exposes /lecturer/research-topics as its own
  *     top-level nav item (not nested under /research-group).
  *   - Lecturer sidebar exposes /lecturer/learning-materials as its own
@@ -170,8 +170,8 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
       renderAppAt(ROUTES.FORUM);
 
       const labels = sidebarLinkOrder();
-      // Forum must be first.
-      expect(labels[0]).toMatch(/forums?/i);
+      // Home is the first workspace entry for every verified role.
+      expect(labels[0]).toMatch(/home/i);
       // Find indices of each required item.
       const idx = (s: string) =>
         labels.findIndex((l) => l.toLowerCase().includes(s));
@@ -181,16 +181,6 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
       expect(idx('research topics')).toBeGreaterThan(idx('learning materials'));
       expect(idx('research groups')).toBeGreaterThan(idx('research topics'));
       expect(idx('milestones')).toBeGreaterThan(idx('research groups'));
-      // Agent admin-annual-fees — Premium Package is gated on
-      // `AppConfig.features.premiumPackagesEnabled`. When the flag is
-      // `false` (current BE-pending state) the link is hidden for
-      // every non-Admin role, so we accept either "premium package
-      // appears after milestones" (flag = true) or "premium package
-      // is not in the sidebar at all" (flag = false).
-      const premiumIdx = idx('premium package');
-      if (premiumIdx !== -1) {
-        expect(premiumIdx).toBeGreaterThan(idx('milestones'));
-      }
     });
   });
 

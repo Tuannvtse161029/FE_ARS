@@ -109,9 +109,7 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
  *   - Graduate Student sidebar MUST NOT expose `Paper` or `Browse Reviewers`
  *     — those routes are Researcher-only (see App.tsx RoleRouteGuard).
  *   - Graduate Student sidebar MUST retain `Research Groups` and
- *     `Submit Report`. The `Premium Package` link is GATED on
- *     `AppConfig.features.premiumPackagesEnabled` and is therefore
- *     hidden while the BE-side annual-fee CRUD endpoint is outstanding.
+ *     `Submit Report`.
  *   - Graduate Student sidebar MUST NOT expose a top-level `Dashboard`
  *     item — the role-based landing page is the Forum now (per
  *     landingRouteForRoleName), so the Graduate Student's dedicated
@@ -156,15 +154,6 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).not.toBeNull();
   });
 
-  it('Graduate Student sidebar hides Premium Package while premiumPackagesEnabled is false', () => {
-    setMockAuth({ role: 'Graduate Student' });
-    renderMainLayout(ROUTES.FORUM);
-
-    // Agent admin-annual-fees — the Premium Package link is hidden
-    // for every non-Admin role while the centralized flag is false.
-    expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).toBeNull();
-  });
-
   it('Graduate Student sidebar does NOT expose a top-level Dashboard shortcut', () => {
     setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
@@ -184,15 +173,12 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByHref(ROUTES.FORUM)).not.toBeNull();
   });
 
-  it('Researcher sidebar still exposes /papers and /reviewers links', () => {
+  it('Researcher sidebar still exposes its submissions link', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout(ROUTES.FORUM);
 
-    expect(findSidebarLinkByHref(ROUTES.PAPERS)).not.toBeNull();
-    expect(findSidebarLinkByHref(ROUTES.REVIEWERS)).not.toBeNull();
-    // Researcher uses the singular "Reviewers" label per current MainLayout.
-    expect(findSidebarLinkByText('Reviewers')).not.toBeNull();
-    expect(findSidebarLinkByText('Paper')).not.toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.RESEARCHER_SUBMISSIONS)).not.toBeNull();
+    expect(findSidebarLinkByText('My Submissions')).not.toBeNull();
   });
 
   it('Lecturer sidebar is unchanged — does not expose /papers or /reviewers', () => {

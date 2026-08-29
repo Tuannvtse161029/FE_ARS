@@ -137,11 +137,6 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Payment] result',
     spec: { path: ROUTES.PAYMENT_RETURN, roles: ['Researcher', 'Admin'] },
   },
-  {
-    kind: 'membership-result',
-    prefix: '[Membership] result',
-    spec: { path: ROUTES.PREMIUM_PACKAGES, roles: ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin'] },
-  },
 
   // ── Reviewer events ───────────────────────────────────────────────────────
   {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -11,6 +11,7 @@ import {
   ThumbsUp,
   Inbox,
   Loader2,
+  MoreVertical,
 } from 'lucide-react';
 import api from '../../services/axios';
 import {
@@ -154,6 +155,28 @@ export const CommentSection = ({
     id: number;
     preview: string;
   } | null>(null);
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<number | null>(null);
+  const commentMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const closeMenuOnOutsideClick = (event: MouseEvent) => {
+      if (!commentMenuRef.current?.contains(event.target as Node)) {
+        setOpenCommentMenuId(null);
+      }
+    };
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenCommentMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', closeMenuOnOutsideClick);
+    document.addEventListener('keydown', closeMenuOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeMenuOnOutsideClick);
+      document.removeEventListener('keydown', closeMenuOnEscape);
+    };
+  }, []);
 
   useEffect(() => {
     setLocalComments(comments);
@@ -422,6 +445,46 @@ export const CommentSection = ({
                           {formatRelativeTime(comment.createdAt)}
                         </span>
                       )}
+                      {isVerified && (
+                        <div
+                          className={styles.commentMenu}
+                          ref={openCommentMenuId === comment.id ? commentMenuRef : null}
+                        >
+                          <button
+                            type="button"
+                            className={styles.commentMenuTrigger}
+                            onClick={() =>
+                              setOpenCommentMenuId((currentId) =>
+                                currentId === comment.id ? null : comment.id,
+                              )
+                            }
+                            aria-label="Comment actions"
+                            aria-haspopup="menu"
+                            aria-expanded={openCommentMenuId === comment.id}
+                          >
+                            <MoreVertical size={16} aria-hidden="true" />
+                          </button>
+                          {openCommentMenuId === comment.id && (
+                            <div className={styles.commentMenuPopover} role="menu">
+                              <button
+                                type="button"
+                                className={`${styles.commentMenuItem} ${styles.actionBtnDanger}`}
+                                onClick={() => {
+                                  setReportTarget({
+                                    id: comment.id,
+                                    preview: (comment.content ?? '').slice(0, 60),
+                                  });
+                                  setOpenCommentMenuId(null);
+                                }}
+                                role="menuitem"
+                              >
+                                <Flag size={14} aria-hidden="true" />
+                                Report
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {isEditing ? (
@@ -501,22 +564,6 @@ export const CommentSection = ({
                               Delete
                             </button>
                           </>
-                        )}
-                        {isVerified && (
-                          <button
-                            type="button"
-                            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                            onClick={() =>
-                              setReportTarget({
-                                id: comment.id,
-                                preview: (comment.content ?? '').slice(0, 60),
-                              })
-                            }
-                            aria-label="Report comment"
-                          >
-                            <Flag size={14} />
-                            Report
-                          </button>
                         )}
                       </div>
                     )}

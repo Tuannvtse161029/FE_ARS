@@ -1,5 +1,5 @@
 /**
- * PremiumPackages — Admin subscription catalog management.
+ * Packages — Admin subscription catalog management.
  *
  * Card-grid layout. Each card displays one package with role pill, price,
  * feature list, and toggle/delete actions. Uses shared PageHeader + Button.
@@ -103,7 +103,7 @@ export default function PremiumPackages(): JSX.Element {
     <div className={styles.page}>
       <PageHeader
         eyebrow="ADMIN · SUBSCRIPTIONS"
-        title="Premium Packages"
+        title="Packages"
         description="Create, toggle, and edit subscription packages offered to each role."
         accent={ROLE_ACCENT}
         actions={
@@ -143,7 +143,7 @@ export default function PremiumPackages(): JSX.Element {
         <EmptyState
           icon={<Inbox size={20} />}
           title="No packages yet"
-          description="Create your first premium package to start offering subscriptions to researchers, reviewers, or lecturers."
+          description="Create your first subscription package to start offering subscriptions to researchers, reviewers, or lecturers."
           action={
             <Button
               variant="primary"

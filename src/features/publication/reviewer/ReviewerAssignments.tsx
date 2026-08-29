@@ -39,11 +39,6 @@ const formatDate = (iso: string | undefined): string => {
   return parsed.toISOString().slice(0, 10);
 };
 
-const formatFee = (fee: number | null | undefined): string =>
-  typeof fee === 'number' && Number.isFinite(fee)
-    ? `${fee.toLocaleString('vi-VN')} VND`
-    : 'Not supplied';
-
 const actionableLabel = (paper: PublicationPaper): string => {
   if (isReviewerSubmitted(paper.status)) return 'Review submitted · awaiting Admin';
   if (isReviewerActionable(paper.status)) return 'Ready for evaluation';
@@ -179,7 +174,6 @@ export const ReviewerAssignments = () => {
                     <th scope="col">Actionability</th>
                     <th scope="col">Assigned</th>
                     <th scope="col">Deadline</th>
-                    <th scope="col">Fee</th>
                     <th scope="col" className={reviewer.thActions}>Action</th>
                   </tr>
                 </thead>
@@ -217,7 +211,6 @@ export const ReviewerAssignments = () => {
                       <td>
                         <span className={reviewer.mono}>{deadline}</span>
                       </td>
-                      <td className={reviewer.tdNumeric}>{formatFee(paper.reviewFee)}</td>
                       <td className={reviewer.tdActions}>
                         <Button
                           variant="secondary"

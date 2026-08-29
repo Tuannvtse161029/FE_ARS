@@ -158,7 +158,6 @@ const toPublicationPaper = (
     reviewerId: request?.reviewerId ?? undefined,
     reviewDeadline: request?.deadline ?? undefined,
     assignmentCreatedAt: request?.createdAt,
-    reviewFee: request?.fee ?? null,
     reviewType: request?.type ?? null,
     aiRecommended: request?.airecommended ?? null,
   };

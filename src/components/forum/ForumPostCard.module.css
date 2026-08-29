@@ -73,6 +73,7 @@
 .authorInfo {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
   gap: 2px;
 }
@@ -110,6 +111,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
 /* ─── Title / abstract ───────────────────────────────────── */
@@ -191,9 +194,7 @@
 
 /* ─── Overflow menu ──────────────────────────────────────── */
 .actions {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  position: relative;
   z-index: 5;
 }
 

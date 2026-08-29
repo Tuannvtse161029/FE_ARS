@@ -70,7 +70,6 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
-const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
 const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => ({ default: m.LegalPolicy })));
 
 /**
@@ -228,24 +227,6 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                 </Route>
                 <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
-                {/* Agent admin-annual-fees — the user-facing premium-packages
-                    surface is temporarily hidden for non-Admin roles while
-                    the BE-side annual-fee CRUD endpoint is being finalized.
-                    `AppConfig.features.premiumPackagesEnabled` is the single
-                    source of truth for this gate. Flipping the flag back to
-                    `true` re-enables the page for everyone; in the meantime
-                    direct navigation bounces to /forum. Admins use
-                    /admin/packages + /admin/annual-fees instead. */}
-                <Route
-                  path={ROUTES.PREMIUM_PACKAGES}
-                  element={
-                    AppConfig.features.premiumPackagesEnabled ? (
-                      <PremiumPackagesPreview />
-                    ) : (
-                      <Navigate to={ROUTES.FORUM} replace />
-                    )
-                  }
-                />
               </Route>
             </Route>
 

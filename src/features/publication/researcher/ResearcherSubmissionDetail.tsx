@@ -299,14 +299,6 @@ export const ResearcherSubmissionDetail = () => {
               <dt>Review type</dt>
               <dd>{paper.reviewType ?? 'Not supplied'}</dd>
             </div>
-            <div>
-              <dt>Review fee</dt>
-              <dd>
-                {typeof paper.reviewFee === 'number'
-                  ? `${paper.reviewFee.toLocaleString('vi-VN')} VND`
-                  : 'Not supplied'}
-              </dd>
-            </div>
           </dl>
           <div className={styles.detailActions}>
             <CitationActions paper={paper} />
