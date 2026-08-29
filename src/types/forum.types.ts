@@ -40,13 +40,13 @@ export interface ForumPost {
   tags?: string[] | null;
   attachedPdfUrl?: string | null;
   attachedImageUrl?: string | null;
-  // `authorId` is not guaranteed by the current Swagger contract — the BE
-  // may omit it. The FE treats it as optional and falls back to "Unknown
-  // author" when absent. If the BE later confirms it always returns it,
-  // we can tighten this type.
   authorId?: number;
+  author?: string | null;
+  fullName?: string | null;
+  authorAvatar?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  timestamp?: string;
   // ── Engagement counters ──────────────────────────────────────────────
   likes?: number;
   comments?: number;
@@ -75,8 +75,6 @@ export interface ForumPostCreateRequest {
 }
 
 // ── ForumComment ────────────────────────────────────────────────────────────
-// Author display info (full name, avatar URL) is NOT in the comment payload
-// per Swagger. The FE must call userService.getById(comment.userId) when it
 export interface CommentVoteToggleResponse {
   forumCommentId: number;
   upvoteCount: number;
@@ -87,6 +85,9 @@ export interface ForumComment {
   id: number;
   forumCommentId?: number;
   userId?: number | null;
+  author?: string | null;
+  fullName?: string | null;
+  authorAvatar?: string | null;
   paperId?: number | null;
   forumPostId?: number | null;
   content?: string | null;

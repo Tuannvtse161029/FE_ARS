@@ -172,6 +172,10 @@ export const SeminarWorkspace = () => {
   // Create submit
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canModify) {
+      announce('Chỉ Giảng viên (Lecturer) mới có quyền tạo Seminar.');
+      return;
+    }
     if (!seminarName.trim()) { announce('Please enter a seminar name.'); return; }
     if (!dateTime.trim())   { announce('Please select a date and time.'); return; }
     if (!seminarDetails.trim()) { announce('Please enter seminar details.'); return; }
@@ -388,7 +392,11 @@ export const SeminarWorkspace = () => {
           <div className={styles.emptyDrafts}>
             <Inbox size={28} className={styles.emptyIcon} aria-hidden />
             <h4 className={styles.emptyTitle}>No seminars yet</h4>
-            <p className={styles.emptyText}>Click "+ Create Seminar" to schedule your first one.</p>
+            <p className={styles.emptyText}>
+              {canModify
+                ? 'Click "+ Create Seminar" to schedule your first one.'
+                : 'No seminars scheduled or invited at this time.'}
+            </p>
           </div>
         ) : (
           filteredSeminars.map((sem) => {

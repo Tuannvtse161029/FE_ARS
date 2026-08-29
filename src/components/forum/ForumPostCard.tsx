@@ -81,15 +81,15 @@ export const ForumPostCard = ({
 
   const avatarColor = PALETTE[post.id % PALETTE.length];
 
-  // Author label — Swagger doesn't return fullName on the post, only
-  // authorId. Until the BE ships it we render "Author #{id}" or, if the
-  // post belongs to the current user, fall back to their own name.
+  // Author label — prefer fullName or author returned from BE, fallback to current user's name if own post, then authorId
   const authorLabel =
-    post.authorId != null && currentUserId != null && post.authorId === currentUserId
+    (typeof post.fullName === 'string' && post.fullName.trim()) ||
+    (typeof post.author === 'string' && post.author.trim()) ||
+    (post.authorId != null && currentUserId != null && post.authorId === currentUserId
       ? currentUserName
       : post.authorId != null
         ? `Author #${post.authorId}`
-        : 'Unknown author';
+        : 'Unknown author');
 
   const authorInitials = initialsFromName(authorLabel);
 

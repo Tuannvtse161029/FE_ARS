@@ -9,12 +9,18 @@ import type {
 function normalizeComment(raw: unknown): ForumComment {
   const record = (raw ?? {}) as Partial<ForumComment> & {
     forumCommentId?: unknown;
+    author?: unknown;
+    fullName?: unknown;
+    authorAvatar?: unknown;
   };
   const resolvedId = Number(record.forumCommentId ?? record.id ?? 0);
   return {
     id: resolvedId,
     forumCommentId: resolvedId,
     userId: record.userId != null ? Number(record.userId) : null,
+    author: typeof record.author === 'string' ? record.author : undefined,
+    fullName: typeof record.fullName === 'string' ? record.fullName : undefined,
+    authorAvatar: typeof record.authorAvatar === 'string' ? record.authorAvatar : undefined,
     paperId: record.paperId != null ? Number(record.paperId) : null,
     forumPostId: record.forumPostId != null ? Number(record.forumPostId) : null,
     content: typeof record.content === 'string' ? record.content : '',

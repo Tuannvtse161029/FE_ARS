@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ReportModal } from './ReportModal';
 import { formatRelativeTime } from '../../utils/formatDate';
+import { storage } from '../../utils/storage';
 import type { ForumComment } from '../../types/forum.types';
 import styles from './CommentSection.module.css';
 
@@ -93,6 +94,10 @@ export const CommentSection = ({
 }: CommentSectionProps) => {
   const { user } = useAuth();
   const { isVerified } = usePermissions();
+  const stored = storage.getUser();
+  const currentUserId = user?.userId ?? stored?.id ?? null;
+  const currentUserName =
+    stored?.fullName ?? user?.username ?? stored?.username ?? 'You';
   // Only call the hook when the parent has NOT supplied a comments list.
   // When the parent supplies one (Agent 42 single-fetch pattern), we still
   // call the hook but ignore its data — this keeps the section's
@@ -136,8 +141,6 @@ export const CommentSection = ({
       setInternalCollapsed((prev) => !prev);
     }
   };
-
-  const currentUserId = user?.userId;
 
   const handleToggleVote = async (comment: ForumComment) => {
     const targetId = comment.id || comment.forumCommentId || 0;
@@ -277,9 +280,22 @@ export const CommentSection = ({
   };
 
   const renderAuthorLabel = (comment: ForumComment): string => {
-    if (comment.userId == null) return 'Anonymous';
-    const cached = authorDisplayByUserId?.[comment.userId];
-    return cached ?? `User ${comment.userId}`;
+    if (typeof comment.fullName === 'string' && comment.fullName.trim()) {
+      return comment.fullName.trim();
+    }
+    if (typeof comment.author === 'string' && comment.author.trim()) {
+      return comment.author.trim();
+    }
+    if (currentUserId != null && comment.userId === currentUserId) {
+      return currentUserName;
+    }
+    if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
+      return authorDisplayByUserId[comment.userId];
+    }
+    if (comment.userId != null) {
+      return `User #${comment.userId}`;
+    }
+    return 'Anonymous';
   };
 
   return (

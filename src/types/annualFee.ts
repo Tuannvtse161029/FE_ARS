@@ -20,22 +20,21 @@
 export type AnnualFeeBillingCycle = 'Annual' | 'SixMonth';
 
 export interface AnnualFeeDto {
-  id: number | null;
-  /** The role this fee is targeted at. Mirrors `AccountRoleName` from
-   *  src/types/admin.ts; the BE should echo the existing constants. */
-  targetRole: string | null;
+  id: number;
+  /** The role this fee is targeted at (Researcher / Lecturer). */
+  targetRole: string;
   /** Human-readable plan title — e.g. "Researcher Annual Fee". */
-  title: string | null;
+  title: string;
   /** Price in VND. Whole-number currency units, no decimals. */
-  priceVnd: number | null;
+  priceVnd: number;
   /** Annual (12 months) or six-month (6 months) billing cadence. */
-  billingCycle: AnnualFeeBillingCycle | null;
+  billingCycle: AnnualFeeBillingCycle | string;
   /** Free-form bullet list shown in the Admin Annual Fees table. */
-  features: string[] | null;
+  features?: string[] | null;
   /** Whether new purchases are currently accepted for this fee. */
-  isActive: boolean | null;
-  /** ISO timestamp of the last write. `null` until the BE persists. */
-  updatedAt: string | null;
+  isActive: boolean;
+  /** ISO timestamp of the last write. */
+  updatedAt?: string | null;
 }
 
 export interface AnnualFeeUpsertRequest {

@@ -145,6 +145,14 @@ export function useCreateSeminar(
 
   const createSeminar = useCallback(
     async (payload: SeminarCreateRequest): Promise<Seminar> => {
+      const state = useAuthStore.getState();
+      const role = state.effectiveRole ?? state.user?.roleName;
+      if (role !== 'Lecturer') {
+        const msg = 'Only Lecturers are permitted to create academic seminars.';
+        setCreateError(msg);
+        throw new Error(msg);
+      }
+
       setIsCreating(true);
       setCreateError(null);
       try {
