@@ -13,6 +13,7 @@ import './styles/globals.css';
 // on one of them and they share no heavy dependencies with each other.
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { Landing } from './pages/Landing';
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
@@ -108,6 +109,10 @@ const App = () => {
       <AuthProvider>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
+            {/* Public project introduction. It intentionally sits outside
+                PublicRoute so both signed-out and returning users can visit it. */}
+            <Route path={ROUTES.LANDING} element={<Landing />} />
+
             {/* Public Routes */}
             <Route element={<PublicRoute />}>
               <Route element={<AuthLayout />}>
@@ -239,7 +244,6 @@ const App = () => {
                     )
                   }
                 />
-                <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
               </Route>
             </Route>
 
