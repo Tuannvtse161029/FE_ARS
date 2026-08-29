@@ -251,6 +251,32 @@ export const seminarService = {
     const response = await api.post(API_ENDPOINTS.SEMINAR.INVITE(id), { emails });
     return response.data;
   },
+
+  submitFeedback: async (
+    seminarId: number,
+    payload: {
+      rating?: number | null;
+      participantEvaluation?: string | null;
+      invitationStatus?: string | null;
+    }
+  ): Promise<unknown> => {
+    const response = await api.post(
+      API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId),
+      payload
+    );
+    return response.data;
+  },
+
+  getMyInvitations: async (): Promise<Seminar[]> => {
+    try {
+      const response = await api.get<Seminar[]>(
+        API_ENDPOINTS.SEMINAR.MY_INVITATIONS
+      );
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
+    }
+  },
 };
 
 export const seminarParticipantService = {

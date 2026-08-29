@@ -103,6 +103,8 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/Seminar/${id}`,
     DELETE: (id: number) => `/api/Seminar/${id}`,
     INVITE: (id: number) => `/api/Seminar/${id}/invite`,
+    FEEDBACK: (id: number) => `/api/Seminar/${id}/feedback`,
+    MY_INVITATIONS: '/api/Seminar/my-invitations',
     STATS: (id: number) => `/api/Seminar/${id}/stats`,
     SEND_REMINDERS: (id: number) => `/api/Seminar/${id}/reminders/send`,
     SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,

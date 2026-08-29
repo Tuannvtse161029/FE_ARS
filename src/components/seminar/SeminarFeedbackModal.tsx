@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star, ClipboardCheck, Loader, CheckCircle2, AlertCircle } from 'lucide-react';
-import { seminarParticipantService } from '../../services/seminar.service';
+import { seminarService, seminarParticipantService } from '../../services/seminar.service';
 import styles from './SeminarFeedbackModal.module.css';
 
 export interface SeminarFeedbackModalProps {
@@ -61,21 +61,24 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const evaluationPayload = `[Đánh giá: ${rating}/5 ⭐] ${evaluationText.trim()}`;
-
-      if (participantId && participantId > 0) {
-        await seminarParticipantService.update(participantId, {
+      // 1. Try dedicated seminar feedback endpoint first
+      try {
+        await seminarService.submitFeedback(seminarId, {
+          rating,
+          participantEvaluation: evaluationText.trim(),
           invitationStatus: 'Submitted',
-          participantEvaluation: evaluationPayload,
         });
-      } else {
-        // Create participant record with feedback if not already attached
-        await seminarParticipantService.create({
-          seminarId,
-          userId: currentUserId ?? undefined,
-          invitationStatus: 'Submitted',
-          participantEvaluation: evaluationPayload,
-        });
+      } catch (submitErr) {
+        // Fallback to participant update if participantId exists
+        if (participantId && participantId > 0) {
+          const evaluationPayload = `[Đánh giá: ${rating}/5 ⭐] ${evaluationText.trim()}`;
+          await seminarParticipantService.update(participantId, {
+            invitationStatus: 'Submitted',
+            participantEvaluation: evaluationPayload,
+          });
+        } else {
+          throw submitErr;
+        }
       }
 
       setIsSuccess(true);
@@ -84,12 +87,20 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
         onClose();
       }, 1500);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } }; message?: string })
-          ?.response?.data?.message ??
-        (err as Error)?.message ??
-        'Không thể gửi phản hồi. Vui lòng thử lại.';
-      setErrorMsg(msg);
+      const responseData = (err as { response?: { data?: { message?: string } | string } })?.response?.data;
+      const rawMsg =
+        typeof responseData === 'string'
+          ? responseData
+          : responseData?.message ?? (err as Error)?.message ?? '';
+
+      let friendlyMsg = 'Không thể gửi phản hồi. Vui lòng thử lại.';
+      if (rawMsg.toLowerCase().includes('not registered') || rawMsg.toLowerCase().includes('not invited')) {
+        friendlyMsg = 'Tài khoản của bạn chưa nằm trong danh sách khách mời của buổi Seminar này.';
+      } else if (rawMsg) {
+        friendlyMsg = rawMsg;
+      }
+
+      setErrorMsg(friendlyMsg);
     } finally {
       setIsSubmitting(false);
     }
