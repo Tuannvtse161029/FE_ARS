@@ -246,6 +246,10 @@ export const API_ENDPOINTS = {
     ANNUAL_FEES: {
       GET_ALL: '/api/AnnualFee',
       GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,
+      CREATE: '/api/AnnualFee',
+      UPDATE: (id: number) => `/api/AnnualFee/${id}`,
+      TOGGLE: (id: number) => `/api/AnnualFee/${id}/toggle`,
+      DELETE: (id: number) => `/api/AnnualFee/${id}`,
     },
     AUDIT_LOGS: {
       GET_ALL: '/api/AuditLog',
