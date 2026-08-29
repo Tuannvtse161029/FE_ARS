@@ -339,18 +339,23 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
   return base;
 };
 
-// List PhasedReports scoped to one group. The BE has no server-side filter
-// (contract §2), so we GET /api/PhasedReport and filter client-side as a
-// fallback if the server returns a 200 with the full list anyway.
 export const listReportsForGroup = async (
   researchGroupId: number,
 ): Promise<SubmittedPhasedReport[]> => {
-  const response = await api.get<unknown>(
-    API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
-    { params: { researchGroupId } },
-  );
-  const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
-  return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
+  try {
+    const response = await api.get<unknown>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_GROUP(researchGroupId),
+    );
+    const arr = Array.isArray(response.data) ? (response.data as PhasedReport[]) : [];
+    return arr.map(toStrict);
+  } catch {
+    const fallbackResponse = await api.get<unknown>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.GET_ALL,
+      { params: { researchGroupId } },
+    );
+    const arr = Array.isArray(fallbackResponse.data) ? (fallbackResponse.data as PhasedReport[]) : [];
+    return arr.map(toStrict).filter((r) => r.researchGroupId === researchGroupId);
+  }
 };
 
 // Sentinel used by `resubmitPhasedReport` to thread the lineage pointer

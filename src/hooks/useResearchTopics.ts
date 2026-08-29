@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  getAllResearchTopics,
+  researchTopicService,
   type ResearchTopic,
-} from '../services/guidanceProject.service';
+} from '../services/researchTopic.service';
 
 interface UseResearchTopicsResult {
   topics: ResearchTopic[];
@@ -20,8 +20,23 @@ export const useResearchTopics = (): UseResearchTopicsResult => {
     setIsLoading(true);
     setError(null);
     try {
-      const list = await getAllResearchTopics();
-      setTopics(list);
+      const [myTopicsRes, allTopicsRes] = await Promise.allSettled([
+        researchTopicService.getMyTopics(),
+        researchTopicService.getAll(),
+      ]);
+
+      const myTopics = myTopicsRes.status === 'fulfilled' ? myTopicsRes.value : [];
+      const allTopics = allTopicsRes.status === 'fulfilled' ? allTopicsRes.value : [];
+
+      const map = new Map<number, ResearchTopic>();
+      for (const t of allTopics) {
+        if (t.id) map.set(t.id, t);
+      }
+      for (const t of myTopics) {
+        if (t.id) map.set(t.id, t);
+      }
+
+      setTopics(Array.from(map.values()));
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error('Failed to load research topics.'),
