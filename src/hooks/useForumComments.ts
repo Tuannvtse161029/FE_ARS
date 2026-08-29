@@ -13,10 +13,7 @@ export interface UseForumCommentsResult {
   refetch: () => Promise<void>;
 }
 
-// Hook for the comments thread under a single forum post. Pulls every
-// comment from the BE and filters by `forumPostId === postId` client-side
-// because the current `GET /api/ForumComment` endpoint does not accept a
-// post-id query parameter (see agent-32 BE gap report).
+// Hook for the comments thread under a single forum post.
 export function useForumComments(postId: number): UseForumCommentsResult {
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,8 +28,24 @@ export function useForumComments(postId: number): UseForumCommentsResult {
     setIsLoading(true);
     setError(null);
     try {
-      const list = await forumCommentService.getByPostId(postId);
-      setComments(list);
+      const [listRes, myVotesRes] = await Promise.allSettled([
+        forumCommentService.getByPostId(postId),
+        forumCommentService.getMyVotes(),
+      ]);
+
+      const list = listRes.status === 'fulfilled' ? listRes.value : [];
+      const myVotes = new Set<number>(
+        myVotesRes.status === 'fulfilled' && Array.isArray(myVotesRes.value)
+          ? myVotesRes.value
+          : []
+      );
+
+      const enriched = list.map((c) => ({
+        ...c,
+        isUpvoted: myVotes.has(c.id),
+      }));
+
+      setComments(enriched);
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error('Failed to load comments'),
@@ -50,10 +63,7 @@ export function useForumComments(postId: number): UseForumCommentsResult {
   return { comments, isLoading, error, refetch };
 }
 
-// Companion hook exposing the three mutations. Each returns the BE's
-// authoritative response (or null on failure). Callers should invoke
-// `refetch()` on the list hook after a successful mutation so the UI
-// stays in sync without a full page reload.
+// Companion hook exposing the mutations.
 export interface UseForumCommentMutationsResult {
   create: (data: ForumCommentCreateRequest) => Promise<ForumComment | null>;
   update: (
@@ -61,6 +71,7 @@ export interface UseForumCommentMutationsResult {
     data: ForumCommentUpdateRequest,
   ) => Promise<ForumComment | null>;
   remove: (id: number) => Promise<boolean>;
+  toggleVote: (commentId: number) => Promise<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean } | null>;
   isLoading: boolean;
   error: Error | null;
 }
@@ -122,5 +133,16 @@ export function useForumCommentMutations(): UseForumCommentMutationsResult {
     }
   };
 
-  return { create, update, remove, isLoading, error };
+  const toggleVote = async (
+    commentId: number,
+  ): Promise<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean } | null> => {
+    try {
+      return await forumCommentService.toggleVote(commentId);
+    } catch (err) {
+      console.error('[useForumCommentMutations] toggleVote failed:', err);
+      return null;
+    }
+  };
+
+  return { create, update, remove, toggleVote, isLoading, error };
 }

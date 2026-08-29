@@ -176,6 +176,8 @@ export const API_ENDPOINTS = {
     BASE: '/api/CommentVote',
     GET_ALL: '/api/CommentVote',
     CREATE: '/api/CommentVote',
+    TOGGLE: (commentId: number) => `/api/CommentVote/${commentId}`,
+    MY_VOTES: '/api/CommentVote/my-votes',
   },
   FORUM_POST: {
     BASE: '/api/ForumPost',
