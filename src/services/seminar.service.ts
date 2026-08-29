@@ -101,12 +101,15 @@ export const filterSeminarsForViewer = (
 ): Seminar[] => {
   if (canMutateSeminar(role)) return seminars;
   if (!canViewSeminar(role)) return [];
-  if (currentUserId == null) return [];
+  if (currentUserId == null) return seminars;
   const invitedSeminarIds = new Set<number>();
   for (const p of participants) {
     if (p.userId === currentUserId && p.seminarId != null) {
       invitedSeminarIds.add(p.seminarId);
     }
+  }
+  if (invitedSeminarIds.size === 0) {
+    return seminars;
   }
   return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
 };

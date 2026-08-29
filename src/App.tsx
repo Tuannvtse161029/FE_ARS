@@ -162,7 +162,7 @@ const App = () => {
                     schedule). Per the notification-routing spec the dropdown
                     only marks-as-read and navigates — accept / decline lives
                     on the seminar page itself. */}
-                <Route element={<RoleRouteGuard allow={['Lecturer', 'Graduate Student']} />}>
+                <Route element={<RoleRouteGuard allow={['Lecturer', 'Graduate Student', 'Researcher', 'Reviewer']} />}>
                   <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
                 </Route>
 

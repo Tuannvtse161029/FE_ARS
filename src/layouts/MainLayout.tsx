@@ -273,6 +273,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
           ...(AppConfig.features.enableWithdrawals
@@ -320,6 +321,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
@@ -334,8 +336,8 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
-          { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
           // Agent admin-annual-fees — see the Reviewer block above for the
           // single-source-of-truth flag and the rationale.
