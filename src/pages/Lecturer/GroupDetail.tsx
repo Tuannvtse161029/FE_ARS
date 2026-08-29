@@ -39,6 +39,7 @@ import {
   Library,
   CheckCircle2,
   UserPlus,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -315,6 +316,56 @@ export const LecturerGroupDetail = (): JSX.Element => {
       );
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const [leaderActionLoading, setLeaderActionLoading] = useState<number | null>(null);
+
+  const handleSetLeader = async (member: GroupMember) => {
+    const memberId = member.groupMemberId ?? member.id;
+    if (!memberId) return;
+    setLeaderActionLoading(memberId);
+    try {
+      await groupMemberService.setLeader(memberId, member.studentId ?? undefined);
+      setBanner({
+        visible: true,
+        text: `Đã gán vai trò Trưởng nhóm (Leader) cho ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể gán vai trò Trưởng nhóm.';
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'error',
+      });
+    } finally {
+      setLeaderActionLoading(null);
+    }
+  };
+
+  const handleRemoveLeader = async (member: GroupMember) => {
+    const memberId = member.groupMemberId ?? member.id;
+    if (!memberId) return;
+    setLeaderActionLoading(memberId);
+    try {
+      await groupMemberService.removeLeader(memberId);
+      setBanner({
+        visible: true,
+        text: `Đã hủy vai trò Trưởng nhóm của ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể hủy vai trò Trưởng nhóm.';
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'error',
+      });
+    } finally {
+      setLeaderActionLoading(null);
     }
   };
 
@@ -656,21 +707,105 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <ul className={styles.memberList}>
             {members.map((m) => {
               const mid = typeof m.id === 'number' ? m.id : -1;
+              const isBusy = leaderActionLoading === mid;
               return (
-                <li key={`member-${mid}`} className={styles.memberRow}>
-                  <span className={styles.memberId}>
-                    Member #{mid >= 0 ? mid : '—'}
-                  </span>
-                  <span className={styles.memberStudent}>
-                    Student #{m.studentId ?? '—'}
-                  </span>
-                  <span className={styles.memberStatus}>
-                    {m.activityStatus ?? 'ACTIVE'}
-                  </span>
-                  <span className={styles.memberJoined}>
-                    joined{' '}
-                    {formatDateOnly(m.joinedAt ?? null)}
-                  </span>
+                <li key={`member-${mid}`} className={styles.memberRow} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        backgroundColor: m.isLeader ? '#fef3c7' : '#e0e7ff',
+                        color: m.isLeader ? '#b45309' : '#3730a3',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {m.isLeader ? <Crown size={18} /> : (m.studentName ? m.studentName.slice(0, 2).toUpperCase() : 'ST')}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
+                          {m.studentName || `Student #${m.studentId ?? mid}`}
+                        </strong>
+                        {m.isLeader && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              backgroundColor: '#fef3c7',
+                              color: '#92400e',
+                              border: '1px solid #fde68a',
+                            }}
+                          >
+                            <Crown size={12} /> Trưởng nhóm (Leader)
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                        {m.studentEmail && <span>{m.studentEmail} · </span>}
+                        <span>Status: <strong>{m.activityStatus ?? 'Joined'}</strong></span>
+                        <span> · Joined {formatDateOnly(m.joinedAt ?? null)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    {m.isLeader ? (
+                      <button
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #fca5a5',
+                          backgroundColor: '#fef2f2',
+                          color: '#b91c1c',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          cursor: isBusy ? 'not-allowed' : 'pointer',
+                        }}
+                        onClick={() => void handleRemoveLeader(m)}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <X size={14} />}
+                        Hủy Trưởng nhóm
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          cursor: isBusy ? 'not-allowed' : 'pointer',
+                        }}
+                        onClick={() => void handleSetLeader(m)}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <Crown size={14} color="#d97706" />}
+                        Gán Trưởng nhóm
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}

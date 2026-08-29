@@ -55,6 +55,10 @@ const PHASED_REPORT_TRANSITIONS: Record<
   SUBMITTED: ['EVALUATED', 'REJECTED'],
   EVALUATED: [],
   REJECTED: ['SUBMITTED'],
+  Pending: ['OnTime', 'Overdue'],
+  OnTime: ['Passed', 'REJECTED'],
+  Overdue: ['Passed', 'REJECTED'],
+  Passed: [],
 };
 
 export const canTransitionPhasedReport = (

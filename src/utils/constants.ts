@@ -290,6 +290,9 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/GroupMember/${id}`,
       CREATE: '/api/GroupMember',
       UPDATE: (id: number) => `/api/GroupMember/${id}`,
+      SET_LEADER: (id: number) => `/api/GroupMember/${id}/set-leader`,
+      SET_LEADER_BODY: '/api/GroupMember/set-leader',
+      REMOVE_LEADER: (id: number) => `/api/GroupMember/${id}/remove-leader`,
     },
     PHASED_REPORT: {
       GET_ALL: '/api/PhasedReport',
@@ -297,6 +300,11 @@ export const API_ENDPOINTS = {
       CREATE: '/api/PhasedReport',
       UPDATE: (id: number) => `/api/PhasedReport/${id}`,
       BY_GROUP: (groupId: number) => `/api/PhasedReport/group/${groupId}`,
+      TOPIC_MILESTONES: '/api/PhasedReport/topic-milestones',
+      BY_TOPIC: (topicId: number) => `/api/PhasedReport/topic/${topicId}`,
+      MEMBERS_BY_TOPIC: (topicId: number) => `/api/PhasedReport/topic/${topicId}/members`,
+      SUBMIT: '/api/PhasedReport/submit',
+      EVALUATE: (id: number) => `/api/PhasedReport/${id}/evaluate`,
     },
     LEARNING_MATERIAL: {
       GET_ALL: '/api/LearningMaterial',

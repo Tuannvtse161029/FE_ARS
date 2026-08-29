@@ -21,6 +21,9 @@ const GROUP_MEMBER_ENDPOINTS = {
   CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.CREATE,
   UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE,
   DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE(id),
+  SET_LEADER: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.SET_LEADER(id),
+  SET_LEADER_BODY: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.SET_LEADER_BODY,
+  REMOVE_LEADER: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.REMOVE_LEADER(id),
 } as const;
 
 // BE response shape — every property is optional/nullable per the Swagger
@@ -30,13 +33,19 @@ export interface GroupMember {
   groupMemberId?: number;
   researchGroupId?: number | null;
   studentId?: number | null;
+  studentName?: string | null;
+  studentEmail?: string | null;
+  studentAvatarUrl?: string | null;
   activityStatus?: string | null;
+  isLeader?: boolean | null;
+  leaderId?: boolean | number | null;
   joinedAt?: string | null;
 }
 
 const normalizeGroupMember = (raw: GroupMember): GroupMember => ({
   ...raw,
   id: raw.groupMemberId ?? raw.id ?? undefined,
+  isLeader: Boolean(raw.isLeader || raw.leaderId),
 });
 
 const normalizeGroupMemberList = (data: unknown): GroupMember[] => {
@@ -80,6 +89,35 @@ export const groupMemberService = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(GROUP_MEMBER_ENDPOINTS.DELETE(id));
+  },
+
+  setLeader: async (groupMemberId: number, userId?: number): Promise<GroupMember> => {
+    try {
+      const response = await api.post<GroupMember | { message?: string; data?: GroupMember }>(
+        GROUP_MEMBER_ENDPOINTS.SET_LEADER(groupMemberId),
+      );
+      const resData = (response.data as { data?: GroupMember }).data ?? response.data;
+      return normalizeGroupMember(resData as GroupMember);
+    } catch (err) {
+      // If endpoint requires body, fallback to POST /api/GroupMember/set-leader
+      if (userId) {
+        const fallbackRes = await api.post<GroupMember | { message?: string; data?: GroupMember }>(
+          GROUP_MEMBER_ENDPOINTS.SET_LEADER_BODY,
+          { groupMemberId, userId },
+        );
+        const resData = (fallbackRes.data as { data?: GroupMember }).data ?? fallbackRes.data;
+        return normalizeGroupMember(resData as GroupMember);
+      }
+      throw err;
+    }
+  },
+
+  removeLeader: async (groupMemberId: number): Promise<GroupMember> => {
+    const response = await api.post<GroupMember | { message?: string; data?: GroupMember }>(
+      GROUP_MEMBER_ENDPOINTS.REMOVE_LEADER(groupMemberId),
+    );
+    const resData = (response.data as { data?: GroupMember }).data ?? response.data;
+    return normalizeGroupMember(resData as GroupMember);
   },
 
   // Group-keyed helper added in Phase C (Lead, lead-phase-c-contract.md §3.3

@@ -143,3 +143,34 @@ export interface PhasedReportUpdateRequest {
   lectureFeedback: number | null;
   submittedAt: string | null;
 }
+
+// ---------- TopicMilestones & Phase Reports ----------
+
+export interface TopicPhaseItem {
+  phaseNumber: number;
+  milestoneTitle: string;
+  deadlineAt: string;
+}
+
+export interface TopicMilestonesCreateRequest {
+  topicId: number;
+  researchGroupId?: number | null;
+  phases: TopicPhaseItem[];
+}
+
+export interface PhasedReportSubmitRequest {
+  phasedReportId?: number | null;
+  topicId?: number | null;
+  phaseNumber?: number | null;
+  researchGroupId: number;
+  groupMemberId: number;
+  reportFileUrl: string;
+}
+
+export interface PhasedReportEvaluationRequest {
+  lecturerDescription: string;
+  lectureFeedback?: number | null;
+  capacityEvaluation?: string | null;
+  finalOutcomeEvaluation?: string | null;
+  status: string;
+}

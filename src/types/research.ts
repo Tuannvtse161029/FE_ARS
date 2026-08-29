@@ -5,7 +5,15 @@
 
 export type GuidanceProjectStatus = 'PROPOSED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
 export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CLOSED';
-export type PhasedReportStatus = 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
+export type PhasedReportStatus =
+  | 'WAITING'
+  | 'SUBMITTED'
+  | 'EVALUATED'
+  | 'REJECTED'
+  | 'Pending'
+  | 'OnTime'
+  | 'Overdue'
+  | 'Passed';
 
 export interface GuidanceProject {
   id: number;
