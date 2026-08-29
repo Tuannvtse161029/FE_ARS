@@ -169,6 +169,7 @@ export interface SeminarCreateRequest {
   maxParticipants?: number | null;
   isReminderSent?: boolean | null;
   status?: string | null;
+  guestEmails?: string[] | null;
 }
 
 export type SeminarUpdateRequest = Partial<SeminarCreateRequest>;
@@ -244,6 +245,11 @@ export const seminarService = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(API_ENDPOINTS.SEMINAR.DELETE(id));
+  },
+
+  invite: async (id: number, emails: string[]): Promise<unknown> => {
+    const response = await api.post(API_ENDPOINTS.SEMINAR.INVITE(id), { emails });
+    return response.data;
   },
 };
 

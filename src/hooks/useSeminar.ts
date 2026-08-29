@@ -160,6 +160,13 @@ export function useCreateSeminar(
       setCreateError(null);
       try {
         const created = await seminarService.create(payload);
+        if (created && created.seminarId && payload.guestEmails && payload.guestEmails.length > 0) {
+          try {
+            await seminarService.invite(created.seminarId, payload.guestEmails);
+          } catch (invErr) {
+            console.warn('[useCreateSeminar] Seminar created but invite batch failed:', invErr);
+          }
+        }
         void refetch?.();
         onSuccess?.(created);
         return created;

@@ -188,10 +188,15 @@ export const SeminarWorkspace = () => {
     }
 
     const { startTime, endTime } = parseDateTimeRange(dateTime);
+    const fullContent = seminarName.trim()
+      ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
+      : seminarDetails.trim();
+
     await createSeminar({
       startTime,
       endTime,
-      content: seminarDetails.trim(),
+      content: fullContent,
+      guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
       isReminderSent: sendReminder,
       status: 'Upcoming',
     });
