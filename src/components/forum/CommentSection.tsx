@@ -284,7 +284,7 @@ export const CommentSection = ({
       return comment.author.trim();
     }
     if (currentUserId != null && comment.userId === currentUserId) {
-      return currentUserName;
+      return user?.fullName ?? user?.username ?? 'You';
     }
     if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
       return authorDisplayByUserId[comment.userId];
