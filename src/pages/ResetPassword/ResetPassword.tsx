@@ -1,8 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { AxiosError } from 'axios';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
@@ -18,19 +17,11 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface LocationState {
-  resetToken?: string;
+  email?: string;
+  otpCode?: string;
 }
 
-/**
- * Render a user-facing error for the `reset-password` flow when the BE
- * has not yet exposed the public (anonymous) surface. The live Swagger
- * today only documents the auth-protected endpoints, so this flow
- * returns 401 against the production backend.
- */
 function resetPasswordError(err: unknown, fallback: string): string {
-  if (err instanceof AxiosError && (err.response?.status === 401 || err.response?.status === 403)) {
-    return 'Password reset is not yet available. Please contact support or try again later.';
-  }
   return extractServerMessage(err, fallback);
 }
 
@@ -38,13 +29,21 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
-  const resetToken = state.resetToken ?? '';
+  const email = state.email || sessionStorage.getItem('ars_forgot_email') || '';
+  const otpCode = state.otpCode || sessionStorage.getItem('ars_forgot_otp') || '';
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const inFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!email || !otpCode) {
+      navigate(ROUTES.FORGOT_PASSWORD, { replace: true });
+    }
+  }, [email, otpCode, navigate]);
 
   const {
     control,
@@ -60,9 +59,20 @@ const ResetPassword = () => {
     inFlightRef.current = true;
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
     try {
-      await authService.resetPassword({ resetToken, newPassword: data.newPassword });
-      navigate(ROUTES.LOGIN, { replace: true });
+      await authService.resetPassword({
+        email: email.trim(),
+        otpCode: otpCode.trim(),
+        newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
+      });
+      sessionStorage.removeItem('ars_forgot_email');
+      sessionStorage.removeItem('ars_forgot_otp');
+      setSuccessMessage('Password reset successfully! Redirecting to login...');
+      setTimeout(() => {
+        navigate(ROUTES.LOGIN, { replace: true });
+      }, 1500);
     } catch (err: unknown) {
       const msg = resetPasswordError(
         err,
@@ -97,6 +107,12 @@ const ResetPassword = () => {
         {error && (
           <div className={styles.formError} role="alert">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className={styles.formSuccess} role="status">
+            {successMessage}
           </div>
         )}
 
@@ -172,7 +188,11 @@ const ResetPassword = () => {
           Reset Password
         </Button>
 
-        <div className={styles.footer}>
+        <div className={styles.footer} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+          <Link to={ROUTES.VERIFY_OTP} className={styles.backLink}>
+            Re-enter code
+          </Link>
+          <span style={{ color: '#94a3b8' }}>•</span>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
             Back to login
           </Link>

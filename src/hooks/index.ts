@@ -5,7 +5,7 @@ export { usePapers } from './usePapers';
 export { useMajorFields, useSubFields } from './useMajorFields';
 export { useWallet } from './useWallet';
 export { useReviewerProfiles, useReviewerAvailability } from './useReviewerProfiles';
-export { useFollowers, useFollowReviewer } from './useFollowers';
+export { useFollowers, useFollowReviewer, useFollowCounts } from './useFollowers';
 // useFollow — Agent 34: forum follow / unfollow hook with optimistic UI
 // updates, self-follow guard, and auth-transition-driven refetch.
 export { useFollow } from './useFollow';

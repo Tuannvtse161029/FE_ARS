@@ -137,37 +137,20 @@ export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Wallet balance comes from the BE — render placeholder until it loads.
-  // We also pull the full `wallet` object so we can pass the `walletId`
-  // through to WalletTopUpModal (which posts it as `walletId` on
-  // `POST /api/Payment/create-link`).
-  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(user?.userId);
-
-  // Notifications are owned by <NotificationCenter /> below. The header
-  // bell button now renders the dropdown directly, so we no longer read
-  // `unreadCount` here — keeping a stale local copy would create two
-  // sources of truth for the same BE row.
-
-  // Reviewer availability comes from the BE (read-only here; toggle still calls update).
-  const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(user?.userId);
-
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
-  // Role switching is no longer performed in-app — users with multiple roles re-login
-  // (and pick a role on the new JWT) instead.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Single source of truth for unverified-user gating. `canViewAdminPanel`
-  // collapses the dual-signal admin check (roleName OR roleId) that the
-  // Admin guards used to repeat. `hasWallet` collapses what used to be a
-  // `!isAdmin && !isGuest` check at every header / modal site into one
-  // derivation. `isGuest` is sourced from the BE-derived `effectiveRole`
-  // field (Agent 39) with the old `!isActive && !isAdmin` derivation as a
-  // fallback for pre-migration persisted blobs.
+  // Single source of truth for unverified-user gating.
   const { hasWallet, isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
 
-  // Bounce unverified users off every private route except /forum. Lives in
-  // its own hook so the verification rule has one definition site.
+  // Wallet balance comes from the BE — only for roles that have wallets (not Guest).
+  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(hasWallet && user?.userId ? user.userId : undefined);
+
+  // Reviewer availability comes from the BE (only for active Reviewers).
+  const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(activeRole === 'Reviewer' && user?.userId ? user.userId : undefined);
+
+  // Bounce unverified users off every private route except /forum.
   useVerifiedGuard();
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);

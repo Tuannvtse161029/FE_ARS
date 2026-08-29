@@ -4,6 +4,7 @@ import type {
   ForumPost,
   ForumPostCreateRequest,
   ForumPostFilters,
+  ForumPostLikeToggleResponse,
 } from '../types/forum.types';
 
 // Filter the BE may receive as query params. The Swagger contract on
@@ -43,10 +44,25 @@ export const forumPostService = {
     return response.data;
   },
 
-  // NOTE: Swagger only exposes GET (list / by-id) and POST for ForumPost.
-  // Update (PUT) and delete (DELETE) endpoints are intentionally NOT
-  // defined here — if the BE later ships them, add update() and delete()
-  // that route through the same `api` client.
+  // POST /api/ForumPost/{id}/like
+  toggleLike: async (id: number): Promise<ForumPostLikeToggleResponse> => {
+    const response = await api.post<ForumPostLikeToggleResponse>(
+      API_ENDPOINTS.FORUM_POST.TOGGLE_LIKE(id),
+    );
+    return response.data;
+  },
+
+  // GET /api/ForumPost/my-likes
+  getMyLikes: async (): Promise<number[]> => {
+    try {
+      const response = await api.get<number[]>(
+        API_ENDPOINTS.FORUM_POST.MY_LIKES,
+      );
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
+    }
+  },
 };
 
 export default forumPostService;
