@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  ThumbsUp,
 } from 'lucide-react';
 import {
   useForumComments,
@@ -106,7 +107,7 @@ export const CommentSection = ({
   const error = externalError ?? fetched.error;
   const refetch =
     externalRefetch ?? (() => fetched.refetch() as unknown as Promise<void>);
-  const { create, update, remove } = useForumCommentMutations();
+  const { create, update, remove, toggleVote } = useForumCommentMutations();
   const [localComments, setLocalComments] = useState<ForumComment[]>(comments);
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -137,6 +138,62 @@ export const CommentSection = ({
   };
 
   const currentUserId = user?.userId;
+
+  const handleToggleVote = async (comment: ForumComment) => {
+    const targetId = comment.id || comment.forumCommentId || 0;
+    if (!targetId || !isVerified || !currentUserId) return;
+
+    const previousIsUpvoted = Boolean(comment.isUpvoted);
+    const previousCount = comment.upvoteCount ?? 0;
+    const optimisticIsUpvoted = !previousIsUpvoted;
+    const optimisticCount = optimisticIsUpvoted
+      ? previousCount + 1
+      : Math.max(0, previousCount - 1);
+
+    // Optimistic update
+    setLocalComments((prev) =>
+      prev.map((c) =>
+        c.id === targetId || c.forumCommentId === targetId
+          ? { ...c, isUpvoted: optimisticIsUpvoted, upvoteCount: optimisticCount }
+          : c
+      )
+    );
+
+    try {
+      const response = await toggleVote(targetId);
+      if (response) {
+        setLocalComments((prev) =>
+          prev.map((c) =>
+            c.id === targetId || c.forumCommentId === targetId
+              ? {
+                  ...c,
+                  isUpvoted: response.isUpvoted,
+                  upvoteCount: response.upvoteCount,
+                }
+              : c
+          )
+        );
+      } else {
+        // Rollback on failure
+        setLocalComments((prev) =>
+          prev.map((c) =>
+            c.id === targetId || c.forumCommentId === targetId
+              ? { ...c, isUpvoted: previousIsUpvoted, upvoteCount: previousCount }
+              : c
+          )
+        );
+      }
+    } catch {
+      // Rollback on error
+      setLocalComments((prev) =>
+        prev.map((c) =>
+          c.id === targetId || c.forumCommentId === targetId
+            ? { ...c, isUpvoted: previousIsUpvoted, upvoteCount: previousCount }
+            : c
+        )
+      );
+    }
+  };
 
   const submitNewComment = async () => {
     const trimmed = draft.trim();
@@ -323,8 +380,26 @@ export const CommentSection = ({
                       </p>
                     )}
 
-                    {!isEditing && isVerified && (
+                    {!isEditing && (
                       <div className={styles.commentActions}>
+                        {isVerified && (
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnUpvote} ${
+                              comment.isUpvoted ? styles.actionBtnUpvoted : ''
+                            }`}
+                            onClick={() => handleToggleVote(comment)}
+                            aria-label={comment.isUpvoted ? 'Unlike comment' : 'Like comment'}
+                            title={comment.isUpvoted ? 'Bỏ thích bình luận' : 'Thích bình luận'}
+                          >
+                            <ThumbsUp
+                              size={14}
+                              fill={comment.isUpvoted ? 'currentColor' : 'none'}
+                            />
+                            <span>{comment.upvoteCount ?? 0}</span>
+                          </button>
+                        )}
+
                         {isOwner && (
                           <>
                             <button
@@ -348,20 +423,22 @@ export const CommentSection = ({
                             </button>
                           </>
                         )}
-                        <button
-                          type="button"
-                          className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                          onClick={() =>
-                            setReportTarget({
-                              id: comment.id,
-                              preview: (comment.content ?? '').slice(0, 60),
-                            })
-                          }
-                          aria-label="Report comment"
-                        >
-                          <Flag size={14} />
-                          Report
-                        </button>
+                        {isVerified && (
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                            onClick={() =>
+                              setReportTarget({
+                                id: comment.id,
+                                preview: (comment.content ?? '').slice(0, 60),
+                              })
+                            }
+                            aria-label="Report comment"
+                          >
+                            <Flag size={14} />
+                            Report
+                          </button>
+                        )}
                       </div>
                     )}
                   </li>

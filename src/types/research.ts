@@ -16,6 +16,8 @@ export interface GuidanceProject {
   status: GuidanceProjectStatus;
   createdAt?: string;
   updatedAt?: string;
+  researchGroupId?: number;
+  researchGroupName?: string;
 }
 
 export interface ResearchTopic {

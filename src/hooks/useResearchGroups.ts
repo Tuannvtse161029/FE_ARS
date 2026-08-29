@@ -30,10 +30,28 @@ export const useResearchGroups = (
     setIsLoading(true);
     setError(null);
     try {
-      const list = await researchGroupService.getAll();
+      const [myGroupsRes, allGroupsRes] = await Promise.allSettled([
+        researchGroupService.getMyGroups(),
+        researchGroupService.getAll(),
+      ]);
+
+      const myGroups = myGroupsRes.status === 'fulfilled' ? myGroupsRes.value : [];
+      const allGroups = allGroupsRes.status === 'fulfilled' ? allGroupsRes.value : [];
+
+      const map = new Map<number, ResearchGroup>();
+      // Put all groups first
+      for (const g of allGroups) {
+        if (g.id) map.set(g.id, g);
+      }
+      // Overwrite/enrich with myGroups
+      for (const g of myGroups) {
+        if (g.id) map.set(g.id, g);
+      }
+
+      const merged = Array.from(map.values());
       const filtered = lecturerId
-        ? list.filter((g) => g.lecturerId === lecturerId)
-        : list;
+        ? merged.filter((g) => g.lecturerId === lecturerId)
+        : merged;
       setGroups(filtered);
     } catch (err) {
       setError(

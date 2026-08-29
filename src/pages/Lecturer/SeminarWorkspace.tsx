@@ -30,6 +30,7 @@ import {
   useSeminarRoleContext,
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
+import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
 import styles from './SeminarWorkspace.module.css';
 
 export const SeminarWorkspace = () => {
@@ -37,6 +38,8 @@ export const SeminarWorkspace = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showAttendeeFeedbackModal, setShowAttendeeFeedbackModal] = useState(false);
+  const [selectedSeminarForAttendeeFeedback, setSelectedSeminarForAttendeeFeedback] = useState<SeminarCard | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [bannerText, setBannerText] = useState('');
   const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<SeminarCard | null>(null);
@@ -185,10 +188,15 @@ export const SeminarWorkspace = () => {
     }
 
     const { startTime, endTime } = parseDateTimeRange(dateTime);
+    const fullContent = seminarName.trim()
+      ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
+      : seminarDetails.trim();
+
     await createSeminar({
       startTime,
       endTime,
-      content: seminarDetails.trim(),
+      content: fullContent,
+      guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
       isReminderSent: sendReminder,
       status: 'Upcoming',
     });
@@ -483,7 +491,7 @@ export const SeminarWorkspace = () => {
 
               {/* Card Actions */}
               <div className={styles.cardActionsRow}>
-                {sem.status === 'COMPLETED' ? (
+                {(sem.effectiveStatus === 'COMPLETED' || sem.status === 'COMPLETED') ? (
                   <>
                     {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
                       <button
@@ -494,7 +502,7 @@ export const SeminarWorkspace = () => {
                         View Notes
                       </button>
                     )}
-                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
+                    {canModify && ownsSeminar(sem, currentUserId, currentRole) ? (
                       <button
                         className={styles.feedbackGradingBtn}
                         onClick={() => handleOpenFeedbackModal(sem)}
@@ -502,11 +510,17 @@ export const SeminarWorkspace = () => {
                         <ClipboardList size={14} aria-hidden />
                         Form Feedback & Grading
                       </button>
-                    )}
-                    {!canModify && (
-                      <span className={styles.viewerNoteText}>
-                        Read-only — feedback & grading are visible only to the seminar organizer.
-                      </span>
+                    ) : (
+                      <button
+                        className={styles.feedbackGradingBtn}
+                        onClick={() => {
+                          setSelectedSeminarForAttendeeFeedback(sem);
+                          setShowAttendeeFeedbackModal(true);
+                        }}
+                      >
+                        <ClipboardList size={14} aria-hidden />
+                        Gửi Form Feedback
+                      </button>
                     )}
                   </>
                 ) : (
@@ -946,6 +960,20 @@ export const SeminarWorkspace = () => {
           onSuccess={(id) => {
             void refetch(); // Refresh so aiSummary appears on card
             void id;
+          }}
+        />
+      )}
+
+      {/* Attendee / Student Feedback Modal */}
+      {showAttendeeFeedbackModal && selectedSeminarForAttendeeFeedback && (
+        <SeminarFeedbackModal
+          isOpen={showAttendeeFeedbackModal}
+          onClose={() => setShowAttendeeFeedbackModal(false)}
+          seminarId={selectedSeminarForAttendeeFeedback.seminarId}
+          seminarTitle={selectedSeminarForAttendeeFeedback.title}
+          currentUserId={currentUserId}
+          onSuccess={() => {
+            void refetch();
           }}
         />
       )}

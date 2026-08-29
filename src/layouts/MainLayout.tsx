@@ -274,29 +274,12 @@ export const MainLayout = () => {
           ...(AppConfig.features.enableWithdrawals
             ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
             : []),
-          // Agent admin-annual-fees — the premium-packages surface is
-          // temporarily hidden for non-Admin roles while the BE-side
-          // annual-fee CRUD endpoint is being finalized. The flag lives
-          // in src/config/app.ts so the rule has a single definition
-          // site (no scattered hardcoded booleans). The
-          // `AppConfig.features.premiumPackagesEnabled` check is the
-          // one — flipping it back to `true` reveals the entry for
-          // every non-Admin role below.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
         ];
       case 'Lecturer':
         return [
-          // Agent lecturer-navigation — required top-to-bottom Lecturer nav
-          // order: Forum → Seminar → Guidance Projects → Learning Materials →
-          // Research Topics → Research Groups → Milestones.
-          // Shared edit: the Lecturer nav block was re-ordered and the
-          // disabled "Shared Material" / "Wallet" stubs were removed (the
-          // former points to a page that does not exist and the latter
-          // belongs to Reviewer / Graduate Student flows). See
-          // docs/BACKEND_REQUESTS.md "Coordination — Agent Lecturer
-          // Navigation" for the coordination note.
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
@@ -305,9 +288,6 @@ export const MainLayout = () => {
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
-          // Agent admin-annual-fees — hidden for non-Admin roles while the
-          // BE-side annual-fee CRUD endpoint is being finalized. See the
-          // Reviewer block above for the single-source-of-truth flag.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
@@ -319,8 +299,6 @@ export const MainLayout = () => {
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
           { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          // Agent admin-annual-fees — see the Reviewer block above for the
-          // single-source-of-truth flag and the rationale.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),
@@ -330,11 +308,9 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
-          { to: '#workspaces', label: 'Workspaces', icon: <SeminarIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
-          // Agent admin-annual-fees — see the Reviewer block above for the
-          // single-source-of-truth flag and the rationale.
           ...(AppConfig.features.premiumPackagesEnabled
             ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
             : []),

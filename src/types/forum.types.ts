@@ -77,8 +77,12 @@ export interface ForumPostCreateRequest {
 // ── ForumComment ────────────────────────────────────────────────────────────
 // Author display info (full name, avatar URL) is NOT in the comment payload
 // per Swagger. The FE must call userService.getById(comment.userId) when it
-// needs to render an author byline. For now, the FE shows "User {id}" as
-// the fallback.
+export interface CommentVoteToggleResponse {
+  forumCommentId: number;
+  upvoteCount: number;
+  isUpvoted: boolean;
+}
+
 export interface ForumComment {
   id: number;
   forumCommentId?: number;
@@ -88,6 +92,7 @@ export interface ForumComment {
   content?: string | null;
   replyId?: number | null;
   upvoteCount?: number | null;
+  isUpvoted?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -102,6 +102,11 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/Seminar/${id}`,
     UPDATE: (id: number) => `/api/Seminar/${id}`,
     DELETE: (id: number) => `/api/Seminar/${id}`,
+    INVITE: (id: number) => `/api/Seminar/${id}/invite`,
+    FEEDBACK: (id: number) => `/api/Seminar/${id}/feedback`,
+    MY_INVITATIONS: '/api/Seminar/my-invitations',
+    STATS: (id: number) => `/api/Seminar/${id}/stats`,
+    SEND_REMINDERS: (id: number) => `/api/Seminar/${id}/reminders/send`,
     SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
   },
   SEMINAR_PARTICIPANT: {
@@ -171,6 +176,8 @@ export const API_ENDPOINTS = {
     BASE: '/api/CommentVote',
     GET_ALL: '/api/CommentVote',
     CREATE: '/api/CommentVote',
+    TOGGLE: (commentId: number) => `/api/CommentVote/${commentId}`,
+    MY_VOTES: '/api/CommentVote/my-votes',
   },
   FORUM_POST: {
     BASE: '/api/ForumPost',
@@ -262,12 +269,15 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/ResearchTopic/${id}`,
       CREATE: '/api/ResearchTopic',
       UPDATE: (id: number) => `/api/ResearchTopic/${id}`,
+      MY_TOPICS: '/api/ResearchTopic/my-topics',
     },
     RESEARCH_GROUP: {
       GET_ALL: '/api/ResearchGroup',
       GET_BY_ID: (id: number) => `/api/ResearchGroup/${id}`,
       CREATE: '/api/ResearchGroup',
       UPDATE: (id: number) => `/api/ResearchGroup/${id}`,
+      MY_GROUPS: '/api/ResearchGroup/my-groups',
+      INVITE: (id: number) => `/api/ResearchGroup/${id}/invite`,
     },
     GROUP_MEMBER: {
       GET_ALL: '/api/GroupMember',
@@ -280,6 +290,7 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/PhasedReport/${id}`,
       CREATE: '/api/PhasedReport',
       UPDATE: (id: number) => `/api/PhasedReport/${id}`,
+      BY_GROUP: (groupId: number) => `/api/PhasedReport/group/${groupId}`,
     },
     LEARNING_MATERIAL: {
       GET_ALL: '/api/LearningMaterial',

@@ -36,11 +36,7 @@ const toGuidanceProject = (raw: unknown): GuidanceProject | null => {
     (typeof r.lecturerId === 'number' && r.lecturerId) || 0;
   const studentIdCandidate =
     (typeof r.studentId === 'number' && r.studentId) || 0;
-  if (
-    idCandidate === 0 ||
-    lecturerIdCandidate === 0 ||
-    studentIdCandidate === 0
-  ) {
+  if (idCandidate === 0) {
     return null;
   }
   const status: GuidanceProjectStatus = normalizeGuidanceProjectStatus(
@@ -56,6 +52,8 @@ const toGuidanceProject = (raw: unknown): GuidanceProject | null => {
     status,
     createdAt: typeof r.createdAt === 'string' ? r.createdAt : undefined,
     updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : undefined,
+    researchGroupId: typeof r.researchGroupId === 'number' ? r.researchGroupId : undefined,
+    researchGroupName: typeof r.researchGroupName === 'string' ? r.researchGroupName : undefined,
   };
 };
 

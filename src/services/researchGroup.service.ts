@@ -82,7 +82,37 @@ export const researchGroupService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(RESEARCH_GROUP_ENDPOINTS.DELETE(id));
   },
+
+  getMyGroups: async (): Promise<ResearchGroup[]> => {
+    try {
+      const response = await api.get<ResearchGroup[]>(
+        API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.MY_GROUPS,
+      );
+      return normalizeResearchGroupList(response.data);
+    } catch {
+      return researchGroupService.getAll();
+    }
+  },
+
+  invite: async (
+    groupId: number,
+    emails: string[],
+  ): Promise<ResearchGroupInviteResponse> => {
+    const response = await api.post<ResearchGroupInviteResponse>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.INVITE(groupId),
+      { emails },
+    );
+    return response.data;
+  },
 };
+
+export interface ResearchGroupInviteResponse {
+  researchGroupId: number;
+  totalInvited: number;
+  successEmails?: string[] | null;
+  notFoundEmails?: string[] | null;
+  alreadyMemberEmails?: string[] | null;
+}
 
 // Status derivation helper — see contract §3.
 // Inputs: the group's own row + the related topic (may be null/undefined when

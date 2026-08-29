@@ -38,6 +38,7 @@ import {
   ExternalLink,
   Library,
   CheckCircle2,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -257,6 +258,63 @@ export const LecturerGroupDetail = (): JSX.Element => {
       setEditGroupError(message);
     } finally {
       setIsSavingGroup(false);
+    }
+  };
+
+  // ── Invite members modal state ──────────────────────────────────────────
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [inviteEmailsInput, setInviteEmailsInput] = useState<string>('');
+  const [isInviting, setIsInviting] = useState<boolean>(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const openInviteModal = () => {
+    setInviteEmailsInput('');
+    setInviteError(null);
+    setShowInviteModal(true);
+  };
+
+  const closeInviteModal = () => {
+    if (isInviting) return;
+    setShowInviteModal(false);
+  };
+
+  const handleInviteStudents = async (e: FormEvent) => {
+    e.preventDefault();
+    if (parsedGroupId === null) return;
+    const emails = inviteEmailsInput
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (emails.length === 0) {
+      setInviteError('Please enter at least one valid email address.');
+      return;
+    }
+
+    setIsInviting(true);
+    setInviteError(null);
+    try {
+      const res = await researchGroupService.invite(parsedGroupId, emails);
+      setShowInviteModal(false);
+      setInviteEmailsInput('');
+      const successCount = res.successEmails?.length ?? res.totalInvited ?? 0;
+      const notFoundCount = res.notFoundEmails?.length ?? 0;
+      let msg = `Successfully invited ${successCount} student(s) to the group.`;
+      if (notFoundCount > 0) {
+        msg += ` (${notFoundCount} email(s) not found in system: ${res.notFoundEmails?.join(', ')})`;
+      }
+      setBanner({
+        visible: true,
+        text: msg,
+        variant: 'success',
+      });
+      await loadMembers();
+    } catch (err) {
+      setInviteError(
+        err instanceof Error ? err.message : 'Failed to send invitations.',
+      );
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -551,12 +609,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {/* MEMBERS LIST (L2.b) */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <Users size={16} aria-hidden /> Group members
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <h2 className={styles.cardTitle}>
+              <Users size={16} aria-hidden /> Group members ({members.length})
+            </h2>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={openInviteModal}
+              style={{ fontSize: 13, padding: '6px 12px', gap: 6 }}
+            >
+              <UserPlus size={14} aria-hidden /> Invite students
+            </button>
+          </div>
           <span className={styles.cardHint}>
-            Student IDs joined this group. BE has no server-side filter
-            (<code>?researchGroupId=</code>), so we filter client-side.
+            Manage student members in this group. You can invite new students directly by email.
           </span>
         </header>
         {membersError && (
@@ -796,6 +863,86 @@ export const LecturerGroupDetail = (): JSX.Element => {
                     <Check size={14} aria-hidden />
                   )}
                   {isSavingGroup ? 'Saving…' : 'Save group'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* INVITE STUDENTS MODAL */}
+      {showInviteModal && (
+        <div
+          className={styles.modalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inviteStudentsModalTitle"
+        >
+          <div className={styles.modal}>
+            <header className={styles.modalHeader}>
+              <h2 id="inviteStudentsModalTitle" className={styles.modalTitle}>
+                <UserPlus size={18} aria-hidden /> Invite Students to Research Group
+              </h2>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={closeInviteModal}
+                disabled={isInviting}
+                aria-label="Close modal"
+              >
+                <X size={16} aria-hidden />
+              </button>
+            </header>
+
+            <form onSubmit={handleInviteStudents} className={styles.modalForm} noValidate>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="inviteEmails">
+                  Student Email Addresses (separated by commas or newlines)
+                </label>
+                <textarea
+                  id="inviteEmails"
+                  className={styles.formTextarea}
+                  rows={4}
+                  placeholder="student1@gmail.com, student2@fpt.edu.vn"
+                  value={inviteEmailsInput}
+                  onChange={(e) => {
+                    setInviteEmailsInput(e.target.value);
+                    if (inviteError) setInviteError(null);
+                  }}
+                  disabled={isInviting}
+                />
+                <span className={styles.cardHint} style={{ marginTop: 4 }}>
+                  The system will automatically find student accounts and add them as group members.
+                </span>
+              </div>
+
+              {inviteError && (
+                <div className={styles.errorPanel} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{inviteError}</span>
+                </div>
+              )}
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.cancelBtn}
+                  onClick={closeInviteModal}
+                  disabled={isInviting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={styles.primaryBtn}
+                  disabled={isInviting || !inviteEmailsInput.trim()}
+                >
+                  {isInviting ? (
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  ) : (
+                    <Check size={14} aria-hidden />
+                  )}
+                  {isInviting ? 'Sending Invites…' : 'Send Invitations'}
                 </button>
               </div>
             </form>
