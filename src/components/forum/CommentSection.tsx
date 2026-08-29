@@ -142,8 +142,6 @@ export const CommentSection = ({
     }
   };
 
-  const currentUserId = user?.userId;
-
   const handleToggleVote = async (comment: ForumComment) => {
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId || !isVerified || !currentUserId) return;
@@ -289,7 +287,7 @@ export const CommentSection = ({
       return comment.author.trim();
     }
     if (currentUserId != null && comment.userId === currentUserId) {
-      return user?.fullName ?? user?.username ?? 'You';
+      return currentUserName;
     }
     if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
       return authorDisplayByUserId[comment.userId];
