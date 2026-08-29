@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, type FormEvent, type ChangeEvent } from 'r
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
+import { roleService } from '../../services/role.service';
 import { useAuth } from '../../context/AuthContext';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
@@ -15,10 +16,7 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
 import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
-import {
-  REGISTRATION_ROLES,
-  type RequestableRole,
-} from '../../utils/registrationRoles';
+import { type RequestableRole } from '../../utils/registrationRoles';
 import { FieldError } from '../../components/FieldError';
 import {
   extractServerFieldErrors,
@@ -85,6 +83,8 @@ export const Register = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const [policyTab, setPolicyTab] = useState<PolicyTab | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<RequestableRole[]>([]);
+  const [rolesError, setRolesError] = useState<string | null>(null);
 
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
   // Login page so rapid clicks cannot fire the GIS callback twice.
@@ -94,6 +94,25 @@ export const Register = () => {
 
   useEffect(() => {
     authService.logout();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void roleService.fetchBusinessRolesForOnboarding()
+      .then((roles) => {
+        if (cancelled) return;
+        setAvailableRoles(roles);
+        setForm((prev) => ({
+          ...prev,
+          role: roles.includes(prev.role) ? prev.role : (roles[0] ?? prev.role),
+        }));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAvailableRoles([]);
+        setRolesError(err instanceof Error ? err.message : 'Unable to load available roles.');
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const isOrcidRole = (role: RequestableRole) =>
@@ -194,7 +213,7 @@ export const Register = () => {
       next.retypePassword = 'Passwords must match';
     }
 
-    if (!form.role) {
+    if (!form.role || !availableRoles.includes(form.role)) {
       next.role = 'Role is required';
     }
 
@@ -271,18 +290,13 @@ export const Register = () => {
         : undefined;
 
       const payload: RegisterPayload = {
-        username: form.email.trim(),
         email: form.email.trim(),
         password: form.password,
         fullName: form.fullName.trim(),
         phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
-        ...(form.role === 'Reviewer' && normalizedOrcid ? { orcidId: normalizedOrcid } : {}),
-        // Mirror the auth-service payload contract: new accounts start
-        // pending (isActive: false) until an Admin approves the role
-        // request. The BE echoes this on the response.
-        isActive: false,
+        ...(form.role === 'Reviewer' && normalizedOrcid ? { orcidTicket: normalizedOrcid } : {}),
       };
 
       await authService.registerUser(payload);
@@ -415,7 +429,7 @@ export const Register = () => {
             value={form.fullName}
             onChange={handleChange}
             onBlur={() => handleBlur('fullName')}
-            disabled={isSubmitting || isUploadingPdf}
+            disabled={isSubmitting || isUploadingPdf || availableRoles.length === 0}
             autoComplete="name"
             aria-invalid={Boolean(errors.fullName)}
             aria-describedby={errors.fullName ? 'fullName-error' : undefined}
@@ -561,13 +575,14 @@ export const Register = () => {
             aria-invalid={Boolean(errors.role)}
             aria-describedby={errors.role ? 'role-error' : undefined}
           >
-            {REGISTRATION_ROLES.map((role) => (
+            {availableRoles.map((role) => (
               <option key={role} value={role}>
                 {role}
               </option>
             ))}
           </select>
           <FieldError id="role-error" message={errors.role} />
+          {rolesError && <FieldError id="role-load-error" message={rolesError} />}
         </div>
 
         {(form.role === 'Researcher' || form.role === 'Reviewer') && (

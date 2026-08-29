@@ -125,14 +125,14 @@ const toPublicationPaper = (
         }]
       : [],
     institutions: [],
-    paperType: 'Research paper',
+    paperType: 'Not supplied',
     topics: [],
     keywords: [],
     fileUrl: paper.fileUrl,
-    version: 1,
+    version: null,
     status,
     visibility: status === 'PUBLISHED' ? 'PUBLIC' : 'PRIVATE',
-    createdAt: paper.createdAt ?? new Date(0).toISOString(),
+    createdAt: paper.createdAt ?? '',
     submittedAt: paper.createdAt,
     publishedAt: status === 'PUBLISHED' ? paper.updatedAt ?? paper.createdAt : undefined,
     reviewer: request
@@ -241,18 +241,25 @@ class ApiPublicationAdapter implements PublicationAdapter {
     const created = await paperService.create({
       title: input.title,
       abstract: input.abstract,
-      fileUrl: input.fileUrl ?? '',
-      issn: false,
-      isOpenAccess: false,
+      fileUrl: input.fileUrl,
     });
-    const draft = await paperService.update(created.id, { status: 'Draft' });
+    const draft = await paperService.update(created.id, {
+      title: input.title,
+      abstract: input.abstract,
+      fileUrl: input.fileUrl ?? null,
+      status: 'Draft',
+    });
     return toPublicationPaper(draft);
   }
 
   async submitPaper(id: string): Promise<PublicationPaper> {
-    return toPublicationPaper(
-      await paperService.update(id, { status: 'Waiting for Review' }),
-    );
+    const current = await paperService.getById(id);
+    return toPublicationPaper(await paperService.update(id, {
+      title: current.title,
+      abstract: current.abstract ?? '',
+      fileUrl: current.fileUrl ?? null,
+      status: 'Waiting for Review',
+    }));
   }
 
   async respondToAssignment(

@@ -11,6 +11,7 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type { GroupMember, ResearchGroup } from '../types/research';
+import { researchGroupService } from './researchGroup.service';
 
 // ---------- Normalization ----------
 
@@ -51,7 +52,7 @@ const toResearchGroup = (raw: unknown): ResearchGroup | null => {
   return {
     id: idCandidate,
     lecturerId:
-      typeof r.lecturerId === 'number' ? r.lecturerId : 0,
+      typeof r.lecturerId === 'number' ? r.lecturerId : null,
     topicId: typeof r.topicId === 'number' ? r.topicId : null,
     name: typeof r.name === 'string' ? r.name : `Group #${idCandidate}`,
     description:
@@ -119,22 +120,30 @@ export interface StudentGroupView extends ResearchGroup {
 export const getJoinedGroupsForStudent = async (
   studentId: number,
 ): Promise<StudentGroupView[]> => {
-  const [members, groups] = await Promise.all([
-    getAllGroupMembers(),
-    getAllResearchGroups(),
-  ]);
-  const groupMap = new Map<number, ResearchGroup>();
-  groups.forEach((g) => groupMap.set(g.id, g));
-  return members
-    .filter((m) => m.studentId === studentId)
-    .map((m): StudentGroupView | null => {
-      const group = groupMap.get(m.researchGroupId);
-      if (!group) return null;
+  const groups = await researchGroupService.getMyGroups();
+  return groups
+    .map((group): StudentGroupView | null => {
+      const id = group.id ?? group.researchGroupId;
+      if (typeof id !== 'number' || id <= 0) return null;
+      const member = (group.members ?? []).find((raw) => {
+        if (!raw || typeof raw !== 'object') return false;
+        const row = raw as { studentId?: unknown };
+        return Number(row.studentId) === studentId;
+      }) as Record<string, unknown> | undefined;
+      if (!member) return null;
+      const membershipId = Number(member.groupMemberId ?? member.id);
+      if (!Number.isFinite(membershipId) || membershipId <= 0) return null;
       return {
-        ...group,
-        membershipId: m.id,
-        activityStatus: m.activityStatus,
-        joinedAt: m.joinedAt,
+        id,
+        lecturerId: group.lecturerId ?? null,
+        topicId: group.topicId ?? null,
+        name: group.name ?? `Group #${id}`,
+        description: group.description ?? undefined,
+        deadline: group.deadline ?? undefined,
+        assignedAt: group.assignedAt ?? undefined,
+        membershipId,
+        activityStatus: typeof member.activityStatus === 'string' ? member.activityStatus : undefined,
+        joinedAt: typeof member.joinedAt === 'string' ? member.joinedAt : undefined,
       };
     })
     .filter((item): item is StudentGroupView => item !== null);

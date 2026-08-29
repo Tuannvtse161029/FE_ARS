@@ -2,7 +2,6 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type {
   NotificationItem,
-  NotificationUpdateRequest,
 } from '../types/domain';
 
 // ARS Notification service.
@@ -81,21 +80,10 @@ export const notificationService = {
    * Đánh dấu 1 thông báo cụ thể là đã đọc.
    */
   markRead: async (id: number): Promise<NotificationItem> => {
-    try {
-      // Ưu tiên endpoint PUT /api/Notification/{id}/read
-      const response = await api.put<NotificationItem>(
-        API_ENDPOINTS.NOTIFICATION.MARK_READ(id),
-      );
-      return normalizeNotification(response.data);
-    } catch {
-      // Fallback sang PUT /api/Notification/{id} với { isRead: true }
-      const body: NotificationUpdateRequest = { isRead: true };
-      const fallbackRes = await api.put<NotificationItem>(
-        API_ENDPOINTS.NOTIFICATION.UPDATE(id),
-        body,
-      );
-      return normalizeNotification(fallbackRes.data);
-    }
+    const response = await api.put<NotificationItem>(
+      API_ENDPOINTS.NOTIFICATION.MARK_READ(id),
+    );
+    return normalizeNotification(response.data);
   },
 
   /**
@@ -104,30 +92,11 @@ export const notificationService = {
   markAllRead: async (
     notifications?: NotificationItem[],
   ): Promise<{ updated: NotificationItem[]; failures: number[] }> => {
-    try {
-      await api.put(API_ENDPOINTS.NOTIFICATION.MARK_ALL_READ);
-      return {
-        updated: (notifications ?? []).map((n) => ({ ...n, isRead: true })),
-        failures: [],
-      };
-    } catch {
-      // Fallback nếu endpoint mark-all-read lỗi: gọi song song từng thông báo
-      const unread = (notifications ?? []).filter((n) => !n.isRead);
-      const results = await Promise.allSettled(
-        unread.map((n) => notificationService.markRead(n.id)),
-      );
-      const updated: NotificationItem[] = [];
-      const failures: number[] = [];
-      results.forEach((r, idx) => {
-        const id = unread[idx]?.id;
-        if (r.status === 'fulfilled') {
-          updated.push(r.value);
-        } else if (typeof id === 'number') {
-          failures.push(id);
-        }
-      });
-      return { updated, failures };
-    }
+    await api.put(API_ENDPOINTS.NOTIFICATION.MARK_ALL_READ);
+    return {
+      updated: (notifications ?? []).map((n) => ({ ...n, isRead: true })),
+      failures: [],
+    };
   },
 
   /**

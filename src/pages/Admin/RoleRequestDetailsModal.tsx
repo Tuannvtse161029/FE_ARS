@@ -8,6 +8,7 @@ interface Props {
   request: RoleRequest | null;
   open: boolean;
   onClose: () => void;
+  onOpenOrcidCheck?: () => void;
 }
 
 const STATUS_CLASS: Record<RoleRequestStatus, string> = {
@@ -25,7 +26,7 @@ const requestTypeLabel = (request: RoleRequest) => {
 const rolesText = (roles?: string[]) =>
   roles ? (roles.length > 0 ? roles.join(', ') : 'None') : 'Unavailable from API';
 
-export const RoleRequestDetailsModal = ({ request, open, onClose }: Props) => {
+export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidCheck }: Props) => {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose }: Props) => {
               Role Request #{request.id}
             </h2>
             <p className={styles.subtitle}>
-              Submitted {new Date(request.submissionDate).toLocaleString('vi-VN')}
+              Submitted {request.submissionDate ? new Date(request.submissionDate).toLocaleString('vi-VN') : 'Not supplied'}
             </p>
           </div>
           <button ref={closeRef} className={styles.iconButton} onClick={onClose} type="button" aria-label="Close role request details">
@@ -104,6 +105,11 @@ export const RoleRequestDetailsModal = ({ request, open, onClose }: Props) => {
 
         <footer className={styles.footer}>
           <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">Close</button>
+          {request.orcidId && onOpenOrcidCheck ? (
+            <button className={`${styles.button} ${styles.primaryButton}`} onClick={onOpenOrcidCheck} type="button">
+              Check ORCID
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

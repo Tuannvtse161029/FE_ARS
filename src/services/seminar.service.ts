@@ -82,16 +82,9 @@ export const ownsSeminar = (
 };
 
 /**
- * Filter a seminar list down to the rows a Researcher / Reviewer /
- * Graduate Student should see — i.e. seminars where the current user
- * appears as a `SeminarParticipant`. For a Lecturer the function returns
- * the input unchanged (the BE's organizer-scoped payload already filters
- * for them).
- *
- * The filter is client-side because the BE has no participant-filter
- * query parameter (see research-workflow-contract §2). A future BE
- * enhancement (`GET /api/Seminar?participantId=`) can replace this
- * function without changing the call site.
+ * Filter a seminar list for callers that already have participant rows. The
+ * production hooks prefer the live participant-scoped endpoints and use this
+ * helper only when joining an independently fetched list.
  */
 export const filterSeminarsForViewer = (
   seminars: Seminar[],
@@ -154,6 +147,28 @@ export interface Seminar {
   updatedAt?: string;
   /** Defensive: may be present in a future BE response. */
   aiSummary?: string | null;
+  reminderEnabled?: boolean;
+  reminderSentAt?: string | null;
+  feedback?: string | null;
+  participants?: SeminarParticipant[] | null;
+  organizerName?: string | null;
+  invitationStatus?: string | null;
+  participantEvaluation?: string | null;
+  rating?: number | null;
+}
+
+/** Response returned by the participant-scoped seminar endpoints. */
+export interface SeminarInvitationResponse {
+  seminarId: number;
+  seminarParticipantId?: number | null;
+  title?: string | null;
+  startTime: string;
+  endTime: string;
+  onlineLink?: string | null;
+  organizerName?: string | null;
+  invitationStatus?: string | null;
+  participantEvaluation?: string | null;
+  rating?: number | null;
 }
 
 /** Mirror of `POST /api/Seminar` / `PUT /api/Seminar/{id}` request body.
@@ -161,15 +176,15 @@ export interface Seminar {
  * `organizerId` is filled server-side from the JWT in production.
  */
 export interface SeminarCreateRequest {
-  organizerId?: number | null;
   startTime: string;   // required
   endTime: string;     // required
-  content?: string | null;
+  content: string;
   onlineLink?: string | null;
   maxParticipants?: number | null;
   isReminderSent?: boolean | null;
   status?: string | null;
   guestEmails?: string[] | null;
+  reminderEnabled?: boolean | null;
 }
 
 export type SeminarUpdateRequest = Partial<SeminarCreateRequest>;
@@ -193,6 +208,10 @@ export interface SeminarParticipant {
   // Joined fields (if BE ever adds them):
   userFullName?: string | null;
   userEmail?: string | null;
+  invitedEmail?: string | null;
+  invitationSentAt?: string | null;
+  eventReminderSentAt?: string | null;
+  feedbackReminderSentAt?: string | null;
 }
 
 export interface SeminarParticipantCreateRequest {
@@ -268,14 +287,23 @@ export const seminarService = {
   },
 
   getMyInvitations: async (): Promise<Seminar[]> => {
-    try {
-      const response = await api.get<Seminar[]>(
-        API_ENDPOINTS.SEMINAR.MY_INVITATIONS
-      );
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      return [];
-    }
+    const response = await api.get<SeminarInvitationResponse[]>(
+      API_ENDPOINTS.SEMINAR.MY_INVITATIONS
+    );
+    const rows = Array.isArray(response.data) ? response.data : [];
+    return rows.map((row) => ({
+      seminarId: row.seminarId,
+      title: row.title ?? undefined,
+      content: row.title ?? null,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      onlineLink: row.onlineLink ?? null,
+      organizerName: row.organizerName ?? null,
+      invitationStatus: row.invitationStatus ?? null,
+      participantEvaluation: row.participantEvaluation ?? null,
+      rating: row.rating ?? null,
+      status: row.endTime && new Date(row.endTime).getTime() < Date.now() ? 'Completed' : 'Upcoming',
+    }));
   },
 };
 
@@ -285,6 +313,21 @@ export const seminarParticipantService = {
       API_ENDPOINTS.SEMINAR_PARTICIPANT.GET_ALL
     );
     return Array.isArray(response.data) ? response.data : [];
+  },
+
+  getMySeminars: async (): Promise<SeminarParticipant[]> => {
+    const response = await api.get<SeminarInvitationResponse[]>(
+      API_ENDPOINTS.SEMINAR_PARTICIPANT.MY_SEMINARS,
+    );
+    const rows = Array.isArray(response.data) ? response.data : [];
+    return rows.map((row) => ({
+      seminarParticipantId: row.seminarParticipantId ?? undefined,
+      seminarId: row.seminarId,
+      invitationStatus: row.invitationStatus ?? null,
+      participantEvaluation: row.participantEvaluation ?? null,
+      createdAt: undefined,
+      updatedAt: undefined,
+    }));
   },
 
   getById: async (id: number): Promise<SeminarParticipant> => {

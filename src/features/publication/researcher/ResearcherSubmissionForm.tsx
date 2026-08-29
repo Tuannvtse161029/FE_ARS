@@ -196,13 +196,15 @@ export const ResearcherSubmissionForm = () => {
         abstract: abstract.trim(),
         authors: [
           {
-            id: 'current-author',
+            // The live Paper API derives the author from the JWT; it does not
+            // accept client-generated author or institution IDs.
+            id: '',
             name: authorName.trim(),
-            institutionIds: ['current-institution'],
+            institutionIds: [],
             order: 1,
           },
         ],
-        institutions: [{ id: 'current-institution', name: institution.trim() }],
+        institutions: [{ id: '', name: institution.trim() }],
         paperType,
         keywords: keywords
           .split(',')

@@ -1,76 +1,77 @@
-// Agent 52 — Role directory service.
-//
-// The user-selectable business roles live in a single shared constant
-// (`src/utils/registrationRoles.ts`) — they are NOT fetched from the BE.
-// The user-selectable set is FE-owned so a transient BE outage cannot
-// leave a freshly-logged-in first-time Google user with no role to
-// choose on the onboarding page.
-//
-// The BE's `GET /api/Role` endpoint is intentionally NOT called from
-// the Google onboarding path. This service is preserved here as a
-// thin re-export of the shared constant so any existing caller
-// (e.g. an admin surface that wants the BE's authoritative list) can
-// still import `roleService` without breaking.
-//
-// Hard rules:
-//   1. We NEVER fabricate role data — the only source is the shared
-//      `REGISTRATION_ROLES` constant in `src/utils/registrationRoles.ts`.
-//   2. We NEVER include `Guest` in the returned list (Guest is an
-//      effective-time variant only — see `EffectiveRole` in
-//      `src/types/auth.ts`).
-//   3. Admin is excluded from the onboarding selector — Admin accounts
-//      are DB-provisioned only, matching the existing Register page's
-//      `RequestableRole = Exclude<BusinessRole, 'Admin'>`.
-//   4. The helper does not call any network — it returns the shared
-//      constant synchronously. Callers that previously awaited this
-//      function still get a Promise (it resolves immediately) so the
-//      call sites need no refactor beyond dropping the network
-//      expectation.
-
+import api from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
 import type { BusinessRole } from '../types/auth';
-import {
-  REGISTRATION_ROLES,
-  isRequestableRole,
-  type RequestableRole,
-} from '../utils/registrationRoles';
+import { isRequestableRole, type RequestableRole } from '../utils/registrationRoles';
 
+/** The role directory row returned by GET /api/Role. */
 export interface RoleItem {
-  /** Stable identifier — included for callers that key off `roleId`. */
   roleId?: number;
-  /** Display name. */
   name: string;
+  createdAt?: string;
 }
 
-/**
- * The user-selectable onboarding roles. Re-exported under the
- * historical name (`ALLOWED_ONBOARDING_ROLES`) so any caller that
- * imported it from here keeps working.
- */
-export const ALLOWED_ONBOARDING_ROLES: ReadonlyArray<RequestableRole> =
-  REGISTRATION_ROLES;
+// Policy allow-list only. This is not the source of role data; the selector
+// uses fetchRoles()/fetchBusinessRolesForOnboarding() and filters the live
+// directory against this set so Admin/Guest cannot be self-requested.
+export const ALLOWED_ONBOARDING_ROLES: ReadonlyArray<RequestableRole> = [
+  'Researcher',
+  'Reviewer',
+  'Lecturer',
+  'Graduate Student',
+];
 
-/**
- * Return the user-selectable business roles.
- *
- * Synchronous equivalent of the previous network-fetched function. The
- * list is FE-owned and lives in `src/utils/registrationRoles.ts`. The
- * onboarding page can therefore render the selector without waiting on
- * a BE round-trip.
- */
-export async function fetchBusinessRolesForOnboarding(): Promise<
-  BusinessRole[]
-> {
-  return [...REGISTRATION_ROLES];
+function normalizeRoles(payload: unknown): RoleItem[] {
+  const rows = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)
+      ? (payload as { data: unknown[] }).data
+      : payload && typeof payload === 'object' && Array.isArray((payload as { roles?: unknown }).roles)
+        ? (payload as { roles: unknown[] }).roles
+        : [];
+
+  const seen = new Set<string>();
+  return rows.reduce<RoleItem[]>((result, row) => {
+    if (!row || typeof row !== 'object') return result;
+    const value = row as { roleId?: unknown; id?: unknown; name?: unknown; roleName?: unknown; createdAt?: unknown };
+    const name = typeof value.name === 'string'
+      ? value.name.trim()
+      : typeof value.roleName === 'string'
+        ? value.roleName.trim()
+        : '';
+    if (!name || seen.has(name)) return result;
+    seen.add(name);
+    const roleId = Number(value.roleId ?? value.id);
+    result.push({
+      name,
+      ...(Number.isFinite(roleId) && roleId > 0 ? { roleId } : {}),
+      ...(typeof value.createdAt === 'string' ? { createdAt: value.createdAt } : {}),
+    });
+    return result;
+  }, []);
+}
+
+/** Fetch the backend role directory. Errors are intentionally propagated. */
+export async function fetchRoles(): Promise<RoleItem[]> {
+  const response = await api.get(API_ENDPOINTS.ROLE.GET_ALL);
+  return normalizeRoles(response.data);
+}
+
+/** Fetch only roles that users may request during onboarding. */
+export async function fetchBusinessRolesForOnboarding(): Promise<RequestableRole[]> {
+  const roles = await fetchRoles();
+  const requestable = roles
+    .map((role) => role.name)
+    .filter((name): name is RequestableRole => isRequestableRole(name));
+  if (requestable.length === 0) {
+    throw new Error('The backend returned no requestable roles. Please try again later.');
+  }
+  return requestable;
 }
 
 export const roleService = {
+  fetchRoles,
   fetchBusinessRolesForOnboarding,
-  /**
-   * True if `role` is on the user-selectable onboarding list (i.e.
-   * requestable by either email/password registration or first-time
-   * Google onboarding).
-   */
-  isOnboardingSelectable(role: string | null | undefined): boolean {
+  isOnboardingSelectable(role: string | null | undefined): role is BusinessRole {
     return isRequestableRole(role);
   },
 };

@@ -24,8 +24,8 @@ export interface Paper {
 
 export interface PaperCreateRequest {
   title: string;
-  abstract?: string;
-  fileUrl: string;
+  abstract: string;
+  fileUrl?: string | null;
   issn?: boolean;
   isOpenAccess?: boolean;
   quartile?: string;
@@ -34,9 +34,13 @@ export interface PaperCreateRequest {
 
 export interface PaperUpdateRequest {
   title?: string;
+  abstract?: string;
+  fileUrl?: string | null;
   status?: string;
-  note?: string;
-  scorecardUrl?: string;
+  issn?: boolean | null;
+  isOpenAccess?: boolean | null;
+  quartile?: string | null;
+  subFieldId?: number | null;
 }
 
 export interface GetPapersParams extends PaginationParams {

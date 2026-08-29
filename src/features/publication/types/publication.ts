@@ -59,7 +59,7 @@ export interface PublicationPaper {
   topics: string[];
   keywords: string[];
   fileUrl?: string;
-  version: number;
+  version: number | null;
   status: PublicationStatus;
   visibility: PublicationVisibility;
   createdAt: string;

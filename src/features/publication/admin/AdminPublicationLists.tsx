@@ -163,7 +163,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                             <td data-label="Paper">
                               <div className={adminStyles.titleCell}>
                                 <strong>{paper.title}</strong>
-                                <small>{paper.paperType} · v{paper.version} · {paper.authors.map((author) => author.name).join(', ')}</small>
+                                <small>{paper.paperType}{paper.version != null ? ` · v${paper.version}` : ''} · {paper.authors.map((author) => author.name).join(', ')}</small>
                               </div>
                             </td>
                             <td data-label="Status">

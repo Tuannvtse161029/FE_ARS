@@ -70,12 +70,8 @@ export const SeminarWorkspace = () => {
   // the authority on authorization. See `ownsSeminar()` for the per-row
   // ownership predicate used by the Feedback & Grading modal.
   //
-  // `backendAvailability` is the privacy-preserving state documented in
-  // PUBLICATION_FLOW_API_BLOCKERS.md §3.8. For non-Lecturer roles it is
-  // `'awaiting_participant_scoped_endpoint'` and the hook has intentionally
-  // skipped every global /api/Seminar and /api/SeminarParticipant call so we
-  // do not leak the BE-wide participant list to a Researcher / Reviewer /
-  // Graduate Student. The page renders a banner instead of a card list.
+  // `backendAvailability` reports whether the live role-scoped read contract
+  // is available. The hook never uses global participant rows for viewers.
   const {
     currentRole,
     currentUserId,
@@ -326,14 +322,8 @@ export const SeminarWorkspace = () => {
         </span>
       </div>
 
-      {/* PRIVACY-SAFE READ-ONLY BANNER (PUBLICATION_FLOW_API_BLOCKERS.md §3.8)
-          Rendered ONLY for non-Lecturer roles. The hook has intentionally
-          skipped every global /api/Seminar and /api/SeminarParticipant call
-          for these roles so we do not leak the BE-wide participant list. The
-          banner is explicit and honest: it tells the user (and any reviewer)
-          that the surface is intentionally empty until the BE ships a
-          participant-scoped read. We do not invent data and we do not claim
-          the user can view seminars based on unsafe global rows. */}
+      {/* The hook uses organizer-scoped reads for Lecturers and the live
+          participant-scoped reads for other route-guarded business roles. */}
       {backendAvailability !== 'full' && (
         <div className={styles.backendAvailabilityBanner} role="status" aria-live="polite">
           <span className={styles.backendAvailabilityIcon}>
@@ -381,18 +371,11 @@ export const SeminarWorkspace = () => {
             <h4 className={styles.emptyTitle}>Loading seminars…</h4>
           </div>
         ) : backendAvailability !== 'full' ? (
-          // Belt-and-suspenders: the banner above already explains the state,
-          // but if a non-Lecturer caller bypasses the hook for any reason we
-          // still refuse to render the BE-wide list. The empty state copy is
-          // explicit so it is obvious in a screenshot that this is an
-          // intentional privacy posture, not a bug.
           <div className={styles.emptyDrafts}>
             <Lock size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>Seminars are not visible for your role</h4>
+            <h4 className={styles.emptyTitle}>Seminars are temporarily unavailable</h4>
             <p className={styles.emptyText}>
-              This page is intentionally empty until the platform team enables a
-              participant-scoped seminar read for non-Lecturer roles. See
-              docs/PUBLICATION_FLOW_API_BLOCKERS.md §3.8 for the contract.
+              The backend did not provide a readable seminar list for this session.
             </p>
           </div>
         ) : activeTab === 'drafts' ? (

@@ -65,6 +65,38 @@ const sanitize = (fallback: string, err: unknown): Error => {
 };
 
 // ── Role requests ──────────────────────────────────────────────────────────
+function normalizeRoleRequest(item: any): RoleRequest | null {
+  const id = Number(item?.id);
+  const userId = Number(item?.userId);
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(userId) || userId <= 0) return null;
+  const rawStatus = typeof item.status === 'string' ? item.status.toUpperCase() : 'PENDING';
+  const status = rawStatus === 'APPROVED' || rawStatus === 'ACCEPTED'
+    ? 'APPROVED'
+    : rawStatus === 'DENIED' || rawStatus === 'REJECTED'
+      ? 'DENIED'
+      : 'PENDING';
+  return {
+    id,
+    userId,
+    userName: typeof item.userName === 'string' ? item.userName : '',
+    email: typeof item.email === 'string' ? item.email : '',
+    phone: typeof item.phone === 'string' ? item.phone : undefined,
+    affiliation: typeof item.affiliation === 'string' ? item.affiliation : '',
+    department: typeof item.department === 'string' ? item.department : '',
+    currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles) ? item.requestedAdditionalRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    requestType: item.requestType === 'ADDITIONAL_ROLE' ? 'ADDITIONAL_ROLE' : item.requestType === 'INITIAL_REGISTRATION' ? 'INITIAL_REGISTRATION' : undefined,
+    requestedRoles: Array.isArray(item.requestedRoles) ? item.requestedRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    orcidId: typeof item.orcidId === 'string' ? item.orcidId : null,
+    isOrcidVerified: Boolean(item.isOrcidVerified),
+    orcidVerifiedAt: typeof item.orcidVerifiedAt === 'string' ? item.orcidVerifiedAt : null,
+    proofDocumentUrl: typeof item.proofDocumentUrl === 'string' ? item.proofDocumentUrl : '',
+    submissionDate: typeof item.submissionDate === 'string' ? item.submissionDate : '',
+    status,
+    notes: typeof item.notes === 'string' ? item.notes : undefined,
+  };
+}
+
 async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
   try {
     const response = await api.get<any>(
@@ -72,38 +104,12 @@ async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
       { signal },
     );
     const raw = response.data;
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
-    return list.map((item: any) => ({
-      id: item.id,
-      userId: item.userId ?? item.id,
-      userName: item.userName || item.fullName || `User #${item.userId ?? item.id}`,
-      email: item.email || '',
-      phone: item.phone || '',
-      affiliation: item.affiliation || '',
-      department: item.department || '',
-      currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles : item.roleName ? [item.roleName] : [],
-      requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles)
-        ? item.requestedAdditionalRoles
-        : Array.isArray(item.requestedRoles)
-          ? item.requestedRoles
-          : item.requestedRole
-            ? [item.requestedRole]
-            : [],
-      requestType: item.requestType || 'INITIAL_REGISTRATION',
-      requestedRoles: Array.isArray(item.requestedRoles)
-        ? item.requestedRoles
-        : Array.isArray(item.requestedAdditionalRoles)
-          ? item.requestedAdditionalRoles
-          : [],
-      proofDocumentUrl: item.proofDocumentUrl || '',
-      submissionDate: item.submissionDate || item.createdAt || new Date().toISOString(),
-      status: (item.status?.toUpperCase() === 'APPROVED' || item.status?.toUpperCase() === 'ACCEPTED')
-        ? 'APPROVED'
-        : (item.status?.toUpperCase() === 'DENIED' || item.status?.toUpperCase() === 'REJECTED')
-          ? 'DENIED'
-          : 'PENDING',
-      notes: item.notes || '',
-    }));
+    const list: unknown[] = Array.isArray(raw)
+      ? raw
+      : raw && Array.isArray(raw.items)
+        ? raw.items
+        : [];
+    return list.map(normalizeRoleRequest).filter((item): item is RoleRequest => item !== null);
   } catch (err) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag('getRoleRequests failed', err);
@@ -114,7 +120,7 @@ async function getRoleRequests(signal?: AbortSignal): Promise<RoleRequest[]> {
 async function getRoleRequest(id: number): Promise<RoleRequest | null> {
   try {
     const response = await api.get<RoleRequest>(API_ENDPOINTS.ADMIN.ROLE_REQUESTS.GET_BY_ID(id));
-    return response.data ?? null;
+    return normalizeRoleRequest(response.data);
   } catch (err) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag(`getRoleRequest(${id}) failed`, err);
@@ -139,7 +145,7 @@ async function decideRoleRequest(
     // If approved and email is supplied, optionally trigger the send-approval-email endpoint
     if (decision.status === 'APPROVED' && email) {
       try {
-        await api.post(`/api/Auth/send-approval-email`, null, {
+        await api.post(API_ENDPOINTS.AUTH.SEND_APPROVAL_EMAIL, null, {
           params: { email },
         });
       } catch (emailErr) {
@@ -147,12 +153,11 @@ async function decideRoleRequest(
       }
     }
 
-    const resData = response.data;
-    return (
-      resData && typeof resData === 'object' && resData.id
-        ? resData
-        : { id, status: decision.status, notes: decision.notes }
-    ) as RoleRequest;
+    const normalized = normalizeRoleRequest(response.data);
+    if (normalized) return normalized;
+    const refreshed = await getRoleRequest(id);
+    if (!refreshed) throw new Error('The backend did not return the updated role request.');
+    return refreshed;
   } catch (err: any) {
     if ((err as { name?: string })?.name === 'CanceledError') throw err;
     logDiag(`decideRoleRequest(${id}) failed`, err);
@@ -169,14 +174,18 @@ async function decideRoleRequest(
 // unavoidable.  Role is stored as roleName on the row; plan maps
 // accountTier (null → FREE_TIER); status maps isActive (true → ACTIVE).
 function userToAccountItem(user: User): AccountItem {
+  const role = typeof user.roleName === 'string' ? user.roleName.toUpperCase().replace(/\s+/g, '_') : null;
+  const roles = role && ['LECTURER', 'RESEARCHER', 'GRADUATE_STUDENT', 'REVIEWER'].includes(role)
+    ? [role as AccountItem['roles'][number]]
+    : [];
   return {
     id: user.id,
-    name: user.fullName,
+    name: user.fullName ?? '',
     email: user.email,
-    roles: [user.roleName as AccountItem['roles'][number]],
+    roles,
     plan: (user.accountTier ?? 'Free') === 'Free' ? 'FREE_TIER' : 'PREMIUM',
     status: user.isActive ? 'ACTIVE' : 'SUSPENDED',
-    joinedDate: user.createdAt ?? new Date().toISOString(),
+    joinedDate: user.createdAt ?? '',
     isActive: user.isActive,
     // Carry through the BE-reported suspension deadline so the
     // AccountsManagement page can render the "Suspended until …" pill.

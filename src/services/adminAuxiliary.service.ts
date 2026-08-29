@@ -1,5 +1,5 @@
 import api from './axios';
-import { API_ENDPOINTS } from '../utils/constants';
+import { API_ENDPOINTS, REPORT } from '../utils/constants';
 import type {
   ViolationReport,
   ViolationReportsQuery,
@@ -60,25 +60,31 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
         : 'PENDING',
 });
 
-const mapPremiumPackage = (row: PremiumPackageApiRow): PremiumPackage => ({
-  packageId: row.id,
-  title: row.title?.trim() || `Package #${row.id}`,
-  targetRole:
-    row.targetRole?.toUpperCase() === 'REVIEWER'
-      ? 'REVIEWER'
-      : row.targetRole?.toUpperCase() === 'LECTURER'
-        ? 'LECTURER'
-        : 'RESEARCHER',
-  priceVnd: row.priceVnd,
-  billingCycle: row.billingCycle === 'Yearly' ? 'Yearly' : 'Monthly',
-  features: row.features ?? [],
-  subscriberCount: row.subscriberCount,
-  isActive: row.isActive,
-});
+const mapPremiumPackage = (row: PremiumPackageApiRow): PremiumPackage | null => {
+  const targetRole = row.targetRole?.toUpperCase();
+  if (targetRole !== 'RESEARCHER' && targetRole !== 'REVIEWER' && targetRole !== 'LECTURER') return null;
+  if (row.billingCycle !== 'Monthly' && row.billingCycle !== 'Yearly') return null;
+  return {
+    packageId: row.id,
+    title: row.title?.trim() || `Package #${row.id}`,
+    targetRole,
+    priceVnd: row.priceVnd,
+    billingCycle: row.billingCycle,
+    features: row.features ?? [],
+    subscriberCount: row.subscriberCount,
+    isActive: row.isActive,
+  };
+};
+
+const requirePremiumPackage = (row: PremiumPackageApiRow): PremiumPackage => {
+  const mapped = mapPremiumPackage(row);
+  if (!mapped) throw new AdminBackendContractError('The backend returned an invalid premium package.');
+  return mapped;
+};
 
 // ── Violation reports ─────────────────────────────────────────────────────
 async function getViolationReports(query: ViolationReportsQuery = {}): Promise<ViolationReport[]> {
-  const response = await api.get<ReportApiRow[]>('/api/Report');
+  const response = await api.get<ReportApiRow[]>(REPORT.GET_ALL);
   return (response.data ?? []).map(mapReport).filter((r) => {
     if (query.status && query.status !== 'ALL' && r.status !== query.status) return false;
     if (query.type && query.type !== 'ALL' && r.type !== query.type) return false;
@@ -117,7 +123,7 @@ async function resolveViolationByPayload(
     );
   }
   const response = await api.put<ReportApiRow>(
-    `/api/Report/${reportId}`,
+    REPORT.UPDATE(reportId),
     { status: 'Dismissed', violationNotes: resolutionNotes ?? '' },
   );
   return mapReport(response.data);
@@ -126,7 +132,7 @@ async function resolveViolationByPayload(
 // ── Premium packages ───────────────────────────────────────────────────────
 async function getPremiumPackages(): Promise<PremiumPackage[]> {
   const response = await api.get<PremiumPackageApiRow[]>(API_ENDPOINTS.ADMIN.PACKAGES.GET_ALL);
-  return (response.data ?? []).map(mapPremiumPackage);
+  return (response.data ?? []).map(mapPremiumPackage).filter((item): item is PremiumPackage => item !== null);
 }
 
 async function createPremiumPackage(input: PremiumPackageInput): Promise<PremiumPackage> {
@@ -134,7 +140,7 @@ async function createPremiumPackage(input: PremiumPackageInput): Promise<Premium
     API_ENDPOINTS.ADMIN.PACKAGES.CREATE,
     input,
   );
-  return mapPremiumPackage(response.data);
+  return requirePremiumPackage(response.data);
 }
 
 async function updatePremiumPackage(
@@ -145,7 +151,7 @@ async function updatePremiumPackage(
     API_ENDPOINTS.ADMIN.PACKAGES.UPDATE(id),
     patch,
   );
-  return mapPremiumPackage(response.data);
+  return requirePremiumPackage(response.data);
 }
 
 async function togglePremiumPackage(id: number, isActive: boolean): Promise<PremiumPackage> {
@@ -153,7 +159,7 @@ async function togglePremiumPackage(id: number, isActive: boolean): Promise<Prem
     API_ENDPOINTS.ADMIN.PACKAGES.TOGGLE(id),
     { isActive },
   );
-  return mapPremiumPackage(response.data);
+  return requirePremiumPackage(response.data);
 }
 
 async function deletePremiumPackage(id: number): Promise<void> {

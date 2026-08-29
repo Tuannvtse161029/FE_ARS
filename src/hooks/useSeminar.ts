@@ -24,41 +24,23 @@ import type { UserRole } from '../types/auth';
 // ─────────────────────────────────────────────────────────────────────────────
 // Backend availability states for the seminar surface.
 //
-// Privacy contract (PUBLICATION_FLOW_API_BLOCKERS.md §3.8):
-//   - 'full'                                  → BE shipped the participant-scoped
-//                                                read; the FE may request data.
-//   - 'awaiting_participant_scoped_endpoint'  → BE has not shipped the
-//                                                participant-scoped read.
-//                                                The FE must NOT request
-//                                                global /api/Seminar or
-//                                                /api/SeminarParticipant
-//                                                rows because doing so would
-//                                                leak every participant's
-//                                                identity across the platform
-//                                                to non-Lecturer callers.
-//                                                The page renders an honest
-//                                                read-only banner instead.
-//
-// Every hook that calls a /api/Seminar* endpoint MUST branch on this state.
-// The Lecturer fast path is the only path that currently hits the BE.
+// Privacy contract: Lecturer management uses the global organizer endpoints;
+// other viewers use the live participant-scoped endpoints. No viewer path
+// requests global participant rows.
 // ─────────────────────────────────────────────────────────────────────────────
 export type SeminarBackendAvailability =
   | 'full'
   | 'awaiting_participant_scoped_endpoint';
 
 /**
- * Returns the BE-availability state for the seminar surface given the current
- * role. Lecturer callers get `'full'` (the BE's organizer-scoped payload is
- * authoritative today). Every other role that the seminar route guard allows
- * is `'awaiting_participant_scoped_endpoint'` until the BE ships the
- * participant-filtered read documented in PUBLICATION_FLOW_API_BLOCKERS.md §3.8.
- *
- * Centralised here so every hook agrees on the same privacy posture.
+ * Returns the BE-availability state for the seminar surface. All route-guarded
+ * business roles have a documented read path in the live API; null is kept
+ * full here because the hook makes no request until authentication hydrates.
  */
 export const getSeminarBackendAvailability = (
   role: UserRole | null
 ): SeminarBackendAvailability => {
-  if (canViewSeminar(role)) return 'full';
+  void role;
   return 'full';
 };
 
@@ -98,52 +80,34 @@ export function useSeminars(): UseSeminarsResult {
     setError(null);
 
     try {
-      const [seminarsRes, myInvRes, participantsRes] = await Promise.allSettled([
-        seminarService.getAll(),
-        seminarService.getMyInvitations(),
-        seminarParticipantService.getAll(),
-      ]);
-      const rawSeminars =
-        seminarsRes.status === 'fulfilled' && Array.isArray(seminarsRes.value)
-          ? seminarsRes.value
-          : [];
-      const rawMyInvs =
-        myInvRes.status === 'fulfilled' && Array.isArray(myInvRes.value)
-          ? myInvRes.value
-          : [];
-
-      // Merge by seminarId to ensure invited seminars with participant IDs are present
-      const map = new Map<number, Seminar>();
-      for (const s of rawSeminars) {
-        if (s.seminarId) map.set(s.seminarId, s);
+      if (!currentRole) {
+        setSeminars([]);
+        setParticipants([]);
+        return;
       }
-      for (const inv of rawMyInvs) {
-        if (inv.seminarId && !map.has(inv.seminarId)) {
-          map.set(inv.seminarId, {
-            seminarId: inv.seminarId,
-            title: inv.title,
-            content: inv.title || inv.content || '',
-            startTime: inv.startTime,
-            endTime: inv.endTime,
-            onlineLink: inv.onlineLink,
-            status: inv.status ?? 'Completed',
-          });
-        }
+      if (canMutateSeminar(currentRole)) {
+        const [rawSeminars, participantsData] = await Promise.all([
+          seminarService.getAll(),
+          seminarParticipantService.getAll(),
+        ]);
+        setSeminars(rawSeminars);
+        setParticipants(participantsData);
+      } else {
+        const [rawInvitations, participantsData] = await Promise.all([
+          seminarService.getMyInvitations(),
+          seminarParticipantService.getMySeminars(),
+        ]);
+        setSeminars(rawInvitations);
+        setParticipants(participantsData);
       }
-
-      const participantsData =
-        participantsRes.status === 'fulfilled' && Array.isArray(participantsRes.value)
-          ? participantsRes.value
-          : [];
-      setSeminars(Array.from(map.values()));
-      setParticipants(participantsData);
-    } catch {
+    } catch (err: unknown) {
       setSeminars([]);
       setParticipants([]);
+      setError(err instanceof Error ? err.message : 'Unable to load seminars.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRole]);
 
   useEffect(() => {
     void fetchAll();
@@ -332,7 +296,8 @@ export function useSendReminder(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useSeminarParticipants — fetch all participants, optionally filter by seminarId
+// useSeminarParticipants — fetch participants from the role-scoped endpoint,
+// optionally filtered by seminarId.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface UseSeminarParticipantsResult {
@@ -349,11 +314,8 @@ export function useSeminarParticipants(seminarId?: number): UseSeminarParticipan
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Privacy gate: the hook must not call `seminarParticipantService.getAll()`
-  // for a non-Lecturer session. The page that opens the Feedback modal
-  // already requires `ownsSeminar()` (Lecturer + matching organizerId) but
-  // defense in depth: any future caller that forgets the page-level gate
-  // still cannot leak the global participant rows from this hook.
+  // Privacy gate: non-Lecturer sessions use the participant-scoped endpoint;
+  // only Lecturers may request the global organizer participant list.
   const currentRole = useAuthStore((s) => {
     const u = s.user;
     const er = s.effectiveRole;
@@ -372,14 +334,21 @@ export function useSeminarParticipants(seminarId?: number): UseSeminarParticipan
     setError(null);
 
     try {
-      const data = await seminarParticipantService.getAll();
+      if (!currentRole) {
+        setAllParticipants([]);
+        return;
+      }
+      const data = canMutateSeminar(currentRole)
+        ? await seminarParticipantService.getAll()
+        : await seminarParticipantService.getMySeminars();
       setAllParticipants(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err: unknown) {
       setAllParticipants([]);
+      setError(err instanceof Error ? err.message : 'Unable to load seminar participants.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRole]);
 
   useEffect(() => {
     void refetch();
@@ -451,9 +420,7 @@ export function useSeminarRoleContext(): UseSeminarRoleContextResult {
 }
 
 // Re-export the filter helper so existing callers that consume it from this
-// barrel keep working without a second import line. Future BE support for
-// `GET /api/Seminar?participantId=` will let the page call this filter
-// directly with the raw `Seminar[]` payload.
+// barrel keep working without a second import line.
 export { filterSeminarsForViewer };
 
 export default useSeminars;

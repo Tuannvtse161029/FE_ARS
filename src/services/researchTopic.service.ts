@@ -42,6 +42,8 @@ export interface ResearchTopic {
   materialsUrl?: string | null;
   // Optional joined field the BE may surface once the M:N resolver lands.
   assignedGroupIds?: number[] | null;
+  lecturerId?: number | null;
+  lecturerName?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -97,14 +99,10 @@ export const researchTopicService = {
   },
 
   getMyTopics: async (): Promise<ResearchTopic[]> => {
-    try {
-      const response = await api.get<ResearchTopic[]>(
-        API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.MY_TOPICS,
-      );
-      return normalizeResearchTopicList(response.data);
-    } catch {
-      return researchTopicService.getAll();
-    }
+    const response = await api.get<ResearchTopic[]>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.MY_TOPICS,
+    );
+    return normalizeResearchTopicList(response.data);
   },
 };
 

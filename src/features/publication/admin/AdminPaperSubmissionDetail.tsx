@@ -24,7 +24,7 @@ import adminStyles from './AdminPublication.module.css';
  * render private review content (reviewer private comments, criterion
  * scores). Every other admin surface must hide those fields.
  *
- * Demo-only actions (`assignReviewer`, `publishPaper`) are exposed
+ * Unsupported actions (`assignReviewer`, `publishPaper`) are exposed
  * exactly when the live adapter contract permits them for the current status.
  * Unsupported transitions remain visibly unavailable until the backend ticket
  * is implemented.
@@ -145,7 +145,7 @@ export const AdminPaperSubmissionDetail = () => {
         <p className={shared.panelSubtitle}>Author, institution, taxonomy, and identifiers as supplied by the researcher.</p>
         <dl className={shared.detailList}>
           <dt>Paper type</dt><dd>{paper.paperType}</dd>
-          <dt>Version</dt><dd>v{paper.version}</dd>
+          <dt>Version</dt><dd>{paper.version != null ? `v${paper.version}` : 'Not supplied'}</dd>
           <dt>Visibility</dt><dd>{paper.visibility}</dd>
           <dt>Submitted</dt><dd>{paper.submittedAt?.slice(0, 10) ?? '—'}</dd>
           <dt>Published</dt><dd>{paper.publishedAt?.slice(0, 10) ?? '—'}</dd>

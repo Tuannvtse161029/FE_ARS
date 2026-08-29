@@ -94,24 +94,18 @@ export const forumCommentService = {
     await api.delete(API_ENDPOINTS.FORUM_COMMENT.DELETE(id));
   },
 
-  // POST /api/CommentVote/{commentId} (Toggle upvote/unvote)
+  // POST /api/ForumComment/{id}/vote (Toggle upvote/unvote)
   toggleVote: async (commentId: number): Promise<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean }> => {
     const response = await api.post<{ forumCommentId: number; upvoteCount: number; isUpvoted: boolean }>(
-      API_ENDPOINTS.COMMENT_VOTE.TOGGLE(commentId)
+      API_ENDPOINTS.FORUM_COMMENT.TOGGLE_VOTE(commentId)
     );
     return response.data;
   },
 
-  // GET /api/CommentVote/my-votes
+  // GET /api/ForumComment/my-votes
   getMyVotes: async (): Promise<number[]> => {
-    try {
-      const response = await api.get<number[]>(
-        API_ENDPOINTS.COMMENT_VOTE.MY_VOTES
-      );
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      return [];
-    }
+    const response = await api.get<number[]>(API_ENDPOINTS.FORUM_COMMENT.MY_VOTES);
+    return Array.isArray(response.data) ? response.data : [];
   },
 };
 

@@ -121,8 +121,8 @@ export const ReviewerAssignments = () => {
               <h2 style={{ fontSize: 18, margin: '4px 0 6px' }}>{paper.title}</h2>
               <p style={{ margin: '0 0 8px', color: '#5f6b7a' }}>{paper.abstract}</p>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: '#324158' }}>
-                <strong>Paper type:</strong> {paper.paperType || 'Not supplied'} ·{' '}
-                <strong>Version:</strong> {paper.version}
+                <strong>Paper type:</strong> {paper.paperType || 'Not supplied'}{paper.version != null ? ' · ' : ' '}
+                <strong>Version:</strong> {paper.version ?? 'Not supplied'}
               </p>
               <Link
                 className={reviewer.openAssignmentButton}

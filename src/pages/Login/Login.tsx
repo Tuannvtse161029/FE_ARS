@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -15,13 +15,7 @@ import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { authService } from '../../services/auth.service';
-
-const FAST_LOGIN_USERS = [
-  { label: 'Researcher', email: 'researcher@arsplatform.com', password: 'Researcher1234', role: 'Researcher' },
-  { label: 'Reviewer', email: 'reviewer1.ars@arsplatform.test', password: 'Reviewer1234', role: 'Reviewer' },
-  { label: 'Lecturer', email: 'lecturer@arsplatform.com', password: 'Lecturer1234', role: 'Lecturer' },
-  { label: 'Grad Student', email: 'gradstudent@arsplatform.com', password: 'Student1234', role: 'Graduate Student' },
-] as const;
+import { roleService, type RoleItem } from '../../services/role.service';
 
 const Login = () => {
   const {
@@ -35,6 +29,22 @@ const Login = () => {
     cancelRoleSelection,
   } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<RoleItem[]>([]);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void roleService.fetchRoles()
+      .then((roles) => {
+        if (!cancelled) setAvailableRoles(roles);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAvailableRoles([]);
+        setRolesError(err instanceof Error ? err.message : 'Unable to load roles.');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // GIS-credential Google sign-in UI state. The double-submit guard is a
   // ref so double-clicks cannot enter the GIS callback twice; the loading
@@ -46,7 +56,6 @@ const Login = () => {
   const {
     control,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
@@ -65,18 +74,6 @@ const Login = () => {
   const onSubmit = async (data: LoginFormData) => {
     // Pass the full form payload (now including rememberMe and selectedRole) through to the AuthContext.
     await login(data);
-  };
-
-  const handleFastLogin = (
-    email: string,
-    password: string,
-    role?: '' | 'Researcher' | 'Reviewer' | 'Lecturer' | 'Graduate Student'
-  ) => {
-    setValue('username', email);
-    setValue('password', password);
-    if (role) {
-      setValue('selectedRole', role);
-    }
   };
 
   // ── GIS credential Google sign-in handler ───────────────────────────────
@@ -212,10 +209,11 @@ const Login = () => {
                 disabled={isLoading || googlePending}
               >
                 <option value="">Auto-detect Role (Default)</option>
-                <option value="Researcher">Researcher</option>
-                <option value="Reviewer">Reviewer</option>
-                <option value="Lecturer">Lecturer</option>
-                <option value="Graduate Student">Graduate Student</option>
+                {availableRoles.map((role) => (
+                  <option key={role.roleId ?? role.name} value={role.name}>
+                    {role.name}
+                  </option>
+                ))}
               </select>
             )}
           />
@@ -225,6 +223,7 @@ const Login = () => {
           <span className={styles.fieldHint}>
             Holding multiple roles? Select your role here. You can log out anytime to switch roles.
           </span>
+          {rolesError && <span className={styles.fieldError}>{rolesError}</span>}
         </div>
 
         <div className={styles.rememberRow}>
@@ -277,30 +276,6 @@ const Login = () => {
           <div className={styles.formError} role="alert">
             {googleError}
           </div>
-        )}
-
-        {import.meta.env.DEV && (
-          <>
-            <div className={styles.devDivider}>
-              <span className={styles.devDividerLine} />
-              <span className={styles.devDividerText}>Dev only</span>
-              <span className={styles.devDividerLine} />
-            </div>
-
-            <div className={styles.fastLoginGrid}>
-              {FAST_LOGIN_USERS.map((user) => (
-                <button
-                  key={user.label}
-                  type="button"
-                  className={styles.fastLoginBtn}
-                  onClick={() => handleFastLogin(user.email, user.password, user.role)}
-                  disabled={isLoading}
-                >
-                  {user.label}
-                </button>
-              ))}
-            </div>
-          </>
         )}
 
         <div className={styles.footer}>

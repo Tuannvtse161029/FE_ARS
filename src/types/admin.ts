@@ -24,6 +24,9 @@ export interface RoleRequest {
   /** Legacy contract field retained only for compatibility; never used to infer role intent. */
   requestedRoles?: string[];
   proofDocumentUrl: string;
+  orcidId?: string | null;
+  isOrcidVerified?: boolean;
+  orcidVerifiedAt?: string | null;
   submissionDate: string;
   status: RoleRequestStatus;
   notes?: string;
