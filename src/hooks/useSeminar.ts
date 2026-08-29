@@ -98,19 +98,44 @@ export function useSeminars(): UseSeminarsResult {
     setError(null);
 
     try {
-      const [seminarsRes, participantsRes] = await Promise.allSettled([
+      const [seminarsRes, myInvRes, participantsRes] = await Promise.allSettled([
         seminarService.getAll(),
+        seminarService.getMyInvitations(),
         seminarParticipantService.getAll(),
       ]);
-      const seminarsData =
+      const rawSeminars =
         seminarsRes.status === 'fulfilled' && Array.isArray(seminarsRes.value)
           ? seminarsRes.value
           : [];
+      const rawMyInvs =
+        myInvRes.status === 'fulfilled' && Array.isArray(myInvRes.value)
+          ? myInvRes.value
+          : [];
+
+      // Merge by seminarId to ensure invited seminars with participant IDs are present
+      const map = new Map<number, Seminar>();
+      for (const s of rawSeminars) {
+        if (s.seminarId) map.set(s.seminarId, s);
+      }
+      for (const inv of rawMyInvs) {
+        if (inv.seminarId && !map.has(inv.seminarId)) {
+          map.set(inv.seminarId, {
+            seminarId: inv.seminarId,
+            title: inv.title,
+            content: inv.title || inv.content || '',
+            startTime: inv.startTime,
+            endTime: inv.endTime,
+            onlineLink: inv.onlineLink,
+            status: inv.status ?? 'Completed',
+          });
+        }
+      }
+
       const participantsData =
         participantsRes.status === 'fulfilled' && Array.isArray(participantsRes.value)
           ? participantsRes.value
           : [];
-      setSeminars(seminarsData);
+      setSeminars(Array.from(map.values()));
       setParticipants(participantsData);
     } catch {
       setSeminars([]);
