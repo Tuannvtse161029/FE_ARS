@@ -27,6 +27,11 @@ const buildAssignedPaper = (
   visibility: 'PRIVATE',
   createdAt: '2026-08-01T00:00:00.000Z',
   submittedAt: '2026-08-05T00:00:00.000Z',
+  assignmentCreatedAt: '2026-08-06T00:00:00.000Z',
+  reviewDeadline: '2026-08-20T00:00:00.000Z',
+  reviewFee: 50000,
+  reviewType: 'Editorial',
+  aiRecommended: true,
   reviewerIdentityPublic: false,
   researcherVerificationStatus: 'VERIFIED',
   reviewer: {
@@ -64,7 +69,11 @@ describe('ReviewerAssignments list', () => {
     expect(within(row).getByText('Assigned manuscript for review')).toBeInTheDocument();
     expect(within(row).getByText(/Under Review/i)).toBeInTheDocument();
     expect(within(row).getByText(/Ready for evaluation/i)).toBeInTheDocument();
-    expect(within(row).getByText(/Submitted: 2026-08-05/i)).toBeInTheDocument();
+    expect(within(row).getByText(/Assigned: 2026-08-06/i)).toBeInTheDocument();
+    expect(within(row).getByText(/Deadline: 2026-08-20/i)).toBeInTheDocument();
+    expect(row).toHaveTextContent(/Review type:\s*Editorial/i);
+    expect(row).toHaveTextContent(/Fee:\s*50.000 VND/i);
+    expect(row).toHaveTextContent(/AI recommended:\s*Yes/i);
     expect(within(row).getByRole('link', { name: /Open assignment/i })).toHaveAttribute(
       'href',
       '/reviewer/assignments/assigned-1',

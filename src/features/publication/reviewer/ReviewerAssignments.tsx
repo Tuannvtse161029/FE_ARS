@@ -25,11 +25,16 @@ import {
 // own work product from inside the detail page after they submit.
 
 const formatDate = (iso: string | undefined): string => {
-  if (!iso) return 'No submitted date on record';
+  if (!iso) return 'Not supplied';
   const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return 'No submitted date on record';
+  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
   return parsed.toISOString().slice(0, 10);
 };
+
+const formatFee = (fee: number | null | undefined): string =>
+  typeof fee === 'number' && Number.isFinite(fee)
+    ? `${fee.toLocaleString('vi-VN')} VND`
+    : 'Not supplied';
 
 const actionableLabel = (paper: PublicationPaper): string => {
   if (isReviewerSubmitted(paper.status)) return 'Review submitted · awaiting Admin';
@@ -68,7 +73,8 @@ export const ReviewerAssignments = () => {
       papers.map((paper) => ({
         paper,
         actionable: actionableLabel(paper),
-        submittedAt: formatDate(paper.submittedAt),
+        assignedAt: formatDate(paper.assignmentCreatedAt ?? paper.submittedAt),
+        deadline: formatDate(paper.reviewDeadline),
       })),
     [papers],
   );
@@ -94,9 +100,9 @@ export const ReviewerAssignments = () => {
         </div>
       ) : (
         <div className={shared.panel}>
-          {rows.map(({ paper, actionable, submittedAt }) => (
+          {rows.map(({ paper, actionable, assignedAt, deadline }) => (
             <article
-              key={paper.id}
+              key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
               data-testid="assignment-row"
               data-paper-id={paper.id}
               style={{ borderBottom: '1px solid #e4e9f0', padding: '14px 0' }}
@@ -111,8 +117,11 @@ export const ReviewerAssignments = () => {
                 }}
               >
                 <span className={shared.status}>{statusLabel(paper.status)}</span>
-                <span className={reviewer.deadlineChip} aria-label="Submitted">
-                  Submitted: {submittedAt}
+                <span className={reviewer.deadlineChip} aria-label="Assigned">
+                  Assigned: {assignedAt}
+                </span>
+                <span className={reviewer.deadlineChip} aria-label="Deadline">
+                  Deadline: {deadline}
                 </span>
                 <span className={reviewer.deadlineChip} aria-label="Actionability">
                   {actionable}
@@ -121,8 +130,10 @@ export const ReviewerAssignments = () => {
               <h2 style={{ fontSize: 18, margin: '4px 0 6px' }}>{paper.title}</h2>
               <p style={{ margin: '0 0 8px', color: '#5f6b7a' }}>{paper.abstract}</p>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: '#324158' }}>
-                <strong>Paper type:</strong> {paper.paperType || 'Not supplied'}{paper.version != null ? ' · ' : ' '}
-                <strong>Version:</strong> {paper.version ?? 'Not supplied'}
+                <strong>Review type:</strong> {paper.reviewType || 'Not supplied'} ·{' '}
+                <strong>Fee:</strong> {formatFee(paper.reviewFee)} ·{' '}
+                <strong>AI recommended:</strong>{' '}
+                {paper.aiRecommended == null ? 'Not supplied' : paper.aiRecommended ? 'Yes' : 'No'}
               </p>
               <Link
                 className={reviewer.openAssignmentButton}

@@ -133,7 +133,7 @@ const toPublicationPaper = (
     status,
     visibility: status === 'PUBLISHED' ? 'PUBLIC' : 'PRIVATE',
     createdAt: paper.createdAt ?? '',
-    submittedAt: paper.createdAt,
+    submittedAt: request?.createdAt ?? paper.createdAt,
     publishedAt: status === 'PUBLISHED' ? paper.updatedAt ?? paper.createdAt : undefined,
     reviewer: request
       ? {
@@ -156,6 +156,10 @@ const toPublicationPaper = (
     reviewRequestId: request?.id,
     reviewerId: request?.reviewerId ?? undefined,
     reviewDeadline: request?.deadline ?? undefined,
+    assignmentCreatedAt: request?.createdAt,
+    reviewFee: request?.fee ?? null,
+    reviewType: request?.type ?? null,
+    aiRecommended: request?.airecommended ?? null,
   };
 };
 
@@ -209,9 +213,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
   async getReviewerAssignments(): Promise<PublicationPaper[]> {
     const userId = currentUserId();
     if (!userId) return [];
-    const requests = (await reviewRequestService.getAll()).filter(
-      (request) => request.reviewerId === userId && request.paperId != null,
-    );
+    const requests = await reviewRequestService.getForReviewer(userId);
     return Promise.all(
       requests.map(async (request) => {
         const [paper, evaluation] = await Promise.all([
