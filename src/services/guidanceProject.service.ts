@@ -151,10 +151,60 @@ export const getActiveGuidanceProjectForStudent = async (
   return proposed ?? null;
 };
 
+export const createGuidanceProject = async (
+  payload: {
+    title: string;
+    description?: string;
+    lecturerId?: number | null;
+    studentId?: number | null;
+    researchGroupId?: number | null;
+    status?: string | null;
+  },
+): Promise<GuidanceProject> => {
+  const response = await api.post<unknown>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.GUIDANCE_PROJECT.CREATE,
+    payload,
+  );
+  const normalized = toGuidanceProject(response.data);
+  if (!normalized) {
+    throw new Error('Malformed GuidanceProject response from BE');
+  }
+  return normalized;
+};
+
+export const updateGuidanceProject = async (
+  id: number,
+  payload: {
+    title?: string;
+    description?: string;
+    lecturerId?: number | null;
+    studentId?: number | null;
+    researchGroupId?: number | null;
+    status?: string | null;
+  },
+): Promise<GuidanceProject> => {
+  const response = await api.put<unknown>(
+    API_ENDPOINTS.RESEARCH_WORKFLOW.GUIDANCE_PROJECT.UPDATE(id),
+    payload,
+  );
+  const normalized = toGuidanceProject(response.data);
+  if (!normalized) {
+    throw new Error('Malformed GuidanceProject response from BE');
+  }
+  return normalized;
+};
+
+export const deleteGuidanceProject = async (id: number): Promise<void> => {
+  await api.delete(API_ENDPOINTS.RESEARCH_WORKFLOW.GUIDANCE_PROJECT.DELETE(id));
+};
+
 export const guidanceProjectService = {
   getAllGuidanceProjects,
   getGuidanceProjectById,
   getActiveGuidanceProjectForStudent,
+  create: createGuidanceProject,
+  update: updateGuidanceProject,
+  delete: deleteGuidanceProject,
 };
 
 export const researchTopicService = {

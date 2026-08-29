@@ -54,7 +54,6 @@ const DEFAULT_FOLDER_KEY = 'milestone';
 const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
-
 export const StudentResearchGroups = (): JSX.Element => {
   const { user } = useAuth();
   const studentId = user?.userId ?? null;
