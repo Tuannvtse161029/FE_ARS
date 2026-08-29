@@ -37,19 +37,20 @@
 /* ── Base Input ───────────────────────────────────────── */
 .input {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--font-size-base);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
   font-family: var(--font-family-ui);
   color: var(--ars-ink);
   background-color: var(--ars-paper);
-  border: 1.5px solid var(--ars-node);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
     background-color var(--transition-fast);
-  min-height: 48px;
+  min-height: 36px;
   box-sizing: border-box;
+  letter-spacing: -0.005em;
 }
 
 .input::placeholder {
@@ -62,7 +63,7 @@
 
 .input:focus {
   border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.16);
   background-color: var(--ars-paper);
   outline: none;
 }
@@ -130,6 +131,6 @@
 @media (max-width: 640px) {
   .input {
     font-size: var(--font-size-sm);
-    min-height: 44px;
+    min-height: 40px;
   }
 }

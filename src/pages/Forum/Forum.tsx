@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import styles from './Forum.module.css';
 import {
   X,
   Tag,
@@ -11,6 +10,8 @@ import {
   AlertTriangle,
   RefreshCw,
   AlertCircle,
+  Plus,
+  Search,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
@@ -19,9 +20,15 @@ import { useFollow } from '../../hooks/useFollow';
 import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { ForumPostCard } from '../../components/forum/ForumPostCard';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
+import { Input } from '../../components/Input/Input';
 import { storage } from '../../utils/storage';
 import { PALETTE, initialsFromName } from './forum.utils';
-
+import styles from './Forum.module.css';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
@@ -118,14 +125,50 @@ export const Forum = () => {
     Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
   );
 
+  const postCountLabel = error
+    ? '—'
+    : `${filteredPosts.length} post${filteredPosts.length === 1 ? '' : 's'}`;
+
   return (
     <div className={styles.forumPage}>
+      <PageHeader
+        eyebrow="Community"
+        title="Forum"
+        description={
+          isVerified
+            ? 'Discuss active research, share drafts, and follow colleagues across the platform.'
+            : 'Browse public discussions while your account is pending administrator verification.'
+        }
+        breadcrumbs={
+          <>
+            Home <span aria-hidden>/</span>{' '}
+            <span className={styles.breadcrumbsActive}>Forum</span>
+          </>
+        }
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Plus size={14} />}
+            onClick={() => {
+              if (!canCreatePost) return;
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!canCreatePost}
+            title={
+              canCreatePost
+                ? undefined
+                : 'Posting is disabled until your account is approved by an Administrator.'
+            }
+          >
+            Create post
+          </Button>
+        }
+      />
+
       <div className={styles.forumLayout}>
         {/* ─── LEFT SIDEBAR ─── */}
-        <aside className={styles.sidebar}>
-          <h1 className={styles.forumTitle}>FORUM</h1>
-
-          {/* Categories */}
+        <aside className={styles.sidebar} aria-label="Forum filters">
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Categories</div>
             <div className={styles.categoryList}>
@@ -144,21 +187,15 @@ export const Forum = () => {
             </div>
           </div>
 
-          {/* Filters */}
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Filters</div>
-            <div className={styles.filterInputs}>
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Search</label>
-                <input
-                  type="text"
-                  className={styles.filterInput}
-                  placeholder="Search posts..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
+            <Input
+              label="Search"
+              placeholder="Search posts…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<Search size={14} />}
+            />
           </div>
         </aside>
 
@@ -183,50 +220,23 @@ export const Forum = () => {
             </div>
           )}
 
-          {/* Feed Header */}
-          <div className={styles.feedHeader}>
-            <div className={styles.feedTitleRow}>
-              <h2 className={styles.feedTitle}>PUBLIC FORUM</h2>
-              {error ? (
-                <span
-                  className={styles.postCountBadge}
-                  aria-label="Post count unavailable"
-                  title="Post count unavailable while the forum is unreachable"
-                >
-                  —
-                </span>
-              ) : (
-                <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
-              )}
-              <button
-                className={`${styles.createPostBtn} ${!canCreatePost ? styles.createPostBtnDisabled : ''}`}
-                onClick={() => {
-                  if (!canCreatePost) return;
-                  setIsCreateModalOpen(true);
-                }}
-                disabled={!canCreatePost}
-                aria-disabled={!canCreatePost}
-                title={
-                  canCreatePost
-                    ? undefined
-                    : 'Posting is disabled until your account is approved by an Administrator.'
-                }
-              >
-                + Create Post
-              </button>
-            </div>
-
-            {/* Sort & Filter Toolbar */}
-            <div className={styles.toolbar}>
+          {/* Feed Toolbar */}
+          <div className={styles.feedToolbar}>
+            <div className={styles.feedToolbarLeft}>
+              <span className={styles.postCountBadge}>{postCountLabel}</span>
+              <span className={styles.toolbarDivider} aria-hidden />
               <select
                 className={styles.sortSelect}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
+                aria-label="Sort posts"
               >
                 <option>Newest</option>
                 <option>Most Discussed</option>
                 <option>Most Viewed</option>
               </select>
+            </div>
+            <div className={styles.feedToolbarRight}>
               <button
                 type="button"
                 className={styles.refreshBtn}
@@ -240,37 +250,50 @@ export const Forum = () => {
             </div>
           </div>
 
-          {/* API error banner */}
+          {/* API error banner — shared ErrorBanner */}
           {error && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={16} />
-              <span>{error.message || 'Failed to load posts.'}</span>
-              <button
-                type="button"
-                className={styles.errorBannerRetry}
-                onClick={() => void refetch()}
-                disabled={isLoading}
-                aria-label="Retry loading forum posts"
-              >
-                {isLoading ? 'Retrying…' : 'Retry'}
-              </button>
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Couldn't load forum posts"
+              message={error.message || 'Failed to load posts.'}
+              retry={
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void refetch()}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Retrying…' : 'Retry'}
+                </Button>
+              }
+            />
           )}
 
-          {/* Post Cards */}
+          {/* Post Cards / Loading / Empty */}
           <div className={styles.postList}>
             {isLoading && posts.length === 0 && (
-              <div className={styles.stateMessage}>Loading posts…</div>
+              <SkeletonRow count={4} rowHeight={120} gap={16} withHeader />
             )}
 
             {!isLoading && !error && filteredPosts.length === 0 && (
-              <div className={styles.stateMessage}>
-                {effectiveCategory === 'Following'
-                  ? 'You are not following any authors yet.'
-                  : effectiveCategory === 'My Posts'
-                    ? 'You have not published any posts yet.'
-                    : 'No posts match your filters.'}
-              </div>
+              <EmptyState
+                icon={<AlertCircle size={20} />}
+                title={
+                  effectiveCategory === 'Following'
+                    ? 'Not following any authors yet'
+                    : effectiveCategory === 'My Posts'
+                      ? 'You have not published any posts yet'
+                      : 'No posts match your filters'
+                }
+                description={
+                  effectiveCategory === 'Following'
+                    ? 'Follow a colleague from any forum post to see their updates here.'
+                    : effectiveCategory === 'My Posts'
+                      ? 'Use the Create post button to share research with the community.'
+                      : 'Try a different search or clear your filters.'
+                }
+                compact
+              />
             )}
 
             {paginatedPosts.map((post) => (
@@ -433,7 +456,7 @@ const CreatePostModal = ({
   };
 
   const avatarInitials = initialsFromName(currentUserName);
-  const avatarColor = PALETTE[currentUserId % PALETTE.length];
+  const paletteIndex = currentUserId % PALETTE.length;
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -446,7 +469,7 @@ const CreatePostModal = ({
         <div className={styles.modalAuthorHeader}>
           <div
             className={styles.modalAuthorAvatar}
-            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
+            data-palette={String(paletteIndex)}
           >
             {avatarInitials}
           </div>
@@ -458,9 +481,8 @@ const CreatePostModal = ({
 
         <div className={styles.modalBody}>
           {/* Title */}
-          <input
-            type="text"
-            className={styles.titleInput}
+          <Input
+            label="Title"
             placeholder="Post title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -468,31 +490,43 @@ const CreatePostModal = ({
           />
 
           {/* Category (optional, free-text until BE ships category list) */}
-          <input
-            type="text"
-            className={styles.titleInput}
+          <Input
+            label="Category"
             placeholder="Category (optional)"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
+            required={false}
           />
 
           {/* Abstract (optional) */}
-          <textarea
-            className={styles.abstractTextarea}
-            placeholder="Brief abstract (optional)"
-            rows={2}
-            value={abstract}
-            onChange={(e) => setAbstract(e.target.value)}
-          />
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel} htmlFor="post-abstract">
+              Abstract <span className={styles.fieldHint}>(optional)</span>
+            </label>
+            <textarea
+              id="post-abstract"
+              className={styles.abstractTextarea}
+              placeholder="Brief abstract (optional)"
+              rows={2}
+              value={abstract}
+              onChange={(e) => setAbstract(e.target.value)}
+            />
+          </div>
 
           {/* Plain Textarea - content */}
-          <textarea
-            className={styles.modalTextarea}
-            placeholder="Share your thoughts..."
-            rows={8}
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-          />
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel} htmlFor="post-content">
+              Content <span className={styles.fieldHint}>(required)</span>
+            </label>
+            <textarea
+              id="post-content"
+              className={styles.modalTextarea}
+              placeholder="Share your thoughts..."
+              rows={8}
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+            />
+          </div>
 
           {/* Tag Input with # prefix display */}
           <div className={styles.tagInputRow}>
@@ -559,7 +593,7 @@ const CreatePostModal = ({
               {attachedPdf && (
                 <div className={styles.attachedFile}>
                   <FileText size={14} />
-                  <span>{attachedPdf.name}</span>
+                  <span className={styles.attachedFileName}>{attachedPdf.name}</span>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
@@ -572,7 +606,7 @@ const CreatePostModal = ({
               {attachedImage && (
                 <div className={styles.attachedFile}>
                   <ImageIcon size={14} />
-                  <span>{attachedImage.name}</span>
+                  <span className={styles.attachedFileName}>{attachedImage.name}</span>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
@@ -623,43 +657,46 @@ const CreatePostModal = ({
 
           {/* Per-upload errors shown once the upload has finished with an error */}
           {pdfUpload.error && !pdfUpload.isUploading && (
-            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
-              <AlertCircle size={14} />
-              PDF upload: {pdfUpload.error}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="PDF upload failed"
+              message={pdfUpload.error}
+            />
           )}
           {imageUpload.error && !imageUpload.isUploading && (
-            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
-              <AlertCircle size={14} />
-              Image upload: {imageUpload.error}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Image upload failed"
+              message={imageUpload.error}
+            />
           )}
 
           {submitError && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={14} />
-              {submitError}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Couldn't publish post"
+              message={submitError}
+            />
           )}
         </div>
 
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={onClose}
-            disabled={submitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.publishBtn}
-            disabled={!postContent.trim() || submitting || pdfUpload.isUploading || imageUpload.isUploading}
+          </Button>
+          <Button
+            variant="primary"
             onClick={handlePublish}
+            disabled={
+              !postContent.trim() ||
+              submitting ||
+              pdfUpload.isUploading ||
+              imageUpload.isUploading
+            }
+            isLoading={submitting}
           >
-            {submitting ? 'Publishing…' : 'Publish Post'}
-          </button>
+            Publish post
+          </Button>
         </div>
       </div>
     </div>

@@ -1,0 +1,27 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.row,
+.headerBar {
+  background: var(--ars-paper-alt);
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.headerBar {
+  background: var(--ars-node);
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .headerBar {
+    animation-duration: 0.01ms;
+  }
+}

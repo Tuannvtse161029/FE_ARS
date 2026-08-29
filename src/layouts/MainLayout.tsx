@@ -26,6 +26,8 @@ import {
   Settings,
   User,
   ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
   LogOut,
   X,
   CheckCircle2,
@@ -37,7 +39,6 @@ import {
   Flag as ReportsIcon,
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
-  Crown as PremiumIcon,
   ClipboardCheck,
   Upload,
   BriefcaseBusiness,
@@ -45,7 +46,22 @@ import {
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
   FileCheck2 as PublicationIcon,
+  Menu as MenuIcon,
 } from 'lucide-react';
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'ars.sidebar.collapsed';
+
+const getStoredSidebarCollapsed = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
 
 const ProfileDropdown = ({
   username,
@@ -116,7 +132,9 @@ const ProfileDropdown = ({
 };
 
 const ARSPlatformLogo = () => (
-  <img src={arsLogo} alt="ARS Platform Logo" style={{ borderRadius: 8 }} />
+  <div className={styles.logoContainer}>
+    <img src={arsLogo} alt="ARS Platform" />
+  </div>
 );
 
 interface NavItem {
@@ -144,6 +162,18 @@ export const MainLayout = () => {
   const { hasWallet, isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
 
+  // Lecturer, Graduate Student, and Guest do not own a wallet row in this build —
+  // suppress both the header wallet pill and the top-up modal for them.
+  // Researcher / Reviewer / Admin behavior is unchanged: the `hasWallet` flag
+  // from usePermissions() is already false for Admin, so we only AND in
+  // role-based suppression for the three roles the product says shouldn't
+  // see wallet UI yet.
+  const walletVisible =
+    hasWallet &&
+    activeRole !== 'Lecturer' &&
+    activeRole !== 'Graduate Student' &&
+    displayedRole !== 'Guest';
+
   // Wallet balance comes from the BE — only for roles that have wallets (not Guest).
   const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(hasWallet && user?.userId ? user.userId : undefined);
 
@@ -156,11 +186,26 @@ export const MainLayout = () => {
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getStoredSidebarCollapsed);
 
-  // Auto-dismiss toast after 2 seconds
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
+    } catch {
+      // The layout remains usable when browser storage is unavailable.
+    }
+  }, [isSidebarCollapsed]);
+
+  // Close mobile drawer on route change so navigating between roles hides it.
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [navigate]);
+
+  // Auto-dismiss toast after 3 seconds
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 2000);
+      const timer = setTimeout(() => setToastMessage(null), 3000);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -274,9 +319,6 @@ export const MainLayout = () => {
           ...(AppConfig.features.enableWithdrawals
             ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
             : []),
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Lecturer':
         return [
@@ -288,9 +330,6 @@ export const MainLayout = () => {
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Graduate Student':
         return [
@@ -298,10 +337,6 @@ export const MainLayout = () => {
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
-          { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Researcher':
       default:
@@ -311,9 +346,6 @@ export const MainLayout = () => {
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
           { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
     }
   };
@@ -322,19 +354,51 @@ export const MainLayout = () => {
 
   return (
     <div className={styles.mainContainer}>
+      {/* Backdrop for mobile drawer */}
+      <div
+        className={`${styles.backdrop} ${isMobileNavOpen ? styles.backdropVisible : ''}`}
+        onClick={() => setIsMobileNavOpen(false)}
+        aria-hidden
+      />
+
       {/* Sidebar */}
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHeader}>
-          <div className={styles.logoContainer}>
-            <ARSPlatformLogo />
-          </div>
+          <ARSPlatformLogo />
+          <button
+            type="button"
+            className={styles.sidebarClose}
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <nav className={styles.sidebarNav}>
+        <nav className={styles.sidebarNav} aria-label="Workspace navigation">
+          <button
+            type="button"
+            className={styles.sidebarCollapse}
+            onClick={() => setIsSidebarCollapsed((collapsed) => !collapsed)}
+            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            aria-expanded={!isSidebarCollapsed}
+            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            <span className={styles.sidebarCollapseLabel}>
+              {isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            </span>
+          </button>
+
           {navItems.map((item, index) => {
             if (item.to.startsWith('#')) {
               return (
-                <div key={index} className={`${styles.navItem} ${styles.disabledNavItem}`}>
+                <div
+                  key={index}
+                  className={`${styles.navItem} ${styles.disabledNavItem}`}
+                  aria-label={item.label}
+                  title={item.label}
+                >
                   <span className={styles.navIcon}>{item.icon}</span>
                   <span className={styles.navLabel}>{item.label}</span>
                 </div>
@@ -345,6 +409,8 @@ export const MainLayout = () => {
                 key={index}
                 to={item.to}
                 end={item.end ?? false}
+                aria-label={item.label}
+                title={item.label}
                 className={({ isActive }) =>
                   `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
                 }
@@ -357,6 +423,7 @@ export const MainLayout = () => {
             );
           })}
         </nav>
+
       </aside>
 
       {/* Right Column (Header + Content) */}
@@ -378,6 +445,17 @@ export const MainLayout = () => {
             </div>
           )}
 
+          {/* Mobile menu toggle — only visible <= 768px via CSS */}
+          <button
+            type="button"
+            className={styles.menuToggle}
+            onClick={() => setIsMobileNavOpen(true)}
+            aria-label="Open navigation"
+            aria-expanded={isMobileNavOpen}
+          >
+            <MenuIcon size={18} />
+          </button>
+
           {/* Search bar */}
           <div className={styles.searchContainer}>
             <span className={styles.searchIcon}><Search size={18} /></span>
@@ -385,6 +463,7 @@ export const MainLayout = () => {
               type="text"
               placeholder="Search Papers..."
               className={styles.searchInput}
+              aria-label="Search papers"
             />
           </div>
 
@@ -416,8 +495,10 @@ export const MainLayout = () => {
 
             {/* Wallet Balance — hidden for users who don't have a wallet row.
                 Admins do not hold a personal wallet; unverified users (Guest)
-                have no row until an Admin approves their role request. */}
-            {hasWallet && (
+                have no row until an Admin approves their role request.
+                Lecturer and Graduate Student are also suppressed here in this
+                build (see `walletVisible` above). */}
+            {walletVisible && (
               <div className={styles.walletBadge}>
                 <span className={styles.walletIcon}><Wallet size={18} /></span>
                 <span className={styles.walletAmount}>
@@ -473,7 +554,7 @@ export const MainLayout = () => {
 
       {/* Wallet Top-Up Modal — only mounted for users who actually have a
           wallet row (see the header wallet badge above for the rule). */}
-      {hasWallet && (
+      {walletVisible && (
         <WalletTopUpModal
           isOpen={isTopUpOpen}
           currentUserId={user?.userId ?? null}

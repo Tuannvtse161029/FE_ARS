@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
     syncStatus: string | null;
     majorFieldId: number | null;
     subFieldId: number | null;
-    reviewFee: number | null;
     updatedAt: string;
     isAvailable: boolean;
   }>,
@@ -55,7 +54,6 @@ const profile = (overrides: Partial<(typeof mocks.profiles)[number]> = {}) => ({
   syncStatus: 'Synced',
   majorFieldId: 4,
   subFieldId: 9,
-  reviewFee: 10000,
   updatedAt: '2026-08-19T10:00:00Z',
   isAvailable: true,
   ...overrides,
@@ -69,10 +67,9 @@ const renderPage = () => render(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.profiles = [profile(), profile({ userId: 7, orcidId: 'wrong', reviewFee: 1 })];
+  mocks.profiles = [profile(), profile({ userId: 7, orcidId: 'wrong' })];
   mocks.auth.user = { userId: 42, role: 'Reviewer', username: 'reviewer.name', email: 'reviewer@example.com' };
   mocks.auth.isAuthenticated = true;
-  mocks.update.mockResolvedValue(profile({ reviewFee: 25000 }));
   mocks.refetch.mockResolvedValue(undefined);
   mocks.getById.mockResolvedValue({ id: 42, fullName: 'Dr. Reviewer Name', email: 'reviewer@example.com' });
   mocks.getAllMajor.mockResolvedValue([{ id: 4, name: 'Computer Science' }]);
@@ -85,15 +82,6 @@ describe('Reviewer Professional Profile — five vital contracts', () => {
     renderPage();
     expect(await screen.findByText('authenticated-profile')).toBeInTheDocument();
     expect(screen.queryByText('first-profile')).not.toBeInTheDocument();
-  });
-
-  it('sends the exact fee-only PUT body using the authenticated ID and refetches after success', async () => {
-    renderPage();
-    const input = await screen.findByTestId('review-fee-input');
-    fireEvent.change(input, { target: { value: '25000' } });
-    fireEvent.submit(input.closest('form') as HTMLFormElement);
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(42, { reviewFee: 25000 }));
-    expect(mocks.refetch).toHaveBeenCalledTimes(1);
   });
 
   it('saves reviewer expertise with the authenticated profile userId', async () => {
@@ -115,21 +103,11 @@ describe('Reviewer Professional Profile — five vital contracts', () => {
     }));
   });
 
-  it('keeps admin-managed metrics read-only and absent from the fee mutation payload', () => {
+  it('keeps admin-managed metrics read-only', () => {
     renderPage();
     expect(screen.getByTestId('academic-metrics-section').querySelector('input')).toBeNull();
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(mocks.update).not.toHaveBeenCalled();
-  });
-
-  it('restores the server fee when the fee update fails', async () => {
-    mocks.update.mockRejectedValueOnce(new Error('Update rejected'));
-    renderPage();
-    const input = await screen.findByTestId('review-fee-input');
-    fireEvent.change(input, { target: { value: '25000' } });
-    fireEvent.submit(input.closest('form') as HTMLFormElement);
-    await waitFor(() => expect(input).toHaveValue('10000'));
-    expect(screen.getByRole('alert')).toHaveTextContent('Update rejected');
   });
 
   it('redirects non-Reviewer roles away from the protected professional profile route', () => {

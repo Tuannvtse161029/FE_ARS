@@ -1,12 +1,18 @@
+/**
+ * TransactionsManagement — Platform revenue + reviewer payouts.
+ *
+ * Two-tab layout. The revenue tab ships as an honest unavailable state
+ * until the analytics contract is implemented; the withdrawals tab is
+ * gated by AppConfig.features.enableWithdrawals.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
   Banknote,
   Building2,
   CheckCircle2,
   Eye,
   ExternalLink,
-  Search,
+  Search as SearchIcon,
   X,
 } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
@@ -18,12 +24,19 @@ import DenyWithdrawalModal from './DenyWithdrawalModal';
 import WithdrawalDetailsModal from './WithdrawalDetailsModal';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { AppConfig } from '../../config/app';
 import styles from './TransactionsManagement.module.css';
 
 type Tab = 'revenue' | 'withdrawals';
 type ModalKind = 'details' | 'payout' | 'deny' | null;
+
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const formatAmount = (amount: number) =>
   new Intl.NumberFormat('vi-VN').format(amount);
@@ -218,18 +231,12 @@ export const TransactionsManagement = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; Admin &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Transactions</span>
-      </div>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Transactions</h1>
-          <p className={styles.pageSubtitle}>
-            Platform revenue and reviewer payout clearance.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="ADMIN · TRANSACTIONS"
+        title="Transactions"
+        description="Platform revenue and reviewer payout clearance."
+        accent={ROLE_ACCENT}
+      />
 
       <div className={styles.tabs} role="tablist" aria-label="Transaction sections">
         <button
@@ -239,7 +246,7 @@ export const TransactionsManagement = () => {
           aria-selected={tab === 'revenue'}
           type="button"
         >
-          <Banknote size={16} />
+          <Banknote size={14} />
           Platform Revenue &amp; Transactions
         </button>
         {withdrawalsEnabled && (
@@ -250,7 +257,7 @@ export const TransactionsManagement = () => {
             aria-selected={tab === 'withdrawals'}
             type="button"
           >
-            <Building2 size={16} />
+            <Building2 size={14} />
             Reviewer Withdrawal Requests
             {pendingCount > 0 ? (
               <span className={styles.tabBadge}>{pendingCount}</span>
@@ -261,8 +268,13 @@ export const TransactionsManagement = () => {
 
       {tab === 'revenue' ? (
         <div className={styles.tableCard}>
-          <div className={styles.emptyState}>
-            <Banknote size={32} />
+          <div
+            className={styles.disabledNotice}
+            data-testid="admin-revenue-unavailable"
+            role="status"
+          >
+            <Banknote size={28} />
+            <strong>Backend analytics unavailable</strong>
             <span>
               Platform revenue is unavailable until the backend analytics
               contract is implemented.
@@ -277,11 +289,11 @@ export const TransactionsManagement = () => {
       {tab === 'withdrawals' && !withdrawalsEnabled ? (
         <div className={styles.tableCard}>
           <div
-            className={styles.emptyState}
+            className={styles.disabledNotice}
             data-testid="admin-withdrawal-disabled-notice"
             role="status"
           >
-            <AlertTriangle size={32} color="#d97706" />
+            <strong>Feature temporarily paused</strong>
             <span>{WITHDRAWAL_DISABLED_MESSAGE}</span>
           </div>
         </div>
@@ -300,7 +312,11 @@ export const TransactionsManagement = () => {
             searchPlaceholder="Search by TX ID, reviewer, bank, or account"
             refreshLabel="Refresh"
             filters={
-              <Search size={14} color="#94a3b8" aria-hidden />
+              <SearchIcon
+                size={14}
+                aria-hidden
+                className={styles.toolbarIcon}
+              />
             }
           />
 
@@ -311,37 +327,43 @@ export const TransactionsManagement = () => {
                 data-testid="tx-loading"
                 role="status"
               >
-                <span className={styles.spinning} />
-                <span>Loading withdrawals…</span>
+                <SkeletonRow count={8} rowHeight={28} withHeader />
               </div>
             ) : error ? (
               <div
-                className={styles.errorState}
                 data-testid="tx-error"
-                role="alert"
+                className={styles.errorWrap}
               >
-                <AlertTriangle size={20} />
-                <span>{error}</span>
-                <button
-                  className={styles.retryBtn}
-                  onClick={() => void load()}
-                  type="button"
-                >
-                  Retry
-                </button>
+                <ErrorBanner
+                  tone="error"
+                  title="Could not load withdrawals"
+                  message={error}
+                  retry={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void load()}
+                      disabled={loading || refreshing}
+                    >
+                      {loading || refreshing ? 'Retrying…' : 'Retry'}
+                    </Button>
+                  }
+                />
               </div>
             ) : totalItems === 0 ? (
               <div
-                className={styles.emptyState}
+                className={styles.emptyWrap}
                 data-testid="tx-empty"
-                role="status"
               >
-                <Building2 size={32} />
-                <span>
-                  {search.trim().length > 0
-                    ? `No withdrawal requests match "${search.trim()}".`
-                    : 'No withdrawal requests yet.'}
-                </span>
+                <EmptyState
+                  icon={<Building2 size={20} />}
+                  title={
+                    search.trim().length > 0
+                      ? `No withdrawal requests match "${search.trim()}".`
+                      : 'No withdrawal requests yet.'
+                  }
+                  description="When a reviewer submits a withdrawal, it will appear here for clearance."
+                />
               </div>
             ) : (
               <>

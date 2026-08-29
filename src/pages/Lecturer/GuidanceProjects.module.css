@@ -162,28 +162,53 @@
 }
 
 .createBtn {
-  background: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer);
   border: none;
   border-radius: var(--radius-md);
   color: #ffffff;
   padding: var(--space-2) var(--space-5);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   white-space: nowrap;
   transition: background var(--transition-fast);
+  min-height: 36px;
 }
 
-.createBtn:hover {
-  background: var(--ars-lecturer-mid, #9a3412);
+.createBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
 }
 
 .createBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
+}
+
+.createBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lecturerPrimary {
+  background-color: var(--ars-lecturer) !important;
+  border-color: var(--ars-lecturer) !important;
+}
+
+.lecturerPrimary:hover:not(:disabled) {
+  background-color: var(--ars-lecturer-mid) !important;
+  border-color: var(--ars-lecturer-mid) !important;
+}
+
+.lecturerOutline {
+  color: var(--ars-lecturer) !important;
+  border-color: var(--ars-lecturer) !important;
+}
+
+.lecturerOutline:hover:not(:disabled) {
+  background-color: var(--ars-lecturer-light) !important;
 }
 
 /* ── Projects List ──────────────────────────────────────── */

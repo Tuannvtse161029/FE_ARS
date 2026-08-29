@@ -15,7 +15,7 @@ import styles from './WorkspaceHeader.module.css';
 export interface WorkspaceHeaderProps {
   /** Section marker text, e.g. "01 / MANUSCRIPT STUDIO" */
   marker: string;
-  /** Main heading — uses Playfair Display serif */
+  /** Main heading — uses serif for editorial accent */
   title: string;
   /** Subtitle in UI sans-serif */
   subtitle?: string;
@@ -43,7 +43,6 @@ export const WorkspaceHeader = ({
       style={accent ? ({ '--header-accent': accent } as React.CSSProperties) : undefined}
     >
       <div className={styles.inner}>
-        {/* Left: Accent bar + text */}
         <div className={styles.textCol}>
           <span className={styles.marker} aria-hidden="true">{marker}</span>
           <h1 className={styles.title}>{title}</h1>
@@ -51,14 +50,10 @@ export const WorkspaceHeader = ({
           {annotation && <p className={styles.annotation}>{annotation}</p>}
         </div>
 
-        {/* Right: Actions */}
         {actions && (
           <div className={styles.actions}>{actions}</div>
         )}
       </div>
-
-      {/* Bottom annotation line */}
-      <div className={styles.rule} aria-hidden="true" />
     </header>
   );
 };

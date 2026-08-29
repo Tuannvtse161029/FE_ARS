@@ -55,6 +55,10 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md';
 }
 
+// Compact pill: 22px tall (md) / 20px (sm). Always paired with a coloured
+// dot prefix and a label. Background tint uses the token palette so badges
+// read consistently across the Lecturer workspace without bespoke hex codes
+// in pages.
 export const StatusBadge = ({ status, label, size = 'md' }: StatusBadgeProps) => {
   const variant = normalise(status);
   const text = label ?? status ?? 'Unknown';
@@ -64,6 +68,7 @@ export const StatusBadge = ({ status, label, size = 'md' }: StatusBadgeProps) =>
     <span
       className={`${styles.badge} ${variantClass} ${sizeClass}`}
       aria-label={`Status: ${text}`}
+      data-component="StatusBadge"
     >
       <span className={styles.dot} aria-hidden />
       {text}

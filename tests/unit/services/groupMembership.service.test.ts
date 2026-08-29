@@ -1,9 +1,8 @@
 /**
  * Service-level tests for src/services/groupMembership.service.ts.
  *
- * Focus on the GradStudent aggregate helper which combines
- * GroupMember + ResearchGroup via `Promise.all` (per research-workflow
- * test plan §1 question #5).
+ * Focus on the GradStudent aggregate helper backed by the live
+ * GET /api/ResearchGroup/my-groups response.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -61,24 +60,12 @@ describe('groupMembershipService', () => {
   });
 
   describe('getJoinedGroupsForStudent', () => {
-    it('fires both GETs in parallel (Promise.all) and joins by studentId', async () => {
-      // Track call ordering — both promises should resolve before the
-      // Promise.all branch finishes, but we can't easily prove concurrency.
-      // We instead verify both endpoints are called exactly once.
-      getMock
-        .mockResolvedValueOnce({
-          data: [
-            { id: 1, studentId: 9, researchGroupId: 7 },
-            { id: 2, studentId: 9, researchGroupId: 8 },
-            { id: 3, studentId: 42, researchGroupId: 7 },
-          ],
-        })
-        .mockResolvedValueOnce({
-          data: [
-            { id: 7, name: 'Alpha' },
-            { id: 8, name: 'Beta' },
-          ],
-        });
+    it('reads scoped groups and resolves the signed-in student membership', async () => {
+      getMock.mockResolvedValueOnce({ data: [
+        { researchGroupId: 7, name: 'Alpha', members: [{ groupMemberId: 1, studentId: 9 }] },
+        { researchGroupId: 8, name: 'Beta', members: [{ groupMemberId: 2, studentId: 9 }] },
+        { researchGroupId: 10, name: 'Other', members: [{ groupMemberId: 3, studentId: 42 }] },
+      ] });
 
       const result = await getJoinedGroupsForStudent(9);
       expect(result).toHaveLength(2);
@@ -86,20 +73,15 @@ describe('groupMembershipService', () => {
       expect(result[0].membershipId).toBe(1);
       expect(result[1].membershipId).toBe(2);
 
-      const urls = getMock.mock.calls.map((c) => c[0]);
-      expect(urls).toContain('/api/GroupMember');
-      expect(urls).toContain('/api/ResearchGroup');
+      expect(getMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledWith('/api/ResearchGroup/my-groups');
     });
 
-    it('drops entries whose group cannot be resolved', async () => {
-      getMock
-        .mockResolvedValueOnce({
-          data: [
-            { id: 1, studentId: 9, researchGroupId: 7 },
-            { id: 2, studentId: 9, researchGroupId: 999 /* unknown */ },
-          ],
-        })
-        .mockResolvedValueOnce({ data: [{ id: 7, name: 'Alpha' }] });
+    it('drops scoped groups that do not contain the requested student', async () => {
+      getMock.mockResolvedValueOnce({ data: [
+        { researchGroupId: 7, name: 'Alpha', members: [{ groupMemberId: 1, studentId: 9 }] },
+        { researchGroupId: 8, name: 'Other', members: [{ groupMemberId: 2, studentId: 11 }] },
+      ] });
 
       const result = await getJoinedGroupsForStudent(9);
       expect(result).toHaveLength(1);
@@ -107,9 +89,7 @@ describe('groupMembershipService', () => {
     });
 
     it('returns [] for a student with no memberships', async () => {
-      getMock
-        .mockResolvedValueOnce({ data: [] })
-        .mockResolvedValueOnce({ data: [{ id: 7, name: 'Alpha' }] });
+      getMock.mockResolvedValueOnce({ data: [] });
       const result = await getJoinedGroupsForStudent(9);
       expect(result).toEqual([]);
     });

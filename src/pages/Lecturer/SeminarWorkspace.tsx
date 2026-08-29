@@ -15,6 +15,7 @@ import {
   Mail,
   AlertTriangle,
   Lock,
+  Inbox as InboxIcon,
 } from 'lucide-react';
 import {
   deriveEffectiveStatus,
@@ -31,24 +32,44 @@ import {
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import styles from './SeminarWorkspace.module.css';
 
+type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts';
+
+const formatSeminarId = (id: number): string =>
+  `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
+
+const formatBytesTitle = (raw: string): string => raw;
+
 export const SeminarWorkspace = () => {
-  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'completed' | 'drafts'>('all');
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showAttendeeFeedbackModal, setShowAttendeeFeedbackModal] = useState(false);
-  const [selectedSeminarForAttendeeFeedback, setSelectedSeminarForAttendeeFeedback] = useState<SeminarCard | null>(null);
+  const [showAttendeeFeedbackModal, setShowAttendeeFeedbackModal] =
+    useState(false);
+  const [
+    selectedSeminarForAttendeeFeedback,
+    setSelectedSeminarForAttendeeFeedback,
+  ] = useState<SeminarCard | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [bannerText, setBannerText] = useState('');
-  const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] = useState<SeminarCard | null>(null);
+  const [bannerVariant, setBannerVariant] = useState<'success' | 'error'>(
+    'success',
+  );
+  const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] =
+    useState<SeminarCard | null>(null);
 
-  // AI Summary integration point — Agent 23 wires the actual modal
   const [showAiModal, setShowAiModal] = useState(false);
-  const [selectedSeminarForAi, setSelectedSeminarForAi] = useState<SeminarCard | null>(null);
+  const [selectedSeminarForAi, setSelectedSeminarForAi] =
+    useState<SeminarCard | null>(null);
 
-  // Form states inside Create Modal
+  // Create modal form state
   const [seminarName, setSeminarName] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [seminarDetails, setSeminarDetails] = useState('');
@@ -56,110 +77,100 @@ export const SeminarWorkspace = () => {
   const [emailInputText, setEmailInputText] = useState('');
   const [sendReminder, setSendReminder] = useState(true);
 
-  // Google Meet link from BE on create
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
   // ── Seminar data via hooks ───────────────────────────────────────────────────
-  const { seminars, isLoading: isLoadingSeminars, error: loadSeminarsError, refetch, backendAvailability } =
-    useSeminars();
-
-  // ── Role context (preserves Lecturer-only writes; surfaces read-only caps) ───
-  // `canModify` gates every write affordance below. Researchers, Reviewers and
-  // Graduate Students that ever reach this page (the current App.tsx guard
-  // is Lecturer+ Graduate Student) see a read-only surface — the BE is still
-  // the authority on authorization. See `ownsSeminar()` for the per-row
-  // ownership predicate used by the Feedback & Grading modal.
-  //
-  // `backendAvailability` reports whether the live role-scoped read contract
-  // is available. The hook never uses global participant rows for viewers.
   const {
-    currentRole,
-    currentUserId,
-    canModify,
-  } = useSeminarRoleContext();
+    seminars,
+    isLoading: isLoadingSeminars,
+    error: loadSeminarsError,
+    refetch,
+    backendAvailability,
+  } = useSeminars();
 
-  // ── Create seminar ────────────────────────────────────────────────────────────
+  const { currentRole, currentUserId, canModify } = useSeminarRoleContext();
+
   const handleCreateSuccess = useCallback(
     (created: { seminarId: number; onlineLink?: string | null }) => {
       setGeneratedMeetLink(created.onlineLink ?? '');
-      setBannerText(`"${seminarName || 'Seminar'}" has been created.`);
+      setBannerText(
+        `"${seminarName || 'Seminar'}" has been created.`,
+      );
+      setBannerVariant('success');
       setShowSuccessBanner(true);
       setShowCreateModal(false);
       setShowGeneratedModal(true);
     },
-    [seminarName]
+    [seminarName],
   );
 
-  const { createSeminar, isCreating: isCreatingSeminar } = useCreateSeminar(
-    handleCreateSuccess,
-    refetch
-  );
+  const { createSeminar, isCreating: isCreatingSeminar } =
+    useCreateSeminar(handleCreateSuccess, refetch);
 
-  // ── Send reminder ────────────────────────────────────────────────────────────
   const { sendReminder: doSendReminder, isSending: isSendingReminder } =
     useSendReminder(undefined, refetch);
 
-  // Double-click guard — prevents racing calls from rapid button presses
   const reminderInFlightRef = useRef(false);
 
-  // ── Participants for feedback modal ──────────────────────────────────────────
   const { participants: allParticipants, isLoading: isLoadingParticipants } =
     useSeminarParticipants(selectedSeminarForFeedback?.seminarId);
 
-  // Hybrid ID format for display
-  const formatSeminarId = (id: number): string => {
-    const year = new Date().getFullYear();
-    return `SEM-${year}-${String(id).padStart(3, '0')}`;
-  };
+  // ── Tab filter + counts ───────────────────────────────────────
+  const seminarCounts = useMemo(
+    () =>
+      seminars.reduce(
+        (counts, seminar) => {
+          const effective = deriveEffectiveStatus(
+            seminar.status,
+            seminar.endTime,
+          );
+          if (effective === 'UPCOMING' || effective === 'IN PROGRESS') {
+            counts.upcoming += 1;
+          } else if (effective === 'COMPLETED') {
+            counts.completed += 1;
+          } else if (effective === 'DRAFT') {
+            counts.drafts += 1;
+          }
+          return counts;
+        },
+        { upcoming: 0, completed: 0, drafts: 0 },
+      ),
+    [seminars],
+  );
 
-  // Parse a display date-time string into ISO start/end (1-hour default).
-  const parseDateTimeRange = (
-    raw: string
-  ): { startTime: string; endTime: string } => {
-    const trimmed = raw.trim();
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) {
-      const end = new Date(parsed.getTime() + 60 * 60 * 1000);
-      return { startTime: parsed.toISOString(), endTime: end.toISOString() };
-    }
-    const now = new Date();
-    const end = new Date(now.getTime() + 60 * 60 * 1000);
-    return { startTime: now.toISOString(), endTime: end.toISOString() };
-  };
+  const filteredSeminars = useMemo(() => {
+    return seminars.filter((sem) => {
+      const effective = deriveEffectiveStatus(sem.status, sem.endTime);
+      if (activeTab === 'upcoming') {
+        return effective === 'UPCOMING' || effective === 'IN PROGRESS';
+      }
+      if (activeTab === 'completed') return effective === 'COMPLETED';
+      if (activeTab === 'drafts') return effective === 'DRAFT';
+      return true;
+    });
+  }, [activeTab, seminars]);
 
-  const seminarCounts = useMemo(() => seminars.reduce((counts, seminar) => {
-    const effective = deriveEffectiveStatus(seminar.status, seminar.endTime);
-    counts.upcoming += effective === 'UPCOMING' || effective === 'IN PROGRESS' ? 1 : 0;
-    counts.completed += effective === 'COMPLETED' ? 1 : 0;
-    return counts;
-  }, { upcoming: 0, completed: 0 }), [seminars]);
+  const minDateTime = useMemo(
+    () => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+    [],
+  );
 
-  // Tab filtering — uses effectiveStatus so past-endTime seminars appear in "Completed"
-  const filteredSeminars = useMemo(() => seminars.filter((sem) => {
-    const effective = deriveEffectiveStatus(sem.status, sem.endTime);
-    if (activeTab === 'upcoming') {
-      return effective === 'UPCOMING' || effective === 'IN PROGRESS';
-    }
-    if (activeTab === 'completed') {
-      return effective === 'COMPLETED';
-    }
-    if (activeTab === 'drafts') {
-      return effective === 'DRAFT';
-    }
-    return true;
-  }), [activeTab, seminars]);
+  const announce = useCallback(
+    (message: string, variant: 'success' | 'error' = 'success') => {
+      setBannerText(message);
+      setBannerVariant(variant);
+      setShowSuccessBanner(true);
+    },
+    [],
+  );
 
-  const minDateTime = useMemo(() => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16), []);
-  const announce = useCallback((message: string) => {
-    setBannerText(message);
-    setShowSuccessBanner(true);
-  }, []);
-
-  // Email invite helpers
+  // ── Create form helpers ─────────────────────────────────────────
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && emailInputText.trim()) {
-      if (!guestEmails.includes(emailInputText.trim())) {
-        setGuestEmails([...guestEmails, emailInputText.trim()]);
+      e.preventDefault();
+      const candidate = emailInputText.trim();
+      if (!guestEmails.includes(candidate)) {
+        setGuestEmails([...guestEmails, candidate]);
       }
       setEmailInputText('');
     }
@@ -169,46 +180,66 @@ export const SeminarWorkspace = () => {
     setGuestEmails(guestEmails.filter((x) => x !== email));
   };
 
-  // Create submit
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canModify) {
-      announce('Bạn không có quyền tạo Seminar.');
+      announce('You do not have permission to create seminars.', 'error');
       return;
     }
-    if (!seminarName.trim()) { announce('Please enter a seminar name.'); return; }
-    if (!dateTime.trim())   { announce('Please select a date and time.'); return; }
-    if (!seminarDetails.trim()) { announce('Please enter seminar details.'); return; }
-
-    // Enforce at least 1-hour-in-advance rule (belt-and-suspenders over the min attribute).
+    if (!seminarName.trim()) {
+      announce('Please enter a seminar name.', 'error');
+      return;
+    }
+    if (!dateTime.trim()) {
+      announce('Please select a date and time.', 'error');
+      return;
+    }
+    if (!seminarDetails.trim()) {
+      announce('Please enter seminar details.', 'error');
+      return;
+    }
     const minTime = new Date(Date.now() + 60 * 60 * 1000);
     if (new Date(dateTime) < minTime) {
-      announce('Seminars must be scheduled at least 1 hour in advance.');
+      announce(
+        'Seminars must be scheduled at least 1 hour in advance.',
+        'error',
+      );
       return;
     }
-
-    const { startTime, endTime } = parseDateTimeRange(dateTime);
+    const startTime = new Date(dateTime).toISOString();
+    const endTime = new Date(
+      new Date(dateTime).getTime() + 60 * 60 * 1000,
+    ).toISOString();
     const fullContent = seminarName.trim()
       ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
       : seminarDetails.trim();
 
-    await createSeminar({
-      startTime,
-      endTime,
-      content: fullContent,
-      guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
-      isReminderSent: sendReminder,
-      status: 'Upcoming',
-    });
+    try {
+      await createSeminar({
+        startTime,
+        endTime,
+        content: fullContent,
+        guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
+        isReminderSent: sendReminder,
+        status: 'Upcoming',
+      });
+      // Reset form for next create.
+      setSeminarName('');
+      setDateTime('');
+      setSeminarDetails('');
+      setGuestEmails([]);
+      setEmailInputText('');
+      setSendReminder(true);
+    } catch {
+      // Error already announced by hook via the banner mechanism on parent.
+    }
   };
 
-  // Feedback modal
   const handleOpenFeedbackModal = (sem: SeminarCard) => {
     setSelectedSeminarForFeedback(sem);
     setShowFeedbackModal(true);
   };
 
-  // Reminder — calls the real API hook with double-click guard
   const handleRemindPending = async (seminarId: number) => {
     if (reminderInFlightRef.current) return;
     reminderInFlightRef.current = true;
@@ -216,354 +247,398 @@ export const SeminarWorkspace = () => {
       await doSendReminder(seminarId);
       announce('Reminder sent successfully.');
     } catch {
-      announce('Failed to send reminder. Please try again.');
+      announce('Failed to send reminder. Please try again.', 'error');
     } finally {
       reminderInFlightRef.current = false;
     }
   };
 
-  // AI Summary integration point — Agent 23 wires the actual modal
   const handleOpenAiSummary = useCallback((sem: SeminarCard) => {
     setSelectedSeminarForAi(sem);
     setShowAiModal(true);
   }, []);
 
-  return (
-    <div className={styles.seminarWorkspace}>
-      {/* Breadcrumbs */}
-      <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Academic Seminars</span>
-      </div>
+  const tabs: Array<{ key: TabKey; label: string; count: number }> = [
+    { key: 'all', label: 'All Seminars', count: seminars.length },
+    {
+      key: 'upcoming',
+      label: 'Upcoming',
+      count: seminarCounts.upcoming,
+    },
+    {
+      key: 'completed',
+      label: 'Completed',
+      count: seminarCounts.completed,
+    },
+    { key: 'drafts', label: 'Drafts', count: seminarCounts.drafts },
+  ];
 
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Seminar & Workshop Management</h1>
-          <p className={styles.pageSubtitle}>
-            {canModify
-              ? 'Manage your scheduled seminars, share resources, and collect feedback.'
-              : 'Browse upcoming and completed seminars you have been invited to.'}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+  const headerActions = (
+    <>
+      <Button
+        variant="outline"
+        size="md"
+        leftIcon={
+          isLoadingSeminars ? (
+            <Loader size={14} className={styles.spinning} aria-hidden />
+          ) : (
+            <RefreshCw size={14} aria-hidden />
+          )
+        }
+        onClick={() => void refetch()}
+        disabled={isLoadingSeminars}
+        aria-label="Refresh seminars"
+      >
+        {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
+      </Button>
+      {canModify && (
+        <Button
+          variant="primary"
+          size="md"
+          className={styles.actionBtnLecturer}
+          leftIcon={<Plus size={16} aria-hidden />}
+          onClick={() => setShowCreateModal(true)}
+        >
+          Create Seminar
+        </Button>
+      )}
+    </>
+  );
+
+  return (
+    <div
+      className={styles.page}
+      data-testid="lecturer-seminar-workspace"
+    >
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Seminar & Workshop Management"
+        description={
+          canModify
+            ? 'Manage your scheduled seminars, share resources, and collect feedback.'
+            : 'Browse upcoming and completed seminars you have been invited to.'
+        }
+        actions={headerActions}
+        accent="var(--ars-lecturer)"
+      />
+
+      {/* BANNERS */}
+      {showSuccessBanner && (
+        <div
+          className={`${styles.banner} ${
+            bannerVariant === 'error' ? styles.bannerError : ''
+          }`}
+          role={bannerVariant === 'error' ? 'alert' : 'status'}
+        >
+          <span className={styles.bannerIcon}>
+            {bannerVariant === 'success' ? (
+              <Check size={14} strokeWidth={3} aria-hidden />
+            ) : (
+              <AlertTriangle size={14} aria-hidden />
+            )}
+          </span>
+          <div className={styles.bannerBody}>
+            <span className={styles.bannerTitle}>
+              {bannerVariant === 'success'
+                ? 'Seminar Created Successfully'
+                : 'Action Failed'}
+            </span>
+            <span className={styles.bannerText}>{bannerText}</span>
+          </div>
           <button
             type="button"
-            className={styles.refreshBtn}
-            onClick={() => { void refetch(); }}
-            disabled={isLoadingSeminars}
-            aria-label="Refresh seminars"
+            className={styles.bannerCloseBtn}
+            onClick={() => setShowSuccessBanner(false)}
+            aria-label="Dismiss"
           >
-            {isLoadingSeminars ? (
-              <Loader size={14} aria-hidden className={styles.spinningIcon} />
-            ) : (
-              <RefreshCw size={14} aria-hidden />
-            )}
-            {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
+            <X size={14} aria-hidden />
           </button>
-          {canModify && (
-            <button className={styles.createSeminarBtn} onClick={() => setShowCreateModal(true)}>
-              <Plus size={16} aria-hidden />
-              Create Seminar
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* SUCCESS TOAST BANNER (Frame 32 & 33) */}
-      {showSuccessBanner && (
-        <div className={styles.successToastBanner}>
-          <div className={styles.toastLeft}>
-            <span className={styles.toastCheckIcon}>
-              <Check size={14} strokeWidth={3} aria-hidden />
-            </span>
-            <div>
-              <span className={styles.toastTitle}>Seminar Created Successfully</span>
-              <p className={styles.toastSub}>{bannerText}</p>
-            </div>
-          </div>
-          <div className={styles.toastRight}>
-            <span className={styles.justNowText}>Just now</span>
-            <button
-              className={styles.toastCloseBtn}
-              onClick={() => setShowSuccessBanner(false)}
-              aria-label="Dismiss notification"
+      {loadSeminarsError && (
+        <ErrorBanner
+          tone="error"
+          title="Failed to load seminars"
+          message={loadSeminarsError}
+          retry={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
             >
-              <X size={14} aria-hidden />
-            </button>
+              Retry
+            </Button>
+          }
+        />
+      )}
+
+      {backendAvailability !== 'full' && (
+        <div className={styles.backendBanner} role="status" aria-live="polite">
+          <span className={styles.backendBannerIcon}>
+            <Lock size={14} aria-hidden />
+          </span>
+          <div className={styles.backendBannerBody}>
+            <span className={styles.backendBannerTitle}>
+              Seminar list unavailable for your role
+            </span>
+            <p className={styles.backendBannerText}>
+              The seminar list is currently only available to the seminar
+              organizer (Lecturer role). Showing the BE-wide seminar and
+              participant rows to a Researcher, Reviewer, or Graduate Student
+              would expose every participant's name and email across the
+              platform. Once the BE ships a participant-scoped read, this
+              surface will populate automatically — no FE change required.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Tab filter list */}
-      <div className={styles.tabsRow}>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'all' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All Seminars ({seminars.length})
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'upcoming' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('upcoming')}
-        >
-          Upcoming ({seminarCounts.upcoming})
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'completed' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('completed')}
-        >
-          Completed ({seminarCounts.completed})
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'drafts' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('drafts')}
-        >
-          Drafts
-        </button>
-
-        <span className={styles.showingCountRight}>
+      {/* Tabs row */}
+      <div className={styles.toolbarRow}>
+        <div className={styles.tabs} role="tablist" aria-label="Filter seminars">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t.key}
+              className={`${styles.tabBtn} ${
+                activeTab === t.key ? styles.tabActive : ''
+              }`}
+              onClick={() => setActiveTab(t.key)}
+            >
+              {t.label}
+              <span className={styles.tabCount}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+        <span className={styles.toolbarMeta}>
           Showing {filteredSeminars.length} of {seminars.length} seminars
         </span>
       </div>
 
-      {/* The hook uses organizer-scoped reads for Lecturers and the live
-          participant-scoped reads for other route-guarded business roles. */}
-      {backendAvailability !== 'full' && (
-        <div className={styles.backendAvailabilityBanner} role="status" aria-live="polite">
-          <span className={styles.backendAvailabilityIcon}>
-            <Lock size={14} aria-hidden />
-          </span>
-          <div className={styles.backendAvailabilityBody}>
-            <span className={styles.backendAvailabilityTitle}>
-              Seminar list unavailable for your role
-            </span>
-            <p className={styles.backendAvailabilityText}>
-              The seminar list is currently only available to the seminar organizer
-              (Lecturer role). Showing the BE-wide seminar and participant rows to a
-              Researcher, Reviewer, or Graduate Student would expose every
-              participant's name and email across the platform, which this build
-              refuses to do. The platform team has logged this as a backend gap
-              (see <code>docs/PUBLICATION_FLOW_API_BLOCKERS.md §3.8</code>). Once
-              the BE ships a participant-scoped read, this surface will populate
-              automatically — no code change is required on your end.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Seminar list */}
-      <div className={styles.seminarsList}>
-        {loadSeminarsError && (
-          <div className={styles.errorBanner} role="alert">
-            <span className={styles.errorBannerIcon}>
-              <AlertTriangle size={14} aria-hidden />
-              {loadSeminarsError}
-            </span>
-            <button
-              type="button"
-              className={styles.errorRetryBtn}
-              onClick={() => { void refetch(); }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {isLoadingSeminars ? (
-          <div className={styles.emptyDrafts}>
-            <Loader size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>Loading seminars…</h4>
-          </div>
-        ) : backendAvailability !== 'full' ? (
-          <div className={styles.emptyDrafts}>
-            <Lock size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>Seminars are temporarily unavailable</h4>
-            <p className={styles.emptyText}>
-              The backend did not provide a readable seminar list for this session.
-            </p>
-          </div>
-        ) : activeTab === 'drafts' ? (
-          <div className={styles.emptyDrafts}>
-            <FileText size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>No drafts</h4>
-            <p className={styles.emptyText}>Saved drafts will appear here.</p>
-          </div>
-        ) : filteredSeminars.length === 0 ? (
-          <div className={styles.emptyDrafts}>
-            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>No seminars yet</h4>
-            <p className={styles.emptyText}>
-              {canModify
-                ? 'Click "+ Create Seminar" to schedule your first one.'
-                : 'No seminars scheduled or invited at this time.'}
-            </p>
-          </div>
-        ) : (
-          filteredSeminars.map((sem) => {
-            const seminarStartDate = sem.startTime ? new Date(sem.startTime) : null;
+      {/* List */}
+      {isLoadingSeminars ? (
+        <SkeletonRow count={4} withHeader />
+      ) : backendAvailability !== 'full' ? (
+        <EmptyState
+          icon={<Lock size={20} aria-hidden />}
+          title="Seminars are temporarily unavailable"
+          description="The backend did not provide a readable seminar list for this session."
+        />
+      ) : activeTab === 'drafts' && filteredSeminars.length === 0 ? (
+        <EmptyState
+          icon={<FileText size={20} aria-hidden />}
+          title="No drafts"
+          description="Saved drafts will appear here once the BE exposes draft lifecycle."
+        />
+      ) : filteredSeminars.length === 0 ? (
+        <EmptyState
+          icon={<Inbox size={20} aria-hidden />}
+          title="No seminars yet"
+          description={
+            canModify
+              ? 'Click "Create Seminar" to schedule your first one.'
+              : 'No seminars scheduled or invited at this time.'
+          }
+        />
+      ) : (
+        <ul className={styles.list}>
+          {filteredSeminars.map((sem) => {
+            const seminarStartDate = sem.startTime
+              ? new Date(sem.startTime)
+              : null;
             const seminarEndDate = sem.endTime ? new Date(sem.endTime) : null;
             const dateLabel = seminarStartDate
               ? seminarStartDate.toISOString().split('T')[0]
               : '';
             const timeLabel =
-              seminarStartDate && seminarEndDate && !Number.isNaN(seminarStartDate.getTime())
+              seminarStartDate && seminarEndDate &&
+              !Number.isNaN(seminarStartDate.getTime())
                 ? `${seminarStartDate.toISOString().slice(11, 16)} – ${seminarEndDate
                     .toISOString()
                     .slice(11, 16)} (UTC)`
                 : '';
+            const isCompleted =
+              sem.effectiveStatus === 'COMPLETED' ||
+              sem.status === 'COMPLETED';
+            const owns = ownsSeminar(sem, currentUserId, currentRole);
+            const showAi = canModify && owns && isCompleted;
+            const showFeedbackOrganizer =
+              canModify && owns && isCompleted;
             return (
-            <div className={styles.seminarCard} key={sem.seminarId}>
-              {/* Top metadata */}
-<div className={styles.cardHeaderRow}>
-              <div className={styles.badgeRow}>
-                {sem.isNew && <span className={styles.newBadgePill}>NEW Just created</span>}
-                {sem.status === 'UPCOMING' && <span className={styles.statusUpcoming}>● UPCOMING</span>}
-                {sem.status === 'IN PROGRESS' && <span className={styles.statusInProgress}>● IN PROGRESS</span>}
-                {sem.status === 'COMPLETED' && <span className={styles.statusCompleted}>● COMPLETED</span>}
-                <span className={styles.seminarId}>ID: {formatSeminarId(sem.seminarId)}</span>
-              </div>
-              <div className={styles.dateMeta}>
-                <span>
-                  <Calendar size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                  {dateLabel}
-                </span>
-                <span style={{ marginLeft: '12px' }}>
-                  <Clock size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
-                  {timeLabel}
-                </span>
-              </div>
-            </div>
+                  <li className={styles.seminarCard} key={sem.seminarId}>
+                    <div className={styles.cardTopRow}>
+                      <div className={styles.metaRow}>
+                        <span className={styles.metaBadge}>
+                          ID {formatSeminarId(sem.seminarId)}
+                        </span>
+                      </div>
+                      <div className={styles.dateMeta}>
+                        <span className={styles.dateMetaInline}>
+                          <Calendar size={12} aria-hidden />
+                          {dateLabel}
+                        </span>
+                        <span className={styles.dateMetaInline}>
+                          <Clock size={12} aria-hidden />
+                          {timeLabel}
+                        </span>
+                      </div>
+                    </div>
 
-              {/* Title and description */}
-              <h3 className={styles.seminarTitle}>{sem.title}</h3>
-              <p className={styles.seminarDescription}>{sem.content || 'No description provided.'}</p>
+                    <h3 className={styles.cardTitle}>
+                      {formatBytesTitle(sem.title)}
+                    </h3>
+                    <p className={styles.cardDescription}>
+                      {sem.content || 'No description provided.'}
+                    </p>
 
-              {/* Capacity hint (BE-driven) */}
-              {sem.maxParticipants != null && sem.status !== 'COMPLETED' && (
-                <div className={styles.rosterRow}>
-                  <span className={styles.inviteCountText}>
-                    Up to {sem.maxParticipants} participants
-                  </span>
-                </div>
-              )}
-
-              {/* Google Meet Box — only shown when BE returns a valid HTTPS Google Meet URL */}
-              {isValidMeetLink(sem.onlineLink) && (
-                <div className={styles.meetBox}>
-                  <Video size={14} className={styles.meetIcon} aria-hidden />
-                  <a href={sem.onlineLink} className={styles.meetLinkText} target="_blank" rel="noopener noreferrer">
-                    {sem.onlineLink}
-                  </a>
-                </div>
-              )}
-
-              {/* Feedback progress bar — real counts from participant list */}
-              {sem.status === 'COMPLETED' && (
-                <div className={styles.feedbackProgressBlock}>
-                  <div className={styles.feedbackProgressLabels}>
-                    <span className={styles.progressLabel}>Feedback submissions</span>
-                    <span className={styles.progressText}>
-                      {sem.feedbackSubmitted}/{sem.feedbackTotal}
-                    </span>
-                  </div>
-                  <div className={styles.progressBg}>
-                    <div
-                      className={styles.progressFill}
-                      style={{
-                        width:
-                          sem.feedbackTotal > 0
-                            ? `${(sem.feedbackSubmitted / sem.feedbackTotal) * 100}%`
-                            : '0%',
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-
-              {/* Card Actions */}
-              <div className={styles.cardActionsRow}>
-                {(sem.effectiveStatus === 'COMPLETED' || sem.status === 'COMPLETED') ? (
-                  <>
-                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
-                      <button
-                        className={styles.viewNotesBtn}
-                        onClick={() => handleOpenAiSummary(sem)}
-                      >
-                        <Eye size={14} aria-hidden />
-                        View Notes
-                      </button>
+                    {sem.maxParticipants != null && !isCompleted && (
+                      <div className={styles.capacityRow}>
+                        Up to {sem.maxParticipants} participants
+                      </div>
                     )}
-                    {canModify && ownsSeminar(sem, currentUserId, currentRole) ? (
-                      <button
-                        className={styles.feedbackGradingBtn}
-                        onClick={() => handleOpenFeedbackModal(sem)}
-                      >
-                        <ClipboardList size={14} aria-hidden />
-                        Form Feedback & Grading
-                      </button>
-                    ) : (
-                      <button
-                        className={styles.feedbackGradingBtn}
-                        onClick={() => {
-                          setSelectedSeminarForAttendeeFeedback(sem);
-                          setShowAttendeeFeedbackModal(true);
-                        }}
-                      >
-                        <ClipboardList size={14} aria-hidden />
-                        Gửi Form Feedback
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className={styles.joinMeetBtn}
-                      onClick={() => window.open(sem.onlineLink, '_blank')}
-                      disabled={!isValidMeetLink(sem.onlineLink)}
-                    >
-                      <Video size={14} aria-hidden />
-                      Join Google Meet
-                    </button>
-                    {canModify && ownsSeminar(sem, currentUserId, currentRole) && (
-                      <button
-                        className={styles.sendInviteBtn}
-                        onClick={() => {
-                          navigator.clipboard.writeText(sem.onlineLink);
-                          announce('Invite link copied.');
-                        }}
-                        disabled={!isValidMeetLink(sem.onlineLink)}
-                      >
-                        <Mail size={14} aria-hidden />
-                        Send Invite Link
-                      </button>
-                    )}
-                    <button className={styles.feedbackDisabledBtn} disabled>
-                      Form Feedback (Available after completion)
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* FRAME 30: CREATE NEW ACADEMIC SEMINAR MODAL */}
+                    {isValidMeetLink(sem.onlineLink) && (
+                      <div className={styles.meetBox}>
+                        <Video size={14} aria-hidden />
+                        <a
+                          href={sem.onlineLink}
+                          className={styles.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {sem.onlineLink}
+                        </a>
+                      </div>
+                    )}
+
+                    {isCompleted && (
+                      <div className={styles.progressBlock}>
+                        <div className={styles.progressLabels}>
+                          <span>Feedback submissions</span>
+                          <span className={styles.progressValue}>
+                            {sem.feedbackSubmitted}/{sem.feedbackTotal}
+                          </span>
+                        </div>
+                        <div className={styles.progressBarBg}>
+                          <div
+                            className={styles.progressBarFill}
+                            style={{
+                              width:
+                                sem.feedbackTotal > 0
+                                  ? `${(sem.feedbackSubmitted /
+                                      sem.feedbackTotal) *
+                                      100}%`
+                                  : '0%',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={styles.cardActions}>
+                      {isCompleted ? (
+                        <>
+                          {showAi && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => handleOpenAiSummary(sem)}
+                            >
+                              <Eye size={14} aria-hidden />
+                              View Notes
+                            </button>
+                          )}
+                          {showFeedbackOrganizer ? (
+                            <button
+                              type="button"
+                              className={styles.actionBtnPrimary}
+                              onClick={() => handleOpenFeedbackModal(sem)}
+                            >
+                              <ClipboardList size={14} aria-hidden />
+                              Feedback &amp; Grading
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.actionBtnPrimary}
+                              onClick={() => {
+                                setSelectedSeminarForAttendeeFeedback(sem);
+                                setShowAttendeeFeedbackModal(true);
+                              }}
+                            >
+                              <ClipboardList size={14} aria-hidden />
+                              Submit Feedback
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.actionBtnPrimary}
+                            onClick={() =>
+                              window.open(sem.onlineLink, '_blank')
+                            }
+                            disabled={!isValidMeetLink(sem.onlineLink)}
+                          >
+                            <Video size={14} aria-hidden />
+                            Join Google Meet
+                          </button>
+                          {canModify && owns && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  sem.onlineLink ?? '',
+                                );
+                                announce('Invite link copied.');
+                              }}
+                              disabled={!isValidMeetLink(sem.onlineLink)}
+                            >
+                              <Mail size={14} aria-hidden />
+                              Send Invite Link
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.actionBtnGhost}
+                            disabled
+                          >
+                            Feedback (available after completion)
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+          })}
+        </ul>
+      )}
+
+      {/* CREATE SEMINAR MODAL */}
       {showCreateModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.createModalCard}>
-            <div className={styles.modalHeaderRow}>
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.modalHeaderIcon}>
+                <span className={styles.modalIconCircle}>
                   <Plus size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Create New Academic Seminar</h3>
-                  <span className={styles.modalSubtitle}>Fill in details — a Google Meet link will be auto-generated</span>
+                  <h3 className={styles.modalTitle}>
+                    Create New Academic Seminar
+                  </h3>
+                  <span className={styles.modalSubtitle}>
+                    A Google Meet link will be auto-generated.
+                  </span>
                 </div>
               </div>
               <button
+                type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCreateModal(false)}
                 aria-label="Close"
@@ -572,11 +647,16 @@ export const SeminarWorkspace = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateSeminarSubmit} className={styles.modalForm}>
-              {/* Seminar Name */}
+            <form
+              onSubmit={handleCreateSeminarSubmit}
+              className={styles.modalBody}
+            >
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Seminar Name</label>
+                <label className={styles.formLabel} htmlFor="seminar-name">
+                  Seminar Name
+                </label>
                 <input
+                  id="seminar-name"
                   type="text"
                   className={styles.formInput}
                   value={seminarName}
@@ -586,57 +666,68 @@ export const SeminarWorkspace = () => {
                 />
               </div>
 
-              {/* Date & Time */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Date & Time</label>
+                <label className={styles.formLabel} htmlFor="seminar-date">
+                  Date &amp; Time
+                </label>
                 <input
+                  id="seminar-date"
                   type="datetime-local"
                   className={styles.formInput}
-                  value={dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''}
+                  value={
+                    dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''
+                  }
                   min={minDateTime}
                   onChange={(e) => {
-                    const localValue = e.target.value; // "2026-07-29T10:00"
-                    if (!localValue) { setDateTime(''); return; }
-                    // Convert local time to an ISO string so the API and parseDateTimeRange stay compatible.
+                    const localValue = e.target.value;
+                    if (!localValue) {
+                      setDateTime('');
+                      return;
+                    }
                     setDateTime(new Date(localValue).toISOString());
                   }}
                   required
                 />
               </div>
 
-              {/* Seminar Details */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Seminar Details</label>
+                <label className={styles.formLabel} htmlFor="seminar-details">
+                  Seminar Details
+                </label>
                 <textarea
+                  id="seminar-details"
                   className={styles.formTextarea}
                   value={seminarDetails}
                   onChange={(e) => setSeminarDetails(e.target.value)}
                   placeholder="Deep dive into modular backend routing networks and high-concurrency telemetry."
-                  rows={4}
                   required
                 />
               </div>
 
-              {/* Guest Email Invitations */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>* Guest Email Invitations (comma-separated)</label>
-                <div className={styles.emailsInputBox}>
-                  <input
-                    type="text"
-                    className={styles.emailRawInput}
-                    value={emailInputText}
-                    onChange={(e) => setEmailInputText(e.target.value)}
-                    onKeyDown={handleAddEmail}
-                    placeholder="Type email and press Enter..."
-                  />
-                  <div className={styles.emailTagsContainer}>
+                <label className={styles.formLabel}>
+                  Guest Email Invitations
+                </label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  value={emailInputText}
+                  onChange={(e) => setEmailInputText(e.target.value)}
+                  onKeyDown={handleAddEmail}
+                  placeholder="Type email and press Enter…"
+                />
+                <span className={styles.helperText}>
+                  Press Enter to add each address.
+                </span>
+                {guestEmails.length > 0 && (
+                  <div className={styles.emailPills}>
                     {guestEmails.map((email) => (
                       <span key={email} className={styles.emailPill}>
-                        <Mail size={12} aria-hidden style={{ marginRight: 4 }} />
+                        <Mail size={12} aria-hidden />
                         {email}
                         <button
                           type="button"
-                          className={styles.removeEmailCross}
+                          className={styles.emailPillRemove}
                           onClick={() => handleRemoveEmail(email)}
                           aria-label={`Remove ${email}`}
                         >
@@ -645,77 +736,89 @@ export const SeminarWorkspace = () => {
                       </span>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Checkbox Send Reminder */}
-              <div className={styles.checkboxRow}>
+              <label className={styles.checkboxRow}>
                 <input
                   type="checkbox"
-                  id="sendReminderCheck"
                   className={styles.checkboxInput}
                   checked={sendReminder}
                   onChange={(e) => setSendReminder(e.target.checked)}
                 />
-                <label htmlFor="sendReminderCheck" className={styles.checkboxLabel}>
-                  <b>Send Email Reminder</b>
-                  <span className={styles.checkboxSub}>Auto-send an email reminder to guests 1 day before the seminar starts</span>
-                </label>
-              </div>
+                <span className={styles.checkboxLabel}>
+                  <strong>Send Email Reminder</strong>
+                  <span className={styles.checkboxSub}>
+                    Auto-send an email reminder to guests one day before the
+                    seminar starts.
+                  </span>
+                </span>
+              </label>
 
-              {/* Actions */}
-              <div className={styles.modalFormFooter}>
-                <button
-                  type="button"
-                  className={styles.modalCancelBtn}
+              <div className={styles.modalFooter}>
+                <Button
+                  variant="outline"
+                  size="md"
                   onClick={() => setShowCreateModal(false)}
                   disabled={isCreatingSeminar}
                 >
                   Cancel
-                </button>
-<button
-                type="submit"
-                className={styles.modalSubmitNavyBtn}
-                disabled={isCreatingSeminar}
-              >
-                {isCreatingSeminar ? (
-                  <Loader size={14} aria-hidden className={styles.spinningIcon} />
-                ) : (
-                  <Video size={14} aria-hidden />
-                )}
-                {isCreatingSeminar ? 'Creating…' : 'Generate & Create Seminar'}
-              </button>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  className={styles.actionBtnLecturer}
+                  leftIcon={
+                    isCreatingSeminar ? (
+                      <Loader
+                        size={14}
+                        className={styles.spinning}
+                        aria-hidden
+                      />
+                    ) : (
+                      <Video size={14} aria-hidden />
+                    )
+                  }
+                  disabled={isCreatingSeminar}
+                >
+                  {isCreatingSeminar
+                    ? 'Creating…'
+                    : 'Generate & Create Seminar'}
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* FRAME 31: SEMINAR CREATED & GOOGLE MEET LINK GENERATED MODAL */}
+      {/* GENERATED-MEET DIALOG */}
       {showGeneratedModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.generatedModalCard}>
-            <div className={styles.generatedIconCircle}>
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalCard}>
+            <span className={styles.generatedIcon}>
               <Check size={28} strokeWidth={3} aria-hidden />
-            </div>
-            <h3 className={styles.generatedTitle}>Seminar Created & Google Meet Link Generated!</h3>
+            </span>
+            <h3 className={styles.generatedTitle}>
+              Seminar Created &amp; Google Meet Link Generated
+            </h3>
             <p className={styles.generatedSub}>{seminarName}</p>
 
-            {/* Meet Link copy box */}
-            <div className={styles.generatedMeetCard}>
-              <div className={styles.generatedMeetLabel}>
-                <Video size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+            <div className={styles.meetCard}>
+              <span className={styles.meetCardLabel}>
+                <Video size={14} aria-hidden />
                 Google Meet Link
-              </div>
-              <div className={styles.generatedMeetInputRow}>
+              </span>
+              <div className={styles.meetCardRow}>
                 <input
                   type="text"
-                  className={styles.generatedMeetInput}
+                  className={styles.meetCardInput}
                   value={generatedMeetLink}
                   readOnly
                 />
                 <button
-                  className={styles.copyLinkBlueBtn}
+                  type="button"
+                  className={styles.copyBtn}
                   onClick={() => {
                     navigator.clipboard.writeText(generatedMeetLink);
                     announce('Google Meet link copied.');
@@ -727,58 +830,78 @@ export const SeminarWorkspace = () => {
               </div>
             </div>
 
-            {/* Yellow alert box */}
-            <div className={styles.yellowAlertBox}>
-              <div className={styles.yellowAlertTitleRow}>
-                <AlertTriangle size={14} className={styles.yellowAlertIcon} aria-hidden />
-                <span>Email invitations have been sent to invited guests. An automated reminder will be sent <b>1 day before</b> the seminar starts.</span>
+            <div className={styles.inviteAlert}>
+              <div className={styles.inviteAlertTitleRow}>
+                <AlertTriangle size={14} aria-hidden />
+                <span>
+                  Email invitations have been sent to invited guests. An
+                  automated reminder will be sent{' '}
+                  <strong>1 day before</strong> the seminar starts.
+                </span>
               </div>
-              <div className={styles.yellowSentText}>
-                <Mail size={14} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
-                Sent to: {guestEmails.join(', ')}
+              <div className={styles.inviteAlertSent}>
+                <Mail size={12} aria-hidden />
+                Sent to: {guestEmails.join(', ') || '(none)'}
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className={styles.generatedModalFooter}>
-              <button
-                className={styles.backToSeminarsBtn}
-                onClick={() => setShowGeneratedModal(false)}
+            <div className={styles.modalFooter}>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  setShowGeneratedModal(false);
+                  setSeminarName('');
+                  setSeminarDetails('');
+                  setDateTime('');
+                  setGuestEmails([]);
+                  setEmailInputText('');
+                  setGeneratedMeetLink('');
+                }}
               >
                 Back to Seminars
-              </button>
-              <button
-                className={styles.launchMeetGreenBtn}
-                onClick={() => window.open(generatedMeetLink, '_blank')}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Video size={14} aria-hidden />}
+                onClick={() =>
+                  window.open(generatedMeetLink, '_blank', 'noopener')
+                }
+                className={styles.actionBtnSuccess}
               >
-                <Video size={14} aria-hidden />
                 Launch Google Meet
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* FRAME 34: FEEDBACK & GRADING REVIEW MODAL */}
+      {/* FEEDBACK & GRADING MODAL */}
       {showFeedbackModal && selectedSeminarForFeedback && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.feedbackModalCard}>
-            {/* Header */}
-            <div className={styles.modalHeaderRow}>
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={`${styles.modalCard} ${styles.modalCardLarge}`}>
+            <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
-                <span className={styles.feedbackModalIcon}>
+                <span className={styles.modalIconCircle}>
                   <ClipboardList size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Feedback & Grading Review</h3>
+                  <h3 className={styles.modalTitle}>
+                    Feedback &amp; Grading Review
+                  </h3>
                   <span className={styles.modalSubtitle}>
-                    {selectedSeminarForFeedback.title} · {selectedSeminarForFeedback.startTime
-                      ? new Date(selectedSeminarForFeedback.startTime).toISOString().split('T')[0]
+                    {selectedSeminarForFeedback.title}
+                    {selectedSeminarForFeedback.startTime
+                      ? ` · ${new Date(selectedSeminarForFeedback.startTime)
+                          .toISOString()
+                          .split('T')[0]}`
                       : ''}
                   </span>
                 </div>
               </div>
               <button
+                type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowFeedbackModal(false)}
                 aria-label="Close"
@@ -787,161 +910,205 @@ export const SeminarWorkspace = () => {
               </button>
             </div>
 
-            {/* Stats Metrics Bar — computed from real participant list */}
-            <div className={styles.feedbackStatsGrid}>
-              <div className={styles.statBlock}>
-                <span className={styles.statLabel}>Total Invited</span>
-                <span className={styles.statVal}>{allParticipants.length}</span>
-              </div>
-              <div className={styles.statBlock}>
-                <span className={styles.statLabel}>Submitted</span>
-                <span className={styles.statVal}>
-                  {allParticipants.filter((p) => p.invitationStatus?.toLowerCase() === 'submitted').length}
-                </span>
-              </div>
-              <div className={styles.statBlock}>
-                <span className={styles.statLabel}>Pending</span>
-                <span className={styles.statVal}>
-                  {allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted').length}
-                </span>
-              </div>
-              <div className={styles.statBlock}>
-                <span className={styles.statLabel}>Avg. Score</span>
-                <span className={styles.statVal}>—</span>
-              </div>
-              <div className={styles.statBlockCompletion}>
-                <div className={styles.completionHeaderRow}>
-                  <span className={styles.statLabel}>Completion</span>
-                  <span className={styles.completionPercent}>
-                    {allParticipants.length > 0
-                      ? `${Math.round(
-                          (allParticipants.filter(
-                            (p) => p.invitationStatus?.toLowerCase() === 'submitted'
-                          ).length /
-                            allParticipants.length) *
-                            100
-                        )}%`
-                      : '—'}
+            <div className={styles.modalBody}>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Total Invited</span>
+                  <span className={styles.statValue}>
+                    {allParticipants.length}
                   </span>
                 </div>
-                <div className={styles.completionBarBg}>
-                  <div
-                    className={styles.completionBarFill}
-                    style={{
-                      width:
-                        allParticipants.length > 0
-                          ? `${
-                              (allParticipants.filter(
-                                (p) => p.invitationStatus?.toLowerCase() === 'submitted'
-                              ).length /
-                                allParticipants.length) *
-                              100
-                            }%`
-                          : '0%',
-                    }}
-                  ></div>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Submitted</span>
+                  <span className={styles.statValue}>
+                    {
+                      allParticipants.filter(
+                        (p) =>
+                          p.invitationStatus?.toLowerCase() === 'submitted',
+                      ).length
+                    }
+                  </span>
                 </div>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Pending</span>
+                  <span className={styles.statValue}>
+                    {
+                      allParticipants.filter(
+                        (p) =>
+                          p.invitationStatus?.toLowerCase() !== 'submitted',
+                      ).length
+                    }
+                  </span>
+                </div>
+                <div className={styles.statCell}>
+                  <span className={styles.statLabel}>Avg. Score</span>
+                  <span className={styles.statValue}>—</span>
+                </div>
+                <div className={styles.statWide}>
+                  <div className={styles.statWideHeader}>
+                    <span className={styles.statLabel}>Completion</span>
+                    <span className={styles.statPercent}>
+                      {allParticipants.length > 0
+                        ? `${Math.round(
+                            (allParticipants.filter(
+                              (p) =>
+                                p.invitationStatus?.toLowerCase() ===
+                                'submitted',
+                            ).length /
+                              allParticipants.length) *
+                              100,
+                          )}%`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className={styles.progressBarBg}>
+                    <div
+                      className={styles.progressBarFill}
+                      style={{
+                        width:
+                          allParticipants.length > 0
+                            ? `${
+                                (allParticipants.filter(
+                                  (p) =>
+                                    p.invitationStatus?.toLowerCase() ===
+                                    'submitted',
+                                ).length /
+                                  allParticipants.length) *
+                                100
+                              }%`
+                            : '0%',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.participantsWrap}>
+                {isLoadingParticipants ? (
+                  <div className={styles.participantsLoading}>
+                    <SkeletonRow count={3} />
+                  </div>
+                ) : allParticipants.length === 0 ? (
+                  <EmptyState
+                    icon={<InboxIcon size={18} aria-hidden />}
+                    title="No participants invited yet"
+                    description="Invite guests from the Create Seminar flow."
+                    compact
+                  />
+                ) : (
+                  <table className={styles.participantsTable}>
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th>Evaluation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allParticipants.map((p) => (
+                        <tr key={p.seminarParticipantId ?? p.userId}>
+                          <td>
+                            <div className={styles.participantCell}>
+                              <span className={styles.participantAvatar}>
+                                {(p.userFullName ?? p.userEmail ?? '??')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </span>
+                              <div>
+                                <span className={styles.participantName}>
+                                  {p.userFullName ?? p.userEmail ?? 'Unknown'}
+                                </span>
+                                {p.userEmail && (
+                                  <span className={styles.participantEmail}>
+                                    {p.userEmail}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            {p.invitationStatus?.toLowerCase() ===
+                            'submitted' ? (
+                              <span className={styles.metaBadge}>
+                                <Check
+                                  size={12}
+                                  strokeWidth={3}
+                                  aria-hidden
+                                />
+                                Submitted
+                              </span>
+                            ) : (
+                              <span
+                                className={`${styles.metaBadge} ${styles.pendingPill}`}
+                              >
+                                <Clock size={12} aria-hidden /> Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className={styles.evaluationCell}>
+                            {p.participantEvaluation ?? '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
 
-            {/* Participant Table — real API data */}
-            <div className={styles.studentGradesTableWrapper}>
-              {isLoadingParticipants ? (
-                <div className={styles.emptyDrafts}>
-                  <Loader size={20} className={styles.emptyIcon} aria-hidden />
-                  <span>Loading participants…</span>
-                </div>
-              ) : allParticipants.length === 0 ? (
-                <div className={styles.emptyDrafts}>
-                  <Inbox size={20} className={styles.emptyIcon} aria-hidden />
-                  <span>No participants invited yet.</span>
-                </div>
-              ) : (
-                <table className={styles.studentGradesTable}>
-                  <thead>
-                    <tr>
-                      <th>STUDENT</th>
-                      <th>STATUS</th>
-                      <th>EVALUATION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allParticipants.map((p) => (
-                      <tr key={p.seminarParticipantId ?? p.userId}>
-                        <td>
-                          <div className={styles.studentCellBlock}>
-                            <span className={styles.studentAvatarMini}>
-                              {(p.userFullName ?? p.userEmail ?? '??')
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </span>
-                            <div>
-                              <span className={styles.studentNameText}>
-                                {p.userFullName ?? p.userEmail ?? 'Unknown'}
-                              </span>
-                              {p.userEmail && (
-                                <span className={styles.studentEmailText}>
-                                  {p.userEmail}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          {p.invitationStatus?.toLowerCase() === 'submitted' ? (
-                            <span className={styles.submittedPill}>
-                              <Check size={12} strokeWidth={3} aria-hidden style={{ marginRight: 4 }} />
-                              SUBMITTED
-                            </span>
-                          ) : (
-                            <span className={styles.pendingPill}>
-                              <Clock size={12} aria-hidden style={{ marginRight: 4 }} />
-                              PENDING
-                            </span>
-                          )}
-                        </td>
-                        <td className={styles.commentText}>
-                          {p.participantEvaluation ?? '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className={styles.feedbackModalFooter}>
-              {canModify && ownsSeminar(selectedSeminarForFeedback, currentUserId, currentRole) && (
-                <button
-                  className={styles.remindPendingBtn}
-                  onClick={() =>
-                    selectedSeminarForFeedback &&
-                    void handleRemindPending(selectedSeminarForFeedback.seminarId)
-                  }
-                  disabled={
-                    isSendingReminder ||
-                    allParticipants.filter((p) => p.invitationStatus?.toLowerCase() !== 'submitted')
-                      .length === 0
-                  }
-                >
-                  {isSendingReminder ? (
-                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
-                  ) : (
-                    <Mail size={14} aria-hidden />
-                  )}
-                  Remind Pending ({allParticipants.length})
-                </button>
-              )}
-              <button className={styles.modalCloseNavyBtn} onClick={() => setShowFeedbackModal(false)}>
+            <div className={styles.modalFooter}>
+              {canModify &&
+                ownsSeminar(
+                  selectedSeminarForFeedback,
+                  currentUserId,
+                  currentRole,
+                ) && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    leftIcon={
+                      isSendingReminder ? (
+                        <Loader
+                          size={14}
+                          className={styles.spinning}
+                          aria-hidden
+                        />
+                      ) : (
+                        <Mail size={14} aria-hidden />
+                      )
+                    }
+                    onClick={() =>
+                      void handleRemindPending(
+                        selectedSeminarForFeedback.seminarId,
+                      )
+                    }
+                    disabled={
+                      isSendingReminder ||
+                      allParticipants.filter(
+                        (p) =>
+                          p.invitationStatus?.toLowerCase() !== 'submitted',
+                      ).length === 0
+                    }
+                  >
+                    {isSendingReminder
+                      ? 'Sending…'
+                      : `Remind Pending (${allParticipants.length})`}
+                  </Button>
+                )}
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowFeedbackModal(false)}
+                className={styles.actionBtnLecturer}
+              >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* AI Summary Modal — wired by Agent 23 */}
+      {/* AI SUMMARY MODAL */}
       {showAiModal && selectedSeminarForAi && (
         <AudioSummaryModal
           seminarId={selectedSeminarForAi.seminarId}
@@ -949,13 +1116,13 @@ export const SeminarWorkspace = () => {
           isOpen={showAiModal}
           onClose={() => setShowAiModal(false)}
           onSuccess={(id) => {
-            void refetch(); // Refresh so aiSummary appears on card
+            void refetch();
             void id;
           }}
         />
       )}
 
-      {/* Attendee / Student Feedback Modal */}
+      {/* ATTENDEE FEEDBACK MODAL */}
       {showAttendeeFeedbackModal && selectedSeminarForAttendeeFeedback && (
         <SeminarFeedbackModal
           isOpen={showAttendeeFeedbackModal}

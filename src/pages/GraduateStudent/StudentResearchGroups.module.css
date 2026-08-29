@@ -1,8 +1,13 @@
 /**
  * StudentResearchGroups — ARS Research Constellation
  * "Research Journey" — Graduate Student workspace.
- * Graduate Student role accent: var(--ars-gradstudent, #7c3aed)
+ *
+ * Graduate Student role accent: var(--ars-gradstudent, #1e3a8a)
  * Tokens are globally available via src/styles/ars-tokens.css
+ *
+ * This module only owns page-level layout (group list, workspace header,
+ * reports table). Shared surfaces (`PageHeader`, `EmptyState`, `ErrorBanner`,
+ * `SkeletonRow`, `Button`, `StatusBadge`) own their own styling.
  */
 
 @keyframes spin {
@@ -19,82 +24,13 @@
   color: var(--ars-ink);
 }
 
-/* ── Error Banner ──────────────────────────────────────── */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-error-bg);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  color: var(--ars-error);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
 .spin {
   animation: spin 0.9s linear infinite;
 }
 
-/* ── Overview Header ───────────────────────────────────── */
-.overviewHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-radius: var(--radius-xl);
-  padding: var(--space-5) var(--space-6);
-}
-
-.pageTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.pageSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: var(--space-1) 0 0;
-  line-height: var(--line-height-normal);
-}
-
-.refreshBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.refreshBtn:hover {
-  border-color: var(--ars-ink-muted);
-  color: var(--ars-ink);
-}
-
-.refreshBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
-}
-
-.refreshBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* ── Back Link Button ──────────────────────────────────── */
+.backLinkBtn {
+  align-self: flex-start;
 }
 
 /* ── Section Card ──────────────────────────────────────── */
@@ -228,147 +164,15 @@
   margin: var(--space-1) 0 0;
 }
 
-.openWorkspaceBtn {
-  background: var(--ars-gradstudent);
-  border: none;
-  color: #ffffff;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-decoration: none;
-}
-
-.openWorkspaceBtn:hover {
-  background: var(--ars-gradstudent-mid);
-}
-
-.openWorkspaceBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
-}
-
-/* ── Empty Card ────────────────────────────────────────── */
-.emptyCard {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-style: dashed;
-  color: var(--ars-ink-muted);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-}
-
-.emptyCard svg {
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-
-/* ── Workspace View ────────────────────────────────────── */
-.backLinkBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: none;
-  border: none;
-  color: var(--ars-gradstudent);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  padding: 0;
-  width: fit-content;
-  font-family: var(--font-family-ui);
-  transition: color var(--transition-fast);
-}
-
-.backLinkBtn:hover {
-  color: var(--ars-gradstudent-mid);
-  text-decoration: underline;
-}
-
-.backLinkBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
-}
-
-.workspaceHeaderCard {
+/* ── Card (workspace sub-sections) ────────────────────── */
+.card {
   background: var(--ars-paper-alt);
   border: var(--border-thin);
   border-radius: var(--radius-xl);
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-5);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--space-4);
-}
-
-.workspaceHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.workspaceIconCircle {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-lg);
-  background: var(--ars-gradstudent-light);
-  color: var(--ars-gradstudent);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.workspaceTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.workspaceSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: var(--space-1) 0 0;
-}
-
-.primaryBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-gradstudent);
-  border: none;
-  color: #ffffff;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.primaryBtn:hover {
-  background: var(--ars-gradstudent-mid);
-}
-
-.primaryBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
 }
 
 /* ── Table Card ────────────────────────────────────────── */
@@ -404,7 +208,6 @@
   gap: var(--space-2);
 }
 
-.searchField,
 .filterField {
   display: inline-flex;
   align-items: center;
@@ -415,12 +218,10 @@
   padding: var(--space-2) var(--space-3);
 }
 
-.searchField:focus-within,
 .filterField:focus-within {
   border-color: var(--ars-gradstudent);
 }
 
-.searchField input,
 .filterField select {
   border: 0;
   background: transparent;
@@ -451,6 +252,9 @@
   border-bottom: 2px solid var(--ars-network);
   text-align: left;
   white-space: nowrap;
+  background: var(--ars-paper-alt);
+  position: sticky;
+  top: 0;
 }
 
 .table td {
@@ -459,6 +263,7 @@
   color: var(--ars-ink);
   border-bottom: 1px solid var(--ars-network);
   vertical-align: middle;
+  height: var(--space-9);
 }
 
 .table tbody tr:last-child td {
@@ -505,41 +310,6 @@
   line-height: var(--line-height-normal);
 }
 
-.statusBadge {
-  display: inline-flex;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.statusWaiting {
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-  border: 1px solid var(--ars-network);
-}
-
-.statusSubmitted {
-  background: var(--ars-info-bg);
-  color: var(--ars-info);
-  border: 1px solid var(--ars-info);
-}
-
-.statusEvaluated {
-  background: var(--ars-success-bg);
-  color: var(--ars-success);
-  border: 1px solid var(--ars-success);
-}
-
-.statusRejected {
-  background: var(--ars-error-bg);
-  color: var(--ars-error);
-  border: 1px solid var(--ars-error);
-}
-
 .rowActions {
   display: inline-flex;
   align-items: center;
@@ -568,30 +338,6 @@
 
 .linkBtn:focus-visible {
   outline: 2px solid var(--ars-info);
-  outline-offset: 2px;
-}
-
-.resubmitBtn {
-  background: var(--ars-warning);
-  border: none;
-  color: #ffffff;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-}
-
-.resubmitBtn:hover {
-  background: var(--ars-warning-mid);
-}
-
-.resubmitBtn:focus-visible {
-  outline: 2px solid var(--ars-warning);
   outline-offset: 2px;
 }
 
@@ -628,20 +374,9 @@
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .overviewHeader,
-  .workspaceHeaderCard {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .groupCard {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .openWorkspaceBtn {
-    align-self: stretch;
-    justify-content: center;
   }
 
   .tableHeader {

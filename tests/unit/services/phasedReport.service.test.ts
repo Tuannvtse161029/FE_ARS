@@ -84,6 +84,8 @@ describe('phasedReportService', () => {
         capacityEvaluation: null,
         finalOutcomeEvaluation: 'Solid work',
         lectureFeedback: 9,
+        phaseNumber: null,
+        milestoneTitle: null,
         submittedAt: null,
         status: 'EVALUATED',
       });
@@ -102,6 +104,8 @@ describe('phasedReportService', () => {
         capacityEvaluation: null,
         finalOutcomeEvaluation: 'OK',
         lectureFeedback: null,
+        phaseNumber: null,
+        milestoneTitle: null,
         submittedAt: null,
         status: 'EVALUATED',
       });
@@ -301,23 +305,17 @@ describe('phasedReportService', () => {
   });
 
   describe('listReportsForGroup', () => {
-    it('issues GET /api/PhasedReport with the BE filter param', async () => {
+    it('uses the dedicated group-scoped endpoint', async () => {
       getMock.mockResolvedValueOnce({
-        data: [
-          { id: 1, researchGroupId: 7, status: 'SUBMITTED' },
-          { id: 2, researchGroupId: 8, status: 'SUBMITTED' },
-        ],
+        data: [{ id: 1, researchGroupId: 7, status: 'SUBMITTED' }],
       });
       const list = await listReportsForGroup(7);
-      expect(getMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/PhasedReport'),
-        expect.objectContaining({ params: { researchGroupId: 7 } }),
-      );
+      expect(getMock).toHaveBeenCalledWith('/api/PhasedReport/group/7');
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe(1);
     });
 
-    it('filters server-side leakage client-side defensively', async () => {
+    it('maps every row returned by the scoped endpoint', async () => {
       getMock.mockResolvedValueOnce({
         data: [
           { id: 1, researchGroupId: 7 },
@@ -325,7 +323,7 @@ describe('phasedReportService', () => {
         ],
       });
       const list = await listReportsForGroup(7);
-      expect(list).toHaveLength(1);
+      expect(list).toHaveLength(2);
     });
   });
 

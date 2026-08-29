@@ -47,11 +47,13 @@ import { LearningMaterialModal } from '../../components/lecturer/LearningMateria
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
-import styles from './ResearchGroup.module.css';
+import styles from './ResearchTopics.module.css';
 
 interface BannerState {
   visible: boolean;
@@ -313,41 +315,45 @@ export const ResearchTopicsPage = () => {
 
   return (
     <div className={styles.researchGroupPage} data-testid="lecturer-research-topics">
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Research Topics"
+        description="Create, edit and assign research topics. Topics are the canonical source of truth — research groups reference them."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={
+                isLoading ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <RefreshCw size={14} aria-hidden />
+                )
+              }
+              onClick={() => void handleRefresh()}
+              disabled={isLoading}
+              aria-label="Refresh"
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<Plus size={16} aria-hidden />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Research Topic
+            </Button>
+          </>
+        }
+        accent="var(--ars-lecturer)"
+      />
+
       {/* Breadcrumbs */}
       <div className={styles.breadcrumbs}>
         Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
         <span className={styles.activeBreadcrumb}>Research Topics</span>
-      </div>
-
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Research Topics</h1>
-          <p className={styles.pageSubtitle}>
-            Create, edit and assign research topics. Topics are the canonical
-            source of truth — research groups reference them.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => void handleRefresh()}
-            disabled={isLoading}
-            aria-label="Refresh"
-          >
-            <RefreshCw size={14} aria-hidden />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={16} aria-hidden />
-            Create Research Topic
-          </button>
-        </div>
       </div>
 
       {/* BANNER */}
@@ -632,7 +638,6 @@ export const ResearchTopicsPage = () => {
               <div className={styles.modalTitleBlock}>
                 <span
                   className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
                 >
                   <Lightbulb size={18} aria-hidden />
                 </span>
@@ -756,10 +761,7 @@ export const ResearchTopicsPage = () => {
           <div className={styles.modalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span
-                  className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
-                >
+                <span className={styles.modalIconCircle}>
                   <Lightbulb size={18} aria-hidden />
                 </span>
                 <div>

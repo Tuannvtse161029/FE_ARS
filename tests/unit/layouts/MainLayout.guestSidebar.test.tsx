@@ -109,8 +109,7 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
  *     by an Admin (`isActive !== true`) is treated as a Guest.
  *   - Guest sidebar MUST show only `Forums`.
  *   - Guest sidebar MUST NOT expose the role's workspace nav (e.g. Paper,
- *     Reviewers, Research Groups, Wallet, Premium Package, Submit Report,
- *     Seminar, etc.) — even though the verified-guard would bounce the user
+ *     Reviewers, Research Groups, Wallet, Submit Report, Seminar, etc.) — even though the verified-guard would bounce the user
  *     off those routes, the sidebar should not advertise them in the first
  *     place.
  *   - Guest header pill MUST display "Guest" instead of the roleName the BE
@@ -165,14 +164,6 @@ describe('MainLayout — Guest (unverified) sidebar', () => {
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).toBeNull();
   });
 
-  it('Guest sidebar does NOT expose Premium Package', () => {
-    setMockAuth({ role: 'Researcher', isActive: false });
-    renderMainLayout(ROUTES.FORUM);
-
-    expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).toBeNull();
-    expect(findSidebarLinkByText('Premium Package')).toBeNull();
-  });
-
   it('Guest sidebar has exactly one sidebar entry (Forums)', () => {
     setMockAuth({ role: 'Researcher', isActive: false });
     renderMainLayout(ROUTES.FORUM);
@@ -207,8 +198,7 @@ describe('MainLayout — Guest (unverified) sidebar', () => {
     setMockAuth({ role: 'Researcher', isActive: true, userId: 99 });
     renderMainLayout(ROUTES.FORUM);
 
-    expect(findSidebarLinkByHref(ROUTES.PAPERS)).not.toBeNull();
-    expect(findSidebarLinkByHref(ROUTES.REVIEWERS)).not.toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.RESEARCHER_SUBMISSIONS)).not.toBeNull();
   });
 
   // Guests have no wallet row until an Admin approves their role request,

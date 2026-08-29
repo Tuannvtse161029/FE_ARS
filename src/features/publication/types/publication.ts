@@ -74,7 +74,6 @@ export interface PublicationPaper {
   reviewerId?: number;
   reviewDeadline?: string;
   assignmentCreatedAt?: string;
-  reviewFee?: number | null;
   reviewType?: string | null;
   aiRecommended?: boolean | null;
 }

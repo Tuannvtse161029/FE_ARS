@@ -2,11 +2,9 @@
  * AdminDashboard — System Observatory
  * ARS Research Constellation — Admin Landing Page
  *
- * Features:
- * - System health metrics, approval queues, platform activity
- * - Admin violet accent
- * - Role-specific section markers
- * - Editorial typography
+ * Workspace hero + metric cards + analytics charts + activity feed.
+ * Recharts are used only when the API returns data; the surface degrades
+ * to honest unavailable states on failure.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Users as UsersIcon, FileText as PapersIcon } from 'lucide-react';
@@ -44,8 +42,6 @@ const RANGE_LABEL: Record<Range, string> = {
 };
 
 const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
-const RECENT_REQUESTS_UNAVAILABLE =
-  'Role requests could not be loaded. The Admin API contract may have changed.';
 
 const formatNumber = (n: number) =>
   new Intl.NumberFormat('vi-VN').format(n);
@@ -87,7 +83,7 @@ const WidgetErrorState = ({
   >
     <AlertTriangle size={14} />
     <span>{message}</span>
-    <button type="button" className={styles.retryBtn} onClick={onRetry}>
+    <button type="button" onClick={onRetry}>
       Retry
     </button>
   </div>
@@ -108,9 +104,9 @@ const ChartCard = ({
   error: string | null;
   onRetry: () => void;
 }) => (
-  <div className={styles.chartSection}>
+  <div className={styles.chartCard}>
     <div className={styles.chartHeader}>
-      <span className={styles.chartTitle}>{title}</span>
+      <h3 className={styles.chartTitle}>{title}</h3>
     </div>
     {error ? (
       <WidgetErrorState
@@ -177,7 +173,6 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
   const [loadingRevenue, setLoadingRevenue] = useState(true);
 
   const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
-  const [_recentRequestsError, setRecentRequestsError] = useState<string | null>(null);
   const [loadingRecentRequests, setLoadingRecentRequests] = useState(true);
 
   const [range, setRange] = useState<Range>('monthly');
@@ -230,16 +225,12 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
 
   const loadRecentRequests = useCallback(async (signal: AbortSignal) => {
     setLoadingRecentRequests(true);
-    setRecentRequestsError(null);
     try {
       const data = await adminService.getRoleRequests(signal);
       if (!signal.aborted) setRecentRequests(data.slice(0, 8));
     } catch (err) {
       logDiag('recent role requests failed', err);
-      if (!signal.aborted) {
-        setRecentRequests([]);
-        setRecentRequestsError(RECENT_REQUESTS_UNAVAILABLE);
-      }
+      if (!signal.aborted) setRecentRequests([]);
     } finally {
       if (!signal.aborted) setLoadingRecentRequests(false);
     }
@@ -287,7 +278,7 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     title: r.userName,
     meta: r.email,
     tag: (
-      <span className={`${styles.statusTag} ${styles[`statusTag${r.status}`]}`}>
+      <span className={`${styles.statusTag} ${styles[`statusTag${r.status}`] ?? ''}`}>
         {r.status}
       </span>
     ),
@@ -322,40 +313,40 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
 
       <div className={styles.content}>
         {/* ── Metric Row ─────────────────────────────── */}
-        <div className={styles.metricGrid}>
-          {summaryError ? (
+        {summaryError ? (
+          <div className={styles.metricGrid}>
             <WidgetErrorState
               message={summaryError}
               onRetry={() => void loadAll()}
               testId="summary-error"
             />
-          ) : (
-            <>
-              <MetricCard
-                label="Total Members"
-                value={
-                  loadingSummary || summary === null
-                    ? '—'
-                    : formatNumber(summary.totalMembers)
-                }
-                annotation="Cumulative registered users"
-                icon={<UsersIcon size={16} />}
-                accent={ROLE_ACCENT}
-              />
-              <MetricCard
-                label="Scientific Papers"
-                value={
-                  loadingSummary || summary === null
-                    ? '—'
-                    : formatNumber(summary.totalPapers)
-                }
-                annotation="Across all majors & sub-fields"
-                icon={<PapersIcon size={16} />}
-                accent={ROLE_ACCENT}
-              />
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className={styles.metricGrid}>
+            <MetricCard
+              label="Total Members"
+              value={
+                loadingSummary || summary === null
+                  ? '—'
+                  : formatNumber(summary.totalMembers)
+              }
+              annotation="Cumulative registered users"
+              icon={<UsersIcon size={16} />}
+              accent={ROLE_ACCENT}
+            />
+            <MetricCard
+              label="Scientific Papers"
+              value={
+                loadingSummary || summary === null
+                  ? '—'
+                  : formatNumber(summary.totalPapers)
+              }
+              annotation="Across all majors & sub-fields"
+              icon={<PapersIcon size={16} />}
+              accent={ROLE_ACCENT}
+            />
+          </div>
+        )}
 
         {/* ── Charts Row ─────────────────────────────── */}
         <div className={styles.chartsRow}>

@@ -36,7 +36,9 @@ import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
-import styles from './ResearchGroup.module.css';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
+import styles from './LearningMaterials.module.css';
 
 const formatTitle = (m: LearningMaterial): string => {
   if (m.title && m.title.trim().length > 0) return m.title.trim();
@@ -200,39 +202,44 @@ export const LecturerLearningMaterialsPage = () => {
       className={styles.researchGroupPage}
       data-testid="lecturer-learning-materials"
     >
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Learning Materials"
+        description="Reference PDFs and resources linked to your research topics. Attach a Firebase Storage URL for each material."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={
+                isLoading ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <RefreshCw size={14} aria-hidden />
+                )
+              }
+              onClick={() => void handleRefresh()}
+              disabled={isLoading}
+              aria-label="Refresh"
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<Plus size={16} aria-hidden />}
+              onClick={() => setShowForm((v) => !v)}
+            >
+              {showForm ? 'Hide form' : 'Add Material'}
+            </Button>
+          </>
+        }
+        accent="var(--ars-lecturer)"
+      />
+
       <div className={styles.breadcrumbs}>
         Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
         <span className={styles.activeBreadcrumb}>Learning Materials</span>
-      </div>
-
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Learning Materials</h1>
-          <p className={styles.pageSubtitle}>
-            Reference PDFs and resources linked to your research topics.
-            Attach a Firebase Storage URL for each material.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => void handleRefresh()}
-            disabled={isLoading}
-            aria-label="Refresh"
-          >
-            <RefreshCw size={14} aria-hidden />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => setShowForm((v) => !v)}
-          >
-            <Plus size={16} aria-hidden />
-            {showForm ? 'Hide form' : 'Add Material'}
-          </button>
-        </div>
       </div>
 
       {banner.visible && (

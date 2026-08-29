@@ -30,6 +30,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
 import {
@@ -43,6 +44,11 @@ import { validateVietnameseName } from '../../utils/validationRules';
 import { useFollowCounts } from '../../hooks/useFollowers';
 import { followerService } from '../../services/follower.service';
 import { FollowListModal } from '../../components/profile/FollowListModal';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { EmptyState } from '../../components/EmptyState';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -406,18 +412,22 @@ export const Profile = () => {
   if (isUnauthenticated) {
     return (
       <div className={styles.page} style={accentStyle}>
-        <div className={styles.breadcrumbs} role="navigation">
-          Home <span aria-hidden>/</span>{' '}
-          <span className={styles.breadcrumbsActive}>Profile</span>
-        </div>
-        <div className={styles.stateBlock} role="alert">
-          <span className={styles.emptyBadge}>Authentication required</span>
-          <h1 className={styles.stateTitle}>Sign in to view your profile</h1>
-          <p className={styles.stateBody}>
-            Your academic profile is private and only available once you have signed in.
-            Please return to the sign-in page and authenticate to continue.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Authentication required"
+          title="Sign in to view your profile"
+          description="Your academic profile is private and only available once you have signed in. Please return to the sign-in page and authenticate to continue."
+          breadcrumbs={
+            <>
+              Home <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>Profile</span>
+            </>
+          }
+        />
+        <EmptyState
+          icon={null}
+          title="Profile unavailable"
+          description="Authenticate to continue."
+        />
       </div>
     );
   }
@@ -425,17 +435,18 @@ export const Profile = () => {
   if (isLoading && !profile) {
     return (
       <div className={styles.page} style={accentStyle}>
-        <div className={styles.breadcrumbs} role="navigation">
-          Home <span aria-hidden>/</span>{' '}
-          <span className={styles.breadcrumbsActive}>Profile</span>
-        </div>
-        <div className={styles.stateBlock} role="status" aria-live="polite">
-          <div className={styles.spinner} aria-hidden />
-          <h1 className={styles.stateTitle}>Loading your profile…</h1>
-          <p className={styles.stateBody}>
-            Fetching the latest profile information from the ARS platform.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Profile"
+          title={isOwner ? 'Your profile' : `${roleLabel} profile`}
+          description="Fetching the latest profile information from the ARS platform."
+          breadcrumbs={
+            <>
+              Home <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>Profile</span>
+            </>
+          }
+        />
+        <SkeletonRow count={6} rowHeight={48} gap={12} withHeader />
       </div>
     );
   }
@@ -443,25 +454,31 @@ export const Profile = () => {
   if (error && !profile) {
     return (
       <div className={styles.page} style={accentStyle}>
-        <div className={styles.breadcrumbs} role="navigation">
-          Home <span aria-hidden>/</span>{' '}
-          <span className={styles.breadcrumbsActive}>Profile</span>
-        </div>
-        <div className={`${styles.stateBlock} ${styles.stateError}`} role="alert">
-          <span className={styles.emptyBadge}>Couldn't load profile</span>
-          <h1 className={styles.stateTitle}>We couldn't load your profile</h1>
-          <p className={styles.stateBody}>{error.message}</p>
-          <div className={styles.stateActions}>
-            <button
-              type="button"
-              className={styles.primaryButton}
+        <PageHeader
+          eyebrow="Profile"
+          title={isOwner ? 'Your profile' : `${roleLabel} profile`}
+          breadcrumbs={
+            <>
+              Home <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>Profile</span>
+            </>
+          }
+        />
+        <ErrorBanner
+          tone="error"
+          title="Couldn't load profile"
+          message={error.message}
+          retry={
+            <Button
+              size="sm"
+              variant="outline"
               onClick={handleRefresh}
               data-testid="profile-retry-button"
             >
               Retry
-            </button>
-          </div>
-        </div>
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -479,52 +496,62 @@ export const Profile = () => {
 
   return (
     <div className={styles.page} style={accentStyle}>
-      <div className={styles.breadcrumbs} role="navigation">
-        Home <span aria-hidden>/</span>{' '}
-        <span className={styles.breadcrumbsActive}>{isOwner ? 'Profile & Account Settings' : `${displayName}'s Profile`}</span>
-      </div>
-
-      <header className={styles.header}>
-        <div className={styles.headerCopy}>
-          <p className={styles.eyebrow}>{isOwner ? roleMeta.eyebrow : 'Professional Showcase'}</p>
-          <h1 className={styles.title}>{isOwner ? roleMeta.title : displayName}</h1>
-          <p className={styles.subtitle}>{isOwner ? roleMeta.subtitle : 'Public overview of academic publications, research expertise, and citations.'}</p>
-        </div>
-        <div className={styles.headerActions}>
-          {mode === 'view' && (
+      <PageHeader
+        eyebrow={isOwner ? roleMeta.eyebrow : 'Professional Showcase'}
+        title={isOwner ? roleMeta.title : displayName}
+        description={
+          isOwner
+            ? roleMeta.subtitle
+            : 'Public overview of academic publications, research expertise, and citations.'
+        }
+        accent={roleMeta.accentVar}
+        breadcrumbs={
+          <>
+            Home <span aria-hidden>/</span>{' '}
+            <span className={styles.breadcrumbsActive}>
+              {isOwner ? 'Profile & Account Settings' : `${displayName}'s Profile`}
+            </span>
+          </>
+        }
+        actions={
+          mode === 'view' ? (
             <>
-              <button
-                type="button"
-                className={styles.secondaryButton}
+              <Button
+                variant="outline"
+                size="md"
+                leftIcon={<RefreshCw size={14} />}
                 onClick={handleRefresh}
                 disabled={isLoading}
-                data-testid="profile-refresh-button"
               >
                 {isLoading ? 'Refreshing…' : 'Refresh'}
-              </button>
+              </Button>
               {isOwner ? (
-                <button
-                  type="button"
-                  className={styles.primaryButton}
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={handleEnterEdit}
                   data-testid="profile-edit-button"
                 >
                   Edit profile
-                </button>
-              ) : authenticatedUserId && (
-                <button
-                  type="button"
-                  className={isFollowingTarget ? styles.secondaryButton : styles.primaryButton}
+                </Button>
+              ) : authenticatedUserId ? (
+                <Button
+                  variant={isFollowingTarget ? 'outline' : 'primary'}
+                  size="md"
                   onClick={handleToggleFollowTarget}
                   disabled={isFollowActionLoading}
                 >
-                  {isFollowActionLoading ? '…' : isFollowingTarget ? 'Following' : '+ Follow'}
-                </button>
-              )}
+                  {isFollowActionLoading
+                    ? '…'
+                    : isFollowingTarget
+                      ? 'Following'
+                      : '+ Follow'}
+                </Button>
+              ) : null}
             </>
-          )}
-        </div>
-      </header>
+          ) : null
+        }
+      />
 
       <section className={styles.identityCard} aria-label="Account identity">
         <div className={styles.avatar} aria-label={`Avatar for ${displayName}`}>
@@ -545,95 +572,61 @@ export const Profile = () => {
               {displayEmail}
             </p>
           ) : null}
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', fontSize: '0.875rem', color: '#64748b' }}>
+          <div className={styles.followRow}>
             <button
               type="button"
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '2px 6px',
-                margin: '-2px -6px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                font: 'inherit',
-                color: 'inherit',
-                transition: 'background-color 0.15s ease',
-              }}
+              className={styles.followLink}
               onClick={() => {
                 setFollowModalTab('followers');
                 setIsFollowModalOpen(true);
               }}
               title="View your followers"
             >
-              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followersCount}</strong> Followers
+              <strong>{followersCount}</strong> Followers
             </button>
-            <span>·</span>
+            <span className={styles.followDot} aria-hidden>·</span>
             <button
               type="button"
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '2px 6px',
-                margin: '-2px -6px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                font: 'inherit',
-                color: 'inherit',
-                transition: 'background-color 0.15s ease',
-              }}
+              className={styles.followLink}
               onClick={() => {
                 setFollowModalTab('following');
                 setIsFollowModalOpen(true);
               }}
               title="View people you follow"
             >
-              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{followingCount}</strong> Following
+              <strong>{followingCount}</strong> Following
             </button>
           </div>
         </div>
       </section>
 
       {showSuccess && (
-        <div
-          className={`${styles.feedback} ${styles.feedbackSuccess}`}
-          role="status"
-          data-testid="profile-success-banner"
-        >
-          <div>
-            <p className={styles.feedbackTitle}>Profile updated.</p>
-            <p className={styles.feedbackBody}>
-              Your academic profile is saved. Other users will see the updated details on
-              your next interaction.
-            </p>
-          </div>
+        <div data-testid="profile-success-banner">
+          <ErrorBanner
+            tone="info"
+            title="Profile updated"
+            message="Your academic profile is saved. Other users will see the updated details on your next interaction."
+          />
         </div>
       )}
 
       {saveError && mode === 'edit' && (
-        <div
-          className={`${styles.feedback} ${styles.feedbackError}`}
-          role="alert"
-          data-testid="profile-save-error-banner"
-        >
-          <div>
-            <p className={styles.feedbackTitle}>We couldn't save your changes.</p>
-            <p className={styles.feedbackBody}>{saveError.message}</p>
-          </div>
+        <div data-testid="profile-save-error-banner">
+          <ErrorBanner
+            tone="error"
+            title="We couldn't save your changes"
+            message={saveError.message}
+          />
         </div>
       )}
 
       {error && profile && (
-        <div
-          className={`${styles.feedback} ${styles.feedbackError}`}
-          role="alert"
-          data-testid="profile-refresh-error-banner"
-        >
-          <div>
-            <p className={styles.feedbackTitle}>Refresh failed.</p>
-            <p className={styles.feedbackBody}>
-              Showing the last cached profile. {error.message}
-            </p>
-          </div>
+        <div data-testid="profile-refresh-error-banner">
+          <ErrorBanner
+            tone="warning"
+            title="Refresh failed"
+            message={`Showing the last cached profile. ${error.message}`}
+          />
         </div>
       )}
 
@@ -1112,23 +1105,26 @@ const ProfileEditForm = ({
               ? 'Unsaved changes.'
               : 'No changes to save.'}
         </span>
-        <button
+        <Button
           type="button"
-          className={styles.secondaryButton}
+          variant="outline"
+          size="md"
           onClick={onCancel}
           disabled={isSaving}
           data-testid="profile-cancel-button"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className={styles.primaryButton}
+          variant="primary"
+          size="md"
           disabled={isSaving || hasValidationErrors || !hasChanges}
           data-testid="profile-save-button"
+          isLoading={isSaving}
         >
-          {isSaving ? 'Saving…' : 'Save changes'}
-        </button>
+          Save changes
+        </Button>
       </div>
     </form>
   );

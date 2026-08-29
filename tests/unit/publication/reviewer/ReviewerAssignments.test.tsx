@@ -29,7 +29,6 @@ const buildAssignedPaper = (
   submittedAt: '2026-08-05T00:00:00.000Z',
   assignmentCreatedAt: '2026-08-06T00:00:00.000Z',
   reviewDeadline: '2026-08-20T00:00:00.000Z',
-  reviewFee: 50000,
   reviewType: 'Editorial',
   aiRecommended: true,
   reviewerIdentityPublic: false,
@@ -69,12 +68,11 @@ describe('ReviewerAssignments list', () => {
     expect(within(row).getByText('Assigned manuscript for review')).toBeInTheDocument();
     expect(within(row).getByText(/Under Review/i)).toBeInTheDocument();
     expect(within(row).getByText(/Ready for evaluation/i)).toBeInTheDocument();
-    expect(within(row).getByText(/Assigned: 2026-08-06/i)).toBeInTheDocument();
-    expect(within(row).getByText(/Deadline: 2026-08-20/i)).toBeInTheDocument();
-    expect(row).toHaveTextContent(/Review type:\s*Editorial/i);
-    expect(row).toHaveTextContent(/Fee:\s*50.000 VND/i);
+    expect(within(row).getByText('2026-08-06')).toBeInTheDocument();
+    expect(within(row).getByText('2026-08-20')).toBeInTheDocument();
+    expect(row).toHaveTextContent(/Editorial/i);
     expect(row).toHaveTextContent(/AI recommended:\s*Yes/i);
-    expect(within(row).getByRole('link', { name: /Open assignment/i })).toHaveAttribute(
+    expect(within(row).getByRole('link', { name: /Assigned manuscript for review/i })).toHaveAttribute(
       'href',
       '/reviewer/assignments/assigned-1',
     );
@@ -87,9 +85,7 @@ describe('ReviewerAssignments list', () => {
 
     renderList();
 
-    expect(await screen.findByTestId('empty-assignments')).toHaveTextContent(
-      /No reviewer assignments are ready/i,
-    );
+    expect(await screen.findByText(/No reviewer assignments are ready/i)).toBeInTheDocument();
   });
 
   it('never exposes private reviewer comments or scores in the list', async () => {

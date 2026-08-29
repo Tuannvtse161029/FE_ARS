@@ -24,8 +24,6 @@ export const AppConfig = {
     // Restore by flipping to `false`; the underlying components/hooks/services
     // are preserved verbatim and will resume immediately.
     enableWithdrawals: false,
-    // Premium package listing is backed by the live /api/PremiumPackage API.
-    premiumPackagesEnabled: true,
   },
 };
 

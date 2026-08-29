@@ -1,44 +1,67 @@
-/* Home Research Catalog — page-level layout only.
-   Individual paper cards are styled in PublishedPaperCard.module.css.
-   This file scopes the toolbar (search + filters), the empty results
-   region, and the pagination footer. Token-driven; no gradients or
-   orbs; readable typography; focusable controls. */
+/* Home Research Catalog — page-level layout.
+   Page composition (in HomeResearchCatalog.tsx):
+     - WorkspaceHeader (hero, ARS blue accent, serif title)
+     - MetricCard row (3 honest stats)
+     - Toolbar (search + filter + sort)
+     - PublishedPaperCard results
+     - Pagination footer
+   This module styles only the layout wrappers — individual paper
+   cards live in PublishedPaperCard.module.css. Token-driven; no
+   gradients, no inline styles. */
 
 .catalog {
+  display: grid;
+  gap: var(--space-6);
   max-width: 1180px;
   margin: 0 auto;
   width: 100%;
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
 }
 
-/* ── Toolbar (search + filter dropdowns) ─────────────────── */
+/* ── Metric row (3 cards) ─────────────────────────────────── */
+.metricRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 760px) {
+  .metricRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Toolbar (search + filter + sort) ─────────────────────── */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
-  background: var(--ars-paper-alt);
+  background: var(--ars-paper);
   border: var(--border-thin);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .search {
   flex: 1 1 320px;
-  min-height: 42px;
+  min-width: 220px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  border: 1px solid var(--ars-network);
+  border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   background: var(--ars-paper);
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   color: var(--ars-ink-muted);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .search:focus-within {
   border-color: var(--ars-blue-mid);
-  box-shadow: 0 0 0 2px var(--ars-blue-light);
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.16);
 }
 
 .search input {
@@ -47,16 +70,18 @@
   width: 100%;
   background: transparent;
   font: inherit;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--ars-ink);
   padding: 9px 0;
-  min-height: 38px;
+  min-height: 36px;
+  font-family: var(--font-family-ui);
 }
 
-.search input::placeholder { color: var(--ars-ink-muted); }
+.search input::placeholder {
+  color: var(--ars-ink-muted);
+}
 
 .filter {
-  min-height: 42px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -66,19 +91,22 @@
 }
 
 .filter select {
-  border: 1px solid var(--ars-network);
+  border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   background: var(--ars-paper);
   color: var(--ars-ink);
-  padding: 8px 10px;
+  padding: 0 var(--space-3);
   font: inherit;
   font-size: var(--font-size-sm);
+  font-family: var(--font-family-ui);
   min-height: 36px;
   cursor: pointer;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.filter select:hover { border-color: var(--ars-ink-muted); }
+.filter select:hover {
+  border-color: var(--ars-ink-muted);
+}
 
 .filter select:focus-visible {
   outline: 2px solid var(--ars-blue-mid);
@@ -86,50 +114,62 @@
   border-color: var(--ars-blue-mid);
 }
 
-/* ── Results container — list of PublishedPaperCard articles ── */
+/* ── Results grid ──────────────────────────────────────────── */
 .results {
   display: grid;
   gap: var(--space-4);
 }
 
-/* ── Pagination ──────────────────────────────────────────── */
+/* ── Pagination ────────────────────────────────────────────── */
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--ars-network);
   color: var(--ars-ink-soft);
   font-size: var(--font-size-sm);
-  padding: var(--space-3) 0;
-  border-top: var(--border-thin);
 }
 
-.pagination > div {
+.paginationCount strong {
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+}
+
+.paginationControls {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.pagination button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 6px 10px;
+.paginationMeta {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  padding: 0 var(--space-2);
 }
 
 @media (max-width: 680px) {
-  .toolbar { padding: var(--space-3); }
+  .toolbar {
+    padding: var(--space-3);
+  }
   .pagination {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2);
   }
-  .pagination > div { width: 100%; justify-content: space-between; }
+  .paginationControls {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 480px) {
-  .toolbar { gap: var(--space-2); }
-  .search { flex-basis: 100%; }
+  .toolbar {
+    gap: var(--space-2);
+  }
+  .search {
+    flex-basis: 100%;
+  }
 }

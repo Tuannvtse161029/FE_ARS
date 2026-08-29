@@ -513,4 +513,4 @@ export const SubmitReport = (): JSX.Element => {
   );
 };
 
-export default SubmitReport;
+export default SubmitReport;

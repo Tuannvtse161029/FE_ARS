@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+/**
+ * AdminPaperSubmissionDetail — Admin editorial record.
+ *
+ * The ONE Admin-only surface that may render private review content
+ * (reviewer private comments, criterion scores). Every other admin surface
+ * hides those fields. Unsupported actions are exposed as honest
+ * unavailable placeholders.
+ */
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, FileText } from 'lucide-react';
+import { ChevronLeft, FileText, Inbox, RefreshCw } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import shared from '../components/PublicationShared.module.css';
-import { statusLabel, type PublicationPaper } from '../types/publication';
+import { PageHeader } from '../../../components/PageHeader';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { useAdminGuard } from '../../../hooks/useAdminGuard';
+import {
+  statusLabel,
+  type PublicationPaper,
+  type PublicationStatus,
+} from '../types/publication';
 import {
   adminActionsForStatus,
   canAssignReviewer,
@@ -19,28 +34,42 @@ import {
 } from './adminPublicationHelpers';
 import adminStyles from './AdminPublication.module.css';
 
-/**
- * Admin editorial record. This is the ONE Admin-only surface that may
- * render private review content (reviewer private comments, criterion
- * scores). Every other admin surface must hide those fields.
- *
- * Unsupported actions (`assignReviewer`, `publishPaper`) are exposed
- * exactly when the live adapter contract permits them for the current status.
- * Unsupported transitions remain visibly unavailable until the backend ticket
- * is implemented.
- */
+const ROLE_ACCENT = 'var(--ars-admin)';
+
+const STATUS_LABEL: Record<PublicationStatus, string> = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
+  ADMIN_SCREENING: 'Admin screening',
+  RESEARCHER_VERIFICATION_REQUIRED: 'Verification required',
+  READY_FOR_REVIEWER: 'Ready for reviewer',
+  REVIEWER_ASSIGNED: 'Reviewer assigned',
+  UNDER_REVIEW: 'Under review',
+  REVISION_REQUIRED: 'Revision required',
+  RESUBMITTED: 'Resubmitted',
+  REVIEWER_RECOMMENDED_ACCEPT: 'Recommend accept',
+  REVIEWER_RECOMMENDED_REJECT: 'Recommend reject',
+  ADMIN_APPROVED: 'Admin approved',
+  PUBLISHED: 'Published',
+  ADMIN_REJECTED: 'Admin rejected',
+  WITHDRAWN: 'Withdrawn',
+};
+
 export const AdminPaperSubmissionDetail = () => {
+  useAdminGuard();
+
   const { id } = useParams();
   const [paper, setPaper] = useState<PublicationPaper | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [reviewerId, setReviewerId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setError(null);
     setNotFound(false);
+    setLoading(true);
     publicationAdapter
       .getAdminSubmissions()
       .then((items) => {
@@ -48,16 +77,24 @@ export const AdminPaperSubmissionDetail = () => {
         const match = items.find((item) => item.id === id) ?? null;
         if (!match) {
           setNotFound(true);
+          setLoading(false);
           return;
         }
         setPaper(match);
         setReviewerId(match.reviewerId ? String(match.reviewerId) : '');
+        setLoading(false);
       })
-      .catch(() => { if (active) setError('The editorial record could not be loaded.'); });
-    return () => { active = false; };
+      .catch(() => {
+        if (!active) return;
+        setError('The editorial record could not be loaded.');
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  const actions = useMemo(() => (paper ? adminActionsForStatus(paper) : []), [paper]);
+  const actions = paper ? adminActionsForStatus(paper) : [];
 
   const assign = async () => {
     const parsedReviewerId = Number(reviewerId);
@@ -92,26 +129,63 @@ export const AdminPaperSubmissionDetail = () => {
   if (notFound) {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
-        <header className={shared.header}>
-          <div>
-            <h1>Editorial record not found</h1>
-            <p>The Admin submission record you requested is unavailable.</p>
-          </div>
-        </header>
+        <PageHeader
+          eyebrow="ADMIN · EDITORIAL RECORD"
+          title="Editorial record not found"
+          description="The Admin submission record you requested is unavailable."
+          accent={ROLE_ACCENT}
+        />
         <div className={shared.empty}>
           <p>No paper matches id <code>{id}</code>.</p>
-          <Link className={shared.buttonGhost} to="/admin/paper-submissions"><ChevronLeft size={14} aria-hidden="true" /> Back to submissions</Link>
+          <Link
+            className={shared.buttonGhost}
+            to="/admin/paper-submissions"
+          >
+            <ChevronLeft size={14} aria-hidden="true" /> Back to submissions
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (loading) {
+    return (
+      <section className={`${shared.page} ${adminStyles.page}`}>
+        <PageHeader
+          eyebrow="ADMIN · EDITORIAL RECORD"
+          title="Loading editorial record…"
+          description="Fetching the selected paper from the backend."
+          accent={ROLE_ACCENT}
+        />
+        <div className={shared.loading} role="status">
+          <RefreshCw size={14} aria-hidden="true" /> Loading editorial record…
         </div>
       </section>
     );
   }
 
   if (error && !paper) {
-    return <div className={shared.error} role="alert">{error}</div>;
+    return (
+      <section className={`${shared.page} ${adminStyles.page}`}>
+        <PageHeader
+          eyebrow="ADMIN · EDITORIAL RECORD"
+          title="Editorial record"
+          accent={ROLE_ACCENT}
+        />
+        <ErrorBanner tone="error" title="Could not load record" message={error} />
+      </section>
+    );
   }
 
   if (!paper) {
-    return <div className={shared.loading}>Loading editorial record...</div>;
+    return (
+      <section className={`${shared.page} ${adminStyles.page}`}>
+        <div className={shared.empty} role="status">
+          <Inbox size={20} />
+          <span>No paper to display.</span>
+        </div>
+      </section>
+    );
   }
 
   const identifiers = resolveIdentifiers(paper);
@@ -121,73 +195,141 @@ export const AdminPaperSubmissionDetail = () => {
 
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
-      <header className={`${shared.header} ${adminStyles.detailHeader}`}>
-        <div>
-          <Link className={shared.buttonGhost} to="/admin/paper-submissions" aria-label="Back to admin submissions">
+      <PageHeader
+        eyebrow="ADMIN · EDITORIAL RECORD"
+        title={paper.title}
+        description="Admin editorial record. Private review material is only rendered here."
+        accent={ROLE_ACCENT}
+        actions={
+          <Link className={shared.buttonGhost} to="/admin/paper-submissions">
             <ChevronLeft size={14} aria-hidden="true" /> All submissions
           </Link>
-          <h1>{paper.title}</h1>
-          <p>Admin editorial record. Private review material is only rendered here.</p>
-        </div>
-        <div className={adminStyles.detailHeaderMeta}>
-          <span className={`${adminStyles.statusBadge} ${adminStyles[statusBadgeClass(paper.status)] ?? ''}`}>
-            {statusLabel(paper.status)}
-          </span>
-          <span className={`${adminStyles.verificationBadge} ${adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ?? ''}`}>
-            {paper.researcherVerificationStatus}
-          </span>
-        </div>
-      </header>
-      {error && <div className={shared.error} role="alert">{error}</div>}
+        }
+      />
+
+      {error ? (
+        <ErrorBanner tone="error" title="Action failed" message={error} />
+      ) : null}
+
+      <div className={shared.panel}>
+        <header className={shared.panelHeader}>
+          <div>
+            <h2 className={shared.panelTitle}>Status & verification</h2>
+            <p className={shared.panelSubtitle}>
+              Lifecycle position and researcher-verification state.
+            </p>
+          </div>
+          <div className={adminStyles.detailHeaderMeta}>
+            <span
+              className={`${adminStyles.statusBadge} ${
+                adminStyles[statusBadgeClass(paper.status)] ?? ''
+              }`}
+            >
+              {STATUS_LABEL[paper.status] ?? statusLabel(paper.status)}
+            </span>
+            <span
+              className={`${adminStyles.verificationBadge} ${
+                adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
+                ''
+              }`}
+            >
+              {paper.researcherVerificationStatus}
+            </span>
+          </div>
+        </header>
+      </div>
 
       <div className={shared.panel}>
         <h2 className={shared.panelTitle}>Metadata</h2>
-        <p className={shared.panelSubtitle}>Author, institution, taxonomy, and identifiers as supplied by the researcher.</p>
+        <p className={shared.panelSubtitle}>
+          Author, institution, taxonomy, and identifiers as supplied by the researcher.
+        </p>
         <dl className={shared.detailList}>
-          <dt>Paper type</dt><dd>{paper.paperType}</dd>
-          <dt>Version</dt><dd>{paper.version != null ? `v${paper.version}` : 'Not supplied'}</dd>
-          <dt>Visibility</dt><dd>{paper.visibility}</dd>
-          <dt>Submitted</dt><dd>{paper.submittedAt?.slice(0, 10) ?? '—'}</dd>
-          <dt>Published</dt><dd>{paper.publishedAt?.slice(0, 10) ?? '—'}</dd>
-          <dt>Authors</dt><dd>{paper.authors.sort((a, b) => a.order - b.order).map((author) => author.name).join(', ')}</dd>
-          <dt>Institutions</dt><dd>{paper.institutions.map((institution) => institution.name).join(', ')}</dd>
-          <dt>Topic</dt><dd>{[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') || '—'}</dd>
-          <dt>Keywords</dt><dd>{paper.keywords.join(', ') || '—'}</dd>
+          <dt>Paper type</dt>
+          <dd>{paper.paperType}</dd>
+          <dt>Version</dt>
+          <dd>{paper.version != null ? `v${paper.version}` : 'Not supplied'}</dd>
+          <dt>Visibility</dt>
+          <dd>{paper.visibility}</dd>
+          <dt>Submitted</dt>
+          <dd>{paper.submittedAt?.slice(0, 10) ?? '—'}</dd>
+          <dt>Published</dt>
+          <dd>{paper.publishedAt?.slice(0, 10) ?? '—'}</dd>
+          <dt>Authors</dt>
+          <dd>
+            {paper.authors
+              .sort((a, b) => a.order - b.order)
+              .map((author) => author.name)
+              .join(', ')}
+          </dd>
+          <dt>Institutions</dt>
+          <dd>{paper.institutions.map((institution) => institution.name).join(', ')}</dd>
+          <dt>Topic</dt>
+          <dd>
+            {[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') || '—'}
+          </dd>
+          <dt>Keywords</dt>
+          <dd>{paper.keywords.join(', ') || '—'}</dd>
           <dt>DOI</dt>
           <dd>
-            {identifiers.doi
-              ? (doiHref(identifiers.doi)
-                ? <a className={adminStyles.fileLink} href={doiHref(identifiers.doi)!} target="_blank" rel="noreferrer">{identifiers.doi}</a>
-                : identifiers.doi)
-              : '—'}
+            {identifiers.doi ? (
+              doiHref(identifiers.doi) ? (
+                <a
+                  className={adminStyles.fileLink}
+                  href={doiHref(identifiers.doi)!}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {identifiers.doi}
+                </a>
+              ) : (
+                identifiers.doi
+              )
+            ) : (
+              '—'
+            )}
           </dd>
-          <dt>OpenAlex</dt><dd>{identifiers.openAlexId ?? '—'}</dd>
-          <dt>External</dt><dd>{identifiers.externalIdentifier ?? '—'}</dd>
+          <dt>OpenAlex</dt>
+          <dd>{identifiers.openAlexId ?? '—'}</dd>
+          <dt>External</dt>
+          <dd>{identifiers.externalIdentifier ?? '—'}</dd>
         </dl>
       </div>
 
       <div className={shared.panel}>
         <h2 className={shared.panelTitle}>Manuscript file</h2>
-        <p className={shared.panelSubtitle}>Open or download the supplied manuscript. The Admin surface never modifies the file.</p>
-        {fileHref
-          ? (
-            <div className={shared.actions}>
-              <a className={shared.button} href={fileHref} target="_blank" rel="noreferrer">
-                <FileText size={16} aria-hidden="true" /> Open manuscript
-              </a>
-              <a className={shared.buttonSecondary} href={fileHref} download aria-label="Download manuscript">
-                Download
-              </a>
-            </div>
-          )
-          : <div className={shared.empty}>No file URL is attached to this record.</div>}
+        <p className={shared.panelSubtitle}>
+          Open or download the supplied manuscript. The Admin surface never modifies the file.
+        </p>
+        {fileHref ? (
+          <div className={shared.actions}>
+            <a className={shared.button} href={fileHref} target="_blank" rel="noreferrer">
+              <FileText size={16} aria-hidden="true" /> Open manuscript
+            </a>
+            <a
+              className={shared.buttonSecondary}
+              href={fileHref}
+              download
+              aria-label="Download manuscript"
+            >
+              Download
+            </a>
+          </div>
+        ) : (
+          <div className={shared.empty}>No file URL is attached to this record.</div>
+        )}
       </div>
 
-      {showPrivateReview && paper.reviewer && (
-        <div className={adminStyles.reviewBlock} role="region" aria-label="Private reviewer record">
+      {showPrivateReview && paper.reviewer ? (
+        <div
+          className={adminStyles.reviewBlock}
+          role="region"
+          aria-label="Private reviewer record"
+        >
           <h3>Private reviewer record</h3>
           <p className={adminStyles.reviewNote}>
-            Admin-only. This block MUST NOT appear on the public catalog, the researcher detail page, or any other surface.
+            Admin-only. This block MUST NOT appear on the public catalog, the
+            researcher detail page, or any other surface.
           </p>
           <dl className={shared.detailList}>
             <dt>Reviewer</dt>
@@ -195,16 +337,25 @@ export const AdminPaperSubmissionDetail = () => {
               {paper.reviewer.reviewerName}
               <br />
               <small className={shared.fieldHint}>
-                Identity-public flag: {paper.reviewerIdentityPublic ? 'Yes (visible on catalog)' : 'No (private — never shown on the public catalog)'}
+                Identity-public flag:{' '}
+                {paper.reviewerIdentityPublic
+                  ? 'Yes (visible on catalog)'
+                  : 'No (private — never shown on the public catalog)'}
               </small>
             </dd>
             <dt>Recommendation</dt>
             <dd>
-              <span className={`${adminStyles.statusBadge} ${adminStyles[
-                paper.reviewer.recommendation === 'ACCEPT' ? 'statusRecommendAccept'
-                  : paper.reviewer.recommendation === 'REJECT' ? 'statusRecommendReject'
-                  : 'statusRevision'
-              ] ?? ''}`}>
+              <span
+                className={`${adminStyles.statusBadge} ${
+                  adminStyles[
+                    paper.reviewer.recommendation === 'ACCEPT'
+                      ? 'statusRecommendAccept'
+                      : paper.reviewer.recommendation === 'REJECT'
+                        ? 'statusRecommendReject'
+                        : 'statusRevision'
+                  ] ?? ''
+                }`}
+              >
                 {paper.reviewer.recommendation.replace(/_/g, ' ')}
               </span>
             </dd>
@@ -213,33 +364,49 @@ export const AdminPaperSubmissionDetail = () => {
             <dt>Private comments</dt>
             <dd>{paper.reviewer.privateComments || '—'}</dd>
           </dl>
-          {Object.keys(paper.reviewer.privateScores).length > 0 && (
+          {Object.keys(paper.reviewer.privateScores).length > 0 ? (
             <table className={adminStyles.reviewScoresTable}>
               <thead>
-                <tr><th>Criterion</th><th align="right">Score</th></tr>
+                <tr>
+                  <th>Criterion</th>
+                  <th align="right">
+                    Score
+                  </th>
+                </tr>
               </thead>
               <tbody>
-                {Object.entries(paper.reviewer.privateScores).map(([criterion, score]) => (
-                  <tr key={criterion}>
-                    <td>{criterion}</td>
-                    <td align="right">{score}</td>
-                  </tr>
-                ))}
+                {Object.entries(paper.reviewer.privateScores).map(
+                  ([criterion, score]) => (
+                    <tr key={criterion}>
+                      <td>{criterion}</td>
+                      <td align="right">
+                        {score}
+                      </td>
+                    </tr>
+                  ),
+                )}
               </tbody>
             </table>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {hasActions && (
+      {hasActions ? (
         <div className={shared.panel}>
           <h2 className={shared.panelTitle}>Editorial actions</h2>
-          <p className={shared.panelSubtitle}>Each action is gated by the current status and persisted through a documented backend operation.</p>
+          <p className={shared.panelSubtitle}>
+            Each action is gated by the current status and persisted through a
+            documented backend operation.
+          </p>
           <div className={shared.actionsStack}>
-            {canAssignReviewer(paper) && (
+            {canAssignReviewer(paper) ? (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Assign / reassign reviewer</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'assign')?.hint}</p>
+                <h3 className={adminStyles.actionZoneTitle}>
+                  Assign / reassign reviewer
+                </h3>
+                <p className={adminStyles.actionZoneHint}>
+                  {actions.find((action) => action.id === 'assign')?.hint}
+                </p>
                 <div className={adminStyles.assignForm}>
                   <label className={shared.field}>
                     <span>Reviewer account ID</span>
@@ -248,24 +415,32 @@ export const AdminPaperSubmissionDetail = () => {
                       inputMode="numeric"
                       placeholder="Reviewer ID"
                       value={reviewerId}
-                      onChange={(event) => setReviewerId(event.target.value.replace(/\D/g, ''))}
+                      onChange={(event) =>
+                        setReviewerId(event.target.value.replace(/\D/g, ''))
+                      }
                     />
                   </label>
                   <button
                     type="button"
                     className={shared.button}
-                    disabled={saving || !Number.isInteger(Number(reviewerId)) || Number(reviewerId) <= 0}
+                    disabled={
+                      saving ||
+                      !Number.isInteger(Number(reviewerId)) ||
+                      Number(reviewerId) <= 0
+                    }
                     onClick={() => void assign()}
                   >
-                    {saving ? 'Saving...' : 'Assign reviewer'}
+                    {saving ? 'Saving…' : 'Assign reviewer'}
                   </button>
                 </div>
               </div>
-            )}
-            {canPublish(paper) && (
+            ) : null}
+            {canPublish(paper) ? (
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Publish</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'publish')?.hint}</p>
+                <p className={adminStyles.actionZoneHint}>
+                  {actions.find((action) => action.id === 'publish')?.hint}
+                </p>
                 <div className={shared.actions}>
                   <button
                     type="button"
@@ -273,40 +448,60 @@ export const AdminPaperSubmissionDetail = () => {
                     disabled={saving}
                     onClick={() => void publish()}
                   >
-                    {saving ? 'Publishing...' : 'Approve and publish'}
+                    {saving ? 'Publishing…' : 'Approve and publish'}
                   </button>
                 </div>
               </div>
-            )}
-            {canRequestRevision(paper) && (
+            ) : null}
+            {canRequestRevision(paper) ? (
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Request revision</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'requestRevision')?.hint}</p>
-                <p className={shared.fieldHint}>Unavailable until the backend exposes a revision transition endpoint. See the backend publication ticket.</p>
+                <p className={adminStyles.actionZoneHint}>
+                  {actions.find((action) => action.id === 'requestRevision')?.hint}
+                </p>
+                <p className={shared.fieldHint}>
+                  Unavailable until the backend exposes a revision transition
+                  endpoint. See the backend publication ticket.
+                </p>
               </div>
-            )}
-            {canReject(paper) && (
+            ) : null}
+            {canReject(paper) ? (
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Reject</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'reject')?.hint}</p>
-                <p className={shared.fieldHint}>Unavailable until the backend exposes an Admin rejection endpoint. See the backend publication ticket.</p>
+                <p className={adminStyles.actionZoneHint}>
+                  {actions.find((action) => action.id === 'reject')?.hint}
+                </p>
+                <p className={shared.fieldHint}>
+                  Unavailable until the backend exposes an Admin rejection
+                  endpoint. See the backend publication ticket.
+                </p>
               </div>
-            )}
-            {canWithdraw(paper) && (
+            ) : null}
+            {canWithdraw(paper) ? (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>{actions.find((action) => action.id === 'withdraw')?.label}</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'withdraw')?.hint}</p>
-                <p className={shared.fieldHint}>Unavailable until the backend exposes a publication withdrawal endpoint. See the backend publication ticket.</p>
+                <h3 className={adminStyles.actionZoneTitle}>
+                  {actions.find((action) => action.id === 'withdraw')?.label}
+                </h3>
+                <p className={adminStyles.actionZoneHint}>
+                  {actions.find((action) => action.id === 'withdraw')?.hint}
+                </p>
+                <p className={shared.fieldHint}>
+                  Unavailable until the backend exposes a publication withdrawal
+                  endpoint. See the backend publication ticket.
+                </p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
-      )}
-
-      {!hasActions && (
+      ) : (
         <div className={shared.empty}>
-          <p>No editorial actions are valid for the current status ({statusLabel(paper.status)}).</p>
-          <p className={shared.fieldHint}>Status-valid action areas appear automatically when the lifecycle state changes.</p>
+          <p>
+            No editorial actions are valid for the current status (
+            {statusLabel(paper.status)}).
+          </p>
+          <p className={shared.fieldHint}>
+            Status-valid action areas appear automatically when the lifecycle state changes.
+          </p>
         </div>
       )}
     </section>

@@ -1,75 +1,94 @@
+/**
+ * RoleRequests — ARS Research Constellation
+ * Verification queue: list, filter, inspect pending/approved/rejected users.
+ *
+ * Agent 29/40 (BTR-AGENT29-A): the legacy `/api/RoleRequest` endpoint is no
+ * longer authoritative. The Admin queue is now derived from the live
+ * `/api/User` rows via `adminUserService`, filtered client-side by
+ * `verificationStatus`. Accept / Reject mutations remain disabled until the
+ * BE exposes a verification-mutation endpoint (BTR-AGENT29-C) — the buttons
+ * are visually present with explanatory titles so the Admin can see why the
+ * action is gated.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  Eye,
-  Inbox,
-  Search,
-  X,
-} from 'lucide-react';
+import { Check, Eye, Inbox, Search, X } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
-import { adminService } from '../../services/admin.service';
-import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
+import {
+  adminUserService,
+  isPendingVerification,
+  normalizeVerificationStatus,
+  type AdminVerificationStatus,
+} from '../../services/adminUser.service';
+import type { User } from '../../types/auth';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import RoleRequestDetailsModal from './RoleRequestDetailsModal';
+import VerificationDetailsModal from './VerificationDetailsModal';
 import OrcidCheckModal from './OrcidCheckModal';
-import ApproveRoleRequestModal from './ApproveRoleRequestModal';
-import DenyRoleRequestModal from './DenyRoleRequestModal';
 import styles from './RoleRequests.module.css';
 
-type StatusFilter = 'PENDING' | 'APPROVED' | 'DENIED';
-type ModalKind = 'details' | 'approve' | 'deny' | null;
+type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
-const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'APPROVED', 'DENIED'];
+const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
 
-const statusClass = (status: RoleRequestStatus | string): string => {
-  switch (status?.toUpperCase()) {
-    case 'APPROVED':
-    case 'ACCEPTED':
-      return styles.statusAPPROVED;
-    case 'DENIED':
-    case 'REJECTED':
-      return styles.statusDENIED;
+const ROLE_ACCENT = 'var(--ars-admin)';
+
+const VERIFICATION_STATUS_LABEL: Record<AdminVerificationStatus | 'UNKNOWN', string> = {
+  Pending: 'Pending',
+  Accepted: 'Accepted',
+  Rejected: 'Rejected',
+  UNKNOWN: 'Unknown',
+};
+
+const statusFilterToVerification = (
+  filter: StatusFilter,
+): AdminVerificationStatus | null => {
+  switch (filter) {
     case 'PENDING':
+      return 'Pending';
+    case 'ACCEPTED':
+      return 'Accepted';
+    case 'REJECTED':
+      return 'Rejected';
     default:
-      return styles.statusPENDING;
+      return null;
   }
 };
 
-const formatRoles = (roles?: string[]): string => {
-  if (!roles || roles.length === 0) return 'Pending role assignment';
-  return roles.join(', ');
+// Accept / Reject buttons are intentionally disabled while the BE
+// verification-mutation endpoint is missing (BTR-AGENT29-C). Centralized
+// so the title attribute and tooltip stay in sync across all rows.
+const VERIFICATION_MUTATION_DISABLED_TITLE =
+  'Accept is unavailable — the verification-mutation endpoint is not yet exposed by the backend.';
+
+const formatRoleCell = (user: User): string => {
+  const roleName = user.roleName?.trim();
+  return roleName && roleName.length > 0 ? roleName : 'Pending role assignment';
 };
 
 export const RoleRequests = () => {
   useAdminGuard();
-  const [rows, setRows] = useState<RoleRequest[]>([]);
+  const [rows, setRows] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('PENDING');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [selected, setSelected] = useState<RoleRequest | null>(null);
-  const [modal, setModal] = useState<ModalKind>(null);
+  const [selected, setSelected] = useState<User | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [orcidCheckOpen, setOrcidCheckOpen] = useState(false);
-
-  // Auto-dismiss toast after 4 seconds
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(null), 4000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const data = await adminService.getRoleRequests();
-      setRows(data);
+      const data = await adminUserService.listAllUsers();
+      setRows(data.rows);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -88,30 +107,35 @@ export const RoleRequests = () => {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const base = rows.filter((row) => {
-      const rowStatus = (row.status || 'PENDING').toUpperCase();
-      if (status === 'PENDING' && rowStatus !== 'PENDING') return false;
-      if (status === 'APPROVED' && rowStatus !== 'APPROVED' && rowStatus !== 'ACCEPTED') return false;
-      if (status === 'DENIED' && rowStatus !== 'DENIED' && rowStatus !== 'REJECTED') return false;
-      if (!query) return true;
-      const searchable = [
-        row.userName,
-        row.email,
-        String(row.id),
-        String(row.userId),
-        row.affiliation ?? '',
-        row.department ?? '',
-        (row.requestedAdditionalRoles || []).join(' '),
-        (row.requestedRoles || []).join(' '),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-    return base.sort(
-      (a, b) =>
-        new Date(b.submissionDate || 0).getTime() - new Date(a.submissionDate || 0).getTime(),
-    );
+    return rows
+      .filter((row) => {
+        const verification = normalizeVerificationStatus(row.verificationStatus);
+        const matchesStatus =
+          status === 'PENDING'
+            ? verification === 'Pending'
+            : status === 'ACCEPTED'
+            ? verification === 'Accepted'
+            : status === 'REJECTED'
+            ? verification === 'Rejected'
+            : true;
+        if (!matchesStatus) return false;
+        if (!query) return true;
+        const haystack = [
+          row.fullName ?? '',
+          row.email ?? '',
+          row.username ?? '',
+          String(row.id),
+          row.roleName ?? '',
+          row.accountTier ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+      );
   }, [rows, search, status]);
 
   const {
@@ -125,42 +149,20 @@ export const RoleRequests = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<RoleRequest>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<User>(filtered, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
   }, [search, status, resetPage]);
 
-  const handleOpenDetails = (row: RoleRequest) => {
+  const handleOpenDetails = (row: User) => {
     setSelected(row);
-    setModal('details');
+    setDetailsOpen(true);
   };
 
-  const handleOpenApprove = (row: RoleRequest) => {
-    setSelected(row);
-    setModal('approve');
-  };
-
-  const handleOpenDeny = (row: RoleRequest) => {
-    setSelected(row);
-    setModal('deny');
-  };
-
-  const handleActioned = (updated: RoleRequest) => {
-    setRows((prev) =>
-      prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
-    );
-    if (updated.status === 'APPROVED') {
-      setToastMessage({
-        type: 'success',
-        text: 'Phê duyệt vai trò thành công!',
-      });
-    } else if (updated.status === 'DENIED') {
-      setToastMessage({
-        type: 'success',
-        text: 'Đã từ chối yêu cầu vai trò.',
-      });
-    }
+  const handleOpenOrcidCheck = () => {
+    setDetailsOpen(false);
+    setOrcidCheckOpen(true);
   };
 
   const hasNoMatch =
@@ -171,38 +173,12 @@ export const RoleRequests = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; Admin &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Role Requests</span>
-      </div>
-
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Role Requests</h1>
-          <p className={styles.pageSubtitle}>
-            Review and process user role verification requests.
-          </p>
-        </div>
-      </div>
-
-      {toastMessage && (
-        <div
-          className={toastMessage.type === 'success' ? styles.toastSuccess : styles.toastError}
-          role="status"
-          aria-live="polite"
-        >
-          {toastMessage.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-          <span>{toastMessage.text}</span>
-          <button
-            className={styles.toastClose}
-            onClick={() => setToastMessage(null)}
-            type="button"
-            aria-label="Close notification"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <PageHeader
+        eyebrow="ADMIN · VERIFICATION"
+        title="Role Requests"
+        description="Review and process user role verification requests. Pending requests are auto-loaded; use the filter to inspect approved or rejected history."
+        accent={ROLE_ACCENT}
+      />
 
       <TableToolbar
         search={search}
@@ -231,9 +207,9 @@ export const RoleRequests = () => {
                 <option key={filterStatus} value={filterStatus}>
                   {filterStatus === 'PENDING'
                     ? 'Pending'
-                    : filterStatus === 'APPROVED'
-                      ? 'Approved'
-                      : 'Denied'}
+                    : filterStatus === 'ACCEPTED'
+                    ? 'Approved'
+                    : 'Denied'}
                 </option>
               ))}
             </select>
@@ -244,39 +220,40 @@ export const RoleRequests = () => {
       <div className={styles.tableCard}>
         {loading ? (
           <div className={styles.loadingState} data-testid="role-requests-loading">
-            <span className={styles.spinning} />
-            <span>Loading role requests…</span>
+            <SkeletonRow count={8} rowHeight={36} withHeader />
           </div>
         ) : error ? (
-          <div
-            className={styles.errorState}
-            data-testid="role-requests-error"
-            role="alert"
-          >
-            <AlertTriangle size={20} />
-            <span>{error}</span>
-            <button
-              className={styles.retryBtn}
-              onClick={() => void load()}
-              type="button"
-              disabled={loading || refreshing}
-            >
-              {loading || refreshing ? 'Retrying…' : 'Retry'}
-            </button>
+          <div className={styles.errorWrap} data-testid="role-requests-error">
+            <ErrorBanner
+              tone="error"
+              title="Could not load role requests"
+              message={error}
+              retry={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void load()}
+                  disabled={loading || refreshing}
+                >
+                  {loading || refreshing ? 'Retrying…' : 'Retry'}
+                </Button>
+              }
+            />
           </div>
         ) : hasNoMatch ? (
-          <div className={styles.emptyState} data-testid="role-requests-empty">
-            <Inbox size={32} />
-            <span>
-              No role requests match “{search.trim()}”
-              {status !== 'PENDING' ? ` in ${status}` : ''}.
-            </span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={20} />}
+            title="No matching role requests"
+            description={`No role requests match "${search.trim()}"${
+              status !== 'PENDING' ? ` in ${status.toLowerCase()}` : ''
+            }.`}
+          />
         ) : totalItems === 0 ? (
-          <div className={styles.emptyState} data-testid="role-requests-empty">
-            <Inbox size={32} />
-            <span>No {status.toLowerCase()} role requests.</span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={20} />}
+            title={`No ${status.toLowerCase()} role requests`}
+            description="When users submit a verification request, it will appear here."
+          />
         ) : (
           <>
             <div className={styles.tableResponsive}>
@@ -284,49 +261,55 @@ export const RoleRequests = () => {
                 <thead>
                   <tr>
                     <th>User</th>
-                    <th>Email</th>
-                    <th>Requested Role</th>
-                    <th>Affiliation / Dept</th>
-                    <th>Submitted</th>
-                    <th>Status</th>
+                    <th>Assigned / Pending Role</th>
+                    <th>Email Verification</th>
+                    <th>Verification Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((row) => {
-                    const isPending = (row.status || 'PENDING').toUpperCase() === 'PENDING';
-                    const requestedRolesList =
-                      row.requestedAdditionalRoles?.length
-                        ? row.requestedAdditionalRoles
-                        : row.requestedRoles?.length
-                          ? row.requestedRoles
-                          : [];
+                    const verification = normalizeVerificationStatus(row.verificationStatus);
+                    const verificationLabel = verification
+                      ? VERIFICATION_STATUS_LABEL[verification]
+                      : VERIFICATION_STATUS_LABEL.UNKNOWN;
+                    const pending = isPendingVerification(row);
 
                     return (
                       <tr key={row.id}>
                         <td>
                           <div className={styles.userCell}>
-                            <span className={styles.userName}>{row.userName}</span>
-                            <span className={styles.userEmail}>ID #{row.userId ?? row.id}</span>
+                            <span className={styles.userName}>
+                              {row.fullName || row.username || '—'}
+                            </span>
+                            <span className={styles.userEmail}>
+                              {row.email} · ID #{row.id}
+                            </span>
                           </div>
                         </td>
-                        <td>{row.email}</td>
-                        <td>{formatRoles(requestedRolesList)}</td>
+                        <td>{formatRoleCell(row)}</td>
                         <td>
-                          {row.affiliation || row.department
-                            ? `${row.affiliation || ''}${row.affiliation && row.department ? ' · ' : ''}${row.department || ''}`
-                            : '—'}
-                        </td>
-                        <td>
-                          {row.submissionDate
-                            ? new Date(row.submissionDate).toLocaleDateString('vi-VN')
-                            : '—'}
+                          {row.isEmailVerified ? (
+                            <span className={`${styles.statusPill} ${styles.statusAPPROVED}`}>
+                              Verified
+                            </span>
+                          ) : (
+                            <span className={`${styles.statusPill} ${styles.statusPENDING}`}>
+                              Not verified
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span
-                            className={`${styles.statusPill} ${statusClass(row.status || 'PENDING')}`}
+                            className={`${styles.statusPill} ${
+                              verification === 'Accepted'
+                                ? styles.statusAPPROVED
+                                : verification === 'Rejected'
+                                ? styles.statusDENIED
+                                : styles.statusPENDING
+                            }`}
                           >
-                            {row.status || 'Pending'}
+                            {verificationLabel}
                           </span>
                         </td>
                         <td>
@@ -341,24 +324,26 @@ export const RoleRequests = () => {
                               View Details
                             </button>
 
-                            {isPending && (
+                            {pending && (
                               <>
                                 <button
                                   className={`${styles.actionButton} ${styles.approveButton}`}
-                                  onClick={() => handleOpenApprove(row)}
+                                  onClick={() => undefined}
                                   type="button"
-                                  title="Phê duyệt vai trò"
+                                  title={VERIFICATION_MUTATION_DISABLED_TITLE}
                                   data-testid="role-requests-accept"
+                                  disabled
                                 >
                                   <Check size={14} />
                                   Accept
                                 </button>
                                 <button
                                   className={`${styles.actionButton} ${styles.denyButton}`}
-                                  onClick={() => handleOpenDeny(row)}
+                                  onClick={() => undefined}
                                   type="button"
-                                  title="Từ chối vai trò"
+                                  title={VERIFICATION_MUTATION_DISABLED_TITLE}
                                   data-testid="role-requests-reject"
+                                  disabled
                                 >
                                   <X size={14} />
                                   Reject
@@ -388,46 +373,33 @@ export const RoleRequests = () => {
         )}
       </div>
 
-      {/* Details modal */}
-      <RoleRequestDetailsModal
-        request={selected}
-        open={modal === 'details'}
-        onClose={() => setModal(null)}
-        onOpenOrcidCheck={() => {
-          setModal(null);
-          setOrcidCheckOpen(true);
-        }}
+      <VerificationDetailsModal
+        user={selected}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        onOpenOrcidCheck={handleOpenOrcidCheck}
       />
 
       <OrcidCheckModal
-        user={selected ? {
-          id: selected.userId,
-          roleRequestId: selected.id,
-          fullName: selected.userName,
-          email: selected.email,
-          orcidId: selected.orcidId,
-        } : { id: 0, email: '' }}
+        user={
+          selected
+            ? {
+                id: selected.id,
+                email: selected.email,
+                fullName: selected.fullName ?? '',
+                orcidId: selected.orcidId ?? null,
+              }
+            : { id: 0, email: '' }
+        }
         open={orcidCheckOpen}
         onClose={() => setOrcidCheckOpen(false)}
-      />
-
-      {/* Approve modal */}
-      <ApproveRoleRequestModal
-        request={selected}
-        open={modal === 'approve'}
-        onClose={() => setModal(null)}
-        onActioned={handleActioned}
-      />
-
-      {/* Deny modal */}
-      <DenyRoleRequestModal
-        request={selected}
-        open={modal === 'deny'}
-        onClose={() => setModal(null)}
-        onActioned={handleActioned}
       />
     </div>
   );
 };
+
+// Internal helper retained for downstream imports; intentionally not exported
+// from the public surface.
+export const __statusFilterToVerification = statusFilterToVerification;
 
 export default RoleRequests;

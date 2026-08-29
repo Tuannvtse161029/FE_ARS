@@ -1,24 +1,32 @@
+/* StatusBadge — token-aligned 22px pill. Always paired with a dot prefix and
+ * a label. Color is communicated via color + label + dot (never color alone).
+ */
+
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 700;
-  border-radius: 4px;
+  font-family: var(--font-family-ui);
+  border-radius: 999px;
   border: 1px solid transparent;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .sizeSm {
-  font-size: 0.6rem;
-  padding: 2px 6px;
+  font-size: 0.65rem;
+  height: 20px;
+  padding: 0 8px;
 }
 
 .sizeMd {
-  font-size: 0.65rem;
-  padding: 2px 8px;
+  font-size: 0.6875rem; /* 11px */
+  height: 22px;
+  padding: 0 10px;
 }
 
 .dot {
@@ -29,77 +37,77 @@
   flex-shrink: 0;
 }
 
-/* PhasedReport variants */
+/* PhasedReport variants — info/warning/success/error tones */
 .waiting {
-  background-color: #eff6ff;
-  color: #2563eb;
-  border-color: #bfdbfe;
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
 .submitted {
-  background-color: #fffbeb;
-  color: #d97706;
-  border-color: #fde68a;
+  background-color: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border-color: color-mix(in srgb, var(--ars-warning) 30%, transparent);
 }
 
 .evaluated {
-  background-color: #ecfdf5;
-  color: #10b981;
-  border-color: #a7f3d0;
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
 }
 
 .rejected {
-  background-color: #fee2e2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
 }
 
 /* ResearchTopic variants */
 .open {
-  background-color: #eff6ff;
-  color: #2563eb;
-  border-color: #bfdbfe;
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
 .assigned {
-  background-color: #faf5ff;
-  color: #7c3aed;
-  border-color: #e9d5ff;
+  background-color: var(--ars-admin-light);
+  color: var(--ars-admin);
+  border-color: color-mix(in srgb, var(--ars-admin) 30%, transparent);
 }
 
 .completed {
-  background-color: #ecfdf5;
-  color: #059669;
-  border-color: #a7f3d0;
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
 }
 
 .closed {
-  background-color: #f1f5f9;
-  color: #475569;
-  border-color: #cbd5e1;
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
 }
 
 /* GuidanceProject variants */
 .proposed {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
 .ongoing {
-  background-color: #ecfdf5;
-  color: #10b981;
-  border-color: #a7f3d0;
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
 }
 
 .cancelled {
-  background-color: #f1f5f9;
-  color: #475569;
-  border-color: #cbd5e1;
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
 }
 
 .unknown {
-  background-color: #f1f5f9;
-  color: #64748b;
-  border-color: #cbd5e1;
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
 }

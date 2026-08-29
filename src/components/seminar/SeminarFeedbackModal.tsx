@@ -169,8 +169,9 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
                   >
                     <Star
                       size={24}
-                      fill={star <= activeRating ? '#eab308' : 'none'}
-                      stroke={star <= activeRating ? '#eab308' : '#94a3b8'}
+                      className={`${styles.starGlyph} ${
+                        star <= activeRating ? styles.starFilled : styles.starEmpty
+                      }`}
                     />
                   </button>
                 ))}
@@ -214,7 +215,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
             >
               {isSubmitting ? (
                 <>
-                  <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader size={16} className={styles.spinningIcon} />
                   <span>Đang gửi...</span>
                 </>
               ) : (

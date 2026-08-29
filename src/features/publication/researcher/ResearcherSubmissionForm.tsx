@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, FileText, Save, Send } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
 import { openAlexAdapter, type OpenAlexLookupOutcome } from './openalexAdapter';
-import shared from '../components/PublicationShared.module.css';
+import { PageHeader } from '../../../components/PageHeader';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { Button } from '../../../components/Button/Button';
+import styles from './researcher.module.css';
 
 const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
 
@@ -13,6 +17,26 @@ type OpenAlexUiState =
   | { stage: 'unsupported'; message: string }
   | { stage: 'confirmed'; id: string }
   | { stage: 'skipped' };
+
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+// ResearcherSubmissionForm — Researcher-only manuscript creation.
+//
+// Visual: sectioned form (Required metadata, Manuscript PDF, OpenAlex
+// link, Submit). Tokens come from ars-tokens.css; the section markers
+// are role-coloured with the Researcher amber accent. No inline styles
+// anywhere in the JSX; all layout lives in researcher.module.css.
+//
+// Behaviour (unchanged from the legacy version):
+//   - PDF upload must complete before the form can submit.
+//   - OpenAlex lookup is an additive, FE-only boundary that validates
+//     the format and shows a preview before attaching the ID.
+//   - Save draft keeps the paper in DRAFT status; Submit advances to
+//     SUBMITTED via the adapter.
 
 export const ResearcherSubmissionForm = () => {
   const navigate = useNavigate();
@@ -27,7 +51,6 @@ export const ResearcherSubmissionForm = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── PDF upload (Upload Paper (PDF)) ─────────────────────────────────────────
   const {
     uploadPdf,
     progress,
@@ -43,8 +66,6 @@ export const ResearcherSubmissionForm = () => {
   const inFlightRef = useRef(false);
   const submissionIdRef = useRef(0);
 
-  // Hold the canonical firebase URL until the researcher presses Submit.
-  // The form must not pass a stale/empty URL into the draft payload.
   useEffect(() => {
     if (uploadError) {
       setFileError(uploadError);
@@ -80,8 +101,6 @@ export const ResearcherSubmissionForm = () => {
       resetUpload();
       return;
     }
-    // Begin a new upload attempt; preserve any previous error visible
-    // until the new upload completes (success or failure).
     inFlightRef.current = true;
     setUploadedFile(file);
     setUploadedAt(null);
@@ -97,7 +116,6 @@ export const ResearcherSubmissionForm = () => {
     try {
       await handleFileSelected(file);
     } finally {
-      // Always reset the input so re-selecting the same file fires onChange.
       event.target.value = '';
     }
   };
@@ -117,14 +135,17 @@ export const ResearcherSubmissionForm = () => {
     setFileError(null);
   };
 
-  // ── OpenAlex ID ─────────────────────────────────────────────────────────────
   const [openAlexDraft, setOpenAlexDraft] = useState('');
   const [openAlexState, setOpenAlexState] = useState<OpenAlexUiState>({ stage: 'idle' });
   const [openAlexScanning, setOpenAlexScanning] = useState(false);
 
   const handleScanOpenAlex = async () => {
     if (!openAlexDraft.trim()) {
-      setOpenAlexState({ stage: 'invalid', message: 'Enter an OpenAlex work ID (e.g. W2741809807) or use manual entry.' });
+      setOpenAlexState({
+        stage: 'invalid',
+        message:
+          'Enter an OpenAlex work ID (e.g. W2741809807) or use manual entry.',
+      });
       return;
     }
     setOpenAlexScanning(true);
@@ -153,10 +174,6 @@ export const ResearcherSubmissionForm = () => {
   };
 
   const handleManualFallbackOpenAlex = () => {
-    // Manual fallback means: stop attempting to scan, accept the raw value
-    // verbatim and let the BE reconcile it later. We only allow this when
-    // the raw value has at least 4 characters to avoid typos silently
-    // becoming identifiers.
     const trimmed = openAlexDraft.trim();
     if (trimmed.length < 4) {
       setOpenAlexState({
@@ -168,7 +185,6 @@ export const ResearcherSubmissionForm = () => {
     setOpenAlexState({ stage: 'confirmed', id: trimmed });
   };
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
   const canSubmit =
     !saving &&
     !inFlightRef.current &&
@@ -181,10 +197,11 @@ export const ResearcherSubmissionForm = () => {
 
   const submit = async (sendToAdmin: boolean) => {
     if (!canSubmit) {
-      setError('Title, abstract, first author, institution, and a completed PDF upload are required.');
+      setError(
+        'Title, abstract, first author, institution, and a completed PDF upload are required.',
+      );
       return;
     }
-    // Duplicate-submit protection: every successful submit gets a fresh id.
     const submissionId = ++submissionIdRef.current;
     setSaving(true);
     setError(null);
@@ -196,8 +213,6 @@ export const ResearcherSubmissionForm = () => {
         abstract: abstract.trim(),
         authors: [
           {
-            // The live Paper API derives the author from the JWT; it does not
-            // accept client-generated author or institution IDs.
             id: '',
             name: authorName.trim(),
             institutionIds: [],
@@ -217,7 +232,6 @@ export const ResearcherSubmissionForm = () => {
       const paper = sendToAdmin ? await publicationAdapter.submitPaper(draft.id) : draft;
       navigate(`/researcher/submissions/${paper.id}`);
     } catch {
-      // Preserve the submission id so retries do not double-fire.
       if (submissionIdRef.current === submissionId) {
         setError('The draft could not be saved.');
       }
@@ -229,143 +243,205 @@ export const ResearcherSubmissionForm = () => {
   };
 
   return (
-    <section className={shared.page}>
-      <header className={shared.header}>
-        <div>
-          <h1>New Submission</h1>
-          <p>Prepare manuscript metadata for Admin screening. Reviewer selection is performed by Admin only.</p>
-        </div>
-      </header>
+    <section className={styles.page}>
+      <PageHeader
+        eyebrow="RESEARCHER WORKSPACE"
+        title="New submission"
+        description="Prepare manuscript metadata for Admin screening. Reviewer selection is performed by Admin only."
+        accent="var(--ars-researcher)"
+      />
+
       {error && (
-        <div className={shared.error} role="alert">
-          {error}
-        </div>
+        <ErrorBanner
+          tone="error"
+          title="Could not save submission"
+          message={error}
+        />
       )}
+
       <form
-        className={shared.panel}
+        className={styles.formCard}
         onSubmit={(event) => {
           event.preventDefault();
           void submit(true);
         }}
+        aria-label="New submission form"
       >
-        <div className={shared.formGrid}>
-          <div className={`${shared.field} ${shared.full}`}>
-            <label htmlFor="submission-title">Title</label>
-            <input id="submission-title" value={title} onChange={(event) => setTitle(event.target.value)} />
-          </div>
+        {/* ── Required metadata ──────────────────────────────────── */}
+        <section className={styles.formSection} aria-labelledby="form-section-metadata">
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-metadata">
+              Required metadata
+            </h2>
+            <p className={styles.formSectionHint}>
+              All five fields are required before Admin will accept the submission.
+            </p>
+          </header>
 
-          <div className={`${shared.field} ${shared.full}`}>
-            <label htmlFor="submission-abstract">Abstract</label>
-            <textarea
-              id="submission-abstract"
-              rows={6}
-              value={abstract}
-              onChange={(event) => setAbstract(event.target.value)}
-            />
-          </div>
+          <div className={styles.formGrid}>
+            <div className={`${styles.field} ${styles.full}`}>
+              <label htmlFor="submission-title">Title</label>
+              <input
+                id="submission-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Manuscript title"
+              />
+            </div>
 
-          <div className={shared.field}>
-            <label htmlFor="submission-author">First author</label>
-            <input
-              id="submission-author"
-              value={authorName}
-              onChange={(event) => setAuthorName(event.target.value)}
-            />
-          </div>
+            <div className={`${styles.field} ${styles.full}`}>
+              <label htmlFor="submission-abstract">Abstract</label>
+              <textarea
+                id="submission-abstract"
+                rows={6}
+                value={abstract}
+                onChange={(event) => setAbstract(event.target.value)}
+                placeholder="Provide a structured abstract (objectives, methods, results, conclusions)."
+              />
+            </div>
 
-          <div className={shared.field}>
-            <label htmlFor="submission-institution">Institution</label>
-            <input
-              id="submission-institution"
-              value={institution}
-              onChange={(event) => setInstitution(event.target.value)}
-            />
-          </div>
+            <div className={styles.field}>
+              <label htmlFor="submission-author">First author</label>
+              <input
+                id="submission-author"
+                value={authorName}
+                onChange={(event) => setAuthorName(event.target.value)}
+                placeholder="Full name"
+              />
+            </div>
 
-          <div className={shared.field}>
-            <label htmlFor="submission-type">Paper type</label>
-            <select
-              id="submission-type"
-              value={paperType}
-              onChange={(event) => setPaperType(event.target.value)}
-            >
-              <option>Research article</option>
-              <option>Methodology article</option>
-              <option>Review article</option>
-            </select>
-          </div>
+            <div className={styles.field}>
+              <label htmlFor="submission-institution">Institution</label>
+              <input
+                id="submission-institution"
+                value={institution}
+                onChange={(event) => setInstitution(event.target.value)}
+                placeholder="Primary affiliation"
+              />
+            </div>
 
-          <div className={shared.field}>
-            <label htmlFor="submission-keywords">Keywords</label>
-            <input
-              id="submission-keywords"
-              placeholder="Comma separated"
-              value={keywords}
-              onChange={(event) => setKeywords(event.target.value)}
-            />
-          </div>
+            <div className={styles.field}>
+              <label htmlFor="submission-type">Paper type</label>
+              <select
+                id="submission-type"
+                value={paperType}
+                onChange={(event) => setPaperType(event.target.value)}
+              >
+                <option>Research article</option>
+                <option>Methodology article</option>
+                <option>Review article</option>
+              </select>
+            </div>
 
-          {/* ── Upload Paper (PDF) ─────────────────────────────────────────── */}
-          <div className={`${shared.field} ${shared.full}`}>
-            <label htmlFor="submission-file">Upload Paper (PDF)</label>
-            <input
-              id="submission-file"
-              data-testid="submission-file"
-              type="file"
-              accept="application/pdf"
-              onChange={(event) => void handleFileInput(event)}
-              disabled={isUploading || saving}
-            />
+            <div className={styles.field}>
+              <label htmlFor="submission-keywords">Keywords</label>
+              <input
+                id="submission-keywords"
+                placeholder="Comma separated"
+                value={keywords}
+                onChange={(event) => setKeywords(event.target.value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Manuscript PDF ─────────────────────────────────────── */}
+        <section className={styles.formSection} aria-labelledby="form-section-pdf">
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-pdf">
+              Manuscript PDF
+            </h2>
+            <p className={styles.formSectionHint}>PDF only, up to 10 MB.</p>
+          </header>
+
+          <div className={`${styles.field} ${styles.full}`}>
+            <div className={styles.fieldFile}>
+              <label htmlFor="submission-file">Upload Paper (PDF)</label>
+              <input
+                id="submission-file"
+                data-testid="submission-file"
+                type="file"
+                accept="application/pdf"
+                onChange={(event) => void handleFileInput(event)}
+                disabled={isUploading || saving}
+              />
+            </div>
+
             {uploadedFile && (
               <p
-                className={shared.fieldHint}
+                className={styles.fieldHint}
                 data-testid="submission-file-filename"
                 aria-live="polite"
               >
-                {uploadedFile.name}
+                <FileText size={12} aria-hidden /> {uploadedFile.name} ·{' '}
+                {formatBytes(uploadedFile.size)}
               </p>
             )}
-            {isUploading && (
-              <p className={shared.fieldHint} data-testid="submission-file-progress" aria-live="polite">
-                Uploading PDF... {progress}%
-              </p>
-            )}
-            {pdfUrl && !isUploading && (
-              <p className={shared.fieldHint} data-testid="submission-file-url">
-                Firebase URL captured. The submit button unlocks once all required fields are valid.
-              </p>
-            )}
-            {fileError && (
-              <p className={shared.error} role="alert" data-testid="submission-file-error">
-                {fileError}
-              </p>
-            )}
-            <div className={shared.actions} style={{ marginTop: 8 }}>
-              {isUploading ? null : uploadedFile && fileError ? (
-                <button
-                  type="button"
-                  className={shared.buttonSecondary}
-                  onClick={() => void handleRetry()}
-                  data-testid="submission-file-retry"
-                >
-                  Retry upload
-                </button>
-              ) : uploadedFile && pdfUrl ? (
-                <button
-                  type="button"
-                  className={shared.buttonSecondary}
-                  onClick={handleRemoveUpload}
-                  data-testid="submission-file-remove"
-                >
-                  Remove file
-                </button>
-              ) : null}
-            </div>
-          </div>
 
-          {/* ── OpenAlex ID (optional, with scan preview + manual fallback) ── */}
-          <div className={`${shared.field} ${shared.full}`}>
-            <label htmlFor="submission-openalex">OpenAlex Work ID (optional)</label>
+            {isUploading && (
+              <div className={styles.fileStatusRow} data-testid="submission-file-progress" aria-live="polite">
+                <span>Uploading PDF… {progress}%</span>
+                <div
+                  className={styles.progressBar}
+                  role="progressbar"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className={styles.progressFill}
+                    style={{ ['--progress-fill' as string]: `${progress}%` } as React.CSSProperties}
+                  />
+                </div>
+              </div>
+            )}
+
+            {pdfUrl && !isUploading && (
+              <p className={styles.fileStatusRow} data-testid="submission-file-url">
+                <CheckCircle2 size={12} aria-hidden /> <strong>Upload complete.</strong>
+                <span>The submit button unlocks once all required fields are valid.</span>
+              </p>
+            )}
+
+            {fileError && (
+              <ErrorBanner
+                tone="error"
+                title="Manuscript upload failed"
+                message={fileError}
+                data-testid="submission-file-error"
+                retry={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleRetry()}
+                  >
+                    Retry upload
+                  </Button>
+                }
+              />
+            )}
+
+            {!isUploading && uploadedFile && pdfUrl && !fileError && (
+              <div className={styles.actionsRow}>
+                <Button variant="outline" size="sm" onClick={handleRemoveUpload}>
+                  Remove file
+                </Button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── OpenAlex Work ID (optional) ───────────────────────── */}
+        <section className={styles.formSection} aria-labelledby="form-section-openalex">
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-openalex">
+              OpenAlex link (optional)
+            </h2>
+            <p className={styles.formSectionHint}>No network call is issued from the browser.</p>
+          </header>
+
+          <div className={`${styles.field} ${styles.full}`}>
+            <label htmlFor="submission-openalex">OpenAlex Work ID</label>
             <input
               id="submission-openalex"
               data-testid="submission-openalex-input"
@@ -378,95 +454,104 @@ export const ResearcherSubmissionForm = () => {
                 openAlexScanning
               }
             />
-            <p className={shared.fieldHint}>
-              Paste an OpenAlex work ID. The form validates the identifier and shows a preview before
-              attaching it to the submission. No OpenAlex network call is made from the browser.
+            <p className={styles.fieldHint}>
+              Paste an OpenAlex work ID. The form validates the identifier and shows a
+              preview before attaching it to the submission. DOI and full URL forms
+              are not yet supported by the research submission form.
             </p>
 
             {openAlexState.stage === 'idle' && (
-              <div className={shared.actions} style={{ marginTop: 8 }}>
-                <button
-                  type="button"
-                  className={
-                    openAlexDraft.trim() && !openAlexScanning
-                      ? shared.buttonOpenAlex
-                      : shared.buttonSecondary
-                  }
-                  data-testid="submission-openalex-scan"
+              <div className={styles.actionsRow}>
+                <Button
+                  variant="primary"
+                  size="sm"
                   disabled={!openAlexDraft.trim() || openAlexScanning}
                   onClick={() => void handleScanOpenAlex()}
+                  data-testid="submission-openalex-scan"
                 >
-                  {openAlexScanning ? 'Scanning...' : 'Scan OpenAlex'}
-                </button>
-                <button
-                  type="button"
-                  className={shared.buttonGhost}
-                  data-testid="submission-openalex-manual"
+                  {openAlexScanning ? 'Scanning…' : 'Scan OpenAlex'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleManualFallbackOpenAlex}
+                  data-testid="submission-openalex-manual"
                 >
                   Enter manually
-                </button>
-                <button
-                  type="button"
-                  className={shared.buttonGhost}
-                  data-testid="submission-openalex-skip"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={handleSkipOpenAlex}
+                  data-testid="submission-openalex-skip"
                 >
                   Skip
-                </button>
+                </Button>
               </div>
             )}
 
             {openAlexState.stage === 'invalid' && (
-              <div className={shared.error} role="alert" data-testid="submission-openalex-invalid">
-                {openAlexState.message}
-                <div className={shared.actions} style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className={shared.buttonSecondary}
-                    onClick={() => setOpenAlexState({ stage: 'idle' })}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={shared.buttonGhost}
-                    onClick={handleManualFallbackOpenAlex}
-                  >
-                    Enter manually instead
-                  </button>
-                </div>
-              </div>
+              <ErrorBanner
+                tone="error"
+                title="Invalid OpenAlex ID"
+                message={openAlexState.message}
+                data-testid="submission-openalex-invalid"
+                retry={
+                  <div className={styles.actionsRow}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOpenAlexState({ stage: 'idle' })}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleManualFallbackOpenAlex}
+                    >
+                      Enter manually instead
+                    </Button>
+                  </div>
+                }
+              />
             )}
 
             {openAlexState.stage === 'unsupported' && (
-              <div className={shared.error} role="alert" data-testid="submission-openalex-unsupported">
-                {openAlexState.message}
-                <div className={shared.actions} style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className={shared.buttonSecondary}
-                    onClick={() => setOpenAlexState({ stage: 'idle' })}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={shared.buttonGhost}
-                    onClick={handleManualFallbackOpenAlex}
-                  >
-                    Enter manually instead
-                  </button>
-                </div>
-              </div>
+              <ErrorBanner
+                tone="warning"
+                title="OpenAlex preview unavailable"
+                message={openAlexState.message}
+                data-testid="submission-openalex-unsupported"
+                retry={
+                  <div className={styles.actionsRow}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOpenAlexState({ stage: 'idle' })}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleManualFallbackOpenAlex}
+                    >
+                      Enter manually instead
+                    </Button>
+                  </div>
+                }
+              />
             )}
 
             {openAlexState.stage === 'confirmed' && (
-              <p className={shared.fieldHint} data-testid="submission-openalex-confirmed">
-                OpenAlex ID attached: <strong>{openAlexState.id}</strong> ·{' '}
+              <p className={styles.openAlexConfirm} data-testid="submission-openalex-confirmed">
+                <CheckCircle2 size={12} aria-hidden />
+                <span>OpenAlex ID attached:</span>
+                <strong>{openAlexState.id}</strong>
                 <button
                   type="button"
-                  className={shared.buttonGhost}
+                  className={styles.openAlexLink}
                   onClick={() => setOpenAlexState({ stage: 'idle' })}
                 >
                   Change
@@ -475,11 +560,12 @@ export const ResearcherSubmissionForm = () => {
             )}
 
             {openAlexState.stage === 'skipped' && (
-              <p className={shared.fieldHint} data-testid="submission-openalex-skipped">
-                OpenAlex lookup skipped. ·{' '}
+              <p className={styles.openAlexConfirm} data-testid="submission-openalex-skipped">
+                <AlertTriangle size={12} aria-hidden />
+                <span>OpenAlex lookup skipped.</span>
                 <button
                   type="button"
-                  className={shared.buttonGhost}
+                  className={styles.openAlexLink}
                   onClick={() => setOpenAlexState({ stage: 'idle' })}
                 >
                   Provide an ID
@@ -487,27 +573,36 @@ export const ResearcherSubmissionForm = () => {
               </p>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className={shared.actions} style={{ marginTop: 18 }}>
-          <button
-            type="button"
-            className={shared.buttonSecondary}
-            disabled={saving || !canSubmit}
-            onClick={() => void submit(false)}
-            data-testid="submission-save-draft"
-          >
-            Save draft
-          </button>
-          <button
-            type="submit"
-            className={shared.button}
-            disabled={!canSubmit}
-            data-testid="submission-submit"
-          >
-            {saving ? 'Saving...' : 'Submit to Admin'}
-          </button>
-        </div>
+        <footer className={styles.formFooter}>
+          <p className={styles.formHint}>
+            Submitting routes the manuscript to Admin screening. You can save a draft
+            without submitting to review the metadata first.
+          </p>
+          <div className={styles.formActionButtons}>
+            <Button
+              variant="outline"
+              size="md"
+              disabled={saving || !canSubmit}
+              onClick={() => void submit(false)}
+              leftIcon={<Save size={14} aria-hidden />}
+              data-testid="submission-save-draft"
+            >
+              Save draft
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={!canSubmit}
+              leftIcon={<Send size={14} aria-hidden />}
+              data-testid="submission-submit"
+            >
+              {saving ? 'Saving…' : 'Submit to Admin'}
+            </Button>
+          </div>
+        </footer>
       </form>
     </section>
   );

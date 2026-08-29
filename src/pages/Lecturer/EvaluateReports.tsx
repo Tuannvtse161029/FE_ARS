@@ -21,6 +21,8 @@ import {
 import type { PhasedReport } from '../../services/phasedReport.service';
 import { EvaluateReportModal, type EvaluationAction } from '../../components/lecturer/EvaluateReportModal';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
 import styles from './EvaluateReports.module.css';
 
 interface BannerState {
@@ -181,6 +183,32 @@ export const EvaluateReports = () => {
 
   return (
     <div className={styles.evaluateReports}>
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Phased Report Review Console"
+        description="Review submissions from your research groups, approve or reject with feedback, and track waiting reports."
+        actions={
+          <Button
+            variant="outline"
+            size="md"
+            className={styles.refreshBtn}
+            leftIcon={
+              isLoadingReports ? (
+                <Loader size={14} className={styles.spinningIcon} aria-hidden />
+              ) : (
+                <RefreshCw size={14} aria-hidden />
+              )
+            }
+            onClick={() => void refreshAll()}
+            disabled={isLoadingGroups || isLoadingReports}
+            aria-label="Refresh reports"
+          >
+            {isLoadingReports ? 'Refreshing…' : 'Refresh'}
+          </Button>
+        }
+        accent="var(--ars-lecturer)"
+      />
+
       {/* Breadcrumbs */}
       <div className={styles.breadcrumbs}>
         Home &gt; Lecturer &gt; <span className={styles.activeBreadcrumb}>Evaluate Reports</span>
@@ -195,7 +223,7 @@ export const EvaluateReports = () => {
             feedback, and track waiting reports.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className={styles.headerActions}>
           <button
             type="button"
             className={styles.refreshBtn}
@@ -397,11 +425,11 @@ const ReportColumn = ({
                   </div>
                   <div className={styles.reportCardMeta}>
                     <span className={styles.metaLine}>
-                      <Users size={12} aria-hidden style={{ marginRight: 4 }} />
+                      <Users size={12} aria-hidden />
                       {groupName}
                     </span>
                     <span className={styles.metaLine}>
-                      <Calendar size={12} aria-hidden style={{ marginRight: 4 }} />
+                      <Calendar size={12} aria-hidden />
                       Submitted {formatDate(r.submittedAt)}
                     </span>
                   </div>

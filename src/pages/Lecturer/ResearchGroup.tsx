@@ -1,14 +1,10 @@
-// Lecturer — Research Groups (groups-only)
+// Lecturer — Research Groups (groups-only).
 //
-// Per the Coordinator brief, this page is now groups-only. The Topics CRUD
-// was moved to a dedicated top-level page (`src/pages/Lecturer/ResearchTopics.tsx`)
-// reachable from the sidebar. This page keeps the assigned-topic summary
-// on every group card and links to the topic's row on the new page so the
-// lecturer can navigate Groups → Topic without a back/forward dance.
-//
-// All data is fetched from the live API. No mock records. No hardcoded
-// "Topic 1" data. Active strict-DTO call-site widening is preserved
-// (see researchWorkflowDtos.ts and the strict-DTO services for context).
+// Per the Coordinator brief, this page is groups-only. Topics CRUD was moved
+// to a dedicated page (`ResearchTopics.tsx`). This page keeps the assigned-
+// topic summary on every group card and links to the topic's row on the new
+// page so the lecturer can navigate Groups → Topic without back/forward
+// navigation.
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,16 +25,27 @@ import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
-import { researchGroupService, deriveGroupStatus } from '../../services/researchGroup.service';
+import {
+  researchGroupService,
+  deriveGroupStatus,
+} from '../../services/researchGroup.service';
 import type { ResearchTopic } from '../../types/research';
-import { groupMemberService, indexGroupMembersByGroupId } from '../../services/groupMember.service';
+import {
+  groupMemberService,
+  indexGroupMembersByGroupId,
+} from '../../services/groupMember.service';
 import type { GroupMember } from '../../services/groupMember.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { FieldError } from '../../components/FieldError';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { Button } from '../../components/Button/Button';
 import { ROUTES } from '../../routes/paths';
 import styles from './ResearchGroup.module.css';
 
@@ -59,7 +66,11 @@ const initialsOf = (raw: string): string =>
     .toUpperCase()
     .slice(0, 2) || '?';
 
-const avatarColors = ['#10b981', '#f59e0b', '#3b82f6', '#7c3aed', '#ef4444'];
+const avatarTones = ['green', 'amber', 'blue', 'purple', 'red'] as const;
+type AvatarTone = (typeof avatarTones)[number] | 'muted';
+
+const avatarToneAt = (idx: number): AvatarTone =>
+  avatarTones[idx % avatarTones.length] ?? 'muted';
 
 export const ResearchGroup = () => {
   const { user } = useAuth();
@@ -76,14 +87,12 @@ export const ResearchGroup = () => {
     () =>
       [...groups].sort(
         (a, b) =>
-          new Date(b.assignedAt ?? 0).getTime() - new Date(a.assignedAt ?? 0).getTime(),
+          new Date(b.assignedAt ?? 0).getTime() -
+          new Date(a.assignedAt ?? 0).getTime(),
       ),
     [groups],
   );
 
-  // Topics are now only read for the per-group "Assigned topic" summary
-  // pill. No mutation happens on this page anymore — see
-  // `ResearchTopics.tsx` for the canonical CRUD surface.
   const {
     topics,
     isLoading: isLoadingTopics,
@@ -93,7 +102,6 @@ export const ResearchGroup = () => {
 
   const { refetch: refetchProjects } = useGuidanceProjects();
 
-  // Members are loaded separately (no server-side filter — see groupMember.service.ts).
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -131,29 +139,23 @@ export const ResearchGroup = () => {
     return map;
   }, [topics]);
 
-  // ── Modal state ────────────────────────────────────────────────────────
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  // (AssignTopicModal was removed — assignment is no longer wired on this
-  // page. The canonical "assign topic to group" flow now belongs to the
-  // dedicated Research Topics page once BE ships an assignment endpoint.)
-
-  // ── Banner state ────────────────────────────────────────────────────────
   const [banner, setBanner] = useState<BannerState>({
     visible: false,
     text: '',
     variant: 'success',
   });
 
-  // ── Create Group form state ────────────────────────────────────────────
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [groupDeadline, setGroupDeadline] = useState('');
   const [groupNameError, setGroupNameError] = useState<string | null>(null);
-  const [groupDeadlineError, setGroupDeadlineError] = useState<string | null>(null);
+  const [groupDeadlineError, setGroupDeadlineError] = useState<string | null>(
+    null,
+  );
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupError, setCreateGroupError] = useState<string | null>(null);
 
-  // ── Toolbar: search + refresh state for the groups grid ──────────────────
   const [groupSearch, setGroupSearch] = useState('');
   const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
 
@@ -209,9 +211,7 @@ export const ResearchGroup = () => {
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
-    const ok = window.confirm(
-      `Delete "${name}"? This action cannot be undone.`,
-    );
+    const ok = window.confirm(`Delete "${name}"? This action cannot be undone.`);
     if (!ok) return;
     try {
       await researchGroupService.delete(groupId);
@@ -257,8 +257,11 @@ export const ResearchGroup = () => {
       setGroupDeadline('');
       setGroupNameError(null);
       setGroupDeadlineError(null);
-      const idLabel = typeof created.id === 'number' ? formatGroupId(created.id) : '';
-      showBanner(`Research Group ${idLabel} ("${created.name ?? groupName}") created successfully.`);
+      const idLabel =
+        typeof created.id === 'number' ? formatGroupId(created.id) : '';
+      showBanner(
+        `Research Group ${idLabel} ("${created.name ?? groupName}") created successfully.`,
+      );
       await refetchGroups();
     } catch (err) {
       setCreateGroupError(
@@ -270,60 +273,81 @@ export const ResearchGroup = () => {
   };
 
   const refreshAll = async () => {
-    await Promise.all([refetchGroups(), refetchTopics(), refetchProjects(), loadMembers()]);
+    await Promise.all([
+      refetchGroups(),
+      refetchTopics(),
+      refetchProjects(),
+      loadMembers(),
+    ]);
   };
 
-  return (
-    <div className={styles.researchGroupPage} data-testid="lecturer-research-groups">
-      {/* Breadcrumbs */}
-      <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Research Groups</span>
-      </div>
+  const errorBannerList = [
+    groupsError,
+    topicsError,
+    membersError,
+  ].filter(Boolean) as Array<Error | { message: string }>;
 
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Research Groups</h1>
-          <p className={styles.pageSubtitle}>
+  const headerActions = (
+    <>
+      <Button
+        variant="outline"
+        size="md"
+        className={styles.lecturerOutline}
+        leftIcon={
+          isLoadingGroups || isLoadingTopics || isLoadingMembers ? (
+            <Loader size={14} className={styles.spinning} aria-hidden />
+          ) : (
+            <RefreshCw size={14} aria-hidden />
+          )
+        }
+        onClick={() => void refreshAll()}
+        disabled={isLoadingGroups || isLoadingTopics || isLoadingMembers}
+      >
+        Refresh
+      </Button>
+      <Button
+        variant="primary"
+        size="md"
+        className={styles.lecturerPrimary}
+        leftIcon={<Plus size={16} aria-hidden />}
+        onClick={() => setShowCreateGroupModal(true)}
+      >
+        Create Research Group
+      </Button>
+    </>
+  );
+
+  return (
+    <div className={styles.page} data-testid="lecturer-research-groups">
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Research Groups"
+        description={
+          <>
             Manage active research groups and the topics assigned to them.
             Topics themselves live on the{' '}
             <Link
               to={ROUTES.LECTURER_RESEARCH_TOPICS}
-              className={styles.activeBreadcrumb}
+              className={styles.inlineLink}
             >
               Research Topics
             </Link>{' '}
             page.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => void refreshAll()}
-            disabled={isLoadingGroups || isLoadingTopics || isLoadingMembers}
-            aria-label="Refresh"
-          >
-            <RefreshCw size={14} aria-hidden />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => setShowCreateGroupModal(true)}
-          >
-            <Plus size={16} aria-hidden />
-            Create Research Group
-          </button>
-        </div>
-      </div>
+          </>
+        }
+        actions={headerActions}
+        accent="var(--ars-lecturer)"
+      />
 
-      {/* BANNER */}
       {banner.visible && (
-        <div className={styles.successToastBanner}>
-          <div className={styles.toastLeft}>
-            <span className={styles.toastCheckIcon}>
+        <div
+          className={`${styles.successBanner} ${
+            banner.variant === 'error' ? styles.errorBannerTop : ''
+          }`}
+          role="status"
+        >
+          <div className={styles.bannerLeft}>
+            <span className={styles.bannerIcon}>
               {banner.variant === 'success' ? (
                 <Check size={14} strokeWidth={3} aria-hidden />
               ) : (
@@ -331,49 +355,50 @@ export const ResearchGroup = () => {
               )}
             </span>
             <div>
-              <span className={styles.toastTitle}>
-                {banner.variant === 'success' ? 'Action Successful' : 'Action Failed'}
+              <span className={styles.bannerTitle}>
+                {banner.variant === 'success'
+                  ? 'Action Successful'
+                  : 'Action Failed'}
               </span>
-              <p className={styles.toastSub}>{banner.text}</p>
+              <p className={styles.bannerSub}>{banner.text}</p>
             </div>
           </div>
-          <div className={styles.toastRight}>
-            <button
-              type="button"
-              className={styles.toastCloseBtn}
-              onClick={() =>
-                setBanner({ visible: false, text: '', variant: 'success' })
-              }
-              aria-label="Dismiss"
-            >
-              <X size={14} aria-hidden />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* GLOBAL ERROR BANNER (any list failed to load) */}
-      {(groupsError || topicsError || membersError) && (
-        <div className={styles.errorBanner} role="alert">
-          <span className={styles.errorBannerIcon}>
-            <AlertTriangle size={14} aria-hidden />
-            <span>
-              {groupsError?.message ?? topicsError?.message ?? membersError ?? 'Failed to load data. Please retry.'}
-            </span>
-          </span>
           <button
             type="button"
-            className={styles.errorRetryBtn}
-            onClick={() => void refreshAll()}
+            className={styles.bannerCloseBtn}
+            onClick={() =>
+              setBanner({ visible: false, text: '', variant: 'success' })
+            }
+            aria-label="Dismiss"
           >
-            Retry
+            <X size={14} aria-hidden />
           </button>
         </div>
       )}
 
-      {/* SECTION 1: Active Research Groups */}
-      <div className={styles.sectionHeaderRow}>
-        <div className={styles.sectionTitleBlock}>
+      {errorBannerList.length > 0 && (
+        <ErrorBanner
+          tone="error"
+          title="Failed to load data"
+          message={
+            errorBannerList
+              .map((e) => ('message' in e ? e.message : String(e)))
+              .join(' · ') || 'Please retry.'
+          }
+          retry={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshAll()}
+            >
+              Retry
+            </Button>
+          }
+        />
+      )}
+
+      <div className={styles.sectionHeader}>
+        <div className={styles.sectionHeaderLeft}>
           <Users size={18} className={styles.sectionIcon} aria-hidden />
           <h3 className={styles.sectionTitle}>Active Research Groups</h3>
           <span className={styles.countBadge}>
@@ -393,31 +418,23 @@ export const ResearchGroup = () => {
         refreshLabel="Refresh"
       />
 
-      {/* Groups Grid */}
-      <div className={styles.groupsGrid}>
-        {isLoadingGroups ? (
-          <div className={styles.loadingCard}>
-            <Loader size={20} className={styles.spinningIcon} aria-hidden />
-            <span>Loading research groups…</span>
-          </div>
-        ) : groups.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>No research groups yet</h4>
-            <p className={styles.emptyText}>
-              Click "Create Research Group" to start a new one.
-            </p>
-          </div>
-        ) : groupTotalItems === 0 ? (
-          <div className={styles.emptyCard}>
-            <Inbox size={28} className={styles.emptyIcon} aria-hidden />
-            <h4 className={styles.emptyTitle}>No matches</h4>
-            <p className={styles.emptyText}>
-              No groups match "{groupSearch.trim()}".
-            </p>
-          </div>
-        ) : (
-          pagedGroups.map((grp) => {
+      {isLoadingGroups ? (
+        <SkeletonRow count={4} withHeader />
+      ) : groups.length === 0 ? (
+        <EmptyState
+          icon={<Inbox size={20} aria-hidden />}
+          title="No research groups yet"
+          description='Click "Create Research Group" to start a new one.'
+        />
+      ) : groupTotalItems === 0 ? (
+        <EmptyState
+          icon={<Inbox size={20} aria-hidden />}
+          title="No matches"
+          description={`No groups match "${groupSearch.trim()}".`}
+        />
+      ) : (
+        <div className={styles.grid}>
+          {pagedGroups.map((grp) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
             const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
@@ -427,79 +444,72 @@ export const ResearchGroup = () => {
               : '';
             const roster = gid >= 0 ? memberIndex[gid] ?? [] : [];
             return (
-              <div className={styles.groupCard} key={gid}>
-                {/* Header badges */}
+              <article className={styles.groupCard} key={gid}>
                 <div className={styles.cardTopRow}>
-                  <div className={styles.leftPills}>
-                    <span className={styles.groupIdPill}>{idLabel}</span>
+                  <div className={styles.metaPills}>
+                    <span className={styles.idPill}>{idLabel}</span>
                     <StatusBadge status={status} />
                   </div>
                   {deadlineLabel && (
-                    <span className={styles.dueDatePill}>
-                      Deadline: {deadlineLabel}
+                    <span className={styles.deadlinePill}>
+                      Due {deadlineLabel}
                     </span>
                   )}
                 </div>
 
-                <h4 className={styles.groupCardTitle}>{grp.name ?? '(untitled group)'}</h4>
+                <h4 className={styles.groupTitle}>
+                  {grp.name ?? '(untitled group)'}
+                </h4>
 
-                {/* Assigned-topic summary — read-only link to the canonical
-                    Research Topics page. The CRUD lives on the new page;
-                    this row is the entry point for "what topic is this
-                    group working on?" */}
-                <div className={styles.groupTopicText}>
-                  <Lightbulb
-                    size={12}
-                    aria-hidden
-                    style={{ marginRight: 4 }}
-                  />
+                <div className={styles.topicRow}>
+                  <Lightbulb size={12} aria-hidden />
                   Topic:{' '}
                   {topic ? (
                     <Link
                       to={ROUTES.LECTURER_RESEARCH_TOPICS}
-                      className={styles.activeBreadcrumb}
+                      className={styles.topicLink}
                       data-testid="assigned-topic-link"
                     >
                       {topic.title ?? `RT-${grp.topicId}`}
-                      <ArrowRight size={10} aria-hidden style={{ marginLeft: 2 }} />
+                      <ArrowRight size={10} aria-hidden />
                     </Link>
                   ) : (
-                    <span style={{ color: '#94a3b8' }}>Unassigned</span>
+                    <span className={styles.topicUnassigned}>Unassigned</span>
                   )}
                 </div>
-                <p className={styles.groupDescText}>
+                <p className={styles.desc}>
                   {grp.description?.trim() ||
                     'No description provided for this group yet.'}
                 </p>
 
-                {/* Roster Members */}
                 <div className={styles.membersSection}>
                   <span className={styles.membersLabel}>
-                    MEMBERS ({roster.length})
+                    Members ({roster.length})
                   </span>
-                  <div className={styles.memberPillsRow}>
+                  <div className={styles.memberPills}>
                     {isLoadingMembers && roster.length === 0 ? (
-                      <span className={styles.memberPillTag}>Loading…</span>
+                      <span className={styles.memberPill}>Loading…</span>
                     ) : roster.length === 0 ? (
-                      <span className={styles.memberPillTag}>No members yet</span>
+                      <span className={styles.memberPill}>No members yet</span>
                     ) : (
                       roster.map((m, idx) => {
-                        const label = m.studentId ? `student #${m.studentId}` : `member #${m.id ?? idx}`;
+                        const label = m.studentId
+                          ? `student #${m.studentId}`
+                          : `member #${m.id ?? idx}`;
                         return (
-                          <span key={String(m.id ?? idx)} className={styles.memberPillTag}>
+                          <span
+                            key={String(m.id ?? idx)}
+                            className={styles.memberPill}
+                          >
                             <span
-                              className={styles.memberAvatarIcon}
-                              style={{
-                                backgroundColor:
-                                  avatarColors[idx % avatarColors.length] ?? '#94a3b8',
-                              }}
+                              className={styles.memberAvatar}
+                              data-avatar-tone={avatarToneAt(idx)}
                             >
                               {initialsOf(label)}
                             </span>
                             {label}
                             {m.activityStatus && (
                               <span className={styles.activityTag}>
-                                {' '}
                                 · {m.activityStatus}
                               </span>
                             )}
@@ -510,15 +520,16 @@ export const ResearchGroup = () => {
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className={styles.groupCardFooter}>
-                  <div className={styles.iconButtonsLeft}>
+                <div className={styles.cardFooter}>
+                  <div className={styles.iconBtnGroup}>
                     <button
                       type="button"
-                      className={styles.actionIconBtn}
+                      className={styles.iconBtn}
                       title="Delete group"
                       aria-label="Delete group"
-                      onClick={() => handleDeleteGroup(gid, grp.name ?? idLabel)}
+                      onClick={() =>
+                        handleDeleteGroup(gid, grp.name ?? idLabel)
+                      }
                     >
                       <Trash2 size={14} aria-hidden />
                     </button>
@@ -532,35 +543,28 @@ export const ResearchGroup = () => {
                           )
                         : ROUTES.RESEARCH_GROUP
                     }
-                    className={styles.viewGroupNavyBtn}
+                    className={styles.viewBtn}
                     title="Open this group's detail page"
                   >
                     <Users size={14} aria-hidden />
                     View Group
                   </Link>
                 </div>
-              </div>
+              </article>
             );
-          })
-        )}
+          })}
 
-        {/* Create New Group Card */}
-        <div
-          className={styles.createGroupDashedCard}
-          onClick={() => setShowCreateGroupModal(true)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setShowCreateGroupModal(true);
-            }
-          }}
-        >
-          <Plus size={32} className={styles.plusIconLarge} aria-hidden />
-          <span className={styles.createDashedText}>Create New Group</span>
+          <button
+            type="button"
+            className={styles.dashedCreateCard}
+            onClick={() => setShowCreateGroupModal(true)}
+            aria-label="Create new group"
+          >
+            <Plus size={32} className={styles.plusIconLarge} aria-hidden />
+            <span className={styles.dashedCreateText}>Create New Group</span>
+          </button>
         </div>
-      </div>
+      )}
 
       {groupTotalPages > 1 && (
         <TablePagination
@@ -580,7 +584,7 @@ export const ResearchGroup = () => {
       {showCreateGroupModal && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalCard}>
-            <div className={styles.modalHeaderRow}>
+            <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
                 <span className={styles.modalIconCircle}>
                   <Users size={18} aria-hidden />
@@ -588,7 +592,7 @@ export const ResearchGroup = () => {
                 <div>
                   <h3 className={styles.modalTitle}>Create New Research Group</h3>
                   <span className={styles.modalSubtitle}>
-                    Fill in the details below to create a new group
+                    Fill in the details below to create a new group.
                   </span>
                 </div>
               </div>
@@ -602,63 +606,85 @@ export const ResearchGroup = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateGroupSubmit} className={styles.modalForm}>
+            <form
+              onSubmit={handleCreateGroupSubmit}
+              className={styles.modalBody}
+            >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupName">
-                  * Research Group Name
+                  Research Group Name
                 </label>
-<input
-              id="groupName"
-              type="text"
-              className={`${styles.formInput} ${groupNameError ? styles.formInputError : ''}`}
-              value={groupName}
-              onChange={(e) => {
-                setGroupName(e.target.value);
-                if (groupNameError) setGroupNameError(null);
-              }}
-              placeholder="AI Speech-to-Text Research Team"
-              aria-invalid={Boolean(groupNameError)}
-              aria-describedby={groupNameError ? 'group-name-error' : undefined}
-              required
-            />
-            <FieldError id="group-name-error" message={groupNameError} testId="rg-group-name-error" />
-          </div>
+                <input
+                  id="groupName"
+                  type="text"
+                  className={`${styles.formInput} ${
+                    groupNameError ? styles.formInputError : ''
+                  }`}
+                  value={groupName}
+                  onChange={(e) => {
+                    setGroupName(e.target.value);
+                    if (groupNameError) setGroupNameError(null);
+                  }}
+                  placeholder="AI Speech-to-Text Research Team"
+                  aria-invalid={Boolean(groupNameError)}
+                  aria-describedby={
+                    groupNameError ? 'group-name-error' : undefined
+                  }
+                  required
+                />
+                <FieldError
+                  id="group-name-error"
+                  message={groupNameError}
+                  testId="rg-group-name-error"
+                />
+              </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="groupDesc">
-              Description
-            </label>
-            <textarea
-              id="groupDesc"
-              className={styles.formTextarea}
-              value={groupDesc}
-              onChange={(e) => setGroupDesc(e.target.value)}
-              placeholder="Investigating Whisper AI model accuracy across regional dialects."
-              rows={3}
-            />
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="groupDesc">
+                  Description
+                </label>
+                <textarea
+                  id="groupDesc"
+                  className={styles.formTextarea}
+                  value={groupDesc}
+                  onChange={(e) => setGroupDesc(e.target.value)}
+                  placeholder="Investigating Whisper AI model accuracy across regional dialects."
+                  rows={3}
+                />
+              </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="groupDeadline">
-              Deadline (optional)
-            </label>
-            <input
-              id="groupDeadline"
-              type="date"
-              className={`${styles.formInput} ${groupDeadlineError ? styles.formInputError : ''}`}
-              value={groupDeadline}
-              onChange={(e) => {
-                setGroupDeadline(e.target.value);
-                if (groupDeadlineError) setGroupDeadlineError(null);
-              }}
-              aria-invalid={Boolean(groupDeadlineError)}
-              aria-describedby={groupDeadlineError ? 'group-deadline-error' : 'group-deadline-helper'}
-            />
-            <span className={styles.helperText} id="group-deadline-helper">
-              ISO timestamp is sent to the BE. Leave blank if not yet decided.
-            </span>
-            <FieldError id="group-deadline-error" message={groupDeadlineError} testId="rg-group-deadline-error" />
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="groupDeadline">
+                  Deadline (optional)
+                </label>
+                <input
+                  id="groupDeadline"
+                  type="date"
+                  className={`${styles.formInput} ${
+                    groupDeadlineError ? styles.formInputError : ''
+                  }`}
+                  value={groupDeadline}
+                  onChange={(e) => {
+                    setGroupDeadline(e.target.value);
+                    if (groupDeadlineError) setGroupDeadlineError(null);
+                  }}
+                  aria-invalid={Boolean(groupDeadlineError)}
+                  aria-describedby={
+                    groupDeadlineError
+                      ? 'group-deadline-error'
+                      : 'group-deadline-helper'
+                  }
+                />
+                <span className={styles.helperText} id="group-deadline-helper">
+                  ISO timestamp is sent to the BE. Leave blank if not yet
+                  decided.
+                </span>
+                <FieldError
+                  id="group-deadline-error"
+                  message={groupDeadlineError}
+                  testId="rg-group-deadline-error"
+                />
+              </div>
 
               {createGroupError && (
                 <div className={styles.errorBanner} role="alert">
@@ -668,35 +694,35 @@ export const ResearchGroup = () => {
               )}
 
               <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
+                <Button
+                  variant="outline"
+                  size="md"
                   onClick={() => setShowCreateGroupModal(false)}
                   disabled={isCreatingGroup}
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
                   type="submit"
-                  className={styles.submitNavyBtn}
+                  className={styles.lecturerPrimary}
+                  leftIcon={
+                    isCreatingGroup ? (
+                      <Loader size={14} className={styles.spinning} aria-hidden />
+                    ) : (
+                      <Check size={14} aria-hidden />
+                    )
+                  }
                   disabled={isCreatingGroup}
                 >
-                  {isCreatingGroup ? (
-                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
-                  ) : (
-                    <Check size={14} aria-hidden />
-                  )}
                   {isCreatingGroup ? 'Creating…' : 'Create Research Group'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Assign-topic modal removed — assignment is no longer triggered
-          from the Research Groups page. See the module-level comment for
-          the canonical CRUD location. */}
     </div>
   );
 };

@@ -1,27 +1,41 @@
 /* PublishedPaperCard — OpenAlex-inspired scannable card layout.
-   Uses CSS variables from src/styles/ars-tokens.css. No hard-coded brand hex
-   outside the shared tokens; matches the editorial typography already used by
-   PublicationShared.module.css. */
+   Token-driven: every hex value is pulled from ars-tokens.css. No
+   gradient, no shadow lift, no nested card. Status communicated via
+   color + label (never color alone). */
 
 .paper {
   display: grid;
   gap: var(--space-4);
-  border: var(--border-thin);
+  border: 1px solid var(--ars-network);
   border-radius: var(--radius-lg);
   background: var(--ars-paper);
   padding: var(--space-5);
-  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
+  transition: border-color var(--transition-normal);
+  position: relative;
+}
+
+.paper::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--card-accent, var(--ars-blue));
+  opacity: 0.45;
+  border-top-left-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-lg);
 }
 
 .paper:hover {
-  border-color: var(--ars-blue-mid);
-  box-shadow: var(--shadow-md);
+  border-color: var(--card-accent, var(--ars-blue-mid));
 }
 
+/* ── Card head (paper type / publication date / version / DOI) ── */
 .head {
   display: grid;
   gap: var(--space-2);
-  border-bottom: var(--border-thin);
+  border-bottom: 1px solid var(--ars-network);
   padding-bottom: var(--space-3);
 }
 
@@ -32,9 +46,8 @@
   align-items: center;
   color: var(--ars-ink-soft);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
 }
 
 .paperType {
@@ -42,12 +55,19 @@
   color: var(--ars-blue);
   border-radius: 999px;
   padding: 2px 10px;
+  font-weight: var(--font-weight-semibold);
 }
 
 .publishedAt,
 .version {
   color: var(--ars-ink-muted);
   font-feature-settings: 'tnum';
+  font-family: var(--font-family-mono);
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
 }
 
 .title {
@@ -56,8 +76,17 @@
   line-height: var(--line-height-tight);
   color: var(--ars-ink);
   margin: 0;
+  word-break: break-word;
 }
 
+.institutions {
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Generic section layout ───────────────────────────────── */
 .section {
   display: grid;
   gap: var(--space-2);
@@ -122,18 +151,15 @@
   margin-right: 4px;
 }
 
-.institutions {
-  margin: 0;
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
-}
-
 .abstract {
   margin: 0;
   color: var(--ars-ink-soft);
   font-size: var(--font-size-base);
   line-height: var(--line-height-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .keywords,
@@ -166,32 +192,28 @@
   padding: 4px 10px;
 }
 
-.details {
-  display: grid;
-  grid-template-columns: minmax(120px, max-content) 1fr;
-  gap: 6px var(--space-4);
-  margin: 0;
-  font-size: var(--font-size-sm);
+/* ── Identifier / classification row (single tight row) ────── */
+.detailGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ars-network);
 }
 
 .detailRow {
-  display: contents;
-}
-
-.details dt {
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.details dd {
-  margin: 0;
-  color: var(--ars-ink);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.detailLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
 }
 
 .identifierLink {
@@ -200,7 +222,7 @@
   gap: 6px;
   color: var(--ars-blue);
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color var(--transition-fast);
@@ -208,7 +230,6 @@
 
 .identifierLink:hover {
   border-bottom-color: var(--ars-blue);
-  text-decoration: none;
 }
 
 .identifierLink:focus-visible {
@@ -219,7 +240,7 @@
 
 .identifierPlain {
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--ars-ink-soft);
 }
 
@@ -234,40 +255,77 @@
   font-size: var(--font-size-sm);
 }
 
+/* ── Reviewer disclosure row ───────────────────────────────── */
+.reviewerRow {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ars-network);
+}
+
 .reviewerPublic,
 .reviewerPrivate {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
+  border: 1px solid transparent;
 }
 
 .reviewerPublic {
   background: var(--ars-info-bg);
   color: var(--ars-info);
-  border: 1px solid var(--ars-info-bg);
 }
 
 .reviewerPrivate {
   background: var(--ars-paper-alt);
   color: var(--ars-ink-muted);
-  border: 1px dashed var(--ars-network);
+  border-color: var(--ars-network);
 }
 
+/* ── Actions (cite + read PDF) ─────────────────────────────── */
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
   padding-top: var(--space-2);
-  border-top: var(--border-thin);
+  border-top: 1px solid var(--ars-network);
+}
+
+.pdfLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  height: 32px;
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.pdfLink:hover {
+  background: var(--ars-paper);
+  border-color: var(--ars-ink-muted);
+  color: var(--card-accent, var(--ars-blue));
+}
+
+.pdfLink:focus-visible {
+  outline: 2px solid var(--ars-blue-mid);
+  outline-offset: 2px;
 }
 
 @media (max-width: 720px) {
-  .paper { padding: var(--space-4); }
-  .details { grid-template-columns: 1fr; }
-  .details dd { padding-bottom: var(--space-1); }
+  .paper {
+    padding: var(--space-4);
+  }
+  .detailGrid {
+    gap: var(--space-2) var(--space-3);
+  }
 }

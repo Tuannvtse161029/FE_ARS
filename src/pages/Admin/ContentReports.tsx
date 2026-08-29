@@ -1,7 +1,16 @@
+/**
+ * ContentReports — Admin moderation queue for forum / paper violations.
+ *
+ * High-density operational table: search + status filter + resolve modal.
+ * Token-driven admin accent; uses PageHeader, TableToolbar, TablePagination,
+ * EmptyState, ErrorBanner, SkeletonRow.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Inbox } from 'lucide-react';
 import styles from './ContentReports.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { ResolveReportModal } from '../../components/admin/ResolveReportModal';
+import { useAdminGuard } from '../../hooks/useAdminGuard';
 import type {
   ViolationReport,
   ViolationReportsQuery,
@@ -11,7 +20,14 @@ import type {
 import { usePagination } from '../../hooks/usePagination';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const STATUS_OPTIONS: Array<{
   value: ViolationReportStatus | 'ALL';
@@ -24,6 +40,8 @@ const STATUS_OPTIONS: Array<{
 ];
 
 export default function ContentReports(): JSX.Element {
+  useAdminGuard();
+
   const [reports, setReports] = useState<ViolationReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,20 +146,19 @@ export default function ContentReports(): JSX.Element {
   };
 
   return (
-    <section className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.title}>Content &amp; Forum Violations</h1>
-          <p className={styles.subtitle}>
-            Review pending reports and resolve them with the appropriate action.
-            {pendingCount > 0 ? ` ${pendingCount} pending.` : ''}
-          </p>
-        </div>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        eyebrow="ADMIN · VIOLATIONS"
+        title="Content & Forum Violations"
+        description={`Review pending reports and resolve them with the appropriate action.${
+          pendingCount > 0 ? ` ${pendingCount} pending.` : ''
+        }`}
+        accent={ROLE_ACCENT}
+      />
 
       <TableToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={error ? () => undefined : setSearch}
         onRefresh={() => {
           setRefreshing(true);
           void loadReports();
@@ -158,6 +175,7 @@ export default function ContentReports(): JSX.Element {
             }
             aria-label="Filter by status"
             data-testid="violations-status-filter"
+            disabled={Boolean(error)}
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -170,33 +188,55 @@ export default function ContentReports(): JSX.Element {
 
       {loading ? (
         <div
-          className={styles.placeholder}
+          className={styles.tableCard}
           data-testid="violations-loading"
           role="status"
         >
-          Loading violation reports…
+          <div className={styles.loadingState}>
+            <SkeletonRow count={8} rowHeight={28} withHeader />
+          </div>
         </div>
       ) : error ? (
         <div
-          className={styles.errorState}
           data-testid="violations-error"
-          role="alert"
+          className={styles.errorWrap}
         >
-          Failed to load: {error}
+          <ErrorBanner
+            tone="error"
+            title="Could not load violation reports"
+            message={error}
+            retry={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void loadReports()}
+                disabled={loading || refreshing}
+              >
+                {loading || refreshing ? 'Retrying…' : 'Retry'}
+              </Button>
+            }
+          />
         </div>
       ) : totalItems === 0 ? (
-        <div
-          className={styles.placeholder}
-          data-testid="violations-empty"
-          role="status"
-        >
-          {search.trim().length > 0
-            ? `No violation reports match "${search.trim()}".`
-            : 'No violation reports match these filters.'}
+        <div className={styles.tableCard}>
+          <div
+            className={styles.emptyWrap}
+            data-testid="violations-empty"
+          >
+            <EmptyState
+              icon={<Inbox size={20} />}
+              title={
+                search.trim().length > 0
+                  ? `No violation reports match "${search.trim()}".`
+                  : 'No violation reports match these filters.'
+              }
+              description="Reports filed against forum comments or papers will appear here for resolution."
+            />
+          </div>
         </div>
       ) : (
-        <>
-          <div className={styles.tableWrapper}>
+        <div className={styles.tableCard}>
+          <div className={styles.tableResponsive}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -207,7 +247,7 @@ export default function ContentReports(): JSX.Element {
                   <th>Reported By</th>
                   <th>Date</th>
                   <th>Status</th>
-                  <th />
+                  <th className={styles.actionCell}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -270,7 +310,7 @@ export default function ContentReports(): JSX.Element {
             onPage={setPage}
             itemLabel="violation reports"
           />
-        </>
+        </div>
       )}
 
       <ResolveReportModal
@@ -281,6 +321,6 @@ export default function ContentReports(): JSX.Element {
         onClose={closeModal}
         onConfirm={handleConfirm}
       />
-    </section>
+    </div>
   );
 }
