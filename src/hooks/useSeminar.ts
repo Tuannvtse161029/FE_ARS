@@ -183,8 +183,8 @@ export function useCreateSeminar(
     async (payload: SeminarCreateRequest): Promise<Seminar> => {
       const state = useAuthStore.getState();
       const role = state.effectiveRole ?? state.user?.roleName;
-      if (role !== 'Lecturer') {
-        const msg = 'Only Lecturers are permitted to create academic seminars.';
+      if (role !== 'Lecturer' && role !== 'Researcher') {
+        const msg = 'Only Lecturers and Researchers are permitted to create academic seminars.';
         setCreateError(msg);
         throw new Error(msg);
       }
