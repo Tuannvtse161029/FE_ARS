@@ -22,7 +22,21 @@ import type {
   GoogleCredentialResponse,
 } from '../types/googleAuth';
 
-const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+// === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+//
+// Force the Google Identity Services UI to render in English regardless of
+// the user's browser locale. The previous behaviour translated the button
+// label to whatever language the browser advertised (e.g. "Đăng nhập bằng
+// Google" for `vi`), which is wrong for our single-language EN-first FE.
+//
+// Two layers of override:
+//   1. Script URL is loaded with `?hl=en` so the OAuth client UI metadata
+//      resolves to English before any code runs.
+//   2. `id.initialize({ locale: 'en' })` and `id.renderButton(..., { locale: 'en' })`
+//      are explicit per-call fallbacks in case the script-level override is
+//      overridden by a future GIS change.
+const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client?hl=en';
+// === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
 const GIS_SCRIPT_ID = 'ars-google-identity-services';
 
 export type GoogleIdentityStatus =
@@ -152,6 +166,11 @@ export function useGoogleIdentity({
       const id: GoogleAccountsId = window.google.accounts.id;
 
       try {
+        // === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+        // `locale: 'en'` is the explicit per-instance override that
+        // guarantees the button text is rendered in English even if the
+        // script-level `hl=en` query param is ignored (e.g. future GIS
+        // changes, ad-blocker stripping the query string, etc.).
         id.initialize({
           client_id: clientId,
           callback: (response) => {
@@ -163,7 +182,9 @@ export function useGoogleIdentity({
           },
           auto_select: false,
           cancel_on_tap_outside: true,
+          locale: 'en',
         });
+        // === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
       } catch (err: unknown) {
         // GIS sometimes throws if init is called twice or with a bad client id.
         const message =
@@ -179,13 +200,19 @@ export function useGoogleIdentity({
         if (!target) return false;
         // Idempotent: clear children first.
         target.innerHTML = '';
+        // === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+        // Pass `locale: 'en'` here too so the rendered button itself is
+        // forced to English. This is the per-button override that wins
+        // over both the script URL `?hl=en` and the user's browser locale.
         id.renderButton(target, {
           type: buttonType,
           theme: buttonTheme,
           size: buttonSize,
           text: buttonText,
           shape: buttonShape,
+          locale: 'en',
         });
+        // === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
         return true;
       };
 

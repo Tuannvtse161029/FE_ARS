@@ -313,6 +313,13 @@ export const API_ENDPOINTS = {
       UPDATE: (id: number) => `/api/LearningMaterial/${id}`,
       DELETE: (id: number) => `/api/LearningMaterial/${id}`,
     },
+    SHARED_MATERIAL: {
+      GET_ALL: '/api/SharedMaterial',
+      GET_BY_ID: (id: number) => `/api/SharedMaterial/${id}`,
+      CREATE: '/api/SharedMaterial',
+      UPDATE: (id: number) => `/api/SharedMaterial/${id}`,
+      DELETE: (id: number) => `/api/SharedMaterial/${id}`,
+    },
   },
 } as const;
 

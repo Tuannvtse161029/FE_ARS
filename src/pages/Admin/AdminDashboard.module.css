@@ -1,15 +1,4 @@
-/**
- * AdminDashboard — System Observatory
- * ARS Research Constellation — Admin Landing Page
- *
- * Workspace hero + metric cards + analytics charts + activity feed.
- * Token-driven; uses the shared Admin accent (--ars-admin).
- */
-@keyframes adminSpin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Page shell ─────────────────────────────────────────── */
+/* Queue-first Admin dashboard. */
 .page {
   width: 100%;
   display: flex;
@@ -24,197 +13,322 @@
   gap: var(--space-6);
 }
 
-/* ── Range pills (sit on WorkspaceHeader actions slot) ── */
-.rangePills {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  background: var(--ars-paper);
-  border: 1px solid var(--ars-network);
-  border-radius: var(--radius-md);
-}
-
-.rangePill {
-  padding: 5px var(--space-3);
-  border: 0;
-  background: transparent;
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.rangePill:hover {
-  color: var(--ars-ink);
-  background: var(--ars-paper-alt);
-}
-
-.rangePillActive {
-  background: var(--ars-admin);
-  color: var(--ars-paper) !important;
-}
-
-.rangePill:focus-visible {
-  outline: 2px solid var(--ars-admin-mid);
-  outline-offset: 2px;
-}
-
-/* ── Metric grid ────────────────────────────────────────── */
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: var(--space-4);
-}
-
-@media (max-width: 640px) {
-  .metricGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── Charts row ────────────────────────────────────────── */
-.chartsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-5);
-}
-
-@media (max-width: 900px) {
-  .chartsRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.chartCard {
-  background: var(--ars-paper-alt);
-  border: 1px solid var(--ars-network);
-  border-radius: var(--radius-md);
-  padding: var(--space-5);
+.queueSection,
+.analyticsSection,
+.snapshotSection {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sectionEyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.queueCount {
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.queueTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+}
+
+.queueTable {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.queueTable th {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--ars-network);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.queueTable td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  vertical-align: middle;
+}
+
+.queueTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.queueTable tbody tr:hover {
+  background: var(--ars-paper-alt);
+}
+
+.requestName,
+.requestEmail {
+  display: block;
+}
+
+.requestName {
+  font-weight: var(--font-weight-semibold);
+}
+
+.requestEmail,
+.requestDate {
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--ars-warning);
+  border-radius: var(--radius-sm);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.actionCell {
+  text-align: right;
+}
+
+.actionCell button,
+.widgetError button {
+  min-height: 36px;
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper);
+  color: var(--ars-admin);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 0 var(--space-3);
+}
+
+.actionCell button:hover,
+.widgetError button:hover {
+  background: var(--ars-info-bg);
+}
+
+.actionCell button:focus-visible,
+.widgetError button:focus-visible {
+  outline: 2px solid var(--ars-admin);
+  outline-offset: 2px;
+}
+
+.queueLoading,
+.queueEmpty {
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--ars-node);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.analyticsSection {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.chartSection {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+  padding: var(--space-4);
 }
 
 .chartHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  flex-wrap: wrap;
 }
 
-.chartTitle {
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-base);
+.chartEyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
+  text-transform: uppercase;
+}
+
+.chartHeader h2 {
   margin: 0;
-  letter-spacing: -0.005em;
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
 }
 
-.chartWrapper {
-  width: 100%;
-  height: 240px;
+.rangeSelector {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 
-.chartSkeleton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 240px;
+.rangeButton,
+.rangeButtonActive {
+  min-height: 28px;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  padding: 0 var(--space-2);
+}
+
+.rangeButton:hover {
+  border-color: var(--ars-admin);
+  color: var(--ars-admin);
+}
+
+.rangeButtonActive {
+  border-color: var(--ars-admin);
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rangeButton:focus-visible,
+.rangeButtonActive:focus-visible {
+  outline: 2px solid var(--ars-admin);
+  outline-offset: 2px;
+}
+
+.chartFrame {
+  height: 260px;
+  min-width: 0;
+}
+
+.chartLoading,
+.chartEmpty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  border: 1px dashed var(--ars-node);
   color: var(--ars-ink-muted);
   font-size: var(--font-size-sm);
-  border: 1px dashed var(--ars-node);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper);
+  text-align: center;
 }
 
-/* ── Activity section (uses shared ActivityFeed) ──────── */
-.activitySection {}
-
-/* ── Status tags for activity entries ──────────────────── */
-.statusTag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 1px solid transparent;
-  white-space: nowrap;
+.chartSection .widgetError {
+  min-height: 260px;
 }
 
-.statusTagPENDING {
-  background: var(--ars-warning-bg);
-  color: var(--ars-warning);
-}
-
-.statusTagAPPROVED {
-  background: var(--ars-success-bg);
-  color: var(--ars-success);
-}
-
-.statusTagDENIED {
-  background: var(--ars-error-bg);
-  color: var(--ars-error);
-}
-
-/* ── Widget error state (inline, role-themed) ──────────── */
 .widgetError {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--ars-paper-alt);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  border: 1px solid var(--ars-error);
+  background: var(--ars-error-bg);
   color: var(--ars-error);
   font-size: var(--font-size-sm);
-  grid-column: 1 / -1;
-}
-
-.widgetError > svg {
-  flex-shrink: 0;
 }
 
 .widgetError > span {
   flex: 1;
 }
 
-.widgetError button {
-  background: transparent;
-  border: 1px solid rgba(153, 27, 27, 0.3);
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
-  cursor: pointer;
-  color: var(--ars-error);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  transition: background var(--transition-fast);
-  font-family: var(--font-family-ui);
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.widgetError button:hover {
-  background: var(--ars-error-bg);
-}
+@media (max-width: 640px) {
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
-.widgetError button:focus-visible {
-  outline: 2px solid var(--ars-admin-mid);
-  outline-offset: 2px;
-}
+  .metricGrid,
+  .analyticsSection {
+    grid-template-columns: 1fr;
+  }
 
-/* ── Responsive ─────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .chartsRow {
-    gap: var(--space-4);
+  .chartHeader {
+    flex-direction: column;
+  }
+
+  .rangeSelector {
+    justify-content: flex-start;
+  }
+
+  .chartFrame,
+  .chartLoading,
+  .chartEmpty,
+  .chartSection .widgetError {
+    min-height: 220px;
+  }
+
+  .queueTableWrap {
+    margin-inline: calc(-1 * var(--space-2));
+  }
+
+  .queueTable th,
+  .queueTable td {
+    padding: var(--space-3);
+  }
+
+  .actionCell button {
+    min-height: 40px;
   }
 }

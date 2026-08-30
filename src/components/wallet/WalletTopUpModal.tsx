@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, QrCode, Wallet as WalletIcon, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useCreatePaymentLink } from '../../hooks/useCreatePaymentLink';
 import { ROUTES } from '../../routes/paths';
@@ -72,6 +72,14 @@ export function WalletTopUpModal({
   const { create: createPaymentLink, isLoading: isCreatingLink, reset: resetLink } =
     useCreatePaymentLink();
   const [submitGuard, setSubmitGuard] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  const closeDialog = (): void => {
+    onClose();
+    openerRef.current?.focus();
+  };
 
   // Reset internal state every time the modal opens. Closing keeps the state
   // until the next open so a partially-typed amount isn't lost on a tooltip.
@@ -88,6 +96,50 @@ export function WalletTopUpModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isCreatingLink) {
+        event.preventDefault();
+        closeDialog();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) {
+        return;
+      }
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isCreatingLink, isOpen]);
 
   const parsedAmount = useMemo(() => {
     const stripped = amountText.replace(/[^\d]/g, '');
@@ -167,7 +219,7 @@ export function WalletTopUpModal({
   };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>): void => {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget) closeDialog();
   };
 
   if (!isOpen) return null;
@@ -182,7 +234,7 @@ export function WalletTopUpModal({
       aria-labelledby="wallet-topup-title"
       onClick={handleOverlayClick}
     >
-      <div className={styles.modal}>
+      <div ref={dialogRef} className={styles.modal}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             {step === 'qr' ? (
@@ -203,10 +255,11 @@ export function WalletTopUpModal({
             </h2>
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             className={styles.closeButton}
             aria-label="Close"
-            onClick={onClose}
+            onClick={closeDialog}
           >
             <X size={18} />
           </button>
@@ -221,7 +274,7 @@ export function WalletTopUpModal({
                 <button
                   type="button"
                   className={styles.retryButton}
-                  onClick={onClose}
+                  onClick={closeDialog}
                 >
                   Refresh and try again
                 </button>
@@ -395,7 +448,7 @@ export function WalletTopUpModal({
                 <button
                   type="button"
                   className={styles.confirmButton}
-                  onClick={onClose}
+                  onClick={closeDialog}
                   data-testid="close-after-fallback"
                 >
                   Close

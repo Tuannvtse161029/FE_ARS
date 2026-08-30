@@ -18,7 +18,7 @@
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--ars-ink);
+  color: var(--ink-primary);
   line-height: var(--line-height-tight);
 }
 
@@ -40,9 +40,9 @@
   padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
   font-family: var(--font-family-ui);
-  color: var(--ars-ink);
-  background-color: var(--ars-paper);
-  border: 1px solid var(--ars-node);
+  color: var(--control-text);
+  background-color: var(--control-bg);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   transition:
     border-color var(--transition-fast),
@@ -54,23 +54,23 @@
 }
 
 .input::placeholder {
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
 }
 
 .input:hover:not(:disabled) {
-  border-color: var(--ars-ink-muted);
+  border-color: var(--border-strong);
 }
 
 .input:focus {
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.16);
-  background-color: var(--ars-paper);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
+  background-color: var(--control-bg-hover);
   outline: none;
 }
 
 /* ── Disabled ──────────────────────────────────────────── */
 .input:disabled {
-  background-color: var(--ars-paper-alt);
+  background-color: var(--surface-sunken);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -90,7 +90,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   pointer-events: none;
   transition: color var(--transition-fast);
 }
@@ -106,7 +106,7 @@
 
 /* ── Error State ───────────────────────────────────────── */
 .input--error {
-  border-color: var(--ars-error);
+  border-color: var(--status-danger-text);
 }
 
 .input--error:focus {
@@ -115,14 +115,14 @@
 
 .errorText {
   font-size: var(--font-size-xs);
-  color: var(--ars-error);
+  color: var(--status-danger-text);
   margin: 0;
   line-height: var(--line-height-tight);
 }
 
 .helperText {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   margin: 0;
   line-height: var(--line-height-tight);
 }

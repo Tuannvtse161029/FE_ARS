@@ -97,7 +97,7 @@ const findAdminLink = (href: string): HTMLAnchorElement | null =>
 
 const adminNavItems = [
   { to: ROUTES.ADMIN, label: 'Dashboard' },
-  { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'Role Requests' },
+  { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'User Verification' },
   { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts' },
   { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions' },
   { to: ROUTES.ADMIN_REPORTS, label: 'Reports' },

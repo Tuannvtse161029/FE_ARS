@@ -996,4 +996,168 @@ describe('Forum page — integration', () => {
       expect(within(rows[0]).queryByTestId('forum-post-views-stat')).not.toBeInTheDocument();
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 8. Sidebar density (this worker) — Trending Tags + Forum Stats
+  // The Forum sidebar used to feel sparse below the Filters input. The new
+  // Trending Tags block is derived from the loaded posts' tags (no extra
+  // API calls, no mock data) and a click on a chip populates the search
+  // field above. The Forum Stats block is a compact three-row overview.
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('sidebar density — Trending Tags and Forum Stats', () => {
+    it('renders a Trending Tags section with chips sorted by frequency', async () => {
+      // Three posts, three different tag distributions so the order is
+      // unambiguous: 'ml' shows up on two posts, 'quantum' on one, 'nlp' on
+      // one. 'ml' must lead.
+      const taggedPosts = [
+        {
+          ...mockPosts[0],
+          tags: ['quantum', 'computing'],
+        },
+        {
+          ...mockPosts[1],
+          tags: ['ml', 'federated'],
+        },
+        {
+          ...mockPosts[2],
+          tags: ['ml', 'nlp'],
+        },
+      ];
+      postGetAll.mockResolvedValueOnce(taggedPosts);
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+
+      // The sidebar surfaces the new section.
+      const trendingHeading = await screen.findByText('Trending Tags');
+      expect(trendingHeading).toBeInTheDocument();
+
+      // All four tags render as chips.
+      expect(screen.getByRole('button', { name: /Filter by tag ml/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Filter by tag quantum/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Filter by tag computing/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Filter by tag nlp/i })).toBeInTheDocument();
+
+      // The "ml" chip leads in the DOM order (highest count = 2).
+      const mlChip = screen.getByRole('button', { name: /Filter by tag ml/i });
+      const quantumChip = screen.getByRole('button', { name: /Filter by tag quantum/i });
+      expect(
+        mlChip.compareDocumentPosition(quantumChip) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('clicking a Trending Tag chip populates the search input', async () => {
+      const taggedPosts = [
+        { ...mockPosts[0], tags: ['quantum'] },
+        { ...mockPosts[1], tags: ['ml'] },
+      ];
+      postGetAll.mockResolvedValueOnce(taggedPosts);
+      commentGetByPostId.mockResolvedValue([]);
+
+      const user = userEvent.setup();
+      renderForum();
+
+      const chip = await screen.findByRole('button', { name: /Filter by tag quantum/i });
+      await user.click(chip);
+
+      // The search input now contains the tag.
+      const searchInput = (await screen.findAllByPlaceholderText(/Search posts/i))[0];
+      expect(searchInput).toHaveValue('quantum');
+
+      // The next refetch is fired with the new search filter — proves the
+      // chip click is wired through to the BE query.
+      await waitFor(() => {
+        const lastCall = postGetAll.mock.calls[postGetAll.mock.calls.length - 1]?.[0];
+        expect(lastCall?.search).toBe('quantum');
+      });
+    });
+
+    it('hides the Trending Tags section when no posts carry tags', async () => {
+      postGetAll.mockResolvedValueOnce([
+        { ...mockPosts[0], tags: undefined },
+        { ...mockPosts[1], tags: [] },
+        { ...mockPosts[2] },
+      ]);
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+
+      // Wait for posts to render so the loading state has settled.
+      await screen.findByText('Quantum Computing Primer');
+
+      expect(screen.queryByText('Trending Tags')).not.toBeInTheDocument();
+    });
+
+    it('renders the Forum Stats block with counts derived from the loaded posts', async () => {
+      const taggedPosts = [
+        { ...mockPosts[0], authorId: 7, tags: ['quantum', 'computing'] },
+        { ...mockPosts[1], authorId: 8, tags: ['ml'] },
+        { ...mockPosts[2], authorId: 9, tags: ['ml', 'nlp', 'ethics'] },
+      ];
+      postGetAll.mockResolvedValueOnce(taggedPosts);
+      commentGetByPostId.mockResolvedValue([]);
+
+      renderForum();
+
+      // The heading appears.
+      const statsHeading = await screen.findByText('Forum Stats');
+      expect(statsHeading).toBeInTheDocument();
+
+      // Posts row.
+      // We assert via the rendered text since CSS-module classes aren't
+      // accessible.
+      expect(screen.getByText('Posts')).toBeInTheDocument();
+      expect(screen.getByText('Authors')).toBeInTheDocument();
+      expect(screen.getByText('Tags')).toBeInTheDocument();
+
+      // The numeric values are 3 posts, 3 unique authors (7, 8, 9),
+      // 6 total tag occurrences (2 + 1 + 3).
+      // We assert by finding the parent <li> and reading its value span.
+      // The stats list is rendered as <ul role="list">; its <li> rows
+      // include the labels "Posts", "Authors", "Tags" as text. The tag
+      // chips above use a different accessible-name pattern
+      // (`Filter by tag <name>, <count> posts`) so we can filter on the
+      // exact label text.
+      const allItems = screen.getAllByRole('listitem');
+      const statRows = allItems.filter((li) => {
+        const text = li.textContent ?? '';
+        return (
+          text.startsWith('Posts') ||
+          text.startsWith('Authors') ||
+          text.startsWith('Tags')
+        );
+      });
+      expect(statRows).toHaveLength(3);
+      const postRow = statRows.find((li) => (li.textContent ?? '').startsWith('Posts'));
+      const authorRow = statRows.find((li) => (li.textContent ?? '').startsWith('Authors'));
+      const tagRow = statRows.find((li) => (li.textContent ?? '').startsWith('Tags'));
+      expect(postRow).toHaveTextContent('3');
+      expect(authorRow).toHaveTextContent('3');
+      expect(tagRow).toHaveTextContent('6');
+    });
+
+    it('hides the Forum Stats block while the feed is still loading', async () => {
+      // The first render starts isLoading=true, so the block must NOT
+      // appear. We resolve the promise in the assertion and verify the
+      // block then surfaces.
+      let resolvePosts: (posts: unknown[]) => void = () => undefined;
+      postGetAll.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolvePosts = resolve;
+        }),
+      );
+
+      renderForum();
+
+      // While loading: no Forum Stats heading.
+      expect(screen.queryByText('Forum Stats')).not.toBeInTheDocument();
+
+      resolvePosts([mockPosts[0]]);
+      // After resolution the block surfaces.
+      await waitFor(() => {
+        expect(screen.queryByText('Forum Stats')).toBeInTheDocument();
+      });
+    });
+  });
 });

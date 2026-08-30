@@ -43,7 +43,7 @@ const mockSeminarCard = (overrides = {}) => ({
   onlineLink: 'https://meet.google.com/abc-defg-hij',
   status: 'UPCOMING' as const,
   effectiveStatus: 'UPCOMING' as const,
-  organizerId: null,
+  organizerId: 7,
   isReminderSent: false,
   maxParticipants: null,
   aiSummary: null,
@@ -58,6 +58,7 @@ const mockUseSeminars = (overrides = {}) => ({
   isLoading: false,
   error: null,
   refetch: vi.fn(),
+  backendAvailability: 'full' as const,
   ...overrides,
 });
 
@@ -87,6 +88,14 @@ const renderPage = (seminars = mockUseSeminars()) => {
   vi.spyOn(useSeminarModule, 'useSeminars').mockReturnValue(seminars);
   vi.spyOn(useSeminarModule, 'useCreateSeminar').mockReturnValue(mockUseCreateSeminar());
   vi.spyOn(useSeminarModule, 'useSendReminder').mockReturnValue(mockUseSendReminder());
+  vi.spyOn(useSeminarModule, 'useSeminarRoleContext').mockReturnValue({
+    currentRole: 'Lecturer',
+    currentUserId: 7,
+    canModify: true,
+    canView: true,
+    isReadOnlyForViewer: false,
+    backendAvailability: 'full',
+  });
   vi.spyOn(useSeminarModule, 'useSeminarParticipants').mockReturnValue(mockUseSeminarParticipants());
 
   return render(
@@ -107,6 +116,14 @@ const renderPageWithParticipants = (
   vi.spyOn(useSeminarModule, 'useSeminars').mockReturnValue(seminars);
   vi.spyOn(useSeminarModule, 'useCreateSeminar').mockReturnValue(mockUseCreateSeminar());
   vi.spyOn(useSeminarModule, 'useSendReminder').mockReturnValue(mockUseSendReminder());
+  vi.spyOn(useSeminarModule, 'useSeminarRoleContext').mockReturnValue({
+    currentRole: 'Lecturer',
+    currentUserId: 7,
+    canModify: true,
+    canView: true,
+    isReadOnlyForViewer: false,
+    backendAvailability: 'full',
+  });
   vi.spyOn(useSeminarModule, 'useSeminarParticipants').mockReturnValue(participantsOverrides);
 
   return render(
@@ -119,13 +136,21 @@ const renderPageWithParticipants = (
 describe('SeminarWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(useSeminarModule, 'useSeminarRoleContext').mockReturnValue({
+      currentRole: 'Lecturer',
+      currentUserId: 7,
+      canModify: true,
+      canView: true,
+      isReadOnlyForViewer: false,
+      backendAvailability: 'full',
+    });
   });
 
   // ── T1: Page display ────────────────────────────────────────────────────────
 
   it('shows loading spinner when isLoading is true', () => {
     renderPage(mockUseSeminars({ isLoading: true }));
-    expect(screen.getByText(/loading seminars/i)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument();
   });
 
   it('shows empty state when seminars array is empty', () => {
@@ -239,14 +264,14 @@ describe('SeminarWorkspace', () => {
     );
 
     // Open feedback modal
-    await userEvent.click(screen.getByRole('button', { name: /form feedback/i }));
+    await userEvent.click(screen.getByRole('button', { name: /feedback & grading/i }));
     await waitFor(() => {
       const all = screen.getAllByText((content) => /feedback & grading/i.test(String(content)));
       expect(all.length).toBeGreaterThan(0);
     });
 
     // Button must be disabled because isSending is true
-    const btn = screen.getByRole('button', { name: /remind pending/i });
+    const btn = screen.getByRole('button', { name: /sending/i });
     expect(btn).toBeDisabled();
   });
 
@@ -289,7 +314,7 @@ describe('SeminarWorkspace', () => {
       </MemoryRouter>
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /form feedback/i }));
+    await userEvent.click(screen.getByRole('button', { name: /feedback & grading/i }));
     await waitFor(() => {
       const all = screen.getAllByText((content) => /feedback & grading/i.test(String(content)));
       expect(all.length).toBeGreaterThan(0);

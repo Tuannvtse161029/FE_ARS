@@ -175,10 +175,15 @@ export const EmailVerificationLanding = (): JSX.Element => {
     if (linkState.status === 'verifying') {
       return (
         <div className={styles.page}>
+          <header className={styles.logoSection}>
+            <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+            <span className={styles.brandText}>Academic Research System</span>
+          </header>
+
           <div className={styles.body}>
             <div className={styles.spinner} aria-hidden="true" />
-            <h1 className={styles.title}>Verifying your email…</h1>
-            <p className={styles.subtitle}>
+            <h1 className={styles.pageTitle}>Verifying your email…</h1>
+            <p className={styles.pageSubtitle}>
               Hang tight while we confirm your verification link with the ARS backend.
             </p>
           </div>
@@ -189,12 +194,17 @@ export const EmailVerificationLanding = (): JSX.Element => {
     if (linkState.status === 'verified') {
       return (
         <div className={styles.page}>
+          <header className={styles.logoSection}>
+            <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+            <span className={styles.brandText}>Academic Research System</span>
+          </header>
+
           <div className={styles.body}>
             <div className={`${styles.iconCircle} ${styles.iconCircleSuccess}`}>
               <Check size={32} />
             </div>
-            <h1 className={styles.title}>Email verified successfully!</h1>
-            <p className={styles.subtitle}>
+            <h1 className={styles.pageTitle}>Email verified successfully!</h1>
+            <p className={styles.pageSubtitle}>
               Thank you for verifying your email address. Your account is now confirmed and waiting for admin approval.
             </p>
             <div className={styles.actions}>
@@ -227,20 +237,18 @@ export const EmailVerificationLanding = (): JSX.Element => {
   if (otpSuccess) {
     return (
       <div className={styles.page}>
-        <div className={styles.logoHeader}>
-          <div className={styles.logoWrapper}>
-            <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-          </div>
+        <header className={styles.logoSection}>
+          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
           <span className={styles.brandText}>Academic Research System</span>
-        </div>
+        </header>
 
         <div className={styles.body}>
           <div className={`${styles.iconCircle} ${styles.iconCircleSuccess}`}>
             <Check size={32} />
           </div>
-          <h1 className={styles.title}>Email Verified!</h1>
-          <p className={styles.subtitle}>
-            Your email <strong>{email}</strong> has been successfully verified. Entering the system in read-only mode while waiting for administrator review...
+          <h1 className={styles.pageTitle}>Email Verified!</h1>
+          <p className={styles.pageSubtitle}>
+            Your email <strong>{email}</strong> has been verified. Returning you to sign in so you can access your account after administrator review.
           </p>
           <div className={styles.actions}>
             <Button
@@ -263,21 +271,19 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logoHeader}>
-        <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        </div>
+      <header className={styles.logoSection}>
+        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         <span className={styles.brandText}>Academic Research System</span>
-      </div>
+      </header>
 
-      <div className={styles.header}>
-        <div className={`${styles.iconCircle} ${styles.iconCirclePending}`} style={{ margin: '0 auto 16px auto' }}>
+      <div className={styles.pageHeader}>
+        <div className={`${styles.iconCircle} ${styles.iconCirclePending} ${styles.headerIcon}`}>
           <Mail size={30} />
         </div>
-        <h1 className={styles.title}>Verify Your Email</h1>
-        <p className={styles.subtitle}>
+        <h1 className={styles.pageTitle}>Verify Your Email</h1>
+        <p className={styles.pageSubtitle}>
           We've sent a 6-digit verification OTP code to{' '}
-          <strong style={{ color: 'var(--ars-ink, #0f172a)' }}>
+          <strong className={styles.emailAddress}>
             {email || 'your email address'}
           </strong>
           . Enter the code below to complete your registration.
@@ -299,23 +305,17 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
         {/* If email is empty, show input field */}
         {!email && (
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4, color: 'var(--ars-ink, #0f172a)' }}>
+          <div className={styles.emailField}>
+            <label className={styles.emailLabel} htmlFor="verification-email">
               Registered Email Address
             </label>
             <input
+              id="verification-email"
               type="email"
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1.5px solid var(--ars-node, #cbd5e1)',
-                fontSize: 14,
-                boxSizing: 'border-box'
-              }}
+              className={styles.emailInput}
             />
           </div>
         )}
@@ -376,7 +376,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
         <div className={styles.footer}>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
-            <ArrowLeft size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+            <ArrowLeft size={16} className={styles.backIcon} />
             Back to Sign In
           </Link>
         </div>

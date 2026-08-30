@@ -10,16 +10,15 @@ on:
 
 jobs:
   release-gate:
-    name: Production build + critical flows
+    name: Production build + full test chain
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     env:
       VITE_API_BASE_URL: http://127.0.0.1:4173
       CI: 'true'
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+        with: { persist-credentials: false }
 
       - uses: actions/setup-node@v4
         with:
@@ -33,5 +32,11 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Critical current-flow tests
+      - name: Critical flows (smoke)
         run: npm run test:smoke
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Full unit + integration + e2e
+        run: npm run test:full

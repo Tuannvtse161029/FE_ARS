@@ -1,159 +1,183 @@
 /**
- * AdminDashboard — System Observatory
- * ARS Research Constellation — Admin Landing Page
+ * AdminDashboard — operational landing page for the Admin role.
  *
- * Workspace hero + metric cards + analytics charts + activity feed.
- * Recharts are used only when the API returns data; the surface degrades
- * to honest unavailable states on failure.
+ * The dashboard deliberately leads with live work that needs an Admin's
+ * attention. It retains the existing summary and role-request APIs, but does
+ * not present charts or unsupported operational counts as decision evidence.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Users as UsersIcon, FileText as PapersIcon } from 'lucide-react';
+import { AlertTriangle, FileText as PapersIcon, Users as UsersIcon } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
 } from 'recharts';
 import { adminService } from '../../services/admin.service';
 import type {
+  AnalyticsMetric,
+  AnalyticsRange,
   AnalyticsSummary,
   AnalyticsTimeSeries,
-  AnalyticsRange,
-  AnalyticsMetric,
   RoleRequest,
 } from '../../types/admin';
-import { WorkspaceHeader } from '../../components/workspace/WorkspaceHeader';
 import { MetricCard } from '../../components/workspace/MetricCard';
-import { ActivityFeed, type ActivityEntry } from '../../components/workspace/ActivityFeed';
 import styles from './AdminDashboard.module.css';
 
-type Range = AnalyticsRange;
-type Metric = AnalyticsMetric;
+const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
+const ROLE_ACCENT = 'var(--ars-admin)';
 
-const RANGES: Range[] = ['daily', 'weekly', 'monthly', 'yearly'];
-const RANGE_LABEL: Record<Range, string> = {
+const ANALYTICS_RANGES = ['daily', 'weekly', 'monthly', 'yearly'] as const;
+
+const RANGE_LABELS: Record<AnalyticsRange, string> = {
   daily: 'Daily',
   weekly: 'Weekly',
   monthly: 'Monthly',
   yearly: 'Yearly',
 };
 
-const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
-
-const formatNumber = (n: number) =>
-  new Intl.NumberFormat('vi-VN').format(n);
-
-const formatRevenue = (n: number) =>
-  new Intl.NumberFormat('vi-VN', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(n) + ' VND';
-
-const formatDate = (iso: string) => {
-  if (iso.length === 7) return iso;
-  if (iso.length === 4) return iso;
-  return iso.slice(5);
+const METRIC_TITLES: Record<AnalyticsMetric, string> = {
+  user_registrations: 'Member growth',
+  revenue: 'Revenue',
 };
 
-const logDiag = (label: string, err: unknown) => {
+const formatNumber = (value: number) => new Intl.NumberFormat('vi-VN').format(value);
+
+const formatRevenue = (value: number) => `${formatNumber(value)} VND`;
+
+const formatChartDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' });
+};
+
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+const logDiag = (label: string, error: unknown) => {
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.warn(`[AdminDashboard] ${label}:`, err);
+    console.warn(`[AdminDashboard] ${label}:`, error);
   }
 };
 
-const ROLE_ACCENT = 'var(--ars-admin)';
-
-const WidgetErrorState = ({
-  message,
-  onRetry,
-  testId,
-}: {
+const WidgetErrorState = ({ message, onRetry, testId }: {
   message: string;
   onRetry: () => void;
   testId: string;
 }) => (
-  <div
-    className={styles.widgetError}
-    role="alert"
-    data-testid={testId}
-  >
-    <AlertTriangle size={14} />
+  <div className={styles.widgetError} role="alert" data-testid={testId}>
+    <AlertTriangle size={16} aria-hidden="true" />
     <span>{message}</span>
-    <button type="button" onClick={onRetry}>
-      Retry
-    </button>
+    <button type="button" onClick={onRetry}>Retry</button>
   </div>
 );
 
-const ChartCard = ({
-  title,
-  metric,
-  series,
-  loading,
-  error,
-  onRetry,
-}: {
-  title: string;
-  metric: Metric;
+interface AnalyticsChartProps {
+  metric: AnalyticsMetric;
+  range: AnalyticsRange;
   series: AnalyticsTimeSeries | null;
   loading: boolean;
   error: string | null;
+  onRangeChange: (range: AnalyticsRange) => void;
   onRetry: () => void;
-}) => (
-  <div className={styles.chartCard}>
-    <div className={styles.chartHeader}>
-      <h3 className={styles.chartTitle}>{title}</h3>
-    </div>
-    {error ? (
-      <WidgetErrorState
-        message={error}
-        onRetry={onRetry}
-        testId={`chart-error-${metric}`}
-      />
-    ) : loading || !series ? (
-      <div className={styles.chartSkeleton} role="status">
-        Loading chart data…
+}
+
+const AnalyticsChart = ({
+  metric,
+  range,
+  series,
+  loading,
+  error,
+  onRangeChange,
+  onRetry,
+}: AnalyticsChartProps) => {
+  const title = `${METRIC_TITLES[metric]} - ${RANGE_LABELS[range].toLowerCase()}`;
+  const points = series?.points ?? [];
+  const valueFormatter = metric === 'revenue' ? formatRevenue : formatNumber;
+
+  return (
+    <section className={styles.chartSection} aria-labelledby={`${metric}-chart-title`}>
+      <div className={styles.chartHeader}>
+        <div>
+          <p className={styles.chartEyebrow}>Live analytics</p>
+          <h2 id={`${metric}-chart-title`}>{title}</h2>
+        </div>
+        <div className={styles.rangeSelector} aria-label={`${METRIC_TITLES[metric]} time range`}>
+          {ANALYTICS_RANGES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={range === option ? styles.rangeButtonActive : styles.rangeButton}
+              aria-pressed={range === option}
+              onClick={() => onRangeChange(option)}
+            >
+              {RANGE_LABELS[option]}
+            </button>
+          ))}
+        </div>
       </div>
-    ) : (
-      <div className={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={series.points}
-            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(d: string) => formatDate(d)}
-              tick={{ fontSize: 10, fill: '#64748b' }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tickFormatter={(v: number) =>
-                metric === 'revenue' ? formatRevenue(v) : formatNumber(v)
-              }
-              tick={{ fontSize: 10, fill: '#64748b' }}
-              width={70}
-            />
-            <Tooltip
-              formatter={(value) =>
-                metric === 'revenue'
-                  ? [new Intl.NumberFormat('vi-VN').format(Number(value)) + ' VND', title]
-                  : [formatNumber(Number(value)), title]
-              }
-              contentStyle={{ fontSize: '0.78rem', borderRadius: 4, border: '1px solid #e2e8f0' }}
-            />
-            <Bar dataKey="value" fill="#7c3aed" radius={[2, 2, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    )}
-  </div>
-);
+
+      {error ? (
+        <WidgetErrorState message={error} onRetry={onRetry} testId={`${metric}-chart-error`} />
+      ) : loading ? (
+        <div className={styles.chartLoading} role="status">Loading {METRIC_TITLES[metric].toLowerCase()} data...</div>
+      ) : points.length === 0 ? (
+        <div className={styles.chartEmpty}>No analytics data available yet.</div>
+      ) : (
+        <div className={styles.chartFrame}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={points} margin={{ top: 12, right: 8, bottom: 2, left: 0 }}>
+              <title>{title}</title>
+              <CartesianGrid stroke="var(--ars-network)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatChartDate}
+                tick={{ fill: 'var(--ars-ink-muted)', fontSize: 11 }}
+                interval="preserveStartEnd"
+                tickLine={false}
+                axisLine={{ stroke: 'var(--ars-node)' }}
+              />
+              <YAxis
+                tickFormatter={(value: number) => metric === 'revenue'
+                  ? new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+                  : formatNumber(value)}
+                tick={{ fill: 'var(--ars-ink-muted)', fontSize: 11 }}
+                width={metric === 'revenue' ? 56 : 38}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                labelFormatter={(value) => formatChartDate(String(value))}
+                formatter={(value) => valueFormatter(Number(value))}
+                contentStyle={{
+                  background: 'var(--ars-paper-card)',
+                  border: '1px solid var(--ars-node)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--ars-ink)',
+                  fontSize: 'var(--font-size-sm)',
+                }}
+              />
+              <Bar
+                dataKey="value"
+                name={METRIC_TITLES[metric]}
+                fill={metric === 'revenue' ? 'var(--ars-admin)' : 'var(--ars-blue-action)'}
+                radius={[2, 2, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </section>
+  );
+};
 
 interface AdminDashboardProps {
   onSelectRoleRequest?: (request: RoleRequest) => void;
@@ -163,19 +187,14 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
-
-  const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
-  const [registrationsError, setRegistrationsError] = useState<string | null>(null);
-  const [loadingRegistrations, setLoadingRegistrations] = useState(true);
-
-  const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
-  const [revenueError, setRevenueError] = useState<string | null>(null);
-  const [loadingRevenue, setLoadingRevenue] = useState(true);
-
   const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
   const [loadingRecentRequests, setLoadingRecentRequests] = useState(true);
-
-  const [range, setRange] = useState<Range>('monthly');
+  const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
+  const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
+  const [analyticsRange, setAnalyticsRange] = useState<AnalyticsRange>('monthly');
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -186,198 +205,173 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     try {
       const data = await adminService.getAnalyticsSummary(signal);
       if (!signal.aborted) setSummary(data);
-    } catch (err) {
-      logDiag('summary failed', err);
+    } catch (error) {
+      logDiag('summary failed', error);
       if (!signal.aborted) setSummaryError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingSummary(false);
     }
   }, []);
 
-  const loadSeries = useCallback(
-    async (metric: Metric, signal: AbortSignal) => {
-      const isRevenue = metric === 'revenue';
-      if (isRevenue) {
-        setLoadingRevenue(true);
-        setRevenueError(null);
-      } else {
-        setLoadingRegistrations(true);
-        setRegistrationsError(null);
-      }
-      try {
-        const data = await adminService.getAnalyticsTimeseries(range, metric, signal);
-        if (signal.aborted) return;
-        if (isRevenue) setRevenue(data);
-        else setRegistrations(data);
-      } catch (err) {
-        logDiag(`timeseries(${metric}) failed`, err);
-        if (signal.aborted) return;
-        if (isRevenue) setRevenueError(DASHBOARD_UNAVAILABLE);
-        else setRegistrationsError(DASHBOARD_UNAVAILABLE);
-      } finally {
-        if (signal.aborted) return;
-        if (isRevenue) setLoadingRevenue(false);
-        else setLoadingRegistrations(false);
-      }
-    },
-    [range],
-  );
-
   const loadRecentRequests = useCallback(async (signal: AbortSignal) => {
     setLoadingRecentRequests(true);
+    setRequestsError(null);
     try {
       const data = await adminService.getRoleRequests(signal);
       if (!signal.aborted) setRecentRequests(data.slice(0, 8));
-    } catch (err) {
-      logDiag('recent role requests failed', err);
-      if (!signal.aborted) setRecentRequests([]);
+    } catch (error) {
+      logDiag('role requests failed', error);
+      if (!signal.aborted) setRequestsError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingRecentRequests(false);
     }
   }, []);
 
-  const loadAll = useCallback(async () => {
+  const loadAnalytics = useCallback(async (range: AnalyticsRange, signal: AbortSignal) => {
+    setLoadingAnalytics(true);
+    setAnalyticsError(null);
+    try {
+      const [registrationData, revenueData] = await Promise.all([
+        adminService.getAnalyticsTimeseries(range, 'user_registrations', signal),
+        adminService.getAnalyticsTimeseries(range, 'revenue', signal),
+      ]);
+      if (!signal.aborted) {
+        setRegistrations(registrationData);
+        setRevenue(revenueData);
+      }
+    } catch (error) {
+      logDiag('analytics failed', error);
+      if (!signal.aborted) setAnalyticsError(DASHBOARD_UNAVAILABLE);
+    } finally {
+      if (!signal.aborted) setLoadingAnalytics(false);
+    }
+  }, []);
+
+  const loadAll = useCallback(async (range = analyticsRange) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const { signal } = controller;
-    const myRequestId = ++requestIdRef.current;
+    const requestId = ++requestIdRef.current;
     await Promise.allSettled([
-      loadSummary(signal),
-      loadSeries('user_registrations', signal),
-      loadSeries('revenue', signal),
-      loadRecentRequests(signal),
+      loadSummary(controller.signal),
+      loadRecentRequests(controller.signal),
+      loadAnalytics(range, controller.signal),
     ]);
-    if (myRequestId !== requestIdRef.current) return;
-  }, [loadRecentRequests, loadSeries, loadSummary]);
+    if (requestId !== requestIdRef.current) return;
+  }, [analyticsRange, loadAnalytics, loadRecentRequests, loadSummary]);
+
+  const handleAnalyticsRangeChange = (range: AnalyticsRange) => {
+    if (range === analyticsRange) return;
+    setAnalyticsRange(range);
+  };
 
   useEffect(() => {
     void loadAll();
-    return () => {
-      abortRef.current?.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    abortRef.current?.abort();
-    abortRef.current = controller;
-    const myRequestId = ++requestIdRef.current;
-    void Promise.allSettled([
-      loadSeries('user_registrations', controller.signal),
-      loadSeries('revenue', controller.signal),
-    ]).then(() => {
-      if (myRequestId !== requestIdRef.current) return;
-    });
-  }, [range, loadSeries]);
-
-  // Activity entries from role requests
-  const requestActivity: ActivityEntry[] = recentRequests.map((r) => ({
-    id: String(r.id),
-    title: r.userName,
-    meta: r.email,
-    tag: (
-      <span className={`${styles.statusTag} ${styles[`statusTag${r.status}`] ?? ''}`}>
-        {r.status}
-      </span>
-    ),
-    time: new Date(r.submissionDate).toLocaleDateString('vi-VN'),
-    onClick: () => onSelectRoleRequest?.(r),
-  }));
+    return () => abortRef.current?.abort();
+  }, [loadAll]);
 
   return (
     <div className={styles.page}>
-      {/* Workspace Header */}
-      <WorkspaceHeader
-        marker="01 / SYSTEM OBSERVATORY"
-        title="Platform Dashboard"
-        subtitle="System-wide metrics, role request queue, and platform health at a glance."
-        accent={ROLE_ACCENT}
-        annotation={`Analytics period: ${RANGE_LABEL[range]}`}
-        actions={
-          <div className={styles.rangePills} role="group" aria-label="Analytics time range">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                className={`${styles.rangePill} ${range === r ? styles.rangePillActive : ''}`}
-                onClick={() => setRange(r)}
-                type="button"
-              >
-                {RANGE_LABEL[r]}
-              </button>
-            ))}
-          </div>
-        }
-      />
-
       <div className={styles.content}>
-        {/* ── Metric Row ─────────────────────────────── */}
-        {summaryError ? (
-          <div className={styles.metricGrid}>
-            <WidgetErrorState
-              message={summaryError}
-              onRetry={() => void loadAll()}
-              testId="summary-error"
-            />
+        <section className={styles.queueSection} aria-labelledby="role-request-queue-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionEyebrow}>Role verification</p>
+              <h2 id="role-request-queue-title">Requests awaiting review</h2>
+            </div>
+            <span className={styles.queueCount} aria-live="polite">
+              {loadingRecentRequests ? 'Loading requests' : `${recentRequests.length} shown`}
+            </span>
           </div>
-        ) : (
-          <div className={styles.metricGrid}>
-            <MetricCard
-              label="Total Members"
-              value={
-                loadingSummary || summary === null
-                  ? '—'
-                  : formatNumber(summary.totalMembers)
-              }
-              annotation="Cumulative registered users"
-              icon={<UsersIcon size={16} />}
-              accent={ROLE_ACCENT}
-            />
-            <MetricCard
-              label="Scientific Papers"
-              value={
-                loadingSummary || summary === null
-                  ? '—'
-                  : formatNumber(summary.totalPapers)
-              }
-              annotation="Across all majors & sub-fields"
-              icon={<PapersIcon size={16} />}
-              accent={ROLE_ACCENT}
-            />
-          </div>
-        )}
 
-        {/* ── Charts Row ─────────────────────────────── */}
-        <div className={styles.chartsRow}>
-          <ChartCard
-            title="User Newly Register"
+          {requestsError ? (
+            <WidgetErrorState message={requestsError} onRetry={() => void loadAll()} testId="role-requests-error" />
+          ) : loadingRecentRequests ? (
+            <div className={styles.queueLoading} role="status">Loading role requests...</div>
+          ) : recentRequests.length === 0 ? (
+            <div className={styles.queueEmpty}>No role requests need review right now.</div>
+          ) : (
+            <div className={styles.queueTableWrap}>
+              <table className={styles.queueTable}>
+                <thead>
+                  <tr>
+                    <th scope="col">Request</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Received</th>
+                    <th scope="col"><span className={styles.srOnly}>Open request</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRequests.map((request) => (
+                    <tr key={request.id}>
+                      <td>
+                        <span className={styles.requestName}>{request.userName}</span>
+                        <span className={styles.requestEmail}>{request.email}</span>
+                      </td>
+                      <td><span className={styles.statusTag}>{request.status}</span></td>
+                      <td className={styles.requestDate}>{formatDate(request.submissionDate)}</td>
+                      <td className={styles.actionCell}>
+                        <button type="button" onClick={() => onSelectRoleRequest?.(request)}>
+                          Review request
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className={styles.analyticsSection} aria-label="Platform analytics">
+          <AnalyticsChart
             metric="user_registrations"
+            range={analyticsRange}
             series={registrations}
-            loading={loadingRegistrations}
-            error={registrationsError}
+            loading={loadingAnalytics}
+            error={analyticsError}
+            onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
           />
-          <ChartCard
-            title="Revenue"
+          <AnalyticsChart
             metric="revenue"
+            range={analyticsRange}
             series={revenue}
-            loading={loadingRevenue}
-            error={revenueError}
+            loading={loadingAnalytics}
+            error={analyticsError}
+            onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
           />
-        </div>
+        </section>
 
-        {/* ── Role Requests Activity Feed ─────────── */}
-        <div className={styles.activitySection}>
-          <ActivityFeed
-            marker="02 / APPROVAL QUEUE"
-            title="Recent Role Requests"
-            entries={requestActivity}
-            loading={loadingRecentRequests && recentRequests.length === 0}
-            emptyMessage="No role requests yet."
-          />
-        </div>
+        <section className={styles.snapshotSection} aria-labelledby="platform-snapshot-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionEyebrow}>Live snapshot</p>
+              <h2 id="platform-snapshot-title">Platform records</h2>
+            </div>
+          </div>
+          {summaryError ? (
+            <WidgetErrorState message={summaryError} onRetry={() => void loadAll()} testId="summary-error" />
+          ) : (
+            <div className={styles.metricGrid}>
+              <MetricCard
+                label="Registered members"
+                value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)}
+                annotation="Current total from analytics"
+                icon={<UsersIcon size={16} />}
+                accent={ROLE_ACCENT}
+              />
+              <MetricCard
+                label="Research papers"
+                value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)}
+                annotation="Current total from analytics"
+                icon={<PapersIcon size={16} />}
+                accent={ROLE_ACCENT}
+              />
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

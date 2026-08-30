@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, FileText, Save, Send } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
-import { openAlexAdapter, type OpenAlexLookupOutcome } from './openalexAdapter';
+import {
+  openAlexAdapter,
+  type OpenAlexImportedMetadata,
+  type OpenAlexLookupOutcome,
+} from './openalexAdapter';
 import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
@@ -14,8 +18,9 @@ const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
 type OpenAlexUiState =
   | { stage: 'idle' }
   | { stage: 'invalid'; message: string }
-  | { stage: 'unsupported'; message: string }
-  | { stage: 'confirmed'; id: string }
+  | { stage: 'unavailable'; message: string }
+  | { stage: 'preview'; metadata: OpenAlexImportedMetadata }
+  | { stage: 'confirmed'; metadata: OpenAlexImportedMetadata }
   | { stage: 'skipped' };
 
 const formatBytes = (bytes: number): string => {
@@ -33,8 +38,8 @@ const formatBytes = (bytes: number): string => {
 //
 // Behaviour (unchanged from the legacy version):
 //   - PDF upload must complete before the form can submit.
-//   - OpenAlex lookup is an additive, FE-only boundary that validates
-//     the format and shows a preview before attaching the ID.
+//   - OpenAlex lookup validates the work ID, calls the ARS backend, and
+//     renders a reviewable preview before the researcher confirms an import.
 //   - Save draft keeps the paper in DRAFT status; Submit advances to
 //     SUBMITTED via the adapter.
 
@@ -153,14 +158,15 @@ export const ResearcherSubmissionForm = () => {
     try {
       const outcome: OpenAlexLookupOutcome = await openAlexAdapter.lookupPreview(openAlexDraft);
       switch (outcome.status) {
+        case 'preview':
+          setOpenAlexState({ stage: 'preview', metadata: outcome.metadata });
+          break;
         case 'invalid_format':
           setOpenAlexState({ stage: 'invalid', message: outcome.message });
           break;
         case 'unsupported_variant':
-          setOpenAlexState({ stage: 'unsupported', message: outcome.message });
-          break;
         case 'unavailable':
-          setOpenAlexState({ stage: 'unsupported', message: outcome.message });
+          setOpenAlexState({ stage: 'unavailable', message: outcome.message });
           break;
       }
     } finally {
@@ -173,16 +179,15 @@ export const ResearcherSubmissionForm = () => {
     setOpenAlexDraft('');
   };
 
-  const handleManualFallbackOpenAlex = () => {
-    const trimmed = openAlexDraft.trim();
-    if (trimmed.length < 4) {
-      setOpenAlexState({
-        stage: 'invalid',
-        message: 'Manual fallback requires at least 4 characters.',
-      });
-      return;
-    }
-    setOpenAlexState({ stage: 'confirmed', id: trimmed });
+  const handleConfirmOpenAlex = () => {
+    if (openAlexState.stage !== 'preview') return;
+    const { metadata } = openAlexState;
+    setTitle((current) => current || metadata.title || '');
+    setAbstract((current) => current || metadata.abstract || '');
+    setAuthorName((current) => current || metadata.authors[0] || '');
+    setInstitution((current) => current || metadata.institutions[0] || '');
+    setKeywords((current) => current || metadata.keywords.join(', '));
+    setOpenAlexState({ stage: 'confirmed', metadata });
   };
 
   const canSubmit =
@@ -207,7 +212,7 @@ export const ResearcherSubmissionForm = () => {
     setError(null);
     try {
       const trimmedOpenAlex =
-        openAlexState.stage === 'confirmed' ? openAlexState.id.trim() : undefined;
+        openAlexState.stage === 'confirmed' ? openAlexState.metadata.id : undefined;
       const draft = await publicationAdapter.createDraft({
         title: title.trim(),
         abstract: abstract.trim(),
@@ -404,21 +409,24 @@ export const ResearcherSubmissionForm = () => {
             )}
 
             {fileError && (
-              <ErrorBanner
-                tone="error"
-                title="Manuscript upload failed"
-                message={fileError}
-                data-testid="submission-file-error"
-                retry={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void handleRetry()}
-                  >
-                    Retry upload
-                  </Button>
-                }
-              />
+              <div data-testid="submission-file-error">
+                <ErrorBanner
+                  tone="error"
+                  title="Manuscript upload failed"
+                  message={fileError}
+                  retry={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleRetry()}
+                      data-testid="submission-file-retry"
+                    >
+                      Retry upload
+                    </Button>
+                  }
+                />
+              </div>
             )}
 
             {!isUploading && uploadedFile && pdfUrl && !fileError && (
@@ -435,13 +443,13 @@ export const ResearcherSubmissionForm = () => {
         <section className={styles.formSection} aria-labelledby="form-section-openalex">
           <header className={styles.formSectionHeader}>
             <h2 className={styles.formSectionTitle} id="form-section-openalex">
-              OpenAlex link (optional)
+              OpenAlex Scan (optional)
             </h2>
-            <p className={styles.formSectionHint}>No network call is issued from the browser.</p>
+            <p className={styles.formSectionHint}>Review metadata before copying it into this form.</p>
           </header>
 
           <div className={`${styles.field} ${styles.full}`}>
-            <label htmlFor="submission-openalex">OpenAlex Work ID</label>
+            <label htmlFor="submission-openalex">OpenAlex ID</label>
             <input
               id="submission-openalex"
               data-testid="submission-openalex-input"
@@ -455,31 +463,24 @@ export const ResearcherSubmissionForm = () => {
               }
             />
             <p className={styles.fieldHint}>
-              Paste an OpenAlex work ID. The form validates the identifier and shows a
-              preview before attaching it to the submission. DOI and full URL forms
-              are not yet supported by the research submission form.
+              Enter a W-prefixed work ID. The scan requests metadata from the ARS backend;
+              no data is copied until you confirm the preview.
             </p>
 
             {openAlexState.stage === 'idle' && (
               <div className={styles.actionsRow}>
                 <Button
+                  type="button"
                   variant="primary"
                   size="sm"
                   disabled={!openAlexDraft.trim() || openAlexScanning}
                   onClick={() => void handleScanOpenAlex()}
                   data-testid="submission-openalex-scan"
                 >
-                  {openAlexScanning ? 'Scanning…' : 'Scan OpenAlex'}
+                  {openAlexScanning ? 'Scanning...' : 'OpenAlex Scan'}
                 </Button>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualFallbackOpenAlex}
-                  data-testid="submission-openalex-manual"
-                >
-                  Enter manually
-                </Button>
-                <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleSkipOpenAlex}
@@ -491,64 +492,86 @@ export const ResearcherSubmissionForm = () => {
             )}
 
             {openAlexState.stage === 'invalid' && (
-              <ErrorBanner
-                tone="error"
-                title="Invalid OpenAlex ID"
-                message={openAlexState.message}
-                data-testid="submission-openalex-invalid"
-                retry={
-                  <div className={styles.actionsRow}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setOpenAlexState({ stage: 'idle' })}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleManualFallbackOpenAlex}
-                    >
-                      Enter manually instead
-                    </Button>
-                  </div>
-                }
-              />
+              <div data-testid="submission-openalex-invalid">
+                <ErrorBanner
+                  tone="error"
+                  title="Invalid OpenAlex ID"
+                  message={openAlexState.message}
+                  retry={
+                    <div className={styles.actionsRow}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpenAlexState({ stage: 'idle' })}
+                      >
+                        Try another ID
+                      </Button>
+                    </div>
+                  }
+                />
+              </div>
             )}
 
-            {openAlexState.stage === 'unsupported' && (
-              <ErrorBanner
-                tone="warning"
-                title="OpenAlex preview unavailable"
-                message={openAlexState.message}
-                data-testid="submission-openalex-unsupported"
-                retry={
-                  <div className={styles.actionsRow}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setOpenAlexState({ stage: 'idle' })}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleManualFallbackOpenAlex}
-                    >
-                      Enter manually instead
-                    </Button>
-                  </div>
-                }
-              />
+            {openAlexState.stage === 'unavailable' && (
+              <div data-testid="submission-openalex-unavailable">
+                <ErrorBanner
+                  tone="warning"
+                  title="OpenAlex preview unavailable"
+                  message={openAlexState.message}
+                  retry={
+                    <div className={styles.actionsRow}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpenAlexState({ stage: 'idle' })}
+                      >
+                        Try again
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleSkipOpenAlex}>
+                        Skip
+                      </Button>
+                    </div>
+                  }
+                />
+              </div>
+            )}
+
+            {openAlexState.stage === 'preview' && (
+              <div className={styles.openAlexPreview} data-testid="submission-openalex-preview">
+                <h3>OpenAlex imported metadata</h3>
+                <dl>
+                  {openAlexState.metadata.title && <><dt>Title</dt><dd>{openAlexState.metadata.title}</dd></>}
+                  {openAlexState.metadata.abstract && <><dt>Abstract</dt><dd>{openAlexState.metadata.abstract}</dd></>}
+                  {openAlexState.metadata.authors.length > 0 && <><dt>Authors</dt><dd>{openAlexState.metadata.authors.join(', ')}</dd></>}
+                  {openAlexState.metadata.institutions.length > 0 && <><dt>Institutions</dt><dd>{openAlexState.metadata.institutions.join(', ')}</dd></>}
+                  {openAlexState.metadata.keywords.length > 0 && <><dt>Keywords</dt><dd>{openAlexState.metadata.keywords.join(', ')}</dd></>}
+                  {openAlexState.metadata.doi && <><dt>DOI</dt><dd>{openAlexState.metadata.doi}</dd></>}
+                  {openAlexState.metadata.publicationDate && <><dt>Publication date</dt><dd>{openAlexState.metadata.publicationDate}</dd></>}
+                </dl>
+                <p>ARS major field and subfield must be selected manually.</p>
+                <div className={styles.actionsRow}>
+                  <Button type="button" variant="primary" size="sm" onClick={handleConfirmOpenAlex}>
+                    Use imported metadata
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOpenAlexState({ stage: 'idle' })}
+                  >
+                    Discard preview
+                  </Button>
+                </div>
+              </div>
             )}
 
             {openAlexState.stage === 'confirmed' && (
               <p className={styles.openAlexConfirm} data-testid="submission-openalex-confirmed">
                 <CheckCircle2 size={12} aria-hidden />
                 <span>OpenAlex ID attached:</span>
-                <strong>{openAlexState.id}</strong>
+                <strong>{openAlexState.metadata.id}</strong>
                 <button
                   type="button"
                   className={styles.openAlexLink}
@@ -580,6 +603,11 @@ export const ResearcherSubmissionForm = () => {
             Submitting routes the manuscript to Admin screening. You can save a draft
             without submitting to review the metadata first.
           </p>
+          {!canSubmit && (
+            <p className={styles.formValidation} role="status">
+              Submission remains unavailable until the required metadata and completed PDF upload are in place.
+            </p>
+          )}
           <div className={styles.formActionButtons}>
             <Button
               variant="outline"

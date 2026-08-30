@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import {
-  PUBLICATION_STATUSES,
   publicReviewerName,
   statusLabel,
   type PublicationPaper,
@@ -154,11 +153,6 @@ export const ResearcherSubmissionDetail = () => {
   const reviewerName = publicReviewerName(paper);
   const safeFileUrl = buildSafeResourceLink(paper.fileUrl);
 
-  const currentIndex = PUBLICATION_STATUSES.indexOf(paper.status);
-  const timelineStatuses = PUBLICATION_STATUSES.filter(
-    (status) => status !== 'DRAFT' || paper.status === 'DRAFT',
-  );
-
   return (
     <section className={styles.page}>
       <PageHeader
@@ -166,23 +160,28 @@ export const ResearcherSubmissionDetail = () => {
         title={paper.title}
         description="Private researcher view of this submission. Editorial feedback and reviewer identity are surfaced here when Admin has approved them."
         accent={RESEARCHER_ACCENT}
+        // === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+        // StatusBadge is now inline with the title via `titleAccessory`,
+        // not floating in the right-side `actions` slot. The "Back" link
+        // remains in `actions` where it belongs.
+        titleAccessory={
+          <StatusBadge
+            status={paper.status}
+            label={statusLabel(paper.status)}
+            size="sm"
+          />
+        }
+        // === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
         actions={
-          <>
-            <StatusBadge
-              status={paper.status}
-              label={statusLabel(paper.status)}
-              size="sm"
-            />
-            <Link to="/researcher/submissions">
-              <Button
-                variant="outline"
-                size="md"
-                leftIcon={<ArrowLeft size={14} aria-hidden />}
-              >
-                All submissions
-              </Button>
-            </Link>
-          </>
+          <Link to="/researcher/submissions">
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<ArrowLeft size={14} aria-hidden />}
+            >
+              All submissions
+            </Button>
+          </Link>
         }
       />
 
@@ -196,22 +195,24 @@ export const ResearcherSubmissionDetail = () => {
       <div className={styles.detailLayout}>
         <div className={styles.detailSection}>
           <header className={styles.formSectionHeader}>
-            <h2 className={styles.detailHeading}>Submission timeline</h2>
-            <span className={styles.formSectionHint}>
-              Stage {Math.max(currentIndex, 0) + 1} of {timelineStatuses.length}
-            </span>
+            <h2 className={styles.detailHeading}>Current editorial status</h2>
+            <StatusBadge
+              status={paper.status}
+              label={statusLabel(paper.status)}
+              size="sm"
+            />
           </header>
-          <ol className={styles.timeline}>
-            {timelineStatuses.map((status, index) => (
-              <li
-                className={index <= currentIndex ? styles.timelineComplete : styles.timelinePending}
-                key={status}
-              >
-                <span aria-hidden="true" className={styles.timelineDot} />
-                {statusLabel(status)}
-              </li>
-            ))}
-          </ol>
+          <p className={styles.statusExplanation}>
+            {paper.status === 'DRAFT'
+              ? 'Complete the required metadata and PDF upload, then submit the manuscript to Admin screening.'
+              : paper.status === 'REVISION_REQUIRED'
+                ? 'Admin has requested a revision. Review the released feedback before preparing the next version.'
+                : paper.status === 'RESEARCHER_VERIFICATION_REQUIRED'
+                  ? 'Researcher verification is required before this manuscript can continue through editorial screening.'
+                  : paper.status === 'PUBLISHED'
+                    ? 'The public catalog now lists this paper according to its publication visibility.'
+                    : 'The editorial workflow will update this status when the next permitted action is completed.'}
+          </p>
         </div>
 
         <div className={styles.detailSection}>

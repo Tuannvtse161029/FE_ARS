@@ -38,14 +38,11 @@ const isActionable = (status: InvitationStatus | undefined): boolean =>
   status === undefined || status === 'pending';
 
 // Read-only banner. Per docs/local-only/research-workflow-contract.md §2,
-// /api/GroupInvitation is missing from Swagger — the Accept / Decline
-// buttons intentionally do NOT issue a network request. We surface the
-// disclaimer inline so the gap is obvious to the student.
+// /api/GroupInvitation is missing from Swagger. The controls remain visible
+// only to explain the unavailable action; they never simulate a response.
 export function InvitationBanner({
   invitation,
   onDismiss,
-  onAccept,
-  onDecline,
 }: InvitationBannerProps): JSX.Element | null {
   if (!invitation) return null;
 
@@ -93,9 +90,9 @@ export function InvitationBanner({
             </p>
           ) : (
             <p className={styles.disclaimer}>
-              Invitations are advisory until the BE endpoint is available.
-              Accepting or declining below records your choice locally — it does
-              not yet notify the lecturer.
+              Responding to invitations is unavailable until the backend
+              provides a confirmed invitation endpoint. Contact your lecturer
+              to confirm group membership.
             </p>
           )}
         </div>
@@ -106,19 +103,25 @@ export function InvitationBanner({
             <button
               type="button"
               className={styles.acceptBtn}
-              onClick={() => onAccept?.(invitation)}
+              disabled
               aria-label="Accept invitation"
+              aria-describedby="invitation-action-unavailable"
             >
               Accept
             </button>
             <button
               type="button"
               className={styles.declineBtn}
-              onClick={() => onDecline?.(invitation)}
+              disabled
               aria-label="Decline invitation"
+              aria-describedby="invitation-action-unavailable"
             >
               Decline
             </button>
+            <span id="invitation-action-unavailable" className={styles.srOnly}>
+              Responding to this invitation is unavailable because the backend
+              invitation endpoint has not been implemented.
+            </span>
           </>
         ) : (
           <span className={styles.readOnlyHint} aria-hidden>

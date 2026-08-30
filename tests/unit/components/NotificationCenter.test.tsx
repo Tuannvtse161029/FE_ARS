@@ -221,10 +221,10 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
     await waitFor(() => expect(markRead).toHaveBeenCalledWith(1));
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
-  it('does NOT navigate when the mark-read call fails', async () => {
+  it('navigates even when an optimistic mark-read request fails', async () => {
     const markRead = vi.fn().mockResolvedValue(false);
     const onNavigate = vi.fn();
     setupHook({
@@ -240,7 +240,7 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
     await waitFor(() => expect(markRead).toHaveBeenCalled());
-    expect(onNavigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
   it('falls back to the safe destination when the role cannot reach the target (RBAC)', async () => {
@@ -378,7 +378,7 @@ describe('<NotificationCenter />', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(markRead).toHaveBeenCalledWith(1));
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
   // ── Spec-required vital tests ───────────────────────────────────────────
@@ -415,7 +415,7 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-bell'));
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
     expect(markRead).not.toHaveBeenCalled();
   });
 

@@ -30,7 +30,6 @@ import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import VerificationDetailsModal from './VerificationDetailsModal';
-import OrcidCheckModal from './OrcidCheckModal';
 import styles from './RoleRequests.module.css';
 
 type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
@@ -82,7 +81,6 @@ export const RoleRequests = () => {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<User | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [orcidCheckOpen, setOrcidCheckOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -158,11 +156,6 @@ export const RoleRequests = () => {
   const handleOpenDetails = (row: User) => {
     setSelected(row);
     setDetailsOpen(true);
-  };
-
-  const handleOpenOrcidCheck = () => {
-    setDetailsOpen(false);
-    setOrcidCheckOpen(true);
   };
 
   const hasNoMatch =
@@ -377,22 +370,6 @@ export const RoleRequests = () => {
         user={selected}
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
-        onOpenOrcidCheck={handleOpenOrcidCheck}
-      />
-
-      <OrcidCheckModal
-        user={
-          selected
-            ? {
-                id: selected.id,
-                email: selected.email,
-                fullName: selected.fullName ?? '',
-                orcidId: selected.orcidId ?? null,
-              }
-            : { id: 0, email: '' }
-        }
-        open={orcidCheckOpen}
-        onClose={() => setOrcidCheckOpen(false)}
       />
     </div>
   );

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
@@ -16,7 +16,6 @@ import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
 import {
-  Search,
   Wallet,
   Plus,
   MessageSquare as ForumIcon,
@@ -26,8 +25,6 @@ import {
   Settings,
   User,
   ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
   LogOut,
   X,
   CheckCircle2,
@@ -48,20 +45,122 @@ import {
   FileCheck2 as PublicationIcon,
   Menu as MenuIcon,
 } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoonIcon,
+  ResearchPaperIcon,
+  SunIcon,
+} from './MainLayout.icons';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'ars.sidebar.collapsed';
-
 const getStoredSidebarCollapsed = (): boolean => {
   if (typeof window === 'undefined') {
     return false;
   }
 
   try {
-    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+    const primary = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+    if (primary === 'true') return true;
+    if (primary === 'false') return false;
+    // Legacy key the user request specified (`ars_sidebar_collapsed`).
+    // Kept for backward compatibility with already-saved sessions so an
+    // existing user who already collapsed the sidebar before this worker
+    // shipped keeps their preference.
+    const legacy = window.localStorage.getItem('ars_sidebar_collapsed');
+    return legacy === 'true';
   } catch {
     return false;
   }
 };
+
+/* ───────────────────────────────────────────────────────────────
+   === Collapse + Archive Dusk theme ===
+   Delimiter for downstream coordination. Storage keys + theme
+   helpers below are owned by this worker. Other agents should
+   leave the localStorage helpers and theme bootstrap alone and
+   place their changes ABOVE this banner.
+   ─────────────────────────────────────────────────────────────── */
+const THEME_STORAGE_KEY = 'ars_theme';
+type ArchiveThemeName = 'archive-dusk' | 'paper-day';
+
+const THEME_VALUES: readonly ArchiveThemeName[] = ['archive-dusk', 'paper-day'] as const;
+
+const isThemeName = (value: unknown): value is ArchiveThemeName =>
+  typeof value === 'string' &&
+  (THEME_VALUES as readonly string[]).includes(value);
+
+/**
+ * Read the persisted theme preference. Falls back to `null` so the
+ * MainLayout bootstrap effect can apply `prefers-color-scheme` only when
+ * the user has not made an explicit choice.
+ */
+const getStoredTheme = (): ArchiveThemeName | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (isThemeName(raw)) return raw;
+    if (raw === 'night') return 'archive-dusk';
+    if (raw === 'light') return 'paper-day';
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Returns the initial theme to apply on first paint. The cascade order is:
+ *   1. localStorage explicit choice (user wins).
+ *   2. `paper-day` for a consistent bright, welcoming first visit.
+ */
+const resolveInitialTheme = (): ArchiveThemeName => {
+  const stored = getStoredTheme();
+  if (stored !== null) {
+    return stored;
+  }
+  return 'paper-day';
+};
+
+/**
+ * Persist a theme choice to localStorage. The decision to read
+ * `matchMedia` synchronously inside `resolveInitialTheme` (rather than
+ * wiring a `change` listener) is intentional: theme changes for an
+ * already-mounted session come through the toggle button, and we do
+ * not want a foreground OS theme flip to silently override an
+ * explicit user preference while they are mid-task.
+ */
+const setStoredTheme = (theme: ArchiveThemeName): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // The layout remains usable when browser storage is unavailable.
+  }
+};
+
+/**
+ * Apply the theme to the root `<html>` element. The matching semantic token
+ * cascade lives in `src/styles/ars-tokens.css`.
+ *
+ * Why `<html>` rather than the MainLayout root container?
+ *   - Single source of truth shared by every route that renders inside
+ *     MainLayout (publication home, profile, dashboard, etc).
+ *   - Avoids race conditions where descendant pages render before the
+ *     attribute is on the layout wrapper.
+ *   - Public pages sit above MainLayout and use the default Archive Dusk token
+ *     values when no saved authenticated preference has been applied.
+ */
+const applyThemeToRoot = (theme: ArchiveThemeName): void => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+};
+/* === END Collapse + Archive Dusk theme === */
 
 const ProfileDropdown = ({
   username,
@@ -70,7 +169,6 @@ const ProfileDropdown = ({
   accountTier,
   onLogout,
   onProfileClick,
-  onAccountSettingsClick,
 }: {
   username: string;
   activeRole: string;
@@ -78,9 +176,26 @@ const ProfileDropdown = ({
   accountTier?: string;
   onLogout: () => void;
   onProfileClick: () => void;
-  onAccountSettingsClick: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   const tierClass =
     accountTier === 'Premium'
@@ -92,8 +207,12 @@ const ProfileDropdown = ({
   return (
     <div className={styles.profileDropdownContainer}>
       <button
+        ref={triggerRef}
+        type="button"
         className={styles.profileDropdownTrigger}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-controls={menuId}
       >
         <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
         <div className={styles.userInfoText}>
@@ -111,17 +230,13 @@ const ProfileDropdown = ({
       </button>
 
       {isOpen && (
-        <div className={styles.profileDropdownMenu}>
-          <button className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
+        <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label="Account menu">
+          <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
             <User size={16} />
             <span>My Profile & Role Upgrades</span>
           </button>
-          <button className={styles.dropdownItem} onClick={() => { onAccountSettingsClick(); setIsOpen(false); }}>
-            <Settings size={16} />
-            <span>Account Settings</span>
-          </button>
           <div className={styles.dropdownDivider}></div>
-          <button className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
+          <button type="button" role="menuitem" className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
             <LogOut size={16} />
             <span>Log out</span>
           </button>
@@ -141,7 +256,6 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
-  showDot?: boolean;
   badge?: string;
   // When `true`, the NavLink uses React Router's "exact" match so the link
   // only highlights on its own path (and not on any nested child route).
@@ -154,6 +268,7 @@ interface NavItem {
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
@@ -188,19 +303,90 @@ export const MainLayout = () => {
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getStoredSidebarCollapsed);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerRef = useRef<HTMLElement>(null);
+
+  // Theme bootstrap (this worker / Agent 38) — read the persisted choice on
+  // mount and apply it to <html data-theme="..."> so token cascade flips
+  // before the user sees a flash of the wrong background.
+  const [theme, setTheme] = useState<ArchiveThemeName>(() => resolveInitialTheme());
+
+  useEffect(() => {
+    applyThemeToRoot(theme);
+    setStoredTheme(theme);
+  }, [theme]);
+
+  const handleToggleTheme = (): void => {
+    setTheme((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
+  };
+
+  const handleToggleSidebar = (): void => {
+    setIsSidebarCollapsed((collapsed) => !collapsed);
+  };
 
   useEffect(() => {
     try {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
+      // Mirror the legacy key the original user spec called out so older
+      // consumers (and any browser extensions keying off it) keep working.
+      window.localStorage.setItem('ars_sidebar_collapsed', String(isSidebarCollapsed));
     } catch {
       // The layout remains usable when browser storage is unavailable.
     }
   }, [isSidebarCollapsed]);
 
+  // Keep the mobile drawer in the user's keyboard path and restore its trigger
+  // when it closes. Desktop sidebar behavior remains unchanged.
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const drawer = mobileDrawerRef.current;
+    const closeControl = drawer?.querySelector<HTMLButtonElement>('button[aria-label="Close navigation"]');
+    closeControl?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsMobileNavOpen(false);
+        menuTriggerRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !drawer) {
+        return;
+      }
+
+      const focusable = Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute('hidden'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileNavOpen]);
+
   // Close mobile drawer on route change so navigating between roles hides it.
   useEffect(() => {
     setIsMobileNavOpen(false);
-  }, [navigate]);
+  }, [location.pathname]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -312,7 +498,7 @@ export const MainLayout = () => {
         ];
       case 'Reviewer':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
@@ -322,18 +508,21 @@ export const MainLayout = () => {
         ];
       case 'Lecturer':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
           { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_SHARED_MATERIALS, label: 'Shared Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.GRADUATE_STUDENT_DASHBOARD, label: 'Research Journey', icon: <DashboardIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
@@ -341,11 +530,10 @@ export const MainLayout = () => {
       case 'Researcher':
       default:
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
-          { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
         ];
     }
   };
@@ -353,38 +541,64 @@ export const MainLayout = () => {
   const navItems = getNavItemsByRole();
 
   return (
-    <div className={styles.mainContainer}>
+    /* Theme attribute (Agent 38) lives on the MainLayout root so the
+       night-mode cascade is scoped to authenticated routes only — the
+       light-only public pages (Landing / Login / Register) render
+       outside MainLayout and never see this attribute. We also mirror
+       the attribute on <html> via `applyThemeToRoot` so token look-ups
+       cascade even before this component mounts. */
+    <div className={styles.mainContainer} data-theme={theme}>
       {/* Backdrop for mobile drawer */}
       <div
         className={`${styles.backdrop} ${isMobileNavOpen ? styles.backdropVisible : ''}`}
-        onClick={() => setIsMobileNavOpen(false)}
+        onClick={() => {
+          setIsMobileNavOpen(false);
+          menuTriggerRef.current?.focus();
+        }}
         aria-hidden
       />
 
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}>
+      <aside
+        ref={mobileDrawerRef}
+        className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}
+      >
         <div className={styles.sidebarHeader}>
           <ARSPlatformLogo />
           <button
             type="button"
             className={styles.sidebarClose}
-            onClick={() => setIsMobileNavOpen(false)}
+            onClick={() => {
+              setIsMobileNavOpen(false);
+              menuTriggerRef.current?.focus();
+            }}
             aria-label="Close navigation"
           >
             <X size={18} />
           </button>
         </div>
 
+        <div className={styles.roleContext}>
+          <span className={styles.roleContextLabel}>Research workspace</span>
+          <strong>{displayedRole}</strong>
+        </div>
+
         <nav className={styles.sidebarNav} aria-label="Workspace navigation">
           <button
             type="button"
             className={styles.sidebarCollapse}
-            onClick={() => setIsSidebarCollapsed((collapsed) => !collapsed)}
+            onClick={handleToggleSidebar}
             aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
             aria-expanded={!isSidebarCollapsed}
+            aria-controls="main-navigation-list"
             title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            data-testid="sidebar-collapse-toggle"
           >
-            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {isSidebarCollapsed ? (
+              <ChevronRightIcon size={18} aria-label="Expand navigation" />
+            ) : (
+              <ChevronLeftIcon size={18} aria-label="Collapse navigation" />
+            )}
             <span className={styles.sidebarCollapseLabel}>
               {isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
             </span>
@@ -417,12 +631,53 @@ export const MainLayout = () => {
               >
                 <span className={styles.navIcon}>{item.icon}</span>
                 <span className={styles.navLabel}>{item.label}</span>
-                {item.showDot && <span className={styles.navDot}></span>}
+                {/* === Nav dot removal (this worker) ===
+                    The 6×6 dot that previously lived here was a stale
+                    visual marker (no signal, no counter, no badge
+                    contract). The active nav state already reads
+                    through `_navItemActive_1bnip_151` (background wash,
+                    3px primary rule, semibold label) so the dot was
+                    redundant. Keeping the comment block here so any
+                    later agent knows the removal was deliberate. */}
                 {item.badge && <span className={styles.navBadge}>{item.badge}</span>}
               </NavLink>
             );
           })}
         </nav>
+
+        {/* Sidebar watermark — a decorative manuscript icon placed in the
+            empty space below the nav. The existing low-opacity CSS treatment
+            keeps it visually secondary to navigation. */}
+        <div className={styles.sidebarWatermark} aria-hidden="true">
+          <span className={styles.sidebarWatermarkImage}>
+            <ResearchPaperIcon size={152} />
+          </span>
+        </div>
+
+        <div className={styles.sidebarAccount}>
+          <button
+            type="button"
+            className={styles.sidebarAccountProfile}
+            onClick={() => navigate(ROUTES.PROFILE)}
+            aria-label="Open my profile"
+            title="Open my profile"
+          >
+            <span className={styles.sidebarAvatar}>{avatarInitials}</span>
+            <span className={styles.sidebarAccountText}>
+              <strong>{displayName}</strong>
+              <small>{displayedRole}</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.sidebarLogout}
+            onClick={handleLogout}
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut size={17} />
+          </button>
+        </div>
 
       </aside>
 
@@ -445,30 +700,61 @@ export const MainLayout = () => {
             </div>
           )}
 
-          {/* Mobile menu toggle — only visible <= 768px via CSS */}
-          <button
-            type="button"
-            className={styles.menuToggle}
-            onClick={() => setIsMobileNavOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={isMobileNavOpen}
-          >
-            <MenuIcon size={18} />
-          </button>
-
-          {/* Search bar */}
-          <div className={styles.searchContainer}>
-            <span className={styles.searchIcon}><Search size={18} /></span>
-            <input
-              type="text"
-              placeholder="Search Papers..."
-              className={styles.searchInput}
-              aria-label="Search papers"
-            />
+          {/* Header left — mobile menu toggle only.
+              The previous "running-head" editorial label ("ARS Workspace")
+              was removed at the product owner's request — "Don't like the
+              word here, so remove it." The mobile menu trigger still
+              anchors flush left and the right cluster is unchanged. */}
+          <div className={styles.headerLeft}>
+            {/* === ARS WORKSPACE label removal (this worker) ===
+                The decorative `<span className={styles.runningHead}>ARS
+                Workspace</span>` that used to sit beside the mobile menu
+                trigger was a journal-style running head. The product owner
+                asked to remove the word entirely. The span, its text, the
+                `aria-hidden` flag, and the previous explanatory comment are
+                all gone in this commit. The `_headerLeft_` flex container
+                keeps its gap so the menu trigger still aligns cleanly with
+                the right cluster, and the `.runningHead` CSS rule (plus its
+                responsive / theme overrides) is removed in
+                MainLayout.module.css. */}
+            {/* Mobile menu toggle — only visible <= 768px via CSS */}
+            <button
+              ref={menuTriggerRef}
+              type="button"
+              className={styles.menuToggle}
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-expanded={isMobileNavOpen}
+            >
+              <MenuIcon size={18} />
+            </button>
           </div>
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
+            {/* Theme toggle (Agent 38) — sun/moon button placed to the LEFT
+                of the wallet/notifications/user pill so it's easy to find.
+                Clicking flips the data-theme attribute on the MainLayout
+                root (and on <html> via applyThemeToRoot) and persists the
+                choice in localStorage under `ars_theme`. The icon shown
+                reflects the action that clicking will perform, not the
+                current theme: when night is active we render the SUN icon
+                to invite the user back to light. */}
+            <button
+              type="button"
+              className={styles.themeToggle}
+              onClick={handleToggleTheme}
+              aria-label={theme === 'archive-dusk' ? 'Switch to Paper Day theme' : 'Switch to Archive Dusk theme'}
+              aria-pressed={theme === 'archive-dusk'}
+              title={theme === 'archive-dusk' ? 'Switch to Paper Day' : 'Switch to Archive Dusk'}
+              data-testid="theme-toggle"
+            >
+              {theme === 'archive-dusk' ? (
+                <SunIcon size={18} aria-label="Switch to Paper Day theme" />
+              ) : (
+                <MoonIcon size={18} aria-label="Switch to Archive Dusk theme" />
+              )}
+            </button>
+
             {/* Reviewer availability toggle — only shown for Reviewer role */}
             {activeRole === 'Reviewer' && (
               <div className={styles.availabilityToggle}>
@@ -532,7 +818,6 @@ export const MainLayout = () => {
               accountTier={accountTier}
               onLogout={handleLogout}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
-              onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
             />
           </div>
         </header>
@@ -547,7 +832,7 @@ export const MainLayout = () => {
         <WelcomeBackBanner />
 
         {/* Content Body */}
-        <main className={styles.contentBody}>
+        <main key={location.key} className={styles.contentBody}>
           <Outlet />
         </main>
       </div>

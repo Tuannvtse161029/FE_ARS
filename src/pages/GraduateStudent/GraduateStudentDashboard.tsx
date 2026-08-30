@@ -303,7 +303,21 @@ export const GraduateStudentDashboard = (): JSX.Element => {
           />
         ) : null}
 
-        {/* ── Metric Cards ──────────────────────────────── */}
+        {/* ── Current milestone: primary student task ────── */}
+        <div className={styles.primaryTask}>
+          <GuidanceProjectCard
+            guidanceProject={guidanceProject}
+            isLoading={reportsLoading}
+            lecturerName={lecturerName}
+            hasGroup={joinedGroups.length > 0}
+            hasTopic={primaryTopic !== null}
+            onOpenSubmit={() => setSubmitting(true)}
+            currentMilestone={currentMilestone}
+            onResubmit={handleResubmit}
+          />
+        </div>
+
+        {/* ── Research context ──────────────────────────── */}
         <div className={styles.metricGrid}>
           {metricCards.map((card, i) => (
             <div key={i} className={`${styles.metricWrapper} ${card.empty ? styles.metricWrapperEmpty : ''}`}>
@@ -318,21 +332,8 @@ export const GraduateStudentDashboard = (): JSX.Element => {
           ))}
         </div>
 
-        {/* ── Two-column layout: Milestone + Activity ─────── */}
+        {/* ── Activity timeline ─────────────────────────── */}
         <div className={styles.twoCol}>
-          {/* Left: Guidance Project Card */}
-          <GuidanceProjectCard
-            guidanceProject={guidanceProject}
-            isLoading={reportsLoading}
-            lecturerName={lecturerName}
-            hasGroup={joinedGroups.length > 0}
-            hasTopic={primaryTopic !== null}
-            onOpenSubmit={() => setSubmitting(true)}
-            currentMilestone={currentMilestone}
-            onResubmit={handleResubmit}
-          />
-
-          {/* Right: Activity Timeline */}
           <div className={styles.rightCol}>
             <ActivityFeed
               marker="02 / SUBMISSION LOG"
@@ -448,10 +449,14 @@ function GuidanceProjectCard({
             leftIcon={<HelpCircle size={13} />}
             disabled
             aria-label="Request supervision"
+            aria-describedby="request-supervision-unavailable"
             title="Request supervision is not yet available — the Grad-initiated POST endpoint is on the BE gap ticket (§D.3)."
           >
             Request supervision
           </Button>
+          <p id="request-supervision-unavailable" className={styles.actionHint}>
+            Supervision requests will be available after the backend adds the student-initiated request endpoint.
+          </p>
         </div>
       </section>
     );

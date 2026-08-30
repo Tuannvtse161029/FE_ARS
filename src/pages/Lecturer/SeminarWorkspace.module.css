@@ -42,7 +42,7 @@
   cursor: pointer;
   padding: var(--space-2) var(--space-4);
   position: relative;
-  transition: color var(--transition-fast);
+  transition: color var(--motion-feedback);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -108,7 +108,7 @@
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   color: var(--ars-success);
-  animation: fadeIn 0.18s ease-out;
+  /* Success state is communicated by the banner content and status color. */
 }
 
 .bannerError {
@@ -158,11 +158,6 @@
 .bannerCloseBtn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Backend availability banner ─────────────────────────────────── */
@@ -232,8 +227,8 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-3);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  animation: fadeIn 0.25s ease-out;
+  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
+  /* Seminar records remain stable while the list loads. */
 }
 
 .seminarCard:hover {
@@ -394,7 +389,7 @@
   height: 100%;
   background: var(--ars-lecturer);
   border-radius: 999px;
-  transition: width 0.45s ease;
+  transition: width var(--motion-state);
 }
 
 /* Lecturer-primary button (overrides default ARS blue) */
@@ -476,7 +471,7 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
   font-family: var(--font-family-ui);
 }
 
@@ -515,13 +510,12 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
-  animation: fadeIn 0.15s ease-out;
+  /* Dialog visibility is provided by the mounted state. */
 }
 
 .modalCard {
@@ -595,7 +589,7 @@
   padding: var(--space-1);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
-  transition: color var(--transition-fast);
+  transition: color var(--motion-feedback);
 }
 
 .closeBtn:hover {
@@ -651,7 +645,7 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   box-sizing: border-box;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
   min-height: 36px;
 }
 
@@ -1026,11 +1020,7 @@
 
 /* Spinner */
 .spinning {
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  /* Copy status is explicit in the button label. */
 }
 
 /* ── Responsive ────────────────────────────────────────────────── */

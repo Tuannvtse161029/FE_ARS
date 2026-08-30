@@ -68,6 +68,18 @@ vi.mock('../../../src/pages/Register/components/PdfDropzone', () => ({
   PdfDropzone: () => null,
 }));
 
+vi.mock('../../../src/services/role.service', () => ({
+  roleService: {
+    fetchRoles: vi.fn().mockResolvedValue([
+      { roleId: 1, name: 'Researcher' },
+      { roleId: 2, name: 'Admin' },
+      { roleId: 3, name: 'Reviewer' },
+      { roleId: 4, name: 'Lecturer' },
+      { roleId: 5, name: 'Graduate Student' },
+    ]),
+  },
+}));
+
 vi.mock('../../../src/components/Button', () => ({
   Button: ({
     children,
@@ -94,14 +106,22 @@ vi.mock('../../../src/components/Input', () => ({
     value?: string;
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
     disabled?: boolean;
+    type?: string;
+    label?: string;
+    placeholder?: string;
   }) => (
-    <input
-      name={props.name}
-      value={props.value ?? ''}
-      onChange={props.onChange}
-      disabled={props.disabled}
-      data-testid={`input-${props.name}`}
-    />
+    <label>
+      {props.label}
+      <input
+        name={props.name}
+        type={props.type}
+        value={props.value ?? ''}
+        onChange={props.onChange}
+        disabled={props.disabled}
+        placeholder={props.placeholder}
+        data-testid={`input-${props.name}`}
+      />
+    </label>
   ),
 }));
 
@@ -136,6 +156,32 @@ function fireGoogleClick() {
   const button = screen.getByTestId('google-button');
   fireEvent.click(button);
 }
+
+describe('Login — email sign-in presentation', () => {
+  it('labels the existing credential control as an email input', () => {
+    mountLogin();
+
+    const email = screen.getByLabelText(/^email$/i);
+    expect(email).toHaveAttribute('type', 'email');
+    expect(email).toHaveAttribute('placeholder', 'name@institution.edu');
+  });
+
+  it('excludes Admin from the optional role picker', async () => {
+    mountLogin();
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Researcher' })).toBeInTheDocument();
+    });
+
+    const rolePicker = screen.getByLabelText(/sign in as role/i);
+    expect(rolePicker).toHaveTextContent('Auto-detect Role (Default)');
+    expect(rolePicker).toHaveTextContent('Researcher');
+    expect(rolePicker).toHaveTextContent('Reviewer');
+    expect(rolePicker).toHaveTextContent('Lecturer');
+    expect(rolePicker).toHaveTextContent('Graduate Student');
+    expect(screen.queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument();
+  });
+});
 
 describe('Login — GIS credential Google sign-in (page surface)', () => {
   it('forwards the GIS credential to loginWithGoogle EXACTLY once per click', async () => {

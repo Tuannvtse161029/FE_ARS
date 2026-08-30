@@ -58,7 +58,12 @@ export const LegalPolicy: React.FC = () => {
             </button>
           </div>
 
-          <div className={styles.content}>
+          <div
+            key={activeTab}
+            className={styles.content}
+            role="tabpanel"
+            aria-label={activeTab === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+          >
             {activeTab === 'privacy' ? (
               <div>
                 <div className={styles.section}>

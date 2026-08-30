@@ -7,7 +7,7 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
 }
 
 /* ── Sidebar ──────────────────────────────────────────────── */
@@ -143,7 +143,6 @@
 
 .sidebarCollapsed .sidebarCollapseLabel,
 .sidebarCollapsed .navLabel,
-.sidebarCollapsed .navDot,
 .sidebarCollapsed .navBadge {
   display: none;
 }
@@ -172,24 +171,35 @@
   text-decoration: none;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
   cursor: pointer;
   position: relative;
   height: 36px;
 }
 
-.navItem:hover:not(.disabledNavItem) {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: var(--ars-paper);
+.navItem:hover:not(.disabledNavItem):not(.navItemActive) {
+  background-color: color-mix(in srgb, var(--ars-blue) 4%, transparent);
+  color: rgba(250, 248, 243, 0.9);
+}
+
+.navItem:hover:not(.disabledNavItem) .navIcon {
+  opacity: 0.95;
 }
 
 .navItem:focus-visible {
-  outline: 2px solid var(--ars-blue-light);
+  outline: 2px solid var(--ars-blue);
   outline-offset: 2px;
 }
 
+/* Active state — calm but unmistakable.
+   The 3px primary rule on the left edge, a quiet 8% primary wash on the
+   background, and the navy panel still dominates so it reads as a journal
+   table-of-contents rather than a neon tab. */
 .navItemActive {
-  background-color: rgba(45, 53, 97, 0.55);
+  background-color: color-mix(in srgb, var(--ars-blue) 8%, transparent);
   color: var(--ars-paper) !important;
   font-weight: var(--font-weight-semibold);
 }
@@ -198,10 +208,10 @@
   content: '';
   position: absolute;
   left: -2px;
-  top: 8px;
-  bottom: 8px;
+  top: 0;
+  bottom: 0;
   width: 3px;
-  background: var(--ars-blue-mid);
+  background: var(--ars-blue);
   border-radius: 0 2px 2px 0;
 }
 
@@ -212,7 +222,8 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
 }
 
 .navItemActive .navIcon {
@@ -226,13 +237,13 @@
   text-overflow: ellipsis;
 }
 
-.navDot {
-  width: 6px;
-  height: 6px;
-  background-color: var(--ars-researcher-mid);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+/* === Nav dot removal (this worker) ===
+   The 6×6 dot that used to sit next to the Forums nav item was a stale
+   visual artifact (no signal, no counter, no badge contract). The
+   active state already reads through `.navItemActive` (background wash,
+   3px primary rule, semibold label) so the dot was redundant. Rule and
+   all its media-query / collapsed-state companions removed; nav layout
+   still left-aligns the label and the badge still anchors to the right. */
 
 .navBadge {
   background-color: rgba(180, 83, 9, 0.95);
@@ -253,13 +264,56 @@
   cursor: not-allowed;
 }
 
+/* Sidebar logo watermark — decorative; lives in the empty space below the
+   nav so it reads as a journal masthead without competing with the links.
+   White-tinted via the same brightness-invert filter used by the header
+   logo, with a low opacity so it functions as a watermark, not a UI
+   element. Static, no glow, no animation. */
+.sidebarWatermark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: var(--space-6) auto var(--space-8);
+  padding: 0 var(--space-2);
+  pointer-events: none;
+}
+
+.sidebarWatermarkImage {
+  width: 152px;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  /* Invert the source logo so a colored mark reads as a soft white
+     watermark against the dark-navy sidebar. */
+  filter: brightness(0) invert(1);
+  opacity: 0.08;
+}
+
+.sidebarWatermarkImage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 1100px) {
+  .sidebarWatermarkImage {
+    width: 104px;
+  }
+}
+
+/* The 64px collapsed rail has no room for a 100px+ logo — hide it. */
+.sidebarCollapsed .sidebarWatermark {
+  display: none;
+}
+
 /* ── Right Content Area ───────────────────────────────────── */
 .rightContentArea {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
 }
 
 .contentBody {
@@ -267,13 +321,17 @@
   padding: var(--space-6) var(--space-8);
   overflow-y: auto;
   min-height: 0;
+  background-color: var(--surface-canvas);
 }
 
 /* ── Header ─────────────────────────────────────────────── */
+/* Header sits on the same warm-paper canvas but reads as the
+   "running head" of the workspace — separated only by a single
+   1px ink rule. Calm, editorial, never a dark band. */
 .header {
   height: var(--header-height);
-  background-color: var(--ars-paper-alt);
-  border-bottom: 1px solid var(--ars-network);
+  background-color: var(--surface-canvas);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -283,6 +341,30 @@
   top: 0;
   z-index: 5;
 }
+
+/* Header left — holds the mobile menu toggle and the running-head label.
+   Sits flush left while headerRight is pushed to the far right by the
+   parent's `justify-content: space-between`. */
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Editorial running head — REMOVED.
+   The product owner asked to drop the "ARS Workspace" running-head label
+   ("Don't like the word here, so remove it"). The span it styled lived in
+   `_headerLeft_` in MainLayout.tsx; both the JSX node and this rule (plus
+   its responsive / night-theme overrides below) are removed. */
+
+/* === ARS WORKSPACE label removal (this worker) ===
+   The `.runningHead` rule previously anchored a journal-style citation
+   label in the authenticated header. The product owner asked to remove
+   the word entirely. The span was deleted from MainLayout.tsx, and the
+   matching CSS — base rule, mobile hide, and night-theme recolor — is
+   being deleted in this commit. `_headerLeft_` keeps its flex/gap so the
+   mobile menu trigger still aligns cleanly with the right cluster. */
 
 .menuToggle {
   display: none;
@@ -298,14 +380,14 @@
 }
 
 .menuToggle:hover {
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
 }
 
 /* Search */
 .searchContainer {
   display: flex;
   align-items: center;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   padding: 0 var(--space-3);
@@ -352,7 +434,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   border: 1px solid var(--ars-node);
   padding: 0 var(--space-3);
   height: 36px;
@@ -405,7 +487,7 @@
   gap: var(--space-2);
   padding: 0 var(--space-3);
   height: 36px;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
 }
@@ -469,12 +551,12 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   transition: transform var(--transition-normal);
 }
 
 .toggleKnobOn {
-  transform: translateX(18px);
+  transform: translateX(-15px);
 }
 
 .toggleKnobOff {
@@ -492,7 +574,7 @@
   gap: var(--space-2);
   padding: 0 var(--space-3);
   height: 36px;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -572,7 +654,7 @@
   right: 0;
   top: calc(100% + 6px);
   min-width: 220px;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -645,14 +727,14 @@
 }
 
 .toastSuccess {
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   color: var(--ars-success);
   border: 1px solid var(--ars-success);
   border-left-width: 3px;
 }
 
 .toastError {
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   color: var(--ars-error);
   border: 1px solid var(--ars-error);
   border-left-width: 3px;
@@ -692,6 +774,7 @@
   .contentBody {
     padding: var(--space-5) var(--space-5);
   }
+
   .searchContainer {
     width: 240px;
   }
@@ -701,17 +784,26 @@
   .menuToggle {
     display: inline-flex;
   }
+
+  /* === ARS WORKSPACE label removal (this worker) ===
+     The `.runningHead` mobile-hide override previously lived here. The
+     span it targeted has been removed from MainLayout.tsx and the base
+     `.runningHead` rule was deleted above, so this override is dead
+     code and is removed too. */
   .searchContainer {
     flex: 1;
     max-width: 280px;
     width: auto;
   }
+
   .header {
     padding: 0 var(--space-3);
   }
+
   .contentBody {
     padding: var(--space-4) var(--space-3);
   }
+
   .sidebar {
     width: var(--sidebar-width);
     position: fixed;
@@ -723,46 +815,353 @@
     z-index: 60;
     box-shadow: var(--shadow-xl);
   }
+
   .sidebarCollapsed {
     width: var(--sidebar-width);
   }
+
   .sidebarCollapsed .sidebarHeader {
     height: 116px;
     padding: 0 var(--space-4);
   }
+
   .sidebarCollapsed .logoContainer img {
     width: 100px;
     height: 100px;
   }
+
   .sidebarCollapse {
     display: none;
   }
+
   .sidebarCollapsed .sidebarNav {
     align-items: stretch;
     padding-inline: var(--space-2);
   }
+
   .sidebarCollapsed .navItem {
     width: auto;
     justify-content: flex-start;
     gap: var(--space-3);
     padding: 0 var(--space-3);
   }
+
   .sidebarCollapsed .navLabel {
     display: block;
   }
-  .sidebarCollapsed .navDot {
-    display: block;
-  }
+
   .sidebarCollapsed .navBadge {
     display: inline-flex;
   }
+
   .sidebarCollapsed .navItemActive::before {
     left: -2px;
   }
+
   .sidebarOpen {
     transform: translateX(0);
   }
+
   .sidebarClose {
     display: inline-flex;
   }
+
+  /* Mobile drawer always shows the full nav, so the watermark should
+     also stay visible — override the desktop hide-on-collapsed rule. */
+  .sidebarCollapsed .sidebarWatermark {
+    display: flex;
+  }
+
+  .sidebarCollapsed .sidebarWatermarkImage {
+    width: 104px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   === Collapse + Dark Mode (this worker / Agent 38) ===
+   Delimiter for downstream coordination. Other agents working in
+   MainLayout.module.css should leave the block below untouched and
+   place their changes ABOVE this banner.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ── Theme toggle button (header) ─────────────────────────
+   Sits in the header right-cluster, to the LEFT of the wallet/notifications/
+   user pill so it's easy to find. Renders a 36x36 button matching the rest of
+   the 36px-tall control rhythm. Color follows currentColor so it inverts in
+   night mode without a separate override. */
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-node);
+  background-color: var(--surface-canvas);
+  color: var(--ars-ink);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  border-color: var(--ars-ink-muted);
+  background-color: var(--ars-paper-alt);
+}
+
+.themeToggle:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+.themeToggle:active {
+  transform: translateY(0.5px);
+}
+
+/* ── Sidebar collapse button (already-present from prior work) ──
+   The collapse button existed before this worker touched the file,
+   but its visibility / sizing was inconsistent when the sidebar was
+   collapsed (the orange dot). We add a guaranteed visible 40x40 hit
+   target and proper focus ring regardless of collapsed state. */
+.sidebarCollapse {
+  min-width: 40px;
+  min-height: 40px;
+  height: 40px;
+}
+
+.sidebarCollapse:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--ars-paper);
+}
+
+.sidebarCollapse:focus-visible {
+  outline: 2px solid var(--ars-blue-light);
+  outline-offset: 2px;
+}
+
+.sidebarCollapsed .sidebarCollapse {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--ars-paper);
+}
+
+/* When collapsed the collapse button gets a soft accent background
+   so it's discoverable — the "tiny orange dot" the screenshot showed
+   was the .navDot indicator; the button itself now uses a quiet fill
+   so users can see it at a glance without competing with the active
+   nav row. */
+.sidebarCollapsed .sidebarCollapse:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Reduced motion support for the collapse transition ──
+   The sidebar uses a width transition on collapse. When the user has
+   prefers-reduced-motion enabled we collapse instantly so we don't
+   visually lag the user's click. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   === END Collapse + Dark Mode (this worker / Agent 38) ===
+   ─────────────────────────────────────────────────────────────── */
+
+/* ── Shared Layout Motion ────────────────────────────────────── */
+/* Route content enters only after React Router has committed the new route.
+   It does not hold navigation, API work, logout storage cleanup, or focus. */
+.contentBody {
+  animation: workspaceContentEnter var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+.profileDropdownMenu {
+  transform-origin: top right;
+  animation: workspaceMenuEnter var(--duration-fast) var(--motion-ease-standard) both;
+}
+
+.toast {
+  animation: workspaceToastEnter var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+.backdropVisible {
+  animation: workspaceBackdropEnter var(--duration-fast) linear both;
+}
+
+@keyframes workspaceContentEnter {
+  from { opacity: 0; transform: translateX(12px) translateY(2px); filter: blur(2px); }
+  to { opacity: 1; transform: translateX(0) translateY(0); filter: blur(0); }
+}
+
+@keyframes workspaceMenuEnter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes workspaceToastEnter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes workspaceBackdropEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentBody,
+  .profileDropdownMenu,
+  .toast,
+  .backdropVisible {
+    animation: none;
+  }
+}
+
+/* ── Archive Dusk workspace shell ────────────────────────── */
+.sidebar { background: var(--sidebar-bg); color: var(--ink-on-dark); border-right-color: var(--border-subtle); }
+.sidebarHeader { border-bottom-color: var(--border-subtle); }
+.roleContext {
+  margin: var(--space-3) var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--sidebar-raised);
+  display: grid;
+  gap: 3px;
+}
+.roleContextLabel {
+  color: var(--ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.roleContext strong { color: var(--ink-on-dark); font-size: var(--font-size-sm); }
+.sidebarCollapsed .roleContext,
+.sidebarCollapsed .sidebarAccountText,
+.sidebarCollapsed .sidebarLogout { display: none; }
+.sidebarCollapse, .navItem { color: var(--ink-secondary); }
+.sidebarCollapse:hover,
+.navItem:hover:not(.disabledNavItem):not(.navItemActive) { background: var(--sidebar-raised); color: var(--ink-on-dark); }
+.sidebarCollapse:focus-visible,
+.navItem:focus-visible,
+.sidebarAccountProfile:focus-visible,
+.sidebarLogout:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.navItemActive {
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sidebar-raised));
+  color: var(--ink-on-dark) !important;
+}
+.navItemActive::before { background: var(--accent-primary); }
+.navBadge { background: var(--accent-primary); color: var(--ink-on-paper); }
+.sidebarAccount {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto var(--space-3) var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--sidebar-raised);
+}
+.sidebarAccountProfile {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-on-dark);
+  cursor: pointer;
+  text-align: left;
+}
+.sidebarAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  flex: 0 0 auto;
+}
+.sidebarAccountText { min-width: 0; display: grid; gap: 1px; }
+.sidebarAccountText strong, .sidebarAccountText small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebarAccountText strong { font-size: var(--font-size-xs); }
+.sidebarAccountText small { color: var(--ink-muted); font-size: 0.65rem; }
+.sidebarLogout {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+.sidebarLogout:hover { border-color: var(--status-danger-text); color: var(--status-danger-text); }
+.rightContentArea {
+  background-color: var(--app-canvas);
+  background-image: radial-gradient(
+    82% 52% at 92% -6%,
+    color-mix(in srgb, var(--accent-primary) 22%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 8%, transparent) 44%,
+    transparent 76%
+  );
+  color: var(--ink-primary);
+}
+.contentBody { background: transparent; color: var(--ink-primary); }
+.header {
+  background: var(--header-bg);
+  border-bottom-color: var(--border-subtle);
+  backdrop-filter: blur(14px);
+}
+.menuToggle, .themeToggle, .walletBadge, .availabilityToggle, .profileDropdownTrigger, .searchContainer {
+  background: var(--control-bg);
+  border-color: var(--border-subtle);
+  color: var(--control-text);
+}
+.menuToggle:hover, .themeToggle:hover, .availabilityToggle:hover, .profileDropdownTrigger:hover {
+  background: var(--control-bg-hover);
+  border-color: var(--border-strong);
+}
+.searchContainer:focus-within,
+.themeToggle:focus-visible,
+.menuToggle:focus-visible,
+.walletTopUpButton:focus-visible,
+.toggleSwitch:focus-visible,
+.dropdownItem:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--focus-ring);
+  box-shadow: none;
+}
+.searchInput, .walletAmount, .userPillName { color: var(--control-text); }
+.searchIcon, .walletIcon, .userPillRole { color: var(--ink-muted); }
+.walletTopUpButton { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink-secondary); }
+.walletTopUpButton:hover { background: var(--accent-primary); color: var(--ink-on-paper); }
+.avatarCircleSmall { background: var(--accent-primary); color: var(--ink-on-paper); }
+.profileDropdownMenu { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 14px 36px var(--shadow-color); }
+.dropdownItem { color: var(--ink-primary); }
+.dropdownItem:hover { background: var(--surface-selected); }
+.dropdownDivider { background: var(--border-subtle); }
+.backdrop { background: color-mix(in srgb, var(--sidebar-bg) 76%, transparent); }
+
+@media (max-width: 768px) {
+  .sidebarCollapsed .roleContext { display: grid; }
+  .sidebarCollapsed .sidebarAccountText { display: grid; }
+  .sidebarCollapsed .sidebarLogout { display: inline-flex; }
 }

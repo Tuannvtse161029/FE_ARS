@@ -17,18 +17,12 @@ import type { ReviewRequest } from '../services/reviewRequest.service';
 /**
  * Documented ownership fields on a Paper record, ordered by specificity.
  *
- * The BE response shape is not guaranteed (Swagger marks several fields
- * optional). We accept any of:
- *   - userId   (BE `dbo.Paper.userId` per `research-workflow-contract.md`)
- *   - authorId (legacy/alias for the paper owner)
- *
- * If a record carries an ownership field that disagrees with the
- * authenticated id, it MUST be excluded — it is a backend data leak.
+ * The Swagger `PaperResponse` only exposes `authorId`; absent authorship
+ * metadata must be treated as unavailable rather than inferred.
  */
-type PaperOwnershipField = keyof Pick<Paper, 'userId' | 'authorId'>;
+type PaperOwnershipField = 'authorId';
 
 const PAPER_OWNERSHIP_FIELDS: readonly PaperOwnershipField[] = [
-  'userId',
   'authorId',
 ];
 

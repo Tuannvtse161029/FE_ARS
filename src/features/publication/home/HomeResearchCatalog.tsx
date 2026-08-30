@@ -7,7 +7,6 @@ import { WorkspaceHeader } from '../../../components/workspace/WorkspaceHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
-import { MetricCard } from '../../../components/workspace/MetricCard';
 import { Button } from '../../../components/Button/Button';
 import { publicReviewerName } from '../types/publication';
 import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
@@ -88,14 +87,6 @@ export const HomeResearchCatalog = () => {
     [papers],
   );
 
-  // Card stats: derived from the loaded page so the metric row stays
-  // honest. We do not fabricate counts across pages — only what we can
-  // show.
-  const visibleReviewerCount = useMemo(
-    () => papers.filter((paper) => paper.reviewerIdentityPublic).length,
-    [papers],
-  );
-
   const updateQuery = (patch: Partial<CatalogQuery>) =>
     setQuery((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
 
@@ -110,27 +101,6 @@ export const HomeResearchCatalog = () => {
       />
 
       {isDemo && <PublicationDemoBanner />}
-
-      <div className={styles.metricRow} aria-label="Catalog snapshot">
-        <MetricCard
-          label="Published papers"
-          value={total.toLocaleString('en-US')}
-          annotation="Available in the catalog"
-          accent={HOMEPAGE_ACCENT}
-        />
-        <MetricCard
-          label="On this page"
-          value={papers.length.toLocaleString('en-US')}
-          annotation={`Page ${query.page} of ${totalPages}`}
-          accent={HOMEPAGE_ACCENT}
-        />
-        <MetricCard
-          label="Disclosed reviewers"
-          value={visibleReviewerCount.toLocaleString('en-US')}
-          annotation="Reviewers who chose public attribution"
-          accent={HOMEPAGE_ACCENT}
-        />
-      </div>
 
       <div className={styles.toolbar}>
         <label className={styles.search}>
@@ -194,6 +164,23 @@ export const HomeResearchCatalog = () => {
             ))}
           </select>
         </label>
+      </div>
+
+      <div className={styles.resultContext} aria-live="polite">
+        <span>
+          {loading
+            ? 'Loading published research…'
+            : `${total.toLocaleString('en-US')} published paper${total === 1 ? '' : 's'}`}
+        </span>
+        {!loading && (query.query || query.topic || query.domain || query.field) ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => updateQuery({ query: undefined, topic: undefined, domain: undefined, field: undefined })}
+          >
+            Clear filters
+          </Button>
+        ) : null}
       </div>
 
       {loading ? (

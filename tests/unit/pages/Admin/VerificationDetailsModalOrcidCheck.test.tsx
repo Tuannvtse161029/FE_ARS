@@ -1,16 +1,5 @@
-/**
- * Tests for the AI ORCID Check button on VerificationDetailsModal.
- *
- * Rules:
- *   - Visible only when user.roleName === 'Reviewer' AND user.orcidId is non-empty
- *     AND user.orcidId is a valid ORCID format
- *   - Visible only when an `onOpenOrcidCheck` callback is provided
- *   - Clicking the button calls `onOpenOrcidCheck` exactly once
- *   - The ORCID iD row in the details grid is rendered when present
- */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { VerificationDetailsModal } from '../../../../src/pages/Admin/VerificationDetailsModal';
 import type { User } from '../../../../src/types/auth';
 
@@ -28,123 +17,26 @@ const baseUser: User = {
   createdAt: '2026-08-22T00:00:00Z',
 };
 
-describe('VerificationDetailsModal — AI ORCID Check button', () => {
-  it('shows the AI ORCID Check button when user is Reviewer with valid ORCID', () => {
-    render(
-      <VerificationDetailsModal
-        user={baseUser}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    const button = screen.getByTestId('verification-orcid-check-button');
-    expect(button).toBeInTheDocument();
-    expect(button.textContent).toMatch(/AI ORCID Check/);
+describe('VerificationDetailsModal ORCID identity disclosure', () => {
+  it('does not display a raw ORCID iD when the user response lacks linkage confirmation', () => {
+    render(<VerificationDetailsModal user={baseUser} open={true} onClose={() => undefined} />);
+
+    expect(screen.getByText('ORCID identity connection')).toBeInTheDocument();
+    expect(screen.getByText(/Connection status is not provided/i)).toBeInTheDocument();
+    expect(screen.queryByText('0000-0002-1825-0097')).toBeNull();
   });
 
-  it('hides the AI ORCID Check button for non-Reviewer roles', () => {
-    const lecturer = { ...baseUser, roleName: 'Lecturer' };
-    render(
-      <VerificationDetailsModal
-        user={lecturer}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
+  it('explains that ORCID linkage does not decide an ARS role request', () => {
+    render(<VerificationDetailsModal user={baseUser} open={true} onClose={() => undefined} />);
+
+    expect(
+      screen.getByText(/identity signal; approving this request remains an ARS role decision/i),
+    ).toBeInTheDocument();
+  });
+
+  it('does not expose the legacy ORCID lookup action from the user verification response', () => {
+    render(<VerificationDetailsModal user={baseUser} open={true} onClose={() => undefined} />);
+
     expect(screen.queryByTestId('verification-orcid-check-button')).toBeNull();
-  });
-
-  it('hides the AI ORCID Check button when ORCID iD is missing', () => {
-    const noOrcid = { ...baseUser, orcidId: undefined };
-    render(
-      <VerificationDetailsModal
-        user={noOrcid}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId('verification-orcid-check-button')).toBeNull();
-  });
-
-  it('hides the AI ORCID Check button when ORCID iD is malformed', () => {
-    const malformed = { ...baseUser, orcidId: 'not-a-valid-orcid' };
-    render(
-      <VerificationDetailsModal
-        user={malformed}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId('verification-orcid-check-button')).toBeNull();
-  });
-
-  it('hides the button when no onOpenOrcidCheck callback is provided', () => {
-    render(
-      <VerificationDetailsModal
-        user={baseUser}
-        open={true}
-        onClose={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId('verification-orcid-check-button')).toBeNull();
-  });
-
-  it('clicking the button calls onOpenOrcidCheck', async () => {
-    const onOpenOrcidCheck = vi.fn();
-    render(
-      <VerificationDetailsModal
-        user={baseUser}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={onOpenOrcidCheck}
-      />,
-    );
-    const button = screen.getByTestId('verification-orcid-check-button');
-    await userEvent.click(button);
-    expect(onOpenOrcidCheck).toHaveBeenCalledTimes(1);
-  });
-
-  it('displays the ORCID iD row in the details grid', () => {
-    render(
-      <VerificationDetailsModal
-        user={baseUser}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    expect(screen.getByText('0000-0002-1825-0097')).toBeInTheDocument();
-  });
-
-  it('handles null roleName safely (button hidden)', () => {
-    const noRole = { ...baseUser, roleName: null };
-    render(
-      <VerificationDetailsModal
-        user={noRole}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId('verification-orcid-check-button')).toBeNull();
-  });
-
-  it('handles the lowercase "reviewer" role name', () => {
-    // The check is case-insensitive — the BE might return 'reviewer' or 'Reviewer'.
-    const lowercase = { ...baseUser, roleName: 'reviewer' };
-    render(
-      <VerificationDetailsModal
-        user={lowercase}
-        open={true}
-        onClose={() => undefined}
-        onOpenOrcidCheck={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId('verification-orcid-check-button')).not.toBeNull();
-    cleanup();
   });
 });

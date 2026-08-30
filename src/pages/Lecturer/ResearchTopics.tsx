@@ -607,6 +607,14 @@ export const ResearchTopicsPage = () => {
                               <Library size={14} aria-hidden />
                               Manage Materials
                             </button>
+                            <Link
+                              to={ROUTES.CONFIGURE_MILESTONES}
+                              className={styles.materialsTopicBtn}
+                              title="Configure reporting phases for this topic"
+                            >
+                              <BookOpen size={14} aria-hidden />
+                              Manage Phases
+                            </Link>
                           </div>
                         </td>
                       </tr>

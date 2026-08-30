@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  border-top: 1px solid var(--ars-network);
+  border-top: 1px solid var(--border-strong);
   padding-top: var(--space-3);
   margin-top: var(--space-3);
 }
@@ -17,7 +17,7 @@
   gap: var(--space-2);
   border: none;
   background: transparent;
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   font-size: var(--font-size-xs);
   font-weight: 700;
   cursor: pointer;
@@ -46,13 +46,20 @@
 }
 
 .commentItem {
-  background-color: var(--ars-paper-alt);
-  border: var(--border-thin);
+  background-color: var(--comment-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.replyItem {
+  margin-left: var(--space-6);
+  background: var(--reply-surface);
+  border-left: 3px solid var(--accent-sage);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .commentMeta {
@@ -127,20 +134,20 @@
 .commentAuthor {
   font-size: var(--font-size-xs);
   font-weight: 700;
-  color: var(--ars-ink);
+  color: var(--ink-primary);
   font-family: var(--font-family-ui);
 }
 
 .commentTimestamp {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   font-family: var(--font-family-mono);
 }
 
 .commentContent {
   margin: 0;
   font-size: var(--font-size-sm);
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   line-height: var(--line-height-relaxed);
   white-space: pre-wrap;
   word-break: break-word;
@@ -159,8 +166,8 @@
   padding: 4px 10px;
   border: var(--border-thin);
   border-radius: var(--radius-md);
-  background: var(--ars-paper);
-  color: var(--ars-ink-soft);
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
   font-size: var(--font-size-xs);
   font-weight: 600;
   cursor: pointer;
@@ -172,9 +179,9 @@
 }
 
 .actionBtn:hover {
-  border-color: var(--ars-ink-muted);
-  color: var(--ars-ink);
-  background: var(--ars-paper-alt);
+  border-color: var(--border-strong);
+  color: var(--ink-primary);
+  background: var(--surface-selected);
 }
 
 .actionBtn:focus-visible {
@@ -202,14 +209,14 @@
 }
 
 .actionBtnUpvote:hover {
-  border-color: var(--ars-blue, #2563eb);
-  color: var(--ars-blue, #2563eb);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .actionBtnUpvoted {
-  color: var(--ars-blue, #2563eb);
-  border-color: var(--ars-blue, #2563eb);
-  background-color: rgba(37, 99, 235, 0.08);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background-color: var(--surface-selected);
   font-weight: 700;
 }
 
@@ -228,12 +235,12 @@
 .editTextarea,
 .createTextarea {
   width: 100%;
-  background-color: var(--ars-paper);
-  border: var(--border-thin);
+  background-color: var(--control-bg);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
-  color: var(--ars-ink);
+  color: var(--control-text);
   outline: none;
   resize: vertical;
   font-family: var(--font-family-ui);
@@ -244,8 +251,8 @@
 
 .editTextarea:focus,
 .createTextarea:focus {
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.1);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
 }
 
 .editActions {
@@ -315,6 +322,10 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--composer-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
 }
 
 .submitBtn {
@@ -354,10 +365,10 @@
 
 .stateMessage {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   padding: var(--space-2) var(--space-3);
-  background-color: var(--ars-paper-alt);
-  border: 1px dashed var(--ars-node);
+  background-color: var(--surface-sunken);
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
   line-height: var(--line-height-relaxed);
 }
@@ -373,4 +384,27 @@
   color: var(--ars-error);
   font-size: var(--font-size-xs);
   font-family: var(--font-family-ui);
+}
+
+/* Archive Dusk compatibility overrides for comment controls. */
+.headerToggle:focus-visible,
+.commentMenuTrigger:focus-visible,
+.actionBtn:focus-visible,
+.cancelBtn:focus-visible,
+.saveBtn:focus-visible,
+.submitBtn:focus-visible { outline-color: var(--focus-ring); }
+.commentMenuPopover { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 12px 28px var(--shadow-color); }
+.commentMenuTrigger:hover { background: var(--surface-selected); color: var(--ink-primary); }
+.actionBtnDanger { color: var(--status-danger-text); }
+.actionBtnDanger:hover, .commentMenuItem:hover { background: var(--status-danger-surface); border-color: var(--status-danger-text); }
+.actionBtnUpvoted, .actionBtnUpvoted:hover { color: var(--accent-primary); border-color: var(--accent-primary); background: var(--surface-selected); }
+.cancelBtn { background: var(--surface-sunken); border-color: var(--border-subtle); color: var(--ink-secondary); }
+.cancelBtn:hover { background: var(--surface-selected); color: var(--ink-primary); }
+.saveBtn, .submitBtn { background: var(--accent-primary); color: var(--ink-on-paper); }
+.saveBtn:hover:not(:disabled), .submitBtn:hover:not(:disabled) { background: var(--accent-hover); transform: none; }
+.errorBanner { background: var(--status-danger-surface); border-color: var(--status-danger-text); color: var(--status-danger-text); }
+
+@media (max-width: 560px) {
+  .replyItem { margin-left: var(--space-3); }
+  .createForm { align-items: stretch; flex-direction: column; }
 }

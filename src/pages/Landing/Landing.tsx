@@ -1,157 +1,84 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  BookOpenCheck,
-  CalendarDays,
-  Check,
-  FileCheck2,
+  CheckCircle2,
+  FileText,
   GraduationCap,
-  LibraryBig,
-  MessageSquareQuote,
-  Network,
-  Search,
   ShieldCheck,
-  Sparkles,
-  Star,
-  UserRoundCheck,
-  UsersRound,
+  UserCheck,
+  Users,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
 import arsLogo from '../../assets/images/ARS_Logo.png';
-import libraryImage from '../../assets/images/hero-bg.jpg';
 import styles from './Landing.module.css';
-
-const capabilities = [
-  {
-    icon: Search,
-    title: 'Discover trusted research',
-    description:
-      'Explore a curated catalog of published academic work by topic, field, author, and institution.',
-  },
-  {
-    icon: FileCheck2,
-    title: 'Submit with clarity',
-    description:
-      'Move from draft to decision through a structured workflow with visible status and feedback.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Protect research quality',
-    description:
-      'Admin screening and eligible reviewer assignment keep publication decisions accountable.',
-  },
-  {
-    icon: UsersRound,
-    title: 'Collaborate across roles',
-    description:
-      'Researchers, reviewers, lecturers, and students work in spaces designed for their responsibilities.',
-  },
-  {
-    icon: CalendarDays,
-    title: 'Learn beyond papers',
-    description:
-      'Organize seminars, invite participants, share materials, and follow academic milestones.',
-  },
-  {
-    icon: Network,
-    title: 'Connect scholarly identity',
-    description:
-      'Bring profiles, disciplines, ORCID, DOI, and OpenAlex context into one academic environment.',
-  },
-];
 
 const workflow = [
   {
-    number: '01',
-    title: 'Researcher submits',
-    description: 'Upload the manuscript and confirm complete academic metadata.',
+    title: 'Submit',
+    description: 'Researchers provide a manuscript and the academic metadata needed for editorial assessment.',
   },
   {
-    number: '02',
-    title: 'Admin screens',
-    description: 'Verify readiness, authenticity signals, and reviewer eligibility.',
+    title: 'Screen',
+    description: 'Administrators assess submission readiness and manage the editorial process.',
   },
   {
-    number: '03',
-    title: 'Reviewer evaluates',
-    description: 'Accept the assignment and return a private recommendation.',
+    title: 'Review',
+    description: 'Eligible reviewers return recommendations within their authorized workspace.',
   },
   {
-    number: '04',
-    title: 'Admin decides',
-    description: 'Make the final editorial decision and publish approved work.',
+    title: 'Decide',
+    description: 'Administrators make the final publication decision. Reviewer recommendations are not publication decisions.',
   },
   {
-    number: '05',
-    title: 'Community discovers',
-    description: 'Published research becomes available in the curated catalog.',
+    title: 'Discover',
+    description: 'Only approved public research becomes available through the research catalog.',
   },
 ];
 
-const roles = [
+const workspaces = [
   {
-    icon: BookOpenCheck,
-    title: 'Researchers',
-    description: 'Submit work, follow editorial progress, discover papers, and join seminars.',
+    icon: FileText,
+    title: 'Researcher workspace',
+    description: 'Prepare submissions, follow editorial status, revise work, and discover published research.',
   },
   {
-    icon: UserRoundCheck,
-    title: 'Reviewers',
-    description: 'Manage assignments, provide rigorous evaluations, and track review activity.',
+    icon: UserCheck,
+    title: 'Reviewer workspace',
+    description: 'Manage eligible assignments and provide evaluations within the review process.',
   },
   {
     icon: GraduationCap,
-    title: 'Lecturers',
-    description: 'Lead seminars, research groups, topics, learning materials, and milestones.',
+    title: 'Lecturer workspace',
+    description: 'Coordinate research groups, seminars, learning materials, and academic milestones.',
   },
   {
-    icon: Sparkles,
-    title: 'Graduate students',
-    description: 'Participate in research groups, submit reports, and learn through collaboration.',
+    icon: Users,
+    title: 'Graduate student workspace',
+    description: 'Participate in research groups, reports, learning activity, and academic collaboration.',
   },
 ];
 
-const testimonials = [
-  {
-    quote:
-      'ARS gives every submission a visible path. I can focus on the research instead of wondering what happens next.',
-    name: 'Mai N.',
-    role: 'Illustrative researcher review',
-  },
-  {
-    quote:
-      'The reviewer workspace keeps the manuscript, deadline, and evaluation context together without blurring editorial responsibility.',
-    name: 'Quang L.',
-    role: 'Illustrative reviewer review',
-  },
-  {
-    quote:
-      'Research groups, seminars, and progress reports feel connected rather than scattered across unrelated tools.',
-    name: 'Anh P.',
-    role: 'Illustrative lecturer review',
-  },
+const boundaries = [
+  'Only approved public research is discoverable in the catalog.',
+  'Reviewer recommendations inform, but do not replace, the final editorial decision.',
+  'Private review comments, scores, and administrative notes remain in authorized workspaces.',
 ];
 
 const faqs = [
   {
-    question: 'What makes ARS different from a file-sharing website?',
+    question: 'What is ARS?',
     answer:
-      'ARS uses an Admin-controlled editorial workflow. A manuscript is screened, reviewed, decided, and published before it can appear in the research catalog.',
+      'Academic Research System is a role-based academic platform for research discovery, paper submission and review, seminars, collaboration, and academic workspaces.',
   },
   {
-    question: 'Who can use ARS?',
+    question: 'Who decides whether research is published?',
     answer:
-      'ARS supports Researchers, Reviewers, Lecturers, Graduate Students, and database-provisioned Admins. Access is shaped by verified and approved responsibilities.',
+      'Administrators make the final editorial publication decision. Reviewers provide recommendations as part of that process.',
   },
   {
-    question: 'Does a reviewer publish a paper?',
+    question: 'What becomes public?',
     answer:
-      'No. Reviewers provide recommendations. The Admin retains the final publication decision and controls when approved work becomes public.',
-  },
-  {
-    question: 'How does ARS support academic discovery?',
-    answer:
-      'Published papers can be organized around authors, institutions, fields, topics, keywords, DOI information, and permitted external scholarly links.',
+      'Only research that is both approved and public belongs in the research catalog. Internal review content is not public.',
   },
 ];
 
@@ -164,358 +91,163 @@ export const Landing = () => {
 
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Link className={styles.brand} to={ROUTES.LANDING} aria-label="ARS home">
-            <img className={styles.brandLogo} src={arsLogo} alt="" />
-            <span className={styles.brandCopy}>
-              <strong>Academic Research System</strong>
-              <small>Knowledge, reviewed with purpose</small>
-            </span>
+          <Link className={styles.brand} to={ROUTES.LANDING} aria-label="Academic Research System home">
+            <img className={styles.brandLogo} src={arsLogo} alt="ARS" />
+            <span>Academic Research System</span>
           </Link>
-
           <nav className={styles.navigation} aria-label="Landing page navigation">
-            <a href="#purpose">Purpose</a>
-            <a href="#capabilities">What you can do</a>
-            <a href="#workflow">How it works</a>
-            <a href="#community">Community</a>
+            <a href="#workflow">Editorial workflow</a>
+            <a href="#workspaces">Workspaces</a>
+            <a href="#boundaries">Public access</a>
           </nav>
-
           <Link className={styles.loginButton} to={ROUTES.LOGIN}>
-            Log in
-            <ArrowRight size={17} aria-hidden="true" />
+            Log in <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </div>
       </header>
 
       <main id="main-content">
         <section className={styles.hero} aria-labelledby="landing-title">
-          <div className={styles.heroGlow} aria-hidden="true" />
           <div className={styles.heroInner}>
             <div className={styles.heroCopy}>
-              <div className={styles.eyebrow}>
-                <span className={styles.eyebrowDot} aria-hidden="true" />
-                A trusted space for academic progress
-              </div>
-              <h1 id="landing-title">
-                Research moves further when <em>knowledge moves together.</em>
-              </h1>
+              <p className={styles.issueLine}>Public entry / Academic research</p>
+              <h1 id="landing-title">A responsible path for research to be read, reviewed, and shared.</h1>
               <p className={styles.heroLead}>
-                ARS brings discovery, paper submission, peer review, seminars, and
-                research collaboration into one role-aware academic platform.
+                ARS is a role-based academic platform for research discovery, editorial workflows,
+                seminars, and collaboration. It keeps each responsibility clear from submission to
+                public discovery.
               </p>
               <div className={styles.heroActions}>
                 <Link className={styles.primaryButton} to={ROUTES.LOGIN}>
-                  Enter ARS
-                  <ArrowRight size={18} aria-hidden="true" />
+                  Log in to ARS <ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <a className={styles.secondaryButton} href="#purpose">
-                  See how ARS helps
+                <a className={styles.textLink} href="#workflow">
+                  Read the workflow <ArrowRight size={16} aria-hidden="true" />
                 </a>
               </div>
-              <ul className={styles.heroAssurances} aria-label="ARS commitments">
-                <li>
-                  <Check size={16} aria-hidden="true" />
-                  Curated discovery
-                </li>
-                <li>
-                  <Check size={16} aria-hidden="true" />
-                  Accountable peer review
-                </li>
-                <li>
-                  <Check size={16} aria-hidden="true" />
-                  Role-based access
-                </li>
-              </ul>
             </div>
 
-            <div className={styles.researchPreview} aria-label="ARS workflow preview">
-              <div className={styles.previewTopbar}>
-                <span>Research workflow preview</span>
-                <div className={styles.previewStatus}>
-                  <span aria-hidden="true" />
-                  Editorial review active
-                </div>
+            <aside className={styles.dossier} aria-labelledby="dossier-title">
+              <div className={styles.dossierHeader}>
+                <span>ARS editorial dossier</span>
+                <ShieldCheck size={20} aria-hidden="true" />
               </div>
-              <div className={styles.previewSearch}>
-                <Search size={18} aria-hidden="true" />
-                <span>Search papers, topics, authors, or institutions</span>
-                <kbd>⌘ K</kbd>
-              </div>
-              <article className={styles.paperCard}>
-                <div className={styles.paperMeta}>
-                  <span>Environmental science</span>
-                  <span>Manuscript v2</span>
+              <h2 id="dossier-title">Publication is a governed process.</h2>
+              <p>
+                ARS separates editorial responsibility from scholarly recommendation, so the path
+                to public discovery remains accountable.
+              </p>
+              <dl className={styles.dossierList}>
+                <div>
+                  <dt>Researcher</dt>
+                  <dd>Submits and follows the work.</dd>
                 </div>
-                <h2>Climate-resilient cities through community-led data</h2>
-                <p>
-                  A framework for combining local observations with reproducible
-                  urban climate analysis.
-                </p>
-                <div className={styles.paperAuthors}>
-                  <span className={styles.avatar}>MN</span>
-                  <div>
-                    <strong>Mai Nguyen and collaborators</strong>
-                    <small>Faculty of Environmental Studies</small>
-                  </div>
+                <div>
+                  <dt>Reviewer</dt>
+                  <dd>Evaluates and recommends.</dd>
                 </div>
-              </article>
-              <div className={styles.reviewTrack}>
-                <div className={styles.reviewTrackHeader}>
-                  <span>Editorial progress</span>
-                  <strong>Under review</strong>
+                <div>
+                  <dt>Administrator</dt>
+                  <dd>Controls the final decision.</dd>
                 </div>
-                <ol>
-                  <li className={styles.completeStep}>
-                    <span aria-hidden="true">1</span>
-                    Submitted
-                  </li>
-                  <li className={styles.completeStep}>
-                    <span aria-hidden="true">2</span>
-                    Screened
-                  </li>
-                  <li className={styles.currentStep}>
-                    <span aria-hidden="true">3</span>
-                    Review
-                  </li>
-                  <li>
-                    <span aria-hidden="true">4</span>
-                    Decision
-                  </li>
-                </ol>
-              </div>
-              <div className={styles.previewNote}>
-                <ShieldCheck size={18} aria-hidden="true" />
-                <span>
-                  <strong>Privacy by workflow.</strong> Internal scores and notes stay
-                  inside authorized review spaces.
+              </dl>
+            </aside>
+          </div>
+        </section>
+
+        <section className={styles.statement} aria-label="ARS purpose">
+          <div>
+            <p className={styles.issueLine}>The platform</p>
+            <h2>Research deserves more than an upload destination.</h2>
+          </div>
+          <p>
+            ARS brings research discovery, paper submission and review, seminars, collaboration,
+            and role-specific workspaces into one academic environment. Its public catalog is
+            reserved for research that has completed the editorial process.
+          </p>
+        </section>
+
+        <section className={styles.workflowSection} id="workflow" aria-labelledby="workflow-title">
+          <div className={styles.sectionHeading}>
+            <p className={styles.issueLine}>The editorial record</p>
+            <h2 id="workflow-title">Five stages. Clear responsibility at each one.</h2>
+          </div>
+          <ol className={styles.workflowList}>
+            {workflow.map((step, index) => (
+              <li key={step.title}>
+                <span className={styles.workflowNumber} aria-hidden="true">
+                  0{index + 1}
                 </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.principles} aria-label="Platform principles">
-          <div>
-            <strong>One academic ecosystem</strong>
-            <span>Discovery, review, learning, and collaboration</span>
-          </div>
-          <div>
-            <strong>Clear responsibility</strong>
-            <span>Every role sees the right work at the right stage</span>
-          </div>
-          <div>
-            <strong>Publication with oversight</strong>
-            <span>Reviewers recommend; Admins make final decisions</span>
-          </div>
-        </section>
-
-        <section className={styles.purposeSection} id="purpose">
-          <div className={styles.sectionInner}>
-            <div className={styles.purposeVisual}>
-              <img src={libraryImage} alt="Shelves inside a multi-level academic library" />
-              <div className={styles.imageCaption}>
-                <LibraryBig size={22} aria-hidden="true" />
-                <span>
-                  <strong>Knowledge deserves structure.</strong>
-                  ARS connects scholarly work to the people and decisions behind it.
-                </span>
-              </div>
-            </div>
-            <div className={styles.purposeCopy}>
-              <span className={styles.sectionMarker}>01 / OUR PURPOSE</span>
-              <h2>A clearer path from academic work to shared impact.</h2>
-              <p>
-                Valuable research is often spread across files, conversations, and
-                disconnected tools. ARS creates a coherent environment where academic
-                work can be discovered, evaluated, developed, and shared responsibly.
-              </p>
-              <div className={styles.purposeList}>
                 <div>
-                  <span>01</span>
-                  <p>
-                    <strong>Make knowledge easier to find</strong>
-                    Search a curated catalog instead of navigating unstructured uploads.
-                  </p>
-                </div>
-                <div>
-                  <span>02</span>
-                  <p>
-                    <strong>Make academic decisions transparent</strong>
-                    Follow meaningful stages from submission to final publication.
-                  </p>
-                </div>
-                <div>
-                  <span>03</span>
-                  <p>
-                    <strong>Make collaboration continuous</strong>
-                    Connect papers with seminars, groups, feedback, and scholarly profiles.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.capabilitiesSection} id="capabilities">
-          <div className={styles.sectionInnerColumn}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <span className={styles.sectionMarker}>02 / ONE CONNECTED PLATFORM</span>
-                <h2>Everything academic work needs to keep moving.</h2>
-              </div>
-              <p>
-                ARS is designed around real academic responsibilities, not a generic
-                collection of uploads and messages.
-              </p>
-            </div>
-            <div className={styles.capabilityGrid}>
-              {capabilities.map(({ icon: Icon, title, description }, index) => (
-                <article className={styles.capabilityCard} key={title}>
-                  <span className={styles.cardNumber}>0{index + 1}</span>
-                  <div className={styles.iconBox}>
-                    <Icon size={22} strokeWidth={1.8} aria-hidden="true" />
-                  </div>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.workflowSection} id="workflow">
-          <div className={styles.sectionInnerColumn}>
-            <div className={styles.workflowHeading}>
-              <div>
-                <span className={styles.sectionMarker}>03 / EDITORIAL WORKFLOW</span>
-                <h2>From manuscript to trusted publication.</h2>
-              </div>
-              <p>
-                Quality is not a single button. ARS separates submission, review,
-                recommendation, and publication into accountable stages.
-              </p>
-            </div>
-            <ol className={styles.workflowGrid}>
-              {workflow.map((step) => (
-                <li key={step.number}>
-                  <span className={styles.workflowNumber}>{step.number}</span>
-                  <div className={styles.workflowLine} aria-hidden="true" />
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className={styles.boundariesSection} id="boundaries" aria-labelledby="boundaries-title">
+          <div className={styles.boundariesInner}>
+            <div>
+              <p className={styles.issueLine}>Public access, carefully defined</p>
+              <h2 id="boundaries-title">The catalog shows approved public work, not the private work behind it.</h2>
+            </div>
+            <ul>
+              {boundaries.map((boundary) => (
+                <li key={boundary}>
+                  <CheckCircle2 size={20} aria-hidden="true" />
+                  <span>{boundary}</span>
                 </li>
               ))}
-            </ol>
+            </ul>
           </div>
         </section>
 
-        <section className={styles.communitySection} id="community">
-          <div className={styles.sectionInnerColumn}>
-            <div className={styles.centerHeading}>
-              <span className={styles.sectionMarker}>04 / BUILT FOR ACADEMIA</span>
-              <h2>One community. Purpose-built workspaces.</h2>
-              <p>
-                Every role contributes differently, so ARS gives each person a focused
-                view without disconnecting them from the wider research community.
-              </p>
-            </div>
-            <div className={styles.roleGrid}>
-              {roles.map(({ icon: Icon, title, description }) => (
-                <article className={styles.roleCard} key={title}>
-                  <Icon size={24} strokeWidth={1.7} aria-hidden="true" />
-                  <h3>{title}</h3>
-                  <p>{description}</p>
-                </article>
-              ))}
-            </div>
+        <section className={styles.workspacesSection} id="workspaces" aria-labelledby="workspaces-title">
+          <div className={styles.sectionHeading}>
+            <p className={styles.issueLine}>Role-specific work</p>
+            <h2 id="workspaces-title">A shared platform with focused responsibilities.</h2>
+          </div>
+          <div className={styles.workspaceGrid}>
+            {workspaces.map(({ icon: Icon, title, description }) => (
+              <article className={styles.workspace} key={title}>
+                <Icon size={24} aria-hidden="true" />
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
           </div>
         </section>
 
-        <section className={styles.testimonialSection} aria-labelledby="testimonial-title">
-          <div className={styles.sectionInnerColumn}>
-            <div className={styles.testimonialHeading}>
-              <div>
-                <span className={styles.sectionMarker}>05 / EXPERIENCE PREVIEW</span>
-                <h2 id="testimonial-title">Designed to feel clear at every stage.</h2>
-              </div>
-              <p>
-                These illustrative testimonials show the experience ARS is designed to
-                create. They are examples, not verified customer reviews.
-              </p>
-            </div>
-            <div className={styles.testimonialGrid}>
-              {testimonials.map((testimonial) => (
-                <figure className={styles.testimonialCard} key={testimonial.name}>
-                  <div className={styles.quoteTopline}>
-                    <MessageSquareQuote size={25} aria-hidden="true" />
-                    <div className={styles.stars} aria-label="Five-star illustrative rating">
-                      {[0, 1, 2, 3, 4].map((star) => (
-                        <Star key={star} size={14} fill="currentColor" aria-hidden="true" />
-                      ))}
-                    </div>
-                  </div>
-                  <blockquote>“{testimonial.quote}”</blockquote>
-                  <figcaption>
-                    <span>{testimonial.name}</span>
-                    <small>{testimonial.role}</small>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+        <section className={styles.faqSection} aria-labelledby="faq-title">
+          <div className={styles.faqIntro}>
+            <p className={styles.issueLine}>Read before you enter</p>
+            <h2 id="faq-title">Essential context for the ARS platform.</h2>
+          </div>
+          <div className={styles.faqList}>
+            {faqs.map((faq, index) => (
+              <details key={faq.question} open={index === 0}>
+                <summary>{faq.question}</summary>
+                <p>{faq.answer}</p>
+              </details>
+            ))}
           </div>
         </section>
 
-        <section className={styles.faqSection}>
-          <div className={styles.faqInner}>
-            <div className={styles.faqIntro}>
-              <span className={styles.sectionMarker}>06 / COMMON QUESTIONS</span>
-              <h2>Understand ARS before you enter.</h2>
-              <p>
-                A few essentials about how the platform protects responsibility,
-                privacy, and publication quality.
-              </p>
-            </div>
-            <div className={styles.faqList}>
-              {faqs.map((faq, index) => (
-                <details key={faq.question} open={index === 0}>
-                  <summary>{faq.question}</summary>
-                  <p>{faq.answer}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.ctaSection}>
-          <div className={styles.ctaOverlay} aria-hidden="true" />
-          <div className={styles.ctaContent}>
-            <span className={styles.ctaLabel}>YOUR RESEARCH WORKSPACE AWAITS</span>
-            <h2>Turn academic effort into visible progress.</h2>
-            <p>
-              Enter ARS to discover research, manage your responsibilities, and
-              contribute to a more connected academic community.
-            </p>
-            <Link className={styles.ctaButton} to={ROUTES.LOGIN}>
-              Log in to ARS
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
       </main>
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <div className={styles.footerBrand}>
-            <img src={arsLogo} alt="" />
-            <div>
-              <strong>Academic Research System</strong>
-              <span>Structured knowledge. Responsible publication.</span>
-            </div>
-          </div>
+          <Link className={styles.footerBrand} to={ROUTES.LANDING} aria-label="Academic Research System home">
+            <img src={arsLogo} alt="ARS" />
+            <span>Academic Research System</span>
+          </Link>
           <nav aria-label="Footer navigation">
             <Link to={ROUTES.PRIVACY_POLICY}>Privacy</Link>
             <Link to={ROUTES.TERMS_OF_SERVICE}>Terms</Link>
             <Link to={ROUTES.LOGIN}>Log in</Link>
           </nav>
-          <p>© 2026 ARS. Built for academic collaboration.</p>
         </div>
       </footer>
     </div>

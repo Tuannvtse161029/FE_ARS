@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: #F8FAFC;
+  background-color: var(--surface-canvas);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -10,7 +10,7 @@
 .card {
   width: 100%;
   max-width: 640px;
-  background: #ffffff;
+  background: var(--surface-card);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(45, 53, 97, 0.12);
   padding: 40px;

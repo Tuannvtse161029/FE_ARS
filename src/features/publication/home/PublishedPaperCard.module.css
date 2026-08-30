@@ -162,6 +162,38 @@
   overflow: hidden;
 }
 
+.detailsToggle {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ars-blue-action);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.detailsToggle:hover {
+  color: var(--ars-blue-mid);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.detailsToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.details {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .keywords,
 .topics {
   list-style: none;

@@ -9,17 +9,7 @@
  * - The Save button is intentionally disabled — the BE endpoint is pending.
  */
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .spinningIcon { animation-duration: 1s; }
   .configureMilestones { animation: none !important; }
 }
 
@@ -62,7 +52,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: fadeIn 0.3s ease-out;
+  /* Content appears in document order; no entrance effect for routine rows. */
 }
 
 /* ── Card Header ─────────────────────────────────────────── */
@@ -320,7 +310,7 @@
   justify-content: center;
   gap: var(--space-2);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
 }
 
 .uploadZone:hover {
@@ -360,7 +350,7 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
   font-family: var(--font-family-ui);
   min-height: 36px;
 }
@@ -422,7 +412,7 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   text-decoration: none;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
   white-space: nowrap;
   flex-shrink: 0;
   min-height: 28px;
@@ -494,7 +484,7 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   cursor: not-allowed;
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
   white-space: nowrap;
   font-family: var(--font-family-ui);
   opacity: 0.6;
@@ -551,7 +541,7 @@
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  animation: fadeIn 0.2s ease-out;
+  /* Form state is stable while the backend request is pending. */
 }
 
 .successHint svg {
@@ -567,7 +557,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  animation: fadeIn 0.3s ease-out;
+  /* Content appears in document order; no entrance effect for routine rows. */
 }
 
 .phaseCard {
@@ -581,7 +571,7 @@
   gap: var(--space-4);
   text-align: left;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  animation: fadeIn 0.3s ease-out;
+  /* Content appears in document order; no entrance effect for routine rows. */
 }
 
 .phaseCard:hover {
@@ -675,7 +665,7 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
 }
 
 .editBtn {
@@ -721,7 +711,7 @@
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
   font-family: var(--font-family-ui);
 }
 
@@ -754,7 +744,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
   font-family: var(--font-family-ui);
   min-height: 36px;
 }
@@ -780,7 +770,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
   font-family: var(--font-family-ui);
   min-height: 36px;
 }
@@ -796,7 +786,7 @@
 }
 
 .spinningIcon {
-  animation: spin 0.9s linear infinite;
+  /* The status icon is static; text and disabled state provide feedback. */
 }
 
 /* ── Responsive ─────────────────────────────────────────── */

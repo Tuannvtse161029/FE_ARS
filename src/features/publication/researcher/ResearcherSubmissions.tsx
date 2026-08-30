@@ -81,6 +81,17 @@ export const ResearcherSubmissions = () => {
     };
   }, []);
 
+  const attentionPapers = useMemo(
+    () =>
+      papers.filter(
+        (paper) =>
+          paper.status === 'REVISION_REQUIRED' ||
+          paper.status === 'RESEARCHER_VERIFICATION_REQUIRED' ||
+          paper.status === 'DRAFT',
+      ),
+    [papers],
+  );
+
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return papers.filter((paper) => {
@@ -147,6 +158,29 @@ export const ResearcherSubmissions = () => {
         />
       ) : (
         <>
+          {attentionPapers.length > 0 && (
+            <section className={styles.attentionPanel} aria-labelledby="submission-attention-title">
+              <div>
+                <h2 id="submission-attention-title">Needs your attention</h2>
+                <p>
+                  {attentionPapers.length} submission{attentionPapers.length === 1 ? '' : 's'} need a researcher action before the editorial workflow can continue.
+                </p>
+              </div>
+              <div className={styles.attentionActions}>
+                {attentionPapers.slice(0, 3).map((paper) => (
+                  <Button
+                    key={paper.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/researcher/submissions/${paper.id}`)}
+                  >
+                    {paper.status === 'DRAFT' ? 'Complete draft' : statusLabel(paper.status)}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className={styles.toolbar} role="search">
             <label className={styles.searchField}>
               <span className={styles.searchLabel} id="researcher-search-label">

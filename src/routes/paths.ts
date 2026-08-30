@@ -34,6 +34,7 @@ export const ROUTES = {
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',
   GRADUATE_STUDENT_DASHBOARD: '/student/dashboard',
   LECTURER_EVALUATE_REPORTS: '/lecturer/evaluate-reports',
+  LECTURER_PHASE_REPORTS: '/lecturer/phase-reports',
   LECTURER_GROUP_DETAIL: '/lecturer/groups/:groupId',
   LECTURER_GUIDANCE_PROJECTS: '/lecturer/guidance-projects',
   // Agent lecturer-navigation — top-level Lecturer surface for the Research
@@ -45,6 +46,7 @@ export const ROUTES = {
   // Materials. Previously the CRUD lived only inside the per-topic modal.
   // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
   LECTURER_LEARNING_MATERIALS: '/lecturer/learning-materials',
+  LECTURER_SHARED_MATERIALS: '/lecturer/shared-materials',
   ADMIN: '/admin',
   ADMIN_ROLE_REQUESTS: '/admin/role-requests',
   ADMIN_ACCOUNTS: '/admin/accounts',

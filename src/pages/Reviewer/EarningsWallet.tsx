@@ -36,7 +36,7 @@ export const EarningsWallet = () => {
   const withdrawalsEnabled = AppConfig.features.enableWithdrawals === true;
 
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const { walletId } = useWallet(currentUserId);
+  const { walletId, balance: walletBalance, isLoading: isWalletLoading, error: walletError } = useWallet(currentUserId);
 
   // Defense-in-depth guard for direct navigation. While the flag is off, the
   // page renders ONLY an informational notice — no API calls, no buttons, no
@@ -48,13 +48,8 @@ export const EarningsWallet = () => {
   // hits /earnings-wallet via a stale bookmark still lands on a coherent
   // page rather than a blank redirect.
 
-  // Available balance state loaded from localStorage
-  const [unlockedBalance] = useState(() => {
-    const saved = localStorage.getItem('ars_reviewer_balance');
-    return saved ? parseInt(saved, 10) : 4200000;
-  });
-
-  const pendingHolds = 500000;
+  // Wallet balances are displayed only when the backend has confirmed them.
+  const unlockedBalance = walletBalance ?? 0;
 
   // Requests list — loaded from API
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
@@ -262,19 +257,22 @@ export const EarningsWallet = () => {
             <span className={styles.metricLabel}>Fully Unlocked Balance</span>
             <div className={styles.metricValRow}>
               <span className={styles.metricVal}>
-                {unlockedBalance.toLocaleString('vi-VN')}
+                {isWalletLoading
+                  ? 'Loading…'
+                  : walletError || walletBalance === null
+                    ? 'Unavailable'
+                    : unlockedBalance.toLocaleString('vi-VN')}
               </span>
-              <span className={styles.metricCurrency}>VND</span>
+              {!walletError && walletBalance !== null ? (
+                <span className={styles.metricCurrency}>VND</span>
+              ) : null}
             </div>
           </div>
 
           <div className={styles.metricBlock}>
-            <span className={styles.metricLabel} style={{ color: '#d97706' }}>Pending Holds</span>
+            <span className={styles.metricLabel}>Pending Holds</span>
             <div className={styles.metricValRow}>
-              <span className={styles.metricVal} style={{ color: '#d97706' }}>
-                {pendingHolds.toLocaleString('vi-VN')}
-              </span>
-              <span className={styles.metricCurrency} style={{ color: '#d97706' }}>VND</span>
+              <span className={styles.metricVal}>Unavailable</span>
             </div>
           </div>
         </div>
@@ -479,11 +477,9 @@ export const EarningsWallet = () => {
                   {unlockedBalance.toLocaleString('vi-VN')} VND
                 </span>
               </div>
-              <div className={styles.metricItem} style={{ borderLeft: '1px solid #cbd5e1', paddingLeft: '20px' }}>
-                <span className={styles.metricBarLabel} style={{ color: '#d97706' }}>Pending Holds</span>
-                <span className={styles.metricBarVal} style={{ color: '#d97706' }}>
-                  {pendingHolds.toLocaleString('vi-VN')} VND
-                </span>
+              <div className={styles.metricItem}>
+                <span className={styles.metricBarLabel}>Pending Holds</span>
+                <span className={styles.metricBarVal}>Unavailable</span>
               </div>
             </div>
 

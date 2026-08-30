@@ -34,7 +34,7 @@
 
 /* ── Focus Visible (keyboard) ───────────────────────────── */
 .button:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -67,51 +67,51 @@
 
 /* ── Primary Variant (ARS Blue) ─────────────────────────── */
 .button--primary {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border-color: var(--ars-blue);
-  box-shadow: 0 1px 2px rgba(26, 31, 54, 0.18);
+  background-color: var(--action-primary);
+  color: var(--ink-on-paper);
+  border-color: var(--action-primary);
+  box-shadow: 0 1px 2px var(--shadow-color);
 }
 
 .button--primary:hover:not(:disabled) {
-  background-color: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background-color: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
   box-shadow: var(--shadow-sm);
 }
 
 .button--primary:active:not(:disabled) {
-  background-color: var(--ars-ink);
-  border-color: var(--ars-ink);
+  background-color: var(--accent-ochre);
+  border-color: var(--accent-ochre);
 }
 
 /* ── Secondary Variant (Reviewer Green) ────────────────── */
 .button--secondary {
-  background-color: var(--ars-reviewer);
-  color: var(--ars-paper);
-  border-color: var(--ars-reviewer);
-  box-shadow: 0 1px 2px rgba(6, 95, 70, 0.18);
+  background-color: var(--accent-sage);
+  color: var(--ink-on-paper);
+  border-color: var(--accent-sage);
+  box-shadow: 0 1px 2px var(--shadow-color);
 }
 
 .button--secondary:hover:not(:disabled) {
-  background-color: var(--ars-reviewer-mid);
-  border-color: var(--ars-reviewer-mid);
+  background-color: color-mix(in srgb, var(--accent-sage) 82%, var(--ink-on-paper));
+  border-color: var(--accent-sage);
 }
 
 .button--secondary:active:not(:disabled) {
-  background-color: var(--ars-ink);
-  border-color: var(--ars-ink);
+  background-color: var(--surface-sunken);
+  border-color: var(--border-strong);
 }
 
 /* ── Outline Variant ────────────────────────────────────── */
 .button--outline {
   background-color: transparent;
-  color: var(--ars-blue);
-  border-color: var(--ars-blue);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .button--outline:hover:not(:disabled) {
-  background-color: var(--ars-blue-light);
-  color: var(--ars-ink);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
 }
 
 .button--outline:active:not(:disabled) {
@@ -121,13 +121,13 @@
 /* ── Ghost Variant ──────────────────────────────────────── */
 .button--ghost {
   background-color: transparent;
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   border-color: transparent;
 }
 
 .button--ghost:hover:not(:disabled) {
-  background-color: var(--ars-node);
-  color: var(--ars-ink);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
 }
 
 .button--ghost:active:not(:disabled) {
@@ -136,19 +136,19 @@
 
 /* ── Danger Variant ─────────────────────────────────────── */
 .button--danger {
-  background-color: var(--ars-error);
-  color: var(--ars-paper);
-  border-color: var(--ars-error);
+  background-color: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-text);
 }
 
 .button--danger:hover:not(:disabled) {
-  background-color: #b91c1c;
-  border-color: #b91c1c;
+  background-color: color-mix(in srgb, var(--status-danger-surface) 78%, var(--status-danger-text));
+  border-color: var(--status-danger-text);
 }
 
 .button--danger:active:not(:disabled) {
-  background-color: #7f1d1d;
-  border-color: #7f1d1d;
+  background-color: var(--surface-sunken);
+  border-color: var(--status-danger-text);
 }
 
 /* ── Full Width ─────────────────────────────────────────── */

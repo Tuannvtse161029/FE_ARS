@@ -209,38 +209,6 @@ export const EvaluateReports = () => {
         accent="var(--ars-lecturer)"
       />
 
-      {/* Breadcrumbs */}
-      <div className={styles.breadcrumbs}>
-        Home &gt; Lecturer &gt; <span className={styles.activeBreadcrumb}>Evaluate Reports</span>
-      </div>
-
-      {/* Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Phased Report Review Console</h1>
-          <p className={styles.pageSubtitle}>
-            Review submissions from your research groups, approve or reject with
-            feedback, and track waiting reports.
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.refreshBtn}
-            onClick={() => void refreshAll()}
-            disabled={isLoadingGroups || isLoadingReports}
-            aria-label="Refresh reports"
-          >
-            {isLoadingReports ? (
-              <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            ) : (
-              <RefreshCw size={14} aria-hidden />
-            )}
-            Refresh
-          </button>
-        </div>
-      </div>
-
       {/* Banner */}
       {banner.visible && (
         <div

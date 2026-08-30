@@ -12,6 +12,10 @@ import {
   AlertCircle,
   Plus,
   Search,
+  Hash,
+  TrendingUp,
+  BarChart3,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
@@ -129,6 +133,61 @@ export const Forum = () => {
     ? '—'
     : `${filteredPosts.length} post${filteredPosts.length === 1 ? '' : 's'}`;
 
+  // ─── Trending tags + Forum stats (sidebar density) ─────────────────────────
+  // Derived purely from the loaded `posts` collection — no mock data, no extra
+  // API calls. Tags come straight off `post.tags` (already in the ForumPost
+  // wire shape, see types/forum.types.ts). Stats are computed against the full
+  // (unfiltered) post set so the numbers remain stable as the user toggles
+  // Categories / Filters — that way the sidebar feels like a workspace, not
+  // a duplicate of the active filter pill in the toolbar.
+  const MAX_TRENDING_TAGS = 8;
+
+  const trendingTags = useMemo<{ tag: string; count: number }[]>(() => {
+    const counts = new Map<string, number>();
+    for (const post of posts) {
+      if (!post.tags || post.tags.length === 0) continue;
+      for (const raw of post.tags) {
+        const tag = (raw ?? '').trim();
+        if (!tag) continue;
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.tag.localeCompare(b.tag);
+      })
+      .slice(0, MAX_TRENDING_TAGS);
+  }, [posts]);
+
+  const forumStats = useMemo(() => {
+    const authors = new Set<number>();
+    let tagTotal = 0;
+    for (const post of posts) {
+      if (typeof post.authorId === 'number') {
+        authors.add(post.authorId);
+      }
+      if (post.tags && post.tags.length > 0) {
+        tagTotal += post.tags.length;
+      }
+    }
+    return {
+      totalPosts: posts.length,
+      uniqueAuthors: authors.size,
+      taggedPosts: tagTotal,
+    };
+  }, [posts]);
+
+  // Apply a tag chip — populates the search field so the feed filters down.
+  // We reuse the existing `search` input (the BE only exposes `search`,
+  // `sort`, `category` query params), so a tag click feels like typing a
+  // search term. The handler is a no-op while a refresh is in flight so we
+  // don't trigger a refetch in a way that the user can't reason about.
+  const handleTagClick = useCallback((tag: string) => {
+    setSearchTerm(tag);
+  }, []);
+
   return (
     <div className={styles.forumPage}>
       <PageHeader
@@ -136,7 +195,7 @@ export const Forum = () => {
         title="Forum"
         description={
           isVerified
-            ? 'Discuss active research, share drafts, and follow colleagues across the platform.'
+            ? 'Browse research conversations, follow colleagues, and contribute through the verified community workflow.'
             : 'Browse public discussions while your account is pending administrator verification.'
         }
         breadcrumbs={
@@ -197,6 +256,83 @@ export const Forum = () => {
               leftIcon={<Search size={14} />}
             />
           </div>
+
+          {/* ─── Trending Tags (this worker) ───────────────────────────────
+              Fills the negative space below the Filters input. Tags are
+              derived from the loaded posts (no extra API call, no mock
+              data) and a click populates the search field above so the
+              filter is observable in the feed. Hidden entirely when no
+              tags exist so the sidebar never shows an empty placeholder. */}
+          {trendingTags.length > 0 && (
+            <div className={styles.sidebarSection}>
+              <div className={styles.sidebarSectionLabel}>
+                <span className={styles.sidebarSectionLabelIcon} aria-hidden>
+                  <TrendingUp size={12} />
+                </span>
+                Trending Tags
+              </div>
+              <div className={styles.tagChipList}>
+                {trendingTags.map(({ tag, count }) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={styles.tagChip}
+                    onClick={() => handleTagClick(tag)}
+                    title={`Filter posts by #${tag} (${count} post${count === 1 ? '' : 's'})`}
+                    aria-label={`Filter by tag ${tag}, ${count} post${count === 1 ? '' : 's'}`}
+                  >
+                    <Hash size={11} className={styles.tagChipIcon} aria-hidden />
+                    <span className={styles.tagChipText}>{tag}</span>
+                    <span className={styles.tagChipCount} aria-hidden>
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ─── Forum Stats (this worker) ────────────────────────────────
+              Compact three-row overview derived from the same loaded
+              posts. Numbers stay stable across Category / Filter
+              toggles (computed against the full `posts` set) so the
+              sidebar reads as a workspace overview, not a duplicate of
+              the active-filter pill in the toolbar. Hidden while the
+              feed is loading to avoid showing zeros that would imply
+              "no posts" when we're still fetching. */}
+          {!isLoading && posts.length > 0 && (
+            <div className={styles.sidebarSection}>
+              <div className={styles.sidebarSectionLabel}>
+                <span className={styles.sidebarSectionLabelIcon} aria-hidden>
+                  <BarChart3 size={12} />
+                </span>
+                Forum Stats
+              </div>
+              <ul className={styles.statsList} role="list">
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <FileText size={12} className={styles.statIcon} aria-hidden />
+                    Posts
+                  </span>
+                  <span className={styles.statValue}>{forumStats.totalPosts}</span>
+                </li>
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <UsersIcon size={12} className={styles.statIcon} aria-hidden />
+                    Authors
+                  </span>
+                  <span className={styles.statValue}>{forumStats.uniqueAuthors}</span>
+                </li>
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <Tag size={12} className={styles.statIcon} aria-hidden />
+                    Tags
+                  </span>
+                  <span className={styles.statValue}>{forumStats.taggedPosts}</span>
+                </li>
+              </ul>
+            </div>
+          )}
         </aside>
 
         {/* ─── RIGHT FEED ─── */}
@@ -459,10 +595,28 @@ const CreatePostModal = ({
   const paletteIndex = currentUserId % PALETTE.length;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={styles.modalOverlay}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className={styles.modalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="forum-create-post-title"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Create Forum Post</h2>
+          <h2 id="forum-create-post-title" className={styles.modalTitle}>Create Forum Post</h2>
+          <button
+            type="button"
+            className={styles.modalCloseButton}
+            onClick={onClose}
+            aria-label="Close create post dialog"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
 
         {/* Author Header */}

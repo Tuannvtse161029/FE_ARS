@@ -49,6 +49,8 @@ import { Button } from '../../components/Button';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
+import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
+import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -502,7 +504,7 @@ export const Profile = () => {
         description={
           isOwner
             ? roleMeta.subtitle
-            : 'Public overview of academic publications, research expertise, and citations.'
+            : 'Public academic presence with the profile details this member has chosen to share.'
         }
         accent={roleMeta.accentVar}
         breadcrumbs={
@@ -560,6 +562,10 @@ export const Profile = () => {
         <div className={styles.identityText}>
           <h2 className={styles.identityName} data-testid="profile-display-name">
             {displayName}
+            <OrcidIdentityMarker
+              orcidId={profile?.orcidId}
+              isOrcidVerified={profile?.isOrcidVerified}
+            />
           </h2>
           <p className={styles.identityRole}>
             <span className={styles.roleBadge}>{roleLabel}</span>
@@ -567,7 +573,7 @@ export const Profile = () => {
               <span className={styles.emptyBadge}>Profile not yet configured</span>
             ) : null}
           </p>
-          {displayEmail ? (
+          {isOwner ? (
             <p className={styles.identityEmail} data-testid="profile-display-email">
               {displayEmail}
             </p>
@@ -599,6 +605,10 @@ export const Profile = () => {
           </div>
         </div>
       </section>
+
+      {isOwner && roleName !== 'Admin' && (
+        <OrcidIdentityPanel required={roleName === 'Reviewer'} />
+      )}
 
       {showSuccess && (
         <div data-testid="profile-success-banner">
@@ -637,6 +647,7 @@ export const Profile = () => {
           updatedAt={profile?.updatedAt}
           isEmpty={isEmptyProfile}
           profile={profile}
+          isOwner={isOwner}
         />
       ) : (
         <ProfileEditForm
@@ -675,9 +686,10 @@ interface ProfileViewProps {
   updatedAt: string | null | undefined;
   isEmpty: boolean;
   profile?: ProfileDto | null;
+  isOwner: boolean;
 }
 
-const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: ProfileViewProps) => {
+const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwner }: ProfileViewProps) => {
   const showValue = (value: string, fallback = 'Not set') =>
     value.trim() === '' ? <span className={styles.viewEmpty}>{fallback}</span> : value;
 
@@ -718,30 +730,34 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: Pro
             {showValue(draft.institution)}
           </p>
         </div>
-        <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Phone number</span>
-          <p className={styles.viewValue} data-testid="view-phone-number">
-            {showValue(draft.phoneNumber)}
-          </p>
-        </div>
-        <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Date of birth</span>
-          <p className={styles.viewValue} data-testid="view-date-of-birth">
-            {showValue(draft.dateOfBirth)}
-          </p>
-        </div>
-        <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Gender</span>
-          <p className={styles.viewValue} data-testid="view-gender">
-            {showValue(draft.gender)}
-          </p>
-        </div>
-        <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Address</span>
-          <p className={styles.viewValue} data-testid="view-address">
-            {showValue(draft.address)}
-          </p>
-        </div>
+        {isOwner ? (
+          <>
+            <div className={styles.viewItem}>
+              <span className={styles.viewLabel}>Phone number</span>
+              <p className={styles.viewValue} data-testid="view-phone-number">
+                {showValue(draft.phoneNumber)}
+              </p>
+            </div>
+            <div className={styles.viewItem}>
+              <span className={styles.viewLabel}>Date of birth</span>
+              <p className={styles.viewValue} data-testid="view-date-of-birth">
+                {showValue(draft.dateOfBirth)}
+              </p>
+            </div>
+            <div className={styles.viewItem}>
+              <span className={styles.viewLabel}>Gender</span>
+              <p className={styles.viewValue} data-testid="view-gender">
+                {showValue(draft.gender)}
+              </p>
+            </div>
+            <div className={styles.viewItem}>
+              <span className={styles.viewLabel}>Address</span>
+              <p className={styles.viewValue} data-testid="view-address">
+                {showValue(draft.address)}
+              </p>
+            </div>
+          </>
+        ) : null}
         <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
           <span className={styles.viewLabel}>Bio</span>
           <p className={styles.viewValue} data-testid="view-bio">
@@ -767,29 +783,25 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile }: Pro
         {profile?.hindex != null || profile?.totalCitations != null || profile?.publicationCount != null || profile?.majorFieldName ? (
           <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
             <span className={styles.viewLabel}>Academic &amp; Research Metrics</span>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>H-Index</span>
-                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.hindex ?? 0}</strong>
+            <div className={styles.metricsRow}>
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>H-Index</span>
+                <strong className={styles.metricValue}>{profile.hindex ?? 0}</strong>
               </div>
-              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Citations</span>
-                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.totalCitations ?? 0}</strong>
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>Citations</span>
+                <strong className={styles.metricValue}>{profile.totalCitations ?? 0}</strong>
               </div>
-              <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '120px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Publications</span>
-                <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{profile.publicationCount ?? 0}</strong>
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>Publications</span>
+                <strong className={styles.metricValue}>{profile.publicationCount ?? 0}</strong>
               </div>
               {profile.majorFieldName && (
-                <div style={{ padding: '0.75rem 1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '180px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Research Field</span>
-                  <strong style={{ fontSize: '1rem', color: '#0f172a', display: 'block' }}>
-                    {profile.majorFieldName}
-                  </strong>
+                <div className={`${styles.metric} ${styles.metricWide}`}>
+                  <span className={styles.metricLabel}>Research Field</span>
+                  <strong className={styles.metricValueLg}>{profile.majorFieldName}</strong>
                   {profile.subFieldName && (
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                      {profile.subFieldName}
-                    </span>
+                    <span className={styles.metricSubValue}>{profile.subFieldName}</span>
                   )}
                 </div>
               )}

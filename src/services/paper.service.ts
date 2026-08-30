@@ -3,40 +3,40 @@ import { API_ENDPOINTS } from '../utils/constants';
 import type { PagedResult, PaginationParams } from '../types/api';
 import type { AxiosRequestConfig } from 'axios';
 
+/** Exact `PaperResponse` shape from the checked-in OpenAPI contract. */
 export interface Paper {
-  id: string;
-  title: string;
-  abstract?: string;
-  name?: string;
-  date?: string;
-  status: string;
-  hasNote?: boolean;
-  fileUrl?: string;
-  researchFields?: string[];
-  userId?: number;
-  authorId?: number;
-  authorName?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  subfieldId?: number | null;
+  id: number;
+  title?: string | null;
+  abstract?: string | null;
+  fileUrl?: string | null;
+  issn?: boolean | null;
+  isOpenAccess?: boolean | null;
+  quartile?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   subFieldId?: number | null;
+  authorId?: number | null;
+  authorName?: string | null;
 }
 
+/** Exact `PaperCreateRequest` shape; title and abstract are required. */
 export interface PaperCreateRequest {
   title: string;
   abstract: string;
   fileUrl?: string | null;
-  issn?: boolean;
-  isOpenAccess?: boolean;
-  quartile?: string;
-  subFieldId?: number;
+  issn?: boolean | null;
+  isOpenAccess?: boolean | null;
+  quartile?: string | null;
+  subFieldId?: number | null;
 }
 
+/** Exact `PaperUpdateRequest` shape; title and abstract remain required. */
 export interface PaperUpdateRequest {
-  title?: string;
-  abstract?: string;
+  title: string;
+  abstract: string;
   fileUrl?: string | null;
-  status?: string;
+  status?: string | null;
   issn?: boolean | null;
   isOpenAccess?: boolean | null;
   quartile?: string | null;
@@ -60,11 +60,11 @@ export const paperService = {
   },
 
   getById: async (
-    id: string,
+    id: number | string,
     config?: AxiosRequestConfig,
   ): Promise<Paper> => {
     const response = await api.get<Paper>(
-      API_ENDPOINTS.PAPER.GET_BY_ID(id as unknown as number),
+      API_ENDPOINTS.PAPER.GET_BY_ID(Number(id)),
       config,
     );
     return response.data;
@@ -75,13 +75,13 @@ export const paperService = {
     return response.data;
   },
 
-  update: async (id: string, data: PaperUpdateRequest): Promise<Paper> => {
-    const response = await api.put<Paper>(API_ENDPOINTS.PAPER.UPDATE(id as unknown as number), data);
+  update: async (id: number | string, data: PaperUpdateRequest): Promise<Paper> => {
+    const response = await api.put<Paper>(API_ENDPOINTS.PAPER.UPDATE(Number(id)), data);
     return response.data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(API_ENDPOINTS.PAPER.DELETE(id as unknown as number));
+  delete: async (id: number | string): Promise<void> => {
+    await api.delete(API_ENDPOINTS.PAPER.DELETE(Number(id)));
   },
 };
 

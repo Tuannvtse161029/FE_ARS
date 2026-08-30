@@ -31,7 +31,6 @@ import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
-import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
@@ -44,6 +43,7 @@ import { Button } from '../../components/Button';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import BackendGapBanner from '../../components/BackendGapBanner';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
@@ -215,7 +215,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         onCloseSubmit={handleCloseSubmit}
         onSubmitted={handleSubmitted}
         onRefresh={handleRefresh}
-        joinedGroups={joinedGroups}
+        studentId={studentId}
         phaseKey={
           selectedGroup.name
             ? selectedGroup.name.toLowerCase().replace(/\s+/g, '-')
@@ -351,7 +351,7 @@ interface WorkspaceViewProps {
   onCloseSubmit: () => void;
   onSubmitted: (report: SubmittedPhasedReport) => Promise<void> | void;
   onRefresh: () => Promise<void>;
-  joinedGroups: ReadonlyArray<import('../../services/groupMembership.service').StudentGroupView>;
+  studentId: number | null;
   phaseKey: string;
   phaseTitle: string;
 }
@@ -374,7 +374,7 @@ function WorkspaceView({
   onCloseSubmit,
   onSubmitted,
   onRefresh,
-  joinedGroups,
+  studentId,
   phaseKey,
   phaseTitle,
 }: WorkspaceViewProps): JSX.Element {
@@ -418,6 +418,12 @@ function WorkspaceView({
     };
   }, [group.id]);
 
+  const currentMember = useMemo(
+    () => members.find((member) => member.studentId === studentId) ?? null,
+    [members, studentId],
+  );
+  const isCurrentUserLeader = Boolean(currentMember?.isLeader || group.isLeader);
+
   const { materials, isLoading: materialsLoading } = useLearningMaterials({
     lecturerId,
   });
@@ -457,22 +463,33 @@ function WorkspaceView({
         }`}
         accent={ROLE_ACCENT}
         actions={
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<FileText size={14} />}
-            onClick={() => onOpenSubmit()}
-          >
-            Submit milestone report
-          </Button>
+          isCurrentUserLeader ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<FileText size={14} />}
+              onClick={() => onOpenSubmit()}
+            >
+              Submit milestone report
+            </Button>
+          ) : (
+            <span className={styles.permissionNote} role="status">
+              Only your Group Leader can submit this phase report.
+            </span>
+          )
         }
+      />
+
+      <BackendGapBanner
+        field="ProjectGuideline and phase-group task"
+        feature="Guidelines and group-specific phase instructions"
       />
 
       {latestRejected ? (
         <RejectionFeedbackBanner
           report={latestRejected}
           lecturerName={lecturerName}
-          onResubmit={onOpenSubmit}
+          onResubmit={isCurrentUserLeader ? onOpenSubmit : undefined}
         />
       ) : null}
 
@@ -661,7 +678,7 @@ function WorkspaceView({
                               Open PDF
                             </a>
                           ) : null}
-                          {report.status === 'REJECTED' ? (
+                          {report.status === 'REJECTED' && isCurrentUserLeader ? (
                             <Button
                               variant="danger"
                               size="sm"
@@ -696,7 +713,7 @@ function WorkspaceView({
         <SubmitReportModal
           isOpen={submittingReport}
           researchGroupId={group.id}
-          groupMemberId={getPrimaryMembershipId(joinedGroups) ?? undefined}
+          groupMemberId={currentMember?.id ?? currentMember?.groupMemberId ?? undefined}
           phaseKey={phaseKey}
           phaseTitle={phaseTitle}
           lecturerName={lecturerName}

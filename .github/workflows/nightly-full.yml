@@ -1,0 +1,40 @@
+name: Nightly full validation
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-full
+  cancel-in-progress: false
+
+jobs:
+  full:
+    name: Unit + integration + e2e + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_API_BASE_URL: http://127.0.0.1:4173
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit + integration + e2e + coverage
+        run: npm run test:full

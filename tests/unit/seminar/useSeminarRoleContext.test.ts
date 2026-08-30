@@ -59,7 +59,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(true);
     expect(result.current.isReadOnlyForViewer).toBe(true);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('returns canModify=false and canView=true for a Reviewer', () => {
@@ -73,7 +73,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.currentRole).toBe('Reviewer');
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(true);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('returns canModify=false and canView=true for a Graduate Student', () => {
@@ -87,7 +87,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.currentRole).toBe('Graduate Student');
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(true);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('returns canModify=false and canView=false for an Admin', () => {
@@ -101,7 +101,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.currentRole).toBe('Admin');
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(false);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('returns null currentRole and canModify=false / canView=false for an unauthenticated user', () => {
@@ -110,7 +110,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.currentUserId).toBeNull();
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(false);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('treats Guest effective role as null (no business role)', () => {
@@ -125,7 +125,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.currentRole).toBeNull();
     expect(result.current.canModify).toBe(false);
     expect(result.current.canView).toBe(false);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('prefers effectiveRole over roleName when both are present', () => {

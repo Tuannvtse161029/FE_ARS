@@ -170,8 +170,10 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
       renderAppAt(ROUTES.FORUM);
 
       const labels = sidebarLinkOrder();
-      // Home is the first workspace entry for every verified role.
-      expect(labels[0]).toMatch(/home/i);
+      // Discover Research (ROUTES.HOME) is the first workspace entry for
+      // every verified role — it may render as "Discover Research" (current)
+      // or a shortened "Home" variant; accept either.
+      expect(labels[0]).toMatch(/^(discover research|home)$/i);
       // Find indices of each required item.
       const idx = (s: string) =>
         labels.findIndex((l) => l.toLowerCase().includes(s));

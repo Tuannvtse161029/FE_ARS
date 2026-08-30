@@ -15,6 +15,7 @@
   gap: var(--space-2);
   font-family: var(--font-family-ui);
   color: var(--ars-ink);
+  background-color: var(--surface-canvas);
 }
 
 .breadcrumbsActive {
@@ -34,7 +35,11 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  /* Tighter inter-section gap so the new Trending Tags and Forum Stats
+     blocks slot in without making the sidebar feel taller than before.
+     Falls back to var(--space-5) when the rail collapses on narrow
+     viewports (see responsive rules at the bottom). */
+  gap: var(--space-4);
   padding: var(--space-5);
   background: var(--ars-paper-alt);
   border: 1px solid var(--ars-network);
@@ -109,6 +114,152 @@
 .catIcon {
   flex-shrink: 0;
   color: inherit;
+}
+
+/* === Sidebar density additions (this worker) === */
+/* Trending Tags — clickable chips that fill the negative space below
+   the Filters section. Sourced from the loaded posts (no mock data)
+   and reusing the existing --ars-* tokens so the chips read as part
+   of the ARS visual system. */
+.sidebarSectionLabelIcon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  color: var(--ars-blue);
+  vertical-align: -1px;
+}
+
+.tagChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  min-height: 26px;
+  border-radius: var(--radius-full);
+  background-color: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  line-height: 1;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.tagChip:hover {
+  background-color: var(--ars-blue-light);
+  border-color: var(--ars-blue);
+  color: var(--ars-blue);
+  transform: translateY(-1px);
+}
+
+.tagChip:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+.tagChip:active {
+  transform: translateY(0);
+}
+
+.tagChipIcon {
+  flex-shrink: 0;
+  color: var(--ars-ink-muted);
+}
+
+.tagChip:hover .tagChipIcon,
+.tagChip:focus-visible .tagChipIcon {
+  color: var(--ars-blue);
+}
+
+.tagChipText {
+  /* Truncate gracefully when a long tag is rendered in the narrow
+     240px sidebar rail. */
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagChipCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background-color: var(--ars-node);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.02em;
+}
+
+.tagChip:hover .tagChipCount,
+.tagChip:focus-visible .tagChipCount {
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
+}
+
+/* Forum Stats — compact three-row overview that completes the sidebar.
+   Numbers are computed from the loaded posts (see Forum.tsx forumStats
+   useMemo). */
+.statsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+}
+
+.statLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--font-weight-medium);
+}
+
+.statIcon {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.statValue {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 /* ─── RIGHT FEED ─────────────────────────────────────────── */
@@ -319,12 +470,75 @@
   .refreshIconSpin { animation-duration: 1.7s; }
 }
 
+/* ── Archive Dusk forum hierarchy ───────────────────────── */
+.forumPage { color: var(--ink-primary); background: transparent; }
+.breadcrumbsActive { color: var(--ink-primary); }
+.sidebar {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+.sidebarSection + .sidebarSection { border-top: 1px solid var(--border-subtle); padding-top: var(--space-4); }
+.sidebarSectionLabel { color: var(--ink-muted); }
+.sidebarSectionLabelIcon { color: var(--accent-primary); }
+.categoryItem { color: var(--ink-secondary); }
+.categoryItem:hover { background: var(--surface-selected); color: var(--ink-primary); }
+.categoryItem:focus-visible, .tagChip:focus-visible, .sortSelect:focus-visible,
+.paginationBtn:focus-visible, .refreshBtn:focus-visible, .modalCloseButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.categoryItemActive,
+.categoryItemActive:hover {
+  background: color-mix(in srgb, var(--accent-primary) 20%, var(--surface-base));
+  color: var(--ink-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+.tagChip, .statsList, .postCountBadge, .sortSelect, .paginationBtn, .refreshBtn {
+  background: var(--control-bg);
+  border-color: var(--border-subtle);
+  color: var(--control-text);
+}
+.tagChip:hover, .paginationBtn:hover:not(:disabled), .refreshBtn:hover:not(:disabled) {
+  background: var(--control-bg-hover);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
+  transform: none;
+}
+.tagChipCount { background: var(--surface-sunken); color: var(--ink-muted); }
+.tagChip:hover .tagChipCount { background: var(--accent-primary); color: var(--ink-on-paper); }
+.statRow { color: var(--ink-secondary); }
+.statIcon { color: var(--ink-muted); }
+.statValue { color: var(--ink-primary); }
+.feedToolbar {
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.toolbarDivider { background: var(--border-subtle); }
+.pendingBanner { background: var(--status-warning-surface); border-color: var(--status-warning-text); }
+.pendingBannerIcon, .pendingBannerTitle { color: var(--status-warning-text); }
+.pendingBannerHint { color: var(--ink-secondary); }
+.modalOverlay { background: color-mix(in srgb, var(--sidebar-bg) 82%, transparent); }
+.modalContent { background: var(--surface-raised); border: 1px solid var(--border-strong); }
+.modalHeader { border-color: var(--border-subtle); }
+.modalTitle { color: var(--ink-primary); font-family: var(--font-family-serif); }
+.modalAuthorHeader { background: var(--surface-sunken); border-color: var(--border-subtle); }
+.modalAuthorAvatar,
+.modalAuthorAvatar[data-palette='0'], .modalAuthorAvatar[data-palette='1'],
+.modalAuthorAvatar[data-palette='2'], .modalAuthorAvatar[data-palette='3'],
+.modalAuthorAvatar[data-palette='4'], .modalAuthorAvatar[data-palette='5'],
+.modalAuthorAvatar[data-palette='6'], .modalAuthorAvatar[data-palette='7'] {
+  background: var(--surface-paper-muted);
+  color: var(--ink-on-paper);
+}
+
 /* ─── CREATE POST MODAL ──────────────────────────────────── */
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(26, 31, 54, 0.6);
-  backdrop-filter: blur(4px);
+  background-color: color-mix(in srgb, var(--sidebar-bg) 82%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -337,7 +551,9 @@
 }
 
 .modalContent {
-  background-color: var(--ars-paper);
+  background-color: var(--surface-raised);
+  color: var(--ink-primary);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   width: 100%;
@@ -351,8 +567,34 @@
 .modalHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modalCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+}
+
+.modalCloseButton:hover {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+}
+
+.modalCloseButton:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .modalTitle {
@@ -619,7 +861,7 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
 }
 
 .uploadProgressLabel {
@@ -632,7 +874,7 @@
 .uploadProgressBarTrack {
   flex: 1;
   height: 4px;
-  background-color: var(--ars-node);
+  background-color: var(--surface-sunken);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -640,7 +882,7 @@
 .uploadProgressBarFill {
   height: 100%;
   width: var(--upload-progress, 0%);
-  background-color: var(--ars-blue);
+  background-color: var(--accent-primary);
   border-radius: 2px;
   transition: width 0.2s ease;
 }
@@ -651,7 +893,7 @@
   text-align: right;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
 }
 
 /* ─── CREATE POST MODAL ──────────────────────────────────── */
@@ -664,14 +906,14 @@
 .fieldLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   letter-spacing: 0.04em;
 }
 
 .fieldHint {
   font-size: 0.625rem;
   font-weight: var(--font-weight-normal);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -682,8 +924,8 @@
   justify-content: flex-end;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--ars-network);
-  background-color: var(--ars-paper-alt);
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-sunken);
 }
 
 /* ─── RESPONSIVE ─────────────────────────────────────────── */
@@ -715,6 +957,16 @@
 
   .modalContent {
     max-width: 100%;
+    max-height: 100vh;
     border-radius: var(--radius-sm);
+  }
+
+  .modalOverlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .modalFooter {
+    padding: var(--space-3) var(--space-4);
   }
 }

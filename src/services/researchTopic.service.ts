@@ -9,6 +9,14 @@ import type {
   ResearchTopicUpdateRequest,
 } from '../types/researchWorkflowDtos';
 
+type TopicGuidelineFields = {
+  topicGuidelines?: string | null;
+  topicGuidelinesUrl?: string | null;
+};
+
+export type ResearchTopicCreatePayload = ResearchTopicCreateRequest & TopicGuidelineFields;
+export type ResearchTopicUpdatePayload = ResearchTopicUpdateRequest & TopicGuidelineFields;
+
 // Status enums per `docs/local-only/research-workflow-contract.md` §3.
 export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CLOSED';
 
@@ -40,7 +48,8 @@ export interface ResearchTopic {
   description?: string | null;
   status?: string | null;
   materialsUrl?: string | null;
-  // Optional joined field the BE may surface once the M:N resolver lands.
+  topicGuidelines?: string | null;
+  topicGuidelinesUrl?: string | null;
   assignedGroupIds?: number[] | null;
   lecturerId?: number | null;
   lecturerName?: string | null;
@@ -74,7 +83,7 @@ export const researchTopicService = {
   },
 
   create: async (
-    payload: ResearchTopicCreateRequest,
+    payload: ResearchTopicCreatePayload,
   ): Promise<ResearchTopic> => {
     const response = await api.post<ResearchTopic>(
       RESEARCH_TOPIC_ENDPOINTS.CREATE,
@@ -85,7 +94,7 @@ export const researchTopicService = {
 
   update: async (
     id: number,
-    payload: ResearchTopicUpdateRequest,
+    payload: ResearchTopicUpdatePayload,
   ): Promise<ResearchTopic> => {
     const response = await api.put<ResearchTopic>(
       RESEARCH_TOPIC_ENDPOINTS.UPDATE(id),

@@ -74,6 +74,17 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: top right;
+  animation: notificationTransfer var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+@keyframes notificationTransfer {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown { animation: none; }
 }
 
 .header {

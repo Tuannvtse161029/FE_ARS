@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PublishedPaperCard } from '../../../../src/features/publication/home/PublishedPaperCard';
 import type { PublicationPaper } from '../../../../src/features/publication/types/publication';
 
@@ -50,9 +50,14 @@ const publicPaper: PublicationPaper = {
   researcherVerificationStatus: 'VERIFIED',
 };
 
+const openPublicationDetails = (): void => {
+  fireEvent.click(screen.getByRole('button', { name: 'Show publication details' }));
+};
+
 describe('<PublishedPaperCard> – private review data is hidden', () => {
   it('shows the reviewer name only when reviewerIdentityPublic is true', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     expect(screen.getByText(/Dr\. Le Quang Huy/)).toBeInTheDocument();
   });
 
@@ -81,6 +86,7 @@ describe('<PublishedPaperCard> – private review data is hidden', () => {
       reviewerIdentityPublic: false,
     };
     render(<PublishedPaperCard paper={closedIdentity} publicReviewerName={null} />);
+    openPublicationDetails();
     expect(screen.queryByText(/Dr\. Le Quang Huy/)).toBeNull();
     expect(screen.getByText(/Reviewer identity withheld per policy/i)).toBeInTheDocument();
   });
@@ -116,12 +122,14 @@ describe('<PublishedPaperCard> – required metadata is rendered', () => {
 
   it('renders keywords and topics as a scannable list', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     expect(screen.getByText('remote sensing')).toBeInTheDocument();
     expect(screen.getByText('Urban heat')).toBeInTheDocument();
   });
 
   it('renders the domain → field → subfield chain', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     expect(screen.getByText(/Environmental science \/ Urban climate \/ Heat resilience/)).toBeInTheDocument();
   });
 });
@@ -170,6 +178,7 @@ describe('<PublishedPaperCard> – canonical author links', () => {
 describe('<PublishedPaperCard> – external identifiers produce safe links only', () => {
   it('emits a DOI link to https://doi.org/ when the DOI is canonical', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     const doiLink = screen.getByRole('link', { name: /10\.5555\/ars\.demo\.2026\.001/ });
     expect(doiLink).toHaveAttribute('href', 'https://doi.org/10.5555/ars.demo.2026.001');
     expect(doiLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -178,6 +187,7 @@ describe('<PublishedPaperCard> – external identifiers produce safe links only'
 
   it('emits an OpenAlex link to https://openalex.org/W… when the ID is canonical', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     const openAlexLink = screen.getByRole('link', { name: /W999999001/ });
     expect(openAlexLink).toHaveAttribute('href', 'https://openalex.org/W999999001');
     expect(openAlexLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -186,6 +196,7 @@ describe('<PublishedPaperCard> – external identifiers produce safe links only'
 
   it('renders the arXiv identifier as plain text, never as a link', () => {
     render(<PublishedPaperCard paper={publicPaper} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     expect(screen.getByText('arXiv:2608.01001')).toBeInTheDocument();
     const arxivLinks = screen.queryAllByRole('link', { name: /arXiv:2608\.01001/ });
     expect(arxivLinks).toHaveLength(0);
@@ -197,6 +208,7 @@ describe('<PublishedPaperCard> – external identifiers produce safe links only'
       doi: undefined,
     };
     render(<PublishedPaperCard paper={noDoi} publicReviewerName="Dr. Le Quang Huy" />);
+    openPublicationDetails();
     expect(screen.getByText('Not supplied')).toBeInTheDocument();
   });
 

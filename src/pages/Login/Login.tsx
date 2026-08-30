@@ -60,7 +60,7 @@ const Login = () => {
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
       selectedRole: '',
       // rememberMe is now managed by react-hook-form (and forwarded to
@@ -129,16 +129,16 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
-      {/* Brand & Logo Header */}
-      <div className={styles.logoSection}>
+      {/* Brand & Logo Header — centered masthead, journal inside-cover feel */}
+      <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         <span className={styles.brandText}>Academic Research System</span>
-      </div>
+      </header>
 
       {/* Page Title */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>Nice to see you again</h1>
-      </div>
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Nice to see you again</h1>
+      </header>
 
       {/* Login Form */}
       <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
@@ -149,14 +149,15 @@ const Login = () => {
         )}
 
         <Controller
-          name="username"
+          name="email"
           control={control}
           render={({ field }) => (
             <Input
               {...field}
-              label="Login"
-              placeholder="Email or phone number"
-              error={errors.username?.message}
+              type="email"
+              label="Email"
+              placeholder="name@institution.edu"
+              error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading || googlePending}
               className={styles.loginInput}
@@ -183,7 +184,7 @@ const Login = () => {
                     type="button"
                     className={styles.passwordToggle}
                     onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -209,11 +210,13 @@ const Login = () => {
                 disabled={isLoading || googlePending}
               >
                 <option value="">Auto-detect Role (Default)</option>
-                {availableRoles.map((role) => (
-                  <option key={role.roleId ?? role.name} value={role.name}>
-                    {role.name}
-                  </option>
-                ))}
+                {availableRoles
+                  .filter((role) => role.name !== 'Admin')
+                  .map((role) => (
+                    <option key={role.roleId ?? role.name} value={role.name}>
+                      {role.name}
+                    </option>
+                  ))}
               </select>
             )}
           />
@@ -280,7 +283,7 @@ const Login = () => {
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
-            Dont have an account?{' '}
+            Don't have an account?{' '}
             <Link to={ROUTES.REGISTER} className={styles.registerLink}>
               Sign up now
             </Link>

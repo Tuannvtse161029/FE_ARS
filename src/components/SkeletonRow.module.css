@@ -5,23 +5,18 @@
 
 .row,
 .headerBar {
-  background: var(--ars-paper-alt);
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
-  animation: shimmer 1.4s ease-in-out infinite;
+  opacity: 0.72;
 }
 
 .headerBar {
-  background: var(--ars-node);
-}
-
-@keyframes shimmer {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.95; }
+  background: var(--border-subtle);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .row,
   .headerBar {
-    animation-duration: 0.01ms;
+    opacity: 0.72;
   }
 }

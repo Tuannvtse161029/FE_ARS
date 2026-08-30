@@ -115,6 +115,7 @@ export interface StudentGroupView extends ResearchGroup {
   membershipId: number;
   activityStatus?: string;
   joinedAt?: string;
+  isLeader?: boolean;
 }
 
 export const getJoinedGroupsForStudent = async (
@@ -144,6 +145,7 @@ export const getJoinedGroupsForStudent = async (
         membershipId,
         activityStatus: typeof member.activityStatus === 'string' ? member.activityStatus : undefined,
         joinedAt: typeof member.joinedAt === 'string' ? member.joinedAt : undefined,
+        isLeader: Boolean(member.isLeader || member.leaderId),
       };
     })
     .filter((item): item is StudentGroupView => item !== null);
