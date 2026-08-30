@@ -4,11 +4,6 @@
  * Tokens are globally available via src/styles/globals.css
  */
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 /* ── Page Shell ─────────────────────────────────────────── */
 .walletPage {
   width: 100%;
@@ -99,7 +94,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  animation: fadeIn 0.3s ease-out;
+  /* Balance appears immediately; avoid decorative entrance motion. */
 }
 
 .balanceLabel {
@@ -145,7 +140,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .withdrawBtn:hover {
@@ -171,7 +166,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .topUpBtn:hover {
@@ -192,7 +187,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  animation: fadeIn 0.3s ease-out;
+  /* Balance appears immediately; avoid decorative entrance motion. */
 }
 
 .formTitle {
@@ -230,7 +225,7 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   box-sizing: border-box;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--motion-feedback);
 }
 
 .formInput::placeholder {
@@ -262,7 +257,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
   align-self: flex-start;
 }
 
@@ -281,7 +276,7 @@
   border: var(--border-thin);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  animation: fadeIn 0.3s ease-out;
+  /* Balance appears immediately; avoid decorative entrance motion. */
 }
 
 .historyHeader {
@@ -312,7 +307,7 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--ars-network);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .historyItem:last-child {
@@ -444,7 +439,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), color var(--motion-feedback);
 }
 
 .refreshBtn:hover {
@@ -458,7 +453,7 @@
 }
 
 .spinning {
-  animation: spin 1s linear infinite;
+  /* Refresh state is represented by the button's disabled state. */
 }
 
 .createRequestBtn {
@@ -474,7 +469,7 @@
   align-items: center;
   gap: var(--space-1);
   white-space: nowrap;
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .createRequestBtn:hover {
@@ -495,7 +490,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  animation: fadeIn 0.3s ease-out;
+  /* Balance appears immediately; avoid decorative entrance motion. */
 }
 
 .sectionTitle {
@@ -557,7 +552,7 @@
   border: var(--border-thin);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  animation: fadeIn 0.3s ease-out;
+  /* Balance appears immediately; avoid decorative entrance motion. */
 }
 
 .loadingState,
@@ -585,7 +580,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .retryBtn:hover {
@@ -673,7 +668,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), color var(--motion-feedback);
 }
 
 .viewReasonBtn:hover,
@@ -693,13 +688,12 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
-  animation: fadeIn 0.2s ease-out;
+  /* Mounted success state is already explicit in the banner copy. */
 }
 
 .rejectModalCard,
@@ -864,7 +858,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), color var(--motion-feedback);
   align-self: flex-end;
 }
 
@@ -936,7 +930,7 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   box-sizing: border-box;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--motion-feedback);
 }
 
 .formInput::placeholder,
@@ -1020,7 +1014,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: all var(--transition-fast);
+  transition: border-color var(--motion-feedback), color var(--motion-feedback);
 }
 
 .modalCancelBtn:hover {
@@ -1045,7 +1039,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background-color var(--motion-feedback);
 }
 
 .modalSubmitBtn:hover {

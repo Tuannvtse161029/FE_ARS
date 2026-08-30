@@ -8,38 +8,41 @@
 }
 
 /* ── Logo / Brand Header ─────────────────────────────────── */
+/* Centered masthead: logo + wordmark form a calm, journal-like
+   inside-cover composition above the page title. */
 .logoSection {
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-align: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-8);
+  margin: 0 auto var(--space-6);
 }
 
 .logoImage {
-  width: 120px;
-  height: 120px;
+  width: 112px;
+  height: 112px;
   object-fit: contain;
 }
 
 .brandText {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
-  color: var(--ars-blue);
-  letter-spacing: 0.5px;
+  color: var(--ars-ink);
+  letter-spacing: 0;
   text-align: center;
   line-height: var(--line-height-tight);
 }
 
 /* ── Page Title ────────────────────────────────────────── */
-.header {
-  text-align: left;
-  margin-bottom: var(--space-6);
+.pageHeader {
+  text-align: center;
+  margin-bottom: var(--space-5);
 }
 
-.title {
+.pageTitle {
   font-family: var(--font-family-serif);
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-3xl);
   font-weight: 700;
   color: var(--ars-ink);
   margin-bottom: 0;
@@ -64,9 +67,13 @@
 }
 
 /* ── Input Overrides ─────────────────────────────────── */
+/* Inputs sit on the warm paper-card panel. We use --ars-paper (the
+   lighter canvas) so the input reads as a slightly brighter field
+   pressed into the panel, with a hairline border to make the
+   shape legible against the deeper warm tone. */
 .loginInput {
-  background-color: var(--ars-paper-alt) !important;
-  border: 1.5px solid transparent !important;
+  background-color: var(--ars-paper) !important;
+  border: 1.5px solid var(--ars-paper-rule) !important;
   border-radius: var(--radius-lg) !important;
   color: var(--ars-ink) !important;
   font-size: var(--font-size-base) !important;
@@ -74,10 +81,14 @@
   box-sizing: border-box;
 }
 
+.loginInput:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted) !important;
+}
+
 .loginInput:focus {
   border-color: var(--ars-blue) !important;
   background-color: var(--ars-paper) !important;
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22) !important;
 }
 
 /* ── Password Field ─────────────────────────────────────── */
@@ -92,6 +103,8 @@
   background: none;
   border: none;
   padding: 0;
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   color: var(--ars-ink-muted);
   transition: color var(--transition-fast);
@@ -99,6 +112,12 @@
 
 .passwordToggle:hover {
   color: var(--ars-ink-soft);
+}
+
+.passwordToggle:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* ── Remember Me Row ─────────────────────────────────────── */
@@ -232,9 +251,10 @@
 
 .roleSelect {
   width: 100%;
+  min-height: 44px;
   padding: 10px 14px;
-  background-color: var(--ars-paper-alt);
-  border: 1.5px solid transparent;
+  background-color: var(--ars-paper);
+  border: 1.5px solid var(--ars-paper-rule);
   border-radius: var(--radius-lg);
   color: var(--ars-ink);
   font-size: var(--font-size-sm);
@@ -248,10 +268,14 @@
     box-shadow var(--transition-fast);
 }
 
+.roleSelect:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted);
+}
+
 .roleSelect:focus {
   border-color: var(--ars-blue);
   background-color: var(--ars-paper);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
 }
 
 .roleSelect:disabled {
@@ -274,8 +298,8 @@
 
 /* ── Footer ─────────────────────────────────────────────── */
 .footer {
-  margin-top: var(--space-4);
-  text-align: center;
+  margin-top: var(--space-5);
+  text-align: left;
 }
 
 .footerText {
@@ -298,16 +322,16 @@
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 640px) {
   .logoImage {
-    width: 96px;
-    height: 96px;
+    width: 72px;
+    height: 72px;
   }
 
   .brandText {
     font-size: var(--font-size-base);
   }
 
-  .title {
-    font-size: var(--font-size-xl);
+  .pageTitle {
+    font-size: var(--font-size-2xl);
   }
 
   .rememberRow {

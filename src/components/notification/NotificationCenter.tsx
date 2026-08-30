@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Bell, BellOff, CheckCheck, Inbox, AlertTriangle } from 'lucide-react';
 import type { NotificationItem } from '../../types/domain';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -41,29 +41,39 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
   } = useNotifications(resolvedUserId);
 
   const [isOpen, setIsOpen] = useState(false);
+  const menuId = useId();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
   // Track whether a mark-read request is in flight so we don't fire the
   // click handler twice while the optimistic UI is updating.
   const pendingRef = useRef<Set<number>>(new Set());
 
-  // Outside-click + Escape close. Pointer events cover mouse, touch, and pen.
+  // Outside-click + Escape close. Pointer events cover mouse, touch, and pen;
+  // `mousedown` keeps the interaction testable in browsers that do not expose
+  // PointerEvent in their DOM environment.
   useEffect(() => {
     if (!isOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
+    const closeAndRestoreFocus = () => {
+      setIsOpen(false);
+      bellRef.current?.focus();
+    };
+    const onPointerDown = (e: PointerEvent | MouseEvent) => {
       if (!wrapperRef.current) return;
       if (!wrapperRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        closeAndRestoreFocus();
       }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsOpen(false);
+        closeAndRestoreFocus();
       }
     };
     document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
     };
   }, [isOpen]);
@@ -90,6 +100,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
           }
           const target = resolveNotificationRoute(notification.message ?? '', role);
           setIsOpen(false);
+          bellRef.current?.focus();
           onNavigate(target);
         } finally {
           pendingRef.current.delete(notification.id);
@@ -125,11 +136,13 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
   return (
     <div ref={wrapperRef} className={styles.dropdownWrapper}>
       <button
+        ref={bellRef}
         type="button"
         className={styles.bellBtn}
         aria-label={bellLabel}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
         onClick={handleToggle}
         data-testid="notification-bell"
       >
@@ -147,6 +160,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
 
       {isOpen && (
         <div
+          id={menuId}
           role="dialog"
           aria-label="Notifications"
           className={styles.dropdown}
@@ -246,6 +260,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
               className={styles.viewAllLink}
               onClick={() => {
                 setIsOpen(false);
+                bellRef.current?.focus();
                 onNavigate('/forum');
               }}
             >

@@ -306,9 +306,13 @@
 
 .pdfUnavailable {
   margin: 0;
-  color: var(--ars-ink-muted);
-  font-style: italic;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ars-warning);
+  border-radius: var(--radius-md);
+  background: var(--ars-warning-bg);
+  color: var(--ars-ink-soft);
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
 /* ── Evaluation form ─────────────────────────────────────── */

@@ -10,10 +10,6 @@
  *   info/success cards.
  */
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ── Page Shell ─────────────────────────────────────────── */
 .page {
   width: 100%;
@@ -54,7 +50,12 @@
 }
 
 .spin {
-  animation: spin 0.9s linear infinite;
+  /* Dashboard loading state is communicated by SkeletonRow content. */
+}
+
+/* The current milestone is the student's first decision point. */
+.primaryTask {
+  width: 100%;
 }
 
 /* ── Two Column Layout ─────────────────────────────────── */
@@ -202,6 +203,14 @@
   align-items: center;
   padding-top: var(--space-2);
   border-top: var(--border-thin);
+}
+
+.actionHint {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
 }
 
 /* ── Status Callout ────────────────────────────────────── */

@@ -20,27 +20,27 @@ import styles from './ConfigureMilestones.module.css';
 const DEFAULT_PHASES: { phaseNumber: number; milestoneTitle: string; defaultDays: number }[] = [
   {
     phaseNumber: 1,
-    milestoneTitle: 'Phase 1: Tổng quan tài liệu & Xác định bài toán',
+    milestoneTitle: 'Phase 1: Literature review & problem definition',
     defaultDays: 14,
   },
   {
     phaseNumber: 2,
-    milestoneTitle: 'Phase 2: Thiết kế kiến trúc & Thu thập dữ liệu',
+    milestoneTitle: 'Phase 2: Architecture design & data collection',
     defaultDays: 30,
   },
   {
     phaseNumber: 3,
-    milestoneTitle: 'Phase 3: Xây dựng Model AI & Huấn luyện',
+    milestoneTitle: 'Phase 3: Model implementation & training',
     defaultDays: 60,
   },
   {
     phaseNumber: 4,
-    milestoneTitle: 'Phase 4: Đánh giá mô hình & Thử nghiệm',
+    milestoneTitle: 'Phase 4: Model evaluation & experimentation',
     defaultDays: 90,
   },
   {
     phaseNumber: 5,
-    milestoneTitle: 'Phase 5: Báo cáo tổng kết & Nghiệm thu',
+    milestoneTitle: 'Phase 5: Final report & acceptance',
     defaultDays: 120,
   },
 ];
@@ -145,18 +145,18 @@ export const ConfigureMilestones = () => {
   const handleSaveMilestones = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTopicId) {
-      setBanner({ visible: true, text: 'Vui lòng chọn Đề tài nghiên cứu (Research Topic).', variant: 'error' });
+      setBanner({ visible: true, text: 'Please select a research topic before saving milestones.', variant: 'error' });
       return;
     }
 
     // Validate deadlines
     for (const p of phaseItems) {
       if (!p.milestoneTitle.trim()) {
-        setBanner({ visible: true, text: `Vui lòng nhập tiêu đề cho Phase ${p.phaseNumber}.`, variant: 'error' });
+        setBanner({ visible: true, text: `Please enter a title for Phase ${p.phaseNumber}.`, variant: 'error' });
         return;
       }
       if (!p.deadlineAt) {
-        setBanner({ visible: true, text: `Vui lòng chọn thời hạn (Deadline) cho Phase ${p.phaseNumber}.`, variant: 'error' });
+        setBanner({ visible: true, text: `Please choose a deadline for Phase ${p.phaseNumber}.`, variant: 'error' });
         return;
       }
     }
@@ -180,12 +180,12 @@ export const ConfigureMilestones = () => {
       setExistingPhases(created);
       setBanner({
         visible: true,
-        text: `Đã thiết lập thành công 5 cột mốc (Phase 1-5) cho Đề tài!`,
+        text: `Successfully set up 5 milestones (Phase 1-5) for the research topic!`,
         variant: 'success',
       });
       await loadPhases(selectedTopicId);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Không thể thiết lập 5 cột mốc. Vui lòng thử lại.';
+      const msg = err?.response?.data?.message || err?.message || 'Could not save the 5 milestones. Please try again.';
       setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setIsSaving(false);
@@ -240,7 +240,7 @@ export const ConfigureMilestones = () => {
         <div className={styles.cardHeader}>
           <div className={styles.headerTitleRow}>
             <span className={styles.headerLabel}>RESEARCH TOPIC MILESTONES</span>
-            <h1 className={styles.pageTitle}>THIẾT LẬP 5 GIAI ĐOẠN BÁO CÁO TIẾN ĐỘ</h1>
+            <h1 className={styles.pageTitle}>Set up the 5 reporting phases</h1>
           </div>
           <span
             style={{
@@ -263,7 +263,7 @@ export const ConfigureMilestones = () => {
         {/* Topic Selector */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.5rem' }}>
-            Chọn Đề tài Nghiên cứu (Research Topic):
+            Select research topic:
           </label>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <select
@@ -281,7 +281,7 @@ export const ConfigureMilestones = () => {
               disabled={isLoadingTopics}
             >
               {topics.length === 0 ? (
-                <option value="">Không có đề tài nào</option>
+                <option value="">No research topics available</option>
               ) : (
                 topics.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -293,7 +293,7 @@ export const ConfigureMilestones = () => {
 
             {matchingGroup && (
               <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                Nhóm phụ trách: <strong style={{ color: '#0f172a' }}>{matchingGroup.name}</strong>
+                Assigned group: <strong style={{ color: '#0f172a' }}>{matchingGroup.name}</strong>
               </span>
             )}
           </div>
@@ -359,7 +359,7 @@ export const ConfigureMilestones = () => {
                         </span>
                         {existing.lectureFeedback != null && (
                           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#15803d' }}>
-                            Điểm: {existing.lectureFeedback}/10
+                            Score: {existing.lectureFeedback}/10
                           </span>
                         )}
                       </div>
@@ -369,7 +369,7 @@ export const ConfigureMilestones = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
-                        Tên cột mốc / Nội dung yêu cầu:
+                        Milestone title / required content:
                       </label>
                       <input
                         type="text"
@@ -384,14 +384,14 @@ export const ConfigureMilestones = () => {
                         }}
                         value={phase.milestoneTitle}
                         onChange={(e) => handlePhaseTitleChange(idx, e.target.value)}
-                        placeholder={`Nhập tên cho Phase ${phase.phaseNumber}...`}
+                        placeholder={`Enter a title for Phase ${phase.phaseNumber}...`}
                         required
                       />
                     </div>
 
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
-                        Hạn chót nộp bài (Deadline):
+                        Submission deadline:
                       </label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
@@ -416,18 +416,18 @@ export const ConfigureMilestones = () => {
                   {existing?.reportFileUrl && (
                     <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <FileText size={14} color="#0284c7" />
-                      <span>Bài nộp của nhóm:</span>
+                      <span>Group submission:</span>
                       <a
                         href={existing.reportFileUrl}
                         target="_blank"
                         rel="noreferrer"
                         style={{ color: '#0284c7', textDecoration: 'underline', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}
                       >
-                        Xem file PDF đã nộp <ExternalLink size={12} />
+                        View submitted PDF <ExternalLink size={12} />
                       </a>
                       {existing.submittedAt && (
                         <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                          (Nộp lúc: {new Date(existing.submittedAt).toLocaleString()})
+                          (Submitted at: {new Date(existing.submittedAt).toLocaleString()})
                         </span>
                       )}
                     </div>
@@ -435,7 +435,7 @@ export const ConfigureMilestones = () => {
 
                   {existing?.lecturerDescription && (
                     <div style={{ backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.825rem', color: '#334155' }}>
-                      <strong>Nhận xét của Giảng viên:</strong> {existing.lecturerDescription}
+                      <strong>Lecturer feedback:</strong> {existing.lecturerDescription}
                     </div>
                   )}
                 </div>
@@ -463,7 +463,7 @@ export const ConfigureMilestones = () => {
               disabled={isSaving || isLoadingPhases}
             >
               {isSaving ? <Loader size={16} className={styles.spinningIcon} /> : <Save size={16} />}
-              {isSaving ? 'Đang lưu 5 Phase…' : 'Lưu & Thiết lập 5 Cột mốc'}
+              {isSaving ? 'Saving 5 Phases…' : 'Save & set up the 5 milestones'}
             </button>
           </div>
         </form>

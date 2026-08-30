@@ -18,8 +18,6 @@ import {
   type ReviewerRecommendation,
   type SubmissionInput,
 } from '../types/publication';
-import { demoPublicationPapers } from '../demo/publication.demo';
-
 export class PublicationBackendContractError extends Error {
   constructor(message: string) {
     super(message);
@@ -168,47 +166,37 @@ const listAllPapers = async (): Promise<Paper[]> => {
   return Array.isArray(result?.items) ? result.items : [];
 };
 
-const catalogMatches = (paper: PublicationPaper, query: CatalogQuery): boolean => {
-  const term = query.query?.trim().toLowerCase();
-  const haystack = [
-    paper.title,
-    paper.abstract,
-    paper.doi,
-    paper.openAlexId,
-    paper.externalIdentifier,
-    paper.domain,
-    paper.field,
-    paper.subfield,
-    ...paper.topics,
-    ...paper.keywords,
-    ...paper.authors.map((author) => author.name),
-    ...paper.institutions.map((institution) => institution.name),
-  ].filter(Boolean).join(' ').toLowerCase();
-  if (term && !haystack.includes(term)) return false;
-  if (query.domain && paper.domain !== query.domain) return false;
-  if (query.field && paper.field !== query.field) return false;
-  if (query.subfield && paper.subfield !== query.subfield) return false;
-  if (query.topic && !paper.topics.includes(query.topic)) return false;
-  return true;
+const matchesCatalogQuery = (paper: PublicationPaper, query: CatalogQuery): boolean => {
+  const needle = query.query?.trim().toLowerCase();
+  if (needle) {
+    const searchableText = [
+      paper.title,
+      paper.abstract,
+      paper.doi,
+      paper.authors.map((author) => author.name).join(' '),
+      paper.institutions.map((institution) => institution.name).join(' '),
+      paper.topics.join(' '),
+      paper.keywords.join(' '),
+    ].filter(Boolean).join(' ').toLowerCase();
+    if (!searchableText.includes(needle)) return false;
+  }
+
+  return (!query.domain || paper.domain === query.domain)
+    && (!query.field || paper.field === query.field)
+    && (!query.subfield || paper.subfield === query.subfield)
+    && (!query.topic || paper.topics.includes(query.topic));
 };
 
-const demoCatalog = (query: CatalogQuery): PagedPublicationResult => {
-  const filtered = demoPublicationPapers
-    .filter((paper) => catalogMatches(paper, query))
-    .sort((left, right) => {
-      if (query.sort === 'TITLE_ASC') return left.title.localeCompare(right.title);
-      const leftDate = new Date(left.publishedAt ?? left.createdAt).getTime();
-      const rightDate = new Date(right.publishedAt ?? right.createdAt).getTime();
-      return query.sort === 'PUBLISHED_ASC' ? leftDate - rightDate : rightDate - leftDate;
-    });
-  const start = Math.max(0, (query.page - 1) * query.pageSize);
-  return {
-    items: filtered.slice(start, start + query.pageSize),
-    totalCount: filtered.length,
-    page: query.page,
-    pageSize: query.pageSize,
-    dataSource: 'demo',
-  };
+const compareCatalogPapers = (
+  left: PublicationPaper,
+  right: PublicationPaper,
+  sort: CatalogQuery['sort'],
+): number => {
+  if (sort === 'TITLE_ASC') return left.title.localeCompare(right.title);
+  const leftDate = left.publishedAt ?? left.createdAt;
+  const rightDate = right.publishedAt ?? right.createdAt;
+  const chronological = leftDate.localeCompare(rightDate);
+  return sort === 'PUBLISHED_ASC' ? chronological : -chronological;
 };
 
 const currentUserId = (): number | null => storage.getUser()?.id ?? null;
@@ -234,42 +222,16 @@ const evaluationFor = async (
 
 class ApiPublicationAdapter implements PublicationAdapter {
   async getPublicCatalog(query: CatalogQuery): Promise<PagedPublicationResult> {
-    let papers: PublicationPaper[] = [];
-    try {
-      papers = (await listAllPapers())
-        .filter((paper) => normalizedText(paper.status) === 'PUBLISHED')
-        .map((paper) => toPublicationPaper(paper));
-    } catch {
-      return demoCatalog(query);
-    }
-    // The live Paper API currently has no published catalog rows/contract.
-    // Keep the screen useful for product review while the BE implements it.
-    if (papers.length === 0) return demoCatalog(query);
+    const catalog = (await listAllPapers())
+      .map((paper) => toPublicationPaper(paper))
+      .filter((paper) => paper.status === 'PUBLISHED' && paper.visibility === 'PUBLIC')
+      .filter((paper) => matchesCatalogQuery(paper, query))
+      .sort((left, right) => compareCatalogPapers(left, right, query.sort));
+    const start = (query.page - 1) * query.pageSize;
 
-    const searchTerm = query.query?.trim().toLowerCase();
-    const filtered = papers
-      .filter((paper) => {
-        if (searchTerm) {
-          const haystack = [
-            paper.title,
-            paper.abstract,
-            ...paper.authors.map((author) => author.name),
-          ].join(' ').toLowerCase();
-          if (!haystack.includes(searchTerm)) return false;
-        }
-        return true;
-      })
-      .sort((left, right) => {
-        if (query.sort === 'TITLE_ASC') return left.title.localeCompare(right.title);
-        const leftDate = new Date(left.publishedAt ?? left.createdAt ?? 0).getTime();
-        const rightDate = new Date(right.publishedAt ?? right.createdAt ?? 0).getTime();
-        return query.sort === 'PUBLISHED_ASC' ? leftDate - rightDate : rightDate - leftDate;
-      });
-
-    const start = Math.max(0, (query.page - 1) * query.pageSize);
     return {
-      items: filtered.slice(start, start + query.pageSize),
-      totalCount: filtered.length,
+      items: catalog.slice(start, start + query.pageSize),
+      totalCount: catalog.length,
       page: query.page,
       pageSize: query.pageSize,
       dataSource: 'api',

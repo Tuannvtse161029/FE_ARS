@@ -203,10 +203,10 @@
 .otpBox {
   width: 48px;
   height: 56px;
-  border: 1.5px solid var(--ars-node, #cbd5e1);
+  border: 1.5px solid var(--ars-paper-rule);
   border-radius: var(--radius-lg);
-  background-color: var(--ars-paper-alt, #f8fafc);
-  color: var(--ars-ink, #0f172a);
+  background-color: var(--ars-paper);
+  color: var(--ars-ink);
   font-size: 24px;
   font-weight: 600;
   text-align: center;
@@ -220,15 +220,19 @@
   box-sizing: border-box;
 }
 
+.otpBox:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted);
+}
+
 .otpBox:focus {
   border-color: var(--ars-blue);
-  background-color: var(--ars-paper, #ffffff);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  background-color: var(--ars-paper);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
 }
 
 .otpBoxFilled {
   border-color: var(--ars-blue);
-  background-color: var(--ars-paper, #ffffff);
+  background-color: var(--ars-paper);
 }
 
 .otpBoxError {
@@ -304,6 +308,44 @@
 .backLink:hover {
   color: var(--ars-blue-mid);
   text-decoration: underline;
+}
+
+/* ── Email Field (only rendered when email is empty) ─────── */
+.emailField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.emailLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ars-ink);
+}
+
+.emailInput {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  background-color: var(--ars-paper);
+  color: var(--ars-ink);
+  font: inherit;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.emailInput:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted);
+}
+
+.emailInput:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+  border-color: var(--ars-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
 }
 
 @media (max-width: 640px) {

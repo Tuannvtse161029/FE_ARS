@@ -37,6 +37,13 @@ export interface GoogleAccountsIdConfiguration {
   hd?: string;
   /** UX-mode: `popup` opens the GIS popup, `redirect` performs a page redirect. */
   ux_mode?: 'popup' | 'redirect';
+  /**
+   * Force the rendered GIS UI (button label, popup copy) into a specific
+   * locale, e.g. `'en'`. Overrides the browser's preferred language and
+   * the script-level `?hl=` query param. Used by ARS to keep the sign-in
+   * button in English regardless of the user's browser locale.
+   */
+  locale?: string;
 }
 
 export interface GoogleAccountsId {
@@ -51,6 +58,12 @@ export interface GoogleAccountsId {
       shape?: 'rectangular' | 'pill' | 'circle' | 'square';
       logo_alignment?: 'left' | 'center';
       width?: number;
+      /**
+       * Force the rendered button label into a specific locale (e.g. `'en'`).
+       * Mirrors the per-init `locale` override — kept on both entry points
+       * so either surface can be locale-locked independently.
+       */
+      locale?: string;
     }
   ) => void;
   prompt: () => void;

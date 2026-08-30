@@ -28,9 +28,7 @@ import type { UserRole } from '../types/auth';
 // other viewers use the live participant-scoped endpoints. No viewer path
 // requests global participant rows.
 // ─────────────────────────────────────────────────────────────────────────────
-export type SeminarBackendAvailability =
-  | 'full'
-  | 'awaiting_participant_scoped_endpoint';
+export type SeminarBackendAvailability = 'full';
 
 /**
  * Returns the BE-availability state for the seminar surface. All route-guarded
@@ -80,7 +78,7 @@ export function useSeminars(): UseSeminarsResult {
     setError(null);
 
     try {
-      if (!currentRole) {
+      if (!currentRole || !canViewSeminar(currentRole)) {
         setSeminars([]);
         setParticipants([]);
         return;
@@ -342,7 +340,7 @@ export function useSeminarParticipants(seminarId?: number): UseSeminarParticipan
     setError(null);
 
     try {
-      if (!currentRole) {
+      if (!currentRole || !canViewSeminar(currentRole)) {
         setAllParticipants([]);
         return;
       }

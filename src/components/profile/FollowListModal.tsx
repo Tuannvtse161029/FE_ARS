@@ -39,6 +39,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   const [items, setItems] = useState<FollowerResponse[]>([]);
   const [followingMap, setFollowingMap] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   const loadData = useCallback(async () => {
     if (!userId || !isOpen) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       if (activeTab === 'followers') {
         const res = await followerService.getFollowers(userId, 1, 50);
@@ -70,6 +72,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
       }
     } catch {
       setItems([]);
+      setLoadError(`We couldn't load your ${activeTab}. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -132,6 +135,13 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
               <Loader2 size={16} className={styles.spinner} aria-hidden />
               <span>Loading {activeTab}…</span>
             </div>
+          ) : loadError ? (
+            <div role="alert" className={styles.errorState}>
+              <span>{loadError}</span>
+              <Button variant="outline" size="sm" onClick={() => void loadData()}>
+                Retry
+              </Button>
+            </div>
           ) : items.length === 0 ? (
             <EmptyState
               icon={<Inbox size={20} />}
@@ -152,7 +162,6 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
               {items.map((item) => {
                 const targetId = activeTab === 'followers' ? item.followerId : item.followedId;
                 const targetName = activeTab === 'followers' ? item.followerName : item.followedName;
-                const targetEmail = activeTab === 'followers' ? item.followerEmail : item.followedEmail;
                 const initials = deriveInitials(targetName);
                 const isMe = currentUserId === targetId;
                 const isFollowing = Boolean(followingMap[targetId]);
@@ -166,10 +175,10 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
 
                 return (
                   <li key={item.id ?? `${item.followerId}_${item.followedId}`} className={styles.userItem}>
-                    <div
+                    <button
+                      type="button"
                       className={styles.userInfo}
                       onClick={handleUserClick}
-                      style={{ cursor: 'pointer' }}
                       title={`View ${targetName || 'user'}'s profile`}
                     >
                       <div
@@ -180,9 +189,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
                       </div>
                       <div className={styles.userDetails}>
                         <span className={styles.userName}>{targetName || `User #${targetId}`}</span>
-                        {targetEmail && <span className={styles.userEmail}>{targetEmail}</span>}
                       </div>
-                    </div>
+                    </button>
 
                     {!isMe && currentUserId && (
                       <Button

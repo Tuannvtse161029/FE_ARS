@@ -391,20 +391,18 @@ export const Register = () => {
 
   return (
     <div className={styles.registerPage}>
-      <div className={styles.logoHeader}>
-        <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        </div>
+      <header className={styles.logoSection}>
+        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         <span className={styles.brandText}>Academic Research System</span>
-      </div>
+      </header>
 
-      <div className={styles.header}>
-        <h1 className={styles.title}>Create your Account</h1>
-        <p className={styles.subtitle}>
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Create your Account</h1>
+        <p className={styles.pageSubtitle}>
           Join the ARS community to publish, review, and collaborate on academic
           research.
         </p>
-      </div>
+      </header>
 
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         {submitError && (
@@ -604,7 +602,7 @@ export const Register = () => {
               onChange={handleChange}
               onBlur={() => handleBlur('orcidId')}
               disabled={isSubmitting || isUploadingPdf}
-              aria-describedby="orcid-help"
+              aria-describedby={errors.orcidId ? 'orcid-help orcidId-error' : 'orcid-help'}
               aria-invalid={Boolean(errors.orcidId)}
               className={`${styles.nativeInput} ${errors.orcidId ? styles['nativeInput--error'] : ''}`}
             />

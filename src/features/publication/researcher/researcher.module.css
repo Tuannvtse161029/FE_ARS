@@ -13,13 +13,25 @@
 }
 
 /* ── Toolbar (search + status filter) ──────────────────────── */
+/* === ARS toolbar recolor (this worker) ===
+   The previous `background: var(--ars-paper-alt)` read as a flat cool
+   stone that the product owner found too industrial. We swap in a warm
+   cream gradient driven by the `--ars-surface-toolbar` /
+   `--ars-surface-toolbar-border` tokens added in
+   src/styles/ars-tokens.css. Cream keeps the toolbar in the same
+   warm-paper family as the canvas (and the rest of the .toolbar /
+   .attentionPanel / .formCard panels), while the soft 1px amber border
+   gives it the "journal ruled margin" feel without competing with the
+   table rows below — those still sit on `--ars-paper-alt` (unchanged) so
+   the user's complaint about the industrial table is not introduced
+   here. */
 .toolbar {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
+  background: var(--ars-surface-toolbar);
+  border: 1px solid var(--ars-surface-toolbar-border);
   border-radius: var(--radius-md);
   flex-wrap: wrap;
 }
@@ -100,6 +112,39 @@
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
   white-space: nowrap;
+}
+
+.attentionPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--ars-warning-bg);
+  border: 1px solid var(--ars-warning);
+  border-radius: var(--radius-md);
+}
+
+.attentionPanel h2 {
+  margin: 0;
+  color: var(--ars-ink);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.attentionPanel p {
+  margin: var(--space-1) 0 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.attentionActions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 /* ── Table ─────────────────────────────────────────────────── */
@@ -220,9 +265,13 @@
 }
 
 @media (max-width: 760px) {
-  .toolbar {
+  .toolbar,
+  .attentionPanel {
     flex-direction: column;
     align-items: stretch;
+  }
+  .attentionActions {
+    justify-content: flex-start;
   }
   .searchField,
   .statusField {
@@ -482,6 +531,14 @@
   max-width: 60ch;
 }
 
+.formValidation {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ars-warning);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
 .formActionButtons {
   display: flex;
   flex-wrap: wrap;
@@ -599,6 +656,14 @@
   align-items: center;
   padding-top: var(--space-2);
   border-top: 1px solid var(--ars-network);
+}
+
+.statusExplanation {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
 }
 
 .feedbackPanel {

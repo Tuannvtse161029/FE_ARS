@@ -51,21 +51,21 @@ import {
 } from '../../../src/hooks/useSeminar';
 
 describe('getSeminarBackendAvailability', () => {
-  it("returns 'full' for Lecturer (the only role with a BE-authorized read today)", () => {
+  it("returns 'full' for Lecturer", () => {
     expect(getSeminarBackendAvailability('Lecturer')).toBe('full');
   });
 
-  it("returns 'awaiting_participant_scoped_endpoint' for every non-Lecturer role", () => {
-    expect(getSeminarBackendAvailability('Researcher')).toBe('awaiting_participant_scoped_endpoint');
-    expect(getSeminarBackendAvailability('Reviewer')).toBe('awaiting_participant_scoped_endpoint');
-    expect(getSeminarBackendAvailability('Graduate Student')).toBe('awaiting_participant_scoped_endpoint');
-    expect(getSeminarBackendAvailability('Admin')).toBe('awaiting_participant_scoped_endpoint');
+  it("returns 'full' for every role because read endpoints are role-scoped", () => {
+    expect(getSeminarBackendAvailability('Researcher')).toBe('full');
+    expect(getSeminarBackendAvailability('Reviewer')).toBe('full');
+    expect(getSeminarBackendAvailability('Graduate Student')).toBe('full');
+    expect(getSeminarBackendAvailability('Admin')).toBe('full');
   });
 
-  it("returns 'awaiting_participant_scoped_endpoint' for null / Guest / unknown roles", () => {
-    expect(getSeminarBackendAvailability(null)).toBe('awaiting_participant_scoped_endpoint');
-    expect(getSeminarBackendAvailability('Guest')).toBe('awaiting_participant_scoped_endpoint');
-    expect(getSeminarBackendAvailability(undefined)).toBe('awaiting_participant_scoped_endpoint');
+  it("returns 'full' for null / Guest / unknown roles before the hook's auth gate", () => {
+    expect(getSeminarBackendAvailability(null)).toBe('full');
+    expect(getSeminarBackendAvailability('Guest')).toBe('full');
+    expect(getSeminarBackendAvailability(undefined)).toBe('full');
   });
 });
 
@@ -93,7 +93,7 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
     expect(calledPaths).toContain('/api/SeminarParticipant');
   });
 
-  it('Researcher: NEVER calls /api/SeminarParticipant (privacy leak prevention)', async () => {
+  it('Researcher: calls only participant-scoped seminar endpoints', async () => {
     authState.user = {
       id: 7,
       roleId: 1,
@@ -105,13 +105,17 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
     const { result } = renderHook(() => useSeminars());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(apiGetMock).not.toHaveBeenCalled();
+    const calledPaths = apiGetMock.mock.calls.map((c) => c[0]);
+    expect(calledPaths).toContain('/api/Seminar/my-invitations');
+    expect(calledPaths).toContain('/api/SeminarParticipant/my-seminars');
+    expect(calledPaths).not.toContain('/api/Seminar');
+    expect(calledPaths).not.toContain('/api/SeminarParticipant');
     expect(result.current.seminars).toEqual([]);
     expect(result.current.error).toBeNull();
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
-  it('Reviewer: NEVER calls /api/SeminarParticipant (privacy leak prevention)', async () => {
+  it('Reviewer: calls only participant-scoped seminar endpoints', async () => {
     authState.user = {
       id: 9,
       roleId: 3,
@@ -123,12 +127,16 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
     const { result } = renderHook(() => useSeminars());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(apiGetMock).not.toHaveBeenCalled();
+    const calledPaths = apiGetMock.mock.calls.map((c) => c[0]);
+    expect(calledPaths).toContain('/api/Seminar/my-invitations');
+    expect(calledPaths).toContain('/api/SeminarParticipant/my-seminars');
+    expect(calledPaths).not.toContain('/api/Seminar');
+    expect(calledPaths).not.toContain('/api/SeminarParticipant');
     expect(result.current.seminars).toEqual([]);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
-  it('Graduate Student: NEVER calls /api/Seminar or /api/SeminarParticipant (privacy leak prevention)', async () => {
+  it('Graduate Student: calls only participant-scoped seminar endpoints', async () => {
     authState.user = {
       id: 11,
       roleId: 5,
@@ -140,9 +148,13 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
     const { result } = renderHook(() => useSeminars());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(apiGetMock).not.toHaveBeenCalled();
+    const calledPaths = apiGetMock.mock.calls.map((c) => c[0]);
+    expect(calledPaths).toContain('/api/Seminar/my-invitations');
+    expect(calledPaths).toContain('/api/SeminarParticipant/my-seminars');
+    expect(calledPaths).not.toContain('/api/Seminar');
+    expect(calledPaths).not.toContain('/api/SeminarParticipant');
     expect(result.current.seminars).toEqual([]);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('Unauthenticated: NEVER calls the BE', async () => {
@@ -153,7 +165,7 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(apiGetMock).not.toHaveBeenCalled();
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('Admin: NEVER calls the BE (no seminar ownership by Admin)', async () => {
@@ -169,7 +181,7 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(apiGetMock).not.toHaveBeenCalled();
     expect(result.current.seminars).toEqual([]);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
   it('Guest effectiveRole with Lecturer roleName: NEVER calls the BE (effectiveRole wins)', async () => {
@@ -185,10 +197,10 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(apiGetMock).not.toHaveBeenCalled();
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
-  it('refetch() for a non-Lecturer session remains a no-op (no network call)', async () => {
+  it('refetch() for a Researcher repeats only participant-scoped calls', async () => {
     authState.user = {
       id: 7,
       roleId: 1,
@@ -199,12 +211,18 @@ describe('useSeminars — privacy posture (PUBLICATION_FLOW_API_BLOCKERS.md §3.
 
     const { result } = renderHook(() => useSeminars());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(apiGetMock).not.toHaveBeenCalled();
+    apiGetMock.mockClear();
 
-    // Trigger refetch — must remain a no-op for non-Lecturer.
     await result.current.refetch();
-    expect(apiGetMock).not.toHaveBeenCalled();
-    expect(result.current.seminars).toEqual([]);
+    const calledPaths = apiGetMock.mock.calls.map((c) => c[0]);
+    expect(calledPaths).toEqual(
+      expect.arrayContaining([
+        '/api/Seminar/my-invitations',
+        '/api/SeminarParticipant/my-seminars',
+      ]),
+    );
+    expect(calledPaths).not.toContain('/api/Seminar');
+    expect(calledPaths).not.toContain('/api/SeminarParticipant');
   });
 });
 
@@ -231,7 +249,7 @@ describe('useSeminarParticipants — privacy posture', () => {
     expect(calledPaths).toContain('/api/SeminarParticipant');
   });
 
-  it('Researcher: NEVER calls /api/SeminarParticipant (defense in depth)', async () => {
+  it('Researcher: calls only /api/SeminarParticipant/my-seminars', async () => {
     authState.user = {
       id: 7,
       roleId: 1,
@@ -243,13 +261,14 @@ describe('useSeminarParticipants — privacy posture', () => {
     const { result } = renderHook(() => useSeminarParticipants(1));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiGetMock).toHaveBeenCalledWith('/api/SeminarParticipant/my-seminars');
+    expect(apiGetMock).not.toHaveBeenCalledWith('/api/SeminarParticipant');
     expect(result.current.participants).toEqual([]);
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+    expect(result.current.backendAvailability).toBe('full');
   });
 
-  it('Reviewer / Graduate Student / Admin / Unauthenticated: NEVER call the BE', async () => {
-    for (const roleName of ['Reviewer', 'Graduate Student', 'Admin'] as const) {
+  it('Reviewer / Graduate Student call only /api/SeminarParticipant/my-seminars; Admin and unauthenticated sessions do not call the BE', async () => {
+    for (const roleName of ['Reviewer', 'Graduate Student'] as const) {
       authState.user = {
         id: 1,
         roleId: 0,
@@ -257,17 +276,29 @@ describe('useSeminarParticipants — privacy posture', () => {
         isActive: true,
       };
       apiGetMock.mockReset();
+      apiGetMock.mockResolvedValue({ data: [] });
       const { result } = renderHook(() => useSeminarParticipants(1));
       await waitFor(() => expect(result.current.isLoading).toBe(false));
-      expect(apiGetMock).not.toHaveBeenCalled();
-      expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
+      expect(apiGetMock).toHaveBeenCalledWith('/api/SeminarParticipant/my-seminars');
+      expect(apiGetMock).not.toHaveBeenCalledWith('/api/SeminarParticipant');
+      expect(result.current.backendAvailability).toBe('full');
     }
+
+    authState.user = {
+      id: 1,
+      roleId: 2,
+      roleName: 'Admin',
+      isActive: true,
+    };
+    apiGetMock.mockReset();
+    const adminResult = renderHook(() => useSeminarParticipants(1));
+    await waitFor(() => expect(adminResult.result.current.isLoading).toBe(false));
+    expect(apiGetMock).not.toHaveBeenCalled();
 
     authState.user = null;
     apiGetMock.mockReset();
-    const { result } = renderHook(() => useSeminarParticipants(1));
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const unauthenticatedResult = renderHook(() => useSeminarParticipants(1));
+    await waitFor(() => expect(unauthenticatedResult.result.current.isLoading).toBe(false));
     expect(apiGetMock).not.toHaveBeenCalled();
-    expect(result.current.backendAvailability).toBe('awaiting_participant_scoped_endpoint');
   });
 });

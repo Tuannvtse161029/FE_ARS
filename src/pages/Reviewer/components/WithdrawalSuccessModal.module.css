@@ -7,7 +7,7 @@
   position: fixed;
   inset: 0;
   background-color: rgba(26, 31, 54, 0.5);
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;

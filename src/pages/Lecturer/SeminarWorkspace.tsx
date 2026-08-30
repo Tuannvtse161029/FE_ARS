@@ -311,7 +311,7 @@ export const SeminarWorkspace = () => {
       data-testid="lecturer-seminar-workspace"
     >
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
+        eyebrow={currentRole ? `${currentRole.toUpperCase()} WORKSPACE` : 'WORKSPACE'}
         title="Seminar & Workshop Management"
         description={
           canModify

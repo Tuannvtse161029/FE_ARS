@@ -11,7 +11,7 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -28,7 +28,7 @@
 .modalCard {
   background: var(--ars-paper);
   border: var(--border-thin);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   width: 100%;
   max-width: 560px;
   overflow: hidden;

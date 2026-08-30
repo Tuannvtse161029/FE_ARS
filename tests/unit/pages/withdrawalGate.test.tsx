@@ -61,7 +61,13 @@ vi.mock('../../../src/store/authSlice', () => ({
 }));
 
 let useWalletReturnValue = {
-  wallet: { id: 8, walletId: 8, userId: 7, balance: 0 },
+  // The EarningsWallet page formats the balance via
+  // `unlockedBalance.toLocaleString('vi-VN')`. A non-zero balance lets the
+  // "balance card is not gated" test verify that the formatting path is
+  // actually rendered when withdrawals are disabled.
+  // The shape mirrors `useWallet`'s return value (wallet + top-level balance).
+  wallet: { id: 8, walletId: 8, userId: 7, balance: 4200000 },
+  balance: 4200000,
   walletId: 8,
   isLoading: false,
   error: null,
@@ -145,8 +151,9 @@ const renderAdmin = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // No live storage dependency — the EarningsWallet page now reads the
+  // balance from the BE via useWallet (mocked above to return 4_200_000).
   localStorage.clear();
-  localStorage.setItem('ars_reviewer_balance', '4200000');
   window.alert = vi.fn();
   setFlag(false);
 });

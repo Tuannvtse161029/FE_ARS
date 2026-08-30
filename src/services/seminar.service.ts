@@ -30,7 +30,7 @@ export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT'
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Roles that may create / update / delete seminars and send reminders. */
-export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer', 'Researcher'] as const;
+export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer'] as const;
 
 /** Roles that may view the seminar list (read-only). Includes the mutator. */
 export const SEMINAR_VIEWER_ROLES: readonly UserRole[] = [
@@ -94,7 +94,7 @@ export const filterSeminarsForViewer = (
 ): Seminar[] => {
   if (canMutateSeminar(role)) return seminars;
   if (!canViewSeminar(role)) return [];
-  if (currentUserId == null) return seminars;
+  if (currentUserId == null) return [];
   const invitedSeminarIds = new Set<number>();
   for (const p of participants) {
     if (p.userId === currentUserId && p.seminarId != null) {
@@ -102,7 +102,7 @@ export const filterSeminarsForViewer = (
     }
   }
   if (invitedSeminarIds.size === 0) {
-    return seminars;
+    return [];
   }
   return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
 };

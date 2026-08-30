@@ -55,9 +55,40 @@
   line-height: 1.1;
 }
 
+/* === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+   Title cluster: keeps the <h1> + optional accessory (e.g. StatusBadge)
+   on a single flex row so the accessory reads as part of the heading.
+   `flex-wrap: wrap` + `align-items: baseline` makes the accessory wrap
+   under the title on narrow viewports rather than overflowing the
+   right-side `actions` slot. */
+.titleCluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.titleCluster > .title {
+  /* Reset the `h1` margin so the cluster's gap controls spacing.
+     We only target the direct child of `.titleCluster` so any nested
+     headings inside `titleAccessory` retain their own margins. */
+  margin: 0;
+}
+
+.titleAccessory {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  /* Pull the accessory slightly toward the title baseline so it visually
+     reads as inline with the heading text rather than a stacked element. */
+  transform: translateY(-0.1em);
+}
+/* === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) === */
+
 .description {
   font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
+  color: var(--text-muted);
   margin: 0;
   line-height: var(--line-height-normal);
   max-width: 60ch;

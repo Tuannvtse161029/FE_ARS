@@ -15,6 +15,7 @@
   gap: var(--space-2);
   font-family: var(--font-family-ui);
   color: var(--ars-ink);
+  background-color: var(--surface-canvas);
 }
 
 .breadcrumbsActive {
@@ -34,7 +35,11 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  /* Tighter inter-section gap so the new Trending Tags and Forum Stats
+     blocks slot in without making the sidebar feel taller than before.
+     Falls back to var(--space-5) when the rail collapses on narrow
+     viewports (see responsive rules at the bottom). */
+  gap: var(--space-4);
   padding: var(--space-5);
   background: var(--ars-paper-alt);
   border: 1px solid var(--ars-network);
@@ -109,6 +114,152 @@
 .catIcon {
   flex-shrink: 0;
   color: inherit;
+}
+
+/* === Sidebar density additions (this worker) === */
+/* Trending Tags — clickable chips that fill the negative space below
+   the Filters section. Sourced from the loaded posts (no mock data)
+   and reusing the existing --ars-* tokens so the chips read as part
+   of the ARS visual system. */
+.sidebarSectionLabelIcon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  color: var(--ars-blue);
+  vertical-align: -1px;
+}
+
+.tagChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  min-height: 26px;
+  border-radius: var(--radius-full);
+  background-color: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  line-height: 1;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.tagChip:hover {
+  background-color: var(--ars-blue-light);
+  border-color: var(--ars-blue);
+  color: var(--ars-blue);
+  transform: translateY(-1px);
+}
+
+.tagChip:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+.tagChip:active {
+  transform: translateY(0);
+}
+
+.tagChipIcon {
+  flex-shrink: 0;
+  color: var(--ars-ink-muted);
+}
+
+.tagChip:hover .tagChipIcon,
+.tagChip:focus-visible .tagChipIcon {
+  color: var(--ars-blue);
+}
+
+.tagChipText {
+  /* Truncate gracefully when a long tag is rendered in the narrow
+     240px sidebar rail. */
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagChipCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background-color: var(--ars-node);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.02em;
+}
+
+.tagChip:hover .tagChipCount,
+.tagChip:focus-visible .tagChipCount {
+  background-color: var(--ars-blue);
+  color: var(--ars-paper);
+}
+
+/* Forum Stats — compact three-row overview that completes the sidebar.
+   Numbers are computed from the loaded posts (see Forum.tsx forumStats
+   useMemo). */
+.statsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+}
+
+.statLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--font-weight-medium);
+}
+
+.statIcon {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.statValue {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 /* ─── RIGHT FEED ─────────────────────────────────────────── */
@@ -323,8 +474,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(26, 31, 54, 0.6);
-  backdrop-filter: blur(4px);
+  background-color: rgba(26, 31, 54, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -351,8 +501,34 @@
 .modalHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--ars-network);
+}
+
+.modalCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+}
+
+.modalCloseButton:hover {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+}
+
+.modalCloseButton:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
 }
 
 .modalTitle {
@@ -715,6 +891,16 @@
 
   .modalContent {
     max-width: 100%;
+    max-height: 100vh;
     border-radius: var(--radius-sm);
+  }
+
+  .modalOverlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .modalFooter {
+    padding: var(--space-3) var(--space-4);
   }
 }

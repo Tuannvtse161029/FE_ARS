@@ -30,10 +30,17 @@ export const ReportModal = ({
   const [apiError, setApiError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const reasonTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const isSubmittingRef = useRef(false);
 
   const isReasonValid = reason.trim().length >= MIN_REASON_LENGTH;
   const targetLabel = targetType === 'ForumPost' ? 'Forum Post' : 'Comment';
+
+  const closeDialog = (): void => {
+    onClose();
+    openerRef.current?.focus();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -43,9 +50,42 @@ export const ReportModal = ({
       setValidationError(null);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
-      setTimeout(() => reasonTextareaRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = window.setTimeout(() => reasonTextareaRef.current?.focus(), 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSubmitting) {
+        event.preventDefault();
+        closeDialog();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isSubmitting]);
 
   useEffect(() => {
     if (validationError && isReasonValid) {
@@ -55,7 +95,7 @@ export const ReportModal = ({
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      closeDialog();
     }
   };
 
@@ -81,7 +121,7 @@ export const ReportModal = ({
         reason: reason.trim(),
         violationNotes: violationNotes.trim() || undefined,
       });
-      onClose();
+      closeDialog();
     } catch (err: unknown) {
       const message =
         (err as { message?: string })?.message ||
@@ -98,15 +138,14 @@ export const ReportModal = ({
 
   return (
     <div className={styles.overlay} onClick={handleOverlayClick} role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>
           <Flag size={20} className={styles.headerIcon} />
           <h2 id="report-modal-title" className={styles.headerTitle}>Report {targetLabel}</h2>
           <button
-            onClick={onClose}
-            className={styles.cancelBtn}
-            style={{ marginLeft: 'auto', padding: '4px' }}
+            onClick={closeDialog}
+            className={`${styles.cancelBtn} ${styles.closeBtn}`}
             aria-label="Close modal"
           >
             <X size={18} />
@@ -124,7 +163,7 @@ export const ReportModal = ({
           {/* Reason Field */}
           <div className={styles.fieldGroup}>
             <label htmlFor="report-reason" className={styles.fieldLabel}>
-              Reason <span style={{ color: '#dc2626' }}>*</span>
+              Reason <span className={styles.requiredMark}>*</span>
             </label>
             <textarea
               id="report-reason"
@@ -150,7 +189,7 @@ export const ReportModal = ({
           {/* Additional Details Field */}
           <div className={styles.fieldGroup}>
             <label htmlFor="report-notes" className={styles.fieldLabel}>
-              Additional Details <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span>
+              Additional Details <span className={styles.optionalLabel}>(optional)</span>
             </label>
             <textarea
               id="report-notes"
@@ -178,7 +217,7 @@ export const ReportModal = ({
           <Button
             variant="outline"
             size="md"
-            onClick={onClose}
+            onClick={closeDialog}
             disabled={isSubmitting}
           >
             Cancel

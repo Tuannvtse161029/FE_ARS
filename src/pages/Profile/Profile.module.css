@@ -9,10 +9,6 @@
  * on the root container.
  */
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ── Page shell ──────────────────────────────────────────── */
 .page {
   width: 100%;
@@ -81,7 +77,7 @@
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .identityRole {
@@ -148,7 +144,7 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
-  transition: color var(--transition-fast);
+  transition: color var(--motion-feedback);
 }
 
 .followLink strong {
@@ -197,7 +193,7 @@
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
   margin: 0;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 .formSubtitle {
@@ -260,7 +256,7 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   box-sizing: border-box;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
   min-height: 36px;
   line-height: var(--line-height-normal);
 }
@@ -489,7 +485,7 @@
   margin-top: 2px;
 }
 
-/* ── Metric tiles ────────────────────────────────────────── */
+/* ── Academic metrics ───────────────────────────────────── */
 .metricsRow {
   display: flex;
   gap: var(--space-3);
@@ -501,8 +497,8 @@
   flex: 1;
   min-width: 120px;
   padding: var(--space-3) var(--space-4);
-  background: var(--ars-paper);
-  border: 1px solid var(--ars-network);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
@@ -510,13 +506,13 @@
 }
 
 .metricWide {
-  min-width: 200px;
+  min-width: 180px;
 }
 
 .metricLabel {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: var(--font-weight-semibold);
@@ -525,30 +521,29 @@
 .metricValue {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .metricValueLg {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
+  color: var(--text-primary);
   display: block;
 }
 
 .metricSubValue {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--text-muted);
 }
 
-/* ── Loading spinner (kept for backwards compatibility) ─── */
+/* Loading state is intentionally static so it does not compete with content. */
 .spinner {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   border: 3px solid var(--ars-network);
   border-top-color: var(--profile-accent);
-  animation: spin 0.8s linear infinite;
 }
 
 /* ── Responsive ──────────────────────────────────────────── */

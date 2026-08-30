@@ -104,19 +104,13 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
 /**
  * Sidebar regression for the Graduate Student role.
  *
- * Contract (Agent-12, AGENT_12_GS_NAV_READY, updated for Forum-as-landing,
- * further updated for Agent admin-annual-fees):
+ * Contract (updated for the ARS Research Journey navigation):
  *   - Graduate Student sidebar MUST NOT expose `Paper` or `Browse Reviewers`
  *     — those routes are Researcher-only (see App.tsx RoleRouteGuard).
- *   - Graduate Student sidebar MUST retain `Research Groups` and
- *     `Submit Report`.
- *   - Graduate Student sidebar MUST NOT expose a top-level `Dashboard`
- *     item — the role-based landing page is the Forum now (per
- *     landingRouteForRoleName), so the Graduate Student's dedicated
- *     `/student/dashboard` workspace is reached via Research Groups
- *     rather than a sidebar shortcut.
- *   - Researcher sidebar still exposes Paper + Reviewers items.
- *   - Lecturer, Reviewer, Admin sidebars are unchanged by Agent-12.
+ *   - Graduate Student sidebar exposes its existing `Research Journey` route,
+ *     `Research Groups`, and `Submit Report`.
+ *   - Researcher sidebar still exposes its submissions route.
+ *   - Lecturer, Reviewer, and Admin sidebars remain role-specific.
  *
  * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
  * aren't duplicated from the other MainLayout tests.
@@ -154,16 +148,12 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).not.toBeNull();
   });
 
-  it('Graduate Student sidebar does NOT expose a top-level Dashboard shortcut', () => {
+  it('Graduate Student sidebar exposes the existing Research Journey workspace', () => {
     setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
-    // Forum is now the post-login landing page for every non-Admin role
-    // (per landingRouteForRoleName in roleNormalizer), so the Graduate
-    // Student sidebar must not carry a Dashboard item pointing at the
-    // role-specific workspace.
-    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).toBeNull();
-    expect(findSidebarLinkByText('Dashboard')).toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).not.toBeNull();
+    expect(findSidebarLinkByText('Research Journey')).not.toBeNull();
   });
 
   it('Graduate Student sidebar still shows Forums', () => {

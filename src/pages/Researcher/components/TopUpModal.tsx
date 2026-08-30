@@ -30,6 +30,7 @@ export const TopUpModal = ({
   shortfallAmount,
   reviewerName,
 }: TopUpModalProps) => {
+  void onSuccess;
   const [depositAmount, setDepositAmount] = useState<number>(QUICK_AMOUNTS[0]);
 
   if (!isOpen) return null;
@@ -39,27 +40,13 @@ export const TopUpModal = ({
   };
 
   const handleGenerateQr = () => {
-    // Visual-only surface: the actual wallet increment + sync event
-    // are still routed through localStorage until the BE payment
-    // integration ships. See BACKEND_REQUESTS.md.
-    const current = localStorage.getItem('ars_wallet');
-    const currentVal = current ? parseInt(current, 10) : 500000;
-    const newVal = currentVal + depositAmount;
-
-    localStorage.setItem('ars_wallet', newVal.toString());
-    window.dispatchEvent(new Event('wallet-update'));
-
-    onSuccess(depositAmount);
-    onClose();
+    // PayOS confirmation is backend-owned. This surface stays available as a
+    // clear explanation until a verified payment-link flow is connected.
+    return;
   };
 
   return (
-    <div
-      className={styles.modalOverlay}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="top-up-modal-title"
-    >
+    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="top-up-modal-title">
       <div className={styles.modalCard}>
         <header className={styles.modalHeader}>
           <div className={styles.titleWrapper}>
@@ -110,13 +97,12 @@ export const TopUpModal = ({
             ))}
           </div>
 
-          <div className={styles.infoAlert}>
+          <div className={styles.infoAlert} role="status">
             <span className={styles.infoIcon} aria-hidden>
               <Info size={14} />
             </span>
             <p className={styles.infoText}>
-              Funds will be added via PayOS and automatically applied to your
-              review request for {reviewerName}.
+              PayOS top-up is unavailable in this build. No balance will be changed until the backend payment-link flow is available.
             </p>
           </div>
         </div>
@@ -129,12 +115,17 @@ export const TopUpModal = ({
             type="button"
             className={styles.qrBtn}
             onClick={handleGenerateQr}
+            disabled
+            aria-describedby="top-up-unavailable"
           >
             <span className={styles.qrBtnIcon} aria-hidden>
               <QrCode size={14} />
             </span>
             Generate QR
           </button>
+          <span id="top-up-unavailable" className={styles.srOnly}>
+            Generate QR is unavailable until the backend payment-link flow is implemented.
+          </span>
         </footer>
       </div>
     </div>

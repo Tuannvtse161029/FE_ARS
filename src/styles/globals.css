@@ -1,16 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @import './reset.css';
 @import './ars-tokens.css';
 
 body {
   font-family: var(--font-family-ui);
   font-size: var(--font-size-base);
-  color: var(--ars-ink);
-  background-color: var(--ars-paper);
+  color: var(--text-primary);
+  background-color: var(--surface-canvas);
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: proportional-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 #root {

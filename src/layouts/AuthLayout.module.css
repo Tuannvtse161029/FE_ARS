@@ -1,13 +1,14 @@
 /**
  * AuthLayout — ARS Research Constellation
- * Two-panel: left branded wallpaper, right warm paper form panel.
- * Fully responsive — stacks vertically on tablet/mobile.
+ * Two-panel: left branded wallpaper with an editorial masthead composition,
+ * right warm paper form panel. Fully responsive — stacks vertically on
+ * tablet/mobile.
  */
 .authLayout {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: var(--ars-paper);
+  background-color: var(--surface-canvas);
   font-family: var(--font-family-ui);
 }
 
@@ -17,7 +18,7 @@
   min-height: 100vh;
 }
 
-/* ── Left Panel — Branded Wallpaper ─────────────────────────── */
+/* ── Left Panel — Branded Wallpaper + Editorial Masthead ──── */
 .leftPanel {
   flex: 1;
   display: flex;
@@ -41,14 +42,107 @@
   );
 }
 
+/* Local editorial colors, all derived from existing paper / ink tokens.
+   Parchment at high opacity reads as ink-on-paper on the dark gradient
+   without introducing a new color family. */
+.masthead {
+  --masthead-ink: rgba(248, 246, 240, 0.94);     /* var(--ars-paper) at 94% */
+  --masthead-ink-muted: rgba(248, 246, 240, 0.78);
+  --masthead-ink-faint: rgba(248, 246, 240, 0.62);
+  --masthead-rule: rgba(220, 238, 255, 0.55);     /* var(--ars-blue-light) at 55% */
+  --masthead-footer: rgba(248, 246, 240, 0.55);
+
+  position: absolute;
+  /* Bottom-left placement with comfortable margins, ~32px from edges. */
+  left: var(--space-8);
+  right: var(--space-8);
+  bottom: var(--space-8);
+  max-width: 520px;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  pointer-events: none; /* Masthead is decorative chrome, not interactive. */
+}
+
+/* Mono section-marker style — matches --section-marker in ars-tokens.css */
+.label {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--masthead-ink-faint);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+/* Editorial serif display heading. 30px serif, generous line height for a
+   2-line composition that reads like a journal cover line. */
+.heading {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.18;
+  letter-spacing: -0.005em;
+  color: var(--masthead-ink);
+  margin: 0;
+  /* Allow graceful wrap on narrower desktop sizes; never truncate. */
+  text-wrap: balance;
+}
+
+/* Fine 1px horizontal rule — short, accent-tinted, editorial. */
+.rule {
+  width: 56px;
+  height: 1px;
+  border: 0;
+  margin: var(--space-1) 0;
+  background-color: var(--masthead-rule);
+}
+
+/* Sans-serif caption — factual, not promotional. */
+.caption {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--masthead-ink-muted);
+  margin: 0;
+  max-width: 420px;
+}
+
+/* Field-marker footer at the very bottom of the panel.
+   `aria-hidden` — purely decorative citation. */
+.fieldList {
+  position: absolute;
+  left: var(--space-8);
+  bottom: var(--space-4);
+  z-index: 1;
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--masthead-footer);
+  pointer-events: none;
+}
+
 /* ── Right Panel — Form Surface ────────────────────────────── */
+/* Deeper warm parchment than the canvas so the form sits on its
+   own paper-card surface — visible without breaking the
+   warm-paper direction. See --ars-paper-card in ars-tokens.css. */
 .rightPanel {
   flex: 1;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: var(--space-8) var(--space-6);
-  background-color: var(--ars-paper);
+  background-color: var(--ars-paper-card);
   position: relative;
   overflow-y: auto;
   max-height: 100vh;
@@ -76,7 +170,12 @@
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  padding: var(--space-4) 0;
+  /* Editorial breathing room above and below the masthead + form.
+     Generous top padding lets the masthead feel like the inside cover
+     of a journal; bottom padding leaves the last form element with
+     air rather than crashing into the panel edge. */
+  padding: var(--space-8) 0 var(--space-8);
+  box-sizing: border-box;
 }
 
 /* ── Tablet ──────────────────────────────────────────────── */
@@ -91,6 +190,35 @@
     flex: none;
   }
 
+  /* Downsize masthead on tablet — keep editorial stack but compress. */
+  .masthead {
+    left: var(--space-6);
+    right: var(--space-6);
+    bottom: var(--space-5);
+    max-width: none;
+    gap: var(--space-2);
+  }
+
+  .heading {
+    font-size: var(--font-size-xl); /* 20px */
+    line-height: 1.2;
+  }
+
+  .caption {
+    font-size: var(--font-size-xs); /* 11px — tight to single line */
+    max-width: none;
+  }
+
+  .rule {
+    width: 40px;
+  }
+
+  .fieldList {
+    left: var(--space-6);
+    bottom: var(--space-3);
+    letter-spacing: 0.16em;
+  }
+
   .rightPanel {
     min-height: auto;
     padding: var(--space-6) var(--space-4);
@@ -98,6 +226,10 @@
 
   .rightPanel::before {
     display: none;
+  }
+
+  .formContainer {
+    padding: var(--space-5) 0 var(--space-6);
   }
 }
 
@@ -111,11 +243,33 @@
     height: 140px;
   }
 
+  /* On mobile the panel is a thin masthead banner — show only label +
+     heading as a compact wordmark. Caption, rule, and field-list footer
+     are hidden so it never feels crammed. */
+  .masthead {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    gap: var(--space-1);
+  }
+
+  .heading {
+    font-size: var(--font-size-lg); /* 17px */
+    line-height: 1.25;
+  }
+
+  .caption,
+  .rule,
+  .fieldList {
+    display: none;
+  }
+
   .rightPanel {
     padding: var(--space-5) var(--space-4);
   }
 
   .formContainer {
     max-width: 100%;
+    padding: var(--space-4) 0 var(--space-5);
   }
 }

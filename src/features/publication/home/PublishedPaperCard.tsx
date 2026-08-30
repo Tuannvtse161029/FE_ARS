@@ -1,4 +1,5 @@
-import { ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
 import type { PublicationAuthor, PublicationPaper } from '../types/publication';
 import { CitationActions } from '../components/CitationActions';
 import {
@@ -72,6 +73,7 @@ export const PublishedPaperCard = ({
   publicReviewerName,
   accent,
 }: PublishedPaperCardProps) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const orderedAuthors = [...paper.authors].sort((left, right) => left.order - right.order);
   const paperExternalLinks = collectPaperExternalLinks(paper);
   const arxivBadge = buildArxivBadge(paper.externalIdentifier);
@@ -125,82 +127,86 @@ export const PublishedPaperCard = ({
         <p className={card.abstract}>{paper.abstract}</p>
       </section>
 
-      {paper.keywords.length > 0 && (
-        <section className={card.section} aria-label="Keywords">
-          <ul className={card.keywords}>
-            {paper.keywords.map((keyword) => (
-              <li key={keyword} className={card.keyword}>{keyword}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <button
+        type="button"
+        className={card.detailsToggle}
+        aria-expanded={detailsOpen}
+        onClick={() => setDetailsOpen((open) => !open)}
+      >
+        <span>{detailsOpen ? 'Hide publication details' : 'Show publication details'}</span>
+        {detailsOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+      </button>
 
-      {paper.topics.length > 0 && (
-        <section className={card.section} aria-label="Topics">
-          <ul className={card.topics}>
-            {paper.topics.map((topic) => (
-              <li key={topic} className={card.topic}>{topic}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {detailsOpen ? (
+        <div className={card.details}>
+          {paper.keywords.length > 0 && (
+            <section className={card.section} aria-label="Keywords">
+              <ul className={card.keywords}>
+                {paper.keywords.map((keyword) => (
+                  <li key={keyword} className={card.keyword}>{keyword}</li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      <section className={card.detailGrid} aria-label="Identifiers and classification">
-        {paperExternalLinks[0]?.source === 'DOI' && (
-          <div className={card.detailRow}>
-            <span className={card.detailLabel}>DOI</span>
-            <a
-              className={card.identifierLink}
-              href={paperExternalLinks[0].href}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <FileText size={12} aria-hidden="true" />
-              <span>{paper.doi}</span>
-            </a>
-          </div>
-        )}
-        {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
-          <div className={card.detailRow}>
-            <span className={card.detailLabel}>OpenAlex</span>
-            <a
-              className={card.identifierLink}
-              href={paperExternalLinks[1].href}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <ExternalLink size={12} aria-hidden="true" />
-              <span>{paper.openAlexId}</span>
-            </a>
-          </div>
-        )}
-        {arxivBadge && (
-          <div className={card.detailRow}>
-            <span className={card.detailLabel}>arXiv</span>
-            <span className={card.identifierPlain}>{arxivBadge}</span>
-          </div>
-        )}
-        <div className={card.detailRow}>
-          <span className={card.detailLabel}>Field</span>
-          <FieldPath paper={paper} />
+          {paper.topics.length > 0 && (
+            <section className={card.section} aria-label="Topics">
+              <ul className={card.topics}>
+                {paper.topics.map((topic) => (
+                  <li key={topic} className={card.topic}>{topic}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className={card.detailGrid} aria-label="Identifiers and classification">
+            <div className={card.detailRow}>
+              <span className={card.detailLabel}>DOI</span>
+              {paperExternalLinks[0]?.source === 'DOI' ? (
+                <a className={card.identifierLink} href={paperExternalLinks[0].href} rel="noopener noreferrer" target="_blank">
+                  <FileText size={12} aria-hidden="true" />
+                  <span>{paper.doi}</span>
+                </a>
+              ) : (
+                <span className={card.identifierPlain}>Not supplied</span>
+              )}
+            </div>
+            {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
+              <div className={card.detailRow}>
+                <span className={card.detailLabel}>OpenAlex</span>
+                <a className={card.identifierLink} href={paperExternalLinks[1].href} rel="noopener noreferrer" target="_blank">
+                  <ExternalLink size={12} aria-hidden="true" />
+                  <span>{paper.openAlexId}</span>
+                </a>
+              </div>
+            )}
+            {arxivBadge && (
+              <div className={card.detailRow}>
+                <span className={card.detailLabel}>arXiv</span>
+                <span className={card.identifierPlain}>{arxivBadge}</span>
+              </div>
+            )}
+            <div className={card.detailRow}>
+              <span className={card.detailLabel}>Field</span>
+              <FieldPath paper={paper} />
+            </div>
+          </section>
+
+          <section className={card.reviewerRow} aria-label="Editorial review">
+            {publicReviewerName ? (
+              <div className={card.reviewerPublic}>
+                <UserCheck size={14} aria-hidden="true" />
+                <span>Reviewed by <strong>{publicReviewerName}</strong> (publicly disclosed)</span>
+              </div>
+            ) : (
+              <div className={card.reviewerPrivate}>
+                <ShieldCheck size={14} aria-hidden="true" />
+                <span>Reviewer identity withheld per policy.</span>
+              </div>
+            )}
+          </section>
         </div>
-      </section>
-
-      <section className={card.reviewerRow} aria-label="Editorial review">
-        {publicReviewerName ? (
-          <div className={card.reviewerPublic}>
-            <UserCheck size={14} aria-hidden="true" />
-            <span>
-              Reviewed by <strong>{publicReviewerName}</strong> (publicly disclosed)
-            </span>
-          </div>
-        ) : (
-          <div className={card.reviewerPrivate}>
-            <ShieldCheck size={14} aria-hidden="true" />
-            <span>Reviewer identity withheld per policy.</span>
-          </div>
-        )}
-      </section>
+      ) : null}
 
       <footer className={card.actions}>
         <CitationActions paper={paper} />

@@ -580,6 +580,11 @@ export const ResearcherSubmissionForm = () => {
             Submitting routes the manuscript to Admin screening. You can save a draft
             without submitting to review the metadata first.
           </p>
+          {!canSubmit && (
+            <p className={styles.formValidation} role="status">
+              Submission remains unavailable until the required metadata and completed PDF upload are in place.
+            </p>
+          )}
           <div className={styles.formActionButtons}>
             <Button
               variant="outline"

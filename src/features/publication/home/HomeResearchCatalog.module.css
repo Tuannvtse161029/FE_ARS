@@ -114,6 +114,19 @@
   border-color: var(--ars-blue-mid);
 }
 
+.resultContext {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+}
+
+.resultContext span {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Results grid ──────────────────────────────────────────── */
 .results {
   display: grid;
@@ -153,6 +166,10 @@
 @media (max-width: 680px) {
   .toolbar {
     padding: var(--space-3);
+  }
+  .resultContext {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .pagination {
     flex-direction: column;

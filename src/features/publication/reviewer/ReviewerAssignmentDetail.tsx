@@ -71,6 +71,9 @@ interface ResolvedAssignment {
   paper?: PublicationPaper;
 }
 
+const DOCUMENT_ACCESS_MESSAGE =
+  'Manuscript access is unavailable until the editorial service confirms this assignment\'s policy acceptance and returns a protected document link.';
+
 const statusTone = (
   paper: PublicationPaper | undefined,
 ): 'submitted' | 'evaluated' | 'waiting' | 'unknown' => {
@@ -110,6 +113,14 @@ export const ReviewerAssignmentDetail = () => {
           setResolved({ status: 'authorised', paper: found });
         } else {
           setResolved({ status: 'unauthorised' });
+        }
+      } catch (caught) {
+        if (!cancelled) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'The review assignment could not be loaded.',
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -249,33 +260,11 @@ export const ReviewerAssignmentDetail = () => {
     );
   };
 
-  const renderPdf = (paperToRender: PublicationPaper) => {
-    if (!paperToRender.fileUrl) {
-      return (
-        <p className={reviewer.pdfUnavailable}>
-          No manuscript file URL is available for this assignment yet.
-        </p>
-      );
-    }
-    return (
-      <div className={reviewer.pdfFrame} data-testid="pdf-frame">
-        <iframe
-          title={`PDF preview for ${paperToRender.title}`}
-          src={paperToRender.fileUrl}
-          loading="lazy"
-        />
-        <a
-          className={reviewer.pdfLink}
-          href={paperToRender.fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          download
-        >
-          Download manuscript (PDF)
-        </a>
-      </div>
-    );
-  };
+  const renderPdf = () => (
+    <p className={reviewer.pdfUnavailable} role="status">
+      {DOCUMENT_ACCESS_MESSAGE}
+    </p>
+  );
 
   const renderEvaluationForm = () => {
     if (!canReview) return null;
@@ -483,6 +472,37 @@ export const ReviewerAssignmentDetail = () => {
     );
   }
 
+  if (error) {
+    return (
+      <section className={reviewer.page}>
+        <PageHeader
+          eyebrow="REVIEWER WORKSPACE"
+          title="Review Assignment"
+          accent={REVIEWER_ACCENT}
+          actions={
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/reviewer/assignments')}
+            >
+              Back to assignments
+            </Button>
+          }
+        />
+        <ErrorBanner
+          tone="error"
+          title="Could not load assignment"
+          message={error}
+          retry={
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          }
+        />
+      </section>
+    );
+  }
+
   if (resolved.status === 'unauthorised') {
     return (
       <section className={reviewer.page}>
@@ -596,7 +616,7 @@ export const ReviewerAssignmentDetail = () => {
             <h2 className={reviewer.detailHeading} id="paper-pdf-title">
               Manuscript PDF
             </h2>
-            {renderPdf(paperToRender)}
+            {renderPdf()}
           </section>
         </div>
 
