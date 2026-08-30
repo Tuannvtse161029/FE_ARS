@@ -961,100 +961,6 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* ── Theme: night-mode content body & header ─────────────
-   The night-mode surfaces are token-driven (see ars-tokens.css under
-   `:root[data-theme='night']`). The selectors below ONLY apply inside the
-   MainLayout root so the public landing/login pages keep their
-   light-only identity. */
-.mainContainer[data-theme='night'] .rightContentArea {
-  background-color: var(--content-bg-night);
-  color: var(--content-text-night);
-}
-
-.mainContainer[data-theme='night'] .contentBody {
-  background-color: var(--content-bg-night);
-  color: var(--content-text-night);
-}
-
-.mainContainer[data-theme='night'] .header {
-  background-color: var(--content-header-bg-night);
-  border-bottom-color: var(--content-header-border-night);
-}
-
-/* Header controls invert cleanly via `currentColor` — only the surface
-   tokens need an override. The pill borders adopt the night border so
-   they don't disappear. */
-.mainContainer[data-theme='night'] .walletBadge,
-.mainContainer[data-theme='night'] .availabilityToggle,
-.mainContainer[data-theme='night'] .profileDropdownTrigger,
-.mainContainer[data-theme='night'] .themeToggle,
-.mainContainer[data-theme='night'] .menuToggle {
-  background-color: var(--content-bg-night-elevated);
-  border-color: var(--content-border-night);
-  color: var(--content-text-night);
-}
-
-.mainContainer[data-theme='night'] .walletAmount,
-.mainContainer[data-theme='night'] .userPillName,
-.mainContainer[data-theme='night'] .walletIcon {
-  color: var(--content-text-night);
-}
-
-.mainContainer[data-theme='night'] .walletTopUpButton {
-  background: var(--content-bg-night);
-  border-color: var(--content-border-night);
-  color: var(--content-text-night);
-}
-
-/* === ARS WORKSPACE label removal (this worker) ===
-   The `.mainContainer[data-theme='night'] .runningHead` recolor previously
-   lived here. The span it targeted has been removed from MainLayout.tsx
-   and the base `.runningHead` rule was deleted above, so this override is
-   dead code and is removed too. */
-
-/* Toast adopts night-mode danger / success surfaces so it remains
-   legible. The toast already uses status tokens, but the surface was
-   var(--ars-paper) (light parchment) — invert. */
-.mainContainer[data-theme='night'] .toast {
-  background-color: var(--content-bg-night-elevated);
-}
-
-.mainContainer[data-theme='night'] .toastError {
-  color: var(--content-danger-text-night);
-  border-color: var(--content-danger-text-night);
-}
-
-.mainContainer[data-theme='night'] .profileDropdownMenu {
-  background-color: var(--content-bg-night-elevated);
-  border-color: var(--content-border-night);
-}
-
-.mainContainer[data-theme='night'] .dropdownItem {
-  color: var(--content-text-night);
-}
-
-.mainContainer[data-theme='night'] .dropdownItem:hover {
-  background-color: var(--content-bg-night);
-}
-
-.mainContainer[data-theme='night'] .dropdownItemLogout {
-  color: var(--content-danger-text-night);
-}
-
-.mainContainer[data-theme='night'] .dropdownItemLogout:hover {
-  background-color: var(--content-danger-surface-night);
-}
-
-.mainContainer[data-theme='night'] .dropdownDivider {
-  background-color: var(--content-border-night);
-}
-
-/* The page-level "Could not load catalog" error banner (rendered inside
-   the Outlet children) inherits from semantic status tokens. The tokens
-   flip automatically via `:root[data-theme='night']` so the banner surface
-   and text swap to the night-mode danger palette. No additional selectors
-   required here — the existing semantic token cascade handles it. */
-
 /* ── Reduced motion support for the collapse transition ──
    The sidebar uses a width transition on collapse. When the user has
    prefers-reduced-motion enabled we collapse instantly so we don't
@@ -1068,3 +974,194 @@
 /* ───────────────────────────────────────────────────────────────
    === END Collapse + Dark Mode (this worker / Agent 38) ===
    ─────────────────────────────────────────────────────────────── */
+
+/* ── Shared Layout Motion ────────────────────────────────────── */
+/* Route content enters only after React Router has committed the new route.
+   It does not hold navigation, API work, logout storage cleanup, or focus. */
+.contentBody {
+  animation: workspaceContentEnter var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+.profileDropdownMenu {
+  transform-origin: top right;
+  animation: workspaceMenuEnter var(--duration-fast) var(--motion-ease-standard) both;
+}
+
+.toast {
+  animation: workspaceToastEnter var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+.backdropVisible {
+  animation: workspaceBackdropEnter var(--duration-fast) linear both;
+}
+
+@keyframes workspaceContentEnter {
+  from { opacity: 0; transform: translateX(12px) translateY(2px); filter: blur(2px); }
+  to { opacity: 1; transform: translateX(0) translateY(0); filter: blur(0); }
+}
+
+@keyframes workspaceMenuEnter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes workspaceToastEnter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes workspaceBackdropEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentBody,
+  .profileDropdownMenu,
+  .toast,
+  .backdropVisible {
+    animation: none;
+  }
+}
+
+/* ── Archive Dusk workspace shell ────────────────────────── */
+.sidebar { background: var(--sidebar-bg); color: var(--ink-on-dark); border-right-color: var(--border-subtle); }
+.sidebarHeader { border-bottom-color: var(--border-subtle); }
+.roleContext {
+  margin: var(--space-3) var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--sidebar-raised);
+  display: grid;
+  gap: 3px;
+}
+.roleContextLabel {
+  color: var(--ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.roleContext strong { color: var(--ink-on-dark); font-size: var(--font-size-sm); }
+.sidebarCollapsed .roleContext,
+.sidebarCollapsed .sidebarAccountText,
+.sidebarCollapsed .sidebarLogout { display: none; }
+.sidebarCollapse, .navItem { color: var(--ink-secondary); }
+.sidebarCollapse:hover,
+.navItem:hover:not(.disabledNavItem):not(.navItemActive) { background: var(--sidebar-raised); color: var(--ink-on-dark); }
+.sidebarCollapse:focus-visible,
+.navItem:focus-visible,
+.sidebarAccountProfile:focus-visible,
+.sidebarLogout:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.navItemActive {
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sidebar-raised));
+  color: var(--ink-on-dark) !important;
+}
+.navItemActive::before { background: var(--accent-primary); }
+.navBadge { background: var(--accent-primary); color: var(--ink-on-paper); }
+.sidebarAccount {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto var(--space-3) var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--sidebar-raised);
+}
+.sidebarAccountProfile {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-on-dark);
+  cursor: pointer;
+  text-align: left;
+}
+.sidebarAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  flex: 0 0 auto;
+}
+.sidebarAccountText { min-width: 0; display: grid; gap: 1px; }
+.sidebarAccountText strong, .sidebarAccountText small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebarAccountText strong { font-size: var(--font-size-xs); }
+.sidebarAccountText small { color: var(--ink-muted); font-size: 0.65rem; }
+.sidebarLogout {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+.sidebarLogout:hover { border-color: var(--status-danger-text); color: var(--status-danger-text); }
+.rightContentArea {
+  background-color: var(--app-canvas);
+  background-image: radial-gradient(
+    82% 52% at 92% -6%,
+    color-mix(in srgb, var(--accent-primary) 22%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 8%, transparent) 44%,
+    transparent 76%
+  );
+  color: var(--ink-primary);
+}
+.contentBody { background: transparent; color: var(--ink-primary); }
+.header {
+  background: var(--header-bg);
+  border-bottom-color: var(--border-subtle);
+  backdrop-filter: blur(14px);
+}
+.menuToggle, .themeToggle, .walletBadge, .availabilityToggle, .profileDropdownTrigger, .searchContainer {
+  background: var(--control-bg);
+  border-color: var(--border-subtle);
+  color: var(--control-text);
+}
+.menuToggle:hover, .themeToggle:hover, .availabilityToggle:hover, .profileDropdownTrigger:hover {
+  background: var(--control-bg-hover);
+  border-color: var(--border-strong);
+}
+.searchContainer:focus-within,
+.themeToggle:focus-visible,
+.menuToggle:focus-visible,
+.walletTopUpButton:focus-visible,
+.toggleSwitch:focus-visible,
+.dropdownItem:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--focus-ring);
+  box-shadow: none;
+}
+.searchInput, .walletAmount, .userPillName { color: var(--control-text); }
+.searchIcon, .walletIcon, .userPillRole { color: var(--ink-muted); }
+.walletTopUpButton { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink-secondary); }
+.walletTopUpButton:hover { background: var(--accent-primary); color: var(--ink-on-paper); }
+.avatarCircleSmall { background: var(--accent-primary); color: var(--ink-on-paper); }
+.profileDropdownMenu { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 14px 36px var(--shadow-color); }
+.dropdownItem { color: var(--ink-primary); }
+.dropdownItem:hover { background: var(--surface-selected); }
+.dropdownDivider { background: var(--border-subtle); }
+.backdrop { background: color-mix(in srgb, var(--sidebar-bg) 76%, transparent); }
+
+@media (max-width: 768px) {
+  .sidebarCollapsed .roleContext { display: grid; }
+  .sidebarCollapsed .sidebarAccountText { display: grid; }
+  .sidebarCollapsed .sidebarLogout { display: inline-flex; }
+}

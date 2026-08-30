@@ -83,6 +83,42 @@
   line-height: var(--line-height-relaxed);
 }
 
+.orcidConnection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacing-3);
+  align-items: center;
+  padding: var(--spacing-4);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+}
+
+.orcidTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+}
+
+.orcidDescription,
+.orcidNotice {
+  margin: var(--spacing-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.orcidNotice {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .orcidConnection {
+    grid-template-columns: 1fr;
+  }
+}
+
 .roleBanner {
   background-color: var(--ars-paper-alt);
   border: 1px solid var(--ars-node);
@@ -350,3 +386,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Archive Dusk auth surface */
+.brandText, .pageTitle, .fieldLabel, .roleBannerTitle, .orcidTitle { color: var(--ink-primary); }
+.pageSubtitle, .passwordHelper, .roleBannerText, .orcidDescription,
+.orcidNotice, .optionalText, .footerText, .consentText, .divider { color: var(--ink-secondary); }
+.orcidConnection, .roleBanner { background: var(--surface-sunken); border-color: var(--border-subtle); }
+.nativeInput, .nativeSelect { background-color: var(--control-bg); color: var(--control-text); border-color: var(--border-subtle); }
+.nativeInput:focus, .nativeSelect:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent); }
+.nativeInput--error, .nativeInput--error:focus, .nativeSelect--error, .nativeSelect--error:focus {
+  border-color: var(--status-danger-text) !important;
+  background: var(--status-danger-surface);
+  box-shadow: none !important;
+}
+.formError { background: var(--status-danger-surface); color: var(--status-danger-text); border-color: var(--status-danger-text); }
+.roleBannerIcon, .loginLink, .consentLink { color: var(--accent-ochre); }
+.loginLink:hover, .consentLink:hover { color: var(--accent-hover); }
+.consentCheckbox { accent-color: var(--accent-primary); }

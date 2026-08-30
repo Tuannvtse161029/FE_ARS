@@ -427,7 +427,7 @@ export const SubmitReport = (): JSX.Element => {
                           </button>
                           {!isCurrentUserLeader ? (
                             <p id={`phase-${pNum}-permission`} className={styles.actionExplanation}>
-                              Only the group leader can submit this phase. Contact your lecturer to update the group leader.
+                              Only your Group Leader can submit this phase report. Contact your lecturer to update the group leader.
                             </p>
                           ) : null}
                         </>

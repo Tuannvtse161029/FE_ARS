@@ -339,3 +339,15 @@
     align-items: flex-start;
   }
 }
+
+/* Archive Dusk auth surface */
+.brandText, .pageTitle, .fieldLabel { color: var(--ink-primary); }
+.formError { background: var(--status-danger-surface); color: var(--status-danger-text); border-color: var(--status-danger-text); }
+.loginInput, .roleSelect { background: var(--control-bg) !important; color: var(--control-text) !important; border-color: var(--border-subtle) !important; }
+.loginInput:focus, .roleSelect:focus { border-color: var(--focus-ring) !important; background: var(--control-bg-hover) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent) !important; }
+.passwordToggle, .optionalTag, .fieldHint, .toggleLabel, .footerText { color: var(--ink-muted); }
+.toggleInput:checked + .toggleSlider { background: var(--accent-primary); }
+.forgotLink, .registerLink { color: var(--accent-ochre); }
+.forgotLink:hover, .registerLink:hover { color: var(--accent-hover); }
+.submitButton { background: var(--accent-primary) !important; border-color: var(--accent-primary) !important; color: var(--ink-on-paper) !important; }
+.submitButton:hover:not(:disabled) { background: var(--accent-hover) !important; border-color: var(--accent-hover) !important; }

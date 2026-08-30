@@ -126,6 +126,18 @@ export interface LearningMaterialUpdateRequest {
   subFieldId: number | null;
 }
 
+// SharedMaterial is a collaboration record in the live Swagger contract.
+// Catalog metadata belongs to isolated demo state until the BE adds fields.
+export interface SharedMaterialCreateRequest {
+  lecturerId: number | null;
+  paperId: number | null;
+  sharedWithColleagueId: number | null;
+  sharedAt: string | null;
+  status: string | null;
+}
+
+export interface SharedMaterialUpdateRequest extends SharedMaterialCreateRequest {}
+
 // ---------- PhasedReport ----------
 
 export interface PhasedReportCreateRequest {

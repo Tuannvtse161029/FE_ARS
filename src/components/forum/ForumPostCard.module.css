@@ -8,8 +8,8 @@
 
 .card {
   position: relative;
-  background: var(--ars-paper);
-  border: 1px solid var(--ars-network);
+  background: var(--post-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-5) var(--space-6);
   display: flex;
@@ -18,12 +18,17 @@
   transition: border-color var(--transition-fast);
 }
 
+.cardOpen {
+  border-color: var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary), 0 12px 28px var(--shadow-color);
+}
+
 .card:hover {
   border-color: var(--ars-node);
 }
 
 .card:focus-within {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -46,9 +51,9 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   flex-shrink: 0;
-  background-color: var(--ars-node);
-  color: var(--ars-ink);
-  border: 1px solid var(--ars-network);
+  background-color: var(--surface-paper-muted);
+  color: var(--ink-on-paper);
+  border: 1px solid var(--border-strong);
 }
 
 .avatarButton {
@@ -58,11 +63,11 @@
 }
 
 .avatarButton:hover {
-  background-color: var(--ars-blue-light);
+  background-color: var(--surface-paper);
 }
 
 .avatarButton:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -77,7 +82,7 @@
 .authorName {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
+  color: var(--ink-primary);
   cursor: pointer;
   background: none;
   border: none;
@@ -87,11 +92,11 @@
 }
 
 .authorName:hover {
-  color: var(--ars-blue);
+  color: var(--accent-primary);
 }
 
 .authorName:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -99,7 +104,7 @@
 .timestamp {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   line-height: 1;
 }
 
@@ -113,17 +118,17 @@
 
 /* ─── Title / abstract ───────────────────────────────────── */
 .title {
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
   line-height: var(--line-height-normal);
   margin: 0;
 }
 
 .abstract {
   font-size: var(--font-size-sm);
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   line-height: var(--line-height-relaxed);
   margin: 0;
   display: -webkit-box;
@@ -148,10 +153,10 @@
   gap: 4px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-blue);
+  color: var(--accent-primary);
   text-decoration: none;
   border: 1px solid rgba(45, 53, 97, 0.2);
-  background-color: var(--ars-blue-light);
+  background-color: var(--surface-sunken);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   transition:
@@ -180,9 +185,9 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-blue);
-  background-color: var(--ars-blue-light);
-  border: 1px solid rgba(45, 53, 97, 0.15);
+  color: var(--ink-secondary);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
   padding: 2px 10px;
   border-radius: 999px;
   line-height: 1.4;
@@ -203,7 +208,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -212,13 +217,13 @@
 }
 
 .menuTrigger:hover {
-  background-color: var(--ars-paper-alt);
-  color: var(--ars-ink-soft);
-  border-color: var(--ars-network);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
+  border-color: var(--border-subtle);
 }
 
 .menuTrigger:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -226,8 +231,8 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  background-color: var(--ars-paper);
-  border: 1px solid var(--ars-network);
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   min-width: 180px;
@@ -245,7 +250,7 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   cursor: pointer;
   transition: background-color var(--transition-fast);
   text-align: left;
@@ -253,8 +258,8 @@
 }
 
 .menuItem:hover {
-  background-color: var(--ars-paper-alt);
-  color: var(--ars-ink);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
 }
 
 .menuItem:focus-visible {
@@ -278,3 +283,12 @@
 .menuItemReport .menuIcon {
   color: var(--ars-error);
 }
+
+/* Archive Dusk compatibility overrides for remaining interactive chrome. */
+.attachmentLink { border-color: var(--border-subtle); }
+.attachmentLink:focus-visible,
+.menuTrigger:focus-visible,
+.menuItem:focus-visible { outline-color: var(--focus-ring); }
+.menuDropdown { box-shadow: 0 12px 28px var(--shadow-color); }
+.menuItemReport, .menuItemReport .menuIcon { color: var(--status-danger-text); }
+.menuItemReport:hover { background: var(--status-danger-surface); }

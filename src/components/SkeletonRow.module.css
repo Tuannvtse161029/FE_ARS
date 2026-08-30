@@ -5,13 +5,13 @@
 
 .row,
 .headerBar {
-  background: var(--ars-paper-alt);
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
   opacity: 0.72;
 }
 
 .headerBar {
-  background: var(--ars-node);
+  background: var(--border-subtle);
 }
 
 @media (prefers-reduced-motion: reduce) {

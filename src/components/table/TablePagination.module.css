@@ -8,18 +8,18 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-top: var(--border-thin);
-  background: var(--ars-paper);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-base);
   flex-wrap: wrap;
 }
 
 .paginationInfo {
   font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
 }
 
 .paginationInfo strong {
-  color: var(--ars-ink);
+  color: var(--ink-primary);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -33,10 +33,10 @@
   min-width: 32px;
   height: 32px;
   padding: 0 var(--space-2);
-  border: 1px solid var(--ars-node);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--ars-paper);
-  color: var(--ars-ink);
+  background: var(--control-bg);
+  color: var(--control-text);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
@@ -52,32 +52,32 @@
 }
 
 .paginationBtn:hover:not(:disabled) {
-  background: var(--ars-paper-alt);
-  border-color: var(--ars-ink-muted);
-  color: var(--ars-ink);
+  background: var(--control-bg-hover);
+  border-color: var(--border-strong);
+  color: var(--ink-primary);
 }
 
 .paginationBtn:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 .paginationBtn:disabled {
-  color: var(--ars-ink-muted);
-  background: var(--ars-paper-alt);
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 .paginationBtnActive {
-  background: var(--ars-blue);
-  border-color: var(--ars-blue);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
 .paginationBtnActive:hover:not(:disabled) {
-  background: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .paginationEllipsis {
@@ -86,7 +86,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   font-size: var(--font-size-sm);
 }
 

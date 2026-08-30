@@ -4,7 +4,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-6) 0 var(--space-5);
-  border-bottom: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: var(--space-5);
   position: relative;
 }
@@ -16,7 +16,7 @@
   bottom: -1px;
   width: 52px;
   height: 3px;
-  background: var(--ph-accent, var(--ars-blue));
+  background: var(--ph-accent, var(--accent-primary));
   border-radius: var(--radius-sm);
 }
 
@@ -29,7 +29,7 @@
 
 .breadcrumbs {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   font-family: var(--font-family-mono);
   letter-spacing: 0.04em;
   margin-bottom: var(--space-1);
@@ -39,7 +39,7 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   font-family: var(--font-family-mono);
-  color: var(--ph-accent, var(--ars-blue));
+  color: var(--ph-accent, var(--accent-primary));
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -49,7 +49,7 @@
   font-family: var(--font-family-ui);
   font-size: clamp(var(--font-size-2xl), 2.5vw, var(--font-size-3xl));
   font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
+  color: var(--ink-primary);
   letter-spacing: -0.01em;
   margin: 0;
   line-height: 1.1;

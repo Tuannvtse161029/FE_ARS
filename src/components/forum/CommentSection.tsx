@@ -427,7 +427,10 @@ export const CommentSection = ({
                   currentUserId != null && comment.userId === currentUserId;
                 const isEditing = editingId === (comment.id || comment.forumCommentId);
                 return (
-                  <li key={comment.id} className={styles.commentItem}>
+                  <li
+                    key={comment.id}
+                    className={`${styles.commentItem} ${comment.replyId ? styles.replyItem : ''}`}
+                  >
                     <div className={styles.commentMeta}>
                       <button
                         type="button"

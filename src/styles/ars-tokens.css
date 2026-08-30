@@ -13,6 +13,31 @@
  */
 
 :root {
+  /* Archive Dusk compatibility aliases for legacy modules. New work should
+     use semantic names directly. */
+  --ars-paper: var(--control-bg);
+  --ars-paper-alt: var(--surface-subtle);
+  --ars-paper-inset: var(--surface-sunken);
+  --ars-paper-card: var(--surface-raised);
+  --ars-paper-rule: var(--border-subtle);
+  --ars-ink: var(--control-text);
+  --ars-ink-soft: var(--ink-secondary);
+  --ars-ink-muted: var(--ink-muted);
+  --ars-network: var(--border-subtle);
+  --ars-node: var(--border-strong);
+  --ars-blue: var(--accent-primary);
+  --ars-blue-action: var(--accent-primary);
+  --ars-blue-mid: var(--accent-hover);
+  --ars-blue-light: var(--status-info-surface);
+  --ars-success: var(--status-success-text);
+  --ars-success-bg: var(--status-success-surface);
+  --ars-warning: var(--status-warning-text);
+  --ars-warning-bg: var(--status-warning-surface);
+  --ars-error: var(--status-danger-text);
+  --ars-error-bg: var(--status-danger-surface);
+  --ars-info: var(--status-info-text);
+  --ars-info-bg: var(--status-info-surface);
+
   /* ── ARS Constellation Palette ──────────────────────────── */
   /* Paper & Background */
   --ars-paper: #f4efe6;          /* Warm parchment — main canvas */
@@ -156,10 +181,14 @@
   --shadow-2xl: 0 25px 50px rgba(26, 31, 54, 0.18);
   --shadow-inner: inset 0 2px 4px rgba(26, 31, 54, 0.05);
 
-  /* ── Transitions ─────────────────────────────────────────── */
-  --transition-fast: var(--duration-fast) ease;
-  --transition-normal: var(--duration-standard) ease;
-  --transition-slow: var(--duration-emphasis) ease-out;
+  /* ── Motion ──────────────────────────────────────────────── */
+  /* Shared UI feedback uses one restrained deceleration curve. The three
+     durations cover immediate acknowledgement, routine state changes, and
+     bounded overlays without making navigation or confirmed actions wait. */
+  --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: var(--duration-fast) var(--motion-ease-standard);
+  --transition-normal: var(--duration-standard) var(--motion-ease-standard);
+  --transition-slow: var(--duration-emphasis) var(--motion-ease-standard);
 
   /* ── Layout ─────────────────────────────────────────────── */
   --sidebar-width: 232px;
@@ -182,137 +211,137 @@
   --section-marker-weight: 700;
   --section-marker-tracking: 0.12em;
 
-  /* ── Semantic Interface Roles ───────────────────────────── */
-  /* Semantic tokens are authoritative; --ars-* values below remain aliases. */
-  --surface-canvas: var(--ars-paper);
-  --surface-subtle: var(--ars-paper-alt);
-  --surface-raised: #fbf8f1;
-  --surface-inset: var(--ars-paper-inset);
-  --surface-card: var(--ars-paper-card);
-  --surface-inverse: var(--ars-ink);
-  --surface-selected: #e8eaf4;
-  --text-primary: var(--ars-ink);
-  --text-secondary: var(--ars-ink-soft);
-  --text-muted: var(--ars-ink-muted);
-  --text-metadata: var(--text-muted);
-  --text-inverse: var(--ars-paper);
-  --border-subtle: rgba(45, 53, 97, 0.14);
-  --border-strong: rgba(45, 53, 97, 0.28);
-  --action-primary: var(--ars-blue-action);
-  --action-primary-hover: var(--ars-blue-mid);
-  --focus-ring: #005bb5;
-  --status-success-text: var(--ars-success);
-  --status-success-surface: var(--ars-success-bg);
-  --status-warning-text: var(--ars-warning);
-  --status-warning-surface: var(--ars-warning-bg);
-  --status-danger-text: var(--ars-error);
-  --status-danger-surface: var(--ars-error-bg);
-  --status-info-text: var(--ars-info);
-  --status-info-surface: var(--ars-info-bg);
-  --status-neutral-text: var(--ars-ink-muted);
-  --status-neutral-surface: var(--ars-paper-alt);
+  /* ── Cozy Study semantic interface roles ───────────────── */
+  /* Warm white is the default canvas. Yellow behaves like desk-lamp light:
+     focused on actions, selections, and localized illumination. */
+  --app-canvas: #fffdf8;
+  --app-canvas-subtle: #fff8e8;
+  --surface-base: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f5f1e8;
+  --surface-paper: #fff9e8;
+  --surface-paper-muted: #f8e8b6;
+  --surface-selected: #fff0b8;
+  --post-surface: #ffffff;
+  --comment-surface: #fff9e8;
+  --reply-surface: #f6f8f5;
+  --composer-surface: #ffffff;
+  --table-header: #1d1c19;
+  --table-row: #ffffff;
+  --table-row-alt: #fbf8f1;
+  --sidebar-bg: #1b1a17;
+  --sidebar-raised: #2a2822;
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --control-bg: #ffffff;
+  --control-bg-hover: #fff8e4;
+  --control-text: #1d1c19;
+  --ink-primary: #1d1c19;
+  --ink-secondary: #4f4b42;
+  --ink-muted: #6f695d;
+  --ink-on-paper: #1d1c19;
+  --ink-on-dark: #fffdf8;
+  --border-subtle: rgba(29, 28, 25, 0.12);
+  --border-strong: rgba(29, 28, 25, 0.24);
+  --accent-primary: #e2ad2f;
+  --accent-hover: #c78e12;
+  --accent-ochre: #9b6418;
+  --accent-sage: #4f765d;
+  --accent-teal: #247a70;
+  --accent-indigo: #49628e;
+  --accent-coral: #bd624d;
+  --focus-ring: #a66f0a;
+  --shadow-color: rgba(37, 31, 18, 0.16);
+  --status-success-text: #28563d;
+  --status-success-surface: #e3f1e7;
+  --status-warning-text: #70490e;
+  --status-warning-surface: #fff0bf;
+  --status-danger-text: #7b3428;
+  --status-danger-surface: #f9e3dd;
+  --status-info-text: #294d72;
+  --status-info-surface: #e5eef7;
+  --status-neutral-text: var(--ink-secondary);
+  --status-neutral-surface: var(--surface-sunken);
+  --surface-canvas: var(--app-canvas);
+  --surface-subtle: var(--app-canvas-subtle);
+  --surface-inset: var(--surface-sunken);
+  --surface-card: var(--surface-raised);
+  --surface-inverse: var(--surface-paper);
+  --text-primary: var(--ink-primary);
+  --text-secondary: var(--ink-secondary);
+  --text-muted: var(--ink-muted);
+  --text-metadata: var(--ink-muted);
+  --text-inverse: var(--ink-on-paper);
+  --action-primary: var(--accent-primary);
+  --action-primary-hover: var(--accent-hover);
   --status-positive: var(--status-success-text);
   --status-attention: var(--status-warning-text);
   --status-critical: var(--status-danger-text);
-  --duration-fast: 120ms;
-  --duration-standard: 180ms;
-  --duration-emphasis: 350ms;
-  --motion-feedback: var(--duration-fast) ease;
-  --motion-state: var(--duration-standard) ease;
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --duration-emphasis: 250ms;
+  --motion-feedback: var(--duration-fast) var(--motion-ease-standard);
+  --motion-state: var(--duration-standard) var(--motion-ease-standard);
   --control-height-sm: 28px;
   --control-height-md: 36px;
   --control-height-lg: 40px;
   --control-height-touch: 44px;
 
-  /* ── Theme System (Light / Night) ─────────────────────────── */
-  /* The project ships a light theme by default and a `night` theme that the
-     MainLayout toggle flips by setting `data-theme="night"` on the root
-     <html>. Tokens below drive the canvas + content surface treatments so
-     individual feature pages don't have to author their own dark variant.
-
-     Color rationale (Agent 38 - Theme & Collapse):
-       --content-bg-night          #0F172A  (slate-900) — soft dark canvas,
-                                       NOT pure black. Easier on the eyes
-                                       for users who read at night.
-       --content-bg-night-elevated #1E293B  (slate-800) — slightly raised
-                                       surfaces (cards, filter panels) so
-                                       they read on top of the canvas.
-       --content-text-night       #E2E8F0  (slate-200) — body text on
-                                       #0F172A passes WCAG AA at 13.84:1.
-       --content-text-muted-night #94A3B8  (slate-400) — secondary text on
-                                       #0F172A passes WCAG AA at 6.41:1.
-       --content-border-night     #334155  (slate-700) — subtle hairline
-                                       rules between sections.
-       --content-danger-surface-night #3F1D1D — error banner surface; text
-                                       #FCA5A5 reads at 7.10:1 (AA).
-       --content-danger-text-night #FCA5A5 — error banner text on
-                                       #3F1D1D. */
-  --content-bg-light: #f4efe6;
-  --content-bg-night: #0f172a;
-  --content-bg-night-elevated: #1e293b;
-  --content-text-light: #2d3561;
-  --content-text-muted-light: #59627a;
-  --content-text-night: #e2e8f0;
-  --content-text-muted-night: #94a3b8;
-  --content-border-light: rgba(45, 53, 97, 0.14);
-  --content-border-night: #334155;
-  --content-danger-surface-light: #fee2e2;
-  --content-danger-text-light: #991b1b;
-  --content-danger-surface-night: #3f1d1d;
-  --content-danger-text-night: #fca5a5;
-  --content-header-bg-light: #f4efe6;
-  --content-header-bg-night: #0f172a;
-  --content-header-border-light: rgba(45, 53, 97, 0.14);
-  --content-header-border-night: #334155;
 }
 
-/* ── Theme variants ──────────────────────────────────────────
-   Light is the default. Night is activated when the root <html> carries
-   `data-theme="night"`. The MainLayout theme toggle is responsible for
-   setting the attribute and persisting the user's choice in localStorage
-   under the key `ars_theme`. */
-:root[data-theme='night'] {
-  --surface-canvas: var(--content-bg-night);
-  --surface-subtle: var(--content-bg-night-elevated);
-  --surface-raised: var(--content-bg-night-elevated);
-  --surface-inset: var(--content-bg-night-elevated);
-  --surface-card: var(--content-bg-night-elevated);
-  --surface-inverse: var(--content-text-night);
-  --text-primary: var(--content-text-night);
-  --text-secondary: var(--content-text-night);
-  --text-muted: var(--content-text-muted-night);
-  --text-inverse: var(--content-bg-night);
-  --border-subtle: var(--content-border-night);
-  --border-strong: var(--content-border-night);
-  --status-danger-surface: var(--content-danger-surface-night);
-  --status-danger-text: var(--content-danger-text-night);
-  --status-neutral-surface: var(--content-bg-night-elevated);
-  --status-neutral-text: var(--content-text-muted-night);
+/* ── Intentional theme variants ─────────────────────────── */
+:root[data-theme='archive-dusk'] {
+  color-scheme: dark;
+  --app-canvas: #2a2518;
+  --app-canvas-subtle: #332c1c;
+  --surface-base: #352e1e;
+  --surface-raised: #423820;
+  --surface-sunken: #211d13;
+  --surface-paper: #f2e6bd;
+  --surface-paper-muted: #d8c58b;
+  --surface-selected: #55451f;
+  --post-surface: #3c331f;
+  --comment-surface: #302a1c;
+  --reply-surface: #292419;
+  --composer-surface: #473b21;
+  --table-header: #171510;
+  --table-row: #37301f;
+  --table-row-alt: #312a1b;
+  --sidebar-bg: #181610;
+  --sidebar-raised: #30291a;
+  --header-bg: #282216;
+  --control-bg: #3a321f;
+  --control-bg-hover: #463b22;
+  --control-text: #f4e9c9;
+  --ink-primary: #f4e9c9;
+  --ink-secondary: #d2c391;
+  --ink-muted: #ae9d6d;
+  --ink-on-paper: #2a2416;
+  --ink-on-dark: #f4e9c9;
+  --border-subtle: rgba(232, 217, 164, 0.16);
+  --border-strong: rgba(232, 217, 164, 0.32);
+  --accent-primary: #d6a841;
+  --accent-hover: #e2b956;
+  --accent-ochre: #b9782a;
+  --accent-sage: #88a175;
+  --accent-teal: #72aaa2;
+  --accent-indigo: #91a6d1;
+  --accent-coral: #d88974;
+  --focus-ring: #e2b956;
+  --shadow-color: rgba(15, 12, 7, 0.36);
+  --status-success-text: #c7d8b3;
+  --status-success-surface: #34402a;
+  --status-warning-text: #f0cf83;
+  --status-warning-surface: #4a371c;
+  --status-danger-text: #efb09d;
+  --status-danger-surface: #4b2922;
+  --status-info-text: #c5d8ee;
+  --status-info-surface: #293c50;
 }
 
-/* Respect prefers-color-scheme: dark ONLY on first visit. The MainLayout
-   applies a saved user choice (from localStorage) AFTER the bootstrap
-   effect reads it, which writes `data-theme="night"` (or `"light"`) on the
-   root. The OS-level preference remains the bootstrap default for new
-   sessions. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --surface-canvas: var(--content-bg-night);
-    --surface-subtle: var(--content-bg-night-elevated);
-    --surface-raised: var(--content-bg-night-elevated);
-    --surface-inset: var(--content-bg-night-elevated);
-    --surface-card: var(--content-bg-night-elevated);
-    --text-primary: var(--content-text-night);
-    --text-secondary: var(--content-text-night);
-    --text-muted: var(--content-text-muted-night);
-    --text-inverse: var(--content-bg-night);
-    --border-subtle: var(--content-border-night);
-    --border-strong: var(--content-border-night);
-    --status-danger-surface: var(--content-danger-surface-night);
-    --status-danger-text: var(--content-danger-text-night);
-    --status-neutral-surface: var(--content-bg-night-elevated);
-    --status-neutral-text: var(--content-text-muted-night);
-  }
+:root[data-theme='paper-day'] {
+  color-scheme: light;
+  --app-canvas: #fffdf8;
+  --app-canvas-subtle: #fff8e8;
 }
 
 /* ── Reduced Motion ─────────────────────────────────────── */
@@ -349,26 +378,26 @@
   --spacing-24: var(--space-24);
 
   /* Legacy color aliases (for modules not yet migrated) */
-  --color-primary: var(--ars-blue);
-  --color-primary-light: var(--ars-blue-mid);
-  --color-primary-dark: var(--ars-ink);
-  --color-primary-hover: var(--ars-blue-mid);
+  --color-primary: var(--accent-primary);
+  --color-primary-light: var(--accent-hover);
+  --color-primary-dark: var(--ink-primary);
+  --color-primary-hover: var(--accent-hover);
   --color-secondary: var(--ars-reviewer);
   --color-secondary-light: var(--ars-reviewer-mid);
   --color-secondary-dark: var(--ars-reviewer);
   --color-accent: var(--ars-researcher);
   --color-accent-light: var(--ars-researcher-mid);
   --color-accent-dark: var(--ars-researcher);
-  --color-background: var(--ars-paper);
-  --color-surface: var(--ars-paper-alt);
-  --color-surface-elevated: var(--ars-paper);
-  --color-text-primary: var(--ars-ink);
-  --color-text-secondary: var(--ars-ink-soft);
-  --color-text-muted: var(--ars-ink-muted);
-  --color-text-inverse: var(--ars-paper);
-  --color-border: var(--ars-network);
-  --color-border-light: var(--ars-node);
-  --color-border-focus: var(--ars-blue-mid);
+  --color-background: var(--app-canvas);
+  --color-surface: var(--surface-base);
+  --color-surface-elevated: var(--surface-raised);
+  --color-text-primary: var(--ink-primary);
+  --color-text-secondary: var(--ink-secondary);
+  --color-text-muted: var(--ink-muted);
+  --color-text-inverse: var(--ink-on-paper);
+  --color-border: var(--border-subtle);
+  --color-border-light: var(--border-strong);
+  --color-border-focus: var(--focus-ring);
   --color-success: var(--ars-success);
   --color-success-light: var(--ars-success-bg);
   --color-success-bg: var(--ars-success-bg);

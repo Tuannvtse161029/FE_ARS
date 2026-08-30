@@ -1,4 +1,6 @@
 node_modules
+.pnpm-store/
+pnpm-workspace.yaml
 dist
 .DS_Store
 *.local
@@ -20,7 +22,8 @@ test-results/
 # `docs/local-only/` stays ignored (contains real BE secret material).
 # Generate-on-the-fly artifacts in docs/BACKEND_REQUESTS.md, docs/test_cases.xlsx,
 # docs/test-failure-log.md MUST NOT be committed — see ! rules below.
-docs/
+# docs/* keeps the directory traversable for explicit checked-in engineering docs.
+docs/*
 docs/BACKEND_REQUESTS.md
 docs/test_cases.xlsx
 docs/test-failure-log.md
@@ -35,6 +38,16 @@ appsettings.*.local.json
 # Un-ignore the agent-test-strategy-github-ci deliverables so they ship with the repo
 !docs/TESTING_STRATEGY.md
 !docs/GITHUB_CI_SETUP.md
+!docs/ORCID_OPENALEX_SWAGGER_CONTRACT.md
+!docs/ARCHIVE_DUSK_UI_AUDIT.md
+!docs/ARCHIVE_DUSK_DESIGN_SYSTEM.md
+!docs/ARCHIVE_DUSK_FINAL_CRITIQUE.md
+!docs/LECTURER_RESEARCH_WORKFLOW_API_AUDIT.md
+!docs/LECTURER_RESEARCH_WORKFLOW_PLAN.md
+!docs/LECTURER_RESEARCH_WORKFLOW_DECISIONS.md
+!docs/LECTURER_RESEARCH_WORKFLOW_FILE_OWNERSHIP.md
+!docs/LECTURER_RESEARCH_WORKFLOW_BACKEND_REQUEST.md
+!docs/LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md
 
 # ==========================================
 # Local Scripts, Code Execution & Text Artifacts

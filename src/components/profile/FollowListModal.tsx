@@ -111,6 +111,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           <div className={styles.modalTabs}>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'followers'}
               className={`${styles.tabBtn} ${activeTab === 'followers' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('followers')}
             >
@@ -118,6 +120,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'following'}
               className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('following')}
             >
@@ -129,7 +133,12 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           </button>
         </div>
 
-        <div className={styles.modalBody}>
+        <div
+          key={activeTab}
+          className={styles.modalBody}
+          role="tabpanel"
+          aria-label={activeTab === 'followers' ? 'Followers' : 'Following'}
+        >
           {isLoading ? (
             <div className={styles.loadingWrapper} role="status" aria-live="polite">
               <Loader2 size={16} className={styles.spinner} aria-hidden />

@@ -44,12 +44,14 @@ const SeminarWorkspace = lazy(() => import('./pages/Lecturer/SeminarWorkspace').
 const ResearchGroup = lazy(() => import('./pages/Lecturer/ResearchGroup').then((m) => ({ default: m.ResearchGroup })));
 const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilestones').then((m) => ({ default: m.ConfigureMilestones })));
 const EvaluateReports = lazy(() => import('./pages/Lecturer/EvaluateReports').then((m) => ({ default: m.EvaluateReports })));
+const PhaseReports = lazy(() => import('./pages/Lecturer/PhaseReports').then((m) => ({ default: m.PhaseReports })));
 const LecturerGroupDetail = lazy(() => import('./pages/Lecturer/GroupDetail').then((m) => ({ default: m.LecturerGroupDetail })));
 const GuidanceProjects = lazy(() => import('./pages/Lecturer/GuidanceProjects').then((m) => ({ default: m.GuidanceProjects })));
 // Agent lecturer-navigation — top-level Lecturer surface for Research Topics.
 // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
 const ResearchTopicsPage = lazy(() => import('./pages/Lecturer/ResearchTopics').then((m) => ({ default: m.ResearchTopicsPage })));
 const LecturerLearningMaterialsPage = lazy(() => import('./pages/Lecturer/LearningMaterials').then((m) => ({ default: m.LecturerLearningMaterialsPage })));
+const LecturerSharedMaterialsPage = lazy(() => import('./pages/Lecturer/SharedMaterials').then((m) => ({ default: m.LecturerSharedMaterialsPage })));
 const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').then((m) => ({ default: m.SubmitReport })));
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
@@ -148,10 +150,12 @@ const App = () => {
                   <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
                   <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
                   <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
+                  <Route path={ROUTES.LECTURER_PHASE_REPORTS} element={<PhaseReports />} />
                   <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
                   <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
                   <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
                   <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<LecturerLearningMaterialsPage />} />
+                  <Route path={ROUTES.LECTURER_SHARED_MATERIALS} element={<LecturerSharedMaterialsPage />} />
                 </Route>
 
                 {/* Seminar workspace is shared by Lecturer (manage) and

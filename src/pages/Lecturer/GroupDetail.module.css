@@ -769,6 +769,11 @@
   outline-offset: 2px;
 }
 
+.inviteStudentsBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .openLinkPushRight {
   margin-left: auto;
 }

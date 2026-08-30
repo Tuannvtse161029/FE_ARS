@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, X } from 'lucide-react';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
+import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -82,6 +83,26 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
                 <dt>Status</dt>
                 <dd><span className={`${styles.statusBadge} ${STATUS_CLASS[request.status]}`}>{request.status}</span></dd>
               </div>
+              <div className={styles.fullWidth}>
+                <dt>ORCID identity connection</dt>
+                {request.isOrcidVerified === true ? (
+                  <dd className={styles.orcidIdentity}>
+                    <span>Connected</span>
+                    <OrcidIdentityMarker
+                      orcidId={request.orcidId}
+                      isOrcidVerified={request.isOrcidVerified}
+                    />
+                    {request.orcidVerifiedAt ? (
+                      <span>Linked {new Date(request.orcidVerifiedAt).toLocaleDateString('vi-VN')}</span>
+                    ) : null}
+                  </dd>
+                ) : (
+                  <dd className={styles.missing}>No confirmed ORCID connection</dd>
+                )}
+                <p className={styles.identityDisclosure}>
+                  An ORCID connection is an identity signal; approving this request remains an ARS role decision.
+                </p>
+              </div>
               {request.notes ? <div className={styles.fullWidth}><dt>Decision notes</dt><dd>{request.notes}</dd></div> : null}
             </dl>
           </div>
@@ -105,7 +126,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
 
         <footer className={styles.footer}>
           <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">Close</button>
-          {request.orcidId && onOpenOrcidCheck ? (
+          {request.isOrcidVerified === true && request.orcidId && onOpenOrcidCheck ? (
             <button className={`${styles.button} ${styles.primaryButton}`} onClick={onOpenOrcidCheck} type="button">
               Check ORCID
             </button>

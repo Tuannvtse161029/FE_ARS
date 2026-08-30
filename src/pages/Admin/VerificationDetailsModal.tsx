@@ -1,17 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { ExternalLink, FileText, ShieldCheck, X } from 'lucide-react';
+import { ExternalLink, FileText, X } from 'lucide-react';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import type { User } from '../../types/auth';
 import { displayAccountTier } from '../../services/user.service';
-import { isValidOrcidFormat } from '../../services/orcid.service';
 import styles from './AdminDialog.module.css';
 
 interface Props {
   user: User | null;
   open: boolean;
   onClose: () => void;
-  /** Opens the AI ORCID Check modal — only relevant for Reviewer role requests. */
-  onOpenOrcidCheck?: () => void;
 }
 
 // Read-only details modal for the User-driven Role Requests page (Agent 40).
@@ -24,7 +21,6 @@ export const VerificationDetailsModal = ({
   user,
   open,
   onClose,
-  onOpenOrcidCheck,
 }: Props) => {
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -41,10 +37,6 @@ export const VerificationDetailsModal = ({
   if (!open || !user) return null;
 
   const proofUrl = user.proofDocumentUrl ?? null;
-  const orcidId = user.orcidId ?? null;
-  const normalizedOrcid = orcidId && isValidOrcidFormat(orcidId) ? orcidId : null;
-  const isReviewer = (user.roleName ?? '').toLowerCase() === 'reviewer';
-  const showOrcidCheck = Boolean(onOpenOrcidCheck) && isReviewer && Boolean(normalizedOrcid);
 
   return (
     <div
@@ -81,13 +73,12 @@ export const VerificationDetailsModal = ({
               <div><dt>Account tier</dt><dd>{displayAccountTier(user.accountTier)}</dd></div>
               <div><dt>Verification status</dt><dd>{user.verificationStatus ?? 'Pending'}</dd></div>
               <div><dt>Account active</dt><dd>{user.isActive ? 'Active' : 'Suspended'}</dd></div>
-              <div>
-                <dt>ORCID iD</dt>
-                <dd>
-                  {normalizedOrcid ?? orcidId ?? (
-                    <span className={styles.missing}>Not provided</span>
-                  )}
-                </dd>
+              <div className={styles.fullWidth}>
+                <dt>ORCID identity connection</dt>
+                <dd className={styles.missing}>Connection status is not provided by this verification response.</dd>
+                <p className={styles.identityDisclosure}>
+                  An ORCID connection is an identity signal; approving this request remains an ARS role decision.
+                </p>
               </div>
               <div><dt>Created</dt><dd>{user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}</dd></div>
             </dl>
@@ -119,18 +110,6 @@ export const VerificationDetailsModal = ({
           <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">
             Close
           </button>
-          {showOrcidCheck && (
-            <button
-              className={`${styles.button} ${styles.primaryButton}`}
-              onClick={() => onOpenOrcidCheck?.()}
-              type="button"
-              data-testid="verification-orcid-check-button"
-              title="AI ORCID Check — fetches public ORCID/OpenAlex metadata for this Reviewer"
-            >
-              <ShieldCheck size={14} />
-              AI ORCID Check
-            </button>
-          )}
         </footer>
       </section>
     </div>

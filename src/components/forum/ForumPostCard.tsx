@@ -14,7 +14,7 @@ import { useForumComments } from '../../hooks/useForumComments';
 import { forumPostService } from '../../services/forumPost.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
-import { initialsFromName, formatRelativeTime, PALETTE } from '../../pages/Forum/forum.utils';
+import { initialsFromName, formatRelativeTime } from '../../pages/Forum/forum.utils';
 import styles from './ForumPostCard.module.css';
 
 export interface ForumPostCardProps {
@@ -60,8 +60,6 @@ export const ForumPostCard = ({
     error: errorComments,
     refetch: refetchComments,
   } = useForumComments(post.id);
-
-  const avatarColor = PALETTE[post.id % PALETTE.length];
 
   const authorLabel =
     (typeof post.fullName === 'string' && post.fullName.trim()) ||
@@ -125,13 +123,15 @@ export const ForumPostCard = ({
   };
 
   return (
-    <article className={styles.card} data-component="ForumPostCard">
+    <article
+      className={`${styles.card} ${commentsCollapsed ? '' : styles.cardOpen}`}
+      data-component="ForumPostCard"
+    >
       {/* Author row */}
       <div className={styles.authorRow}>
         <button
           type="button"
           className={styles.avatarButton}
-          style={{ backgroundColor: avatarColor }}
           onClick={handleAuthorClick}
           title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
           aria-label={post.authorId ? `Open ${authorLabel}'s profile` : undefined}

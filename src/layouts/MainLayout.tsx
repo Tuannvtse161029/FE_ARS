@@ -75,18 +75,18 @@ const getStoredSidebarCollapsed = (): boolean => {
 };
 
 /* ───────────────────────────────────────────────────────────────
-   === Collapse + Dark Mode (this worker / Agent 38) ===
+   === Collapse + Archive Dusk theme ===
    Delimiter for downstream coordination. Storage keys + theme
    helpers below are owned by this worker. Other agents should
    leave the localStorage helpers and theme bootstrap alone and
    place their changes ABOVE this banner.
    ─────────────────────────────────────────────────────────────── */
 const THEME_STORAGE_KEY = 'ars_theme';
-type ThemeName = 'light' | 'night';
+type ArchiveThemeName = 'archive-dusk' | 'paper-day';
 
-const THEME_VALUES: readonly ThemeName[] = ['light', 'night'] as const;
+const THEME_VALUES: readonly ArchiveThemeName[] = ['archive-dusk', 'paper-day'] as const;
 
-const isThemeName = (value: unknown): value is ThemeName =>
+const isThemeName = (value: unknown): value is ArchiveThemeName =>
   typeof value === 'string' &&
   (THEME_VALUES as readonly string[]).includes(value);
 
@@ -95,13 +95,16 @@ const isThemeName = (value: unknown): value is ThemeName =>
  * MainLayout bootstrap effect can apply `prefers-color-scheme` only when
  * the user has not made an explicit choice.
  */
-const getStoredTheme = (): ThemeName | null => {
+const getStoredTheme = (): ArchiveThemeName | null => {
   if (typeof window === 'undefined') {
     return null;
   }
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemeName(raw) ? raw : null;
+    if (isThemeName(raw)) return raw;
+    if (raw === 'night') return 'archive-dusk';
+    if (raw === 'light') return 'paper-day';
+    return null;
   } catch {
     return null;
   }
@@ -110,23 +113,14 @@ const getStoredTheme = (): ThemeName | null => {
 /**
  * Returns the initial theme to apply on first paint. The cascade order is:
  *   1. localStorage explicit choice (user wins).
- *   2. `prefers-color-scheme: dark` for first-time visitors with no
- *      stored value.
- *   3. `light` as the final default.
+ *   2. `paper-day` for a consistent bright, welcoming first visit.
  */
-const resolveInitialTheme = (): ThemeName => {
+const resolveInitialTheme = (): ArchiveThemeName => {
   const stored = getStoredTheme();
   if (stored !== null) {
     return stored;
   }
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  ) {
-    return 'night';
-  }
-  return 'light';
+  return 'paper-day';
 };
 
 /**
@@ -137,7 +131,7 @@ const resolveInitialTheme = (): ThemeName => {
  * not want a foreground OS theme flip to silently override an
  * explicit user preference while they are mid-task.
  */
-const setStoredTheme = (theme: ThemeName): void => {
+const setStoredTheme = (theme: ArchiveThemeName): void => {
   if (typeof window === 'undefined') {
     return;
   }
@@ -149,8 +143,7 @@ const setStoredTheme = (theme: ThemeName): void => {
 };
 
 /**
- * Apply the theme by writing `data-theme="night"` (or `light`) on the
- * root `<html>` element. The matching `:root[data-theme='night']` token
+ * Apply the theme to the root `<html>` element. The matching semantic token
  * cascade lives in `src/styles/ars-tokens.css`.
  *
  * Why `<html>` rather than the MainLayout root container?
@@ -158,16 +151,16 @@ const setStoredTheme = (theme: ThemeName): void => {
  *     MainLayout (publication home, profile, dashboard, etc).
  *   - Avoids race conditions where descendant pages render before the
  *     attribute is on the layout wrapper.
- *   - The light-only public pages (Landing, Login, Register) sit ABOVE
- *     MainLayout in the route tree, so they never see this attribute.
+ *   - Public pages sit above MainLayout and use the default Archive Dusk token
+ *     values when no saved authenticated preference has been applied.
  */
-const applyThemeToRoot = (theme: ThemeName): void => {
+const applyThemeToRoot = (theme: ArchiveThemeName): void => {
   if (typeof document === 'undefined') {
     return;
   }
   document.documentElement.setAttribute('data-theme', theme);
 };
-/* === END Collapse + Dark Mode (this worker / Agent 38) === */
+/* === END Collapse + Archive Dusk theme === */
 
 const ProfileDropdown = ({
   username,
@@ -316,7 +309,7 @@ export const MainLayout = () => {
   // Theme bootstrap (this worker / Agent 38) — read the persisted choice on
   // mount and apply it to <html data-theme="..."> so token cascade flips
   // before the user sees a flash of the wrong background.
-  const [theme, setTheme] = useState<ThemeName>(() => resolveInitialTheme());
+  const [theme, setTheme] = useState<ArchiveThemeName>(() => resolveInitialTheme());
 
   useEffect(() => {
     applyThemeToRoot(theme);
@@ -324,7 +317,7 @@ export const MainLayout = () => {
   }, [theme]);
 
   const handleToggleTheme = (): void => {
-    setTheme((current) => (current === 'night' ? 'light' : 'night'));
+    setTheme((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
   };
 
   const handleToggleSidebar = (): void => {
@@ -520,6 +513,8 @@ export const MainLayout = () => {
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
           { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_SHARED_MATERIALS, label: 'Shared Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
@@ -581,6 +576,11 @@ export const MainLayout = () => {
           >
             <X size={18} />
           </button>
+        </div>
+
+        <div className={styles.roleContext}>
+          <span className={styles.roleContextLabel}>Research workspace</span>
+          <strong>{displayedRole}</strong>
         </div>
 
         <nav className={styles.sidebarNav} aria-label="Workspace navigation">
@@ -654,6 +654,31 @@ export const MainLayout = () => {
           </span>
         </div>
 
+        <div className={styles.sidebarAccount}>
+          <button
+            type="button"
+            className={styles.sidebarAccountProfile}
+            onClick={() => navigate(ROUTES.PROFILE)}
+            aria-label="Open my profile"
+            title="Open my profile"
+          >
+            <span className={styles.sidebarAvatar}>{avatarInitials}</span>
+            <span className={styles.sidebarAccountText}>
+              <strong>{displayName}</strong>
+              <small>{displayedRole}</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.sidebarLogout}
+            onClick={handleLogout}
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut size={17} />
+          </button>
+        </div>
+
       </aside>
 
       {/* Right Column (Header + Content) */}
@@ -718,15 +743,15 @@ export const MainLayout = () => {
               type="button"
               className={styles.themeToggle}
               onClick={handleToggleTheme}
-              aria-label={theme === 'night' ? 'Switch to light theme' : 'Switch to night theme'}
-              aria-pressed={theme === 'night'}
-              title={theme === 'night' ? 'Switch to light theme' : 'Switch to night theme'}
+              aria-label={theme === 'archive-dusk' ? 'Switch to Paper Day theme' : 'Switch to Archive Dusk theme'}
+              aria-pressed={theme === 'archive-dusk'}
+              title={theme === 'archive-dusk' ? 'Switch to Paper Day' : 'Switch to Archive Dusk'}
               data-testid="theme-toggle"
             >
-              {theme === 'night' ? (
-                <SunIcon size={18} aria-label="Switch to light theme" />
+              {theme === 'archive-dusk' ? (
+                <SunIcon size={18} aria-label="Switch to Paper Day theme" />
               ) : (
-                <MoonIcon size={18} aria-label="Switch to night theme" />
+                <MoonIcon size={18} aria-label="Switch to Archive Dusk theme" />
               )}
             </button>
 
@@ -807,7 +832,7 @@ export const MainLayout = () => {
         <WelcomeBackBanner />
 
         {/* Content Body */}
-        <main className={styles.contentBody}>
+        <main key={location.key} className={styles.contentBody}>
           <Outlet />
         </main>
       </div>

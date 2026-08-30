@@ -10,21 +10,21 @@
 }
 
 .error {
-  background: var(--ars-error-bg);
-  border-color: rgba(153, 27, 27, 0.2);
-  color: var(--ars-error);
+  background: var(--status-danger-surface);
+  border-color: var(--status-danger-text);
+  color: var(--status-danger-text);
 }
 
 .warning {
-  background: var(--ars-warning-bg);
-  border-color: rgba(146, 64, 14, 0.2);
-  color: var(--ars-warning);
+  background: var(--status-warning-surface);
+  border-color: var(--status-warning-text);
+  color: var(--status-warning-text);
 }
 
 .info {
-  background: var(--ars-info-bg);
-  border-color: rgba(30, 64, 175, 0.2);
-  color: var(--ars-info);
+  background: var(--status-info-surface);
+  border-color: var(--status-info-text);
+  color: var(--status-info-text);
 }
 
 .icon {

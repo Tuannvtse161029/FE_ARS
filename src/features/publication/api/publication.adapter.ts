@@ -99,7 +99,7 @@ const toPublicationPaper = (
   evaluation: DetailedEvaluation | null = null,
 ): PublicationPaper => {
   const status = assignmentStatus(request, evaluation) ?? paperStatus(paper.status);
-  const authorId = paper.authorId ?? paper.userId;
+  const authorId = paper.authorId;
   const authorName = paper.authorName?.trim();
   const reviewerName = request?.reviewerName?.trim();
   const scores: Record<string, number> = {};
@@ -127,13 +127,13 @@ const toPublicationPaper = (
     paperType: 'Not supplied',
     topics: [],
     keywords: [],
-    fileUrl: paper.fileUrl,
+    fileUrl: paper.fileUrl ?? undefined,
     version: null,
     status,
     visibility: status === 'PUBLISHED' ? 'PUBLIC' : 'PRIVATE',
     createdAt: paper.createdAt ?? '',
-    submittedAt: request?.createdAt ?? paper.createdAt,
-    publishedAt: status === 'PUBLISHED' ? paper.updatedAt ?? paper.createdAt : undefined,
+    submittedAt: request?.createdAt ?? paper.createdAt ?? undefined,
+    publishedAt: status === 'PUBLISHED' ? paper.updatedAt ?? paper.createdAt ?? undefined : undefined,
     reviewer: request
       ? {
           reviewerName:
@@ -247,7 +247,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
     ]);
     const requestMap = latestRequestByPaper(requests);
     return papers
-      .filter((paper) => paper.authorId === userId || paper.userId === userId)
+      .filter((paper) => paper.authorId === userId)
       .map((paper) => toPublicationPaper(paper, requestMap.get(String(paper.id))));
   }
 
@@ -298,7 +298,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
   async submitPaper(id: string): Promise<PublicationPaper> {
     const current = await paperService.getById(id);
     return toPublicationPaper(await paperService.update(id, {
-      title: current.title,
+      title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
       status: 'Waiting for Review',

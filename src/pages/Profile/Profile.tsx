@@ -49,6 +49,8 @@ import { Button } from '../../components/Button';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
+import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
+import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -560,6 +562,10 @@ export const Profile = () => {
         <div className={styles.identityText}>
           <h2 className={styles.identityName} data-testid="profile-display-name">
             {displayName}
+            <OrcidIdentityMarker
+              orcidId={profile?.orcidId}
+              isOrcidVerified={profile?.isOrcidVerified}
+            />
           </h2>
           <p className={styles.identityRole}>
             <span className={styles.roleBadge}>{roleLabel}</span>
@@ -599,6 +605,10 @@ export const Profile = () => {
           </div>
         </div>
       </section>
+
+      {isOwner && roleName !== 'Admin' && (
+        <OrcidIdentityPanel required={roleName === 'Reviewer'} />
+      )}
 
       {showSuccess && (
         <div data-testid="profile-success-banner">

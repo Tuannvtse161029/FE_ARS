@@ -6,11 +6,108 @@ body {
   font-size: var(--font-size-base);
   color: var(--text-primary);
   background-color: var(--surface-canvas);
+  background-image: radial-gradient(
+    78% 58% at 88% -8%,
+    color-mix(in srgb, var(--accent-primary) 24%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 10%, transparent) 42%,
+    transparent 76%
+  );
+  background-attachment: fixed;
   text-rendering: optimizeLegibility;
   font-variant-numeric: proportional-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: auto;
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+a {
+  color: var(--accent-primary);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+select,
+textarea {
+  color: var(--control-text);
+  background-color: var(--control-bg);
+  border-color: var(--border-subtle);
+}
+
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* Custom menus and tab views share one quiet transfer language. Native select
+   popups remain browser-owned, but their controls still transition normally. */
+[role='menu'],
+[data-testid$='dropdown'] {
+  transform-origin: top right;
+  animation: ars-menu-transfer var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+[role='tab'] {
+  transition:
+    color var(--duration-fast) var(--motion-ease-standard),
+    background-color var(--duration-fast) var(--motion-ease-standard),
+    border-color var(--duration-fast) var(--motion-ease-standard),
+    transform var(--duration-fast) var(--motion-ease-standard);
+}
+
+[role='tab']:active {
+  transform: translateY(1px);
+}
+
+[role='tabpanel'] {
+  animation: ars-tab-transfer var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ink-primary);
+}
+
+thead {
+  background: var(--table-header);
+  color: var(--ink-on-dark);
+}
+
+th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+tbody tr {
+  background: var(--table-row);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+tbody tr:nth-child(even) {
+  background: var(--table-row-alt);
+}
+
+tbody tr:hover,
+tbody tr:focus-within {
+  background: var(--surface-selected);
+}
+
+th,
+td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: middle;
 }
 
 #root {
@@ -142,6 +239,64 @@ body {
 .text-muted  { color: var(--ars-ink-muted); }
 .text-secondary { color: var(--ars-ink-soft); }
 .text-primary { color: var(--ars-ink); }
+
+/* ── Shared Motion Primitives ───────────────────────────────── */
+/* Opt-in classes for feature owners. Content stays fully visible before a
+   class is applied, so a failed script cannot conceal controls or status. */
+.motion-enter {
+  animation: ars-motion-enter var(--duration-standard) var(--motion-ease-standard) both;
+}
+
+.motion-overlay {
+  animation: ars-motion-overlay var(--duration-fast) linear both;
+}
+
+.motion-dialog {
+  animation: ars-motion-dialog var(--duration-emphasis) var(--motion-ease-standard) both;
+}
+
+.motion-status {
+  animation: ars-motion-status var(--duration-fast) var(--motion-ease-standard) both;
+}
+
+.motion-skeleton {
+  animation: ars-motion-skeleton 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes ars-motion-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ars-motion-overlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ars-motion-dialog {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ars-motion-status {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@keyframes ars-motion-skeleton {
+  from { opacity: 0.55; }
+  to { opacity: 0.9; }
+}
+
+@keyframes ars-menu-transfer {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ars-tab-transfer {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 /* ── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

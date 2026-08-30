@@ -9,8 +9,8 @@
  *     `ars.sidebar.collapsed` (and the legacy `ars_sidebar_collapsed`).
  *  2. Theme toggle flips the `data-theme` attribute on the MainLayout
  *     root and on `<html>`, persisting to `ars_theme`.
- *  3. First-visit (no stored theme) defaults to `night` when the OS
- *     reports `prefers-color-scheme: dark`, otherwise to `light`.
+ *  3. First visit defaults to `paper-day` consistently; a stored explicit
+ *     Archive Dusk choice still wins.
  *  4. Explicit user choice overrides the OS preference on the next mount.
  *  5. Both buttons expose proper `aria-label` and `aria-expanded` values.
  *
@@ -258,49 +258,49 @@ describe('MainLayout — theme toggle button (Agent 38)', () => {
     expect(btn).toBeInTheDocument();
     expect(btn.getAttribute('aria-pressed')).toBe('false');
     // Light is the default on first visit with no dark preference.
-    expect(btn.getAttribute('aria-label')).toBe('Switch to night theme');
+    expect(btn.getAttribute('aria-label')).toBe('Switch to Archive Dusk theme');
   });
 
   it('clicking the theme toggle flips data-theme on the MainLayout root and <html>', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(getRootDataTheme()).toBe('light');
-    expect(getHtmlDataTheme()).toBe('light');
+    expect(getRootDataTheme()).toBe('paper-day');
+    expect(getHtmlDataTheme()).toBe('paper-day');
 
     act(() => {
       fireEvent.click(getThemeToggle());
     });
 
-    expect(getRootDataTheme()).toBe('night');
-    expect(getHtmlDataTheme()).toBe('night');
+    expect(getRootDataTheme()).toBe('archive-dusk');
+    expect(getHtmlDataTheme()).toBe('archive-dusk');
 
     act(() => {
       fireEvent.click(getThemeToggle());
     });
 
-    expect(getRootDataTheme()).toBe('light');
-    expect(getHtmlDataTheme()).toBe('light');
+    expect(getRootDataTheme()).toBe('paper-day');
+    expect(getHtmlDataTheme()).toBe('paper-day');
   });
 
   it('persists the theme choice to localStorage under ars_theme', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(window.localStorage.getItem('ars_theme')).toBe('light');
+    expect(window.localStorage.getItem('ars_theme')).toBe('paper-day');
 
     act(() => {
       fireEvent.click(getThemeToggle());
     });
-    expect(window.localStorage.getItem('ars_theme')).toBe('night');
+    expect(window.localStorage.getItem('ars_theme')).toBe('archive-dusk');
 
     act(() => {
       fireEvent.click(getThemeToggle());
     });
-    expect(window.localStorage.getItem('ars_theme')).toBe('light');
+    expect(window.localStorage.getItem('ars_theme')).toBe('paper-day');
   });
 
-  it('first visit with prefers-color-scheme: dark defaults to night', () => {
+  it('first visit with prefers-color-scheme: dark still defaults to Paper Day', () => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: createMatchMedia(true),
@@ -310,17 +310,15 @@ describe('MainLayout — theme toggle button (Agent 38)', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(getRootDataTheme()).toBe('night');
-    expect(getHtmlDataTheme()).toBe('night');
-    // Toggle button reports aria-pressed=true reflecting the active theme.
-    expect(getThemeToggle().getAttribute('aria-pressed')).toBe('true');
-    // The icon shown is the SUN icon (i.e. click to return to light).
+    expect(getRootDataTheme()).toBe('paper-day');
+    expect(getHtmlDataTheme()).toBe('paper-day');
+    expect(getThemeToggle().getAttribute('aria-pressed')).toBe('false');
     expect(getThemeToggle().getAttribute('aria-label')).toBe(
-      'Switch to light theme',
+      'Switch to Archive Dusk theme',
     );
   });
 
-  it('first visit with prefers-color-scheme: light defaults to light', () => {
+  it('first visit with prefers-color-scheme: light defaults to Paper Day', () => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: createMatchMedia(false),
@@ -329,37 +327,38 @@ describe('MainLayout — theme toggle button (Agent 38)', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(getRootDataTheme()).toBe('light');
-    expect(getHtmlDataTheme()).toBe('light');
+    expect(getRootDataTheme()).toBe('paper-day');
+    expect(getHtmlDataTheme()).toBe('paper-day');
   });
 
   it('explicit user choice overrides prefers-color-scheme on the next mount', () => {
-    // First session: dark preference, user toggles to LIGHT.
+    // First session: dark preference still opens in Paper Day; user toggles
+    // to Archive Dusk explicitly.
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: createMatchMedia(true),
     });
     setMockAuth({ role: 'Researcher' });
     const { unmount } = renderMainLayout();
-    expect(getRootDataTheme()).toBe('night');
+    expect(getRootDataTheme()).toBe('paper-day');
 
     act(() => {
       fireEvent.click(getThemeToggle());
     });
-    expect(getRootDataTheme()).toBe('light');
-    expect(window.localStorage.getItem('ars_theme')).toBe('light');
+    expect(getRootDataTheme()).toBe('archive-dusk');
+    expect(window.localStorage.getItem('ars_theme')).toBe('archive-dusk');
     unmount();
 
-    // Second session: OS still reports dark, but stored value is "light"
+    // Second session: OS still reports dark, but the stored explicit choice
     // so the explicit user choice must win.
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
-    expect(getRootDataTheme()).toBe('light');
-    expect(getHtmlDataTheme()).toBe('light');
+    expect(getRootDataTheme()).toBe('archive-dusk');
+    expect(getHtmlDataTheme()).toBe('archive-dusk');
   });
 
-  it('explicit user choice of night overrides a light OS preference', () => {
-    // OS reports light but user already picked night.
+  it('migrates a stored legacy night choice to Archive Dusk', () => {
+    // OS reports light but user already picked the legacy night theme.
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: createMatchMedia(false),
@@ -369,11 +368,11 @@ describe('MainLayout — theme toggle button (Agent 38)', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(getRootDataTheme()).toBe('night');
-    expect(getHtmlDataTheme()).toBe('night');
+    expect(getRootDataTheme()).toBe('archive-dusk');
+    expect(getHtmlDataTheme()).toBe('archive-dusk');
   });
 
-  it('ignores an invalid stored theme value and falls back to OS preference', () => {
+  it('ignores an invalid stored theme value and falls back to Paper Day', () => {
     window.localStorage.setItem('ars_theme', 'high-contrast');
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -383,7 +382,7 @@ describe('MainLayout — theme toggle button (Agent 38)', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout();
 
-    expect(getRootDataTheme()).toBe('night');
+    expect(getRootDataTheme()).toBe('paper-day');
   });
 
   it('theme toggle button is reachable by keyboard', () => {

@@ -1,15 +1,48 @@
 .page {
-  --ink: #18213e;
-  --ink-muted: #53607a;
-  --paper: #f7f6f1;
-  --paper-deep: #e9e7de;
-  --blue: #007aff;
-  --blue-dark: #005ec4;
-  --rule: rgba(24, 33, 62, 0.18);
+  --ink: var(--ink-primary);
+  --ink-muted: var(--ink-secondary);
+  --paper: var(--app-canvas);
+  --paper-deep: var(--app-canvas-subtle);
+  --blue: var(--accent-primary);
+  --blue-dark: var(--accent-hover);
+  --rule: var(--border-subtle);
   min-height: 100vh;
   color: var(--ink);
   background: var(--paper);
 }
+
+/* ── Archive Dusk editorial entrance ───────────────────── */
+.page { background: var(--app-canvas); color: var(--ink-primary); }
+.page :focus-visible { outline-color: var(--focus-ring); }
+.skipLink { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.header, .hero, .footer { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.header { border-color: var(--border-subtle); }
+.navigation a, .footer nav a { color: var(--ink-secondary); }
+.navigation a:hover, .footer nav a:hover { color: var(--accent-primary); }
+.loginButton, .primaryButton { color: var(--ink-on-paper); background: var(--accent-primary); }
+.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); transform: none; }
+.heroCopy .issueLine, .boundariesInner .issueLine { color: var(--accent-primary); }
+.heroLead { color: var(--ink-secondary); }
+.textLink { color: var(--ink-on-dark); }
+.dossier {
+  border-top-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+  background: var(--surface-paper);
+  box-shadow: 14px 16px 0 var(--shadow-color);
+}
+.dossierHeader { color: var(--accent-ochre); border-color: color-mix(in srgb, var(--ink-on-paper) 22%, transparent); }
+.dossier > p, .dossierList dd { color: color-mix(in srgb, var(--ink-on-paper) 72%, transparent); }
+.dossierList, .dossierList div { border-color: color-mix(in srgb, var(--ink-on-paper) 22%, transparent); }
+.statement, .workflowSection, .faqSection { color: var(--ink-primary); }
+.statement .issueLine, .sectionHeading .issueLine, .faqIntro .issueLine,
+.workflowNumber, .workspace svg, .faqList summary::after { color: var(--accent-primary); }
+.statement > p, .workflowList p, .workspace p, .faqList p { color: var(--ink-secondary); }
+.boundariesSection { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.boundariesInner li { color: var(--ink-secondary); border-color: var(--border-subtle); }
+.boundariesInner svg { color: var(--accent-sage); }
+.workspacesSection { background: var(--app-canvas-subtle); }
+.workspace { background: var(--surface-base); border-color: var(--border-subtle); }
+.workspaceGrid, .workflowList, .workflowList li, .faqList, .faqList details { border-color: var(--border-subtle); }
 
 .page * {
   box-sizing: border-box;
@@ -26,7 +59,7 @@
   left: 12px;
   z-index: 100;
   padding: 10px 14px;
-  color: #fff;
+  color: var(--ink-on-dark);
   background: var(--ink);
   text-decoration: none;
   transform: translateY(-180%);
@@ -38,9 +71,9 @@
 }
 
 .header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  background: #2d3561;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--ink-on-dark);
+  background: var(--sidebar-bg);
 }
 
 .headerInner,
@@ -114,7 +147,7 @@
   gap: 9px;
   padding: 0 18px;
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--ink-on-paper);
   background: var(--blue);
   font-size: 0.87rem;
   font-weight: 750;
@@ -131,8 +164,8 @@
 }
 
 .hero {
-  color: #fff;
-  background: #2d3561;
+  color: var(--ink-on-dark);
+  background: var(--sidebar-bg);
 }
 
 .heroInner {
@@ -155,7 +188,7 @@
 }
 
 .heroCopy .issueLine {
-  color: #b9cbff;
+  color: var(--accent-primary);
 }
 
 .heroCopy h1,
@@ -179,7 +212,7 @@
 .heroLead {
   max-width: 620px;
   margin: 0;
-  color: #d4dcf5;
+  color: var(--ink-secondary);
   font-size: 1.06rem;
   line-height: 1.75;
 }
@@ -201,7 +234,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #fff;
+  color: var(--ink-on-dark);
   font-size: 0.88rem;
   font-weight: 700;
   text-decoration: underline;
@@ -209,7 +242,7 @@
 }
 
 .dossier {
-  border-top: 4px solid #94b3ff;
+  border-top: 4px solid var(--accent-primary);
   padding: 27px 29px 24px;
   color: var(--ink);
   background: var(--surface-raised);
@@ -223,7 +256,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #3c4f85;
+  color: var(--accent-ochre);
   font-size: 0.73rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -354,8 +387,8 @@
 
 .boundariesSection {
   padding: 92px 0;
-  color: #fff;
-  background: #323964;
+  color: var(--ink-on-dark);
+  background: var(--surface-sunken);
 }
 
 .boundariesInner {
@@ -365,7 +398,7 @@
 }
 
 .boundariesInner .issueLine {
-  color: #b9cbff;
+  color: var(--accent-primary);
 }
 
 .boundariesSection h2 {
@@ -380,22 +413,22 @@
 
 .boundariesInner li {
   padding: 18px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   gap: 14px;
-  color: #e1e6f8;
+  color: var(--ink-secondary);
   font-size: 0.96rem;
   line-height: 1.6;
 }
 
 .boundariesInner li:last-child {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .boundariesInner svg {
   flex: 0 0 auto;
   margin-top: 3px;
-  color: #9ab8ff;
+  color: var(--accent-sage);
 }
 
 .workspacesSection {
@@ -415,7 +448,7 @@
   padding: 27px 25px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--surface-base);
 }
 
 .workspace svg {
@@ -490,13 +523,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  background: #2d3561;
+  color: var(--ink-on-dark);
+  background: var(--sidebar-bg);
   text-align: center;
 }
 
 .ctaSection > svg {
-  color: #b9cbff;
+  color: var(--accent-primary);
 }
 
 .ctaSection h2 {
@@ -508,7 +541,7 @@
 .ctaSection p {
   max-width: 620px;
   margin: 0;
-  color: #d4dcf5;
+  color: var(--ink-secondary);
   font-size: 0.95rem;
   line-height: 1.7;
 }
@@ -518,8 +551,8 @@
 }
 
 .footer {
-  color: #fff;
-  background: #18213e;
+  color: var(--ink-on-dark);
+  background: var(--sidebar-bg);
 }
 
 .footerInner {
@@ -545,7 +578,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 22px;
-  color: #cbd3ec;
+  color: var(--ink-secondary);
 }
 
 @media (max-width: 900px) {
@@ -718,3 +751,62 @@
     transition: none;
   }
 }
+
+/* Cozy study-light cascade: warm white carries the page while a restrained
+   yellow glow suggests a desk lamp without reducing text contrast. */
+.page {
+  background-color: var(--app-canvas);
+  background-image: radial-gradient(
+    72% 34% at 86% 7%,
+    color-mix(in srgb, var(--accent-primary) 30%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 12%, transparent) 46%,
+    transparent 78%
+  );
+  color: var(--ink-primary);
+}
+.page :focus-visible { outline-color: var(--focus-ring); }
+.skipLink { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.header, .footer { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: var(--ink-primary);
+  background: transparent;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  width: min(820px, 72vw);
+  aspect-ratio: 1.45;
+  top: -42%;
+  right: -12%;
+  border-radius: 0 0 0 78%;
+  background: color-mix(in srgb, var(--accent-primary) 13%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  pointer-events: none;
+}
+.heroInner { position: relative; z-index: 1; }
+.header { border-color: var(--border-subtle); }
+.navigation a, .footer nav a { color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent); }
+.navigation a:hover, .footer nav a:hover { color: var(--accent-primary); }
+.loginButton, .primaryButton { color: var(--ink-on-paper); background: var(--accent-primary); }
+.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); transform: none; }
+.heroCopy .issueLine { color: var(--accent-ochre); }
+.boundariesInner .issueLine { color: var(--accent-primary); }
+.heroLead { color: var(--ink-secondary); }
+.textLink { color: var(--ink-primary); }
+.dossier { border: 1px solid var(--border-subtle); border-top: 4px solid var(--accent-primary); color: var(--ink-on-paper); background: var(--surface-raised); box-shadow: 14px 16px 0 color-mix(in srgb, var(--accent-primary) 18%, transparent); }
+.dossierHeader { color: var(--accent-ochre); border-color: color-mix(in srgb, var(--ink-on-paper) 22%, transparent); }
+.dossier > p, .dossierList dd { color: color-mix(in srgb, var(--ink-on-paper) 72%, transparent); }
+.dossierList, .dossierList div { border-color: color-mix(in srgb, var(--ink-on-paper) 22%, transparent); }
+.statement, .workflowSection, .faqSection { color: var(--ink-primary); }
+.statement .issueLine, .sectionHeading .issueLine, .faqIntro .issueLine,
+.workflowNumber, .workspace svg, .faqList summary::after { color: var(--accent-primary); }
+.statement > p, .workflowList p, .workspace p, .faqList p { color: var(--ink-secondary); }
+.boundariesSection { color: var(--ink-on-dark); background: var(--surface-sunken); }
+.boundariesInner li { color: color-mix(in srgb, var(--ink-on-dark) 80%, transparent); border-color: color-mix(in srgb, var(--ink-on-dark) 18%, transparent); }
+.boundariesInner svg { color: var(--accent-sage); }
+.workspacesSection { background: var(--app-canvas-subtle); }
+.workspace { background: var(--surface-base); border-color: var(--border-subtle); transition: transform var(--duration-standard) var(--motion-ease-standard), box-shadow var(--duration-standard) var(--motion-ease-standard); }
+.workspace:hover { transform: translateY(-3px); box-shadow: 0 14px 34px var(--shadow-color); }
+.workspaceGrid, .workflowList, .workflowList li, .faqList, .faqList details { border-color: var(--border-subtle); }
