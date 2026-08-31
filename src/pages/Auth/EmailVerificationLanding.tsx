@@ -177,7 +177,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
         <div className={styles.page}>
           <header className={styles.logoSection}>
             <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-            <span className={styles.brandText}>Academic Research System</span>
+            <span className={styles.brandText}>Academic Research Sharing</span>
           </header>
 
           <div className={styles.body}>
@@ -196,7 +196,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
         <div className={styles.page}>
           <header className={styles.logoSection}>
             <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-            <span className={styles.brandText}>Academic Research System</span>
+            <span className={styles.brandText}>Academic Research Sharing</span>
           </header>
 
           <div className={styles.body}>
@@ -239,7 +239,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
       <div className={styles.page}>
         <header className={styles.logoSection}>
           <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-          <span className={styles.brandText}>Academic Research System</span>
+          <span className={styles.brandText}>Academic Research Sharing</span>
         </header>
 
         <div className={styles.body}>
@@ -273,7 +273,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
     <div className={styles.page}>
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research System</span>
+        <span className={styles.brandText}>Academic Research Sharing</span>
       </header>
 
       <div className={styles.pageHeader}>

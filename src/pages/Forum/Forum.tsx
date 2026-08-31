@@ -41,8 +41,8 @@ const ALL_CATEGORIES: readonly Category[] = ['All Posts', 'My Posts', 'Following
 
 // Page size for client-side pagination. The Swagger `GET /api/ForumPost`
 // endpoint doesn't declare a pageNumber/pageSize parameter, so we cap the
-// rendered list at 10 posts per page to keep the UI snappy.
-const POSTS_PER_PAGE = 10;
+// rendered list at 5 posts per page to keep the UI snappy.
+const POSTS_PER_PAGE = 5;
 
 // Constants for client-side sort options. The BE only declares a `sort`
 // query param as a string; we send these values through verbatim so a

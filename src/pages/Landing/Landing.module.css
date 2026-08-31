@@ -95,6 +95,13 @@
   gap: 28px;
 }
 
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
 .brand,
 .footerBrand {
   display: inline-flex;
