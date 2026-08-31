@@ -27,74 +27,6 @@ export interface SubFieldCreateRequest {
   description?: string | null;
 }
 
-// ── PayOS Payment ────────────────────────────────────────────────────────────
-// Shapes mirror the deployed Swagger contract at
-// https://arsplatform.onrender.com/swagger/index.html (ARSPlatform API v1).
-// Field names are taken verbatim from the OpenAPI document — do NOT rename.
-// All payment statuses below come from PayOS's documented redirect convention
-// (?status=PAID|PENDING|CANCELLED|FAILED); the BE echoes them and the FE
-// reads them at /payment/return. No backend-confirmed enum exists yet, so we
-// treat status as a string and only branch on the documented values.
-export type PayOSPaymentStatus =
-  | 'PAID'
-  | 'PENDING'
-  | 'CANCELLED'
-  | 'FAILED'
-  | 'PROCESSING'
-  | string;
-
-export interface PaymentCreateRequest {
-  amount: number;
-  description?: string | null;
-  userId?: number | null;
-  walletId?: number | null;
-  returnUrl?: string | null;
-  cancelUrl?: string | null;
-}
-
-// `/api/Payment/create-link` response. The Swagger spec marks the response as
-// `200 OK` without an explicit schema, but the BE echoes this shape (verified
-// against the previously shipped FE). `checkoutUrl` is the PayOS redirect URL
-// the browser must follow. `orderCode` is the numeric PayOS order code, used
-// as the authoritative identifier when reconciling the return URL.
-export interface PaymentLink {
-  checkoutUrl: string;
-  orderCode: number | string;
-  qrCode?: string;
-  status?: PayOSPaymentStatus;
-}
-
-// Result from `/api/Payment/success` and `/api/Payment/cancel`. The Swagger
-// spec doesn't define a schema; we declare the fields the FE actually reads.
-export interface PaymentStatusResult {
-  orderCode?: number | string;
-  status?: PayOSPaymentStatus;
-  amount?: number;
-  message?: string;
-  code?: string;
-}
-
-// PayOS webhook payload schema (backend-only; FE never receives this — kept
-// here so devs can mock the type when unit-testing webhook handlers).
-export interface PayOSWebhookData {
-  orderCode?: number;
-  amount?: number;
-  description?: string | null;
-  reference?: string | null;
-  transactionDateTime?: string | null;
-  currency?: string | null;
-  paymentLinkId?: string | null;
-  code?: string | null;
-  desc?: string | null;
-}
-
-export interface PayOSWebhookRequest {
-  code?: string | null;
-  desc?: string | null;
-  data?: PayOSWebhookData;
-  signature?: string | null;
-}
-
 // ── Follower ─────────────────────────────────────────────────────────────────
 export interface Follower {
   id?: number;
@@ -194,23 +126,4 @@ export interface CommentVote {
 export interface CommentVoteCreateRequest {
   userId: number;
   forumCommentId: number;
-}
-
-// ── Wallet ───────────────────────────────────────────────────────────────────
-export interface Wallet {
-  // `id` is the primary key; `walletId` is the BE's own identifier field
-  // returned in the Swagger response. Both are present in the JSON but are
-  // semantically distinct per the BE schema — they happen to be equal for the
-  // first wallet created for a user.
-  id: number;
-  walletId?: number;
-  userId: number;
-  balance: number;
-  currency?: string;
-  updatedAt?: string;
-}
-
-export interface WalletCreateRequest {
-  userId?: number | null;
-  balance?: number | null;
 }

@@ -313,9 +313,10 @@
 }
 
 .saveBtn:disabled {
-  background-color: var(--ars-ink-muted);
+  background-color: rgba(0, 122, 255, 0.35);
+  color: rgba(0, 122, 255, 0.7);
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 .createForm {
@@ -358,9 +359,10 @@
 }
 
 .submitBtn:disabled {
-  background-color: var(--ars-ink-muted);
+  background-color: rgba(0, 122, 255, 0.35);
+  color: rgba(0, 122, 255, 0.7);
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 .stateMessage {
@@ -402,6 +404,8 @@
 .cancelBtn:hover { background: var(--surface-selected); color: var(--ink-primary); }
 .saveBtn, .submitBtn { background: var(--accent-primary); color: var(--ink-on-paper); }
 .saveBtn:hover:not(:disabled), .submitBtn:hover:not(:disabled) { background: var(--accent-hover); transform: none; }
+.saveBtn:disabled { background: rgba(210, 168, 65, 0.3); color: rgba(210, 168, 65, 0.55); cursor: not-allowed; opacity: 1; }
+.submitBtn:disabled { background: rgba(210, 168, 65, 0.25); color: rgba(210, 168, 65, 0.6); cursor: not-allowed; opacity: 1; }
 .errorBanner { background: var(--status-danger-surface); border-color: var(--status-danger-text); color: var(--status-danger-text); }
 
 @media (max-width: 560px) {

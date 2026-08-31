@@ -292,8 +292,6 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
       return 'Paper needs revision';
     case 'review-result-available':
       return 'Review result available';
-    case 'payment-result':
-      return 'Payment update';
     case 'membership-result':
       return 'Membership update';
 
@@ -304,8 +302,6 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
       return 'Review request cancelled';
     case 'review-deadline-reminder':
       return 'Review deadline reminder';
-    case 'reviewer-payment-result':
-      return 'Wallet payment update';
 
     // Lecturer
     case 'student-report-submitted':
@@ -348,8 +344,6 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
       return 'New violation report';
     case 'account-management-event':
       return 'Account management update';
-    case 'admin-payment-issue':
-      return 'Payment issue';
 
     // Platform
     case 'role-request-accepted':

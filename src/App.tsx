@@ -6,7 +6,6 @@ import { RoleRouteGuard } from './routes/RoleRouteGuard';
 import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
-import { AppConfig } from './config/app';
 import './styles/globals.css';
 
 // Public auth pages — kept as eager imports because every cold-load starts
@@ -55,7 +54,6 @@ const LecturerSharedMaterialsPage = lazy(() => import('./pages/Lecturer/SharedMa
 const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').then((m) => ({ default: m.SubmitReport })));
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
-const EarningsWallet = lazy(() => import('./pages/Reviewer/EarningsWallet').then((m) => ({ default: m.EarningsWallet })));
 const Profile = lazy(() => import('./pages/Profile/Profile').then((m) => ({ default: m.Profile })));
 const ProfessionalProfile = lazy(() => import('./pages/Reviewer/ProfessionalProfile').then((m) => ({ default: m.ProfessionalProfile })));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
@@ -71,7 +69,6 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 // Admin Annual Fees tab. It renders an honest backend-unavailable state
 // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
-const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
 const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => ({ default: m.LegalPolicy })));
 
 /**
@@ -204,14 +201,6 @@ const App = () => {
 
                 {/* Shared / cross-role routes */}
                 <Route path={ROUTES.FORUM} element={<Forum />} />
-                <Route
-                  path={ROUTES.EARNINGS_WALLET}
-                  element={
-                    AppConfig.features.enableWithdrawals
-                      ? <EarningsWallet />
-                      : <Navigate to={ROUTES.FORUM} replace />
-                  }
-                />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
                 {/* Public profile viewing: forum authors/commenters of every
                     authenticated role must be able to open another user's
@@ -230,7 +219,6 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                 </Route>
-                <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
               </Route>
             </Route>
 

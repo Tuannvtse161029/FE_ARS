@@ -16,15 +16,6 @@ vi.mock('../../../src/store', () => ({
       : { user: null, isAuthenticated: false },
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -54,10 +45,6 @@ vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
 
 vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
-}));
-
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
 }));
 
 import { buildMockAuth } from '../../../src/utils/mockAuth';
@@ -130,15 +117,6 @@ vi.mock('../../../src/context/AuthContext', () => ({
 // Re-mock every header-internal hook the MainLayout uses, mirroring the
 // setupMainLayoutMocks helper. This avoids depending on the helper
 // entirely and lets us drive the notification hook per-test.
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: (...args: unknown[]) => useNotificationsMock(...args),
   useMarkNotificationRead: () => ({
@@ -157,10 +135,6 @@ vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
 
 vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
-}));
-
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
 }));
 
 import { MainLayout } from '../../../src/layouts/MainLayout';

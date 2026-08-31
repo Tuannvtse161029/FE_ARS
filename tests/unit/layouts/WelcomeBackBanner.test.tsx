@@ -38,15 +38,6 @@ vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -74,8 +65,12 @@ vi.mock('../../../src/services/reviewer.service', () => ({
   },
 }));
 
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
+vi.mock('../../../src/hooks/useNotifications', () => ({
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    markRead: vi.fn(),
+  }),
 }));
 
 // ── Auth store stub: each test sets a different user record here ───────────────

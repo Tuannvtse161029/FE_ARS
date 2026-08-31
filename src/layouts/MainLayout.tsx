@@ -4,20 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
-import { useWallet } from '../hooks/useWallet';
 import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
-import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
-import { AppConfig } from '../config/app';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
 import {
-  Wallet,
-  Plus,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
   Calendar as SeminarIcon,
@@ -49,7 +44,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   MoonIcon,
-  ResearchPaperIcon,
   SunIcon,
 } from './MainLayout.icons';
 
@@ -273,24 +267,8 @@ export const MainLayout = () => {
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Single source of truth for unverified-user gating.
-  const { hasWallet, isGuest } = usePermissions();
+  const { isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
-
-  // Lecturer, Graduate Student, and Guest do not own a wallet row in this build —
-  // suppress both the header wallet pill and the top-up modal for them.
-  // Researcher / Reviewer / Admin behavior is unchanged: the `hasWallet` flag
-  // from usePermissions() is already false for Admin, so we only AND in
-  // role-based suppression for the three roles the product says shouldn't
-  // see wallet UI yet.
-  const walletVisible =
-    hasWallet &&
-    activeRole !== 'Lecturer' &&
-    activeRole !== 'Graduate Student' &&
-    displayedRole !== 'Guest';
-
-  // Wallet balance comes from the BE — only for roles that have wallets (not Guest).
-  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(hasWallet && user?.userId ? user.userId : undefined);
 
   // Reviewer availability comes from the BE (only for active Reviewers).
   const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(activeRole === 'Reviewer' && user?.userId ? user.userId : undefined);
@@ -300,7 +278,6 @@ export const MainLayout = () => {
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getStoredSidebarCollapsed);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -502,9 +479,6 @@ export const MainLayout = () => {
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
-          ...(AppConfig.features.enableWithdrawals
-            ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
-            : []),
         ];
       case 'Lecturer':
         return [
@@ -584,26 +558,6 @@ export const MainLayout = () => {
         </div>
 
         <nav className={styles.sidebarNav} aria-label="Workspace navigation">
-          <button
-            type="button"
-            className={styles.sidebarCollapse}
-            onClick={handleToggleSidebar}
-            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            aria-expanded={!isSidebarCollapsed}
-            aria-controls="main-navigation-list"
-            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            data-testid="sidebar-collapse-toggle"
-          >
-            {isSidebarCollapsed ? (
-              <ChevronRightIcon size={18} aria-label="Expand navigation" />
-            ) : (
-              <ChevronLeftIcon size={18} aria-label="Collapse navigation" />
-            )}
-            <span className={styles.sidebarCollapseLabel}>
-              {isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            </span>
-          </button>
-
           {navItems.map((item, index) => {
             if (item.to.startsWith('#')) {
               return (
@@ -631,51 +585,31 @@ export const MainLayout = () => {
               >
                 <span className={styles.navIcon}>{item.icon}</span>
                 <span className={styles.navLabel}>{item.label}</span>
-                {/* === Nav dot removal (this worker) ===
-                    The 6×6 dot that previously lived here was a stale
-                    visual marker (no signal, no counter, no badge
-                    contract). The active nav state already reads
-                    through `_navItemActive_1bnip_151` (background wash,
-                    3px primary rule, semibold label) so the dot was
-                    redundant. Keeping the comment block here so any
-                    later agent knows the removal was deliberate. */}
                 {item.badge && <span className={styles.navBadge}>{item.badge}</span>}
               </NavLink>
             );
           })}
         </nav>
 
-        {/* Sidebar watermark — a decorative manuscript icon placed in the
-            empty space below the nav. The existing low-opacity CSS treatment
-            keeps it visually secondary to navigation. */}
-        <div className={styles.sidebarWatermark} aria-hidden="true">
-          <span className={styles.sidebarWatermarkImage}>
-            <ResearchPaperIcon size={152} />
-          </span>
-        </div>
-
-        <div className={styles.sidebarAccount}>
+        {/* Centered collapse/expand button — lives at the bottom of the
+            sidebar so the user can always collapse OR expand the rail
+            without hunting for a hidden control. Vertical centering is
+            achieved via flex on the wrapper which fills the remaining
+            height of the sidebar. */}
+        <div className={styles.sidebarCollapseAnchor}>
           <button
             type="button"
-            className={styles.sidebarAccountProfile}
-            onClick={() => navigate(ROUTES.PROFILE)}
-            aria-label="Open my profile"
-            title="Open my profile"
+            className={styles.sidebarCollapseBtn}
+            onClick={handleToggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            data-testid="sidebar-collapse-toggle"
           >
-            <span className={styles.sidebarAvatar}>{avatarInitials}</span>
-            <span className={styles.sidebarAccountText}>
-              <strong>{displayName}</strong>
-              <small>{displayedRole}</small>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={styles.sidebarLogout}
-            onClick={handleLogout}
-            aria-label="Log out"
-            title="Log out"
-          >
-            <LogOut size={17} />
+            {isSidebarCollapsed ? (
+              <ChevronRightIcon size={16} aria-hidden="true" />
+            ) : (
+              <ChevronLeftIcon size={16} aria-hidden="true" />
+            )}
           </button>
         </div>
 
@@ -779,31 +713,6 @@ export const MainLayout = () => {
               </div>
             )}
 
-            {/* Wallet Balance — hidden for users who don't have a wallet row.
-                Admins do not hold a personal wallet; unverified users (Guest)
-                have no row until an Admin approves their role request.
-                Lecturer and Graduate Student are also suppressed here in this
-                build (see `walletVisible` above). */}
-            {walletVisible && (
-              <div className={styles.walletBadge}>
-                <span className={styles.walletIcon}><Wallet size={18} /></span>
-                <span className={styles.walletAmount}>
-                  {isBalanceLoading || beBalance === null
-                    ? '—'
-                    : `${beBalance.toLocaleString('vi-VN')} VND`}
-                </span>
-                <button
-                  type="button"
-                  className={styles.walletTopUpButton}
-                  aria-label="Top up wallet"
-                  onClick={() => setIsTopUpOpen(true)}
-                  data-testid="wallet-topup-trigger"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-            )}
-
             {/* Notification bell — Agent-16: replaced the static badge with
                 the full NotificationCenter dropdown. Reads the same BE
                 notifications list, but also drives the dropdown panel,
@@ -836,25 +745,6 @@ export const MainLayout = () => {
           <Outlet />
         </main>
       </div>
-
-      {/* Wallet Top-Up Modal — only mounted for users who actually have a
-          wallet row (see the header wallet badge above for the rule). */}
-      {walletVisible && (
-        <WalletTopUpModal
-          isOpen={isTopUpOpen}
-          currentUserId={user?.userId ?? null}
-          currentWalletId={beWalletId ?? null}
-          currentBalance={beBalance}
-          onSuccess={async () => {
-            // Re-fetch the wallet so the header pill reflects the new balance
-            // immediately (works for both the PayOS redirect path and the DEV
-            // auto-fund path).
-            await refetchWallet();
-          }}
-          onMessage={(text, type) => setToastMessage({ text, type })}
-          onClose={() => setIsTopUpOpen(false)}
-        />
-      )}
     </div>
   );
 };

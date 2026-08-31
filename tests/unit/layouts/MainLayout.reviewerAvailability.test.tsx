@@ -57,15 +57,6 @@ vi.mock('../../../src/services/reviewer.service', () => ({
   },
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -77,10 +68,6 @@ vi.mock('../../../src/hooks/useNotifications', () => ({
     markAllRead: () => Promise.resolve([]),
     reset: () => undefined,
   }),
-}));
-
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
 }));
 
 // ── Auth mock ─────────────────────────────────────────────────────────────────

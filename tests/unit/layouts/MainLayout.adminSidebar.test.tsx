@@ -27,15 +27,6 @@ vi.mock('../../../src/store', () => ({
       : { user: null, isAuthenticated: false },
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -65,10 +56,6 @@ vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
 
 vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
-}));
-
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
 }));
 
 import { buildMockAuth } from '../../../src/utils/mockAuth';

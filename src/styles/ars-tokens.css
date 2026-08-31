@@ -82,6 +82,11 @@
   --ars-blue-mid: #004b95;
   --ars-blue-light: #dceeff;
 
+  /* Accent — ARS Yellow (primary brand accent — yellow / white / black) */
+  --ars-yellow: #f5b400;
+  --ars-yellow-hover: #d9a200;
+  --ars-yellow-soft: #fff3cc;
+
   /* ── Role Accent Colors ─────────────────────────────────── */
   /* Researcher — warm amber/ochre (academic ink, paper) */
   --ars-researcher: #b45309;

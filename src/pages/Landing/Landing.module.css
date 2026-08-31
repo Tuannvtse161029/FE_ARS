@@ -20,7 +20,7 @@
 .navigation a, .footer nav a { color: var(--ink-secondary); }
 .navigation a:hover, .footer nav a:hover { color: var(--accent-primary); }
 .loginButton, .primaryButton { color: var(--ink-on-paper); background: var(--accent-primary); }
-.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); transform: none; }
+.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); color: var(--ink-on-paper); transform: none; }
 .heroCopy .issueLine, .boundariesInner .issueLine { color: var(--accent-primary); }
 .heroLead { color: var(--ink-secondary); }
 .textLink { color: var(--ink-on-dark); }
@@ -37,7 +37,7 @@
 .statement .issueLine, .sectionHeading .issueLine, .faqIntro .issueLine,
 .workflowNumber, .workspace svg, .faqList summary::after { color: var(--accent-primary); }
 .statement > p, .workflowList p, .workspace p, .faqList p { color: var(--ink-secondary); }
-.boundariesSection { color: var(--ink-on-dark); background: var(--sidebar-bg); }
+.boundariesSection { color: var(--ink-primary); background: var(--surface-sunken); }
 .boundariesInner li { color: var(--ink-secondary); border-color: var(--border-subtle); }
 .boundariesInner svg { color: var(--accent-sage); }
 .workspacesSection { background: var(--app-canvas-subtle); }
@@ -159,8 +159,9 @@
 .loginButton:focus-visible,
 .primaryButton:hover,
 .primaryButton:focus-visible {
-  background: var(--blue-dark);
-  transform: translateY(-1px);
+  background: var(--accent-hover);
+  color: var(--ink-on-paper);
+  transform: none;
 }
 
 .hero {
@@ -387,8 +388,16 @@
 
 .boundariesSection {
   padding: 92px 0;
-  color: var(--ink-on-dark);
+  color: var(--ink-primary);
   background: var(--surface-sunken);
+}
+
+.boundariesSection h2 {
+  color: var(--ink-primary);
+}
+
+.boundariesSection .issueLine {
+  color: var(--accent-primary);
 }
 
 .boundariesInner {
@@ -398,7 +407,7 @@
 }
 
 .boundariesInner .issueLine {
-  color: var(--accent-primary);
+  color: var(--accent-ochre);
 }
 
 .boundariesSection h2 {
@@ -742,6 +751,28 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .publicationFlow {
+    margin-top: 28px;
+    padding: 20px 16px;
+  }
+
+  .flowList {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .flowStep {
+    padding: 0 0 16px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+  }
+
+  .flowConnector {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -752,8 +783,81 @@
   }
 }
 
-/* Cozy study-light cascade: warm white carries the page while a restrained
-   yellow glow suggests a desk lamp without reducing text contrast. */
+/* ── Publication Decision Flow Diagram ───────────────────── */
+.publicationFlow {
+  margin-top: 40px;
+  padding: 28px 24px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-paper);
+}
+
+.publicationFlowHeading {
+  margin: 0 0 20px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ochre);
+}
+
+.flowList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.flowStep {
+  position: relative;
+  padding: 0 14px 0 0;
+}
+
+.flowNode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.flowIcon {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.flowRole {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink-primary);
+  white-space: nowrap;
+}
+
+.flowAction {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+.flowNote {
+  margin: 5px 0 0;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--accent-ochre);
+  line-height: 1.45;
+}
+
+.flowConnector {
+  position: absolute;
+  top: 22px;
+  right: 2px;
+  color: var(--accent-primary);
+  opacity: 0.6;
+}
+
+/* ── Cozy study-light cascade ─────────────────────────────── */
 .page {
   background-color: var(--app-canvas);
   background-image: radial-gradient(
@@ -790,7 +894,7 @@
 .navigation a, .footer nav a { color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent); }
 .navigation a:hover, .footer nav a:hover { color: var(--accent-primary); }
 .loginButton, .primaryButton { color: var(--ink-on-paper); background: var(--accent-primary); }
-.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); transform: none; }
+.loginButton:hover, .primaryButton:hover { background: var(--accent-hover); color: var(--ink-on-paper); transform: none; }
 .heroCopy .issueLine { color: var(--accent-ochre); }
 .boundariesInner .issueLine { color: var(--accent-primary); }
 .heroLead { color: var(--ink-secondary); }
@@ -803,8 +907,10 @@
 .statement .issueLine, .sectionHeading .issueLine, .faqIntro .issueLine,
 .workflowNumber, .workspace svg, .faqList summary::after { color: var(--accent-primary); }
 .statement > p, .workflowList p, .workspace p, .faqList p { color: var(--ink-secondary); }
-.boundariesSection { color: var(--ink-on-dark); background: var(--surface-sunken); }
-.boundariesInner li { color: color-mix(in srgb, var(--ink-on-dark) 80%, transparent); border-color: color-mix(in srgb, var(--ink-on-dark) 18%, transparent); }
+.boundariesSection { color: var(--ink-primary); background: var(--surface-sunken); }
+.boundariesSection h2 { color: var(--ink-primary); }
+.boundariesSection .issueLine { color: var(--accent-primary); }
+.boundariesInner li { color: var(--ink-secondary); border-color: var(--border-subtle); }
 .boundariesInner svg { color: var(--accent-sage); }
 .workspacesSection { background: var(--app-canvas-subtle); }
 .workspace { background: var(--surface-base); border-color: var(--border-subtle); transition: transform var(--duration-standard) var(--motion-ease-standard), box-shadow var(--duration-standard) var(--motion-ease-standard); }

@@ -97,18 +97,18 @@
 }
 
 .categoryItem:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 .categoryItemActive {
-  background-color: var(--ars-blue-light);
-  color: var(--ars-blue);
+  background-color: var(--surface-paper);
+  color: var(--accent-ochre);
   font-weight: var(--font-weight-semibold);
 }
 
 .categoryItemActive:hover {
-  background-color: var(--ars-blue-light);
+  background-color: var(--surface-paper);
 }
 
 .catIcon {
@@ -125,7 +125,7 @@
   display: inline-flex;
   align-items: center;
   margin-right: 4px;
-  color: var(--ars-blue);
+  color: var(--accent-ochre);
   vertical-align: -1px;
 }
 
@@ -158,14 +158,14 @@
 }
 
 .tagChip:hover {
-  background-color: var(--ars-blue-light);
-  border-color: var(--ars-blue);
-  color: var(--ars-blue);
+  background-color: var(--surface-paper);
+  border-color: var(--accent-primary);
+  color: var(--accent-ochre);
   transform: translateY(-1px);
 }
 
 .tagChip:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -180,7 +180,7 @@
 
 .tagChip:hover .tagChipIcon,
 .tagChip:focus-visible .tagChipIcon {
-  color: var(--ars-blue);
+  color: var(--accent-primary);
 }
 
 .tagChipText {
@@ -210,8 +210,8 @@
 
 .tagChip:hover .tagChipCount,
 .tagChip:focus-visible .tagChipCount {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
 /* Forum Stats — compact three-row overview that completes the sidebar.
@@ -326,7 +326,7 @@
 }
 
 .sortSelect:focus {
-  border-color: var(--ars-blue);
+  border-color: var(--accent-primary);
 }
 
 /* ─── PENDING-STATE BANNER ──────────────────────────────── */
@@ -408,7 +408,7 @@
 }
 
 .paginationBtn:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -449,7 +449,7 @@
 }
 
 .refreshBtn:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -593,7 +593,7 @@
 }
 
 .modalCloseButton:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -688,7 +688,7 @@
 }
 
 .modalTextarea:focus {
-  border-color: var(--ars-blue);
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.1);
 }
 
@@ -724,7 +724,7 @@
 
 .titleInput:focus,
 .abstractTextarea:focus {
-  border-color: var(--ars-blue);
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.1);
 }
 
@@ -780,7 +780,7 @@
 }
 
 .tagInputField:focus {
-  border-color: var(--ars-blue);
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.1);
 }
 

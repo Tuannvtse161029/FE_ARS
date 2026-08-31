@@ -7,6 +7,11 @@ import {
   ShieldCheck,
   UserCheck,
   Users,
+  Send,
+  ClipboardCheck,
+  MessageSquare,
+  Scale,
+  Globe,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
 import arsLogo from '../../assets/images/ARS_Logo.png';
@@ -81,6 +86,72 @@ const faqs = [
       'Only research that is both approved and public belongs in the research catalog. Internal review content is not public.',
   },
 ];
+
+const publicationFlowSteps = [
+  {
+    icon: Send,
+    role: 'Researcher',
+    action: 'Uploads a paper to ARS for consideration.',
+    note: 'cannot choose the reviewer',
+  },
+  {
+    icon: ClipboardCheck,
+    role: 'Admin',
+    action: 'Screens the submission and assigns a suitable reviewer.',
+    note: null,
+  },
+  {
+    icon: MessageSquare,
+    role: 'Reviewer',
+    action: 'Evaluates the paper and returns a recommendation.',
+    note: 'recommends — does not publish',
+  },
+  {
+    icon: Scale,
+    role: 'Admin',
+    action: 'Makes the final publication decision.',
+    note: null,
+  },
+  {
+    icon: Globe,
+    role: 'Catalog',
+    action: 'Only Admin-approved papers are published to the ARS public catalog.',
+    note: null,
+  },
+];
+
+const PublicationFlowDiagram = () => (
+  <aside className={styles.publicationFlow} aria-label="Publication decision flow diagram">
+    <p className={styles.publicationFlowHeading} aria-hidden="true">
+      Decision authority
+    </p>
+    <ol className={styles.flowList}>
+      {publicationFlowSteps.map((step, index) => (
+        <li key={step.role} className={styles.flowStep}>
+          <div className={styles.flowNode}>
+            <step.icon
+              size={18}
+              aria-hidden="true"
+              className={styles.flowIcon}
+            />
+            <span className={styles.flowRole}>{step.role}</span>
+          </div>
+          <p className={styles.flowAction}>{step.action}</p>
+          {step.note && (
+            <p className={styles.flowNote} aria-label={`Note: ${step.note}`}>
+              {step.note}
+            </p>
+          )}
+          {index < publicationFlowSteps.length - 1 && (
+            <div className={styles.flowConnector} aria-hidden="true">
+              <ArrowRight size={14} />
+            </div>
+          )}
+        </li>
+      ))}
+    </ol>
+  </aside>
+);
 
 export const Landing = () => {
   return (
@@ -185,6 +256,7 @@ export const Landing = () => {
               </li>
             ))}
           </ol>
+          <PublicationFlowDiagram />
         </section>
 
         <section className={styles.boundariesSection} id="boundaries" aria-labelledby="boundaries-title">

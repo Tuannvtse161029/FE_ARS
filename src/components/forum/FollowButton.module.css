@@ -1,10 +1,9 @@
 /**
  * FollowButton — ARS Research Constellation
  *
- * Pill-shaped toggle rendered on ForumPostCard author rows. Uses
- * --ars-blue accent by default; per-role accent flows through only when
- * the parent overrides the button's container styles. Disabled when the
- * viewer can't follow (unauthenticated, unverified, self, mid-request).
+ * Pill-shaped toggle rendered on ForumPostCard author rows. Uses the
+ * yellow-ochre accent (--accent-primary / --accent-ochre) to match the
+ * rest of the workspace chrome instead of the legacy ARS blue.
  */
 
 .button {
@@ -37,45 +36,45 @@
   min-height: 36px;
 }
 
-/* "Not following" state — outlined */
+/* "Not following" state — outlined ochre */
 .follow {
   background-color: transparent;
-  color: var(--ars-blue);
-  border: 1px solid var(--ars-blue);
+  color: var(--accent-ochre);
+  border: 1px solid var(--accent-primary);
 }
 
 .follow:hover:not(:disabled) {
-  background-color: var(--ars-blue-light);
+  background-color: var(--surface-paper);
 }
 
 .follow:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 /* "Following" state — filled */
 .following {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border: 1px solid var(--ars-blue);
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+  border: 1px solid var(--accent-primary);
 }
 
 .following:hover:not(:disabled) {
-  background-color: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .following:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 /* Disabled (unauthenticated / unverified / self / mid-request) */
 .disabled,
 .button:disabled {
-  background-color: var(--ars-paper-alt);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-node);
+  background-color: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-subtle);
   cursor: not-allowed;
   opacity: 0.7;
 }
