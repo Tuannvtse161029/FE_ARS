@@ -86,13 +86,6 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/DetailedEvaluation/${id}`,
     UPDATE: (id: number) => `/api/DetailedEvaluation/${id}`,
   },
-  WITHDRAWAL_REQUEST: {
-    BASE: '/api/WithdrawalRequest',
-    GET_ALL: '/api/WithdrawalRequest',
-    CREATE: '/api/WithdrawalRequest',
-    GET_BY_ID: (id: number) => `/api/WithdrawalRequest/${id}`,
-    UPDATE: (id: number) => `/api/WithdrawalRequest/${id}`,
-  },
   SEMINAR: {
     BASE: '/api/Seminar',
     GET_ALL: '/api/Seminar',
@@ -115,13 +108,6 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
     DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
     MY_SEMINARS: '/api/SeminarParticipant/my-seminars',
-  },
-  PAYMENT: {
-    CREATE_LINK: '/api/Payment/create-link',
-    SUCCESS: '/api/Payment/success',
-    CANCEL: '/api/Payment/cancel',
-    CANCEL_ORDER: (orderCode: number | string) => `/api/Payment/cancel/${orderCode}`,
-    WEBHOOK: '/api/Payment/webhook',
   },
   FOLLOWER: {
     BASE: '/api/Follower',
@@ -196,11 +182,6 @@ export const API_ENDPOINTS = {
     TOGGLE_VOTE: (id: number) => `/api/ForumComment/${id}/vote`,
     MY_VOTES: '/api/ForumComment/my-votes',
   },
-  WALLET: {
-    BASE: '/api/Wallet',
-    GET_ALL: '/api/Wallet',
-    GET_BY_ID: (id: number) => `/api/Wallet/${id}`,
-  },
   // Admin surface — all paths below are production API contracts. Endpoints
   // missing from live Swagger must remain unavailable in the UI and receive a
   // backend ticket rather than a mock fallback.
@@ -217,12 +198,6 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/Account/${id}`,
       SUSPEND: (id: number) => `/api/Account/${id}/suspend`,
       UNSUSPEND: (id: number) => `/api/Account/${id}/unsuspend`,
-    },
-    WITHDRAWALS: {
-      GET_ALL: '/api/WithdrawalRequest',
-      ACCEPT: (id: number) => `/api/WithdrawalRequest/${id}/accept`,
-      COMPLETE: (id: number) => `/api/WithdrawalRequest/${id}/complete`,
-      DENY: (id: number) => `/api/WithdrawalRequest/${id}/deny`,
     },
     REPORTS: {
       GET_ALL: '/api/ViolationReport',

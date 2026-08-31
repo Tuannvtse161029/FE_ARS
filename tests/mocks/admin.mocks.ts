@@ -1,7 +1,6 @@
 import type {
   RoleRequest,
   AccountItem,
-  WithdrawalRequestItem,
   AnalyticsSummary,
   AnalyticsTimeSeries,
   AnalyticsRange,
@@ -9,8 +8,8 @@ import type {
 } from '../../src/types/admin';
 
 // Internal copy of fixtures kept here so adminService.ts stays readable.
-// Vietnamese-style names + bank names match the existing AdminWithdrawal page
-// (which already uses vi-VN formatting). Each fixture has enough variety for
+// Vietnamese-style names + bank names match the existing Admin pages
+// (which already use vi-VN formatting). Each fixture has enough variety for
 // the dashboard/accounts/transactions pages to render convincingly.
 
 const NOW_ISO = '2026-08-16T10:30:00Z';
@@ -172,78 +171,6 @@ export const MOCK_ACCOUNTS: AccountItem[] = [
     plan: 'FREE_TIER',
     joinedDate: daysAgo(95),
     status: 'ACTIVE',
-  },
-];
-
-// ── Withdrawals (Figma 4–5) ────────────────────────────────────────────────
-// === Agent 10 — Defect 5 (request reason) ===
-// Each fixture carries a `note` field on the wire-shape side; the Admin
-// service normalizes it to `requestReason` at the boundary
-// (see `adminService.getReviewerWithdrawals`). The fixtures cover:
-//   - txId 2001 PENDING            — reason present
-//   - txId 2002 ACCEPTED_PROCESSING— no reason (renders "No reason provided")
-//   - txId 2003 COMPLETED          — reason present
-//   - txId 2004 DENIED             — both reasons present (request + rejection)
-// Coordination rule: Agent 10 owns ONLY the `note` additions on the
-// `MOCK_WITHDRAWALS` records. Do not touch MOCK_ROLE_REQUESTS or any
-// `proofDocumentUrl` / `proofReceiptUrl` field — those belong to Agent 11.
-export const MOCK_WITHDRAWALS: WithdrawalRequestItem[] = [
-  {
-    txId: 2001,
-    userId: 11,
-    reviewerName: 'Nguyen Van An',
-    amountVnd: 2_500_000,
-    bankName: 'Vietcombank',
-    accountNumber: '1029 7482 11',
-    accountName: 'NGUYEN VAN AN',
-    requestDate: daysAgo(1),
-    status: 'PENDING',
-    proofReceiptUrl: null,
-    note: 'Paying for the upcoming conference registration fees.',
-  },
-  {
-    txId: 2002,
-    userId: 12,
-    reviewerName: 'Tran Thi Bich',
-    amountVnd: 1_750_000,
-    bankName: 'Techcombank',
-    accountNumber: '1903 4500 22',
-    accountName: 'TRAN THI BICH',
-    requestDate: daysAgo(2),
-    status: 'ACCEPTED_PROCESSING',
-    processingAt: daysAgo(1),
-    proofReceiptUrl: null,
-    // No note — exercises the "No reason provided" empty-state in the Admin modal.
-    note: null,
-  },
-  {
-    txId: 2003,
-    userId: 17,
-    reviewerName: 'Bui Thi Linh',
-    amountVnd: 4_200_000,
-    bankName: 'BIDV',
-    accountNumber: '5611 0099 33',
-    accountName: 'BUI THI LINH',
-    requestDate: daysAgo(4),
-    status: 'COMPLETED',
-    processingAt: daysAgo(3),
-    completedAt: daysAgo(2),
-    proofReceiptUrl: '/test-fixtures/mock-receipt-linh.pdf',
-    note: 'Quarterly earnings withdrawal.',
-  },
-  {
-    txId: 2004,
-    userId: 15,
-    reviewerName: 'Vu Thi Hong',
-    amountVnd: 950_000,
-    bankName: 'ACB',
-    accountNumber: '1234 5678 44',
-    accountName: 'VU THI HONG',
-    requestDate: daysAgo(6),
-    status: 'DENIED',
-    proofReceiptUrl: null,
-    note: 'Urgent home repair — please expedite.',
-    rejectionReason: 'Bank account name does not match registered KYC name.',
   },
 ];
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, FileText, Save, Send } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
+import { useMajorFields, useSubFields } from '../../../hooks/useMajorFields';
 import {
   openAlexAdapter,
   type OpenAlexImportedMetadata,
@@ -52,6 +53,11 @@ export const ResearcherSubmissionForm = () => {
   const [institution, setInstitution] = useState('');
   const [paperType, setPaperType] = useState('Research article');
   const [keywords, setKeywords] = useState('');
+  const [selectedMajorFieldId, setSelectedMajorFieldId] = useState<number | null>(null);
+  const [selectedSubFieldId, setSelectedSubFieldId] = useState<number | null>(null);
+
+  const { fields: majorFields, isLoading: isLoadingMajorFields } = useMajorFields();
+  const { subFields, isLoading: isLoadingSubFields } = useSubFields(selectedMajorFieldId);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,12 +204,14 @@ export const ResearcherSubmissionForm = () => {
     !!title.trim() &&
     !!abstract.trim() &&
     !!authorName.trim() &&
-    !!institution.trim();
+    !!institution.trim() &&
+    selectedMajorFieldId !== null &&
+    selectedSubFieldId !== null;
 
   const submit = async (sendToAdmin: boolean) => {
     if (!canSubmit) {
       setError(
-        'Title, abstract, first author, institution, and a completed PDF upload are required.',
+        'Title, abstract, first author, institution, major field, subfield, and a completed PDF upload are required.',
       );
       return;
     }
@@ -213,6 +221,9 @@ export const ResearcherSubmissionForm = () => {
     try {
       const trimmedOpenAlex =
         openAlexState.stage === 'confirmed' ? openAlexState.metadata.id : undefined;
+      const selectedMajorField = majorFields.find((f) => f.id === selectedMajorFieldId);
+      const selectedSubField = subFields.find((f) => f.id === selectedSubFieldId);
+
       const draft = await publicationAdapter.createDraft({
         title: title.trim(),
         abstract: abstract.trim(),
@@ -226,6 +237,9 @@ export const ResearcherSubmissionForm = () => {
         ],
         institutions: [{ id: '', name: institution.trim() }],
         paperType,
+        domain: selectedMajorField?.name ?? '',
+        field: selectedMajorField?.name ?? '',
+        subfield: selectedSubField?.name ?? '',
         keywords: keywords
           .split(',')
           .map((value) => value.trim())
@@ -279,7 +293,7 @@ export const ResearcherSubmissionForm = () => {
               Required metadata
             </h2>
             <p className={styles.formSectionHint}>
-              All five fields are required before Admin will accept the submission.
+              All seven fields are required before Admin will accept the submission.
             </p>
           </header>
 
@@ -346,6 +360,59 @@ export const ResearcherSubmissionForm = () => {
                 value={keywords}
                 onChange={(event) => setKeywords(event.target.value)}
               />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="submission-major-field">
+                Major field <span className={styles.fieldRequired}>*</span>
+              </label>
+              <select
+                id="submission-major-field"
+                value={selectedMajorFieldId ?? ''}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setSelectedMajorFieldId(val ? Number(val) : null);
+                  setSelectedSubFieldId(null);
+                }}
+                disabled={isLoadingMajorFields}
+              >
+                <option value="">
+                  {isLoadingMajorFields ? 'Loading fields…' : 'Select a major field'}
+                </option>
+                {majorFields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="submission-subfield">
+                Subfield <span className={styles.fieldRequired}>*</span>
+              </label>
+              <select
+                id="submission-subfield"
+                value={selectedSubFieldId ?? ''}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setSelectedSubFieldId(val ? Number(val) : null);
+                }}
+                disabled={!selectedMajorFieldId || isLoadingSubFields}
+              >
+                <option value="">
+                  {!selectedMajorFieldId
+                    ? 'Select a major field first'
+                    : isLoadingSubFields
+                      ? 'Loading subfields…'
+                      : 'Select a subfield'}
+                </option>
+                {subFields.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </section>
@@ -605,7 +672,7 @@ export const ResearcherSubmissionForm = () => {
           </p>
           {!canSubmit && (
             <p className={styles.formValidation} role="status">
-              Submission remains unavailable until the required metadata and completed PDF upload are in place.
+              Submission remains unavailable until the required metadata (including major field and subfield), and a completed PDF upload are in place.
             </p>
           )}
           <div className={styles.formActionButtons}>

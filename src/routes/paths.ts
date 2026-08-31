@@ -15,7 +15,6 @@ export const ROUTES = {
   RESEARCH_GROUP: '/research-group',
   CONFIGURE_MILESTONES: '/configure-milestones',
   SUBMIT_REPORT: '/submit-report',
-  EARNINGS_WALLET: '/earnings-wallet',
   REVIEW_TASKS: '/review-tasks',
   USERS: '/users',
   PAPERS: '/papers',
@@ -59,7 +58,6 @@ export const ROUTES = {
   // tickets/backend/BE_ANNUAL_FEE_API_TICKET.md.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
-  PAYMENT_RETURN: '/payment/return',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or
   // `requiresOnboarding === true` (see src/services/googleAuth.service.ts).

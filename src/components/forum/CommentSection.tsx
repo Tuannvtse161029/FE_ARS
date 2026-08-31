@@ -441,7 +441,7 @@ export const CommentSection = ({
                         {renderAuthorLabel(comment)}
                       </button>
                       {isOwner && (
-                        <span className={styles.commentOwnerBadge}>You</span>
+                        <span className={styles.commentOwnerBadge}>{currentUserName}</span>
                       )}
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>

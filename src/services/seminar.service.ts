@@ -30,7 +30,7 @@ export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT'
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Roles that may create / update / delete seminars and send reminders. */
-export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer'] as const;
+export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer', 'Researcher'] as const;
 
 /** Roles that may view the seminar list (read-only). Includes the mutator. */
 export const SEMINAR_VIEWER_ROLES: readonly UserRole[] = [

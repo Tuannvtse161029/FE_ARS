@@ -19,16 +19,14 @@
 // the safe fallback to prevent a Reviewer from being deep-linked into
 // the Admin surface, etc.
 //
-// Withdrawal notifications are intentionally REMOVED from the active
-// mapping set because the withdrawal feature is currently disabled
-// (see AppConfig.features.enableWithdrawals). Any historical
-// "Wallet withdrawal …" rows that linger in the BE's notification table
-// resolve to the safe `/forum` fallback — they never navigate to
-// `/earnings-wallet` until the withdrawal feature ships again.
+// Wallet / withdrawal / payment notifications have been retired along
+// with the wallet money flows (see docs/WALLET_SCOPE_CHANGE.md). Any
+// stale notification rows that still match the historical `[Wallet]…`
+// prefixes resolve to the safe `/forum` fallback because no destination
+// route exists for them any longer.
 
 import { ROUTES } from '../routes/paths';
 import type { UserRole } from '../types/auth';
-import { AppConfig } from '../config/app';
 
 export type NotificationKind =
   // Researcher
@@ -39,14 +37,12 @@ export type NotificationKind =
   | 'paper-status-changed'
   | 'review-result-available'
   | 'paper-needs-revision'
-  | 'payment-result'
   | 'membership-result'
   | 'forum-reply'
   // Reviewer
   | 'new-review-request'
   | 'review-request-cancelled'
   | 'review-deadline-reminder'
-  | 'reviewer-payment-result'
   // Lecturer
   | 'student-report-submitted'
   | 'student-report-resubmitted'
@@ -68,7 +64,6 @@ export type NotificationKind =
   | 'role-request-submitted'
   | 'violation-report-submitted'
   | 'account-management-event'
-  | 'admin-payment-issue'
   // Account / platform
   | 'role-request-accepted'
   | 'role-request-rejected'
@@ -132,11 +127,6 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Paper] needs revision',
     spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
-  {
-    kind: 'payment-result',
-    prefix: '[Payment] result',
-    spec: { path: ROUTES.PAYMENT_RETURN, roles: ['Researcher', 'Admin'] },
-  },
 
   // ── Reviewer events ───────────────────────────────────────────────────────
   {
@@ -153,11 +143,6 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     kind: 'review-deadline-reminder',
     prefix: '[Review] deadline',
     spec: { path: ROUTES.REVIEWER_ASSIGNMENTS, roles: ['Reviewer'] },
-  },
-  {
-    kind: 'reviewer-payment-result',
-    prefix: '[Wallet] payment result',
-    spec: { path: ROUTES.EARNINGS_WALLET, roles: ['Reviewer', 'Admin'] },
   },
 
   // ── Lecturer events ───────────────────────────────────────────────────────
@@ -295,11 +280,6 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Admin] account',
     spec: { path: ROUTES.ADMIN_ACCOUNTS, roles: ['Admin'] },
   },
-  {
-    kind: 'admin-payment-issue',
-    prefix: '[Admin] payment',
-    spec: { path: ROUTES.ADMIN_TRANSACTIONS, roles: ['Admin'] },
-  },
 
   // ── Platform-wide ─────────────────────────────────────────────────────────
   {
@@ -391,9 +371,6 @@ export function inferNotificationKind(message: string): NotificationKind {
   if (normalized.includes('báo cáo') || normalized.includes('giai đoạn') || normalized.includes('report')) {
     return 'student-report-submitted';
   }
-  if (normalized.includes('tiền') || normalized.includes('ví') || normalized.includes('thanh toán') || normalized.includes('wallet')) {
-    return 'payment-result';
-  }
 
   return 'unknown';
 }
@@ -431,18 +408,7 @@ export function resolveNotificationRoute(
       : null;
   const kind = inferNotificationKind(message);
 
-  // Withdrawal messages are intentionally suppressed: while
-  // AppConfig.features.enableWithdrawals is false, the withdrawal
-  // destination route is unreachable. Returning the safe fallback for
-  // any prefix matching `[Wallet] withdrawal` keeps the dropdown honest
-  // without ever deep-linking into a hidden page.
   if (kind === 'unknown') {
-    return getSafeFallbackRoute();
-  }
-  if (
-    !AppConfig.features.enableWithdrawals &&
-    message.trim().toLowerCase().startsWith('[wallet] withdrawal')
-  ) {
     return getSafeFallbackRoute();
   }
 
@@ -467,7 +433,3 @@ export function resolveNotificationRoute(
 // new entry to `ROUTE_SPECS` automatically extends this list.
 export const KNOWN_NOTIFICATION_KINDS: ReadonlyArray<NotificationKind> =
   ROUTE_SPECS.map((entry) => entry.kind);
-
-// Convenience used by tests: list the explicit kind for which the
-// withdrawal destination has been disabled in this build.
-export const DISABLED_KINDS: ReadonlyArray<NotificationKind> = [];

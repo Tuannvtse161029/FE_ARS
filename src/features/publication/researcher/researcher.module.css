@@ -352,6 +352,11 @@
   letter-spacing: 0.01em;
 }
 
+.fieldRequired {
+  color: var(--ars-error);
+  margin-left: 2px;
+}
+
 .field input,
 .field textarea,
 .field select {

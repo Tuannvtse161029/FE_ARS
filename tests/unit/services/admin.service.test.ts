@@ -1,14 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import api from '../../../src/services/axios';
 import { adminService } from '../../../src/services/admin.service';
-import { notificationService } from '../../../src/services/notification.service';
-import type { WithdrawalRequestItem } from '../../../src/types/admin';
 import type { User } from '../../../src/types/auth';
 
-// The centralized withdrawal gate (AppConfig.features.enableWithdrawals) is
-// off in production by default; for these tests we force-enable withdrawals
-// so the existing service contract is exercised. The disabled-state itself
-// is covered by tests/unit/withdrawalGate.test.tsx.
 vi.mock('../../../src/config/app', () => ({
   AppConfig: {
     appName: 'ARS Platform',
@@ -18,7 +12,7 @@ vi.mock('../../../src/config/app', () => ({
       enableRegistration: true,
       enableORCID: false,
       enablePaperSubmission: true,
-      enableWithdrawals: true,
+      enableWithdrawals: false,
     },
   },
   AuthConfig: { tokenKey: 'ars_token', userKey: 'ars_user', tokenExpirationHours: 24 },
@@ -239,95 +233,6 @@ describe('adminService (mock data path)', () => {
 
       const reactivated = await adminService.unsuspendAccount(suspended.id);
       expect(reactivated.status).toBe('ACTIVE');
-    });
-  });
-
-  describe('withdrawals', () => {
-    it('lists reviewer withdrawals', async () => {
-      const list = await adminService.getReviewerWithdrawals();
-      expect(list.length).toBeGreaterThan(0);
-    });
-
-    it('normalizes API `note` → requestReason at the service boundary', async () => {
-      // Defect 5: the wire shape uses `note`; the Admin UI reads
-      // `requestReason`. The normalization happens once inside
-      // adminService so downstream code never sees both spellings.
-      const list = await adminService.getReviewerWithdrawals();
-      // No row should carry the `note` alias on its public surface.
-      list.forEach((row) => {
-        expect((row as WithdrawalRequestItem & { note?: unknown }).note).toBeUndefined();
-        // requestReason is either a non-empty string or null/undefined —
-        // never the bare wire alias.
-        if (row.requestReason !== undefined && row.requestReason !== null) {
-          expect(typeof row.requestReason).toBe('string');
-        }
-      });
-      // At least one row carries a non-null requestReason (fixtures
-      // include 2001, 2003, 2004 — only 2002 has none).
-      const withReason = list.filter((w) => typeof w.requestReason === 'string' && w.requestReason.length > 0);
-      expect(withReason.length).toBeGreaterThan(0);
-    });
-
-    it('exports a normalizeWithdrawalItem helper that maps note → requestReason', async () => {
-      const { normalizeWithdrawalItem } = await import('../../../src/services/admin.service');
-      const normalized = normalizeWithdrawalItem({
-        txId: 9001,
-        userId: 1,
-        reviewerName: 'Tester',
-        amountVnd: 100_000,
-        bankName: 'VCB',
-        accountNumber: '1',
-        accountName: 'TESTER',
-        requestDate: '2026-08-01T00:00:00Z',
-        status: 'PENDING',
-        proofReceiptUrl: null,
-        note: 'Test reason',
-      });
-      expect(normalized.requestReason).toBe('Test reason');
-      expect((normalized as { note?: unknown }).note).toBeUndefined();
-    });
-
-    it('moves a PENDING request to ACCEPTED_PROCESSING', async () => {
-      const list = await adminService.getReviewerWithdrawals();
-      const pending = list.find((w) => w.status === 'PENDING');
-      if (!pending) throw new Error('Need a PENDING withdrawal');
-
-      const updated = await adminService.markWithdrawalProcessing(pending.txId);
-      expect(updated.status).toBe('ACCEPTED_PROCESSING');
-    });
-
-    it('completes the ACCEPTED_PROCESSING withdrawal and notifies the reviewer', async () => {
-      const list = await adminService.getReviewerWithdrawals();
-      const target = list.find((w) => w.status === 'ACCEPTED_PROCESSING');
-      if (!target) throw new Error('Need an ACCEPTED_PROCESSING withdrawal');
-
-      const fakeReceiptUrl = 'https://firebasestorage.googleapis.com/r';
-      const updated = await adminService.completeWithdrawal(
-        target.txId,
-        fakeReceiptUrl,
-        target.userId,
-        target.reviewerName,
-        target.amountVnd,
-      );
-      expect(updated.status).toBe('COMPLETED');
-      expect(updated.proofReceiptUrl).toBe(fakeReceiptUrl);
-      expect(notificationService.create).toHaveBeenCalledTimes(1);
-      expect(notificationService.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: target.userId,
-          isRead: false,
-        }),
-      );
-    });
-
-    it('denies a PENDING withdrawal with reason', async () => {
-      const list = await adminService.getReviewerWithdrawals();
-      const target = list.find((w) => w.status === 'PENDING');
-      if (!target) throw new Error('Need a PENDING withdrawal');
-
-      const updated = await adminService.denyWithdrawal(target.txId, 'Bank name mismatch');
-      expect(updated.status).toBe('DENIED');
-      expect(updated.rejectionReason).toBe('Bank name mismatch');
     });
   });
 

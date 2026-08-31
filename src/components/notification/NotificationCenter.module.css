@@ -4,6 +4,12 @@
  * handles outside-click / Escape / item-click teardown, and the
  * presentation layers below keep the visual distinction between
  * unread / read states.
+ *
+ * Color scheme: aligned with the rest of the ARS workspace (warm-paper
+ * canvas, yellow ochre accent) — NOT the default blue. The dropdown
+ * surfaces information, not branding; it borrows the same accent color
+ * as the rest of the site so the eye doesn't snap between a blue
+ * transient menu and a yellow workspace every time the bell rings.
  */
 
 .dropdownWrapper {
@@ -20,7 +26,7 @@
   border: none;
   position: relative;
   cursor: pointer;
-  color: #64748b;
+  color: var(--ink-secondary);
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -31,12 +37,12 @@
 }
 
 .bellBtn:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: var(--surface-sunken);
+  color: var(--ink-primary);
 }
 
 .bellBtn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -44,7 +50,7 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background-color: #ef4444;
+  background-color: var(--status-danger-text);
   color: #ffffff;
   font-size: 0.65rem;
   font-weight: 700;
@@ -54,7 +60,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--surface-base);
   padding: 0 4px;
   line-height: 1;
 }
@@ -65,11 +71,11 @@
   right: 0;
   width: 360px;
   max-height: 480px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  background-color: var(--surface-base);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.12),
-    0 10px 10px -5px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 20px 25px -5px var(--shadow-color),
+    0 10px 10px -5px var(--shadow-color);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -92,8 +98,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--surface-sunken);
 }
 
 .headerTitle {
@@ -103,14 +109,14 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink-primary);
 }
 
 .headerCount {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #2563eb;
-  background-color: #eff6ff;
+  color: var(--accent-ochre);
+  background-color: var(--surface-paper-muted);
   padding: 2px 8px;
   border-radius: 999px;
 }
@@ -119,7 +125,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #2563eb;
+  color: var(--accent-ochre);
   font-size: 0.78rem;
   font-weight: 600;
   padding: 4px 8px;
@@ -128,11 +134,11 @@
 }
 
 .markAllBtn:hover:not(:disabled) {
-  background-color: #eff6ff;
+  background-color: var(--surface-paper-muted);
 }
 
 .markAllBtn:disabled {
-  color: #94a3b8;
+  color: var(--ink-muted);
   cursor: not-allowed;
 }
 
@@ -151,24 +157,24 @@
   justify-content: center;
   padding: 32px 20px;
   gap: 12px;
-  color: #64748b;
+  color: var(--ink-secondary);
   font-size: 0.85rem;
   text-align: center;
 }
 
 .errorState {
-  color: #b91c1c;
+  color: var(--status-danger-text);
 }
 
 .errorTitle {
   font-weight: 700;
   font-size: 0.85rem;
-  color: #991b1b;
+  color: var(--status-danger-text);
 }
 
 .retryBtn {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
   border: none;
   padding: 6px 14px;
   border-radius: 6px;
@@ -179,7 +185,7 @@
 }
 
 .retryBtn:hover {
-  background-color: #1d4ed8;
+  background-color: var(--accent-hover);
 }
 
 .itemList {
@@ -195,7 +201,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   background-color: transparent;
   border-left: 3px solid transparent;
@@ -207,11 +213,11 @@
 }
 
 .item:hover {
-  background-color: #f8fafc;
+  background-color: var(--surface-sunken);
 }
 
 .item:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -220,12 +226,12 @@
 }
 
 .itemUnread {
-  background-color: #eff6ff;
-  border-left-color: #2563eb;
+  background-color: var(--surface-paper);
+  border-left-color: var(--accent-primary);
 }
 
 .itemUnread:hover {
-  background-color: #dbeafe;
+  background-color: var(--surface-paper-muted);
 }
 
 .itemIcon {
@@ -235,14 +241,14 @@
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: var(--surface-sunken);
+  color: var(--ink-secondary);
   flex-shrink: 0;
 }
 
 .itemIconUnread {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
 .itemBody {
@@ -253,7 +259,7 @@
 .itemTitle {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ink-primary);
   margin: 0 0 2px 0;
   display: flex;
   align-items: center;
@@ -262,7 +268,7 @@
 
 .itemMessage {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--ink-secondary);
   margin: 0 0 4px 0;
   line-height: 1.35;
   word-wrap: break-word;
@@ -275,7 +281,7 @@
 
 .itemTime {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--ink-muted);
   font-weight: 500;
 }
 
@@ -284,14 +290,14 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #ef4444;
+  background-color: var(--status-danger-text);
   flex-shrink: 0;
 }
 
 .footer {
   padding: 10px 16px;
-  border-top: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-sunken);
   display: flex;
   justify-content: center;
 }
@@ -300,7 +306,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #2563eb;
+  color: var(--accent-ochre);
   font-size: 0.8rem;
   font-weight: 600;
   padding: 4px 12px;
@@ -309,14 +315,14 @@
 }
 
 .viewAllLink:hover {
-  background-color: #eff6ff;
+  background-color: var(--surface-paper-muted);
 }
 
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid #e2e8f0;
-  border-top-color: #2563eb;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

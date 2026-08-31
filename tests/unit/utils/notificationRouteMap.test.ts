@@ -13,26 +13,18 @@
  *     topic-assigned events.
  *   - Reviewer/Researcher cannot be deep-linked into Admin pages.
  *   - Unknown messages resolve to the safe /forum fallback.
- *   - Withdrawal-prefix messages resolve to the safe fallback while the
- *     withdrawal feature is disabled.
  *   - The resolver never returns null — it always returns a string so the
  *     dropdown can close consistently.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   inferNotificationKind,
   resolveNotificationRoute,
   getSafeFallbackRoute,
   KNOWN_NOTIFICATION_KINDS,
 } from '../../../src/utils/notificationRouteMap';
-import { AppConfig } from '../../../src/config/app';
 
 describe('notificationRouteMap', () => {
-  beforeEach(() => {
-    // The default feature state for the withdrawal gate must be off —
-    // these tests assert the withdrawal suppression branch.
-    expect(AppConfig.features.enableWithdrawals).toBe(false);
-  });
 
   describe('inferNotificationKind', () => {
     it('maps researcher-prefixed messages to the right kind', () => {
@@ -159,12 +151,6 @@ describe('notificationRouteMap', () => {
       ).toBe('/admin/reports');
     });
 
-    it('routes reviewer "payment result" to /earnings-wallet', () => {
-      expect(
-        resolveNotificationRoute('[Wallet] payment result: 500000 VND', 'Reviewer'),
-      ).toBe('/earnings-wallet');
-    });
-
     it('routes forum-reply messages to /forum for every role', () => {
       const roles = ['Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin'] as const;
       for (const role of roles) {
@@ -203,34 +189,6 @@ describe('notificationRouteMap', () => {
       expect(resolveNotificationRoute('[Paper] status changed', '')).toBe(
         getSafeFallbackRoute(),
       );
-    });
-
-    it('suppresses withdrawal destinations while the withdrawal feature is disabled', () => {
-      // Default AppConfig.features.enableWithdrawals === false. The route
-      // map must NOT navigate to /earnings-wallet for withdrawal-prefixed
-      // messages — instead it returns the safe /forum fallback so the
-      // withdrawn feature cannot be deep-linked by a stale notification.
-      expect(
-        resolveNotificationRoute(
-          '[Wallet] withdrawal completed: 500000 VND',
-          'Reviewer',
-        ),
-      ).toBe(getSafeFallbackRoute());
-      expect(
-        resolveNotificationRoute(
-          '[Wallet] withdrawal approved: bank transfer queued',
-          'Reviewer',
-        ),
-      ).toBe(getSafeFallbackRoute());
-    });
-
-    it('still routes non-withdrawal wallet messages normally', () => {
-      // "[Wallet] payment result" is NOT a withdrawal event — the prefix
-      // is intentionally distinct so legitimate wallet notifications
-      // continue to land on /earnings-wallet.
-      expect(
-        resolveNotificationRoute('[Wallet] payment result: 500000 VND', 'Reviewer'),
-      ).toBe('/earnings-wallet');
     });
   });
 });
