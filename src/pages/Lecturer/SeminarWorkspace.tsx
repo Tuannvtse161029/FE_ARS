@@ -39,6 +39,8 @@ import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
 import styles from './SeminarWorkspace.module.css';
 
+const SEMINARS_PER_PAGE = 3;
+
 type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts';
 
 const formatSeminarId = (id: number): string =>
@@ -48,6 +50,7 @@ const formatBytesTitle = (raw: string): string => raw;
 
 export const SeminarWorkspace = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [currentSeminarPage, setCurrentSeminarPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -149,6 +152,20 @@ export const SeminarWorkspace = () => {
       return true;
     });
   }, [activeTab, seminars]);
+
+  const totalSeminarPages = Math.max(
+    1,
+    Math.ceil(filteredSeminars.length / SEMINARS_PER_PAGE),
+  );
+  const safeSeminarPage = Math.min(currentSeminarPage, totalSeminarPages);
+  const paginatedSeminars = useMemo(
+    () =>
+      filteredSeminars.slice(
+        (safeSeminarPage - 1) * SEMINARS_PER_PAGE,
+        safeSeminarPage * SEMINARS_PER_PAGE,
+      ),
+    [filteredSeminars, safeSeminarPage],
+  );
 
   const minDateTime = useMemo(
     () => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
@@ -406,7 +423,10 @@ export const SeminarWorkspace = () => {
               className={`${styles.tabBtn} ${
                 activeTab === t.key ? styles.tabActive : ''
               }`}
-              onClick={() => setActiveTab(t.key)}
+              onClick={() => {
+                setActiveTab(t.key);
+                setCurrentSeminarPage(1);
+              }}
             >
               {t.label}
               <span className={styles.tabCount}>{t.count}</span>
@@ -414,7 +434,9 @@ export const SeminarWorkspace = () => {
           ))}
         </div>
         <span className={styles.toolbarMeta}>
-          Showing {filteredSeminars.length} of {seminars.length} seminars
+          Showing {paginatedSeminars.length > 0
+            ? `${(safeSeminarPage - 1) * SEMINARS_PER_PAGE + 1}–${Math.min(safeSeminarPage * SEMINARS_PER_PAGE, filteredSeminars.length)}`
+            : '0'} of {filteredSeminars.length} seminars
         </span>
       </div>
 
@@ -445,7 +467,7 @@ export const SeminarWorkspace = () => {
         />
       ) : (
         <ul className={styles.list}>
-          {filteredSeminars.map((sem) => {
+          {paginatedSeminars.map((sem) => {
             const seminarStartDate = sem.startTime
               ? new Date(sem.startTime)
               : null;
@@ -617,6 +639,32 @@ export const SeminarWorkspace = () => {
                 );
           })}
         </ul>
+      )}
+
+      {totalSeminarPages > 1 && (
+        <div className={styles.paginationRow}>
+          <button
+            type="button"
+            className={styles.paginationBtn}
+            onClick={() => setCurrentSeminarPage((p) => Math.max(1, p - 1))}
+            disabled={safeSeminarPage <= 1}
+          >
+            Previous
+          </button>
+          <span className={styles.paginationLabel}>
+            Page {safeSeminarPage} of {totalSeminarPages}
+          </span>
+          <button
+            type="button"
+            className={styles.paginationBtn}
+            onClick={() =>
+              setCurrentSeminarPage((p) => Math.min(totalSeminarPages, p + 1))
+            }
+            disabled={safeSeminarPage >= totalSeminarPages}
+          >
+            Next
+          </button>
+        </div>
       )}
 
       {/* CREATE SEMINAR MODAL */}

@@ -354,7 +354,7 @@ export const Register = () => {
     <div className={styles.registerPage}>
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research System</span>
+        <span className={styles.brandText}>Academic Research Sharing</span>
       </header>
 
       <header className={styles.pageHeader}>

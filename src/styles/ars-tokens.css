@@ -124,8 +124,15 @@
   --ars-info-bg: #dbeafe;
 
   /* ── Typography ─────────────────────────────────────────── */
-  /* Primary: Inter for UI, numbers, labels */
-  --font-family-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Primary: Roboto for UI, numbers, labels.
+     Roboto is chosen as the platform typeface because it carries the full
+     set of Vietnamese-specific code points (ă, â, ê, ô, ơ, ư and every
+     tone combination) and pairs naturally with Georgia for editorial
+     headings. The system fallbacks (Segoe UI, Helvetica, Arial) keep text
+     readable before Roboto has finished downloading, and Arial itself has
+     complete Vietnamese coverage so an offline user still sees correct
+     diacritics. Weights 300-800 mirror the design system's weight scale. */
+  --font-family-ui: 'Roboto', 'Segoe UI', Helvetica, Arial, sans-serif;
   /* Serif: Georgia for editorial headings, section titles */
   --font-family-serif: Georgia, 'Times New Roman', serif;
   /* Mono: Consolas for IDs, metadata, citation-style text */

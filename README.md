@@ -15,6 +15,7 @@ Academic Research System - Frontend Application built with React + TypeScript + 
 - **Charts**: Recharts
 - **Icons**: Lucide React
 - **Styling**: CSS Modules
+- **Typography**: Roboto (loaded from Google Fonts with Vietnamese glyph subset)
 
 ## Getting Started
 
@@ -100,6 +101,7 @@ src/
 │   ├── Input/
 │   ├── Navbar/
 │   ├── PdfViewer/   # PDF.js-based document viewer with thumbnail sidebar
+│   ├── i18n/        # Language toggle (LanguageToggle.tsx + .module.css)
 │   └── workspace/   # Shared workspace header, metrics, and activity feed
 ├── pages/           # Page components — organised by role
 │   ├── Admin/           # Admin landing page (DB-only role)
@@ -131,6 +133,7 @@ src/
 ├── routes/          # Routing configuration, private routes, ROUTES constants
 ├── services/        # API services (auth, Google auth/OAuth, papers, reviews, seminars, users)
 ├── store/           # Zustand store (authSlice)
+├── i18n/            # Internationalization (translations.ts dictionary, I18nContext.tsx provider)
 ├── types/           # TypeScript types
 ├── utils/           # Utility functions (constants, validation, storage)
 ├── styles/          # Global styles
@@ -176,7 +179,73 @@ The four self-registerable roles are listed in `src/types/auth.ts` as `UserRole`
 - Workspace headers, activity feeds, and metric cards
 - Admin role-request, account, transaction, report, package, and audit-log views
 - Error handling and loading states
+- Internationalization (Vietnamese by default, English fallback) with a `LanguageToggle` in the header
 - Unit, integration, and E2E test support with Vitest and Playwright
+
+## Internationalization & Typography
+
+The frontend ships Vietnamese-first. The default locale is `vi`; `<html lang="vi">` is
+set on initial paint and updated whenever the user switches languages.
+
+### How it works
+
+```text
+src/i18n/
+├── translations.ts   # Dictionary — `{ vi: {...}, en: {...} }` plus a `translate()`
+│                       helper that resolves a key with fallback vi → en → passed-in
+│                       default → raw key. Half-translated pages never render `undefined`.
+└── I18nContext.tsx   # <I18nProvider> exposes `useT()`, `useLocale()`, and `useI18n()`.
+                       Persists the chosen locale to `localStorage` under `ars_lang`
+                       and mirrors it onto `<html lang>` so screen readers and CSS
+                       `:lang(vi)` selectors react to the switch.
+```
+
+Pages call `useT()` and pass a namespace key plus an English fallback:
+
+```tsx
+const t = useT();
+
+<h1>{t('landing.heroTitle', 'A responsible path for research to be read, reviewed, and shared.')}</h1>
+```
+
+The English fallback doubles as inline documentation so any future contributor can
+localize a string just by replacing the fallback with a translated value in
+`translations.ts`.
+
+### Language toggle
+
+`src/components/i18n/LanguageToggle.tsx` is rendered next to the theme toggle in the
+top-right of `MainLayout`, and also in the public `Landing` page header. It opens a
+small dropdown listing every supported locale (currently Vietnamese 🇻🇳 and
+English 🇬🇧) and marks the active one with a check. The dropdown closes on outside
+click or `Escape` key.
+
+### Coverage
+
+As of the latest integration, the **Landing page** is fully localized (hero,
+statement, five-stage workflow, publication-flow diagram, public-access boundaries,
+four workspaces, FAQ, footer). The remaining pages still render their original
+English copy and localize gracefully through the same `useT()` keys as their
+content is migrated.
+
+### Vietnamese-friendly font
+
+The platform typeface is **Roboto**, loaded from Google Fonts in
+`index.html` with the `vietnamese` subset and weights 300-800. Roboto carries the
+full set of Vietnamese-specific code points (ă, â, ê, ô, ơ, ư and every tone
+combination) and pairs naturally with Georgia (the existing serif used for
+editorial headings).
+
+```css
+/* src/styles/ars-tokens.css */
+--font-family-ui: 'Roboto', 'Segoe UI', Helvetica, Arial, sans-serif;
+/* fallback Arial already has full Vietnamese coverage, so text reads correctly
+   even before Roboto finishes downloading or if the user is offline. */
+```
+
+Preconnect hints to `fonts.googleapis.com` and `fonts.gstatic.com` are declared
+in `index.html` so the request stays off the critical render path. `display=swap`
+shows the system fallback immediately so text is never invisible.
 
 ## API Documentation
 

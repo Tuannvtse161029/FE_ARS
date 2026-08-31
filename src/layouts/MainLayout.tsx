@@ -9,6 +9,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
+import { LanguageToggle } from '../components/i18n/LanguageToggle';
+import { useI18n } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -296,6 +298,8 @@ export const MainLayout = () => {
   const handleToggleTheme = (): void => {
     setTheme((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
   };
+
+  const { t: tr } = useI18n();
 
   const handleToggleSidebar = (): void => {
     setIsSidebarCollapsed((collapsed) => !collapsed);
@@ -677,17 +681,23 @@ export const MainLayout = () => {
               type="button"
               className={styles.themeToggle}
               onClick={handleToggleTheme}
-              aria-label={theme === 'archive-dusk' ? 'Switch to Paper Day theme' : 'Switch to Archive Dusk theme'}
+              aria-label={theme === 'archive-dusk' ? tr('header.themeToLight') : tr('header.themeToDark')}
               aria-pressed={theme === 'archive-dusk'}
-              title={theme === 'archive-dusk' ? 'Switch to Paper Day' : 'Switch to Archive Dusk'}
+              title={theme === 'archive-dusk' ? tr('header.themeLightTitle') : tr('header.themeDarkTitle')}
               data-testid="theme-toggle"
             >
               {theme === 'archive-dusk' ? (
-                <SunIcon size={18} aria-label="Switch to Paper Day theme" />
+                <SunIcon size={18} aria-label={tr('header.themeToLight')} />
               ) : (
-                <MoonIcon size={18} aria-label="Switch to Archive Dusk theme" />
+                <MoonIcon size={18} aria-label={tr('header.themeToDark')} />
               )}
             </button>
+
+            {/* Language toggle — sits directly to the RIGHT of the theme
+                toggle so the two settings cluster together at the top of
+                the page. Flag + active locale code; click cycles between
+                Vietnamese (default) and English. */}
+            <LanguageToggle />
 
             {/* Reviewer availability toggle — only shown for Reviewer role */}
             {activeRole === 'Reviewer' && (

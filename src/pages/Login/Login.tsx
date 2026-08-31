@@ -16,8 +16,10 @@ import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { authService } from '../../services/auth.service';
 import { roleService, type RoleItem } from '../../services/role.service';
+import { useT } from '../../i18n/I18nContext';
 
 const Login = () => {
+  const t = useT();
   const {
     login,
     loginWithGoogle,
@@ -112,8 +114,10 @@ const Login = () => {
       authService.logout();
       await loginWithGoogle(response);
     } catch (err: unknown) {
-      const fallback =
-        'Google sign-in failed. Please try again or use the email & password option.';
+      const fallback = t(
+        'login.googleError',
+        'Google sign-in failed. Please try again or use the email & password option.',
+      );
       const message =
         err instanceof GoogleLoginError && err.message
           ? err.message
@@ -132,12 +136,14 @@ const Login = () => {
       {/* Brand & Logo Header — centered masthead, journal inside-cover feel */}
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research System</span>
+        <span className={styles.brandText}>
+          {t('landing.brandName', 'Academic Research Sharing')}
+        </span>
       </header>
 
       {/* Page Title */}
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Nice to see you again</h1>
+        <h1 className={styles.pageTitle}>{t('auth.welcomeBack', 'Nice to see you again')}</h1>
       </header>
 
       {/* Login Form */}
@@ -155,8 +161,8 @@ const Login = () => {
             <Input
               {...field}
               type="email"
-              label="Email"
-              placeholder="name@institution.edu"
+              label={t('auth.email', 'Email')}
+              placeholder={t('auth.emailPlaceholder', 'name@institution.edu')}
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading || googlePending}
@@ -173,8 +179,8 @@ const Login = () => {
               <Input
                 {...field}
                 type={showPassword ? 'text' : 'password'}
-                label="Password"
-                placeholder="Enter password"
+                label={t('auth.password', 'Password')}
+                placeholder={t('auth.passwordPlaceholder', 'Enter password')}
                 error={errors.password?.message}
                 autoComplete="current-password"
                 disabled={isLoading || googlePending}
@@ -184,7 +190,7 @@ const Login = () => {
                     type="button"
                     className={styles.passwordToggle}
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('login.hidePassword', 'Hide password') : t('login.showPassword', 'Show password')}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -196,7 +202,8 @@ const Login = () => {
 
         <div className={styles.roleFieldWrapper}>
           <label className={styles.fieldLabel} htmlFor="selectedRole">
-            Sign in as Role <span className={styles.optionalTag}>(Optional)</span>
+            {t('login.signInAsRole', 'Sign in as Role')}{' '}
+            <span className={styles.optionalTag}>({t('login.optional', 'Optional')})</span>
           </label>
           <Controller
             name="selectedRole"
@@ -209,7 +216,7 @@ const Login = () => {
                 className={styles.roleSelect}
                 disabled={isLoading || googlePending}
               >
-                <option value="">Auto-detect Role (Default)</option>
+                <option value="">{t('login.autoDetectRole', 'Auto-detect Role (Default)')}</option>
                 {availableRoles
                   .filter((role) => role.name !== 'Admin')
                   .map((role) => (
@@ -224,7 +231,10 @@ const Login = () => {
             <span className={styles.fieldError}>{errors.selectedRole.message}</span>
           )}
           <span className={styles.fieldHint}>
-            Holding multiple roles? Select your role here. You can log out anytime to switch roles.
+            {t(
+              'login.roleHint',
+              'Holding multiple roles? Select your role here. You can log out anytime to switch roles.',
+            )}
           </span>
           {rolesError && <span className={styles.fieldError}>{rolesError}</span>}
         </div>
@@ -246,12 +256,12 @@ const Login = () => {
                   ref={field.ref}
                 />
                 <span className={styles.toggleSlider}></span>
-                <span className={styles.toggleLabel}>Remember me</span>
+                <span className={styles.toggleLabel}>{t('auth.rememberMe', 'Remember me')}</span>
               </label>
             )}
           />
           <Link to={ROUTES.FORGOT_PASSWORD} className={styles.forgotLink}>
-            Forgot password?
+            {t('auth.forgotPassword', 'Forgot password?')}
           </Link>
         </div>
 
@@ -263,7 +273,7 @@ const Login = () => {
           isLoading={isLoading}
           className={styles.submitButton}
         >
-          Sign in
+          {t('auth.signInButton', 'Sign in')}
         </Button>
 
         <div className={styles.googleButtonWrapper}>
@@ -283,9 +293,9 @@ const Login = () => {
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
-            Don't have an account?{' '}
+            {t('auth.noAccount', "Don't have an account?")}{' '}
             <Link to={ROUTES.REGISTER} className={styles.registerLink}>
-              Sign up now
+              {t('auth.signUpHere', 'Sign up now')}
             </Link>
           </p>
         </div>

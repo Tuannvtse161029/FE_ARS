@@ -89,7 +89,7 @@ const ResetPassword = () => {
     <div className={styles.page}>
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research System</span>
+        <span className={styles.brandText}>Academic Research Sharing</span>
       </header>
 
       <StepIndicator currentStep={3} />

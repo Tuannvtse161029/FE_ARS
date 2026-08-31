@@ -139,7 +139,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>1. Information We Collect</h3>
                 <p className={styles.paragraph}>
-                  When you register and use the Academic Research System (ARS), we collect the following types of information:
+                  When you register and use the Academic Research Sharing (ARS), we collect the following types of information:
                 </p>
                 <ul className={styles.list}>
                   <li><strong>Account Identity:</strong> Full Name, Email Address, Contact Phone Number, and Password.</li>

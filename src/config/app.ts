@@ -1,7 +1,7 @@
 export const AppConfig = {
   appName: 'ARS Platform',
   appVersion: '1.0.0',
-  description: 'Academic Research System - Manage and share research papers',
+  description: 'Academic Research Sharing - Manage and share research papers',
   features: {
     enableRegistration: true,
     // ORCID collection is disabled in the registration flow per product spec;
