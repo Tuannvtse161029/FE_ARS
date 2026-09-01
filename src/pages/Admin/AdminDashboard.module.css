@@ -1,193 +1,214 @@
-/**
- * AdminDashboard — ARS Research Constellation
- * System Observatory for Admin role
- */
+/* Queue-first Admin dashboard. */
 .page {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--ars-paper);
-  min-height: 100vh;
+  gap: var(--space-6);
+  color: var(--ars-ink);
 }
 
 .content {
-  padding: var(--space-8);
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
 }
 
-/* ── Range Pills ─────────────────────────────────────── */
-.rangePills {
-  display: flex;
-  gap: 2px;
-  background: rgba(250, 248, 243, 0.08);
-  padding: 3px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(250, 248, 243, 0.1);
-}
-
-.rangePill {
-  padding: 5px 12px;
-  border: none;
-  background: transparent;
-  color: rgba(250, 248, 243, 0.6);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.rangePill:hover {
-  color: var(--ars-paper);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.rangePillActive {
-  background: rgba(250, 248, 243, 0.15);
-  color: var(--ars-paper) !important;
-}
-
-/* ── Metric Grid ─────────────────────────────────────── */
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: var(--space-4);
-}
-
-@media (max-width: 640px) {
-  .metricGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── Charts Row ──────────────────────────────────────── */
-.chartsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-5);
-}
-
-@media (max-width: 900px) {
-  .chartsRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.chartSection {
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  padding: var(--space-5);
+.analyticsSection,
+.snapshotSection {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sectionEyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.analyticsSection {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.chartSection {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+  padding: var(--space-4);
+}
+
 .chartHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  flex-wrap: wrap;
 }
 
-.chartTitle {
+.chartEyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.chartHeader h2 {
+  margin: 0;
+  color: var(--ars-ink);
   font-family: var(--font-family-serif);
   font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
 }
 
-.chartWrapper {
-  width: 100%;
-  height: 240px;
+.rangeSelector {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 
-.chartSkeleton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 240px;
+.rangeButton,
+.rangeButtonActive {
+  min-height: 28px;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  padding: 0 var(--space-2);
+}
+
+.rangeButton:hover {
+  border-color: var(--ars-admin);
+  color: var(--ars-admin);
+}
+
+.rangeButtonActive {
+  border-color: var(--ars-admin);
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rangeButton:focus-visible,
+.rangeButtonActive:focus-visible {
+  outline: 2px solid var(--ars-admin);
+  outline-offset: 2px;
+}
+
+.chartFrame {
+  height: 260px;
+  min-width: 0;
+}
+
+.chartLoading,
+.chartEmpty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  border: 1px dashed var(--ars-node);
   color: var(--ars-ink-muted);
   font-size: var(--font-size-sm);
-  border: 1px dashed rgba(26, 31, 54, 0.15);
-  border-radius: var(--radius-md);
+  text-align: center;
 }
 
-/* ── Activity Section ───────────────────────────────── */
-.activitySection {}
-
-/* ── Status Tags ────────────────────────────────────── */
-.statusTag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.chartSection .widgetError {
+  min-height: 260px;
 }
 
-.statusTagPENDING {
-  background: var(--ars-warning-bg);
-  color: var(--ars-warning);
-}
-
-.statusTagAPPROVED {
-  background: var(--ars-success-bg);
-  color: var(--ars-success);
-}
-
-.statusTagDENIED {
-  background: var(--ars-error-bg);
-  color: var(--ars-error);
-}
-
-/* ── Widget Error ─────────────────────────────────────── */
 .widgetError {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--ars-paper-alt);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 1px solid var(--ars-error);
+  background: var(--ars-error-bg);
   color: var(--ars-error);
   font-size: var(--font-size-sm);
-  grid-column: 1 / -1;
-}
-
-.widgetError > svg {
-  flex-shrink: 0;
 }
 
 .widgetError > span {
   flex: 1;
 }
 
-.retryBtn {
-  background: transparent;
-  border: 1px solid rgba(153, 27, 27, 0.3);
+.widgetError button {
+  min-height: 36px;
+  border: 1px solid var(--ars-admin);
   border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  background: var(--ars-paper);
+  color: var(--ars-admin);
   cursor: pointer;
-  color: var(--ars-error);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  transition: all var(--transition-fast);
   font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: 0 var(--space-3);
 }
 
-.retryBtn:hover {
-  background: var(--ars-error-bg);
+.widgetError button:hover {
+  background: var(--ars-info-bg);
 }
 
-/* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 768px) {
-  .content {
-    padding: var(--space-5) var(--space-4);
+.widgetError button:focus-visible {
+  outline: 2px solid var(--ars-admin);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metricGrid,
+  .analyticsSection {
+    grid-template-columns: 1fr;
+  }
+
+  .chartHeader {
+    flex-direction: column;
+  }
+
+  .rangeSelector {
+    justify-content: flex-start;
+  }
+
+  .chartFrame,
+  .chartLoading,
+  .chartEmpty,
+  .chartSection .widgetError {
+    min-height: 220px;
   }
 }

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Users } from 'lucide-react';
+import { X, Loader2, Inbox } from 'lucide-react';
 import { followerService } from '../../services/follower.service';
 import { useAuth } from '../../context/AuthContext';
+import { EmptyState } from '../EmptyState';
+import { Button } from '../Button';
 import type { FollowerResponse } from '../../types/domain';
 import styles from './FollowListModal.module.css';
 
@@ -37,6 +39,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   const [items, setItems] = useState<FollowerResponse[]>([]);
   const [followingMap, setFollowingMap] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   const loadData = useCallback(async () => {
     if (!userId || !isOpen) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       if (activeTab === 'followers') {
         const res = await followerService.getFollowers(userId, 1, 50);
@@ -68,6 +72,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
       }
     } catch {
       setItems([]);
+      setLoadError(`We couldn't load your ${activeTab}. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +111,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           <div className={styles.modalTabs}>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'followers'}
               className={`${styles.tabBtn} ${activeTab === 'followers' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('followers')}
             >
@@ -113,6 +120,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'following'}
               className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('following')}
             >
@@ -124,26 +133,44 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           </button>
         </div>
 
-        <div className={styles.modalBody}>
+        <div
+          key={activeTab}
+          className={styles.modalBody}
+          role="tabpanel"
+          aria-label={activeTab === 'followers' ? 'Followers' : 'Following'}
+        >
           {isLoading ? (
-            <div className={styles.loadingWrapper}>
-              <div className={styles.spinner} />
+            <div className={styles.loadingWrapper} role="status" aria-live="polite">
+              <Loader2 size={16} className={styles.spinner} aria-hidden />
               <span>Loading {activeTab}…</span>
             </div>
-          ) : items.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Users size={32} color="#94a3b8" />
-              <span>
-                {activeTab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
-              </span>
+          ) : loadError ? (
+            <div role="alert" className={styles.errorState}>
+              <span>{loadError}</span>
+              <Button variant="outline" size="sm" onClick={() => void loadData()}>
+                Retry
+              </Button>
             </div>
+          ) : items.length === 0 ? (
+            <EmptyState
+              icon={<Inbox size={20} />}
+              title={
+                activeTab === 'followers'
+                  ? 'No followers yet'
+                  : 'Not following anyone yet'
+              }
+              description={
+                activeTab === 'followers'
+                  ? 'When someone follows this profile, they will appear here.'
+                  : 'Browse the forum or other researcher profiles to start following colleagues.'
+              }
+              compact
+            />
           ) : (
             <ul className={styles.userList}>
               {items.map((item) => {
                 const targetId = activeTab === 'followers' ? item.followerId : item.followedId;
                 const targetName = activeTab === 'followers' ? item.followerName : item.followedName;
-                const targetEmail = activeTab === 'followers' ? item.followerEmail : item.followedEmail;
-                const avatarColor = PALETTE[(targetId || 1) % PALETTE.length];
                 const initials = deriveInitials(targetName);
                 const isMe = currentUserId === targetId;
                 const isFollowing = Boolean(followingMap[targetId]);
@@ -157,30 +184,34 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
 
                 return (
                   <li key={item.id ?? `${item.followerId}_${item.followedId}`} className={styles.userItem}>
-                    <div
+                    <button
+                      type="button"
                       className={styles.userInfo}
                       onClick={handleUserClick}
-                      style={{ cursor: 'pointer' }}
                       title={`View ${targetName || 'user'}'s profile`}
                     >
-                      <div className={styles.userAvatar} style={{ backgroundColor: avatarColor }}>
+                      <div
+                        className={styles.userAvatar}
+                        data-palette={String((targetId || 1) % PALETTE.length)}
+                      >
                         {initials}
                       </div>
                       <div className={styles.userDetails}>
                         <span className={styles.userName}>{targetName || `User #${targetId}`}</span>
-                        {targetEmail && <span className={styles.userEmail}>{targetEmail}</span>}
                       </div>
-                    </div>
+                    </button>
 
                     {!isMe && currentUserId && (
-                      <button
-                        type="button"
-                        className={`${styles.actionBtn} ${isFollowing ? styles.followingBtn : styles.followBtn}`}
+                      <Button
+                        variant={isFollowing ? 'outline' : 'primary'}
+                        size="sm"
                         onClick={() => void handleToggleFollow(targetId)}
                         disabled={isBusy}
+                        isLoading={isBusy}
+                        className={`${styles.actionBtn} ${isFollowing ? styles.followingBtn : styles.followBtn}`}
                       >
-                        {isBusy ? '…' : isFollowing ? 'Following' : 'Follow'}
-                      </button>
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </Button>
                     )}
                   </li>
                 );

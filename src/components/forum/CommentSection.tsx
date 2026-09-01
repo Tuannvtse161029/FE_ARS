@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -6,10 +6,12 @@ import {
   Edit2,
   Trash2,
   Flag,
-  AlertCircle,
   ChevronDown,
   ChevronUp,
   ThumbsUp,
+  Inbox,
+  Loader2,
+  MoreVertical,
 } from 'lucide-react';
 import api from '../../services/axios';
 import {
@@ -18,7 +20,14 @@ import {
 } from '../../hooks/useForumComments';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { ROUTES } from '../../routes/paths';
+import { ErrorBanner } from '../ErrorBanner';
+import { EmptyState } from '../EmptyState';
 import { ReportModal } from './ReportModal';
+import { Button } from '../Button';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { storage } from '../../utils/storage';
 import type { ForumComment } from '../../types/forum.types';
@@ -97,6 +106,7 @@ export const CommentSection = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isVerified } = usePermissions();
+  const { canInteract, reason: interactDisabledReason } = useCanInteractInForum();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
   const currentUserName =
@@ -150,6 +160,28 @@ export const CommentSection = ({
     id: number;
     preview: string;
   } | null>(null);
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<number | null>(null);
+  const commentMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const closeMenuOnOutsideClick = (event: MouseEvent) => {
+      if (!commentMenuRef.current?.contains(event.target as Node)) {
+        setOpenCommentMenuId(null);
+      }
+    };
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenCommentMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', closeMenuOnOutsideClick);
+    document.addEventListener('keydown', closeMenuOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeMenuOnOutsideClick);
+      document.removeEventListener('keydown', closeMenuOnEscape);
+    };
+  }, []);
 
   useEffect(() => {
     setLocalComments(comments);
@@ -171,7 +203,7 @@ export const CommentSection = ({
 
   const handleToggleVote = async (comment: ForumComment) => {
     const targetId = comment.id || comment.forumCommentId || 0;
-    if (!targetId || !isVerified || !currentUserId) return;
+    if (!targetId || !canInteract || !currentUserId) return;
 
     const previousIsUpvoted = Boolean(comment.isUpvoted);
     const previousCount = comment.upvoteCount ?? 0;
@@ -227,7 +259,7 @@ export const CommentSection = ({
 
   const submitNewComment = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || !currentUserId) return;
+    if (!trimmed || !currentUserId || !canInteract) return;
     setSubmitting(true);
     setActionError(null);
     const result = await create({
@@ -245,7 +277,61 @@ export const CommentSection = ({
     }
   };
 
+  // Part 4 — keyboard shortcuts for navigating the comment thread.
+  // j/k walk the comments list, Enter opens the edit textarea for the
+  // focused comment. The `n` and `f` shortcuts are intentionally omitted
+  // — comments don't have a "create new" or filter affordance.
+  const { selectedIndex: commentSelectedIndex } = useListShortcuts({
+    itemCount: localComments.length,
+    onOpen: (index) => {
+      const comment = localComments[index];
+      if (!comment) return;
+      const targetId = comment.id || comment.forumCommentId || 0;
+      if (!targetId) return;
+      if (canInteract) {
+        setEditingId(targetId);
+        setEditDraft(comment.content ?? '');
+      }
+    },
+    onFilterFocus: null,
+  });
+
+  // Part 4 — Ctrl/Cmd+Enter to post the reply, plain Enter to save an
+  // active edit. The hooks are wired at the top via refs so the latest
+  // closures always run.
+  const submitRef = useRef<() => Promise<void>>(async () => {});
+  const saveEditRef = useRef<(comment: ForumComment) => Promise<void>>(async () => {});
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Post comment',
+      description: 'Submit the comment reply (Ctrl/Cmd + Enter).',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        void submitRef.current();
+      },
+    },
+    {
+      key: 'Enter',
+      label: 'Save edit',
+      description: 'Save the comment edit while editing.',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        const activeComment = localComments.find(
+          (c) => (c.id ?? c.forumCommentId) === editingId,
+        );
+        if (activeComment) {
+          void saveEditRef.current(activeComment);
+        }
+      },
+    },
+  ]);
+
   const startEdit = (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     setEditingId(targetId);
     setEditDraft(comment.content ?? '');
@@ -258,6 +344,7 @@ export const CommentSection = ({
   };
 
   const saveEdit = async (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId) return;
     const trimmed = editDraft.trim();
@@ -286,8 +373,13 @@ export const CommentSection = ({
       setActionError('Failed to update comment. Please try again.');
     }
   };
+  // Wire the keyboard shortcuts' refs to the freshest closures so they
+  // always invoke the latest implementation regardless of render timing.
+  submitRef.current = submitNewComment;
+  saveEditRef.current = saveEdit;
 
   const deleteComment = async (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId) return;
     const confirmed = window.confirm('Delete this comment? This cannot be undone.');
@@ -354,52 +446,112 @@ export const CommentSection = ({
 
       {!collapsed && (
         <>
-          {/* Error banner */}
+          {/* Error banner — now uses the shared ErrorBanner.
+              We keep both an actionError and a list-level error copy. */}
           {actionError && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={14} />
-              {actionError}
+            <ErrorBanner
+              tone="error"
+              title="Comment action failed"
+              message={actionError}
+            />
+          )}
+
+          {/* List-level error — shared ErrorBanner */}
+          {!actionError && error && (
+            <ErrorBanner
+              tone="error"
+              title="Couldn't load comments"
+              message="Refresh and try again."
+            />
+          )}
+
+          {/* Loading state — inline neutral message (SkeletonRow would feel
+              heavy for a comment list; a single line matches the rhythm
+              of the thread). */}
+          {isLoading && !error && (
+            <div className={styles.stateMessage} role="status" aria-live="polite">
+              <Loader2 size={12} className={styles.stateSpinner} aria-hidden />
+              <span>Loading comments…</span>
             </div>
           )}
 
-          {/* Loading / empty / error states for the list itself */}
-          {isLoading && (
-            <div className={styles.stateMessage}>Loading comments…</div>
-          )}
-
-          {!isLoading && error && (
-            <div className={styles.stateMessage} role="alert">
-              Failed to load comments.
-            </div>
-          )}
-
+          {/* Empty state — shared EmptyState (compact mode) */}
           {!isLoading && !error && localComments.length === 0 && (
-            <div className={styles.stateMessage}>
-              No comments yet. Be the first to start the conversation.
-            </div>
+            <EmptyState
+              icon={<Inbox size={18} />}
+              title="No comments yet"
+              description="Be the first to start the conversation."
+              compact
+            />
           )}
 
           {!isLoading && !error && localComments.length > 0 && (
             <ul className={styles.commentList}>
-              {localComments.map((comment) => {
+              {localComments.map((comment, commentIndex) => {
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
                 const isEditing = editingId === (comment.id || comment.forumCommentId);
                 return (
-                  <li key={comment.id} className={styles.commentItem}>
+                  <li
+                    key={comment.id}
+                    className={`${styles.commentItem} ${comment.replyId ? styles.replyItem : ''} ${commentIndex === commentSelectedIndex ? styles.selectedComment : ''}`}
+                  >
                     <div className={styles.commentMeta}>
-                      <span
+                      <button
+                        type="button"
                         className={styles.commentAuthor}
                         onClick={() => handleCommenterClick(comment.userId)}
-                        style={{ cursor: comment.userId ? 'pointer' : 'default' }}
                         title={comment.userId ? `View ${renderAuthorLabel(comment)}'s profile` : undefined}
                       >
                         {renderAuthorLabel(comment)}
-                      </span>
+                      </button>
+                      {isOwner && (
+                        <span className={styles.commentOwnerBadge}>{currentUserName}</span>
+                      )}
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>
                           {formatRelativeTime(comment.createdAt)}
                         </span>
+                      )}
+                      {isVerified && (
+                        <div
+                          className={styles.commentMenu}
+                          ref={openCommentMenuId === comment.id ? commentMenuRef : null}
+                        >
+                          <button
+                            type="button"
+                            className={styles.commentMenuTrigger}
+                            onClick={() =>
+                              setOpenCommentMenuId((currentId) =>
+                                currentId === comment.id ? null : comment.id,
+                              )
+                            }
+                            aria-label="Comment actions"
+                            aria-haspopup="menu"
+                            aria-expanded={openCommentMenuId === comment.id}
+                          >
+                            <MoreVertical size={16} aria-hidden="true" />
+                          </button>
+                          {openCommentMenuId === comment.id && (
+                            <div className={styles.commentMenuPopover} role="menu">
+                              <button
+                                type="button"
+                                className={`${styles.commentMenuItem} ${styles.actionBtnDanger}`}
+                                onClick={() => {
+                                  setReportTarget({
+                                    id: comment.id,
+                                    preview: (comment.content ?? '').slice(0, 60),
+                                  });
+                                  setOpenCommentMenuId(null);
+                                }}
+                                role="menuitem"
+                              >
+                                <Flag size={14} aria-hidden="true" />
+                                Report
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -413,22 +565,23 @@ export const CommentSection = ({
                           disabled={submitting}
                         />
                         <div className={styles.editActions}>
-                          <button
-                            type="button"
-                            className={styles.cancelBtn}
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={cancelEdit}
                             disabled={submitting}
                           >
                             Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.saveBtn}
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
                             onClick={() => saveEdit(comment)}
                             disabled={submitting || !editDraft.trim()}
+                            isLoading={submitting}
                           >
                             Save
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
@@ -439,7 +592,7 @@ export const CommentSection = ({
 
                     {!isEditing && (
                       <div className={styles.commentActions}>
-                        {isVerified && (
+                        {canInteract && (
                           <button
                             type="button"
                             className={`${styles.actionBtn} ${styles.actionBtnUpvote} ${
@@ -457,7 +610,7 @@ export const CommentSection = ({
                           </button>
                         )}
 
-                        {isOwner && (
+                        {isOwner && canInteract && (
                           <>
                             <button
                               type="button"
@@ -480,21 +633,18 @@ export const CommentSection = ({
                             </button>
                           </>
                         )}
-                        {isVerified && (
-                          <button
-                            type="button"
-                            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                            onClick={() =>
-                              setReportTarget({
-                                id: comment.id,
-                                preview: (comment.content ?? '').slice(0, 60),
-                              })
-                            }
-                            aria-label="Report comment"
+
+                        {!canInteract && interactDisabledReason && (
+                          <span
+                            className={styles.actionBtn}
+                            title={interactDisabledReason}
+                            aria-label={interactDisabledReason}
+                            data-testid="comment-action-disabled-reason"
+                            style={{ cursor: 'not-allowed', opacity: 0.6 }}
                           >
-                            <Flag size={14} />
-                            Report
-                          </button>
+                            <ThumbsUp size={14} />
+                            <span>{comment.upvoteCount ?? 0}</span>
+                          </span>
                         )}
                       </div>
                     )}
@@ -504,8 +654,9 @@ export const CommentSection = ({
             </ul>
           )}
 
-          {/* Create form — only for verified/authenticated users */}
-          {isVerified && currentUserId != null && (
+          {/* Create form — only for users who can interact (approved +
+              subscription ACTIVE for Researcher / Lecturer). */}
+          {canInteract && currentUserId != null && (
             <div className={styles.createForm}>
               <textarea
                 className={styles.createTextarea}
@@ -515,15 +666,37 @@ export const CommentSection = ({
                 onChange={(e) => setDraft(e.target.value)}
                 disabled={submitting}
               />
-              <button
-                type="button"
-                className={styles.submitBtn}
+              <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Send size={12} />}
                 onClick={submitNewComment}
                 disabled={submitting || !draft.trim()}
+                isLoading={submitting}
+                className={styles.submitBtn}
               >
-                <Send size={14} />
-                {submitting ? 'Posting…' : 'Post'}
-              </button>
+                Post
+              </Button>
+            </div>
+          )}
+
+          {/* Read-only hint for users who cannot interact */}
+          {!canInteract && isVerified && interactDisabledReason && (
+            <div
+              className={styles.createForm}
+              data-testid="comment-create-disabled"
+              role="status"
+              aria-live="polite"
+              style={{
+                padding: 'var(--space-3)',
+                border: '1px dashed var(--ars-node)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--ars-ink-muted)',
+                fontSize: 'var(--font-size-sm)',
+              }}
+            >
+              {interactDisabledReason}{' '}
+              <a href={ROUTES.SUBSCRIPTION}>View subscription plans</a>.
             </div>
           )}
 

@@ -162,28 +162,53 @@
 }
 
 .createBtn {
-  background: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer);
   border: none;
   border-radius: var(--radius-md);
   color: #ffffff;
   padding: var(--space-2) var(--space-5);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   white-space: nowrap;
   transition: background var(--transition-fast);
+  min-height: 36px;
 }
 
-.createBtn:hover {
-  background: var(--ars-lecturer-mid, #9a3412);
+.createBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
 }
 
 .createBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
+}
+
+.createBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lecturerPrimary {
+  background-color: var(--ars-lecturer) !important;
+  border-color: var(--ars-lecturer) !important;
+}
+
+.lecturerPrimary:hover:not(:disabled) {
+  background-color: var(--ars-lecturer-mid) !important;
+  border-color: var(--ars-lecturer-mid) !important;
+}
+
+.lecturerOutline {
+  color: var(--ars-lecturer) !important;
+  border-color: var(--ars-lecturer) !important;
+}
+
+.lecturerOutline:hover:not(:disabled) {
+  background-color: var(--ars-lecturer-light) !important;
 }
 
 /* ── Projects List ──────────────────────────────────────── */
@@ -196,8 +221,7 @@
 /* ── Project Card ───────────────────────────────────────── */
 .projectCard {
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-lecturer, #7c2d12);
+  border: 1px solid var(--ars-paper-rule);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
@@ -205,6 +229,21 @@
   text-align: left;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   animation: fadeIn 0.3s ease-out;
+  /* Lecturer identity: a 6px rust corner-anchor dot at top-left replaces
+     the prior `border-left: 3px solid var(--ars-lecturer, #7c2d12)`
+     stripe that was identical across every role surface. */
+  position: relative;
+}
+
+.projectCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer, #7c2d12);
 }
 
 .projectCard:hover {
@@ -634,6 +673,13 @@
 
 .table tbody tr:hover {
   background: var(--ars-paper-inset);
+}
+
+/* Keyboard-shortcut-selected row (Part 3 — useListShortcuts). */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: rgba(0, 122, 255, 0.08);
 }
 
 .titleCell {

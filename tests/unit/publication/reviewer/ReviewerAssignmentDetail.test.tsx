@@ -63,7 +63,7 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
     vi.clearAllMocks();
   });
 
-  it('renders required paper metadata and PDF view affordance for an assigned UNDER_REVIEW paper', async () => {
+  it('shows an explicit protected-document unavailable state even when the assignment carries a raw file URL', async () => {
     const paper = buildUnderReviewPaper({});
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [paper],
@@ -71,33 +71,15 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
 
     renderAt('/reviewer/assignments/under-review-1');
 
-    // Title
     expect(
-      await screen.findByRole('heading', { name: /Manuscript for Reviewer Evaluation/i }),
+      await screen.findByText(/policy acceptance and returns a protected document link/i),
     ).toBeInTheDocument();
-
-    // Authors + institutions
-    expect(screen.getByText(/Lead Author/)).toBeInTheDocument();
-    expect(screen.getByText(/Co Author/)).toBeInTheDocument();
-    expect(screen.getByText(/University of ARS/)).toBeInTheDocument();
-
-    // Identifiers — DOI, OpenAlex, paper type, version, verification
-    expect(screen.getByText(/10.5555\/test.001/)).toBeInTheDocument();
-    expect(screen.getByText(/W000000001/)).toBeInTheDocument();
-    expect(screen.getByText(/Research article/)).toBeInTheDocument();
-    expect(screen.getByText(/VERIFIED/)).toBeInTheDocument();
-
-    // PDF view: iframe present + download anchor
-    const pdf = await screen.findByTestId('pdf-frame');
-    expect(pdf).toBeInTheDocument();
-    const iframe = within(pdf).getByTitle(/PDF preview/i);
-    expect(iframe).toHaveAttribute('src', 'https://example.test/manuscript.pdf');
-    const link = within(pdf).getByRole('link', { name: /Download manuscript/i });
-    expect(link).toHaveAttribute('download');
-    expect(link).toHaveAttribute('href', 'https://example.test/manuscript.pdf');
+    expect(screen.queryByTestId('pdf-frame')).toBeNull();
+    expect(screen.queryByTitle(/PDF preview/i)).toBeNull();
+    expect(screen.queryByRole('link', { name: /Download manuscript/i })).toBeNull();
   });
 
-  it('shows a "no file URL" notice when the paper does not carry a fileUrl', async () => {
+  it('shows the same protected-document unavailable state when no document link is present', async () => {
     const paper = buildUnderReviewPaper({ fileUrl: undefined });
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [paper],
@@ -106,7 +88,7 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
     renderAt('/reviewer/assignments/under-review-1');
 
     expect(
-      await screen.findByText(/No manuscript file URL is available/i),
+      await screen.findByText(/policy acceptance and returns a protected document link/i),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('pdf-frame')).toBeNull();
   });

@@ -28,9 +28,7 @@ import type { UserRole } from '../types/auth';
 // other viewers use the live participant-scoped endpoints. No viewer path
 // requests global participant rows.
 // ─────────────────────────────────────────────────────────────────────────────
-export type SeminarBackendAvailability =
-  | 'full'
-  | 'awaiting_participant_scoped_endpoint';
+export type SeminarBackendAvailability = 'full';
 
 /**
  * Returns the BE-availability state for the seminar surface. All route-guarded
@@ -80,26 +78,51 @@ export function useSeminars(): UseSeminarsResult {
     setError(null);
 
     try {
-      if (!currentRole) {
+      if (!currentRole || !canViewSeminar(currentRole)) {
         setSeminars([]);
         setParticipants([]);
         return;
       }
-      if (canMutateSeminar(currentRole)) {
-        const [rawSeminars, participantsData] = await Promise.all([
-          seminarService.getAll(),
-          seminarParticipantService.getAll(),
-        ]);
-        setSeminars(rawSeminars);
-        setParticipants(participantsData);
+      // Lecturer hits the global organizer endpoints; everyone else (incl.
+      // Researcher, who can mutate-but-only-their-own seminars) reads through
+      // the participant-scoped endpoints so a 403 from the organizer-only
+      // routes never reaches the page.
+      let rawSeminars: Seminar[];
+      let participantsData: SeminarParticipant[];
+      if (canMutateSeminar(currentRole) && currentRole === 'Lecturer') {
+        try {
+          const [seminarsResult, participantsResult] = await Promise.all([
+            seminarService.getAll(),
+            seminarParticipantService.getAll(),
+          ]);
+          rawSeminars = seminarsResult;
+          participantsData = participantsResult;
+        } catch (primaryErr) {
+          // If the organizer-only endpoint rejects us (e.g. Researcher with
+          // stale token, or BE hasn't yet widened authorization), transparently
+          // fall back to the participant-scoped reads so the workspace still
+          // populates. We never surface a hard error here for permissions.
+          console.warn(
+            '[useSeminars] Organizer endpoint rejected, falling back to participant scope:',
+            primaryErr,
+          );
+          const [invitations, myParticipants] = await Promise.all([
+            seminarService.getMyInvitations(),
+            seminarParticipantService.getMySeminars(),
+          ]);
+          rawSeminars = invitations;
+          participantsData = myParticipants;
+        }
       } else {
-        const [rawInvitations, participantsData] = await Promise.all([
+        const [rawInvitations, participantsFromMySeminars] = await Promise.all([
           seminarService.getMyInvitations(),
           seminarParticipantService.getMySeminars(),
         ]);
-        setSeminars(rawInvitations);
-        setParticipants(participantsData);
+        rawSeminars = rawInvitations;
+        participantsData = participantsFromMySeminars;
       }
+      setSeminars(rawSeminars);
+      setParticipants(participantsData);
     } catch (err: unknown) {
       setSeminars([]);
       setParticipants([]);
@@ -342,11 +365,11 @@ export function useSeminarParticipants(seminarId?: number): UseSeminarParticipan
     setError(null);
 
     try {
-      if (!currentRole) {
+      if (!currentRole || !canViewSeminar(currentRole)) {
         setAllParticipants([]);
         return;
       }
-      const data = canMutateSeminar(currentRole)
+      const data = canMutateSeminar(currentRole) && currentRole === 'Lecturer'
         ? await seminarParticipantService.getAll()
         : await seminarParticipantService.getMySeminars();
       setAllParticipants(Array.isArray(data) ? data : []);

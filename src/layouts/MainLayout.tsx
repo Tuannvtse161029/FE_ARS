@@ -1,24 +1,22 @@
-import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
-import { useWallet } from '../hooks/useWallet';
 import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
-import { WalletTopUpModal } from '../components/wallet/WalletTopUpModal';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
-import { AppConfig } from '../config/app';
+import { LanguageToggle } from '../components/i18n/LanguageToggle';
+import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
+import { useShortcuts } from '../hooks/useShortcuts';
+import { useI18n } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
 import {
-  Search,
-  Wallet,
-  Plus,
   MessageSquare as ForumIcon,
   FileText as PapersIcon,
   Calendar as SeminarIcon,
@@ -37,7 +35,6 @@ import {
   Flag as ReportsIcon,
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
-  Crown as PremiumIcon,
   ClipboardCheck,
   Upload,
   BriefcaseBusiness,
@@ -45,7 +42,124 @@ import {
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
   FileCheck2 as PublicationIcon,
+  Menu as MenuIcon,
+  Search,
 } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoonIcon,
+  SunIcon,
+} from './MainLayout.icons';
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'ars.sidebar.collapsed';
+const getStoredSidebarCollapsed = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const primary = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+    if (primary === 'true') return true;
+    if (primary === 'false') return false;
+    // Legacy key the user request specified (`ars_sidebar_collapsed`).
+    // Kept for backward compatibility with already-saved sessions so an
+    // existing user who already collapsed the sidebar before this worker
+    // shipped keeps their preference.
+    const legacy = window.localStorage.getItem('ars_sidebar_collapsed');
+    return legacy === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/* ───────────────────────────────────────────────────────────────
+   === Collapse + Archive Dusk theme ===
+   Delimiter for downstream coordination. Storage keys + theme
+   helpers below are owned by this worker. Other agents should
+   leave the localStorage helpers and theme bootstrap alone and
+   place their changes ABOVE this banner.
+   ─────────────────────────────────────────────────────────────── */
+const THEME_STORAGE_KEY = 'ars_theme';
+type ArchiveThemeName = 'archive-dusk' | 'paper-day';
+
+const THEME_VALUES: readonly ArchiveThemeName[] = ['archive-dusk', 'paper-day'] as const;
+
+const isThemeName = (value: unknown): value is ArchiveThemeName =>
+  typeof value === 'string' &&
+  (THEME_VALUES as readonly string[]).includes(value);
+
+/**
+ * Read the persisted theme preference. Falls back to `null` so the
+ * MainLayout bootstrap effect can apply `prefers-color-scheme` only when
+ * the user has not made an explicit choice.
+ */
+const getStoredTheme = (): ArchiveThemeName | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (isThemeName(raw)) return raw;
+    if (raw === 'night') return 'archive-dusk';
+    if (raw === 'light') return 'paper-day';
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Returns the initial theme to apply on first paint. The cascade order is:
+ *   1. localStorage explicit choice (user wins).
+ *   2. `paper-day` for a consistent bright, welcoming first visit.
+ */
+const resolveInitialTheme = (): ArchiveThemeName => {
+  const stored = getStoredTheme();
+  if (stored !== null) {
+    return stored;
+  }
+  return 'paper-day';
+};
+
+/**
+ * Persist a theme choice to localStorage. The decision to read
+ * `matchMedia` synchronously inside `resolveInitialTheme` (rather than
+ * wiring a `change` listener) is intentional: theme changes for an
+ * already-mounted session come through the toggle button, and we do
+ * not want a foreground OS theme flip to silently override an
+ * explicit user preference while they are mid-task.
+ */
+const setStoredTheme = (theme: ArchiveThemeName): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // The layout remains usable when browser storage is unavailable.
+  }
+};
+
+/**
+ * Apply the theme to the root `<html>` element. The matching semantic token
+ * cascade lives in `src/styles/ars-tokens.css`.
+ *
+ * Why `<html>` rather than the MainLayout root container?
+ *   - Single source of truth shared by every route that renders inside
+ *     MainLayout (publication home, profile, dashboard, etc).
+ *   - Avoids race conditions where descendant pages render before the
+ *     attribute is on the layout wrapper.
+ *   - Public pages sit above MainLayout and use the default Archive Dusk token
+ *     values when no saved authenticated preference has been applied.
+ */
+const applyThemeToRoot = (theme: ArchiveThemeName): void => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+};
+/* === END Collapse + Archive Dusk theme === */
 
 const ProfileDropdown = ({
   username,
@@ -54,7 +168,6 @@ const ProfileDropdown = ({
   accountTier,
   onLogout,
   onProfileClick,
-  onAccountSettingsClick,
 }: {
   username: string;
   activeRole: string;
@@ -62,9 +175,26 @@ const ProfileDropdown = ({
   accountTier?: string;
   onLogout: () => void;
   onProfileClick: () => void;
-  onAccountSettingsClick: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   const tierClass =
     accountTier === 'Premium'
@@ -76,8 +206,12 @@ const ProfileDropdown = ({
   return (
     <div className={styles.profileDropdownContainer}>
       <button
+        ref={triggerRef}
+        type="button"
         className={styles.profileDropdownTrigger}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-controls={menuId}
       >
         <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
         <div className={styles.userInfoText}>
@@ -95,17 +229,13 @@ const ProfileDropdown = ({
       </button>
 
       {isOpen && (
-        <div className={styles.profileDropdownMenu}>
-          <button className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
+        <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label="Account menu">
+          <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
             <User size={16} />
             <span>My Profile & Role Upgrades</span>
           </button>
-          <button className={styles.dropdownItem} onClick={() => { onAccountSettingsClick(); setIsOpen(false); }}>
-            <Settings size={16} />
-            <span>Account Settings</span>
-          </button>
           <div className={styles.dropdownDivider}></div>
-          <button className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
+          <button type="button" role="menuitem" className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
             <LogOut size={16} />
             <span>Log out</span>
           </button>
@@ -116,14 +246,15 @@ const ProfileDropdown = ({
 };
 
 const ARSPlatformLogo = () => (
-  <img src={arsLogo} alt="ARS Platform Logo" style={{ borderRadius: 8 }} />
+  <div className={styles.logoContainer}>
+    <img src={arsLogo} alt="ARS Platform" />
+  </div>
 );
 
 interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
-  showDot?: boolean;
   badge?: string;
   // When `true`, the NavLink uses React Router's "exact" match so the link
   // only highlights on its own path (and not on any nested child route).
@@ -136,16 +267,13 @@ interface NavItem {
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
 
-  // Single source of truth for unverified-user gating.
-  const { hasWallet, isGuest } = usePermissions();
+  const { isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
-
-  // Wallet balance comes from the BE — only for roles that have wallets (not Guest).
-  const { walletId: beWalletId, balance: beBalance, isLoading: isBalanceLoading, refetch: refetchWallet } = useWallet(hasWallet && user?.userId ? user.userId : undefined);
 
   // Reviewer availability comes from the BE (only for active Reviewers).
   const { isAvailable: beReviewerAvailable, isLoading: beAvailabilityLoading, refetch: refetchAvailability } = useReviewerAvailability(activeRole === 'Reviewer' && user?.userId ? user.userId : undefined);
@@ -155,12 +283,128 @@ export const MainLayout = () => {
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getStoredSidebarCollapsed);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Auto-dismiss toast after 2 seconds
+  // Global keyboard shortcuts — Part 1 of the keyboard-shortcut rollout.
+  // The `?` shortcut opens the KeyboardShortcutsHelp modal from anywhere
+  // in the app. The `useShortcuts` hook auto-skips text inputs and modal
+  // surfaces so it never interferes with typing. Future shortcuts (list
+  // navigation, form submit) will be registered by their respective pages.
+  useShortcuts([
+    {
+      key: '?',
+      modifier: undefined,
+      label: 'Show keyboard shortcuts',
+      description: 'Open the keyboard shortcuts reference.',
+      group: 'global',
+      allowInInputs: true,
+      handler: () => setShortcutsOpen(true),
+    },
+    {
+      key: '/',
+      label: 'Focus search',
+      description: 'Move focus to the global search bar.',
+      group: 'global',
+      handler: () => searchRef.current?.focus(),
+    },
+  ]);
+
+  // Theme bootstrap (this worker / Agent 38) — read the persisted choice on
+  // mount and apply it to <html data-theme="..."> so token cascade flips
+  // before the user sees a flash of the wrong background.
+  const [theme, setTheme] = useState<ArchiveThemeName>(() => resolveInitialTheme());
+
+  useEffect(() => {
+    applyThemeToRoot(theme);
+    setStoredTheme(theme);
+  }, [theme]);
+
+  const handleToggleTheme = (): void => {
+    setTheme((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
+  };
+
+  const { t: tr } = useI18n();
+
+  const handleToggleSidebar = (): void => {
+    setIsSidebarCollapsed((collapsed) => !collapsed);
+  };
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
+      // Mirror the legacy key the original user spec called out so older
+      // consumers (and any browser extensions keying off it) keep working.
+      window.localStorage.setItem('ars_sidebar_collapsed', String(isSidebarCollapsed));
+    } catch {
+      // The layout remains usable when browser storage is unavailable.
+    }
+  }, [isSidebarCollapsed]);
+
+  // Keep the mobile drawer in the user's keyboard path and restore its trigger
+  // when it closes. Desktop sidebar behavior remains unchanged.
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const drawer = mobileDrawerRef.current;
+    const closeControl = drawer?.querySelector<HTMLButtonElement>('button[aria-label="Close navigation"]');
+    closeControl?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsMobileNavOpen(false);
+        menuTriggerRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !drawer) {
+        return;
+      }
+
+      const focusable = Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute('hidden'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileNavOpen]);
+
+  // Close mobile drawer on route change so navigating between roles hides it.
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Auto-dismiss toast after 6 seconds (was 3s; too short for screen
+  // readers and slow readers to finish the message). The close button
+  // is the primary way to dismiss for users who want to read longer.
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 2000);
+      const timer = setTimeout(() => setToastMessage(null), 6000);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -267,53 +511,41 @@ export const MainLayout = () => {
         ];
       case 'Reviewer':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
-          ...(AppConfig.features.enableWithdrawals
-            ? [{ to: ROUTES.EARNINGS_WALLET, label: 'Wallet & Withdrawals', icon: <Wallet size={20} /> }]
-            : []),
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Lecturer':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
           { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_SHARED_MATERIALS, label: 'Shared Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.GRADUATE_STUDENT_DASHBOARD, label: 'Research Journey', icon: <DashboardIcon size={20} />, end: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
-          { to: '#wallet', label: 'Wallet', icon: <Wallet size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
       case 'Researcher':
       default:
         return [
-          { to: ROUTES.HOME, label: 'Home', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} />, showDot: true },
+          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
-          { to: '#wallet', label: 'My Wallet', icon: <Wallet size={20} /> },
-          ...(AppConfig.features.premiumPackagesEnabled
-            ? [{ to: ROUTES.PREMIUM_PACKAGES, label: 'Premium Package', icon: <PremiumIcon size={20} /> }]
-            : []),
         ];
     }
   };
@@ -321,20 +553,65 @@ export const MainLayout = () => {
   const navItems = getNavItemsByRole();
 
   return (
-    <div className={styles.mainContainer}>
+    /* Theme attribute (Agent 38) lives on the MainLayout root so the
+       night-mode cascade is scoped to authenticated routes only — the
+       light-only public pages (Landing / Login / Register) render
+       outside MainLayout and never see this attribute. We also mirror
+       the attribute on <html> via `applyThemeToRoot` so token look-ups
+       cascade even before this component mounts. */
+    <div className={styles.mainContainer} data-theme={theme}>
+      {/* Backdrop for mobile drawer */}
+      <div
+        className={`${styles.backdrop} ${isMobileNavOpen ? styles.backdropVisible : ''}`}
+        onClick={() => {
+          setIsMobileNavOpen(false);
+          menuTriggerRef.current?.focus();
+        }}
+        aria-hidden
+      />
+
       {/* Sidebar */}
-      <aside className={styles.sidebar}>
+      <aside
+        ref={mobileDrawerRef}
+        className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}
+      >
         <div className={styles.sidebarHeader}>
-          <div className={styles.logoContainer}>
-            <ARSPlatformLogo />
-          </div>
+          <ARSPlatformLogo />
+          <button
+            type="button"
+            className={styles.sidebarClose}
+            onClick={() => {
+              setIsMobileNavOpen(false);
+              menuTriggerRef.current?.focus();
+            }}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <nav className={styles.sidebarNav}>
+        <div className={styles.roleContext}>
+          <span className={styles.roleContextLabel}>Research workspace</span>
+          <strong>{displayedRole}</strong>
+        </div>
+
+        <nav
+          className={styles.sidebarNav}
+          aria-label={
+            isSidebarCollapsed
+              ? 'Workspace navigation (collapsed)'
+              : 'Workspace navigation'
+          }
+        >
           {navItems.map((item, index) => {
             if (item.to.startsWith('#')) {
               return (
-                <div key={index} className={`${styles.navItem} ${styles.disabledNavItem}`}>
+                <div
+                  key={index}
+                  className={`${styles.navItem} ${styles.disabledNavItem}`}
+                  aria-label={item.label}
+                  title={item.label}
+                >
                   <span className={styles.navIcon}>{item.icon}</span>
                   <span className={styles.navLabel}>{item.label}</span>
                 </div>
@@ -345,18 +622,42 @@ export const MainLayout = () => {
                 key={index}
                 to={item.to}
                 end={item.end ?? false}
+                aria-label={item.label}
+                title={item.label}
                 className={({ isActive }) =>
                   `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
                 }
               >
                 <span className={styles.navIcon}>{item.icon}</span>
                 <span className={styles.navLabel}>{item.label}</span>
-                {item.showDot && <span className={styles.navDot}></span>}
                 {item.badge && <span className={styles.navBadge}>{item.badge}</span>}
               </NavLink>
             );
           })}
         </nav>
+
+        {/* Centered collapse/expand button — lives at the bottom of the
+            sidebar so the user can always collapse OR expand the rail
+            without hunting for a hidden control. Vertical centering is
+            achieved via flex on the wrapper which fills the remaining
+            height of the sidebar. */}
+        <div className={styles.sidebarCollapseAnchor}>
+          <button
+            type="button"
+            className={styles.sidebarCollapseBtn}
+            onClick={handleToggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            data-testid="sidebar-collapse-toggle"
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRightIcon size={16} aria-hidden="true" />
+            ) : (
+              <ChevronLeftIcon size={16} aria-hidden="true" />
+            )}
+          </button>
+        </div>
+
       </aside>
 
       {/* Right Column (Header + Content) */}
@@ -378,19 +679,105 @@ export const MainLayout = () => {
             </div>
           )}
 
-          {/* Search bar */}
-          <div className={styles.searchContainer}>
-            <span className={styles.searchIcon}><Search size={18} /></span>
-            <input
-              type="text"
-              placeholder="Search Papers..."
-              className={styles.searchInput}
-            />
+          {/* Header left — mobile menu toggle only.
+              The previous "running-head" editorial label ("ARS Workspace")
+              was removed at the product owner's request — "Don't like the
+              word here, so remove it." The mobile menu trigger still
+              anchors flush left and the right cluster is unchanged. */}
+          <div className={styles.headerLeft}>
+            {/* === ARS WORKSPACE label removal (this worker) ===
+                The decorative `<span className={styles.runningHead}>ARS
+                Workspace</span>` that used to sit beside the mobile menu
+                trigger was a journal-style running head. The product owner
+                asked to remove the word entirely. The span, its text, the
+                `aria-hidden` flag, and the previous explanatory comment are
+                all gone in this commit. The `_headerLeft_` flex container
+                keeps its gap so the menu trigger still aligns cleanly with
+                the right cluster, and the `.runningHead` CSS rule (plus its
+                responsive / theme overrides) is removed in
+                MainLayout.module.css. */}
+            {/* Mobile menu toggle — only visible <= 768px via CSS */}
+            <button
+              ref={menuTriggerRef}
+              type="button"
+              className={styles.menuToggle}
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-expanded={isMobileNavOpen}
+            >
+              <MenuIcon size={18} />
+            </button>
           </div>
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
-            {/* Reviewer availability toggle — only shown for Reviewer role */}
+            {/* Global search bar — Part 2 keyboard shortcuts. Accessible
+                from any authenticated route. The `/` key focuses it; users
+                can type and press Enter to search. The actual search
+                routing is implemented in a later part. */}
+            <div className={styles.searchContainer}>
+              <span className={styles.searchIcon} aria-hidden>
+                <Search size={14} />
+              </span>
+              <input
+                ref={searchRef}
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search the platform"
+              />
+            </div>
+
+            {/* Keyboard shortcuts help — opens the shortcuts reference modal.
+                Also reachable from anywhere on the page via the `?` key.
+                The kbd chip gives a visual affordance without being noisy. */}
+            <button
+              type="button"
+              className={styles.shortcutButton}
+              onClick={() => setShortcutsOpen(true)}
+              aria-label="Show keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              <span aria-hidden>?</span>
+            </button>
+
+            {/* Theme toggle (Agent 38) — sun/moon button placed to the LEFT
+                of the wallet/notifications/user pill so it's easy to find.
+                Clicking flips the data-theme attribute on the MainLayout
+                root (and on <html> via applyThemeToRoot) and persists the
+                choice in localStorage under `ars_theme`. The icon shown
+                reflects the action that clicking will perform, not the
+                current theme: when night is active we render the SUN icon
+                to invite the user back to light. */}
+            <button
+              type="button"
+              className={styles.themeToggle}
+              onClick={handleToggleTheme}
+              aria-label={theme === 'archive-dusk' ? tr('header.themeToLight') : tr('header.themeToDark')}
+              aria-pressed={theme === 'archive-dusk'}
+              title={theme === 'archive-dusk' ? tr('header.themeLightTitle') : tr('header.themeDarkTitle')}
+              data-testid="theme-toggle"
+            >
+              {theme === 'archive-dusk' ? (
+                <SunIcon size={18} aria-label={tr('header.themeToLight')} />
+              ) : (
+                <MoonIcon size={18} aria-label={tr('header.themeToDark')} />
+              )}
+            </button>
+
+            {/* Language toggle — sits directly to the RIGHT of the theme
+                toggle so the two settings cluster together at the top of
+                the page. Flag + active locale code; click cycles between
+                Vietnamese (default) and English. */}
+            <LanguageToggle />
+
+            {/* Reviewer availability toggle — only shown for Reviewer role.
+                The toggle announces its current state to assistive tech via
+                `aria-pressed`, and `aria-describedby` ties it to a
+                screen-reader-only explanation of what "available" means on
+                the platform. The visible label carries a tooltip via the
+                title attribute so sighted users also see context on hover. */}
             {activeRole === 'Reviewer' && (
               <div className={styles.availabilityToggle}>
                 <button
@@ -400,7 +787,12 @@ export const MainLayout = () => {
                   disabled={isUpdatingAvailability || beAvailabilityLoading}
                   aria-label={isReviewerAvailable ? 'Turn off availability' : 'Turn on availability'}
                   aria-pressed={isReviewerAvailable}
-                  title={isReviewerAvailable ? 'Click to go unavailable' : 'Click to go available'}
+                  aria-describedby="availability-help"
+                  title={
+                    isReviewerAvailable
+                      ? 'You are receiving review assignments. Click to pause new assignments.'
+                      : 'You are not receiving review assignments. Click to start receiving them.'
+                  }
                 >
                   <span
                     className={`${styles.toggleKnob} ${isReviewerAvailable ? styles.toggleKnobOn : styles.toggleKnobOff}`}
@@ -411,29 +803,11 @@ export const MainLayout = () => {
                 >
                   {isReviewerAvailable ? 'Available' : 'Unavailable'}
                 </span>
-              </div>
-            )}
-
-            {/* Wallet Balance — hidden for users who don't have a wallet row.
-                Admins do not hold a personal wallet; unverified users (Guest)
-                have no row until an Admin approves their role request. */}
-            {hasWallet && (
-              <div className={styles.walletBadge}>
-                <span className={styles.walletIcon}><Wallet size={18} /></span>
-                <span className={styles.walletAmount}>
-                  {isBalanceLoading || beBalance === null
-                    ? '—'
-                    : `${beBalance.toLocaleString('vi-VN')} VND`}
+                <span id="availability-help" className={styles.srOnly}>
+                  Controls whether the platform assigns new peer-review
+                  invitations to you. When available, the Admin can route
+                  new manuscript assignments to you.
                 </span>
-                <button
-                  type="button"
-                  className={styles.walletTopUpButton}
-                  aria-label="Top up wallet"
-                  onClick={() => setIsTopUpOpen(true)}
-                  data-testid="wallet-topup-trigger"
-                >
-                  <Plus size={14} />
-                </button>
               </div>
             )}
 
@@ -451,7 +825,6 @@ export const MainLayout = () => {
               accountTier={accountTier}
               onLogout={handleLogout}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
-              onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
             />
           </div>
         </header>
@@ -466,29 +839,17 @@ export const MainLayout = () => {
         <WelcomeBackBanner />
 
         {/* Content Body */}
-        <main className={styles.contentBody}>
+        <main key={location.key} className={styles.contentBody}>
           <Outlet />
         </main>
-      </div>
 
-      {/* Wallet Top-Up Modal — only mounted for users who actually have a
-          wallet row (see the header wallet badge above for the rule). */}
-      {hasWallet && (
-        <WalletTopUpModal
-          isOpen={isTopUpOpen}
-          currentUserId={user?.userId ?? null}
-          currentWalletId={beWalletId ?? null}
-          currentBalance={beBalance}
-          onSuccess={async () => {
-            // Re-fetch the wallet so the header pill reflects the new balance
-            // immediately (works for both the PayOS redirect path and the DEV
-            // auto-fund path).
-            await refetchWallet();
-          }}
-          onMessage={(text, type) => setToastMessage({ text, type })}
-          onClose={() => setIsTopUpOpen(false)}
+        {/* Keyboard shortcuts help modal — opened by the `?` key or the
+            header button. Global so it works from any page. */}
+        <KeyboardShortcutsHelp
+          open={shortcutsOpen}
+          onClose={() => setShortcutsOpen(false)}
         />
-      )}
+      </div>
     </div>
   );
 };

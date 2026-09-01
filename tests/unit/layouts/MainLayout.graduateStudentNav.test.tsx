@@ -16,15 +16,6 @@ vi.mock('../../../src/store', () => ({
       : { user: null, isAuthenticated: false },
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -54,10 +45,6 @@ vi.mock('../../../src/hooks/useReviewerProfiles', () => ({
 
 vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
-}));
-
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
 }));
 
 import { buildMockAuth } from '../../../src/utils/mockAuth';
@@ -104,21 +91,13 @@ const findSidebarLinkByText = (text: string): HTMLAnchorElement | null => {
 /**
  * Sidebar regression for the Graduate Student role.
  *
- * Contract (Agent-12, AGENT_12_GS_NAV_READY, updated for Forum-as-landing,
- * further updated for Agent admin-annual-fees):
+ * Contract (updated for the ARS Research Journey navigation):
  *   - Graduate Student sidebar MUST NOT expose `Paper` or `Browse Reviewers`
  *     — those routes are Researcher-only (see App.tsx RoleRouteGuard).
- *   - Graduate Student sidebar MUST retain `Research Groups` and
- *     `Submit Report`. The `Premium Package` link is GATED on
- *     `AppConfig.features.premiumPackagesEnabled` and is therefore
- *     hidden while the BE-side annual-fee CRUD endpoint is outstanding.
- *   - Graduate Student sidebar MUST NOT expose a top-level `Dashboard`
- *     item — the role-based landing page is the Forum now (per
- *     landingRouteForRoleName), so the Graduate Student's dedicated
- *     `/student/dashboard` workspace is reached via Research Groups
- *     rather than a sidebar shortcut.
- *   - Researcher sidebar still exposes Paper + Reviewers items.
- *   - Lecturer, Reviewer, Admin sidebars are unchanged by Agent-12.
+ *   - Graduate Student sidebar exposes its existing `Research Journey` route,
+ *     `Research Groups`, and `Submit Report`.
+ *   - Researcher sidebar still exposes its submissions route.
+ *   - Lecturer, Reviewer, and Admin sidebars remain role-specific.
  *
  * Uses the shared `renderMainLayout` test harness so hook mocks and helpers
  * aren't duplicated from the other MainLayout tests.
@@ -156,25 +135,12 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByHref(ROUTES.SUBMIT_REPORT)).not.toBeNull();
   });
 
-  it('Graduate Student sidebar hides Premium Package while premiumPackagesEnabled is false', () => {
+  it('Graduate Student sidebar exposes the existing Research Journey workspace', () => {
     setMockAuth({ role: 'Graduate Student' });
     renderMainLayout(ROUTES.FORUM);
 
-    // Agent admin-annual-fees — the Premium Package link is hidden
-    // for every non-Admin role while the centralized flag is false.
-    expect(findSidebarLinkByHref(ROUTES.PREMIUM_PACKAGES)).toBeNull();
-  });
-
-  it('Graduate Student sidebar does NOT expose a top-level Dashboard shortcut', () => {
-    setMockAuth({ role: 'Graduate Student' });
-    renderMainLayout(ROUTES.FORUM);
-
-    // Forum is now the post-login landing page for every non-Admin role
-    // (per landingRouteForRoleName in roleNormalizer), so the Graduate
-    // Student sidebar must not carry a Dashboard item pointing at the
-    // role-specific workspace.
-    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).toBeNull();
-    expect(findSidebarLinkByText('Dashboard')).toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.GRADUATE_STUDENT_DASHBOARD)).not.toBeNull();
+    expect(findSidebarLinkByText('Research Journey')).not.toBeNull();
   });
 
   it('Graduate Student sidebar still shows Forums', () => {
@@ -184,15 +150,12 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     expect(findSidebarLinkByHref(ROUTES.FORUM)).not.toBeNull();
   });
 
-  it('Researcher sidebar still exposes /papers and /reviewers links', () => {
+  it('Researcher sidebar still exposes its submissions link', () => {
     setMockAuth({ role: 'Researcher' });
     renderMainLayout(ROUTES.FORUM);
 
-    expect(findSidebarLinkByHref(ROUTES.PAPERS)).not.toBeNull();
-    expect(findSidebarLinkByHref(ROUTES.REVIEWERS)).not.toBeNull();
-    // Researcher uses the singular "Reviewers" label per current MainLayout.
-    expect(findSidebarLinkByText('Reviewers')).not.toBeNull();
-    expect(findSidebarLinkByText('Paper')).not.toBeNull();
+    expect(findSidebarLinkByHref(ROUTES.RESEARCHER_SUBMISSIONS)).not.toBeNull();
+    expect(findSidebarLinkByText('My Submissions')).not.toBeNull();
   });
 
   it('Lecturer sidebar is unchanged — does not expose /papers or /reviewers', () => {

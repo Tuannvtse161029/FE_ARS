@@ -1,0 +1,204 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--ars-ink);
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.headerBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+}
+
+.description {
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.statusTagActive {
+  border-color: var(--ars-success, #16a34a);
+  background: var(--ars-success-bg, #ecfdf5);
+  color: var(--ars-success, #16a34a);
+}
+
+.statusTagExpired {
+  border-color: var(--ars-error);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+
+.statusTagPending {
+  border-color: var(--ars-warning);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+}
+
+.statusMeta {
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .plansGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.planCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+}
+
+.planCardSelected {
+  border-color: var(--ars-blue-action, #007AFF);
+  box-shadow: 0 0 0 1px var(--ars-blue-action, #007AFF);
+}
+
+.planDuration {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+  color: var(--ars-ink);
+}
+
+.planPrice {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.planPriceCurrency {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+}
+
+.planFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.planFeature::before {
+  content: '— ';
+  color: var(--ars-blue-action, #007AFF);
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.proceedButton {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--ars-blue-action, #007AFF);
+  border-radius: var(--radius-sm);
+  background: var(--ars-blue-action, #007AFF);
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.proceedButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.errorBox {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ars-error);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.banner {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--status-warning-border, var(--border-strong));
+  border-radius: var(--radius-md);
+  background: var(--status-warning-bg, var(--surface-paper-muted));
+  color: var(--status-warning-text, var(--ink-primary));
+  font-size: var(--font-size-sm);
+}
+
+.empty {
+  padding: var(--space-6);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  text-align: center;
+}

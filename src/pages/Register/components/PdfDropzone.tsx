@@ -147,6 +147,8 @@ export const PdfDropzone = ({
         role="button"
         tabIndex={0}
         aria-label="Upload verification PDF"
+        aria-disabled={isUploading}
+        aria-busy={isUploading}
       >
         <CloudUpload size={24} className={styles.dropzoneIcon} />
         <p className={styles.dropzoneText}>
@@ -166,7 +168,7 @@ export const PdfDropzone = ({
       </div>
 
       {isUploading && (
-        <div className={styles.progressWrapper}>
+        <div className={styles.progressWrapper} role="status" aria-live="polite">
           <div className={styles.progressBarOuter}>
             <div
               className={styles.progressBarInner}
@@ -177,7 +179,7 @@ export const PdfDropzone = ({
         </div>
       )}
 
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && <p className={styles.errorText} role="alert">{error}</p>}
     </div>
   );
 };

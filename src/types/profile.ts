@@ -62,8 +62,6 @@ export interface Profile {
   majorFieldName?: string | null;
   /** Research subfield */
   subFieldName?: string | null;
-  /** Review fee in VND */
-  reviewFee?: number | null;
   /** Reviewer availability flag */
   isAvailable?: boolean | null;
   /** ORCID identifier and verification */

@@ -9,7 +9,10 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
-  font-family: 'Inter', system-ui, sans-serif;
+  /* Inherit the project's UI font from the token cascade. The previous
+     hard-coded `font-family: 'Inter', ...` was the only non-token font
+     in the codebase and made the PDF viewer read out-of-system. */
+  font-family: var(--font-family-ui);
 }
 
 /* ── Toolbar ───────────────────────────────────────────────────── */

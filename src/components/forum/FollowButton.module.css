@@ -1,7 +1,11 @@
 /**
  * FollowButton — ARS Research Constellation
- * Pill-shaped toggle used on forum post cards to follow / unfollow.
+ *
+ * Pill-shaped toggle rendered on ForumPostCard author rows. Uses the
+ * yellow-ochre accent (--accent-primary / --accent-ochre) to match the
+ * rest of the workspace chrome instead of the legacy ARS blue.
  */
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -9,7 +13,7 @@
   gap: 6px;
   border-radius: 999px;
   font-family: var(--font-family-ui);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   cursor: pointer;
   user-select: none;
@@ -17,76 +21,61 @@
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
+    border-color var(--transition-fast);
 }
 
-/* Sizes */
 .sizeSm {
   font-size: var(--font-size-xs);
-  padding: 4px 12px;
+  padding: 0 var(--space-3);
   min-height: 28px;
 }
 
 .sizeMd {
   font-size: var(--font-size-sm);
-  padding: 6px 16px;
-  min-height: 34px;
+  padding: 0 var(--space-4);
+  min-height: 36px;
 }
 
-/* "Not following" state — outlined */
+/* "Not following" state — outlined ochre */
 .follow {
   background-color: transparent;
-  color: var(--ars-blue);
-  border: 1px solid var(--ars-blue);
+  color: var(--accent-ochre);
+  border: 1px solid var(--accent-primary);
 }
 
 .follow:hover:not(:disabled) {
-  background-color: var(--ars-blue-light);
-  transform: translateY(-1px);
-}
-
-.follow:active:not(:disabled) {
-  transform: translateY(0);
+  background-color: var(--surface-paper);
 }
 
 .follow:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 /* "Following" state — filled */
 .following {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border: 1px solid var(--ars-blue);
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+  border: 1px solid var(--accent-primary);
 }
 
 .following:hover:not(:disabled) {
-  background-color: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
-  transform: translateY(-1px);
-}
-
-.following:active:not(:disabled) {
-  transform: translateY(0);
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .following:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 /* Disabled (unauthenticated / unverified / self / mid-request) */
 .disabled,
 .button:disabled {
-  background-color: var(--ars-paper-alt);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-node);
+  background-color: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-subtle);
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
   opacity: 0.7;
 }
 

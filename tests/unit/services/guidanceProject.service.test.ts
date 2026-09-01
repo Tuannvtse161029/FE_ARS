@@ -2,7 +2,7 @@
  * Service-level tests for src/services/guidanceProject.service.ts.
  *
  * Covers:
- *  - getAllGuidanceProjects normalization (drops malformed rows)
+ *  - getAllGuidanceProjects normalization (nullable participant assignments)
  *  - getActiveGuidanceProjectForStudent client-side filter (prefer ONGOING over PROPOSED)
  *  - getResearchTopicById throws on malformed response
  */
@@ -45,7 +45,7 @@ describe('guidanceProjectService', () => {
       expect(list[0].status).toBe('ONGOING');
     });
 
-    it('drops rows missing id / lecturerId / studentId', async () => {
+    it('keeps rows with nullable lecturer/student fields and drops malformed rows', async () => {
       getMock.mockResolvedValueOnce({
         data: [
           { id: 1, lecturerId: 4, studentId: 9, title: 'Good', status: 'ONGOING' },
@@ -56,8 +56,10 @@ describe('guidanceProjectService', () => {
         ],
       });
       const list = await getAllGuidanceProjects();
-      expect(list).toHaveLength(1);
+      expect(list).toHaveLength(3);
       expect(list[0].title).toBe('Good');
+      expect(list[1].studentId).toBeNull();
+      expect(list[2].lecturerId).toBeNull();
     });
 
     it('maps DONE / DONE-ish statuses → COMPLETED', async () => {
@@ -78,9 +80,13 @@ describe('guidanceProjectService', () => {
   });
 
   describe('getGuidanceProjectById', () => {
-    it('throws on malformed response', async () => {
-      getMock.mockResolvedValueOnce({ data: { id: 1 } /* missing lecturer/student */ });
-      await expect(getGuidanceProjectById(1)).rejects.toThrow(/malformed/);
+    it('accepts a valid id with nullable assignment fields', async () => {
+      getMock.mockResolvedValueOnce({ data: { id: 1 } });
+      await expect(getGuidanceProjectById(1)).resolves.toMatchObject({
+        id: 1,
+        lecturerId: null,
+        studentId: null,
+      });
     });
   });
 

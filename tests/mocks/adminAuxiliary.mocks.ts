@@ -98,7 +98,7 @@ export const MOCK_VIOLATION_REPORTS: ViolationReport[] = [
   },
 ];
 
-// ── Premium packages ──────────────────────────────────────────────────────
+// ── Subscription packages ──────────────────────────────────────────────────
 export const MOCK_PREMIUM_PACKAGES: PremiumPackage[] = [
   {
     packageId: 9001,

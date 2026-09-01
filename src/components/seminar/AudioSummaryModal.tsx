@@ -237,7 +237,7 @@ export const AudioSummaryModal = ({
             <div className={styles.resultArea}>
               <div className={styles.resultHeader}>
                 <span className={styles.aiResultBadge}>
-                  <Sparkles size={12} aria-hidden style={{ marginRight: 4, verticalAlign: '-2px' }} />
+                  <Sparkles size={12} aria-hidden />
                   AI Generated
                 </span>
                 <button className={styles.copyBtn} onClick={handleCopy} aria-label="Copy summary">
@@ -247,7 +247,7 @@ export const AudioSummaryModal = ({
               </div>
               <pre className={styles.summaryText}>{result.aiSummary}</pre>
               <div className={styles.disclaimer}>
-                <AlertTriangle size={12} aria-hidden style={{ marginRight: 6, verticalAlign: '-2px' }} />
+                <AlertTriangle size={12} aria-hidden />
                 AI-generated content — review for accuracy before sharing.
               </div>
             </div>

@@ -226,7 +226,7 @@ describe('ResearcherSubmissionForm – Upload Paper (PDF) sequencing', () => {
     renderForm();
 
     expect(screen.getByTestId('submission-file-url')).toHaveTextContent(
-      /Firebase URL captured/i,
+      /Upload complete/i,
     );
   });
 
@@ -260,7 +260,7 @@ describe('ResearcherSubmissionForm – Upload Paper (PDF) sequencing', () => {
   });
 });
 
-describe('ResearcherSubmissionForm – OpenAlex scan preview invalid ID', () => {
+describe('ResearcherSubmissionForm – OpenAlex scan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setFirebaseState({
@@ -274,143 +274,73 @@ describe('ResearcherSubmissionForm – OpenAlex scan preview invalid ID', () => 
     setFirebaseState(makeFirebaseState());
   });
 
-  it('does not call OpenAlex from the browser when scanning an invalid ID', async () => {
+  it('shows malformed IDs inline and keeps the researcher on the form', async () => {
     mockOpenAlexAdapter.lookupPreview.mockResolvedValue({
       status: 'invalid_format',
       message: '"not-a-real-id" is not a valid OpenAlex work ID.',
     });
 
     renderForm();
-    const input = screen.getByTestId('submission-openalex-input');
-    fireEvent.change(input, { target: { value: 'not-a-real-id' } });
-    fireEvent.click(screen.getByTestId('submission-openalex-scan'));
-
-    await waitFor(() => {
-      expect(mockOpenAlexAdapter.lookupPreview).toHaveBeenCalledWith('not-a-real-id');
-    });
-    // No key-shaped argument was ever passed.
-    const calls = mockOpenAlexAdapter.lookupPreview.mock.calls;
-    for (const callArgs of calls) {
-      for (const arg of callArgs) {
-        expect(typeof arg).toBe('string');
-        expect(arg).not.toMatch(/api[-_]?key/i);
-        expect(arg).not.toMatch(/^[A-Za-z0-9]{32,}$/);
-      }
-    }
-  });
-
-  it('renders an invalid-format error inline without navigating away', async () => {
-    mockOpenAlexAdapter.lookupPreview.mockResolvedValue({
-      status: 'invalid_format',
-      message: '"garbage" is not a valid OpenAlex work ID.',
-    });
-
-    renderForm();
     fireEvent.change(screen.getByTestId('submission-openalex-input'), {
-      target: { value: 'garbage' },
+      target: { value: 'not-a-real-id' },
     });
     fireEvent.click(screen.getByTestId('submission-openalex-scan'));
 
-    expect(
-      await screen.findByTestId('submission-openalex-invalid'),
-    ).toHaveTextContent(/not a valid OpenAlex work ID/i);
-
-    // Researcher can recover with manual fallback.
-    const manualBtn = screen.getByRole('button', { name: /Enter manually instead/i });
-    fireEvent.click(manualBtn);
-    await waitFor(() => {
-      expect(screen.getByTestId('submission-openalex-confirmed')).toHaveTextContent(
-        /garbage/,
-      );
-    });
+    expect(await screen.findByTestId('submission-openalex-invalid')).toHaveTextContent(
+      /not a valid OpenAlex work ID/i,
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('renders an unsupported-variant error for DOI inputs', async () => {
+  it('does not copy returned metadata before the researcher confirms it', async () => {
     mockOpenAlexAdapter.lookupPreview.mockResolvedValue({
-      status: 'unsupported_variant',
-      message: 'DOI forms are not supported yet.',
+      status: 'preview',
+      metadata: {
+        id: 'W2741809807',
+        title: 'Imported title',
+        abstract: 'Imported abstract',
+        authors: ['Imported Author'],
+        institutions: ['Imported Institution'],
+        keywords: ['open access'],
+        topics: ['Artificial intelligence'],
+      },
     });
 
     renderForm();
     fireEvent.change(screen.getByTestId('submission-openalex-input'), {
-      target: { value: 'doi:10.5555/ars.demo.2026.001' },
+      target: { value: 'w2741809807' },
     });
     fireEvent.click(screen.getByTestId('submission-openalex-scan'));
 
-    expect(
-      await screen.findByTestId('submission-openalex-unsupported'),
-    ).toHaveTextContent(/DOI/i);
-  });
-});
+    const preview = await screen.findByTestId('submission-openalex-preview');
+    expect(preview).toHaveTextContent('OpenAlex imported metadata');
+    expect(preview).toHaveTextContent('ARS major field and subfield must be selected manually.');
+    expect(screen.getByLabelText(/Title/i)).toHaveValue('');
 
-describe('ResearcherSubmissionForm – manual fallback', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setFirebaseState({
-      pdfUrl: 'https://firebasestorage.googleapis.com/v0/b/ars-platform.appspot.com/o/manuscript.pdf',
-    });
-    mockAdapter.createDraft.mockResolvedValue({ id: 'demo-draft-3', status: 'DRAFT' });
-    mockAdapter.submitPaper.mockResolvedValue({ id: 'demo-draft-3', status: 'SUBMITTED' });
-    mockOpenAlexAdapter.lookupPreview.mockResolvedValue({
-      status: 'invalid_format',
-      message: 'invalid',
-    });
+    await userEvent.click(screen.getByRole('button', { name: 'Use imported metadata' }));
+    expect(screen.getByLabelText(/Title/i)).toHaveValue('Imported title');
+    expect(screen.getByLabelText(/Abstract/i)).toHaveValue('Imported abstract');
+    expect(screen.getByLabelText(/First author/i)).toHaveValue('Imported Author');
+    expect(screen.getByLabelText(/Institution/i)).toHaveValue('Imported Institution');
+    expect(screen.getByLabelText(/Keywords/i)).toHaveValue('open access');
+    expect(screen.getByTestId('submission-openalex-confirmed')).toHaveTextContent('W2741809807');
+    expect(mockAdapter.createDraft).not.toHaveBeenCalled();
   });
 
-  afterEach(() => {
-    setFirebaseState(makeFirebaseState());
-  });
+  it.each([
+    ['not_found', 'No OpenAlex work was found for this ID.'],
+    ['rate_limited', 'OpenAlex scanning is temporarily rate limited.'],
+    ['error', 'OpenAlex scanning is unavailable.'],
+  ] as const)('shows a recoverable %s scan failure', async (status, message) => {
+    mockOpenAlexAdapter.lookupPreview.mockResolvedValue({ status, message });
 
-  it('attaches the manually-entered identifier to the createDraft payload', async () => {
-    const uploadPdf = vi.fn().mockResolvedValue(undefined);
-    setFirebaseState({ uploadPdf });
-    renderForm();
-
-    // Drive file upload completion.
-    const file = new File(['x'], 'manuscript.pdf', { type: 'application/pdf' });
-    selectFile(screen.getByTestId('submission-file'), file);
-
-    // Now swap to completion state and trigger a re-render.
-    setFirebaseState({ progress: 100, isUploading: false, pdfUrl: EXACT_URL });
-    fireEvent.change(screen.getByLabelText(/Title/i), {
-      target: { value: 'Trigger Render' },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('submission-file-url')).toBeInTheDocument();
-    });
-
-    // Manually attach an OpenAlex ID.
-    fireEvent.change(screen.getByTestId('submission-openalex-input'), {
-      target: { value: 'custom-id-1234' },
-    });
-    fireEvent.click(screen.getByTestId('submission-openalex-manual'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('submission-openalex-confirmed')).toHaveTextContent(
-        /custom-id-1234/,
-      );
-    });
-
-    fillRequiredTextFields();
-    await userEvent.click(screen.getByTestId('submission-submit'));
-
-    await waitFor(() => {
-      expect(mockAdapter.createDraft).toHaveBeenCalledTimes(1);
-    });
-    expect(mockAdapter.createDraft.mock.calls[0][0].openAlexId).toBe('custom-id-1234');
-    expect(mockAdapter.createDraft.mock.calls[0][0].fileUrl).toBe(EXACT_URL);
-  });
-
-  it('rejects manual fallback below the 4-character minimum', () => {
     renderForm();
     fireEvent.change(screen.getByTestId('submission-openalex-input'), {
-      target: { value: 'abc' },
+      target: { value: 'W2741809807' },
     });
-    fireEvent.click(screen.getByTestId('submission-openalex-manual'));
+    fireEvent.click(screen.getByTestId('submission-openalex-scan'));
 
-    expect(
-      screen.getByTestId('submission-openalex-invalid'),
-    ).toHaveTextContent(/at least 4 characters/i);
+    expect(await screen.findByTestId('submission-openalex-unavailable')).toHaveTextContent(message);
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });

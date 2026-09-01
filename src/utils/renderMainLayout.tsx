@@ -25,7 +25,6 @@
  *
  *        setMockAuth({ role: 'Graduate Student', isActive: false });
  *        renderMainLayout('/forum');
- *        expect(findSidebarLinkByHref('/premium-packages')).toBeNull();
  *
  * Why this is split into a separate mock-install module: vitest requires
  * `vi.mock()` calls to live at the top level of the file that imports the

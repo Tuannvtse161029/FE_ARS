@@ -6,7 +6,6 @@
   position: fixed;
   inset: 0;
   background-color: rgba(26, 31, 54, 0.6);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,6 +66,20 @@
   font-weight: 700;
   color: var(--ars-ink);
   margin: 0;
+}
+
+.closeBtn {
+  margin-left: auto;
+  padding: 4px;
+}
+
+.requiredMark {
+  color: var(--ars-error);
+}
+
+.optionalLabel {
+  color: var(--ars-ink-muted);
+  font-weight: 400;
 }
 
 .body {

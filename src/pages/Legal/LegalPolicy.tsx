@@ -21,7 +21,7 @@ export const LegalPolicy: React.FC = () => {
       <header className={styles.navbar}>
         <Link to={ROUTES.HOME} className={styles.brand}>
           <img src={ARSLogo} alt="ARS Logo" className={styles.logo} />
-          <span className={styles.brandName}>Academic Research System</span>
+          <span className={styles.brandName}>Academic Research Sharing</span>
         </Link>
         <Link to={ROUTES.REGISTER} className={styles.backLink}>
           Back to Registration
@@ -58,13 +58,18 @@ export const LegalPolicy: React.FC = () => {
             </button>
           </div>
 
-          <div className={styles.content}>
+          <div
+            key={activeTab}
+            className={styles.content}
+            role="tabpanel"
+            aria-label={activeTab === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+          >
             {activeTab === 'privacy' ? (
               <div>
                 <div className={styles.section}>
                   <h2 className={styles.sectionTitle}>1. Information We Collect</h2>
                   <p className={styles.paragraph}>
-                    When you register and use the Academic Research System (ARS), we collect the following types of personal and academic information:
+                    When you register and use the Academic Research Sharing (ARS), we collect the following types of personal and academic information:
                   </p>
                   <ul className={styles.list}>
                     <li><strong>Account Identity:</strong> Full Name, Email Address, Phone Number, and hashed credentials.</li>

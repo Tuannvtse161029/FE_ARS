@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import shared from '../components/PublicationShared.module.css';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
+import shared from '../components/PublicationShared.module.css';
 import {
   REVIEWER_CRITERIA,
   REVIEWER_RECOMMENDATIONS,
@@ -20,6 +21,13 @@ import {
   type SpecializedCriteriaBundle,
 } from './evaluationCriteriaResolver';
 import { fieldService } from '../../../services/field.service';
+import { PageHeader } from '../../../components/PageHeader';
+import { EmptyState } from '../../../components/EmptyState';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { SkeletonRow } from '../../../components/SkeletonRow';
+import { StatusBadge } from '../../../components/lecturer/StatusBadge';
+import { Button } from '../../../components/Button/Button';
+import { useShortcuts } from '../../../hooks/useShortcuts';
 
 // ReviewerAssignmentDetail — the Reviewer-only paper view.
 //
@@ -53,6 +61,8 @@ import { fieldService } from '../../../services/field.service';
 //      decision" copy and hides the form. The form never reappears
 //      for the same assignment.
 
+const REVIEWER_ACCENT = 'var(--ars-reviewer)';
+
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
   const parsed = new Date(iso);
@@ -67,6 +77,19 @@ interface ResolvedAssignment {
   status: 'authorised' | 'unauthorised' | 'missing';
   paper?: PublicationPaper;
 }
+
+const DOCUMENT_ACCESS_MESSAGE =
+  'Manuscript access is unavailable until the editorial service confirms this assignment\'s policy acceptance and returns a protected document link.';
+
+const statusTone = (
+  paper: PublicationPaper | undefined,
+): 'submitted' | 'evaluated' | 'waiting' | 'unknown' => {
+  if (!paper) return 'unknown';
+  if (isReviewerSubmitted(paper.status)) return 'submitted';
+  if (isReviewerActionable(paper.status)) return 'evaluated';
+  if (isAwaitingReviewerResponse(paper.status)) return 'waiting';
+  return 'unknown';
+};
 
 export const ReviewerAssignmentDetail = () => {
   const { id } = useParams();
@@ -108,6 +131,14 @@ export const ReviewerAssignmentDetail = () => {
           setResolved({ status: 'authorised', paper: found });
         } else {
           setResolved({ status: 'unauthorised' });
+        }
+      } catch (caught) {
+        if (!cancelled) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'The review assignment could not be loaded.',
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -223,6 +254,52 @@ export const ReviewerAssignmentDetail = () => {
     }
   };
 
+  // Part 5 — keyboard shortcuts for the reviewer detail page.
+  // `a` accepts the focused assignment, `d` declines it, Ctrl/Cmd+Enter
+  // submits the evaluation form. Shortcuts are only registered when the
+  // paper is in the appropriate status (REVIEWER_ASSIGNED for a/d,
+  // UNDER_REVIEW for submit).
+  const handleAcceptRef = useRef<() => void>(() => undefined);
+  handleAcceptRef.current = () => void handleAccept(true);
+  const handleDeclineRef = useRef<() => void>(() => undefined);
+  handleDeclineRef.current = () => void handleAccept(false);
+  const submitRef = useRef<() => void>(() => undefined);
+  submitRef.current = () => {
+    if (!canReview || submitted) return;
+    void submitEvaluation({
+      preventDefault: () => undefined,
+    } as unknown as React.FormEvent<HTMLFormElement>);
+  };
+  useShortcuts([
+    ...(awaitingResponse
+      ? [
+          {
+            key: 'a',
+            label: 'Accept assignment',
+            description: 'Accept the review assignment (a).',
+            group: 'reviewer' as const,
+            handler: () => handleAcceptRef.current(),
+          },
+          {
+            key: 'd',
+            label: 'Decline assignment',
+            description: 'Decline the review assignment (d).',
+            group: 'reviewer' as const,
+            handler: () => handleDeclineRef.current(),
+          },
+        ]
+      : []),
+    {
+      key: 'Enter',
+      modifier: 'mod' as const,
+      label: 'Submit evaluation',
+      description: 'Submit the review evaluation (Ctrl/Cmd + Enter).',
+      group: 'reviewer',
+      allowInInputs: true,
+      handler: () => submitRef.current(),
+    },
+  ]);
+
   const renderMetadata = (paperToRender: PublicationPaper) => {
     const items: Array<{ label: string; value: string }> = [
       { label: 'Status', value: renderInlineStatus(paperToRender.status) },
@@ -260,40 +337,18 @@ export const ReviewerAssignmentDetail = () => {
     );
   };
 
-  const renderPdf = (paperToRender: PublicationPaper) => {
-    if (!paperToRender.fileUrl) {
-      return (
-        <p className={reviewer.pdfUnavailable}>
-          No manuscript file URL is available for this assignment yet.
-        </p>
-      );
-    }
-    return (
-      <div className={reviewer.pdfFrame} data-testid="pdf-frame">
-        <iframe
-          title={`PDF preview for ${paperToRender.title}`}
-          src={paperToRender.fileUrl}
-          loading="lazy"
-        />
-        <a
-          className={reviewer.pdfLink}
-          href={paperToRender.fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          download
-        >
-          Download manuscript (PDF)
-        </a>
-      </div>
-    );
-  };
+  const renderPdf = () => (
+    <p className={reviewer.pdfUnavailable} role="status">
+      {DOCUMENT_ACCESS_MESSAGE}
+    </p>
+  );
 
   const renderEvaluationForm = () => {
     if (!canReview) return null;
     return (
       <form
         onSubmit={submitEvaluation}
-        className={shared.formGrid}
+        className={reviewer.formCard}
         aria-label="Evaluate Paper"
         data-testid="evaluate-form"
       >
@@ -551,20 +606,24 @@ export const ReviewerAssignmentDetail = () => {
           </select>
         </div>
         {error && (
-          <div
-            className={`${reviewer.evaluationError} ${shared.full}`}
-            role="alert"
-          >
-            {error}
-          </div>
+          <ErrorBanner
+            tone="error"
+            title="Could not submit review"
+            message={error}
+          />
         )}
         <div className={`${reviewer.evaluationActions} ${shared.full}`}>
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
             Sau khi nộp, phiếu đánh giá sẽ được chuyển lên Ban biên tập Admin để xem xét xuất bản.
           </p>
-          <button className={shared.button} disabled={saving} type="submit">
+          <Button
+            variant="primary"
+            size="md"
+            disabled={saving}
+            type="submit"
+          >
             {saving ? 'Đang gửi...' : 'Nộp phiếu đánh giá cho Admin'}
-          </button>
+          </Button>
         </div>
       </form>
     );
@@ -586,21 +645,29 @@ export const ReviewerAssignmentDetail = () => {
   );
 
   const renderResponseActions = () => (
-    <div className={shared.actions}>
-      <button
-        className={shared.button}
-        disabled={saving}
-        onClick={() => void handleAccept(true)}
-      >
-        Accept assignment
-      </button>
-      <button
-        className={shared.buttonSecondary}
-        disabled={saving}
-        onClick={() => void handleAccept(false)}
-      >
-        Decline assignment
-      </button>
+    <div className={reviewer.evaluationActions}>
+      <p className={reviewer.evaluationHint}>
+        Accept to begin evaluation, or decline and the assignment returns to
+        Admin's queue.
+      </p>
+      <div className={reviewer.respondButtons}>
+        <Button
+          variant="secondary"
+          size="md"
+          disabled={saving}
+          onClick={() => void handleAccept(true)}
+        >
+          Accept assignment
+        </Button>
+        <Button
+          variant="outline"
+          size="md"
+          disabled={saving}
+          onClick={() => void handleAccept(false)}
+        >
+          Decline assignment
+        </Button>
+      </div>
     </div>
   );
 
@@ -615,96 +682,209 @@ export const ReviewerAssignmentDetail = () => {
         account. If you believe this is a mistake, contact the editorial
         Admin.
       </p>
-      <button
-        className={shared.buttonSecondary}
-        onClick={() => navigate('/reviewer/assignments')}
-      >
-        Back to my assignments
-      </button>
+      <div>
+        <Button
+          variant="outline"
+          size="md"
+          onClick={() => navigate('/reviewer/assignments')}
+        >
+          Back to my assignments
+        </Button>
+      </div>
     </section>
   );
 
-  const renderBody = () => {
-    if (loading) {
-      return <div className={shared.loading}>Loading assignment...</div>;
-    }
-    if (resolved.status === 'missing') {
-      return <div className={shared.loading}>Resolving assignment...</div>;
-    }
-    if (resolved.status === 'unauthorised') {
-      return renderUnauthorized();
-    }
-    const paperToRender = resolved.paper;
-    if (!paperToRender) {
-      return <div className={shared.loading}>Loading assignment...</div>;
-    }
+  if (loading || resolved.status === 'missing') {
     return (
-      <>
-        <header className={shared.header}>
-          <div>
-            <h1>{paperToRender.title}</h1>
-            <p>
-              Assigned by Admin. Your recommendation is private to Admin and
-              does not publish this paper.
+      <section className={reviewer.page}>
+        <PageHeader
+          eyebrow="REVIEWER WORKSPACE"
+          title="Review Assignment"
+          accent={REVIEWER_ACCENT}
+        />
+        <SkeletonRow count={6} withHeader />
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className={reviewer.page}>
+        <PageHeader
+          eyebrow="REVIEWER WORKSPACE"
+          title="Review Assignment"
+          accent={REVIEWER_ACCENT}
+          actions={
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/reviewer/assignments')}
+            >
+              Back to assignments
+            </Button>
+          }
+        />
+        <ErrorBanner
+          tone="error"
+          title="Could not load assignment"
+          message={error}
+          retry={
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          }
+        />
+      </section>
+    );
+  }
+
+  if (resolved.status === 'unauthorised') {
+    return (
+      <section className={reviewer.page}>
+        <PageHeader
+          eyebrow="REVIEWER WORKSPACE"
+          title="Review Assignment"
+          accent={REVIEWER_ACCENT}
+          actions={
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/reviewer/assignments')}
+            >
+              ← All assignments
+            </Button>
+          }
+        />
+        {renderUnauthorized()}
+      </section>
+    );
+  }
+
+  const paperToRender = resolved.paper;
+  if (!paperToRender) {
+    return (
+      <section className={reviewer.page}>
+        <PageHeader
+          eyebrow="REVIEWER WORKSPACE"
+          title="Review Assignment"
+          accent={REVIEWER_ACCENT}
+        />
+        <EmptyState
+          icon={<AlertTriangle size={20} aria-hidden />}
+          title="Assignment could not be loaded"
+          description="The paper for this assignment is unavailable. Try refreshing from the assignments list."
+          action={
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/reviewer/assignments')}
+            >
+              Back to my assignments
+            </Button>
+          }
+        />
+      </section>
+    );
+  }
+
+  const tone = statusTone(paperToRender);
+
+  return (
+    <section className={reviewer.page}>
+      <PageHeader
+        eyebrow="REVIEWER WORKSPACE"
+        title={paperToRender.title}
+        description="Assigned by Admin. Your recommendation is private to Admin and does not publish this paper."
+        accent={REVIEWER_ACCENT}
+        actions={
+          <>
+            <StatusBadge status={tone} label={renderInlineStatus(paperToRender.status)} size="sm" />
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/reviewer/assignments')}
+            >
+              ← All assignments
+            </Button>
+          </>
+        }
+      />
+
+      <div className={reviewer.detailLayout}>
+        <div className={reviewer.detailSide}>
+          <section className={reviewer.detailContext} aria-labelledby="paper-metadata-title">
+            <h2 className={reviewer.detailHeading} id="paper-metadata-title">
+              Paper metadata
+            </h2>
+            {renderMetadata(paperToRender)}
+          </section>
+
+          <section className={reviewer.detailContext} aria-labelledby="paper-abstract-title">
+            <h2 className={reviewer.detailHeading} id="paper-abstract-title">
+              Abstract
+            </h2>
+            <p className={reviewer.contextParagraph}>{paperToRender.abstract}</p>
+          </section>
+
+          <section className={reviewer.detailContext} aria-labelledby="paper-authors-title">
+            <h2 className={reviewer.detailHeading} id="paper-authors-title">
+              Authors &amp; institutions
+            </h2>
+            <p className={reviewer.contextParagraph}>
+              <span className={reviewer.contextLabel}>Authors</span>
+              <span className={reviewer.contextValue}>
+                {paperToRender.authors.map((author) => author.name).join(', ') ||
+                  'Not supplied'}
+              </span>
             </p>
-          </div>
-          <span className={shared.status}>
-            {renderInlineStatus(paperToRender.status)}
-          </span>
-        </header>
-        <div className={shared.panel}>
-          {renderMetadata(paperToRender)}
-          <h2 style={{ fontSize: 17, margin: '12px 0 6px' }}>Abstract</h2>
-          <p>{paperToRender.abstract}</p>
-          <h2 style={{ fontSize: 17, margin: '12px 0 6px' }}>
-            Authors & institutions
-          </h2>
-          <p>
-            <strong>Authors:</strong>{' '}
-            {paperToRender.authors.map((author) => author.name).join(', ') ||
-              'Not supplied'}
-          </p>
-          <p>
-            <strong>Institutions:</strong>{' '}
-            {paperToRender.institutions
-              .map((institution) => institution.name)
-              .join(', ') || 'Not supplied'}
-          </p>
-          <h2 style={{ fontSize: 17, margin: '12px 0 6px' }}>
-            Manuscript PDF
-          </h2>
-          {renderPdf(paperToRender)}
+            <p className={reviewer.contextParagraph}>
+              <span className={reviewer.contextLabel}>Institutions</span>
+              <span className={reviewer.contextValue}>
+                {paperToRender.institutions
+                  .map((institution) => institution.name)
+                  .join(', ') || 'Not supplied'}
+              </span>
+            </p>
+          </section>
+
+          <section className={reviewer.detailContext} aria-labelledby="paper-pdf-title">
+            <h2 className={reviewer.detailHeading} id="paper-pdf-title">
+              Manuscript PDF
+            </h2>
+            {renderPdf()}
+          </section>
+        </div>
+
+        <div className={reviewer.detailSide}>
           {awaitingResponse && (
-            <>
-              <h2 style={{ fontSize: 17, margin: '18px 0 6px' }}>
+            <section className={reviewer.detailContext} aria-labelledby="respond-title">
+              <h2 className={reviewer.detailHeading} id="respond-title">
                 Respond to assignment
               </h2>
               {renderResponseActions()}
-            </>
+            </section>
           )}
           {canReview && (
             <>
-              <h2 style={{ fontSize: 17, margin: '18px 0 6px' }}>
-                Evaluate Paper
-              </h2>
+              <h2 className={reviewer.detailHeading}>Evaluate Paper</h2>
               {renderEvaluationForm()}
             </>
           )}
           {submitted && renderSubmitted(paperToRender)}
-          {!shouldRenderPrivatePriorReview(paperToRender.status) && !canReview &&
+          {!shouldRenderPrivatePriorReview(paperToRender.status) &&
+            !canReview &&
             !submitted &&
             !awaitingResponse && (
-              <div className={shared.empty}>
-                This assignment is not actionable for review. Awaiting Admin
-                or researcher activity.
-              </div>
+              <EmptyState
+                icon={<AlertTriangle size={20} aria-hidden />}
+                title="Assignment is not actionable"
+                description="This assignment is not actionable for review. Awaiting Admin or researcher activity."
+              />
             )}
         </div>
-      </>
-    );
-  };
-
-  return <section className={shared.page}>{renderBody()}</section>;
+      </div>
+    </section>
+  );
 };
 
 export default ReviewerAssignmentDetail;

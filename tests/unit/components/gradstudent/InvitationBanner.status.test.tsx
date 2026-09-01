@@ -21,13 +21,12 @@ const INV: InvitationPreview = {
 };
 
 describe('<InvitationBanner> — status sibling tests', () => {
-  it('renders Accept / Decline buttons when status is "pending"', () => {
+  it('keeps pending invitation actions visibly disabled with an explanation', () => {
     render(<InvitationBanner invitation={INV} />);
+    expect(screen.getByRole('button', { name: /Accept invitation/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Decline invitation/i })).toBeDisabled();
     expect(
-      screen.getByRole('button', { name: /Accept invitation/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Decline invitation/i }),
+      screen.getByText(/Responding to invitations is unavailable/i),
     ).toBeInTheDocument();
   });
 
@@ -64,16 +63,10 @@ describe('<InvitationBanner> — status sibling tests', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders Accept / Decline buttons when status is undefined (backward-compat default)', () => {
+  it('keeps undefined invitation status visibly disabled', () => {
     render(<InvitationBanner invitation={INV} />);
-    expect(
-      screen.getByRole('button', { name: /Accept invitation/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Decline invitation/i }),
-    ).toBeInTheDocument();
-    // The userEvent import path is here so a future test that needs
-    // `.click()` doesn't have to repeat it.
+    expect(screen.getByRole('button', { name: /Accept invitation/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Decline invitation/i })).toBeDisabled();
     void userEvent;
     void vi;
   });

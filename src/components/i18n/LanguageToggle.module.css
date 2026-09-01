@@ -1,0 +1,100 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  background: var(--control-bg, transparent);
+  color: var(--control-text, inherit);
+  font-family: inherit;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast, 120ms ease),
+    border-color var(--transition-fast, 120ms ease),
+    color var(--transition-fast, 120ms ease);
+}
+
+.trigger:hover {
+  background: var(--control-bg-hover, rgba(255, 255, 255, 0.06));
+  border-color: var(--accent-primary, #007aff);
+  color: var(--ink-primary, inherit);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--focus-ring, #007aff);
+  outline-offset: 2px;
+}
+
+.code {
+  letter-spacing: 0.04em;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  padding: 6px;
+  margin: 0;
+  list-style: none;
+  background: var(--control-bg, #1f2545);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 60;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--control-text, inherit);
+  font-family: inherit;
+  font-size: var(--font-size-sm, 13px);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  text-align: left;
+}
+
+.option:hover {
+  background: var(--control-bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--focus-ring, #007aff);
+  outline-offset: 2px;
+}
+
+.optionActive {
+  background: var(--surface-selected, rgba(0, 122, 255, 0.18));
+  color: var(--ink-primary, #fff);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.optionLabel {
+  flex: 1;
+}
+
+.check {
+  margin-left: auto;
+  color: var(--accent-primary, #007aff);
+  font-weight: var(--font-weight-bold, 700);
+}

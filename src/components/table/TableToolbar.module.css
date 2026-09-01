@@ -8,8 +8,8 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   padding: var(--space-3) var(--space-4);
-  background: var(--ars-paper-alt);
-  border-bottom: var(--border-thin);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .searchField {
@@ -24,7 +24,7 @@
 .searchIcon {
   position: absolute;
   left: 10px;
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
   display: inline-flex;
   pointer-events: none;
 }
@@ -33,11 +33,11 @@
   width: 100%;
   height: 34px;
   padding: 0 var(--space-3) 0 32px;
-  border: 1px solid var(--ars-node);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--ars-paper);
+  background: var(--control-bg);
   font-size: var(--font-size-sm);
-  color: var(--ars-ink);
+  color: var(--control-text);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -46,13 +46,13 @@
 }
 
 .searchInput::placeholder {
-  color: var(--ars-ink-muted);
+  color: var(--ink-muted);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
 }
 
 .toolbarFilters {
@@ -65,11 +65,11 @@
 .toolbarFilter {
   height: 34px;
   padding: 0 var(--space-3);
-  border: 1px solid var(--ars-node);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--ars-paper);
+  background: var(--control-bg);
   font-size: var(--font-size-sm);
-  color: var(--ars-ink);
+  color: var(--control-text);
   cursor: pointer;
   font-family: var(--font-family-ui);
   transition:
@@ -79,8 +79,8 @@
 
 .toolbarFilter:focus {
   outline: none;
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
 }
 
 .refreshBtn {
@@ -89,10 +89,10 @@
   gap: var(--space-2);
   height: 34px;
   padding: 0 var(--space-3);
-  border: 1px solid var(--ars-blue);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
-  background: var(--ars-blue);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
@@ -103,12 +103,12 @@
 }
 
 .refreshBtn:hover:not(:disabled) {
-  background: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .refreshBtn:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

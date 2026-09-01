@@ -50,7 +50,6 @@ describe('useReviewerAvailability — case-by-case (addendum §C)', () => {
       {
         userId: 42,
         isAvailable: true,
-        reviewFee: 0,
       },
     ]);
 
@@ -64,7 +63,6 @@ describe('useReviewerAvailability — case-by-case (addendum §C)', () => {
       {
         userId: 42,
         isAvailable: false,
-        reviewFee: 0,
       },
     ]);
 
@@ -78,7 +76,6 @@ describe('useReviewerAvailability — case-by-case (addendum §C)', () => {
       {
         userId: 42,
         // isAvailable intentionally absent
-        reviewFee: 0,
       },
     ]);
 

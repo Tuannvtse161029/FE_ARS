@@ -87,21 +87,19 @@ const ResetPassword = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logoHeader}>
-        <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        </div>
-        <span className={styles.brandText}>ARS - Academic Research Sharing</span>
-      </div>
+      <header className={styles.logoSection}>
+        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+        <span className={styles.brandText}>Academic Research Sharing</span>
+      </header>
 
       <StepIndicator currentStep={3} />
 
-      <div className={styles.header}>
-        <h1 className={styles.title}>Reset Password</h1>
-        <p className={styles.subtitle}>
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Reset Password</h1>
+        <p className={styles.pageSubtitle}>
           Set a new password for your account. Make sure it&apos;s strong and easy to remember.
         </p>
-      </div>
+      </header>
 
       <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
         {error && (
@@ -135,7 +133,6 @@ const ResetPassword = () => {
                     type="button"
                     className={styles.passwordToggle}
                     onClick={() => setShowNewPassword((s) => !s)}
-                    tabIndex={-1}
                     aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                   >
                     {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -167,7 +164,6 @@ const ResetPassword = () => {
                   type="button"
                   className={styles.passwordToggle}
                   onClick={() => setShowConfirmPassword((s) => !s)}
-                  tabIndex={-1}
                   aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -188,11 +184,11 @@ const ResetPassword = () => {
           Reset Password
         </Button>
 
-        <div className={styles.footer} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+        <div className={styles.footer}>
           <Link to={ROUTES.VERIFY_OTP} className={styles.backLink}>
             Re-enter code
           </Link>
-          <span style={{ color: '#94a3b8' }}>•</span>
+          <span className={styles.footerDivider} aria-hidden="true">/</span>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
             Back to login
           </Link>

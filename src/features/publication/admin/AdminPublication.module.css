@@ -1,8 +1,9 @@
 /* Admin Publication Pages
    Shared visual language for Admin-only publication workflow surfaces:
    paper submissions, submission detail, reviewer assignments, and the
-   published-papers index. Token-driven; no gradients, orbs, or hard
-   brand hex. Mirrors the home catalog toolbar/table style for parity. */
+   published-papers index. Token-driven; uses the Admin accent
+   (--ars-admin: violet) for primary actions, page chrome, and the
+   private-review callout. */
 
 .page {
   max-width: 1240px;
@@ -10,15 +11,15 @@
   width: 100%;
 }
 
-/* ── Toolbar ─────────────────────────────────────────────── */
+/* ── Toolbar ───────────────────────────────────────────── */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
 }
 
@@ -41,21 +42,23 @@
 .search {
   flex: 1 1 320px;
   min-width: 220px;
-  min-height: 42px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   border: 1px solid var(--ars-network);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--ars-paper);
   padding: 0 12px;
   color: var(--ars-ink-muted);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .search:focus-within {
-  border-color: var(--ars-blue-mid);
-  box-shadow: 0 0 0 2px var(--ars-blue-light);
+  border-color: var(--ars-admin-mid);
+  box-shadow: 0 0 0 2px var(--ars-admin-light);
 }
 
 .search input {
@@ -64,16 +67,51 @@
   width: 100%;
   background: transparent;
   font: inherit;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--ars-ink);
-  padding: 9px 0;
-  min-height: 38px;
+  padding: 7px 0;
+  min-height: 34px;
 }
 
-.search input::placeholder { color: var(--ars-ink-muted); }
+/* ── Filter select (lives inside shared TableToolbar) ─── */
+.filterSelect {
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.filterSelect:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.filterSelect:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-admin-mid);
+}
+
+.filterSelect:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.search input::placeholder {
+  color: var(--ars-ink-muted);
+}
 
 .filter {
-  min-height: 42px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -85,10 +123,10 @@
 .filter select,
 .filter input {
   border: 1px solid var(--ars-network);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--ars-paper);
   color: var(--ars-ink);
-  padding: 8px 10px;
+  padding: 7px 10px;
   font: inherit;
   font-size: var(--font-size-sm);
   min-height: 36px;
@@ -96,22 +134,25 @@
 }
 
 .filter select:hover,
-.filter input:hover { border-color: var(--ars-ink-muted); }
+.filter input:hover {
+  border-color: var(--ars-ink-muted);
+}
 
 .filter select:focus-visible,
 .filter input:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--ars-admin-mid);
   outline-offset: 1px;
+  border-color: var(--ars-admin-mid);
 }
 
-/* ── Status badge with lifecycle color mapping ───────────── */
+/* ── Status badge with lifecycle color mapping ───────── */
 .statusBadge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   width: fit-content;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.04em;
@@ -119,27 +160,27 @@
   border: 1px solid transparent;
   white-space: nowrap;
   line-height: 1.2;
-  background: var(--ars-blue-light);
-  color: var(--ars-ink-soft);
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
 }
 
 .statusDraft          { background: #eef0f4; color: #3a4156; }
 .statusSubmitted      { background: #e0e7ff; color: #1e3a8a; }
-.statusScreening      { background: #ede9fe; color: #5b21b6; }
-.statusVerification   { background: #fef3c7; color: #92400e; }
-.statusReady          { background: #dbeafe; color: #1e40af; }
-.statusAssigned       { background: #dbeafe; color: #1e40af; }
-.statusUnderReview    { background: #dbeafe; color: #1e40af; }
+.statusScreening      { background: var(--ars-admin-light); color: var(--ars-admin); }
+.statusVerification   { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.statusReady          { background: var(--ars-info-bg); color: var(--ars-info); }
+.statusAssigned       { background: var(--ars-info-bg); color: var(--ars-info); }
+.statusUnderReview    { background: var(--ars-info-bg); color: var(--ars-info); }
 .statusRevision       { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusResubmitted    { background: #fef3c7; color: #92400e; }
+.statusResubmitted    { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .statusRecommendAccept { background: var(--ars-success-bg); color: var(--ars-success); }
 .statusRecommendReject { background: var(--ars-error-bg); color: var(--ars-error); }
 .statusApproved       { background: #ccfbf1; color: #115e59; }
 .statusPublished      { background: var(--ars-success-bg); color: var(--ars-success); }
 .statusRejected       { background: var(--ars-error-bg); color: var(--ars-error); }
-.statusWithdrawn      { background: #f3f4f6; color: #4b5563; }
+.statusWithdrawn      { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
 
-/* ── Verification badge ─────────────────────────────────── */
+/* ── Verification badge ──────────────────────────────── */
 .verificationBadge {
   display: inline-flex;
   align-items: center;
@@ -156,9 +197,9 @@
 
 .verificationVerified   { background: var(--ars-success-bg); color: var(--ars-success); }
 .verificationPending    { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.verificationUnverified { background: #f3f4f6; color: #4b5563; }
+.verificationUnverified { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
 
-/* ── Identifier chips ────────────────────────────────────── */
+/* ── Identifier chips ─────────────────────────────────── */
 .identifierList {
   display: flex;
   flex-wrap: wrap;
@@ -169,15 +210,15 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--ars-blue-light);
+  background: var(--ars-admin-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ars-blue);
+  color: var(--ars-admin);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
   padding: 3px 8px;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-family-mono);
 }
 
 .identifierChip a {
@@ -191,10 +232,10 @@
   text-underline-offset: 2px;
 }
 
-/* ── Table ───────────────────────────────────────────────── */
+/* ── Table ─────────────────────────────────────────────── */
 .tableWrap {
-  border: var(--border-thin);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
   background: var(--ars-paper-alt);
   overflow: hidden;
 }
@@ -208,27 +249,38 @@
   text-align: left;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ars-ink-muted);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-thin);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ars-network);
   background: var(--ars-paper);
   white-space: nowrap;
+  font-family: var(--font-family-mono);
 }
 
 .table tbody td {
-  padding: var(--space-3) var(--space-4);
+  padding: 12px 14px;
   font-size: var(--font-size-sm);
   color: var(--ars-ink);
   border-bottom: 1px solid var(--ars-network);
   vertical-align: top;
+  line-height: var(--line-height-normal);
 }
 
-.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
 
 .table tbody tr:hover {
-  background: var(--ars-blue-light);
+  background: var(--ars-admin-light);
+}
+
+/* Keyboard-shortcut-selected row (Part 5 — useListShortcuts). */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: var(--ars-admin-light);
 }
 
 .titleCell {
@@ -238,10 +290,10 @@
 }
 
 .titleCell strong {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
-  line-height: 1.35;
+  line-height: var(--line-height-tight);
 }
 
 .titleCell small {
@@ -257,12 +309,12 @@
 }
 
 .identifierCell code {
-  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   color: var(--ars-ink-soft);
   background: var(--ars-paper);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--ars-network);
   word-break: break-all;
   max-width: 240px;
@@ -272,25 +324,29 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--ars-blue-light);
+  background: var(--ars-admin-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ars-blue);
+  color: var(--ars-admin);
   padding: 4px 10px;
   font: inherit;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .previewButton:hover {
-  background: var(--ars-blue);
+  background: var(--ars-admin);
   color: var(--ars-paper);
 }
 
 .previewButton:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--ars-admin-mid);
   outline-offset: 2px;
 }
 
@@ -298,14 +354,17 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--ars-blue);
+  color: var(--ars-admin);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
   word-break: break-word;
 }
 
-.fileLink:hover { text-decoration: underline; text-underline-offset: 2px; }
+.fileLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 .fileMissing {
   color: var(--ars-ink-muted);
@@ -313,7 +372,7 @@
   font-style: italic;
 }
 
-/* ── Detail page blocks ──────────────────────────────────── */
+/* ── Detail page blocks ─────────────────────────────────── */
 .detailHeader {
   display: flex;
   align-items: flex-start;
@@ -329,9 +388,12 @@
   align-items: flex-end;
 }
 
+/* Private review block — admin-only callout.
+   Visually distinguished from the rest of the page using the admin
+   accent so the reviewer identity / private comments remain flagged. */
 .reviewBlock {
-  border: 1px solid var(--ars-warning);
-  background: var(--ars-warning-bg);
+  border: 1px solid var(--ars-admin);
+  background: var(--ars-admin-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   display: grid;
@@ -340,12 +402,12 @@
 
 .reviewBlock h3 {
   margin: 0;
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-base);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  color: var(--ars-warning);
+  color: var(--ars-admin);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .reviewNote {
@@ -371,8 +433,9 @@
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
 }
 
 .assignForm {
@@ -399,11 +462,12 @@
 
 .actionZoneTitle {
   margin: 0;
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ars-ink-muted);
+  color: var(--ars-admin);
 }
 
 .actionZoneHint {
@@ -428,6 +492,8 @@
 .paginationInfo {
   font-variant-numeric: tabular-nums;
   color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
 }
 
 .paginationControls {
@@ -443,7 +509,7 @@
   min-width: 36px;
   min-height: 36px;
   border: 1px solid var(--ars-network);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--ars-paper-alt);
   color: var(--ars-ink);
   font: inherit;
@@ -451,12 +517,16 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   padding: 4px 10px;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .pageButton:hover:not(:disabled) {
-  background: var(--ars-blue-light);
-  border-color: var(--ars-blue-mid);
+  background: var(--ars-admin-light);
+  border-color: var(--ars-admin-mid);
+  color: var(--ars-admin);
 }
 
 .pageButton:disabled {
@@ -465,19 +535,19 @@
 }
 
 .pageButton:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--ars-admin-mid);
   outline-offset: 2px;
 }
 
 .pageButtonActive {
-  background: var(--ars-blue);
-  border-color: var(--ars-blue);
+  background: var(--ars-admin);
+  border-color: var(--ars-admin);
   color: var(--ars-paper);
 }
 
 .pageButtonActive:hover:not(:disabled) {
-  background: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background: var(--ars-admin-mid);
+  border-color: var(--ars-admin-mid);
   color: var(--ars-paper);
 }
 
@@ -497,10 +567,11 @@
   font-size: var(--font-size-sm);
 }
 
+/* ── Preview modal ──────────────────────────────────────── */
 .previewModalBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -510,8 +581,8 @@
 
 .previewModal {
   background: var(--ars-paper-alt);
-  border-radius: var(--radius-lg);
-  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-network);
   box-shadow: var(--shadow-lg);
   max-width: 720px;
   width: 100%;
@@ -531,10 +602,11 @@
 
 .previewModal header h2 {
   margin: 0;
-  font-family: var(--font-family-serif);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
+  line-height: var(--line-height-tight);
 }
 
 .previewBody {
@@ -554,19 +626,33 @@
 
 .previewBody dt {
   color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   font-size: var(--font-size-xs);
 }
 
-.previewBody dd { margin: 0; color: var(--ars-ink); }
+.previewBody dd {
+  margin: 0;
+  color: var(--ars-ink);
+}
 
 @media (max-width: 680px) {
-  .toolbar { padding: var(--space-3); }
-  .pagination { flex-direction: column; align-items: flex-start; }
-  .paginationControls { width: 100%; justify-content: space-between; }
-  .table thead { display: none; }
+  .toolbar {
+    padding: var(--space-3);
+  }
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .paginationControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .table thead {
+    display: none;
+  }
   .table tbody tr {
     display: grid;
     gap: var(--space-2);
@@ -582,9 +668,12 @@
     color: var(--ars-ink-muted);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     margin-bottom: 2px;
+    font-family: var(--font-family-mono);
   }
-  .titleCell { max-width: none; }
+  .titleCell {
+    max-width: none;
+  }
 }

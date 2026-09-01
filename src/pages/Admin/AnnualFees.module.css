@@ -1,121 +1,182 @@
+/**
+ * AnnualFees — Admin annual-subscription management.
+ *
+ * Honest unavailable state until the backend exposes this contract.
+ * When fees are returned, renders a token-driven table.
+ */
+
+@keyframes adminSpin {
+  to { transform: rotate(360deg); }
+}
+
 .page {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 32px 40px;
+  gap: var(--space-5);
+  color: var(--ars-ink);
 }
 
-.pageHeader {
+/* ── Toolbar (placeholder when retry-able) ───────────── */
+.toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.title {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
+/* ── Table card ─────────────────────────────────────────── */
 .tableCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 4px;
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.tableResponsive {
+  width: 100%;
   overflow-x: auto;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
-  color: #1e293b;
+  font-size: var(--font-size-sm);
 }
 
-.table th,
-.table td {
+.table thead th {
   text-align: left;
-  padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  vertical-align: middle;
-}
-
-.table th {
-  font-weight: 600;
-  font-size: 12px;
+  padding: 10px 14px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
-  background: #f8fafc;
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper);
+  border-bottom: 1px solid var(--ars-network);
+  white-space: nowrap;
 }
 
-.table tr:last-child td {
+.table tbody tr {
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.table tbody tr:last-child {
   border-bottom: none;
 }
 
-.table tr.inactive td {
-  color: #94a3b8;
+.table tbody tr:hover {
+  background: var(--ars-paper);
 }
 
+.table tbody td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Pills ─────────────────────────────────────────────── */
 .rolePill {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: #e0ecff;
-  color: #1e3a8a;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
 }
 
 .statusPill {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
 }
 
 .statusActive {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
 }
 
 .statusInactive {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
 }
 
 .cycleBadge {
   display: inline-block;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #f1f5f9;
-  color: #334155;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.02em;
 }
 
-.emptyState {
-  padding: 32px;
+/* ── States ─────────────────────────────────────────────── */
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-5);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.unavailableNotice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-5);
+  border: 1px dashed var(--ars-warning);
+  border-radius: var(--radius-md);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
   text-align: center;
-  color: #64748b;
-  font-size: 14px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
-.errorState {
-  padding: 18px;
-  border-radius: 10px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-  font-size: 14px;
+.unavailableNotice strong {
+  color: var(--ars-warning);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.unavailableNotice span {
+  color: var(--ars-ink-soft);
+}
+
+.spinning {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid var(--ars-paper-inset);
+  border-top-color: var(--ars-admin);
+  animation: adminSpin 0.8s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .table thead th,
+  .table tbody td {
+    padding: var(--space-2) var(--space-3);
+  }
 }

@@ -1,3 +1,18 @@
+/**
+ * StudentResearchGroups — Research Journey
+ * ARS Research Constellation — Graduate Student workspace
+ *
+ * Two surfaces:
+ *  - Overview: list of joined groups with an invitation banner
+ *  - Workspace (per group): milestone progress, learning materials, group
+ *    members, and the milestone-reports table
+ *
+ * Design rules applied:
+ *  - PageHeader + role accent `--ars-gradstudent`
+ *  - Shared `EmptyState`, `ErrorBanner`, `SkeletonRow`, `StatusBadge`
+ *  - Tables use `TableToolbar` + `TablePagination`
+ *  - No inline styles in JSX (CSS Modules only)
+ */
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -15,50 +30,31 @@ import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
-import {
-  lecturerLookupService,
-} from '../../services/lecturerLookup.service';
-import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
+import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import MilestoneProgress from '../../components/research/MilestoneProgress';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button';
+import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import BackendGapBanner from '../../components/BackendGapBanner';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import type { PhasedReportStatus } from '../../types/research';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import styles from './StudentResearchGroups.module.css';
 
-// Workspace that lists the Graduate Student's joined groups and per-group
-// PhasedReports. Phase C contract §3.2 G5:
-//
-//   - Group members list via `groupMemberService.getMembersForGroup(groupId)`
-//   - Learning materials list via `useLearningMaterials({ lecturerId })`
-//     filtered by group/topic (BE has no group FK).
-//   - `<MilestoneProgress />` consumes Grad-side reports.
-//   - Lecturer name resolution via silent-failure `lecturerLookup.service.ts`.
-//   - Invitation banner stays read-only with status field.
-//   - All Bearer-auth-only read paths (no Bearer is forced here — the global
-//     `axios` interceptor handles it for every request).
-
 const DEFAULT_FOLDER_KEY = 'milestone';
+const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
-
-const STATUS_PALETTE: Record<PhasedReportStatus, string> = {
-  WAITING: styles.statusWaiting,
-  SUBMITTED: styles.statusSubmitted,
-  EVALUATED: styles.statusEvaluated,
-  REJECTED: styles.statusRejected,
-  Pending: styles.statusWaiting,
-  OnTime: styles.statusSubmitted,
-  Overdue: styles.statusRejected,
-  Passed: styles.statusEvaluated,
-};
-
 export const StudentResearchGroups = (): JSX.Element => {
   const { user } = useAuth();
   const studentId = user?.userId ?? null;
@@ -69,10 +65,6 @@ export const StudentResearchGroups = (): JSX.Element => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [resubmitting, setResubmitting] = useState<SubmittedPhasedReport | null>(null);
   const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
-  // Cache of resolved lecturer display names. Populated lazily by the
-  // fire-and-forget probe in `lecturerLookupService.ensureLecturerDisplayName`.
-  // We mirror the service cache into local state so a successful lookup
-  // re-renders the workspace without making the helper React-aware.
   const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
   const { joinedGroups, guidanceProject, isLoading, error, refetch } =
@@ -88,8 +80,6 @@ export const StudentResearchGroups = (): JSX.Element => {
     return joinedGroups.find((g) => g.id === selectedGroupId) ?? null;
   }, [joinedGroups, selectedGroupId]);
 
-  // Subscribe to the lecturerLookup service's resolution event so any
-  // successful `userService.getById` probe re-renders the workspace.
   useEffect(() => {
     const handler = (event: Event): void => {
       const detail = (event as CustomEvent<{ lecturerId: number }>).detail;
@@ -112,8 +102,6 @@ export const StudentResearchGroups = (): JSX.Element => {
     return undefined;
   }, []);
 
-  // Trigger fire-and-forget probes for every lecturer id we surface. Safe to
-  // re-run on every render — the helper dedupes.
   const uniqueLecturerIds = useMemo(() => {
     const ids = new Set<number>();
     joinedGroups.forEach((g) => {
@@ -142,9 +130,6 @@ export const StudentResearchGroups = (): JSX.Element => {
     }
     const cached = lecturerNames[lecturerId];
     if (cached) return cached;
-    // Fallback: synchronous read of the service's own module-scoped cache.
-    // When the probe is still in flight this returns the `Lecturer #<id>`
-    // fallback and the resolution event will re-render later.
     return lecturerLookupService.getLecturerDisplayName(lecturerId);
   };
 
@@ -202,14 +187,14 @@ export const StudentResearchGroups = (): JSX.Element => {
   if (!user) {
     return (
       <div className={styles.page}>
-        <div className={styles.errorBanner}>
-          Please sign in to view your research groups.
-        </div>
+        <ErrorBanner
+          tone="error"
+          message="Please sign in to view your research groups."
+        />
       </div>
     );
   }
 
-  // ----- Workspace view -----
   if (selectedGroup) {
     const lecturerId = selectedGroup.lecturerId;
     return (
@@ -231,7 +216,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         onCloseSubmit={handleCloseSubmit}
         onSubmitted={handleSubmitted}
         onRefresh={handleRefresh}
-        joinedGroups={joinedGroups}
+        studentId={studentId}
         phaseKey={
           selectedGroup.name
             ? selectedGroup.name.toLowerCase().replace(/\s+/g, '-')
@@ -245,34 +230,34 @@ export const StudentResearchGroups = (): JSX.Element => {
   // ----- Overview view -----
   return (
     <div className={styles.page}>
-      <header className={styles.overviewHeader}>
-        <div>
-          <h1 className={styles.pageTitle}>Research Groups</h1>
-          <p className={styles.pageSubtitle}>
-            {guidanceProject
-              ? `Active guidance project: ${guidanceProject.title}`
-              : 'You have not yet started a guidance project.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          className={styles.refreshBtn}
-          onClick={handleRefresh}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <Loader2 size={14} className={styles.spin} />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-          <span>Refresh</span>
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="RESEARCH GROUPS"
+        title="My Research Groups"
+        description={
+          guidanceProject
+            ? `Active guidance project: ${guidanceProject.title}`
+            : 'You have not yet started a guidance project.'
+        }
+        accent={ROLE_ACCENT}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={
+              isLoading ? (
+                <Loader2 size={13} className={styles.spin} />
+              ) : (
+                <RefreshCw size={13} />
+              )
+            }
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            Refresh
+          </Button>
+        }
+      />
 
-      {/* Read-only invitation banner. Renders nothing when no invitation is
-          present; the BE has no /api/GroupInvitation so we cannot pre-load
-          this from the server. The banner is an honest UI surface that
-          documents the gap. */}
       <InvitationBanner
         invitation={null}
         onAccept={() => undefined}
@@ -280,9 +265,7 @@ export const StudentResearchGroups = (): JSX.Element => {
       />
 
       {error ? (
-        <div className={styles.errorBanner} role="alert">
-          {error.message}
-        </div>
+        <ErrorBanner tone="error" message={error.message} />
       ) : null}
 
       <section className={styles.sectionCard}>
@@ -294,18 +277,13 @@ export const StudentResearchGroups = (): JSX.Element => {
         </div>
 
         {isLoading ? (
-          <div className={styles.emptyCard}>
-            <Loader2 size={18} className={styles.spin} />
-            <span>Loading your groups…</span>
-          </div>
+          <SkeletonRow count={3} rowHeight={88} gap={12} />
         ) : joinedGroups.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <Inbox size={18} />
-            <span>
-              You haven&apos;t joined any research group yet. Once a lecturer
-              adds you to one, it will appear here.
-            </span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={24} />}
+            title="No research groups yet"
+            description="Once a lecturer adds you to a group, it will appear here."
+          />
         ) : (
           <ul className={styles.groupList}>
             {joinedGroups.map((g) => (
@@ -338,13 +316,13 @@ export const StudentResearchGroups = (): JSX.Element => {
                     ) : null}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className={styles.openWorkspaceBtn}
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => handleSelectGroup(g.id)}
                 >
                   Open Group Workspace
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -354,7 +332,7 @@ export const StudentResearchGroups = (): JSX.Element => {
   );
 };
 
-// ---------- WorkspaceView (split-out for readability) ----------
+// ---------- WorkspaceView ----------
 
 interface WorkspaceViewProps {
   group: import('../../services/groupMembership.service').StudentGroupView;
@@ -374,7 +352,7 @@ interface WorkspaceViewProps {
   onCloseSubmit: () => void;
   onSubmitted: (report: SubmittedPhasedReport) => Promise<void> | void;
   onRefresh: () => Promise<void>;
-  joinedGroups: ReadonlyArray<import('../../services/groupMembership.service').StudentGroupView>;
+  studentId: number | null;
   phaseKey: string;
   phaseTitle: string;
 }
@@ -397,13 +375,12 @@ function WorkspaceView({
   onCloseSubmit,
   onSubmitted,
   onRefresh,
-  joinedGroups,
+  studentId,
   phaseKey,
   phaseTitle,
 }: WorkspaceViewProps): JSX.Element {
   const lecturerId = group.lecturerId;
 
-  // Pagination for the milestone reports table.
   const {
     page: reportsTablePage,
     totalPages: reportsTotalPages,
@@ -421,14 +398,26 @@ function WorkspaceView({
     resetReportsPage();
   }, [searchText, statusFilter, resetReportsPage]);
 
-  // G5(a) — group members via shared helper.
+  // Part 3 — keyboard shortcuts for the milestone-reports table.
+  // j/k navigate rows, Enter opens the PDF if available,
+  // f focuses the toolbar search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pagedReports.length,
+    onOpen: (index) => {
+      const report = pagedReports[index];
+      if (report?.reportFileUrl) {
+        window.open(report.reportFileUrl, '_blank', 'noopener,noreferrer');
+      }
+    },
+  });
+
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
   useEffect(() => {
     let cancelled = false;
     setMembersLoading(true);
-void groupMemberService
-    .getMembersForGroup(group.id)
+    void groupMemberService
+      .getMembersForGroup(group.id)
       .then((rows) => {
         if (!cancelled) setMembers(rows);
       })
@@ -443,7 +432,12 @@ void groupMemberService
     };
   }, [group.id]);
 
-  // G5(b) — learning materials scoped by lecturerId; no server-side group FK.
+  const currentMember = useMemo(
+    () => members.find((member) => member.studentId === studentId) ?? null,
+    [members, studentId],
+  );
+  const isCurrentUserLeader = Boolean(currentMember?.isLeader || group.isLeader);
+
   const { materials, isLoading: materialsLoading } = useLearningMaterials({
     lecturerId,
   });
@@ -465,53 +459,58 @@ void groupMemberService
 
   return (
     <div className={styles.page}>
-      <button
-        type="button"
-        className={styles.backLinkBtn}
+      <Button
+        variant="ghost"
+        size="sm"
+        leftIcon={<ArrowLeft size={14} />}
         onClick={onBack}
+        className={styles.backLinkBtn}
       >
-        <ArrowLeft size={14} />
-        <span>Back to Research Groups</span>
-      </button>
+        Back to Research Groups
+      </Button>
 
-      <header className={styles.workspaceHeaderCard}>
-        <div className={styles.workspaceHeaderLeft}>
-          <span className={styles.workspaceIconCircle} aria-hidden>
-            <Users size={24} />
-          </span>
-          <div>
-            <h2 className={styles.workspaceTitle}>{group.name}</h2>
-            <p className={styles.workspaceSubtitle}>
-              Supervised by {lecturerName}
-              {group.description ? ` · ${group.description}` : ''}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className={styles.primaryBtn}
-          onClick={() => onOpenSubmit()}
-        >
-          <FileText size={14} />
-          <span>Submit milestone report</span>
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="GROUP WORKSPACE"
+        title={group.name}
+        description={`Supervised by ${lecturerName}${
+          group.description ? ` · ${group.description}` : ''
+        }`}
+        accent={ROLE_ACCENT}
+        actions={
+          isCurrentUserLeader ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<FileText size={14} />}
+              onClick={() => onOpenSubmit()}
+            >
+              Submit milestone report
+            </Button>
+          ) : (
+            <span className={styles.permissionNote} role="status">
+              Only your Group Leader can submit this phase report.
+            </span>
+          )
+        }
+      />
 
-      {/* If the latest report is REJECTED, surface the banner. */}
+      <BackendGapBanner
+        field="ProjectGuideline and phase-group task"
+        feature="Guidelines and group-specific phase instructions"
+      />
+
       {latestRejected ? (
         <RejectionFeedbackBanner
           report={latestRejected}
           lecturerName={lecturerName}
-          onResubmit={onOpenSubmit}
+          onResubmit={isCurrentUserLeader ? onOpenSubmit : undefined}
         />
       ) : null}
 
-      {/* G5(c) — shared MilestoneProgress card. */}
       <section className={styles.card}>
         <MilestoneProgress reports={reports} />
       </section>
 
-      {/* G5(b) — learning materials scoped by group. */}
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Learning materials</h3>
@@ -520,15 +519,14 @@ void groupMemberService
           </p>
         </div>
         {materialsLoading ? (
-          <div className={styles.emptyCard}>
-            <Loader2 size={14} className={styles.spin} />
-            <span>Loading materials…</span>
-          </div>
+          <SkeletonRow count={2} rowHeight={48} gap={12} />
         ) : visibleMaterials.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <BookOpen size={14} />
-            <span>No learning materials published for this group yet.</span>
-          </div>
+          <EmptyState
+            icon={<BookOpen size={24} />}
+            title="No learning materials yet"
+            description="Lecturer materials will appear here once they publish them for this group."
+            compact
+          />
         ) : (
           <ul className={styles.materialList}>
             {visibleMaterials.map((m) => (
@@ -550,7 +548,6 @@ void groupMemberService
         )}
       </section>
 
-      {/* G5(a) — fellow group members. */}
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Group members</h3>
@@ -560,15 +557,14 @@ void groupMemberService
           </p>
         </div>
         {membersLoading ? (
-          <div className={styles.emptyCard}>
-            <Loader2 size={14} className={styles.spin} />
-            <span>Loading members…</span>
-          </div>
+          <SkeletonRow count={2} rowHeight={48} gap={12} />
         ) : members.length === 0 ? (
-          <div className={styles.emptyCard}>
-            <Users size={14} />
-            <span>No fellow members yet.</span>
-          </div>
+          <EmptyState
+            icon={<Users size={24} />}
+            title="No fellow members yet"
+            description="Other students in this group will appear here once they join."
+            compact
+          />
         ) : (
           <ul className={styles.memberList}>
             {members.map((m) => (
@@ -617,23 +613,21 @@ void groupMemberService
         />
 
         {reportsLoading ? (
-          <div className={styles.emptyCard} data-testid="srg-loading" role="status">
-            <Loader2 size={18} className={styles.spin} />
-            <span>Loading reports…</span>
-          </div>
+          <SkeletonRow count={4} rowHeight={40} gap={8} />
         ) : reports.length === 0 ? (
-          <div className={styles.emptyCard} data-testid="srg-empty">
-            <Inbox size={18} />
-            <span>
-              No reports match your filters yet. Use{' '}
-              <strong>Submit milestone report</strong> to upload one.
-            </span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={24} />}
+            title="No reports yet"
+            description="Use Submit milestone report to upload your first PDF."
+            compact
+          />
         ) : reportsTotalItems === 0 ? (
-          <div className={styles.emptyCard} data-testid="srg-empty-search">
-            <Inbox size={18} />
-            <span>No reports match the current filters.</span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={24} />}
+            title="No matching reports"
+            description="No reports match the current filters."
+            compact
+          />
         ) : (
           <>
             <div className={styles.tableResponsive}>
@@ -648,8 +642,12 @@ void groupMemberService
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedReports.map((report) => (
-                    <tr key={report.id} data-testid="srg-row">
+                  {pagedReports.map((report, index) => (
+                    <tr
+                      key={report.id}
+                      data-testid="srg-row"
+                      className={selectedIndex === index ? styles.selectedRow : ''}
+                    >
                       <td>
                         <span className={styles.reportIdPill}>
                           #{report.id}
@@ -669,11 +667,7 @@ void groupMemberService
                         )}
                       </td>
                       <td>
-                        <span
-                          className={`${styles.statusBadge} ${STATUS_PALETTE[report.status]}`}
-                        >
-                          {report.status}
-                        </span>
+                        <StatusBadge status={report.status} size="sm" />
                       </td>
                       <td>
                         {report.finalOutcomeEvaluation ? (
@@ -702,14 +696,14 @@ void groupMemberService
                               Open PDF
                             </a>
                           ) : null}
-                          {report.status === 'REJECTED' ? (
-                            <button
-                              type="button"
-                              className={styles.resubmitBtn}
+                          {report.status === 'REJECTED' && isCurrentUserLeader ? (
+                            <Button
+                              variant="danger"
+                              size="sm"
                               onClick={() => onOpenSubmit(report)}
                             >
                               Resubmit
-                            </button>
+                            </Button>
                           ) : null}
                         </div>
                       </td>
@@ -737,7 +731,7 @@ void groupMemberService
         <SubmitReportModal
           isOpen={submittingReport}
           researchGroupId={group.id}
-          groupMemberId={getPrimaryMembershipId(joinedGroups) ?? undefined}
+          groupMemberId={currentMember?.id ?? currentMember?.groupMemberId ?? undefined}
           phaseKey={phaseKey}
           phaseTitle={phaseTitle}
           lecturerName={lecturerName}

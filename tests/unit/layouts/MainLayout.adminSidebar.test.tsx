@@ -27,15 +27,6 @@ vi.mock('../../../src/store', () => ({
       : { user: null, isAuthenticated: false },
 }));
 
-vi.mock('../../../src/hooks/useWallet', () => ({
-  useWallet: () => ({
-    wallet: null,
-    balance: null,
-    isLoading: false,
-    refetch: () => Promise.resolve(),
-  }),
-}));
-
 vi.mock('../../../src/hooks/useNotifications', () => ({
   useNotifications: () => ({
     notifications: [],
@@ -67,10 +58,6 @@ vi.mock('../../../src/services/reviewer.service', () => ({
   reviewerService: { updateAvailability: () => Promise.resolve() },
 }));
 
-vi.mock('../../../src/components/wallet/WalletTopUpModal', () => ({
-  WalletTopUpModal: () => null,
-}));
-
 import { buildMockAuth } from '../../../src/utils/mockAuth';
 import { MainLayout } from '../../../src/layouts/MainLayout';
 import { ROUTES } from '../../../src/routes/paths';
@@ -97,7 +84,7 @@ const findAdminLink = (href: string): HTMLAnchorElement | null =>
 
 const adminNavItems = [
   { to: ROUTES.ADMIN, label: 'Dashboard' },
-  { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'Role Requests' },
+  { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'User Verification' },
   { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts' },
   { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions' },
   { to: ROUTES.ADMIN_REPORTS, label: 'Reports' },

@@ -179,7 +179,7 @@ export const authService = {
           : null;
 
       const response = await api.post<any>(API_ENDPOINTS.AUTH.LOGIN, {
-        email: credentials.username,
+        email: credentials.email,
         password: credentials.password,
         role: roleToSend,
       });
@@ -195,13 +195,13 @@ export const authService = {
       }
       const token = tokenCandidate;
 
-      const email = data?.email || data?.user?.email || credentials.username;
+      const email = data?.email || data?.user?.email || credentials.email;
       const username =
         data?.username ||
         data?.fullName ||
         data?.user?.fullName ||
         data?.user?.username ||
-        credentials.username.split('@')[0];
+        credentials.email.split('@')[0];
 
       const roleCandidate =
         data?.role ||

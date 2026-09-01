@@ -1,0 +1,22 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.row,
+.headerBar {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  opacity: 0.72;
+}
+
+.headerBar {
+  background: var(--border-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .headerBar {
+    opacity: 0.72;
+  }
+}

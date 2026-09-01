@@ -14,8 +14,8 @@ import { PolicyModal, type PolicyTab } from './components/PolicyModal';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
-import { Info } from 'lucide-react';
-import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
+import { Info, ExternalLink } from 'lucide-react';
+import { startRegistrationOrcidLink } from '../../services/orcid.service';
 import { type RequestableRole } from '../../utils/registrationRoles';
 import { FieldError } from '../../components/FieldError';
 import {
@@ -26,6 +26,7 @@ import {
   validatePhoneNumber,
   validatePassword,
 } from '../../utils/validationRules';
+import { useShortcuts } from '../../hooks/useShortcuts';
 
 interface FormState {
   fullName: string;
@@ -34,7 +35,6 @@ interface FormState {
   password: string;
   retypePassword: string;
   role: RequestableRole;
-  orcidId: string;
   consentAccepted: boolean;
 }
 
@@ -45,7 +45,6 @@ const initialForm: FormState = {
   password: '',
   retypePassword: '',
   role: 'Researcher',
-  orcidId: '',
   consentAccepted: false,
 };
 
@@ -85,12 +84,59 @@ export const Register = () => {
   const [policyTab, setPolicyTab] = useState<PolicyTab | null>(null);
   const [availableRoles, setAvailableRoles] = useState<RequestableRole[]>([]);
   const [rolesError, setRolesError] = useState<string | null>(null);
+  const [isStartingOrcid, setIsStartingOrcid] = useState(false);
+  const [orcidStartError, setOrcidStartError] = useState<string | null>(null);
+
+  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — the BE-owned ORCID callback
+  // stashes an opaque `registrationTicket` in sessionStorage when a user
+  // completes the ORCID verification during the registration flow. The
+  // Register page reads it back here and forwards it as
+  // `RegisterPayload.orcidTicket` on submit. Reviewer registrations
+  // require it; other roles do not.
+  //
+  // The ticket is the only ORCID-related value we ever persist client-side.
+  // No ORCID OAuth code, state, access token, or refresh token is stored.
+  const [orcidTicket, setOrcidTicket] = useState<string | null>(null);
 
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
   // Login page so rapid clicks cannot fire the GIS callback twice.
   const googleInFlightRef = useRef(false);
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+
+  // Part 2 — keyboard shortcuts for the registration form:
+  //   Ctrl+Enter  → submit the form
+  //   Esc         → reset all fields to default values
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Submit form',
+      description: 'Create your account without clicking the button.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => {
+        // Trigger native form submission so the existing onSubmit handler
+        // fires with a proper FormEvent — no logic duplication needed.
+        const form = document.getElementById('register-form') as HTMLFormElement | null;
+        form?.requestSubmit();
+      },
+    },
+    {
+      key: 'Escape',
+      label: 'Clear form',
+      description: 'Reset all fields.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => {
+        setForm(initialForm);
+        setErrors({});
+        setSubmitError(null);
+        setPdfFile(null);
+        setPdfUrl(null);
+      },
+    },
+  ]);
 
   useEffect(() => {
     authService.logout();
@@ -115,43 +161,52 @@ export const Register = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const isOrcidRole = (role: RequestableRole) =>
-    role === 'Researcher' || role === 'Reviewer';
+  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — pull the opaque ORCID
+  // registration ticket out of sessionStorage when the page mounts and
+  // whenever the browser returns with `?orcid=verified` (i.e. the BE
+  // callback page redirected here). The ticket is required for Reviewer
+  // submissions and optional for every other role.
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('orcidRegistrationTicket');
+      setOrcidTicket(stored && stored.trim() ? stored : null);
+    } catch {
+      setOrcidTicket(null);
+    }
+  }, []);
+
+  const handleStartOrcid = async () => {
+    setOrcidStartError(null);
+    setIsStartingOrcid(true);
+    try {
+      await startRegistrationOrcidLink();
+    } catch (error: unknown) {
+      setOrcidStartError(
+        error instanceof Error ? error.message : 'Unable to start ORCID connection. Please try again.',
+      );
+    } finally {
+      setIsStartingOrcid(false);
+    }
+  };
 
   const validateField = (
     field: keyof FormState,
-    value: any,
+    value: string | boolean,
     currentForm: FormState = form
   ): string | undefined => {
+    const textValue = typeof value === 'string' ? value : '';
     switch (field) {
       case 'fullName':
-        return validateVietnameseName(value) || undefined;
+        return validateVietnameseName(textValue) || undefined;
       case 'email':
-        return validateEmail(value) || undefined;
+        return validateEmail(textValue) || undefined;
       case 'phoneNumber':
-        return validatePhoneNumber(value) || undefined;
+        return validatePhoneNumber(textValue) || undefined;
       case 'password':
-        return validatePassword(value) || undefined;
+        return validatePassword(textValue) || undefined;
       case 'retypePassword': {
         if (!value) return 'Please retype your password';
         if (value !== currentForm.password) return 'Passwords must match';
-        return undefined;
-      }
-      case 'orcidId': {
-        if (currentForm.role === 'Reviewer') {
-          if (!value || !value.trim()) {
-            return 'ORCID iD is required for Reviewers';
-          }
-          const normalizedOrcid = normalizeOrcid(value);
-          if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
-            return 'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
-          }
-        } else if (currentForm.role === 'Researcher' && value.trim()) {
-          const normalizedOrcid = normalizeOrcid(value);
-          if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
-            return 'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
-          }
-        }
         return undefined;
       }
       case 'consentAccepted':
@@ -169,19 +224,16 @@ export const Register = () => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     const nextValue = type === 'checkbox' ? checked : value;
-    const nextRole = (name === 'role' ? value : form.role) as RequestableRole;
 
     setForm((prev) => ({
       ...prev,
       [name]: nextValue,
-      ...(name === 'role' && !isOrcidRole(nextRole) ? { orcidId: '' } : {}),
     }));
 
     if (errors[name as keyof FormState]) {
       const fieldError = validateField(name as keyof FormState, nextValue, {
         ...form,
         [name]: nextValue,
-        ...(name === 'role' && !isOrcidRole(nextRole) ? { orcidId: '' } : {}),
       });
       setErrors((prev) => ({ ...prev, [name]: fieldError }));
     }
@@ -217,27 +269,18 @@ export const Register = () => {
       next.role = 'Role is required';
     }
 
-    if (form.role === 'Reviewer') {
-      if (!form.orcidId.trim()) {
-        next.orcidId = 'ORCID iD is required for Reviewers';
-      } else {
-        const normalizedOrcid = normalizeOrcid(form.orcidId);
-        if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
-          next.orcidId =
-            'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
-        }
-      }
-    } else if (form.role === 'Researcher' && form.orcidId.trim()) {
-      const normalizedOrcid = normalizeOrcid(form.orcidId);
-      if (!normalizedOrcid || !hasValidOrcidChecksum(normalizedOrcid)) {
-        next.orcidId =
-          'Enter a valid ORCID iD with a valid checksum (e.g. 0000-0002-1825-0097).';
-      }
-    }
-
     if (!form.consentAccepted) {
       next.consentAccepted =
         'You must accept the Privacy Policy and Terms before registering.';
+    }
+
+    // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — Reviewer registration is the
+    // only role that requires a verified ORCID ticket at the FE layer.
+    // The BE is still authoritative (see ticket acceptance criteria) and
+    // will reject invalid/missing tickets even if this check is bypassed.
+    if (form.role === 'Reviewer' && !orcidTicket) {
+      next.role =
+        'Reviewer registration requires a verified ORCID connection. Click "Connect ORCID" above and complete the ORCID authorization first.';
     }
 
     setErrors(next);
@@ -252,15 +295,10 @@ export const Register = () => {
     if (form.password !== form.retypePassword) return false;
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
-    if (form.role === 'Reviewer') {
-      if (!form.orcidId.trim()) return false;
-      const normalized = normalizeOrcid(form.orcidId);
-      if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
-    } else if (form.role === 'Researcher' && form.orcidId.trim()) {
-      const normalized = normalizeOrcid(form.orcidId);
-      if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
-    }
     if (!form.consentAccepted) return false;
+    // Same Reviewer gate as validate() so the submit button reflects the
+    // live ticket state.
+    if (form.role === 'Reviewer' && !orcidTicket) return false;
     return true;
   })();
 
@@ -285,10 +323,6 @@ export const Register = () => {
 
     setIsSubmitting(true);
     try {
-      const normalizedOrcid = form.orcidId.trim()
-        ? normalizeOrcid(form.orcidId) || form.orcidId.trim()
-        : undefined;
-
       const payload: RegisterPayload = {
         email: form.email.trim(),
         password: form.password,
@@ -296,7 +330,12 @@ export const Register = () => {
         phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
-        ...(form.role === 'Reviewer' && normalizedOrcid ? { orcidTicket: normalizedOrcid } : {}),
+        // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — only attach the
+        // opaque ticket when the user actually completed the ORCID
+        // verification on the registration flow. Non-Reviewer
+        // registrations will simply omit the field; the BE accepts an
+        // absent `orcidTicket` for those roles.
+        ...(orcidTicket ? { orcidTicket } : {}),
       };
 
       await authService.registerUser(payload);
@@ -310,6 +349,16 @@ export const Register = () => {
 
       // Clear any session artifacts so the user is purely in unauthenticated verification state
       authService.logout();
+
+      // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — the ticket has done its
+      // job (it reached the BE inside `registerUser`). Drop it from
+      // sessionStorage so a refresh after the OTP page cannot replay it.
+      try {
+        sessionStorage.removeItem('orcidRegistrationTicket');
+      } catch {
+        /* ignore */
+      }
+      setOrcidTicket(null);
 
       // Trigger sending registration verification email / OTP
       void authService.sendRegistrationOtp(form.email.trim());
@@ -391,22 +440,20 @@ export const Register = () => {
 
   return (
     <div className={styles.registerPage}>
-      <div className={styles.logoHeader}>
-        <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        </div>
-        <span className={styles.brandText}>Academic Research System</span>
-      </div>
+      <header className={styles.logoSection}>
+        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+        <span className={styles.brandText}>Academic Research Sharing</span>
+      </header>
 
-      <div className={styles.header}>
-        <h1 className={styles.title}>Create your Account</h1>
-        <p className={styles.subtitle}>
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Create your Account</h1>
+        <p className={styles.pageSubtitle}>
           Join the ARS community to publish, review, and collaborate on academic
           research.
         </p>
-      </div>
+      </header>
 
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form id="register-form" className={styles.form} onSubmit={handleSubmit} noValidate>
         {submitError && (
           <div className={styles.formError} role="alert">
             {submitError}
@@ -585,34 +632,43 @@ export const Register = () => {
           {rolesError && <FieldError id="role-load-error" message={rolesError} />}
         </div>
 
-        {(form.role === 'Researcher' || form.role === 'Reviewer') && (
-          <div className={styles.fieldGroup}>
-            <label
-              htmlFor="orcidId"
-              className={`${styles.fieldLabel} ${form.role === 'Reviewer' ? styles['fieldLabel--required'] : ''}`}
-            >
-              ORCID iD {form.role === 'Researcher' && <span className={styles.optionalText}>(Optional)</span>}
-            </label>
-            <input
-              id="orcidId"
-              name="orcidId"
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              placeholder="0000-0000-0000-0000 or https://orcid.org/..."
-              value={form.orcidId}
-              onChange={handleChange}
-              onBlur={() => handleBlur('orcidId')}
-              disabled={isSubmitting || isUploadingPdf}
-              aria-describedby="orcid-help"
-              aria-invalid={Boolean(errors.orcidId)}
-              className={`${styles.nativeInput} ${errors.orcidId ? styles['nativeInput--error'] : ''}`}
-            />
-            <p className={styles.passwordHelper} id="orcid-help">
-              Enter your canonical ORCID iD or full ORCID URL (e.g. 0000-0002-1825-0097).
+        {(
+          <section className={styles.orcidConnection} aria-labelledby="registration-orcid-title">
+            <div>
+              <h2 id="registration-orcid-title" className={styles.orcidTitle}>Connect your ORCID iD</h2>
+              <p className={styles.orcidDescription}>
+                {form.role === 'Reviewer'
+                  ? 'Reviewer requests require a verified ORCID connection. You will authenticate on ORCID, never in ARS.'
+                  : 'Optional for this role. You can also connect ORCID later from your Profile.'}
+              </p>
+            </div>
+            {orcidTicket ? (
+              <span
+                className={styles.orcidVerifiedBadge}
+                data-testid="register-orcid-verified-badge"
+                role="status"
+              >
+                ORCID verified
+              </span>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                leftIcon={<ExternalLink size={16} aria-hidden="true" />}
+                onClick={() => void handleStartOrcid()}
+                disabled={isSubmitting || isUploadingPdf || isStartingOrcid}
+                isLoading={isStartingOrcid}
+                data-testid="register-connect-orcid-button"
+              >
+                Connect ORCID
+              </Button>
+            )}
+            <p className={styles.orcidNotice}>
+              ARS will open the official ORCID authorization page. ARS never asks for your ORCID password.
             </p>
-            <FieldError id="orcidId-error" message={errors.orcidId} testId="register-error-orcidId" />
-          </div>
+            {orcidStartError ? <FieldError id="orcid-start-error" message={orcidStartError} /> : null}
+          </section>
         )}
 
         <div className={styles.roleBanner}>

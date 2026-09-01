@@ -26,7 +26,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const serviceMock = vi.hoisted(() => ({
-  getCurrent: vi.fn(),
+  getByUserId: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -72,7 +72,7 @@ const seedAuth = (overrides: Partial<typeof authMock.user> = {}) => {
 };
 
 beforeEach(() => {
-  serviceMock.getCurrent.mockReset();
+  serviceMock.getByUserId.mockReset();
   serviceMock.update.mockReset();
   authMock.user = {
     userId: 42,
@@ -89,11 +89,11 @@ describe('Profile page — wire & state contracts', () => {
     expect(
       await screen.findByText(/Sign in to view your profile/i),
     ).toBeInTheDocument();
-    expect(serviceMock.getCurrent).not.toHaveBeenCalled();
+    expect(serviceMock.getByUserId).not.toHaveBeenCalled();
   });
 
   it('renders the loading state on first render with a populated profile on success', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'Dr. Auth',
       academicTitle: 'Senior Reviewer',
@@ -109,11 +109,11 @@ describe('Profile page — wire & state contracts', () => {
     expect(screen.getByTestId('view-institution')).toHaveTextContent('FPT University');
     expect(screen.getByTestId('view-keywords')).toHaveTextContent('Distributed Systems');
     expect(screen.getByTestId('view-avatar-initials')).toHaveTextContent('DA');
-    expect(serviceMock.getCurrent).toHaveBeenCalledWith(42);
+    expect(serviceMock.getByUserId).toHaveBeenCalledWith(42);
   });
 
   it('renders an error state with a retry control on fetch failure', async () => {
-    serviceMock.getCurrent.mockRejectedValueOnce(new Error('503 Service Unavailable'));
+    serviceMock.getByUserId.mockRejectedValueOnce(new Error('503 Service Unavailable'));
 
     renderPage();
     const retry = await screen.findByTestId('profile-retry-button');
@@ -121,14 +121,14 @@ describe('Profile page — wire & state contracts', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/503 Service Unavailable/);
 
     // Retry kicks off a second fetch — proves the recovery path.
-    serviceMock.getCurrent.mockResolvedValueOnce({ userId: 42, fullName: 'Recovered' });
+    serviceMock.getByUserId.mockResolvedValueOnce({ userId: 42, fullName: 'Recovered' });
     fireEvent.click(retry);
     expect(await screen.findByTestId('profile-display-name')).toHaveTextContent('Recovered');
-    expect(serviceMock.getCurrent).toHaveBeenCalledTimes(2);
+    expect(serviceMock.getByUserId).toHaveBeenCalledTimes(2);
   });
 
   it('enter edit, save sends only the changed field and uses the authenticated id', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'Dr. Auth',
       academicTitle: 'Senior Reviewer',
@@ -163,7 +163,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('shows an inline save error and does NOT update the cached profile', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'Dr. Auth',
       bio: 'old bio',
@@ -186,7 +186,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('client-side validation blocks submit when fullName is blank', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'Dr. Auth',
     });
@@ -206,7 +206,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('client-side validation rejects an avatarInitials value with non-allowed characters', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({ userId: 42, fullName: 'X' });
+    serviceMock.getByUserId.mockResolvedValueOnce({ userId: 42, fullName: 'X' });
     renderPage();
     fireEvent.click(await screen.findByTestId('profile-edit-button'));
     const input = screen.getByTestId('profile-input-avatar-initials');
@@ -216,7 +216,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('cancel restores the last-saved draft and does not call update', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'Dr. Auth',
       bio: 'old bio',
@@ -233,7 +233,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('keyword add / remove cycles a chip through the UI', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 42,
       fullName: 'X',
       keywords: ['AI Safety'],
@@ -255,13 +255,13 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('empty profile renders the "not yet configured" badge', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({ userId: 42 });
+    serviceMock.getByUserId.mockResolvedValueOnce({ userId: 42 });
     renderPage();
     expect(await screen.findByText(/Profile not yet configured/i)).toBeInTheDocument();
   });
 
   it('renders the role-specific eyebrow without changing which fields are editable', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({
+    serviceMock.getByUserId.mockResolvedValueOnce({
       userId: 7,
       fullName: 'Lecturer',
       keywords: ['Distributed Systems'],
@@ -286,7 +286,7 @@ describe('Profile page — wire & state contracts', () => {
   });
 
   it('the form has NO profile id input — the id is sourced exclusively from the auth store', async () => {
-    serviceMock.getCurrent.mockResolvedValueOnce({ userId: 42, fullName: 'X' });
+    serviceMock.getByUserId.mockResolvedValueOnce({ userId: 42, fullName: 'X' });
     renderPage();
     fireEvent.click(await screen.findByTestId('profile-edit-button'));
 

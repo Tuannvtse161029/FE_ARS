@@ -3,6 +3,8 @@
  *
  * Engagement row for forum post actions (Like, Comments).
  * All colors, spacings, and radii follow the ARS design token contract.
+ * Yellow-ochre accent (--accent-primary) replaces the legacy ARS blue
+ * so engagement controls match the rest of the workspace chrome.
  * ──────────────────────────────────────────────────────────────────────── */
 
 .engagementRow {
@@ -25,9 +27,9 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
-  background: var(--ars-paper-alt);
-  color: var(--ars-ink-soft);
-  border: var(--border-thin);
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  border: 1px solid var(--border-subtle);
   cursor: default;
   user-select: none;
 }
@@ -35,9 +37,9 @@
 .engagementControlLike,
 .engagementControlComments {
   cursor: pointer;
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  color: var(--ars-ink-soft);
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
@@ -46,27 +48,27 @@
 
 .engagementControlLike:hover:not(:disabled),
 .engagementControlComments:hover:not(:disabled) {
-  background: var(--ars-paper-alt);
-  border-color: var(--ars-ink-muted);
+  background: var(--surface-paper);
+  border-color: var(--border-strong);
 }
 
-/* Active: confirmed like */
+/* Active: confirmed like — yellow ochre instead of blue */
 .engagementControlLiked {
-  background: var(--ars-blue-light);
-  border-color: rgba(45, 53, 97, 0.3);
-  color: var(--ars-blue);
+  background: var(--surface-paper);
+  border-color: var(--accent-primary);
+  color: var(--accent-ochre);
   font-weight: var(--font-weight-bold);
 }
 
 .engagementControlLiked:hover:not(:disabled) {
-  background: rgba(45, 53, 97, 0.15);
+  background: var(--surface-paper-muted);
 }
 
-/* Active: comments expanded */
+/* Active: comments expanded — yellow ochre instead of blue */
 .engagementControlActive {
-  background: var(--ars-info-bg);
-  border-color: rgba(30, 64, 175, 0.3);
-  color: var(--ars-info);
+  background: var(--surface-paper);
+  border-color: var(--accent-primary);
+  color: var(--accent-ochre);
   font-weight: var(--font-weight-bold);
 }
 
@@ -86,13 +88,13 @@
 .engagementControl:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-  background: var(--ars-paper-alt);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-subtle);
 }
 
 .engagementControl:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

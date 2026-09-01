@@ -39,29 +39,29 @@ export const formatRelativeTime = (dateString?: string | null): string => {
   const diffInSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
 
   if (diffInSeconds < 45) {
-    return 'Vừa xong';
+    return 'just now';
   }
 
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
-    return `${diffInMinutes} phút trước`;
+    return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
   }
 
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
-    return `${diffInHours} giờ trước`;
+    return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
   }
 
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays === 1) {
-    const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    return `Hôm qua lúc ${timeStr}`;
+    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `Yesterday at ${timeStr}`;
   }
   if (diffInDays < 7) {
-    return `${diffInDays} ngày trước`;
+    return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
   }
 
-  return date.toLocaleDateString('vi-VN', {
+  return date.toLocaleDateString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

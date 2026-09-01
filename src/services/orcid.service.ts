@@ -23,8 +23,106 @@
 // Admin retrieve public ORCID metadata (name, works, affiliation, etc.).
 //
 // ── Decision ─────────────────────────────────────────────────────────────────
+import { isAxiosError } from 'axios';
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
+
+/** OpenAPI `OrcidStatusResponse`. */
+export interface OrcidStatusResponse {
+  userId: number;
+  isConnected: boolean;
+  isVerified: boolean;
+  orcidId: string | null;
+  verifiedAt: string | null;
+  canConnect: boolean;
+}
+
+export interface OpenAlexAuthorResponse {
+  openAlexId: string | null;
+  orcid: string | null;
+  displayName: string | null;
+  fullName: string | null;
+  alternativeNames: string[] | null;
+  rawAuthorNames: string[] | null;
+  externalUrl: string | null;
+}
+
+export interface OpenAlexMetricsResponse {
+  worksCount: number;
+  citedByCount: number;
+  hIndex: number | null;
+  i10Index: number | null;
+  twoYearMeanCitedness: number | null;
+}
+
+export interface OpenAlexAffiliationResponse {
+  institutionOpenAlexId: string | null;
+  institutionName: string | null;
+  ror: string | null;
+  countryCode: string | null;
+  type: string | null;
+  years: number[] | null;
+}
+
+export interface OpenAlexInstitutionResponse {
+  openAlexId: string | null;
+  displayName: string | null;
+  ror: string | null;
+  countryCode: string | null;
+  type: string | null;
+}
+
+export interface OpenAlexTopicResponse {
+  topicId: string | null;
+  topicName: string | null;
+  count: number;
+  subFieldId: string | null;
+  subFieldName: string | null;
+  fieldId: string | null;
+  fieldName: string | null;
+  domainId: string | null;
+  domainName: string | null;
+}
+
+export interface OpenAlexYearCountResponse {
+  year: number;
+  worksCount: number;
+  oaWorksCount: number;
+  citedByCount: number;
+}
+
+export interface OpenAlexWorkResponse {
+  openAlexId: string | null;
+  title: string | null;
+  doi: string | null;
+  publicationYear: number | null;
+  publicationDate: string | null;
+  type: string | null;
+  citedByCount: number;
+  sourceName: string | null;
+  isOpenAccess: boolean | null;
+  openAccessStatus: string | null;
+  isRetracted: boolean;
+  externalUrl: string | null;
+}
+
+/** Exact `OrcidLookupResponse`, returned for all documented lookup outcomes. */
+export interface OrcidLookupApiResponse {
+  orcidId: string | null;
+  lookupStatus: string | null;
+  sourceFetchedAt: string;
+  author: OpenAlexAuthorResponse;
+  metrics: OpenAlexMetricsResponse;
+  affiliations: OpenAlexAffiliationResponse[] | null;
+  lastKnownInstitutions: OpenAlexInstitutionResponse[] | null;
+  topics: OpenAlexTopicResponse[] | null;
+  countsByYear: OpenAlexYearCountResponse[] | null;
+  works: OpenAlexWorkResponse[] | null;
+  missingSections: string[] | null;
+  providerWarnings: string[] | null;
+  message: string | null;
+  retryAfterSeconds: number | null;
+}
 //
 // ── ORCID public API notes ────────────────────────────────────────────────────
 // ORCID Public API base: https://pub.orcid.org/v3.0
@@ -141,6 +239,81 @@ export interface OrcidPersonMetadata {
   works: OrcidWork[];
   /** Whether the record appeared to be incomplete / unverified */
   isIncomplete: boolean;
+}
+
+// ── ORCID account-link contract ─────────────────────────────────────────────
+
+/**
+ * Response shape returned by `POST /api/Auth/orcid/account/start` and
+ * `POST /api/Auth/orcid/registration/start`.
+ *
+ * The BE hands the browser a top-level `authorizationUrl` to navigate to.
+ * The FE must NOT assume Axios will follow this redirect for the user —
+ * `start*OrcidLink()` explicitly calls `window.location.assign(...)`.
+ */
+export interface OrcidLinkStartResponse {
+  authorizationUrl: string;
+  context: 'ACCOUNT_LINK' | 'REGISTRATION' | string;
+  expiresAt: string;
+}
+
+/**
+ * Validate the ORCID redirect target and navigate the top-level window to it.
+ *
+ * Only the canonical `orcid.org` host (or any `*.orcid.org` subdomain) is
+ * permitted — this prevents the BE (or a future interceptor) from steering
+ * the user to a phishing site while the FE pretends to follow an ORCID
+ * authorization URL.
+ */
+const navigateToOrcidAuthorization = (authorizationUrl: string): void => {
+  let target: URL;
+  try {
+    target = new URL(authorizationUrl);
+  } catch {
+    throw new Error('Invalid ORCID authorization URL returned by the server.');
+  }
+
+  const isAllowedHost =
+    target.protocol === 'https:' &&
+    (target.hostname === 'orcid.org' ||
+      target.hostname.endsWith('.orcid.org'));
+
+  if (!isAllowedHost) {
+    throw new Error('Invalid ORCID authorization URL returned by the server.');
+  }
+
+  window.location.assign(target.toString());
+};
+
+/**
+ * Starts the registration ORCID OAuth flow. The BE returns a
+ * `{ authorizationUrl, context, expiresAt }` body; the FE must explicitly
+ * navigate the top-level browser to `authorizationUrl` — Axios will not
+ * follow the redirect automatically.
+ */
+export async function startRegistrationOrcidLink(): Promise<void> {
+  const response = await api.post<OrcidLinkStartResponse>(
+    API_ENDPOINTS.AUTH.ORCID_REGISTRATION_START,
+  );
+  navigateToOrcidAuthorization(response.data.authorizationUrl);
+}
+
+/**
+ * Starts the authenticated account ORCID OAuth flow; the BE derives the
+ * user ID from the JWT. Same contract as `startRegistrationOrcidLink` —
+ * the FE navigates the browser to the returned `authorizationUrl`.
+ */
+export async function startAccountOrcidLink(): Promise<void> {
+  const response = await api.post<OrcidLinkStartResponse>(
+    API_ENDPOINTS.AUTH.ORCID_ACCOUNT_START,
+  );
+  navigateToOrcidAuthorization(response.data.authorizationUrl);
+}
+
+/** Retrieves the current authenticated user's ORCID connection state. */
+export async function getOrcidStatus(): Promise<OrcidStatusResponse> {
+  const response = await api.get<OrcidStatusResponse>(API_ENDPOINTS.AUTH.ORCID_STATUS);
+  return response.data;
 }
 
 // ── ORCID normalization ───────────────────────────────────────────────────────
@@ -324,56 +497,57 @@ async function _lookupViaBackend(
   roleRequestId: number,
 ): Promise<OrcidLookupResult> {
   try {
-    const response = await api.post(API_ENDPOINTS.ADMIN.ORCID_LOOKUP, {
-      roleRequestId,
-    });
-    const raw = (response.data ?? {}) as Record<string, unknown>;
-    const author = (raw.author ?? {}) as Record<string, unknown>;
-    const orcid = typeof raw.orcidId === 'string' ? raw.orcidId : _orcid;
-    const affiliations = Array.isArray(raw.affiliations)
-      ? raw.affiliations.map((item) => typeof item === 'object' && item ? (item as Record<string, unknown>).institutionName : null).filter((item): item is string => typeof item === 'string' && item.trim() !== '')
-      : [];
-    const keywords = Array.isArray(raw.topics)
-      ? raw.topics.map((item) => typeof item === 'object' && item ? (item as Record<string, unknown>).topicName : null).filter((item): item is string => typeof item === 'string' && item.trim() !== '')
-      : [];
-    const works: OrcidWork[] = Array.isArray(raw.works)
-      ? raw.works.map((item) => {
-          const work = (item ?? {}) as Record<string, unknown>;
-          if (typeof work.title !== 'string' || work.title.trim() === '') return null;
-          return {
-            title: work.title,
-            ...(typeof work.doi === 'string' ? { doi: work.doi } : {}),
-            ...(typeof work.publicationYear === 'number' ? { year: work.publicationYear } : {}),
-            ...(typeof work.type === 'string' ? { type: work.type } : {}),
-            ...(typeof work.externalUrl === 'string' ? { openalexUrl: work.externalUrl } : {}),
-          };
-        }).filter((item): item is OrcidWork => item !== null)
-      : [];
-    const lookupStatus = typeof raw.lookupStatus === 'string' ? raw.lookupStatus.trim().toLowerCase() : '';
+    const response = await api.post<OrcidLookupApiResponse>(
+      API_ENDPOINTS.ADMIN.ORCID_LOOKUP,
+      { roleRequestId },
+    );
+    const raw = response.data;
+    const author = raw.author;
+    const orcid = raw.orcidId ?? _orcid;
+    const affiliations = (raw.affiliations ?? [])
+      .map((item) => item.institutionName)
+      .filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+    const keywords = (raw.topics ?? [])
+      .map((item) => item.topicName)
+      .filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+    const works: OrcidWork[] = (raw.works ?? [])
+      .filter((item): item is OpenAlexWorkResponse & { title: string } =>
+        typeof item.title === 'string' && item.title.trim() !== '',
+      )
+      .map((item) => ({
+        title: item.title,
+        ...(typeof item.doi === 'string' ? { doi: item.doi } : {}),
+        ...(typeof item.publicationYear === 'number' ? { year: item.publicationYear } : {}),
+        ...(typeof item.type === 'string' ? { type: item.type } : {}),
+        ...(typeof item.externalUrl === 'string' ? { openalexUrl: item.externalUrl } : {}),
+      }));
+    const lookupStatus = raw.lookupStatus?.trim().toLowerCase() ?? '';
+
     return {
       status: 'success',
       meta: {
         orcid,
-        displayName: typeof author.displayName === 'string'
-          ? author.displayName
-          : typeof author.fullName === 'string'
-            ? author.fullName
-            : undefined,
+        displayName: author?.displayName ?? author?.fullName ?? undefined,
         affiliations,
         emails: [],
         orcidUrl: `https://orcid.org/${orcid}`,
         keywords,
         works,
-        isIncomplete: (Array.isArray(raw.missingSections) && raw.missingSections.length > 0) || Boolean(lookupStatus && !['success', 'found', 'ok'].includes(lookupStatus)),
+        isIncomplete:
+          (raw.missingSections?.length ?? 0) > 0 ||
+          Boolean(lookupStatus && !['success', 'found', 'ok'].includes(lookupStatus)),
       },
     };
   } catch (err: unknown) {
-    const status = typeof err === 'object' && err && 'response' in err
-      ? Number((err as { response?: { status?: unknown } }).response?.status)
-      : 0;
+    if (!isAxiosError<OrcidLookupApiResponse>(err)) {
+      throw new OrcidApiError(0, _orcid);
+    }
+
+    const status = err.response?.status ?? 0;
+    const retryAfterSeconds = err.response?.data?.retryAfterSeconds ?? undefined;
     if (status === 404) throw new OrcidNotFoundError(_orcid);
-    if (status === 429) throw new OrcidRateLimitError();
-    throw new OrcidApiError(Number.isFinite(status) ? status : 0, _orcid);
+    if (status === 429) throw new OrcidRateLimitError(retryAfterSeconds);
+    throw new OrcidApiError(status, _orcid);
   }
 }
 

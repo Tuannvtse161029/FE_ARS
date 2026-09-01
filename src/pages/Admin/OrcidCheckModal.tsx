@@ -93,7 +93,7 @@ interface RateLimitViewProps {
 }
 const RateLimitView = ({ retryAfterSeconds, onRetry, disabled }: RateLimitViewProps) => (
   <div className={styles.errorState} role="alert">
-    <Clock size={36} className={styles.errorIcon} aria-hidden="true" style={{ color: '#d97706' }} />
+    <Clock size={36} className={styles.warningIcon} aria-hidden="true" />
     <p className={styles.errorTitle}>Rate limit reached</p>
     <p className={styles.errorMessage}>
       The ORCID API rate limit has been reached.

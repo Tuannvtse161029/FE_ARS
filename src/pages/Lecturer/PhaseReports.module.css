@@ -1,0 +1,25 @@
+.page { display:flex; flex-direction:column; gap:var(--space-5); color:var(--ink-primary); }
+.topics { display:flex; flex-direction:column; gap:var(--space-4); }
+.topic { background:var(--surface-raised); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); overflow:hidden; }
+.topicHeader { width:100%; display:flex; align-items:center; gap:var(--space-3); padding:var(--space-4) var(--space-5); border:0; background:var(--surface-paper); color:var(--ink-on-paper); text-align:left; cursor:pointer; }
+.topicHeader span { display:flex; flex-direction:column; gap:2px; }
+.topicHeader small { color:var(--ink-secondary); }
+.phaseList { padding:var(--space-3) var(--space-4) var(--space-4); display:flex; flex-direction:column; gap:var(--space-3); }
+.phase { border:1px solid var(--border-subtle); border-radius:var(--radius-md); overflow:hidden; }
+.phaseHeading { display:flex; align-items:center; justify-content:space-between; padding:var(--space-3) var(--space-4); background:var(--surface-sunken); }
+.phaseHeading h3 { margin:0; font-family:var(--font-family-serif); font-size:var(--font-size-md); }
+.phaseHeading span { color:var(--ink-muted); font-size:var(--font-size-xs); }
+.reportList { display:flex; flex-direction:column; }
+.report { display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-4); background:var(--surface-base); border-top:1px solid var(--border-subtle); }
+.report:first-child { border-top:0; }
+.reportMain { min-width:0; }
+.reportTitle, .meta, .actions { display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; }
+.reportTitle strong { color:var(--ink-primary); }
+.meta { margin-top:var(--space-2); color:var(--ink-secondary); font-size:var(--font-size-xs); }
+.meta span { display:inline-flex; align-items:center; gap:var(--space-1); }
+.actions { flex-shrink:0; }
+.actions a { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--accent-primary); font-size:var(--font-size-xs); }
+.loading, .error { padding:var(--space-6); border:1px solid var(--border-subtle); border-radius:var(--radius-md); background:var(--surface-sunken); }
+.loading { display:flex; align-items:center; gap:var(--space-2); }
+.error { color:var(--status-danger-text); background:var(--status-danger-surface); border-color:var(--status-danger-text); }
+@media (max-width: 700px) { .report { align-items:flex-start; flex-direction:column; } .actions { width:100%; justify-content:flex-end; } }

@@ -28,7 +28,7 @@ import {
 describe('googleOAuthService.buildGoogleOAuthLoginUrl', () => {
   it('builds an absolute URL pointing at the BE OAuth endpoint', () => {
     const url = googleOAuthService.buildGoogleOAuthLoginUrl();
-    expect(url).toMatch(/\/api\/Auth\/google-oauth-login$/);
+    expect(url).toMatch(/\/api\/auth\/google-oauth-login$/);
     // No trailing slash before the path.
     expect(url).not.toMatch(/\/+\/api/);
   });
@@ -280,7 +280,7 @@ describe('googleOAuthService.beginGoogleOAuth — duplicate-request guard', () =
     await googleOAuthService.beginGoogleOAuth();
     expect(assignMock).toHaveBeenCalledTimes(1);
     const calledUrl: string = assignMock.mock.calls[0][0];
-    expect(calledUrl).toContain('/api/Auth/google-oauth-login');
+    expect(calledUrl).toContain('/api/auth/google-oauth-login');
   });
 
   it('does NOT log the URL or any token — only the navigation is observable', async () => {

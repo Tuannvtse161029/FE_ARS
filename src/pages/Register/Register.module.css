@@ -2,52 +2,50 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
 }
 
-.logoHeader {
+/* ── Centered Masthead ────────────────────────────────────── */
+/* Logo + wordmark share the same journal-inside-cover rhythm as
+   Login / ResetPassword / EmailVerificationLanding. The form fields
+   below remain full-width within formContainer. */
+.logoSection {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-3);
-  margin-bottom: var(--spacing-4);
-}
-
-.logoWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-lg);
-  background: transparent;
-  flex-shrink: 0;
+  text-align: center;
+  gap: var(--space-3);
+  margin: 0 auto var(--space-6);
 }
 
 .logoImage {
-  width: 100%;
-  height: 100%;
+  width: 112px;
+  height: 112px;
   object-fit: contain;
+  display: block;
 }
 
 .brandText {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: 0.5px;
+  color: var(--ars-ink);
+  letter-spacing: 0;
+  text-align: center;
 }
 
-.header {
-  margin-bottom: var(--spacing-2);
+.pageHeader {
+  text-align: center;
+  margin-bottom: var(--space-5);
 }
 
-.title {
-  font-size: var(--font-size-2xl);
+.pageTitle {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-2) 0;
+  margin: 0 0 var(--space-2) 0;
 }
 
-.subtitle {
+.pageSubtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   margin: 0;
@@ -58,6 +56,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
+}
+
+@media (max-width: 640px) {
+  .logoImage {
+    width: 72px;
+    height: 72px;
+  }
+
+  .pageTitle {
+    font-size: var(--font-size-2xl);
+  }
 }
 
 .passwordRow {
@@ -74,10 +83,60 @@
   line-height: var(--line-height-relaxed);
 }
 
+.orcidConnection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacing-3);
+  align-items: center;
+  padding: var(--spacing-4);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+}
+
+.orcidTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+}
+
+.orcidDescription,
+.orcidNotice {
+  margin: var(--spacing-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.orcidNotice {
+  grid-column: 1 / -1;
+}
+
+.orcidVerifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-pill, 999px);
+  background-color: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .orcidConnection {
+    grid-template-columns: 1fr;
+  }
+}
+
 .roleBanner {
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-lg);
+  background-color: var(--ars-paper-alt);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
   padding: var(--spacing-4);
   display: flex;
   align-items: flex-start;
@@ -141,21 +200,26 @@
 
 .nativeInput {
   width: 100%;
+  min-height: 44px;
   padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   font-family: inherit;
-  background-color: var(--color-surface);
+  background-color: var(--ars-paper);
   color: var(--color-text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
   box-sizing: border-box;
+}
+
+.nativeInput:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted);
 }
 
 .nativeInput:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
 }
 
 .nativeInput:disabled {
@@ -186,14 +250,15 @@
 
 .nativeSelect {
   width: 100%;
+  min-height: 44px;
   padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   font-family: inherit;
-  background-color: var(--color-surface);
+  background-color: var(--ars-paper);
   color: var(--color-text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
   cursor: pointer;
   box-sizing: border-box;
   appearance: none;
@@ -204,10 +269,14 @@
   padding-right: var(--spacing-10);
 }
 
+.nativeSelect:hover:not(:disabled) {
+  border-color: var(--ars-ink-muted);
+}
+
 .nativeSelect:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
 }
 
 .errorText {
@@ -217,10 +286,11 @@
 }
 
 .formError {
+  min-height: 44px;
   padding: var(--spacing-3) var(--spacing-4);
   background-color: var(--color-error-bg);
   color: var(--color-error);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   text-align: center;
   border: 1px solid var(--color-error-light);
@@ -231,8 +301,8 @@
 }
 
 .footer {
-  margin-top: var(--spacing-4);
-  text-align: center;
+  margin-top: var(--spacing-5);
+  text-align: left;
 }
 
 .footerText {
@@ -330,3 +400,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Archive Dusk auth surface */
+.brandText, .pageTitle, .fieldLabel, .roleBannerTitle, .orcidTitle { color: var(--ink-primary); }
+.pageSubtitle, .passwordHelper, .roleBannerText, .orcidDescription,
+.orcidNotice, .optionalText, .footerText, .consentText, .divider { color: var(--ink-secondary); }
+.orcidConnection, .roleBanner { background: var(--surface-sunken); border-color: var(--border-subtle); }
+.nativeInput, .nativeSelect { background-color: var(--control-bg); color: var(--control-text); border-color: var(--border-subtle); }
+.nativeInput:focus, .nativeSelect:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent); }
+.nativeInput--error, .nativeInput--error:focus, .nativeSelect--error, .nativeSelect--error:focus {
+  border-color: var(--status-danger-text) !important;
+  background: var(--status-danger-surface);
+  box-shadow: none !important;
+}
+.formError { background: var(--status-danger-surface); color: var(--status-danger-text); border-color: var(--status-danger-text); }
+.roleBannerIcon, .loginLink, .consentLink { color: var(--accent-ochre); }
+.loginLink:hover, .consentLink:hover { color: var(--accent-hover); }
+.consentCheckbox { accent-color: var(--accent-primary); }

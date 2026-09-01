@@ -2,16 +2,18 @@
  * MetricCard styles — ARS Research Constellation
  */
 .card {
-  background: var(--ars-paper-alt);
+  background: var(--ars-paper);
   border: var(--border-thin);
   padding: var(--space-5) var(--space-6);
   position: relative;
   overflow: hidden;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
 
 .card:hover {
-  border-color: var(--ars-node);
+  border-color: var(--card-accent, var(--ars-blue));
+  background: var(--ars-paper-alt);
+  box-shadow: var(--shadow-sm);
 }
 
 .inner {
@@ -50,7 +52,7 @@
 }
 
 .value {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   line-height: 1.1;
@@ -69,14 +71,14 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 1px;
   background: var(--card-accent, var(--ars-blue));
-  opacity: 0.25;
+  opacity: 0.7;
   transition: opacity var(--transition-fast);
 }
 
 .card:hover .accentLine {
-  opacity: 0.5;
+  opacity: 1;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
@@ -86,6 +88,6 @@
   }
 
   .value {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
   }
 }

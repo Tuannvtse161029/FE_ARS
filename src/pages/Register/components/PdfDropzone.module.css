@@ -80,7 +80,13 @@
 .progressBarInner {
   height: 100%;
   background-color: var(--color-primary);
-  transition: width var(--transition-normal);
+  /* Transform-based progress. Replaces the prior `transition: width`
+     that triggered layout reflow on every percentage change. scaleX is
+     GPU-composited and transform-origin: left keeps the fill anchored
+     to the left edge. */
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform var(--transition-normal);
   border-radius: var(--radius-full);
 }
 

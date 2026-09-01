@@ -20,7 +20,7 @@ const GROUP_MEMBER_ENDPOINTS = {
   GET_BY_ID: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_BY_ID,
   CREATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.CREATE,
   UPDATE: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE,
-  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.UPDATE(id),
+  DELETE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.DELETE(id),
   SET_LEADER: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.SET_LEADER(id),
   SET_LEADER_BODY: API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.SET_LEADER_BODY,
   REMOVE_LEADER: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.REMOVE_LEADER(id),
@@ -99,8 +99,10 @@ export const groupMemberService = {
       const resData = (response.data as { data?: GroupMember }).data ?? response.data;
       return normalizeGroupMember(resData as GroupMember);
     } catch (err) {
-      // If endpoint requires body, fallback to POST /api/GroupMember/set-leader
-      if (userId) {
+      // Some deployments expose only the body variant. Never retry auth or
+      // validation failures; those must reach the caller unchanged.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 && userId) {
         const fallbackRes = await api.post<GroupMember | { message?: string; data?: GroupMember }>(
           GROUP_MEMBER_ENDPOINTS.SET_LEADER_BODY,
           { groupMemberId, userId },

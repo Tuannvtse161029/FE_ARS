@@ -1,7 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Star, ClipboardCheck, Loader, CheckCircle2, AlertCircle } from 'lucide-react';
-import { seminarService, seminarParticipantService } from '../../services/seminar.service';
+import { seminarService } from '../../services/seminar.service';
 import styles from './SeminarFeedbackModal.module.css';
+
+const useDialogFocus = (isOpen: boolean, isBusy: boolean, onClose: () => void) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!isOpen) {
+      openerRef.current?.focus();
+      return;
+    }
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]')?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isBusy) { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex="0"]'));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => { window.cancelAnimationFrame(frame); document.removeEventListener('keydown', handleKeyDown); };
+  }, [isOpen, isBusy, onClose]);
+  return dialogRef;
+};
 
 export interface SeminarFeedbackModalProps {
   isOpen: boolean;
@@ -38,6 +64,8 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const dialogRef = useDialogFocus(isOpen, isSubmitting, onClose);
+  void participantId;
 
   useEffect(() => {
     if (isOpen) {
@@ -61,31 +89,14 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
     setErrorMsg(null);
 
     try {
-      // 1. Try dedicated seminar feedback endpoint first
-      try {
-        await seminarService.submitFeedback(seminarId, {
-          rating,
-          participantEvaluation: evaluationText.trim(),
-          invitationStatus: 'Submitted',
-        });
-      } catch (submitErr) {
-        // Fallback to participant update if participantId exists
-        if (participantId && participantId > 0) {
-          const evaluationPayload = `[Đánh giá: ${rating}/5 ⭐] ${evaluationText.trim()}`;
-          await seminarParticipantService.update(participantId, {
-            invitationStatus: 'Submitted',
-            participantEvaluation: evaluationPayload,
-          });
-        } else {
-          throw submitErr;
-        }
-      }
+      await seminarService.submitFeedback(seminarId, {
+        rating,
+        participantEvaluation: evaluationText.trim(),
+        invitationStatus: 'Submitted',
+      });
 
       setIsSuccess(true);
       onSuccess?.();
-      setTimeout(() => {
-        onClose();
-      }, 1500);
     } catch (err: unknown) {
       const responseData = (err as { response?: { data?: { message?: string } | string } })?.response?.data;
       const rawMsg =
@@ -109,7 +120,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
   const activeRating = hoverRating ?? rating;
 
   return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+    <div ref={dialogRef} className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="seminar-feedback-title">
       <div className={styles.modalCard}>
         {/* Header */}
         <div className={styles.modalHeader}>
@@ -118,7 +129,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               <ClipboardCheck size={20} />
             </div>
             <div>
-              <h3 className={styles.modalTitle}>Đánh giá & Phản hồi Seminar</h3>
+              <h3 id="seminar-feedback-title" className={styles.modalTitle}>Đánh giá & Phản hồi Seminar</h3>
               <p className={styles.modalSubtitle}>
                 {seminarTitle || 'Buổi Seminar học thuật'}
               </p>
@@ -169,8 +180,9 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
                   >
                     <Star
                       size={24}
-                      fill={star <= activeRating ? '#eab308' : 'none'}
-                      stroke={star <= activeRating ? '#eab308' : '#94a3b8'}
+                      className={`${styles.starGlyph} ${
+                        star <= activeRating ? styles.starFilled : styles.starEmpty
+                      }`}
                     />
                   </button>
                 ))}
@@ -214,7 +226,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
             >
               {isSubmitting ? (
                 <>
-                  <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader size={16} className={styles.spinningIcon} />
                   <span>Đang gửi...</span>
                 </>
               ) : (

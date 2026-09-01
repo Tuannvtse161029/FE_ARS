@@ -8,14 +8,10 @@
 //   unrelated tests if a filename happens to match. The smoke suite is a
 //   hand-curated, file-by-file enumeration of tests that gate critical
 //   user journeys:
-//     - Auth / route guards (AuthContext.loginWithGoogle, PublicRoute, logout)
-//     - Registration (Register form validation, Register.consent)
-//     - Google OAuth callback / first-time onboarding (googleOnboarding.* tests)
-//     - Email workflow service (emailWorkflow, emailVerification.service)
-//     - Password reset / OTP (validationRules, VerifyOtp.dedupe)
-//     - Main navigation (MainLayout guest/admin/lecturer/reviewer gradients)
-//     - Payment / wallet protection (EarningsWallet, useConfirmPayment)
-//     - Paper submission validation (Papers.taxonomy, ValidatePapers)
+//     - session cleanup, OAuth URL, route registration, and verified guard
+//     - current publication catalog/reviewer policy helpers
+//     - dedicated notification, research workflow, and forum API contracts
+//     - withdrawal feature gate and payment confirmation
 //
 // Usage:
 //   node scripts/run-smoke.mjs            # runs the curated smoke list
@@ -47,60 +43,39 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
  */
 const SMOKE_LIST = Object.freeze([
   // Auth / route guards
-  'tests/unit/context/AuthContext.loginWithGoogle.test.tsx',
   'tests/unit/context/AuthContext.logout.test.tsx',
-  'tests/unit/routes/PublicRoute.admin.test.tsx',
   'tests/unit/routes/googleAuthRoutes.test.ts',
-  'tests/unit/App.routes.premium.test.tsx',
   'tests/unit/hooks/useVerifiedGuard.test.ts',
-
-  // Registration (includes consent + inline errors)
-  'tests/unit/pages/Register.test.tsx',
-  'tests/unit/pages/Register.consent.test.tsx',
-  'tests/unit/pages/Register.inlineErrors.test.tsx',
+  'tests/unit/services/googleOAuth.service.test.ts',
   'tests/unit/utils/registrationRoles.test.ts',
 
-  // Google OAuth callback / onboarding (Agent 30 invariants)
-  'tests/unit/agent30/googleLoginGuard.test.ts',
-  'tests/unit/agent30/googleOnboarding.focused.test.ts',
-  'tests/unit/agent30/googleOnboarding.regression.test.tsx',
-  'tests/unit/agent30/noForbiddenCalls.test.ts',
-  'tests/unit/agent30/usePermissions.null.test.ts',
-  'tests/unit/agent31/googleOnboarding.payloadRegression.test.tsx',
-  'tests/unit/agent32/googleStateMachine.focused.test.ts',
-  'tests/unit/pages/GoogleCallback.test.tsx',
-  'tests/unit/pages/CompleteGoogleRegistration.onboarding.test.tsx',
-  'tests/unit/pages/CompleteGoogleRegistration.routingRegression.test.tsx',
-  'tests/unit/services/googleAuth.service.test.ts',
+  // Publication and reviewer policy
+  'tests/unit/publication/home/HomeResearchCatalog.authorLinks.test.tsx',
+  'tests/unit/publication/home/publicationLinks.test.ts',
+  'tests/unit/publication/reviewer/reviewerCriteria.test.ts',
 
-  // Email workflow service (verification + workflow)
+  // Current dedicated API contracts
   'tests/unit/services/emailVerification.service.test.ts',
-  'tests/unit/services/emailWorkflow.test.ts',
-  'tests/unit/pages/EmailVerificationLanding.test.tsx',
-  'tests/unit/hooks/useEmailVerification.test.ts',
+  'tests/unit/services/notification.service.test.ts',
+  'tests/unit/services/forumPost.service.test.ts',
+  'tests/unit/services/report.service.test.ts',
+  'tests/unit/services/profile.service.test.ts',
+  'tests/unit/services/field.service.test.ts',
+  'tests/unit/services/admin.endpointContract.test.ts',
 
-  // Password reset / OTP (validationRules also covers registration)
-  'tests/unit/utils/validationRules.test.ts',
-  'tests/unit/utils/postAuthRoute.test.ts',
-  'tests/unit/pages/VerifyOtp.dedupe.test.tsx',
+  // Lecturer and Graduate Student research workflow
+  'tests/unit/services/researchGroup.service.test.ts',
+  'tests/unit/services/researchTopic.service.test.ts',
+  'tests/unit/services/groupMembership.service.test.ts',
+  'tests/unit/services/guidanceProject.service.test.ts',
+  'tests/unit/services/learningMaterial.service.test.ts',
+  'tests/unit/services/phasedReport.service.test.ts',
+  'tests/unit/services/phasedReport.service.sentinel.test.ts',
+  'tests/unit/services/researchWorkflowDtos.test.ts',
 
-  // Main navigation (sidebar layouts for every role)
-  'tests/unit/layouts/MainLayout.guestSidebar.test.tsx',
-  'tests/unit/layouts/MainLayout.adminSidebar.test.tsx',
-  'tests/unit/layouts/MainLayout.lecturerNavigation.test.tsx',
-  'tests/unit/layouts/MainLayout.graduateStudentNav.test.tsx',
-  'tests/unit/layouts/MainLayout.reviewerAvailability.test.tsx',
-  'tests/unit/layouts/MainLayout.notificationCenter.test.tsx',
-  'tests/unit/layouts/MainLayout.premiumRoute.test.tsx',
-
-  // Payment / wallet protection (read-side; no live payment)
-  'tests/unit/pages/EarningsWallet.test.tsx',
+  // Payment/withdrawal safety; no live payment is performed
   'tests/unit/pages/withdrawalGate.test.tsx',
   'tests/unit/hooks/useConfirmPayment.test.ts',
-  'tests/unit/pages/CheckoutReturn.test.tsx',
-
-  // Paper submission validation
-  'tests/unit/pages/Papers.taxonomy.test.tsx',
 ]);
 
 const missing = SMOKE_LIST.filter((rel) => {

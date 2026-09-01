@@ -1,4 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const useLocalDialogFocus = (open: boolean, busy: boolean, onClose: () => void) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open) { openerRef.current?.focus(); return; }
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]')?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]'));
+      if (!focusable.length) return;
+      const index = focusable.indexOf(document.activeElement as HTMLElement);
+      if (index === 0 && event.shiftKey) { event.preventDefault(); focusable[focusable.length - 1].focus(); } else if (index === focusable.length - 1 && !event.shiftKey) { event.preventDefault(); focusable[0].focus(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', handleKeyDown); };
+  }, [open, busy, onClose]);
+  return dialogRef;
+};
 import styles from './CreatePackageModal.module.css';
 import type {
   PremiumPackageInput,
@@ -50,6 +71,7 @@ export function CreatePackageModal({
   onClose,
   onConfirm,
 }: CreatePackageModalProps): JSX.Element | null {
+  const dialogRef = useLocalDialogFocus(isOpen, isSubmitting, onClose);
   const [form, setForm] = useState<FormState>(empty);
 
   useEffect(() => {
@@ -97,6 +119,7 @@ export function CreatePackageModal({
 
   return (
     <div
+      ref={dialogRef}
       className={styles.overlay}
       role="dialog"
       aria-modal="true"
@@ -108,7 +131,7 @@ export function CreatePackageModal({
       <div className={styles.modal}>
         <header className={styles.header}>
           <h2 id="create-package-title" className={styles.title}>
-            Create Premium Package
+            Create Package
           </h2>
           <button
             type="button"
