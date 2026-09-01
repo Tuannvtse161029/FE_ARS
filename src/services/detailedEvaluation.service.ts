@@ -36,6 +36,15 @@ export interface DetailedEvaluation {
   generalComments?: string | null;
   finalDecision?: string | null;
   specializedEvaluation?: SpecializedEvaluationItem[] | null;
+  criteria1?: string | null;
+  expandedCriteria1?: string | null;
+  evaluationCriteria1?: string | null;
+  criteria2?: string | null;
+  expandedCriteria2?: string | null;
+  evaluationCriteria2?: string | null;
+  criteria3?: string | null;
+  expandedCriteria3?: string | null;
+  evaluationCriteria3?: string | null;
   createdAt?: string;
 }
 
@@ -55,6 +64,15 @@ export interface DetailedEvaluationCreateRequest {
   generalComments?: string | null;
   finalDecision?: string | null;
   specializedEvaluation?: SpecializedEvaluationItem[] | null;
+  criteria1?: string | null;
+  expandedCriteria1?: string | null;
+  evaluationCriteria1?: string | null;
+  criteria2?: string | null;
+  expandedCriteria2?: string | null;
+  evaluationCriteria2?: string | null;
+  criteria3?: string | null;
+  expandedCriteria3?: string | null;
+  evaluationCriteria3?: string | null;
 }
 
 export interface DetailedEvaluationUpdateRequest extends DetailedEvaluationCreateRequest {}

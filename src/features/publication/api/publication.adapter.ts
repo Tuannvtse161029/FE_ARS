@@ -20,6 +20,9 @@ import {
 } from '../types/publication';
 import { demoPublicationPapers } from '../demo/publication.demo';
 
+import { notificationService } from '../../../services/notification.service';
+import type { SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
+
 export class PublicationBackendContractError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,9 +44,12 @@ export interface PublicationAdapter {
     privateComments: string,
     privateScores?: Record<string, number>,
     privateNotes?: Record<string, string>,
+    specializedCriteria?: Partial<SpecializedCriteriaBundle>,
   ): Promise<PublicationPaper>;
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
+  assignReviewersAuto(id: string, reviewerCount?: number): Promise<unknown>;
   publishPaper(id: string): Promise<PublicationPaper>;
+  rejectPaper(id: string, reason?: string): Promise<PublicationPaper>;
 }
 
 const normalizedText = (value: string | null | undefined): string =>
@@ -102,21 +108,31 @@ const toPublicationPaper = (
 ): PublicationPaper => {
   const status = assignmentStatus(request, evaluation) ?? paperStatus(paper.status);
   const authorId = paper.authorId ?? paper.userId;
+  const subFieldId = paper.subFieldId ?? paper.subfieldId;
   const authorName = paper.authorName?.trim();
   const reviewerName = request?.reviewerName?.trim();
   const scores: Record<string, number> = {};
+  const notes: Record<string, string> = {};
   if (evaluation) {
     scores.originality = evaluation.scoreOriginality ?? 0;
     scores.references = evaluation.scoreLiterature ?? 0;
     scores.methodology = evaluation.scoreMethodology ?? 0;
     scores.significance = evaluation.scoreResults ?? 0;
     scores.clarity = evaluation.scoreFormatting ?? 0;
+
+    notes.originality = evaluation.notesOriginality ?? '';
+    notes.references = evaluation.notesLiterature ?? '';
+    notes.methodology = evaluation.notesMethodology ?? '';
+    notes.significance = evaluation.notesResults ?? '';
+    notes.clarity = evaluation.notesFormatting ?? '';
   }
 
   return {
     id: String(paper.id),
     title: paper.title?.trim() || `Paper #${paper.id}`,
     abstract: paper.abstract?.trim() || 'No abstract was supplied.',
+    subFieldId: subFieldId ?? null,
+    authorId: authorId ?? null,
     authors: authorId || authorName
       ? [{
           id: String(authorId ?? 'unknown'),
@@ -149,6 +165,16 @@ const toPublicationPaper = (
                 : 'ACCEPT',
           privateComments: evaluation?.generalComments ?? '',
           privateScores: scores,
+          privateNotes: notes,
+          criteria1: evaluation?.criteria1 ?? null,
+          expandedCriteria1: evaluation?.expandedCriteria1 ?? null,
+          evaluationCriteria1: evaluation?.evaluationCriteria1 ?? null,
+          criteria2: evaluation?.criteria2 ?? null,
+          expandedCriteria2: evaluation?.expandedCriteria2 ?? null,
+          evaluationCriteria2: evaluation?.evaluationCriteria2 ?? null,
+          criteria3: evaluation?.criteria3 ?? null,
+          expandedCriteria3: evaluation?.expandedCriteria3 ?? null,
+          evaluationCriteria3: evaluation?.evaluationCriteria3 ?? null,
           submittedAt: evaluation?.createdAt,
         }
       : undefined,
@@ -364,6 +390,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
     privateComments: string,
     privateScores: Record<string, number> = {},
     privateNotes: Record<string, string> = {},
+    specializedCriteria?: Partial<SpecializedCriteriaBundle>,
   ): Promise<PublicationPaper> {
     const request = await this.findCurrentReviewerRequest(id);
     const evaluation = await detailedEvaluationService.create({
@@ -381,6 +408,15 @@ class ApiPublicationAdapter implements PublicationAdapter {
       notesFormatting: privateNotes.clarity,
       generalComments: privateComments,
       finalDecision: recommendation,
+      criteria1: specializedCriteria?.criteria1 ?? null,
+      expandedCriteria1: specializedCriteria?.expandedCriteria1 ?? null,
+      evaluationCriteria1: specializedCriteria?.evaluationCriteria1 ?? null,
+      criteria2: specializedCriteria?.criteria2 ?? null,
+      expandedCriteria2: specializedCriteria?.expandedCriteria2 ?? null,
+      evaluationCriteria2: specializedCriteria?.evaluationCriteria2 ?? null,
+      criteria3: specializedCriteria?.criteria3 ?? null,
+      expandedCriteria3: specializedCriteria?.expandedCriteria3 ?? null,
+      evaluationCriteria3: specializedCriteria?.evaluationCriteria3 ?? null,
     });
     const updated = await reviewRequestService.update(request.id!, {
       status: 'Completed',
@@ -407,11 +443,52 @@ class ApiPublicationAdapter implements PublicationAdapter {
     return toPublicationPaper(await paperService.getById(id), request);
   }
 
+  async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {
+    return paperService.assignReviewers(id, reviewerCount);
+  }
+
   async publishPaper(id: string): Promise<PublicationPaper> {
-    void id;
-    throw new PublicationBackendContractError(
-      'Final publication is unavailable until the backend ships the Admin publication transition endpoint. See tickets/backend/BE_PUBLICATION_WORKFLOW_API_TICKET.md.',
-    );
+    const current = await paperService.getById(id);
+    const updated = await paperService.update(id, {
+      title: current.title,
+      abstract: current.abstract ?? '',
+      fileUrl: current.fileUrl ?? null,
+      status: 'Published',
+    });
+    const authorId = updated.authorId ?? current.authorId ?? current.userId;
+    if (authorId) {
+      try {
+        await notificationService.create({
+          userId: authorId,
+          message: `Bài báo "${current.title}" của bạn đã được xuất bản chính thức lên Discover RESEARCH!`,
+        });
+      } catch (err) {
+        console.warn('Failed to send published notification:', err);
+      }
+    }
+    return toPublicationPaper(updated);
+  }
+
+  async rejectPaper(id: string, reason?: string): Promise<PublicationPaper> {
+    const current = await paperService.getById(id);
+    const updated = await paperService.update(id, {
+      title: current.title,
+      abstract: current.abstract ?? '',
+      fileUrl: current.fileUrl ?? null,
+      status: 'Rejected',
+    });
+    const authorId = updated.authorId ?? current.authorId ?? current.userId;
+    if (authorId) {
+      try {
+        await notificationService.create({
+          userId: authorId,
+          message: `Bài báo "${current.title}" của bạn đã bị từ chối xuất bản. ${reason ? `Lý do: ${reason}` : ''}`,
+        });
+      } catch (err) {
+        console.warn('Failed to send rejection notification:', err);
+      }
+    }
+    return toPublicationPaper(updated);
   }
 
   private async findCurrentReviewerRequest(paperId: string): Promise<ReviewRequest> {

@@ -15,6 +15,11 @@ import {
   type ReviewerEvaluationDraft,
   type ReviewerRecommendationValue,
 } from './reviewerCriteria';
+import {
+  resolveCriteriaForPaper,
+  type SpecializedCriteriaBundle,
+} from './evaluationCriteriaResolver';
+import { fieldService } from '../../../services/field.service';
 
 // ReviewerAssignmentDetail — the Reviewer-only paper view.
 //
@@ -75,6 +80,17 @@ export const ReviewerAssignmentDetail = () => {
   const [draft, setDraft] = useState<ReviewerEvaluationDraft>(() =>
     buildEmptyEvaluationDraft(),
   );
+  const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>({
+    criteria1: '',
+    expandedCriteria1: '',
+    evaluationCriteria1: '',
+    criteria2: '',
+    expandedCriteria2: '',
+    evaluationCriteria2: '',
+    criteria3: '',
+    expandedCriteria3: '',
+    evaluationCriteria3: '',
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -102,14 +118,26 @@ export const ReviewerAssignmentDetail = () => {
     };
   }, [id]);
 
-  // Reset the form draft whenever we transition to a different paper so
-  // a stale Accept/ACCEPT from a prior assignment can't leak into the
-  // new one.
+  // Reset the form draft and load specialized criteria whenever we transition to a different paper
   const assignedPaperId =
     resolved.status === 'authorised' ? resolved.paper?.id : null;
   useEffect(() => {
     setDraft(buildEmptyEvaluationDraft());
     setError(null);
+    if (!resolved.paper) return;
+    const currentPaper = resolved.paper;
+    (async () => {
+      let subFieldData = null;
+      if (currentPaper.subFieldId) {
+        try {
+          subFieldData = await fieldService.getSubFieldById(currentPaper.subFieldId);
+        } catch {
+          // ignore, preset will be used
+        }
+      }
+      const bundle = resolveCriteriaForPaper(currentPaper, subFieldData);
+      setSpecializedCriteria(bundle);
+    })();
   }, [assignedPaperId]);
 
   const paper = resolved.status === 'authorised' ? resolved.paper : undefined;
@@ -183,6 +211,7 @@ export const ReviewerAssignmentDetail = () => {
         draft.privateComments.trim(),
         draft.scores,
         draft.perCriterionNotes,
+        specializedCriteria,
       );
       setResolved({ status: 'authorised', paper: updated });
     } catch (caught) {
@@ -269,96 +298,238 @@ export const ReviewerAssignmentDetail = () => {
         data-testid="evaluate-form"
       >
         <div className={`${shared.field} ${shared.full}`}>
-          <p style={{ margin: 0, color: '#4a5568', fontSize: 13 }}>
-            Score every criterion from {REVIEWER_CRITERIA[0]?.min ?? 1} to{' '}
-            {REVIEWER_CRITERIA[0]?.max ?? 5} and add a short private note per
-            criterion. Your recommendation is private to Admin and does not
-            publish this paper.
+          <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
+            1. Bảng chấm điểm 5 tiêu chí cốt lõi (Core Rubric Evaluation)
+          </h3>
+          <p style={{ margin: '0 0 10px', color: '#4a5568', fontSize: 13 }}>
+            Đánh giá điểm số (1 đến 10) và cung cấp nhận xét/chứng minh tương ứng cho từng tiêu chí chuẩn.
           </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table className={reviewer.rubricTable}>
+              <thead>
+                <tr>
+                  <th style={{ width: '22%' }}>Tiêu chí đánh giá</th>
+                  <th style={{ width: '36%' }}>Mô tả chuẩn học thuật</th>
+                  <th style={{ width: '16%' }}>Điểm (1 - 10)</th>
+                  <th style={{ width: '26%' }}>Nhận xét / Ghi chú (Note)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {REVIEWER_CRITERIA.map((criterion) => {
+                  const score = draft.scores[criterion.key];
+                  const note = draft.perCriterionNotes[criterion.key];
+                  const optionValues = Array.from(
+                    { length: criterion.max - criterion.min + 1 },
+                    (_, index) => criterion.min + index,
+                  );
+                  return (
+                    <tr key={criterion.key}>
+                      <td>
+                        <strong style={{ color: '#1e293b' }}>{criterion.label}</strong>
+                      </td>
+                      <td style={{ color: '#475569', fontSize: 12 }}>
+                        {criterion.description}
+                      </td>
+                      <td>
+                        <select
+                          id={`score-${criterion.key}`}
+                          value={score}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            borderRadius: 4,
+                            border: '1px solid #cbd5e1',
+                            fontSize: 13,
+                          }}
+                          onChange={(event) =>
+                            handleScoreChange(criterion.key, Number(event.target.value))
+                          }
+                        >
+                          {optionValues.map((value) => (
+                            <option key={value} value={value}>
+                              {value} / 10
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <textarea
+                          id={`note-${criterion.key}`}
+                          className={reviewer.criterionNote}
+                          style={{
+                            width: '100%',
+                            minHeight: 46,
+                            fontSize: 12,
+                            padding: '6px 8px',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 4,
+                          }}
+                          value={note}
+                          onChange={(event) =>
+                            handleNoteChange(criterion.key, event.target.value)
+                          }
+                          placeholder={`Ghi chú cho ${criterion.label}...`}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-        {REVIEWER_CRITERIA.map((criterion) => {
-          const score = draft.scores[criterion.key];
-          const note = draft.perCriterionNotes[criterion.key];
-          const optionValues = Array.from(
-            { length: criterion.max - criterion.min + 1 },
-            (_, index) => criterion.min + index,
-          );
-          return (
-            <fieldset
-              key={criterion.key}
-              className={`${shared.field} ${shared.full}`}
-              style={{
-                border: '1px solid #dce3ed',
-                borderRadius: 6,
-                padding: 12,
-              }}
-            >
-              <legend
-                style={{ fontSize: 13, fontWeight: 700, color: '#324158' }}
-              >
-                {criterion.label}
-              </legend>
-              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#5f6b7a' }}>
-                {criterion.description}
-              </p>
-              <div className={reviewer.criterionScoreRow}>
-                <label
-                  htmlFor={`score-${criterion.key}`}
-                  style={{ fontSize: 12 }}
-                >
-                  Score
+
+        <div className={`${shared.field} ${shared.full}`} style={{ marginTop: 8 }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
+            2. Tiêu chí chuyên môn & Mở rộng theo chuyên ngành (Subfield Specialized & Expanded Criteria)
+          </h3>
+          <p style={{ margin: '0 0 12px', color: '#4a5568', fontSize: 13 }}>
+            Các tiêu chí được đọc từ cơ sở dữ liệu chuyên ngành hoặc hệ thống tự động sinh tiêu chí học thuật quốc tế phù hợp với bài báo. Bạn có thể xem và điều chỉnh nội dung:
+          </p>
+
+          <div className={reviewer.specializedCard}>
+            <div className={reviewer.specializedCardHeader}>
+              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 1</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 1 & Expanded Criteria 1</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Tên tiêu chí (Criteria 1):
                 </label>
-                <select
-                  id={`score-${criterion.key}`}
-                  value={score}
-                  onChange={(event) =>
-                    handleScoreChange(criterion.key, Number(event.target.value))
-                  }
-                >
-                  {optionValues.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-                <span style={{ fontSize: 12, color: '#64748b' }}>
-                  ({criterion.min}–{criterion.max})
-                </span>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.criteria1}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria1: e.target.value })}
+                />
               </div>
-              <label
-                htmlFor={`note-${criterion.key}`}
-                style={{ fontSize: 12, marginTop: 8, display: 'block' }}
-              >
-                Private note for Admin (optional)
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Quy chuẩn đánh giá (Evaluation Criteria 1):
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.evaluationCriteria1}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria1: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 1):
               </label>
               <textarea
-                id={`note-${criterion.key}`}
-                className={reviewer.criterionNote}
-                value={note}
-                onChange={(event) =>
-                  handleNoteChange(criterion.key, event.target.value)
-                }
-                placeholder={`Brief note on ${criterion.label.toLowerCase()}`}
+                rows={2}
+                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                value={specializedCriteria.expandedCriteria1}
+                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria1: e.target.value })}
               />
-            </fieldset>
-          );
-        })}
+            </div>
+          </div>
+
+          <div className={reviewer.specializedCard}>
+            <div className={reviewer.specializedCardHeader}>
+              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 2</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 2 & Expanded Criteria 2</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Tên tiêu chí (Criteria 2):
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.criteria2}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria2: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Quy chuẩn đánh giá (Evaluation Criteria 2):
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.evaluationCriteria2}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria2: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 2):
+              </label>
+              <textarea
+                rows={2}
+                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                value={specializedCriteria.expandedCriteria2}
+                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria2: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className={reviewer.specializedCard}>
+            <div className={reviewer.specializedCardHeader}>
+              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 3</span>
+              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 3 & Expanded Criteria 3</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Tên tiêu chí (Criteria 3):
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.criteria3}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria3: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                  Quy chuẩn đánh giá (Evaluation Criteria 3):
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                  value={specializedCriteria.evaluationCriteria3}
+                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria3: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 3):
+              </label>
+              <textarea
+                rows={2}
+                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                value={specializedCriteria.expandedCriteria3}
+                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria3: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className={`${shared.field} ${shared.full}`}>
           <label htmlFor="private-comments">
-            Private review feedback for Admin
+            Nhận xét phản biện tổng quát cho Ban biên tập (Private review feedback for Admin)
           </label>
           <textarea
             id="private-comments"
-            rows={7}
+            rows={5}
             value={draft.privateComments}
             onChange={(event) =>
               handlePrivateCommentsChange(event.target.value)
             }
-            placeholder="Summary, key concerns, and revision requests. Admin reads this; the author never sees it directly."
+            placeholder="Tóm tắt nội dung, ưu điểm nổi bật, các điểm hạn chế cần bổ sung. Ban biên tập sẽ đọc nhận xét này để ra quyết định xuất bản."
           />
         </div>
         <div className={`${shared.field} ${shared.full}`}>
-          <label htmlFor="recommendation">Recommendation</label>
+          <label htmlFor="recommendation">Quyết định đề xuất (Final Recommendation)</label>
           <select
             id="recommendation"
             value={draft.recommendation}
@@ -370,7 +541,11 @@ export const ReviewerAssignmentDetail = () => {
           >
             {REVIEWER_RECOMMENDATIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.label === 'Accept'
+                  ? 'Chấp thuận (Accept for Publication)'
+                  : option.label === 'Reject'
+                    ? 'Từ chối (Reject / Deny Publication)'
+                    : 'Yêu cầu sửa đổi (Revision Required)'}
               </option>
             ))}
           </select>
@@ -385,11 +560,10 @@ export const ReviewerAssignmentDetail = () => {
         )}
         <div className={`${reviewer.evaluationActions} ${shared.full}`}>
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
-            Submitting sends your recommendation to Admin. You will not be
-            able to edit it afterwards.
+            Sau khi nộp, phiếu đánh giá sẽ được chuyển lên Ban biên tập Admin để xem xét xuất bản.
           </p>
           <button className={shared.button} disabled={saving} type="submit">
-            Submit private review to Admin
+            {saving ? 'Đang gửi...' : 'Nộp phiếu đánh giá cho Admin'}
           </button>
         </div>
       </form>

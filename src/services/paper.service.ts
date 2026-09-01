@@ -83,6 +83,18 @@ export const paperService = {
   delete: async (id: string): Promise<void> => {
     await api.delete(API_ENDPOINTS.PAPER.DELETE(id as unknown as number));
   },
+
+  assignReviewers: async (
+    id: string | number,
+    reviewerCount = 3,
+  ): Promise<unknown> => {
+    const response = await api.post(
+      API_ENDPOINTS.PAPER.ASSIGN_REVIEWERS(id),
+      null,
+      { params: { reviewerCount } },
+    );
+    return response.data;
+  },
 };
 
 export default paperService;
