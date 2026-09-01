@@ -3,11 +3,38 @@
  *
  * Design direction:
  * - Role accent: --ars-lecturer (#7c2d12)
- * - Card-based content sections, no nested cards
- * - Uses PageHeader (back to list) at top, then section cards
+ * - Warm academic editorial layout, no nested cards
+ * - Section cards each carry a small lecturer corner-anchor dot so the
+ *   page reads as one workspace even though every section has its own
+ *   data source.
+ * - Tokens are the single source of truth (see src/styles/ars-tokens.css).
  */
 
-.page {
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning,
+  .spinningIcon,
+  .modalOverlay,
+  .modalBackdrop,
+  .banner,
+  .card,
+  .memberRow,
+  .topic,
+  .phase {
+    animation: none !important;
+  }
+}
+
+/* ── Page shell ─────────────────────────────────────────────── */
+.root {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -15,6 +42,7 @@
   color: var(--ars-ink);
 }
 
+/* ── Back navigation ───────────────────────────────────────── */
 .backRow {
   display: flex;
   align-items: center;
@@ -24,7 +52,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  background: transparent;
+  background: var(--surface-raised);
   border: var(--border-thin);
   border-radius: var(--radius-md);
   color: var(--ars-ink-muted);
@@ -33,14 +61,140 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-family: var(--font-family-ui);
 }
 
 .backBtn:hover {
   color: var(--ars-ink);
   border-color: var(--ars-ink-muted);
+  background: var(--surface-sunken);
 }
 
 .backBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Page header ───────────────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface-sunken);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  position: relative;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.pageHeader::before {
+  content: '';
+  position: absolute;
+  top: var(--space-5);
+  left: var(--space-5);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.headerTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.pageTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
+  padding-left: var(--space-4);
+}
+
+.pageSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  font-family: var(--font-family-mono);
+  padding-left: var(--space-4);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.editGroupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-lecturer);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+}
+
+.editGroupBtn:hover {
+  background: var(--ars-lecturer-mid);
+  border-color: var(--ars-lecturer-mid);
+}
+
+.editGroupBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.refreshBtn {
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+}
+
+.refreshBtn:hover {
+  color: var(--ars-ink);
+  background: var(--surface-sunken);
+  border-color: var(--ars-ink-muted);
+}
+
+.refreshBtn:focus-visible {
   outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
 }
@@ -50,7 +204,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0;
-  background: var(--ars-paper-alt);
+  background: var(--surface-sunken);
   border: var(--border-thin);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -63,7 +217,7 @@
   flex-direction: column;
   gap: 2px;
   padding: var(--space-4) var(--space-5);
-  border-right: 1px solid var(--ars-network);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .metaCell:last-child {
@@ -89,35 +243,43 @@
   display: block;
 }
 
-/* ── Section card ────────────────────────────────────────────── */
+/* ── Section card ───────────────────────────────────────────── */
 .card {
-  background: var(--ars-paper-alt);
+  background: var(--surface-raised);
   border: var(--border-thin);
   border-radius: var(--radius-md);
   overflow: hidden;
   animation: fadeIn 0.25s ease-out;
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
 }
 
 .cardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
 }
 
-.cardHeaderStacked {
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-2);
-}
-
-.cardTitleRow {
+.cardHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  width: 100%;
   flex-wrap: wrap;
 }
 
@@ -130,6 +292,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  padding-left: var(--space-4);
 }
 
 .cardHint {
@@ -137,6 +300,9 @@
   color: var(--ars-ink-muted);
   font-family: var(--font-family-mono);
   line-height: 1.5;
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-top: var(--space-1);
 }
 
 .cardHint a {
@@ -153,16 +319,27 @@
   padding: var(--space-5);
 }
 
-.topicSummaryRow {
+/* ── Topic summary row ──────────────────────────────────────── */
+.cardInner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
   flex-wrap: wrap;
+}
+
+.topicSummaryText {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .topicSummaryTitle {
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
+  font-size: var(--font-size-sm);
 }
 
 .topicSummaryDesc {
@@ -172,226 +349,53 @@
   line-height: 1.5;
 }
 
-.cardEmpty {
+/* ── Empty state ────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-6);
   font-size: var(--font-size-sm);
   color: var(--ars-ink-muted);
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
   font-style: italic;
 }
 
-.cardEmpty a {
+.emptyState a {
   color: var(--ars-lecturer);
   text-decoration: underline;
   font-weight: var(--font-weight-semibold);
+  font-style: normal;
 }
 
-.cardGapNote {
+.gapNote {
   font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-5) var(--space-4);
-  font-style: italic;
+  color: var(--ars-warning);
+  padding: var(--space-3) var(--space-5);
+  background: var(--ars-warning-bg);
+  border-top: 1px solid color-mix(in srgb, var(--ars-warning) 35%, transparent);
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
+  font-family: var(--font-family-mono);
+  line-height: 1.5;
 }
 
-.cardGapNote svg {
+.gapNote svg {
   flex-shrink: 0;
   margin-top: 2px;
 }
 
-.cardGapNote code {
+.gapNote code {
   font-family: var(--font-family-mono);
-  background: var(--ars-paper);
+  background: var(--surface-raised);
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
 }
 
-/* ── Member list ─────────────────────────────────────────────── */
-.memberList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.memberRow {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
-  align-items: center;
-  border-top: 1px solid var(--ars-network);
-  font-size: var(--font-size-sm);
-}
-
-.memberRow:first-child {
-  border-top: none;
-}
-
-.memberRow:hover {
-  background: var(--ars-paper);
-}
-
-.memberId {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink-muted);
-}
-
-.memberStudent {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
-.memberStatus {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-success);
-}
-
-.memberJoined {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-}
-
-/* ── Material list ───────────────────────────────────────────── */
-.materialList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.materialRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--ars-network);
-}
-
-.materialRow:first-child {
-  border-top: none;
-}
-
-.materialMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.materialTitle {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
-.materialDesc {
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-}
-
-.openLink {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-lecturer);
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  text-decoration: none;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.openLink:hover {
-  background: var(--ars-lecturer-light);
-}
-
-.openLink:focus-visible {
-  outline: 2px solid var(--ars-lecturer);
-  outline-offset: 2px;
-}
-
-/* ── Header actions ──────────────────────────────────────────── */
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.editGroupBtn {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-lecturer);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.editGroupBtn:hover {
-  background: var(--ars-lecturer-light);
-  border-color: var(--ars-lecturer);
-}
-
-.editGroupBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer);
-  outline-offset: 2px;
-}
-
-.refreshBtn {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.refreshBtn:hover {
-  color: var(--ars-ink);
-  background: var(--ars-paper-inset);
-}
-
-.refreshBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer);
-  outline-offset: 2px;
-}
-
-/* ── Banner ──────────────────────────────────────────────────── */
+/* ── Banner ─────────────────────────────────────────────────── */
 .banner {
   display: flex;
   align-items: flex-start;
@@ -447,7 +451,7 @@
   outline-offset: 2px;
 }
 
-/* ── Loading & error panel ───────────────────────────────────── */
+/* ── Loading & error panel ─────────────────────────────────── */
 .loadingPanel {
   display: flex;
   align-items: center;
@@ -456,6 +460,7 @@
   padding: var(--space-6);
   color: var(--ars-ink-muted);
   font-size: var(--font-size-sm);
+  background: var(--surface-sunken);
 }
 
 .errorPanel {
@@ -469,11 +474,12 @@
   font-size: var(--font-size-sm);
   color: var(--ars-error);
   flex-wrap: wrap;
+  margin: var(--space-4) var(--space-5);
 }
 
 .errorPanel code {
   font-family: var(--font-family-mono);
-  background: var(--ars-paper);
+  background: var(--surface-raised);
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
 }
@@ -491,6 +497,7 @@
   align-items: center;
   gap: var(--space-1);
   flex-shrink: 0;
+  font-family: var(--font-family-ui);
 }
 
 .retryBtn:hover {
@@ -502,13 +509,279 @@
   outline-offset: 2px;
 }
 
-.fullWidthBtn {
+/* ── Member list ────────────────────────────────────────────── */
+.memberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
 }
 
-/* ── Modal ───────────────────────────────────────────────────── */
-.modalOverlay {
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast);
+}
+
+.memberRow:first-child {
+  border-top: none;
+}
+
+.memberRow:hover {
+  background: var(--surface-sunken);
+}
+
+.memberIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.memberAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+}
+
+.memberAvatarLeader {
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer-mid);
+}
+
+.memberBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.memberNameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.memberStudent {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+}
+
+.leaderBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer-mid);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+}
+
+.memberMeta {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.memberMeta strong {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+.memberActions {
+  flex-shrink: 0;
+}
+
+.setLeaderBtn,
+.removeLeaderBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-family-ui);
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.setLeaderBtn {
+  background: var(--surface-raised);
+  border-color: var(--border-subtle);
+  color: var(--ars-ink);
+}
+
+.setLeaderBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-light);
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer-mid);
+}
+
+.setLeaderBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.removeLeaderBtn {
+  background: var(--surface-raised);
+  border-color: color-mix(in srgb, var(--ars-error) 35%, transparent);
+  color: var(--ars-error);
+}
+
+.removeLeaderBtn:hover:not(:disabled) {
+  background: var(--ars-error-bg);
+}
+
+.removeLeaderBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+.setLeaderBtn:disabled,
+.removeLeaderBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.leaderCrown {
+  color: var(--ars-lecturer);
+}
+
+/* ── Invite students button (in card header) ────────────────── */
+.inviteStudentsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-lecturer);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+}
+
+.inviteStudentsBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+}
+
+.inviteStudentsBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.inviteStudentsBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Material list ──────────────────────────────────────────── */
+.materialList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.materialRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.materialRow:first-child {
+  border-top: none;
+}
+
+.materialRow:hover {
+  background: var(--surface-sunken);
+}
+
+.materialMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.materialTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.materialDesc {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+/* ── Open link ──────────────────────────────────────────────── */
+.openLink {
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-lecturer);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: var(--font-family-ui);
+}
+
+.openLink:hover {
+  background: var(--ars-lecturer-light);
+}
+
+.openLink:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Modal (Edit Group + Invite Students share this surface) ── */
+.modalOverlay,
+.modalBackdrop {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
@@ -521,8 +794,9 @@
   animation: fadeIn 0.15s ease-out;
 }
 
-.modalCard {
-  background: var(--ars-paper);
+.modalCard,
+.modal {
+  background: var(--surface-raised);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
@@ -534,19 +808,22 @@
   border: var(--border-thin);
 }
 
+.modalHeaderRow,
 .modalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-5) var(--space-5) var(--space-4);
-  border-bottom: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .modalTitleBlock {
   display: flex;
   gap: var(--space-3);
   align-items: flex-start;
+  min-width: 0;
+  flex: 1;
 }
 
 .modalIconCircle {
@@ -554,7 +831,7 @@
   height: 36px;
   border-radius: 50%;
   background: var(--ars-lecturer-light);
-  color: var(--ars-lecturer);
+  color: var(--ars-lecturer-mid);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -567,6 +844,10 @@
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   margin: 0;
+  line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .modalSubtitle {
@@ -576,7 +857,8 @@
   margin-top: 2px;
 }
 
-.closeBtn {
+.closeBtn,
+.modalCloseBtn {
   background: transparent;
   border: none;
   color: var(--ars-ink-muted);
@@ -587,18 +869,21 @@
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   transition: color var(--transition-fast);
+  font-family: var(--font-family-ui);
 }
 
-.closeBtn:hover {
+.closeBtn:hover,
+.modalCloseBtn:hover {
   color: var(--ars-ink);
 }
 
-.closeBtn:focus-visible {
+.closeBtn:focus-visible,
+.modalCloseBtn:focus-visible {
   outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
 }
 
-.modalBody {
+.modalForm {
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -610,10 +895,11 @@
   gap: var(--space-3);
   justify-content: flex-end;
   padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--ars-network);
-  background: var(--ars-paper-alt);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
 }
 
+/* ── Form controls (shared by both modals) ──────────────────── */
 .formGroup {
   display: flex;
   flex-direction: column;
@@ -633,9 +919,9 @@
 .formTextarea {
   width: 100%;
   padding: 0 var(--space-3);
-  border: 1px solid var(--ars-node);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--ars-paper);
+  background: var(--surface-base);
   color: var(--ars-ink);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
@@ -668,37 +954,100 @@
   background-color: var(--ars-error-bg);
 }
 
-/* Lecturer primary button */
-.lecturerPrimary {
-  background-color: var(--ars-lecturer) !important;
-  border-color: var(--ars-lecturer) !important;
+.cancelBtn {
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
 }
 
-.lecturerPrimary:hover:not(:disabled) {
-  background-color: var(--ars-lecturer-mid) !important;
-  border-color: var(--ars-lecturer-mid) !important;
+.cancelBtn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--ars-ink-muted);
 }
 
-/* Spinner */
-.spinning {
+.cancelBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primaryBtn {
+  background: var(--ars-lecturer);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: background var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primaryBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Spinner ────────────────────────────────────────────────── */
+.spinning,
+.spinningIcon {
   animation: spin 0.9s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Responsive ──────────────────────────────────────────────── */
+/* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .root {
+    gap: var(--space-4);
+  }
+
+  .pageHeader {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .pageHeader::before {
+    top: var(--space-4);
+    left: var(--space-4);
+  }
+
+  .pageTitle,
+  .pageSubtitle,
+  .cardTitle {
+    padding-left: var(--space-3);
+  }
+
   .metaCell {
     flex: 1 1 100%;
     border-right: none;
-    border-bottom: 1px solid var(--ars-network);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .metaCell:last-child {
@@ -706,83 +1055,29 @@
   }
 
   .memberRow {
-    grid-template-columns: 1fr;
-    gap: var(--space-1);
+    flex-direction: column;
+    align-items: stretch;
   }
 
+  .memberActions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .modalHeaderRow,
   .modalHeader,
-  .modalBody,
+  .modalForm,
   .modalFooter {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
   }
-}
 
-/* ── Topic summary row (assigned topic block in GroupDetail) ───── */
-.cardInner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  flex-wrap: wrap;
-}
+  .materialRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.topicSummaryText {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.cardHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  width: 100%;
-  flex-wrap: wrap;
-}
-
-.inviteStudentsBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: var(--ars-lecturer);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-}
-
-.inviteStudentsBtn:hover {
-  background: var(--ars-lecturer-mid);
-}
-
-.inviteStudentsBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer);
-  outline-offset: 2px;
-}
-
-.inviteStudentsBtn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.openLinkPushRight {
-  margin-left: auto;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spinning,
-  .modalOverlay,
-  .banner,
-  .card {
-    animation: none !important;
+  .errorPanel {
+    margin: var(--space-3) var(--space-4);
   }
 }

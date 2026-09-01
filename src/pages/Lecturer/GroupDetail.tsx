@@ -115,13 +115,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
     refetch: refetchGroups,
   } = useResearchGroups();
 
-  // The single group this page is about.
   const group: ResearchGroup | null = useMemo(() => {
     if (parsedGroupId === null) return null;
     return groups.find((g) => g.id === parsedGroupId) ?? null;
   }, [groups, parsedGroupId]);
 
-  // Members of the group (BE has no `?researchGroupId=`, so we filter client-side).
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -134,22 +132,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const rows = await groupMemberService.getMembersForGroup(parsedGroupId);
       setMembers(rows);
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Failed to load group members.';
-      setMembersError(message);
+      setMembersError(err instanceof Error ? err.message : 'Failed to load group members.');
       setMembers([]);
     } finally {
       setIsMembersLoading(false);
     }
   }, [parsedGroupId]);
 
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
+  useEffect(() => { void loadMembers(); }, [loadMembers]);
 
-  // Phased Reports — used by the milestone summary card.
   const {
     reports,
     isLoading: isReportsLoading,
@@ -157,7 +148,6 @@ export const LecturerGroupDetail = (): JSX.Element => {
     refetch: refetchReports,
   } = usePhasedReports(parsedGroupId);
 
-  // Learning Materials filtered by lecturerId.
   const lecturerId = group?.lecturerId ?? user?.userId ?? null;
   const {
     materials,
@@ -166,7 +156,6 @@ export const LecturerGroupDetail = (): JSX.Element => {
     refetch: refetchMaterials,
   } = useLearningMaterials({ lecturerId });
 
-  // Related topic — needed for derived group status.
   const { topics } = useResearchTopics();
   const relatedTopic = useMemo(() => {
     if (!group || typeof group.topicId !== 'number') return null;
@@ -178,21 +167,20 @@ export const LecturerGroupDetail = (): JSX.Element => {
     [group, relatedTopic],
   );
 
-  // Lecturer display name for the group owner chip.
   const ownerLecturerId =
     typeof group?.lecturerId === 'number' && group.lecturerId > 0
       ? group.lecturerId
       : null;
   const { displayName: ownerName } = useLecturerProfile(ownerLecturerId);
 
-  // ── Banner state ──────────────────────────────────────────────────────
+  // Banner state
   const [banner, setBanner] = useState<BannerState>({
     visible: false,
     text: '',
     variant: 'success',
   });
 
-  // ── Edit Group modal state (L2.g) ─────────────────────────────────────
+  // Edit Group modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -253,17 +241,17 @@ export const LecturerGroupDetail = (): JSX.Element => {
       });
       await refetchGroups();
     } catch (err) {
-      const message =
+      setEditGroupError(
         err instanceof Error
           ? err.message
-          : 'The server rejected the group update.';
-      setEditGroupError(message);
+          : 'The server rejected the group update.',
+      );
     } finally {
       setIsSavingGroup(false);
     }
   };
 
-  // ── Invite members modal state ──────────────────────────────────────────
+  // Invite students modal
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [inviteEmailsInput, setInviteEmailsInput] = useState<string>('');
   const [isInviting, setIsInviting] = useState<boolean>(false);
@@ -291,17 +279,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
       .split(/[\n,;]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
-
     if (members.length + emails.length > 4) {
       setInviteError(`A group can have at most 4 members. You can invite ${Math.max(0, 4 - members.length)} more student(s).`);
       return;
     }
-
     if (emails.length === 0) {
       setInviteError('Please enter at least one valid email address.');
       return;
     }
-
     setIsInviting(true);
     setInviteError(null);
     try {
@@ -314,19 +299,18 @@ export const LecturerGroupDetail = (): JSX.Element => {
       if (notFoundCount > 0) {
         msg += ` (${notFoundCount} email(s) not found in system: ${res.notFoundEmails?.join(', ')})`;
       }
-      setBanner({
-        visible: true,
-        text: msg,
-        variant: 'success',
-      });
+      setBanner({ visible: true, text: msg, variant: 'success' });
       await loadMembers();
-    } catch (err: any) {
-      const status = err?.response?.status;
-      setInviteError(status === 401
-        ? 'Your session has expired. Please sign in again.'
-        : status === 403
-          ? 'You are not allowed to invite students to this group.'
-          : err?.response?.data?.message || err?.message || 'Failed to send invitations.');
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = e?.response?.status;
+      setInviteError(
+        status === 401
+          ? 'Your session has expired. Please sign in again.'
+          : status === 403
+            ? 'You are not allowed to invite students to this group.'
+            : e?.response?.data?.message || e?.message || 'Failed to send invitations.',
+      );
     } finally {
       setIsInviting(false);
     }
@@ -352,14 +336,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
         variant: 'success',
       });
       await loadMembers();
-    } catch (err: any) {
-      const status = err?.response?.status;
-      const msg = status === 401 ? 'Your session has expired. Please sign in again.' : status === 403 ? 'You are not allowed to change the group leader.' : err?.response?.data?.message || err?.message || 'Unable to assign group leader.';
-      setBanner({
-        visible: true,
-        text: msg,
-        variant: 'error',
-      });
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = e?.response?.status;
+      const msg = status === 401
+        ? 'Your session has expired. Please sign in again.'
+        : status === 403
+          ? 'You are not allowed to change the group leader.'
+          : e?.response?.data?.message || e?.message || 'Unable to assign group leader.';
+      setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setLeaderActionLoading(null);
     }
@@ -377,14 +362,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
         variant: 'success',
       });
       await loadMembers();
-    } catch (err: any) {
-      const status = err?.response?.status;
-      const msg = status === 401 ? 'Your session has expired. Please sign in again.' : status === 403 ? 'You are not allowed to change the group leader.' : err?.response?.data?.message || err?.message || 'Unable to remove group leader.';
-      setBanner({
-        visible: true,
-        text: msg,
-        variant: 'error',
-      });
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = e?.response?.status;
+      const msg = status === 401
+        ? 'Your session has expired. Please sign in again.'
+        : status === 403
+          ? 'You are not allowed to change the group leader.'
+          : e?.response?.data?.message || e?.message || 'Unable to remove group leader.';
+      setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setLeaderActionLoading(null);
     }
@@ -392,20 +378,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   const handleRefreshAll = async () => {
     try {
-      await Promise.all([
-        refetchGroups(),
-        refetchReports(),
-        refetchMaterials(),
-        loadMembers(),
-      ]);
-    } catch (err) {
-      // Errors are surfaced via the per-card banners, no top-level surface
-      // needed. We swallow here so the refresh button never throws.
-      void err;
-    }
+      await Promise.all([refetchGroups(), refetchReports(), refetchMaterials(), loadMembers()]);
+    } catch { /* surfaced per-card */ }
   };
 
-  // ── Empty / not-found states ─────────────────────────────────────────
+  // Not-found / loading states
   if (parsedGroupId === null) {
     return (
       <div className={styles.root} data-testid="lecturer-group-detail">
@@ -438,24 +415,13 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <AlertTriangle size={18} aria-hidden />
           <span>
             No research group with id <code>#{parsedGroupId}</code> was found.
-            It may have been deleted, or you may not have access to it.
           </span>
         </div>
-        <button
-          type="button"
-          className={styles.refreshBtn}
-          onClick={() => void refetchGroups()}
-        >
-          <RefreshCw size={14} aria-hidden />
-          Retry
+        <button type="button" className={styles.refreshBtn} onClick={() => void refetchGroups()}>
+          <RefreshCw size={14} aria-hidden /> Retry
         </button>
-        <button
-          type="button"
-          className={styles.backBtn}
-          onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
-        >
-          <ArrowLeft size={14} aria-hidden />
-          Back to Research Groups
+        <button type="button" className={styles.backBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
+          <ArrowLeft size={14} aria-hidden /> Back to Research Groups
         </button>
       </div>
     );
@@ -465,18 +431,22 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   return (
     <div className={styles.root} data-testid="lecturer-group-detail">
-      {/* HEADER */}
+      {/* Back row — on its own line above the title for clear page hierarchy */}
+      <div className={styles.backRow}>
+        <button
+          type="button"
+          className={styles.backBtn}
+          onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
+          aria-label="Back to research groups"
+        >
+          <ArrowLeft size={14} aria-hidden />
+          Back
+        </button>
+      </div>
+
+      {/* Page header — title + subtitle left, status + actions right */}
       <header className={styles.pageHeader}>
         <div className={styles.headerLeft}>
-          <button
-            type="button"
-            className={styles.backBtn}
-            onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
-            aria-label="Back to research groups"
-          >
-            <ArrowLeft size={14} aria-hidden />
-            Back
-          </button>
           <div className={styles.headerTitleBlock}>
             <h1 className={styles.pageTitle}>{groupName}</h1>
             <span className={styles.pageSubtitle}>
@@ -486,48 +456,33 @@ export const LecturerGroupDetail = (): JSX.Element => {
         </div>
         <div className={styles.headerActions}>
           <StatusBadge status={derivedStatus} />
-          <button
-            type="button"
-            className={styles.editGroupBtn}
-            onClick={openEditModal}
-            title="Edit group metadata"
-          >
+          <button type="button" className={styles.editGroupBtn} onClick={openEditModal}>
             <Pencil size={14} aria-hidden />
             Edit group
           </button>
-          <button
-            type="button"
-            className={styles.refreshBtn}
-            onClick={() => void handleRefreshAll()}
-          >
+          <button type="button" className={styles.refreshBtn} onClick={() => void handleRefreshAll()}>
             <RefreshCw size={14} aria-hidden />
             Refresh
           </button>
         </div>
       </header>
 
-      {/* BANNER */}
+      {/* Banner */}
       {banner.visible && (
         <div
-          className={`${styles.banner} ${
-            banner.variant === 'success' ? styles.bannerSuccess : styles.bannerError
-          }`}
+          className={`${styles.banner} ${banner.variant === 'success' ? styles.bannerSuccess : styles.bannerError}`}
           role="status"
         >
           <span className={styles.bannerIcon}>
-            {banner.variant === 'success' ? (
-              <CheckCircle2 size={14} aria-hidden />
-            ) : (
-              <AlertTriangle size={14} aria-hidden />
-            )}
+            {banner.variant === 'success'
+              ? <CheckCircle2 size={14} aria-hidden />
+              : <AlertTriangle size={14} aria-hidden />}
           </span>
           <span className={styles.bannerText}>{banner.text}</span>
           <button
             type="button"
             className={styles.bannerCloseBtn}
-            onClick={() =>
-              setBanner({ visible: false, text: '', variant: 'success' })
-            }
+            onClick={() => setBanner({ visible: false, text: '', variant: 'success' })}
             aria-label="Dismiss"
           >
             <X size={14} aria-hidden />
@@ -538,35 +493,33 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {groupsError && (
         <div className={styles.errorPanel} role="alert">
           <AlertTriangle size={14} aria-hidden />
-          <span>Could not load the latest group metadata: {groupsError.message}</span>
+          <span>Could not load group metadata: {groupsError.message}</span>
+          <button type="button" className={styles.retryBtn} onClick={() => void refetchGroups()}>
+            Retry
+          </button>
         </div>
       )}
 
-      {/* METADATA STRIP */}
+      {/* Metadata strip */}
       <section className={styles.metaStrip}>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
             <Calendar size={12} aria-hidden /> Deadline
           </span>
-          <span className={styles.metaValue}>
-            {formatDateOnly(group.deadline ?? null)}
-          </span>
+          <span className={styles.metaValue}>{formatDateOnly(group.deadline ?? null)}</span>
         </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
             <Clock size={12} aria-hidden /> Assigned at
           </span>
-          <span className={styles.metaValue}>
-            {formatDateTime(group.assignedAt ?? null)}
-          </span>
+          <span className={styles.metaValue}>{formatDateTime(group.assignedAt ?? null)}</span>
         </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
             <Users size={12} aria-hidden /> Members
           </span>
           <span className={styles.metaValue}>
-            {members.length}
-            {isMembersLoading ? ' (loading…)' : ''}
+            {members.length}{isMembersLoading ? ' (loading\u2026)' : ''}
           </span>
         </div>
         <div className={styles.metaCell}>
@@ -574,58 +527,50 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <FileText size={12} aria-hidden /> Phased reports
           </span>
           <span className={styles.metaValue}>
-            {reports.length}
-            {isReportsLoading ? ' (loading…)' : ''}
+            {reports.length}{isReportsLoading ? ' (loading\u2026)' : ''}
           </span>
         </div>
       </section>
 
-      {/* ASSIGNED TOPIC SUMMARY (Lecturer Navigation Agent) — read-only link
-          to the canonical Research Topics page. CRUD for topics lives on
-          that page; this card is just the entry point from the group
-          detail view. */}
+      {/* Assigned topic */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            Assigned topic
-          </h2>
+          <h2 className={styles.cardTitle}>Assigned topic</h2>
           <span className={styles.cardHint}>
             The Research Topic this group is working on. Manage topics on the{' '}
-            <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link>{' '}
-            page.
+            <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link> page.
           </span>
         </header>
         {relatedTopic ? (
-          <div className={styles.cardInner} data-testid="group-detail-topic-summary">
-            <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
-            <span className={styles.topicSummaryText}>
-              <strong>{relatedTopic.title ?? `RT-${group.topicId}`}</strong>
-              {relatedTopic.description?.trim() && (
-                <div className={styles.topicSummaryDesc}>
-                  {relatedTopic.description}
-                </div>
-              )}
-            </span>
-            <Link
-              to={ROUTES.LECTURER_RESEARCH_TOPICS}
-              className={styles.openLink}
-              data-testid="group-detail-topic-link"
-            >
-              <ExternalLink size={14} aria-hidden /> Open topic
-            </Link>
+          <div className={styles.cardBody}>
+            <div className={styles.cardInner}>
+              <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
+              <div className={styles.topicSummaryText}>
+                <strong className={styles.topicSummaryTitle}>
+                  {relatedTopic.title ?? `RT-${group.topicId}`}
+                </strong>
+                {relatedTopic.description?.trim() && (
+                  <span className={styles.topicSummaryDesc}>
+                    {relatedTopic.description}
+                  </span>
+                )}
+              </div>
+              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.openLink}>
+                <ExternalLink size={14} aria-hidden /> Open topic
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className={styles.emptyState}>
-            <span>
-              No research topic has been assigned to this group yet. Open{' '}
-              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link>{' '}
-              to assign one.
-            </span>
+          <div className={styles.cardBody}>
+            <div className={styles.emptyState}>
+              No research topic assigned yet.{' '}
+              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Assign one from Research Topics.</Link>
+            </div>
           </div>
         )}
       </section>
 
-      {/* MILESTONE SUMMARY (L2.e) */}
+      {/* Milestone summary */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
           <h2 className={styles.cardTitle}>Milestone summary</h2>
@@ -637,41 +582,36 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <div className={styles.errorPanel} role="alert">
             <AlertTriangle size={14} aria-hidden />
             <span>Could not load reports: {reportsError.message}</span>
-            <button
-              type="button"
-              className={styles.retryBtn}
-              onClick={() => void refetchReports()}
-            >
+            <button type="button" className={styles.retryBtn} onClick={() => void refetchReports()}>
               Retry
             </button>
           </div>
         )}
         {reports.length === 0 && !isReportsLoading && !reportsError && (
-          <div className={styles.emptyState}>
-            <FileText size={18} aria-hidden />
-            <span>
-              No phased reports have been submitted for this group yet.
-            </span>
+          <div className={styles.cardBody}>
+            <div className={styles.emptyState}>
+              <FileText size={18} aria-hidden />
+              No phased reports submitted yet.
+            </div>
           </div>
         )}
         {reports.length > 0 && (
-          <MilestoneProgress reports={reports} className={styles.cardInner} />
+          <>
+            <div className={styles.cardBody}>
+              <MilestoneProgress reports={reports} className={styles.cardInner} />
+            </div>
+            <div className={styles.gapNote} role="note">
+              <AlertTriangle size={14} aria-hidden />
+              <span>
+                The BE does not yet expose <code>GET /api/Milestone</code>. This
+                card counts Phased Reports as a stand-in.
+              </span>
+            </div>
+          </>
         )}
-        {/* BE-gap banner — the canonical /api/Milestone endpoint does not
-            exist yet (gap ticket §E.6.2 / §C.3). Once the BE ships the
-            milestone entity we can replace this section with a richer
-            timeline component. */}
-        <div className={styles.gapNote} role="note">
-          <AlertTriangle size={14} aria-hidden />
-          <span>
-            The BE does not yet expose <code>GET /api/Milestone</code>. This
-            card counts Phased Reports as a stand-in. A real milestone
-            timeline ships once BE adds the resource per gap ticket §E.6.2.
-          </span>
-        </div>
       </section>
 
-      {/* MEMBERS LIST (L2.b) */}
+      {/* Members */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
           <div className={styles.cardHeaderRow}>
@@ -688,20 +628,19 @@ export const LecturerGroupDetail = (): JSX.Element => {
               <UserPlus size={14} aria-hidden /> Invite students
             </button>
           </div>
-          <BackendGapBanner field="ResearchGroup maximum member count" feature="The four-member limit is enforced in this interface; the live backend contract does not document the constraint" />
+          <BackendGapBanner
+            field="ResearchGroup maximum member count"
+            feature="The four-member limit is enforced in this interface; the BE contract does not document the constraint"
+          />
           <span className={styles.cardHint}>
-            Manage student members in this group. You can invite new students directly by email.
+            Manage student members in this group.
           </span>
         </header>
         {membersError && (
           <div className={styles.errorPanel} role="alert">
             <AlertTriangle size={14} aria-hidden />
             <span>{membersError}</span>
-            <button
-              type="button"
-              className={styles.retryBtn}
-              onClick={() => void loadMembers()}
-            >
+            <button type="button" className={styles.retryBtn} onClick={() => void loadMembers()}>
               Retry
             </button>
           </div>
@@ -709,115 +648,72 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {isMembersLoading ? (
           <div className={styles.loadingPanel}>
             <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            Loading members…
+            Loading members\u2026
           </div>
         ) : members.length === 0 ? (
           <div className={styles.emptyState}>
             <Users size={18} aria-hidden />
-            <span>
-              No students have joined this group yet. Use the Members tab to
-              send invitations.
-            </span>
+            No students have joined this group yet.
           </div>
         ) : (
           <ul className={styles.memberList}>
             {members.map((m) => {
               const mid = typeof m.id === 'number' ? m.id : -1;
               const isBusy = leaderActionLoading === mid;
+              const initials = (m.studentName ?? '').trim().slice(0, 2).toUpperCase() || 'ST';
               return (
-                <li key={`member-${mid}`} className={styles.memberRow} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <li key={`member-${mid}`} className={styles.memberRow}>
+                  <div className={styles.memberIdentity}>
                     <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        backgroundColor: m.isLeader ? '#fef3c7' : '#e0e7ff',
-                        color: m.isLeader ? '#b45309' : '#3730a3',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                      }}
+                      className={`${styles.memberAvatar} ${m.isLeader ? styles.memberAvatarLeader : ''}`}
+                      aria-hidden
                     >
-                      {m.isLeader ? <Crown size={18} /> : (m.studentName ? m.studentName.slice(0, 2).toUpperCase() : 'ST')}
+                      {m.isLeader ? <Crown size={18} /> : initials}
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.95rem', color: 'var(--ink-primary)' }}>
+                    <div className={styles.memberBody}>
+                      <div className={styles.memberNameRow}>
+                        <span className={styles.memberStudent}>
                           {m.studentName || `Student #${m.studentId ?? mid}`}
-                        </strong>
+                        </span>
                         {m.isLeader && (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              backgroundColor: '#fef3c7',
-                              color: '#92400e',
-                              border: '1px solid #fde68a',
-                            }}
-                          >
-                            <Crown size={12} /> Trưởng nhóm (Leader)
+                          <span className={styles.leaderBadge}>
+                            <Crown size={12} aria-hidden />
+                            Trưởng nhóm (Leader)
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-                        {m.studentEmail && <span>{m.studentEmail} · </span>}
-                        <span>Status: <strong>{m.activityStatus ?? 'Joined'}</strong></span>
-                        <span> · Joined {formatDateOnly(m.joinedAt ?? null)}</span>
+                      <div className={styles.memberMeta}>
+                        {m.studentEmail && <span>{m.studentEmail}</span>}
+                        <span>
+                          Status: <strong>{m.activityStatus ?? 'Joined'}</strong>
+                        </span>
+                        <span>Joined {formatDateOnly(m.joinedAt ?? null)}</span>
                       </div>
                     </div>
                   </div>
-
-                  <div>
+                  <div className={styles.memberActions}>
                     {m.isLeader ? (
                       <button
                         type="button"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #fca5a5',
-                          backgroundColor: '#fef2f2',
-                          color: '#b91c1c',
-                          fontSize: '0.8125rem',
-                          fontWeight: 500,
-                          cursor: isBusy ? 'not-allowed' : 'pointer',
-                        }}
+                        className={styles.removeLeaderBtn}
                         onClick={() => void handleRemoveLeader(m)}
                         disabled={isBusy}
                       >
-                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <X size={14} />}
+                        {isBusy
+                          ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
+                          : <X size={14} aria-hidden />}
                         Hủy Trưởng nhóm
                       </button>
                     ) : (
                       <button
                         type="button"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          backgroundColor: '#ffffff',
-                          color: '#0f172a',
-                          fontSize: '0.8125rem',
-                          fontWeight: 500,
-                          cursor: isBusy ? 'not-allowed' : 'pointer',
-                        }}
+                        className={styles.setLeaderBtn}
                         onClick={() => void handleSetLeader(m)}
                         disabled={isBusy}
                       >
-                        {isBusy ? <Loader size={12} className={styles.spinningIcon} /> : <Crown size={14} color="#d97706" />}
+                        {isBusy
+                          ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
+                          : <Crown size={14} className={styles.leaderCrown} aria-hidden />}
                         Gán Trưởng nhóm
                       </button>
                     )}
@@ -829,26 +725,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
         )}
       </section>
 
-      {/* LEARNING MATERIALS (L2.c) */}
+      {/* Learning materials */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
           <h2 className={styles.cardTitle}>
             <Library size={16} aria-hidden /> Learning materials
           </h2>
           <span className={styles.cardHint}>
-            Scoped to your lecturer library. BE has no group FK so we filter
-            by <code>lecturerId</code>.
+            Scoped to your lecturer library.
           </span>
         </header>
         {materialsError && (
           <div className={styles.errorPanel} role="alert">
             <AlertTriangle size={14} aria-hidden />
             <span>{materialsError.message}</span>
-            <button
-              type="button"
-              className={styles.retryBtn}
-              onClick={() => void refetchMaterials()}
-            >
+            <button type="button" className={styles.retryBtn} onClick={() => void refetchMaterials()}>
               Retry
             </button>
           </div>
@@ -856,15 +747,12 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {isMaterialsLoading ? (
           <div className={styles.loadingPanel}>
             <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            Loading materials…
+            Loading materials\u2026
           </div>
         ) : materials.length === 0 ? (
           <div className={styles.emptyState}>
             <Library size={18} aria-hidden />
-            <span>
-              No learning materials attached to this group yet. Create one
-              from the Research Topic row "Manage Materials" button.
-            </span>
+            No learning materials attached yet.
           </div>
         ) : (
           <ul className={styles.materialList}>
@@ -876,9 +764,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   <div className={styles.materialMeta}>
                     <span className={styles.materialTitle}>{title}</span>
                     {m.description?.trim() && (
-                      <span className={styles.materialDesc}>
-                        {m.description}
-                      </span>
+                      <span className={styles.materialDesc}>{m.description}</span>
                     )}
                   </div>
                   {m.fileUrl && (
@@ -899,7 +785,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
         )}
       </section>
 
-      {/* EDIT GROUP MODAL (L2.g) */}
+      {/* ── Edit Group modal ─────────────────────────────────── */}
       {showEditModal && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalCard}>
@@ -910,9 +796,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>Edit group metadata</h3>
-                  <span className={styles.modalSubtitle}>
-                    {groupName}
-                  </span>
+                  <span className={styles.modalSubtitle}>{groupName}</span>
                 </div>
               </div>
               <button
@@ -927,61 +811,61 @@ export const LecturerGroupDetail = (): JSX.Element => {
             </div>
 
             <form
+              id="edit-group-form"
               onSubmit={handleEditGroupSubmit}
               className={styles.modalForm}
-              data-testid="edit-group-form"
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupName">
                   * Group name
                 </label>
-<input
-                id="groupName"
-                type="text"
-                className={`${styles.formInput} ${editNameError ? styles.formInputError : ''}`}
-                value={editName}
-                onChange={(e) => {
-                  setEditName(e.target.value);
-                  if (editNameError) setEditNameError(null);
-                }}
-                aria-invalid={Boolean(editNameError)}
-                aria-describedby={editNameError ? 'gd-group-name-error' : undefined}
-                required
-              />
-              <FieldError id="gd-group-name-error" message={editNameError} testId="gd-group-name-error" />
-            </div>
+                <input
+                  id="groupName"
+                  type="text"
+                  className={`${styles.formInput} ${editNameError ? styles.formInputError : ''}`}
+                  value={editName}
+                  onChange={(e) => {
+                    setEditName(e.target.value);
+                    if (editNameError) setEditNameError(null);
+                  }}
+                  aria-invalid={Boolean(editNameError)}
+                  aria-describedby={editNameError ? 'gd-group-name-error' : undefined}
+                  required
+                />
+                <FieldError id="gd-group-name-error" message={editNameError} testId="gd-group-name-error" />
+              </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel} htmlFor="groupDesc">
-                Description
-              </label>
-              <textarea
-                id="groupDesc"
-                className={styles.formTextarea}
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                rows={3}
-              />
-            </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="groupDesc">
+                  Description
+                </label>
+                <textarea
+                  id="groupDesc"
+                  className={styles.formTextarea}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={3}
+                />
+              </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel} htmlFor="groupDeadline">
-                Deadline
-              </label>
-              <input
-                id="groupDeadline"
-                type="date"
-                className={`${styles.formInput} ${editDeadlineError ? styles.formInputError : ''}`}
-                value={editDeadline}
-                onChange={(e) => {
-                  setEditDeadline(e.target.value);
-                  if (editDeadlineError) setEditDeadlineError(null);
-                }}
-                aria-invalid={Boolean(editDeadlineError)}
-                aria-describedby={editDeadlineError ? 'gd-deadline-error' : undefined}
-              />
-              <FieldError id="gd-deadline-error" message={editDeadlineError} testId="gd-deadline-error" />
-            </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="groupDeadline">
+                  Deadline
+                </label>
+                <input
+                  id="groupDeadline"
+                  type="date"
+                  className={`${styles.formInput} ${editDeadlineError ? styles.formInputError : ''}`}
+                  value={editDeadline}
+                  onChange={(e) => {
+                    setEditDeadline(e.target.value);
+                    if (editDeadlineError) setEditDeadlineError(null);
+                  }}
+                  aria-invalid={Boolean(editDeadlineError)}
+                  aria-describedby={editDeadlineError ? 'gd-deadline-error' : undefined}
+                />
+                <FieldError id="gd-deadline-error" message={editDeadlineError} testId="gd-deadline-error" />
+              </div>
 
               {editGroupError && (
                 <div className={styles.errorPanel} role="alert">
@@ -989,50 +873,41 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   <span>{editGroupError}</span>
                 </div>
               )}
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={closeEditModal}
-                  disabled={isSavingGroup}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.primaryBtn}
-                  disabled={isSavingGroup}
-                >
-                  {isSavingGroup ? (
-                    <Loader
-                      size={14}
-                      className={styles.spinningIcon}
-                      aria-hidden
-                    />
-                  ) : (
-                    <Check size={14} aria-hidden />
-                  )}
-                  {isSavingGroup ? 'Saving…' : 'Save group'}
-                </button>
-              </div>
             </form>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={closeEditModal}
+                disabled={isSavingGroup}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-group-form"
+                className={styles.primaryBtn}
+                disabled={isSavingGroup}
+              >
+                {isSavingGroup
+                  ? <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  : <Check size={14} aria-hidden />}
+                {isSavingGroup ? 'Saving\u2026' : 'Save group'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* INVITE STUDENTS MODAL */}
+      {/* ── Invite Students modal ──────────────────────────────── */}
       {showInviteModal && (
-        <div
-          className={styles.modalBackdrop}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="inviteStudentsModalTitle"
-        >
+        <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="inviteStudentsTitle">
           <div className={styles.modal}>
             <header className={styles.modalHeader}>
-              <h2 id="inviteStudentsModalTitle" className={styles.modalTitle}>
-                <UserPlus size={18} aria-hidden /> Invite Students to Research Group
+              <h2 id="inviteStudentsTitle" className={styles.modalTitle}>
+                <UserPlus size={18} aria-hidden />
+                Invite Students to Research Group
               </h2>
               <button
                 type="button"
@@ -1045,16 +920,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
               </button>
             </header>
 
-            <form onSubmit={handleInviteStudents} className={styles.modalForm} noValidate>
+            <form
+              id="invite-students-form"
+              onSubmit={handleInviteStudents}
+              className={styles.modalForm}
+              noValidate
+            >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="inviteEmails">
-                  Student Email Addresses (separated by commas or newlines)
+                  Student email addresses (separated by commas or new lines)
                 </label>
                 <textarea
                   id="inviteEmails"
                   className={styles.formTextarea}
                   rows={4}
-                  placeholder="student1@gmail.com, student2@fpt.edu.vn"
+                  placeholder={'student1@gmail.com\nstudent2@fpt.edu.vn'}
                   value={inviteEmailsInput}
                   onChange={(e) => {
                     setInviteEmailsInput(e.target.value);
@@ -1073,30 +953,29 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   <span>{inviteError}</span>
                 </div>
               )}
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.cancelBtn}
-                  onClick={closeInviteModal}
-                  disabled={isInviting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.primaryBtn}
-                  disabled={isInviting || !inviteEmailsInput.trim() || members.length >= 4}
-                >
-                  {isInviting ? (
-                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
-                  ) : (
-                    <Check size={14} aria-hidden />
-                  )}
-                  {isInviting ? 'Sending Invites…' : 'Send Invitations'}
-                </button>
-              </div>
             </form>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={closeInviteModal}
+                disabled={isInviting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="invite-students-form"
+                className={styles.primaryBtn}
+                disabled={isInviting || !inviteEmailsInput.trim() || members.length >= 4}
+              >
+                {isInviting
+                  ? <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                  : <Check size={14} aria-hidden />}
+                {isInviting ? 'Sending Invites\u2026' : 'Send Invitations'}
+              </button>
+            </div>
           </div>
         </div>
       )}

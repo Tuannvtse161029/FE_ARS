@@ -1,10 +1,23 @@
 import type { CSSProperties } from 'react';
 
 export interface BackendGapBannerProps {
-  /** Backend field or endpoint that is not available in the live contract. */
+  /**
+   * Backend field or endpoint that is not available in the live contract.
+   * If the field IS present in Swagger and the FE just doesn't render it
+   * yet, document that with `field` + `feature` and omit `demo` to keep
+   * the banner honest about whether the gap is real or just unimplemented.
+   */
   field: string;
-  /** Optional feature context, shown as supporting text. */
+  /**
+   * Optional feature context, shown as supporting text.
+   */
   feature?: string;
+  /**
+   * Set to true when the FE actually persists fake rows in a local store
+   * to mask the missing backend field. False by default — the page must
+   * not pretend the FE keeps the data alive.
+   */
+  demo?: boolean;
   className?: string;
 }
 
@@ -20,8 +33,16 @@ const bannerStyle: CSSProperties = {
   fontSize: 'var(--text-sm, 0.875rem)',
 };
 
-/** Makes backend gaps explicit without claiming demo values are persisted. */
-export const BackendGapBanner = ({ field, feature, className }: BackendGapBannerProps) => (
+/**
+ * Surfaces backend gaps honestly without claiming demo values are persisted
+ * unless the caller explicitly opts in via the `demo` prop.
+ */
+export const BackendGapBanner = ({
+  field,
+  feature,
+  demo = false,
+  className,
+}: BackendGapBannerProps) => (
   <div
     className={className}
     style={bannerStyle}
@@ -29,8 +50,18 @@ export const BackendGapBanner = ({ field, feature, className }: BackendGapBanner
     aria-live="polite"
     data-component="BackendGapBanner"
   >
-    <strong>Demo field — awaiting backend API: {field}</strong>
-    {feature && <span>{feature} is currently isolated to frontend demo state.</span>}
+    <strong>
+      {demo
+        ? `Demo field — awaiting backend API: ${field}`
+        : `Backend gap — not yet exposed by Swagger: ${field}`}
+    </strong>
+    {feature && (
+      <span>
+        {demo
+          ? `${feature} Any values entered here live only in frontend demo state and are NOT persisted to the backend.`
+          : `${feature} The page renders only the fields Swagger actually exposes.`}
+      </span>
+    )}
   </div>
 );
 

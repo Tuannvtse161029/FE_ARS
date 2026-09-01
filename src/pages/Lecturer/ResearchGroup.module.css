@@ -134,19 +134,35 @@
 .groupTitle {
   font-family: var(--font-family-ui);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   margin: 0;
   line-height: 1.3;
+  letter-spacing: -0.005em;
 }
 
 .topicRow {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: var(--font-size-xs);
   font-family: var(--font-family-mono);
   color: var(--ars-lecturer);
+  padding: 2px var(--space-2);
+  background: var(--ars-lecturer-light);
+  border-radius: var(--radius-sm);
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topicRow > span:last-child,
+.topicRow > a:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .topicLink {
@@ -215,6 +231,27 @@
   border: var(--border-thin);
   border-radius: var(--radius-sm);
   padding: 2px var(--space-2);
+}
+
+/* Leader variant — restrained: a small crown glyph + lecturer-tone
+   border, not a giant colorful badge. The pill reads as "this person
+   leads the group" without screaming for attention. */
+.memberPillLeader {
+  background: var(--ars-lecturer-light);
+  border-color: color-mix(in srgb, var(--ars-lecturer) 30%, transparent);
+  color: var(--ars-lecturer);
+}
+
+.leaderGlyph {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 2px;
+  color: var(--ars-lecturer);
+}
+
+.memberPillLeader .memberAvatar {
+  outline: 1px solid var(--ars-lecturer);
+  outline-offset: 1px;
 }
 
 .memberAvatar {
@@ -652,6 +689,7 @@
   .cardTopRow {
     flex-direction: column;
     align-items: flex-start;
+    gap: var(--space-1);
   }
 
   .cardFooter {
@@ -665,6 +703,15 @@
 
   .viewBtn {
     justify-content: center;
+  }
+
+  .memberPills {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .memberPill {
+    justify-content: flex-start;
   }
 
   .modalHeader,

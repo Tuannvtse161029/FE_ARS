@@ -61,15 +61,19 @@
   position: relative;
 }
 
+/* Subtle lecturer anchor — a single small dot at the top-left
+   reads as identity without becoming a thick coloured stripe on the
+   card edge. Matches the corner-anchor pattern used on the Research
+   Group cards and the milestone editor. */
 .pageHeader::before {
   content: '';
   position: absolute;
-  left: var(--space-3);
-  top: var(--space-3);
-  bottom: var(--space-3);
-  width: 3px;
-  background: var(--ars-lecturer, #7c2d12);
+  top: var(--space-5);
+  left: var(--space-5);
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
+  background: var(--ars-lecturer, #7c2d12);
 }
 
 /* Alias for backward compat */
@@ -90,12 +94,12 @@
 .header::before {
   content: '';
   position: absolute;
-  left: var(--space-3);
-  top: var(--space-3);
-  bottom: var(--space-3);
-  width: 3px;
-  background: var(--ars-lecturer, #7c2d12);
+  top: var(--space-5);
+  left: var(--space-5);
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
+  background: var(--ars-lecturer, #7c2d12);
 }
 
 .headerLeft {
@@ -283,7 +287,8 @@
 
   .pageHeader::before,
   .header::before {
-    left: var(--space-5);
+    left: var(--space-4);
+    top: var(--space-4);
   }
 }
 
@@ -294,60 +299,58 @@
 }
 
 /* ── Summary Tile ──────────────────────────────────────── */
+/* Editorial counters, not "AI dashboard cards". The tile reads as a
+   quiet stat row: small monospace count, uppercase mono label, no
+   saturated fill. The previous version used a coloured fill + thick
+   border that made the row look like four separate dashboard tiles;
+   this calmer version keeps the four counters on a single baseline so
+   the lecturer's eye lands on the column lists below. */
 .tile {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-xl);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
   border: var(--border-thin);
+  border-radius: var(--radius-md);
   animation: fadeIn 0.3s ease-out;
 }
 
-.tilePrimary {
-  background: var(--ars-lecturer-light, #fed7aa);
-  border-color: var(--ars-lecturer, #7c2d12);
+/* A thin accent rule at the left of each tile gives the four counters
+   just enough identity without painting the whole rectangle. */
+.tile::before {
+  content: '';
+  width: 3px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--ars-ink-muted);
+  margin-right: var(--space-2);
 }
 
-.tileWarning {
-  background: var(--ars-warning-bg);
-  border-color: var(--ars-warning);
-}
-
-.tileDanger {
-  background: var(--ars-error-bg);
-  border-color: var(--ars-error);
-}
-
-.tileInfo {
-  background: var(--ars-info-bg);
-  border-color: var(--ars-info);
-}
+.tilePrimary::before { background: var(--ars-lecturer, #7c2d12); }
+.tileWarning::before { background: var(--ars-warning); }
+.tileDanger::before  { background: var(--ars-error); }
+.tileInfo::before    { background: var(--ars-info); }
 
 .tileLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   font-family: var(--font-family-mono);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+  flex: 1;
+  min-width: 0;
 }
 
-.tilePrimary .tileLabel { color: var(--ars-lecturer, #7c2d12); }
-.tileWarning .tileLabel { color: var(--ars-warning); }
-.tileDanger .tileLabel { color: var(--ars-error); }
-.tileInfo .tileLabel { color: var(--ars-info); }
-
 .tileCount {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   font-family: var(--font-family-mono);
   line-height: 1;
+  color: var(--ars-ink);
 }
-
-.tilePrimary .tileCount { color: var(--ars-lecturer, #7c2d12); }
-.tileWarning .tileCount { color: var(--ars-warning); }
-.tileDanger .tileCount { color: var(--ars-error); }
-.tileInfo .tileCount { color: var(--ars-info); }
 
 /* ── Columns Grid ───────────────────────────────────────── */
 .columnsGrid {
@@ -496,6 +499,43 @@
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 122, 255, 0.18));
 }
 
+/* Overdue submission — left-side error stripe so the lecturer can
+   scan a column and immediately see which submissions crossed the
+   deadline. Color + position + small label together make the state
+   legible without relying on color alone. */
+.reportCard.overdueCard {
+  border-color: color-mix(in srgb, var(--ars-error) 50%, transparent);
+  background: color-mix(in srgb, var(--ars-error-bg) 40%, var(--ars-paper));
+}
+
+.reportCard.overdueCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ars-error);
+}
+
+.reportCard {
+  position: relative;
+}
+
+.overdueBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border: 1px solid color-mix(in srgb, var(--ars-error) 35%, transparent);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+}
+
 .reportCardTopRow {
   display: flex;
   align-items: center;
@@ -522,6 +562,19 @@
   gap: 4px;
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
+}
+
+/* Overdue-flagged meta line — distinct from a normal submission timestamp.
+   Used when the submittedAt is after the deadlineAt. The icon + text
+   pair gives the lecturer three signals: icon shape, icon color, and
+   text content. */
+.overdueMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--ars-error);
+  font-weight: var(--font-weight-semibold);
 }
 
 .headerActions {
@@ -614,7 +667,8 @@
 
   .pageHeader::before,
   .header::before {
-    left: var(--space-4);
+    left: var(--space-3);
+    top: var(--space-3);
   }
 
   .summaryRow {

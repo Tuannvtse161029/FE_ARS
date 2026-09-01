@@ -34,6 +34,9 @@ export interface AssignTopicModalProps {
   isOpen: boolean;
   topic: ResearchTopic | null;
   groups: ResearchGroup[];
+  /** Lecturer id of the currently signed-in user — forwarded to the BE so
+   *  the group's `lecturerId` field is preserved on PUT. */
+  currentLecturerId?: number | null;
   onClose: () => void;
   onSuccess?: (outcomes: GroupAssignOutcome[]) => void;
 }
@@ -42,6 +45,7 @@ export const AssignTopicModal = ({
   isOpen,
   topic,
   groups,
+  currentLecturerId,
   onClose,
   onSuccess,
 }: AssignTopicModalProps) => {
@@ -103,7 +107,11 @@ export const AssignTopicModal = ({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const result = await assignTopicToGroups(topic.id, ids);
+      const result = await assignTopicToGroups(
+        topic.id,
+        ids,
+        currentLecturerId ?? null,
+      );
       setOutcomes(result);
       const failures = result.filter((r) => !r.ok);
       if (failures.length === 0) {

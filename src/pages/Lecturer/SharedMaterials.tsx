@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { ExternalLink, FileText, Link2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { FileText, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -7,9 +7,6 @@ import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { sharedMaterialService, type SharedMaterial } from '../../services/sharedMaterial.service';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './SharedMaterials.module.css';
-
-type DemoType = 'pdf' | 'drive' | 'website' | 'reference';
-const demoTypeLabel: Record<DemoType, string> = { pdf: 'PDF', drive: 'Google Drive', website: 'Website', reference: 'Reference' };
 
 export const LecturerSharedMaterialsPage = (): JSX.Element => {
   const { user } = useAuth();
@@ -65,7 +62,6 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
       key={item.sharedMaterialId}
       data-testid="shared-material-card"
     ><div className={styles.cardIcon}><FileText size={20} /></div><div className={styles.cardBody}><h2>Paper #{item.paperId ?? 'Not supplied'}</h2><p>Shared with colleague #{item.sharedWithColleagueId ?? 'Not supplied'}</p><span className={styles.status}>{item.status ?? 'Unknown'}</span><small>{item.sharedAt ? new Date(item.sharedAt).toLocaleDateString() : 'Date not supplied'}</small></div><div className={styles.cardActions}><Button variant="ghost" aria-label="Edit" onClick={() => startEdit(item)}><Pencil size={16} /></Button><Button variant="ghost" aria-label="Delete" onClick={() => void remove(item)}><Trash2 size={16} /></Button></div></article>)}</div>}
-    <div className={styles.demoGrid}><div className={styles.demoHeading}><Link2 size={18} /> Catalog preview</div>{(['pdf', 'drive', 'website', 'reference'] as DemoType[]).map((type) => <div className={styles.demoCard} key={type}><strong>{demoTypeLabel[type]}</strong><span>Demo catalog card</span><ExternalLink size={15} /></div>)}</div>
     {open && <div className={styles.overlay} role="presentation"><form className={styles.modal} onSubmit={submit}><div className={styles.modalHeader}><h2>{editing ? 'Edit shared paper' : 'Share a paper'}</h2><Button variant="ghost" type="button" aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></Button></div><label>Paper ID<input required inputMode="numeric" value={paperId} onChange={(e) => setPaperId(e.target.value)} /></label><label>Colleague ID<input required inputMode="numeric" value={colleagueId} onChange={(e) => setColleagueId(e.target.value)} /></label><label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label><div className={styles.modalActions}><Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div></form></div>}
   </section>;
 };

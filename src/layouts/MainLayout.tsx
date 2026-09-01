@@ -44,6 +44,7 @@ import {
   FileCheck2 as PublicationIcon,
   Menu as MenuIcon,
   Search,
+  Library,
 } from 'lucide-react';
 import {
   ChevronLeftIcon,
@@ -520,11 +521,9 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
-          { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
-          { to: ROUTES.LECTURER_SHARED_MATERIALS, label: 'Shared Materials', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_MATERIALS, label: 'Materials', icon: <Library size={20} /> },
           { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
@@ -543,7 +542,6 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
         ];
@@ -551,6 +549,14 @@ export const MainLayout = () => {
   };
 
   const navItems = getNavItemsByRole();
+
+  // "My Subscription" sits at the bottom of the sidebar for roles that
+  // previously had it inline (Researcher + Lecturer). Pulling it out of
+  // the role-based list keeps the primary nav focused on workspace
+  // shortcuts, and the dedicated footer slot makes its billing/upgrad
+  // affordance easy to find without scrolling the main list.
+  const showSubscriptionFooter =
+    activeRole === 'Researcher' || activeRole === 'Lecturer';
 
   return (
     /* Theme attribute (Agent 38) lives on the MainLayout root so the
@@ -635,6 +641,35 @@ export const MainLayout = () => {
             );
           })}
         </nav>
+
+        {/* Bottom-anchored "My Subscription" footer — sits at the very
+            bottom of the sidebar so it's visually separated from the
+            primary role-based nav. The wrapper uses `margin-top: auto`
+            to push the link to the end of the aside's flex column,
+            regardless of how many primary nav items the role exposes.
+            Inside the same <aside> so it inherits the dark-navy
+            sidebar background (#323964). Active-state styling routes
+            through the same `navItem` / `navItemActive` classes as the
+            regular nav items, so aria-current and the 3px primary rule
+            stay consistent. */}
+        {showSubscriptionFooter && (
+          <div className={styles.sidebarFooter}>
+            <NavLink
+              to={ROUTES.SUBSCRIPTION}
+              end={false}
+              aria-label="My Subscription"
+              title="My Subscription"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
+              }
+            >
+              <span className={styles.navIcon}>
+                <PackagesIcon size={20} />
+              </span>
+              <span className={styles.navLabel}>My Subscription</span>
+            </NavLink>
+          </div>
+        )}
 
         {/* Centered collapse/expand button — lives at the bottom of the
             sidebar so the user can always collapse OR expand the rail
