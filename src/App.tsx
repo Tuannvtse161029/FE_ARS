@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { ROUTES } from './routes/paths';
+import { buildConfigureMilestonesUrl } from './utils/topicRouting';
 import { PrivateRoute, PublicRoute } from './routes/PrivateRoute';
 import { RoleRouteGuard } from './routes/RoleRouteGuard';
 import { SubscriptionRouteGuard } from './routes/SubscriptionRouteGuard';
@@ -112,6 +113,26 @@ const RouteFallback = () => (
   </div>
 );
 
+/**
+ * Lecturer topic-scoped deep link.
+ *
+ * `/lecturer/research-topics/:topicId/milestones` is the canonical
+ * "Manage Phases" URL surfaced in the Research Topics table. We redirect
+ * to `/configure-milestones?topicId=<id>` so the page reads its context
+ * from a single query-string source of truth. Invalid ids land on the
+ * Research Topics index instead of a half-broken page.
+ */
+const TopicMilestonesRedirect = () => {
+  const { topicId } = useParams<{ topicId: string }>();
+  const parsed = Number(topicId);
+  const safe =
+    typeof topicId === 'string' && /^\d+$/.test(topicId) && parsed > 0;
+  if (!safe) {
+    return <Navigate to={ROUTES.LECTURER_RESEARCH_TOPICS} replace />;
+  }
+  return <Navigate to={buildConfigureMilestonesUrl(parsed)} replace />;
+};
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -182,6 +203,11 @@ const App = () => {
                   <Route element={<SubscriptionRouteGuard />}>
                     <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
                     <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
+                    {/* Topic-scoped deep-link: lands on /configure-milestones?topicId=<id>. */}
+                    <Route
+                      path={ROUTES.LECTURER_TOPIC_MILESTONES}
+                      element={<TopicMilestonesRedirect />}
+                    />
                     <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
                     <Route path={ROUTES.LECTURER_PHASE_REPORTS} element={<PhaseReports />} />
                     <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />

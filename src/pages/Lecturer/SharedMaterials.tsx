@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { FileText, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
@@ -31,14 +31,22 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
   const startCreate = () => { setEditing(null); setPaperId(''); setColleagueId(''); setStatus('ACTIVE'); setOpen(true); };
   const startEdit = (item: SharedMaterial) => { setEditing(item); setPaperId(String(item.paperId ?? '')); setColleagueId(String(item.sharedWithColleagueId ?? '')); setStatus(item.status ?? 'ACTIVE'); setOpen(true); };
 
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da; // newest created first
+    });
+  }, [items]);
+
   // Part 3 — keyboard shortcuts for the shared-materials grid.
   // j/k navigate cards, Enter opens the edit modal for the focused card,
   // n opens the create modal, f is intentionally omitted (no TableToolbar
   // search on this page — there are no filters to focus).
   const { selectedIndex } = useListShortcuts({
-    itemCount: items.length,
+    itemCount: sortedItems.length,
     onOpen: (index) => {
-      const item = items[index];
+      const item = sortedItems[index];
       if (item) startEdit(item);
     },
     onNew: startCreate,
@@ -56,8 +64,8 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
     <PageHeader eyebrow="LECTURER WORKSPACE" title="Shared Materials" description="Share research papers with colleagues and keep your study references close at hand." actions={<Button onClick={startCreate}><Plus size={16} /> Share paper</Button>} />
     <BackendGapBanner field="SharedMaterial.title, description, materialType, url, topicId" feature="PDF, Drive, website, and reference catalog metadata" />
     {error && <div className={styles.error} role="alert">{error}</div>}
-    <div className={styles.toolbar}><span>{loading ? 'Loading…' : `${items.length} shared ${items.length === 1 ? 'paper' : 'papers'}`}</span><Button variant="ghost" onClick={() => void load()} disabled={loading}><RefreshCw size={16} /> Refresh</Button></div>
-    {loading ? <div className={styles.empty}>Loading shared materials…</div> : items.length === 0 ? <div className={styles.empty}><FileText size={28} /><strong>No shared papers yet</strong><span>Use Share paper to create a collaboration record.</span></div> : <div className={styles.grid}>{items.map((item, index) => <article
+    <div className={styles.toolbar}><span>{loading ? 'Loading…' : `${sortedItems.length} shared ${sortedItems.length === 1 ? 'paper' : 'papers'}`}</span><Button variant="ghost" onClick={() => void load()} disabled={loading}><RefreshCw size={16} /> Refresh</Button></div>
+    {loading ? <div className={styles.empty}>Loading shared materials…</div> : sortedItems.length === 0 ? <div className={styles.empty}><FileText size={28} /><strong>No shared papers yet</strong><span>Use Share paper to create a collaboration record.</span></div> : <div className={styles.grid}>{sortedItems.map((item, index) => <article
       className={`${styles.card} ${selectedIndex === index ? styles.selectedCard : ''}`}
       key={item.sharedMaterialId}
       data-testid="shared-material-card"

@@ -35,6 +35,12 @@ export interface ResearchTopic {
   status: ResearchTopicStatus;
   materialsUrl?: string;
   assignedGroupId?: number | null;
+  /**
+   * When the topic was created. The BE may omit this; consumers must
+   * tolerate `undefined` (older records pre-date the field).
+   */
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ResearchGroup {

@@ -124,6 +124,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
   const [membersError, setMembersError] = useState<string | null>(null);
 
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => {
+      const da = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+      const db = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+      return db - da; // most recently joined first
+    });
+  }, [members]);
+
   const loadMembers = useCallback(async () => {
     if (parsedGroupId === null) return;
     setIsMembersLoading(true);
@@ -657,7 +665,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
           </div>
         ) : (
           <ul className={styles.memberList}>
-            {members.map((m) => {
+            {sortedMembers.map((m) => {
               const mid = typeof m.id === 'number' ? m.id : -1;
               const isBusy = leaderActionLoading === mid;
               const initials = (m.studentName ?? '').trim().slice(0, 2).toUpperCase() || 'ST';

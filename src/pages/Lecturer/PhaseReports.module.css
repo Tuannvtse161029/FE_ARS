@@ -329,3 +329,55 @@
     padding: var(--space-3);
   }
 }
+
+/* ── Scope breadcrumb ─────────────────────────────────────── */
+.scopeBreadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ars-paper-inset);
+  border-radius: var(--radius-md);
+}
+
+.scopeBreadcrumbLink {
+  color: var(--ars-lecturer);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  transition: opacity var(--transition-fast);
+}
+
+.scopeBreadcrumbLink:hover {
+  opacity: 0.8;
+}
+
+.scopeBreadcrumbCurrent {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Topic drill link ─────────────────────────────────────── */
+.topicDrillLink {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  color: var(--ars-ink-muted);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.topicDrillLink:hover {
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer);
+}
