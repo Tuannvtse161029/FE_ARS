@@ -14,15 +14,18 @@
  *  - No inline styles in JSX (CSS Modules only)
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   BookOpen,
   Calendar,
+  Compass,
   FileText,
   Inbox,
   Loader2,
   Mail,
   RefreshCw,
+  Search,
   Users,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,10 +33,13 @@ import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
+import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
+import { notificationService } from '../../services/notification.service';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
+import PhaseReportDetailModal from '../../components/gradstudent/PhaseReportDetailModal';
 import MilestoneProgress from '../../components/research/MilestoneProgress';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
@@ -58,6 +64,17 @@ type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
 export const StudentResearchGroups = (): JSX.Element => {
   const { user } = useAuth();
   const studentId = user?.userId ?? null;
+
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'my-groups' | 'explore'>('my-groups');
+  const [allGroups, setAllGroups] = useState<ResearchGroup[]>([]);
+  const [loadingAllGroups, setLoadingAllGroups] = useState<boolean>(false);
+  const [exploreSearch, setExploreSearch] = useState<string>('');
+  const [applyingGroupId, setApplyingGroupId] = useState<number | null>(null);
+  const [applyFeedback, setApplyFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState<string>('');
@@ -101,6 +118,94 @@ export const StudentResearchGroups = (): JSX.Element => {
     }
     return undefined;
   }, []);
+
+  // Sync selected group from URL search params (?groupId=1)
+  useEffect(() => {
+    const gidParam = searchParams.get('groupId');
+    if (gidParam) {
+      const gidNum = Number(gidParam);
+      if (gidNum > 0) {
+        setSelectedGroupId(gidNum);
+      }
+    }
+  }, [searchParams]);
+
+  // Load all research groups for the Explore & Join surface
+  const loadAllGroups = async () => {
+    setLoadingAllGroups(true);
+    try {
+      const list = await researchGroupService.getAll();
+      setAllGroups(list);
+    } catch (err) {
+      console.warn('Failed to load all research groups:', err);
+    } finally {
+      setLoadingAllGroups(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAllGroups();
+  }, []);
+
+  const handleApplyGroup = async (group: ResearchGroup) => {
+    if (!studentId || !user) return;
+    const memberCount = group.memberCount ?? (group.members?.length ?? 0);
+    if (memberCount >= 5) {
+      alert('Nhóm nghiên cứu này đã đủ 5 thành viên, không thể xin tham gia.');
+      return;
+    }
+    const groupId = group.id ?? group.researchGroupId;
+    if (!groupId) return;
+    setApplyingGroupId(groupId);
+    setApplyFeedback(null);
+    try {
+      await groupMemberService.create({
+        researchGroupId: groupId,
+        studentId,
+        activityStatus: 'Pending',
+        joinedAt: new Date().toISOString(),
+      });
+
+      // Optimistically save pending application in localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const key = `student_pending_groups_${studentId}`;
+          const raw = window.localStorage.getItem(key);
+          const currentList: number[] = raw ? JSON.parse(raw) : [];
+          if (!currentList.includes(groupId)) {
+            currentList.push(groupId);
+            window.localStorage.setItem(key, JSON.stringify(currentList));
+          }
+        } catch {}
+      }
+
+      // Notify the lecturer
+      if (group.lecturerId) {
+        try {
+          await notificationService.create({
+            userId: group.lecturerId,
+            message: `[Group] membership: Sinh viên ${user.username} đã nộp đơn xin gia nhập nhóm "${group.name}".`,
+          });
+        } catch {
+          // ignore notification error
+        }
+      }
+
+      setApplyFeedback({
+        type: 'success',
+        message: `Đã nộp đơn xin gia nhập nhóm "${group.name}" thành công! Nhóm đã xuất hiện trong danh sách "Nhóm nghiên cứu của tôi" với trạng thái Chờ duyệt.`,
+      });
+      await refetch();
+      await loadAllGroups();
+    } catch (err) {
+      setApplyFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Không thể gửi đơn xin gia nhập nhóm.',
+      });
+    } finally {
+      setApplyingGroupId(null);
+    }
+  };
 
   const uniqueLecturerIds = useMemo(() => {
     const ids = new Set<number>();
@@ -228,6 +333,16 @@ export const StudentResearchGroups = (): JSX.Element => {
   }
 
   // ----- Overview view -----
+  const joinedGroupIds = new Set(joinedGroups.map((g) => g.id));
+
+  const filteredAllGroups = allGroups.filter((g) => {
+    const name = (g.name ?? '').toLowerCase();
+    const description = (g.description ?? '').toLowerCase();
+    const lecName = (g.lecturerName ?? '').toLowerCase();
+    const q = exploreSearch.toLowerCase();
+    return !q || name.includes(q) || description.includes(q) || lecName.includes(q);
+  });
+
   return (
     <div className={styles.page}>
       <PageHeader
@@ -268,66 +383,242 @@ export const StudentResearchGroups = (): JSX.Element => {
         <ErrorBanner tone="error" message={error.message} />
       ) : null}
 
-      <section className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>My Joined Research Groups</h2>
-          <p className={styles.sectionSubtitle}>
-            Collaborate with lecturers and complete assigned topics.
-          </p>
-        </div>
+      {/* ── Tabs ─────────────────────────────────────── */}
+      <div className={styles.tabContainer}>
+        <button
+          type="button"
+          className={`${styles.tabButton} ${activeTab === 'my-groups' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('my-groups')}
+        >
+          <Users size={16} />
+          Nhóm nghiên cứu của tôi
+          <span className={styles.tabBadge}>{joinedGroups.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabButton} ${activeTab === 'explore' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('explore')}
+        >
+          <Compass size={16} />
+          Khám phá &amp; Tham gia nhóm
+          <span className={styles.tabBadge}>{allGroups.length}</span>
+        </button>
+      </div>
 
-        {isLoading ? (
-          <SkeletonRow count={3} rowHeight={88} gap={12} />
-        ) : joinedGroups.length === 0 ? (
-          <EmptyState
-            icon={<Inbox size={24} />}
-            title="No research groups yet"
-            description="Once a lecturer adds you to a group, it will appear here."
-          />
-        ) : (
-          <ul className={styles.groupList}>
-            {joinedGroups.map((g) => (
-              <li key={g.id} className={styles.groupCard}>
-                <div className={styles.groupCardLeft}>
-                  <span className={styles.groupIconCircle} aria-hidden>
-                    <Users size={22} />
-                  </span>
-                  <div className={styles.groupInfo}>
-                    <div className={styles.groupTitleRow}>
-                      <h3 className={styles.groupName}>{g.name}</h3>
-                      <span className={styles.activityPill}>
-                        {g.activityStatus ?? 'ACTIVE'}
+      {/* ── Tab: My Joined Groups ─────────────────────── */}
+      {activeTab === 'my-groups' && (
+        <section className={styles.sectionCard}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Nhóm nghiên cứu của tôi</h2>
+            <p className={styles.sectionSubtitle}>
+              Các nhóm bạn đã tham gia hoặc đang chờ duyệt.
+            </p>
+          </div>
+
+          {isLoading ? (
+            <SkeletonRow count={3} rowHeight={88} gap={12} />
+          ) : joinedGroups.length === 0 ? (
+            <EmptyState
+              icon={<Inbox size={24} />}
+              title="Chưa có nhóm nghiên cứu"
+              description='Chuyển sang tab "Khám phá & Tham gia nhóm" để tìm nhóm phù hợp với bạn.'
+            />
+          ) : (
+            <ul className={styles.groupList}>
+              {joinedGroups.map((g) => {
+                const isPending = g.activityStatus === 'Pending' || g.activityStatus === 'PENDING';
+                return (
+                  <li key={g.id} className={styles.groupCard}>
+                    <div className={styles.groupCardLeft}>
+                      <span className={styles.groupIconCircle} aria-hidden>
+                        <Users size={22} />
                       </span>
+                      <div className={styles.groupInfo}>
+                        <div className={styles.groupTitleRow}>
+                          <h3 className={styles.groupName}>{g.name}</h3>
+                          {isPending ? (
+                            <span className={styles.pendingBadge}>⏳ Chờ duyệt</span>
+                          ) : (
+                            <span className={styles.activityPill}>
+                              {g.activityStatus ?? 'ACTIVE'}
+                            </span>
+                          )}
+                          {g.isLeader && (
+                            <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, border: '1px solid #fde68a' }}>
+                              ★ Trưởng nhóm
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.groupMetaRow}>
+                          <span>
+                            <Mail size={12} />
+                            Supervised by {lecturerNameFor(g.lecturerId)}
+                          </span>
+                          <span>
+                            <Calendar size={12} />
+                            {g.joinedAt
+                              ? `Joined ${new Date(g.joinedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}`
+                              : 'Recently joined'}
+                          </span>
+                        </div>
+                        {isPending && (
+                          <p style={{ fontSize: 12, color: '#92400e', margin: '4px 0 0', fontStyle: 'italic' }}>
+                            Đơn xin gia nhập của bạn đang chờ Giảng viên xem xét và phê duyệt.
+                          </p>
+                        )}
+                        {g.description ? (
+                          <p className={styles.groupDescription}>{g.description}</p>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className={styles.groupMetaRow}>
-                      <span>
-                        <Mail size={12} />
-                        Supervised by {lecturerNameFor(g.lecturerId)}
+                    {isPending ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                      >
+                        ⏳ Đang chờ duyệt
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSelectGroup(g.id)}
+                      >
+                        Open Group Workspace
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* ── Tab: Explore & Join Groups ─────────────────── */}
+      {activeTab === 'explore' && (
+        <section className={styles.sectionCard}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Khám phá nhóm nghiên cứu</h2>
+            <p className={styles.sectionSubtitle}>
+              Tìm kiếm và nộp đơn xin gia nhập các nhóm nghiên cứu đang tuyển thành viên.
+            </p>
+          </div>
+
+          {applyFeedback ? (
+            <div className={applyFeedback.type === 'success' ? styles.applySuccessBanner : styles.applyErrorBanner}>
+              <span>{applyFeedback.type === 'success' ? '✓' : '✕'} {applyFeedback.message}</span>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700 }}
+                onClick={() => setApplyFeedback(null)}
+              >
+                ✕
+              </button>
+            </div>
+          ) : null}
+
+          {/* Search input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Search size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Tìm theo tên nhóm, giảng viên, đề tài..."
+              value={exploreSearch}
+              onChange={(e) => setExploreSearch(e.target.value)}
+              style={{
+                flex: 1,
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                padding: '8px 12px',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {loadingAllGroups ? (
+            <SkeletonRow count={4} rowHeight={88} gap={12} />
+          ) : filteredAllGroups.length === 0 ? (
+            <EmptyState
+              icon={<Inbox size={24} />}
+              title="Không tìm thấy nhóm nghiên cứu"
+              description="Thử thay đổi từ khoá tìm kiếm hoặc kiểm tra lại kết nối."
+            />
+          ) : (
+            <ul className={styles.groupList}>
+              {filteredAllGroups.map((g) => {
+                const groupId = g.id ?? g.researchGroupId;
+                if (!groupId) return null;
+                const memberCount = g.memberCount ?? (g.members?.length ?? 0);
+                const isFull = memberCount >= 5;
+                const isAlreadyJoined = joinedGroupIds.has(groupId);
+                const alreadyJoinedGroup = joinedGroups.find((jg) => jg.id === groupId);
+                const isPendingJoin = alreadyJoinedGroup?.activityStatus === 'Pending' || alreadyJoinedGroup?.activityStatus === 'PENDING';
+                const isApplying = applyingGroupId === groupId;
+                return (
+                  <li key={groupId} className={styles.groupCard}>
+                    <div className={styles.groupCardLeft}>
+                      <span className={styles.groupIconCircle} aria-hidden>
+                        <Users size={22} />
                       </span>
-                      <span>
-                        <Calendar size={12} />
-                        {g.joinedAt
-                          ? `Joined ${new Date(g.joinedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}`
-                          : 'Recently joined'}
-                      </span>
+                      <div className={styles.groupInfo}>
+                        <div className={styles.groupTitleRow}>
+                          <h3 className={styles.groupName}>{g.name ?? `Group #${groupId}`}</h3>
+                          {isFull ? (
+                            <span className={styles.capacityFullBadge}>🔴 Đã đủ {memberCount}/5</span>
+                          ) : (
+                            <span className={styles.capacityBadge}>🟢 {memberCount}/5 thành viên</span>
+                          )}
+                        </div>
+                        <div className={styles.groupMetaRow}>
+                          <span>
+                            <Mail size={12} />
+                            Giảng viên: {g.lecturerName ?? lecturerNameFor(g.lecturerId)}
+                          </span>
+                          {g.deadline && (
+                            <span>
+                              <Calendar size={12} />
+                              Hạn: {new Date(g.deadline).toLocaleDateString('vi-VN', { dateStyle: 'medium' })}
+                            </span>
+                          )}
+                        </div>
+                        {g.description ? (
+                          <p className={styles.groupDescription}>{g.description}</p>
+                        ) : null}
+                      </div>
                     </div>
-                    {g.description ? (
-                      <p className={styles.groupDescription}>{g.description}</p>
-                    ) : null}
-                  </div>
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleSelectGroup(g.id)}
-                >
-                  Open Group Workspace
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                      {isAlreadyJoined && !isPendingJoin ? (
+                        <span style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 8 }}>
+                          ✓ Đã tham gia
+                        </span>
+                      ) : isPendingJoin ? (
+                        <span className={styles.pendingBadge}>⏳ Đang chờ duyệt</span>
+                      ) : isFull ? (
+                        <span className={styles.fullButton}>
+                          Không thể tham gia vào group này
+                        </span>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={isApplying}
+                          leftIcon={isApplying ? <Loader2 size={13} className={styles.spin} /> : undefined}
+                          onClick={() => void handleApplyGroup(g)}
+                        >
+                          {isApplying ? 'Đang gửi đơn...' : 'Xin gia nhập nhóm'}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 };
@@ -457,6 +748,8 @@ function WorkspaceView({
     [reports],
   );
 
+  const [viewDetailReport, setViewDetailReport] = useState<SubmittedPhasedReport | null>(null);
+
   return (
     <div className={styles.page}>
       <Button
@@ -583,7 +876,12 @@ function WorkspaceView({
 
       <section className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h3 className={styles.tableTitle}>Milestone Reports</h3>
+          <h3 className={styles.tableTitle}>Milestone Reports (Phase Reports)</h3>
+          {!isCurrentUserLeader && (
+            <p className={styles.permissionNote} role="status">
+              Bạn là thành viên nhóm. Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo tiến độ.
+            </p>
+          )}
         </div>
 
         <TableToolbar
@@ -591,7 +889,7 @@ function WorkspaceView({
           onSearchChange={onSearchChange}
           onRefresh={onRefresh}
           isRefreshing={reportsLoading}
-          searchPlaceholder="Search by report id, status, or feedback…"
+          searchPlaceholder="Search by phase, status, or feedback…"
           refreshLabel="Refresh"
           filters={
             <label className={styles.filterField}>
@@ -618,7 +916,7 @@ function WorkspaceView({
           <EmptyState
             icon={<Inbox size={24} />}
             title="No reports yet"
-            description="Use Submit milestone report to upload your first PDF."
+            description={isCurrentUserLeader ? "Use the Submit button on each Phase row below to upload a report." : "The group leader has not submitted any phase reports yet."}
             compact
           />
         ) : reportsTotalItems === 0 ? (
@@ -634,81 +932,118 @@ function WorkspaceView({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Report</th>
+                    <th>Phase</th>
+                    <th>Milestone</th>
                     <th>Submitted</th>
+                    <th>Deadline</th>
                     <th>Status</th>
-                    <th>Lecturer Feedback</th>
+                    <th>Score</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedReports.map((report, index) => (
-                    <tr
-                      key={report.id}
-                      data-testid="srg-row"
-                      className={selectedIndex === index ? styles.selectedRow : ''}
-                    >
-                      <td>
-                        <span className={styles.reportIdPill}>
-                          #{report.id}
-                        </span>
-                      </td>
-                      <td>
-                        {report.submittedAt ? (
-                          <span className={styles.dateText}>
-                            <Calendar size={12} />
-                            {new Date(report.submittedAt).toLocaleDateString(
-                              'en-US',
-                              { dateStyle: 'medium' },
-                            )}
+                  {pagedReports.map((report, index) => {
+                    const canSubmit = isCurrentUserLeader && (
+                      report.status === 'Pending' ||
+                      report.status === 'WAITING' ||
+                      report.status === 'REJECTED' ||
+                      !report.submittedAt
+                    );
+                    const isSubmitted = report.submittedAt || report.status === 'Passed' || report.status === 'SUBMITTED' || report.status === 'EVALUATED';
+                    return (
+                      <tr
+                        key={report.id}
+                        data-testid="srg-row"
+                        className={selectedIndex === index ? styles.selectedRow : ''}
+                      >
+                        <td>
+                          <span className={styles.reportIdPill}>
+                            Phase {report.phaseNumber ?? report.id}
                           </span>
-                        ) : (
-                          <span className={styles.mutedText}>Unknown</span>
-                        )}
-                      </td>
-                      <td>
-                        <StatusBadge status={report.status} size="sm" />
-                      </td>
-                      <td>
-                        {report.finalOutcomeEvaluation ? (
-                          <span className={styles.feedbackText}>
-                            {report.finalOutcomeEvaluation.length > 80
-                              ? `${report.finalOutcomeEvaluation.slice(0, 80)}…`
-                              : report.finalOutcomeEvaluation}
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 13, color: '#334155', fontWeight: 600 }}>
+                            {report.milestoneTitle || `Phase ${report.phaseNumber ?? report.id}`}
                           </span>
-                        ) : (
-                          <span className={styles.mutedText}>
-                            {report.status === 'EVALUATED'
-                              ? `Grade: ${report.lectureFeedback ?? '—'}/10`
-                              : '—'}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <div className={styles.rowActions}>
-                          {report.reportFileUrl ? (
-                            <a
-                              href={report.reportFileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={styles.linkBtn}
-                            >
-                              Open PDF
-                            </a>
-                          ) : null}
-                          {report.status === 'REJECTED' && isCurrentUserLeader ? (
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => onOpenSubmit(report)}
-                            >
-                              Resubmit
-                            </Button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          {report.submittedAt ? (
+                            <span className={styles.dateText}>
+                              <Calendar size={12} />
+                              {new Date(report.submittedAt).toLocaleDateString(
+                                'vi-VN',
+                                { dateStyle: 'medium' },
+                              )}
+                            </span>
+                          ) : (
+                            <span className={styles.mutedText}>Chưa nộp</span>
+                          )}
+                        </td>
+                        <td>
+                          {report.deadlineAt ? (
+                            <span className={styles.dateText} style={{ color: report.isOverdue ? '#dc2626' : undefined }}>
+                              <Calendar size={12} />
+                              {new Date(report.deadlineAt).toLocaleDateString(
+                                'vi-VN',
+                                { dateStyle: 'medium' },
+                              )}
+                              {report.isOverdue && <span style={{ color: '#dc2626', fontSize: 11, marginLeft: 4 }}>Quá hạn</span>}
+                            </span>
+                          ) : (
+                            <span className={styles.mutedText}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          <StatusBadge status={report.status} size="sm" />
+                        </td>
+                        <td>
+                          {typeof report.lectureFeedback === 'number' ? (
+                            <span style={{ fontWeight: 700, color: '#16a34a' }}>
+                              {report.lectureFeedback}/10
+                            </span>
+                          ) : (
+                            <span className={styles.mutedText}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className={styles.rowActions}>
+                            {/* View detail button — visible to all */}
+                            {isSubmitted ? (
+                              <button
+                                type="button"
+                                className={styles.detailBtn}
+                                onClick={() => setViewDetailReport(report)}
+                              >
+                                <FileText size={12} /> Xem chi tiết
+                              </button>
+                            ) : null}
+                            {report.reportFileUrl ? (
+                              <a
+                                href={report.reportFileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.linkBtn}
+                              >
+                                Open PDF
+                              </a>
+                            ) : null}
+                            {/* Leader only: Submit or Resubmit */}
+                            {isCurrentUserLeader && canSubmit ? (
+                              <button
+                                type="button"
+                                className={styles.submitPhaseBtn}
+                                onClick={() => {
+                                  onOpenSubmit(report.status === 'REJECTED' ? report : undefined);
+                                }}
+                              >
+                                {report.status === 'REJECTED' ? 'Nộp lại' : `Nộp Phase ${report.phaseNumber ?? ''}`}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -742,6 +1077,14 @@ function WorkspaceView({
           onSubmitted={onSubmitted}
         />
       ) : null}
+
+      <PhaseReportDetailModal
+        isOpen={viewDetailReport !== null}
+        report={viewDetailReport}
+        groupName={group.name}
+        lecturerName={lecturerName}
+        onClose={() => setViewDetailReport(null)}
+      />
     </div>
   );
 }
