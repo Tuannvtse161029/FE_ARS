@@ -310,6 +310,35 @@
   pointer-events: none;
 }
 
+/* Sidebar footer — wraps the dedicated "My Subscription" link so it
+   sits at the very bottom of the <aside> regardless of how many
+   primary nav items the role exposes. `margin-top: auto` consumes
+   any remaining vertical space inside the sidebar's flex column,
+   pinning the footer flush against the bottom edge. A subtle top
+   divider visually separates it from the primary role-based nav
+   list above. */
+.sidebarFooter {
+  margin-top: auto;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+/* On mobile drawer we keep the same structure; the footer just sits
+   below the nav, above any other sidebar content. */
+@media (max-width: 768px) {
+  .sidebarFooter {
+    padding: var(--space-2) var(--space-2) var(--space-4);
+  }
+}
+
+/* When the sidebar is collapsed, the footer link still anchors at
+   the bottom but only the icon is visible (the label is hidden by
+   `.sidebarCollapsed .navLabel { display: none; }` above). */
+.sidebarCollapsed .sidebarFooter {
+  padding-inline: var(--space-2);
+}
+
 .sidebarWatermarkImage {
   width: 152px;
   height: auto;

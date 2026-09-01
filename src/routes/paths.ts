@@ -44,8 +44,15 @@ export const ROUTES = {
   // Agent lecturer-navigation — top-level Lecturer surface for Learning
   // Materials. Previously the CRUD lived only inside the per-topic modal.
   // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
+  //
+  // DEPRECATED: Use LECTURER_MATERIALS instead. This route is kept for
+  // backward compatibility during the transition period.
   LECTURER_LEARNING_MATERIALS: '/lecturer/learning-materials',
+  // DEPRECATED: Use LECTURER_MATERIALS instead.
   LECTURER_SHARED_MATERIALS: '/lecturer/shared-materials',
+  // Combined Learning + Shared Materials page. Replaces the two separate
+  // routes above. The old routes redirect here for backward compatibility.
+  LECTURER_MATERIALS: '/lecturer/materials',
   ADMIN: '/admin',
   ADMIN_ROLE_REQUESTS: '/admin/role-requests',
   ADMIN_ACCOUNTS: '/admin/accounts',

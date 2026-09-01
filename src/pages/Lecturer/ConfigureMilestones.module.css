@@ -55,6 +55,126 @@
   /* Content appears in document order; no entrance effect for routine rows. */
 }
 
+.configCardBody {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--ars-network);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.configCardBody:last-child {
+  border-bottom: 0;
+}
+
+/* Inline status line shown under the topic selector — surfaces the
+   currently-assigned group so the lecturer sees the relationship at
+   a glance, without having to leave the page. */
+.assignedGroupRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+}
+
+.assignedGroupRow strong {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The form region that contains every phase editor. Slight top padding
+   so the gap between the topic selector and the first phase reads as
+   deliberate separation, not an accident. */
+.phasesForm {
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ── Phase editor (form-mode) ─────────────────────────────────── */
+.phaseEditor {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: relative;
+}
+
+/* The corner-anchor dot that signals the lecturer accent without
+   shouting — same pattern used on the Research Group cards. */
+.phaseEditor::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
+}
+
+.phaseEditorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-left: var(--space-4);
+}
+
+.phaseEditorTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+}
+
+.phaseIndexChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px var(--space-2);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.04em;
+  margin-right: var(--space-2);
+}
+
+.phaseEditorRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.phaseLockedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--ars-warning);
+  font-style: italic;
+}
+
+.phasesEmpty {
+  padding: var(--space-6);
+  border: 1px dashed var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
 /* ── Card Header ─────────────────────────────────────────── */
 .cardHeader {
   display: flex;
@@ -800,7 +920,22 @@
 }
 
 .spinningIcon {
-  /* The status icon is static; text and disabled state provide feedback. */
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning,
+  .spinningIcon {
+    animation: none !important;
+  }
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
@@ -857,5 +992,22 @@
   .fileLinkBtn,
   .removeFileBtn {
     align-self: flex-end;
+  }
+
+  .configCardBody,
+  .phasesForm {
+    padding: var(--space-4);
+  }
+
+  .phaseEditorRow {
+    grid-template-columns: 1fr;
+  }
+
+  .phaseEditorHead {
+    padding-left: var(--space-3);
+  }
+
+  .configCardBody {
+    flex-direction: column;
   }
 }

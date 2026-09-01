@@ -72,8 +72,12 @@ export const PhaseReports = () => {
   return <div className={styles.page}>
     <PageHeader eyebrow="LECTURER WORKSPACE" title="Phase Reports" description="Review submissions grouped by topic, phase, and research group." actions={<Button variant="outline" onClick={() => void load()} disabled={loading || groupsLoading} leftIcon={<RefreshCw size={15} />}>Refresh</Button>} />
     <BackendGapBanner field="PhasedReport.phaseId / resubmission lineage" feature="Stable phase identity and persisted rejected-report revision history" />
-    {error && <div className={styles.error} role="alert">{error}</div>}
-    {loading || groupsLoading ? <div className={styles.loading}><Loader size={18} /> Loading reports…</div> : grouped.size === 0 ? (
+    {error && <div className={styles.errorState} role="alert">{error}</div>}
+    {loading || groupsLoading ? (
+      <div className={styles.loading}>
+        <Loader size={18} className={styles.spinning} aria-hidden /> Loading reports…
+      </div>
+    ) : grouped.size === 0 ? (
       <EmptyState
         icon={<Inbox size={24} aria-hidden />}
         title="No phase reports yet"
@@ -83,9 +87,75 @@ export const PhaseReports = () => {
       {Array.from(grouped.entries()).map(([topicKey, phases]) => {
         const open = openTopics[topicKey] !== false;
         const first = Array.from(phases.values())[0]?.reports[0];
+        const reportCount = ownedReports.filter((r) => String(r.topicId ?? r.topicTitle ?? 'unassigned') === topicKey).length;
         return <section className={styles.topic} key={topicKey}>
-          <button className={styles.topicHeader} type="button" onClick={() => toggleTopic(topicKey)} aria-expanded={open}>{open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span><strong>{first?.topicTitle ?? `Topic ${topicKey}`}</strong><small>{ownedReports.filter((r) => String(r.topicId ?? r.topicTitle ?? 'unassigned') === topicKey).length} reports</small></span></button>
-          {open && <div className={styles.phaseList}>{Array.from(phases.values()).sort((a,b) => a.phase - b.phase).map((phase) => <div className={styles.phase} key={phase.phase}><div className={styles.phaseHeading}><h3>{phase.title}</h3><span>Phase {phase.phase || '—'}</span></div><div className={styles.reportList}>{phase.reports.map((report) => { const id = report.id ?? report.phasedReportId; return <article className={styles.report} key={id ?? `${topicKey}-${phase.phase}-${report.researchGroupId}`}><div className={styles.reportMain}><div className={styles.reportTitle}><StatusBadge status={displayStatus(report)} label={displayStatus(report)} size="sm" /><strong>{groupNames.get(report.researchGroupId ?? -1) ?? (report.groupName ?? 'Unassigned group')}</strong></div><div className={styles.meta}><span><Users size={13} /> {report.studentName ?? 'Group member not supplied'}</span><span><Calendar size={13} /> Due {dateLabel(report.deadlineAt)}</span><span>Submitted {dateLabel(report.submittedAt)}</span></div></div><div className={styles.actions}>{report.reportFileUrl && <a href={report.reportFileUrl} target="_blank" rel="noreferrer"><FileText size={14} /> Open PDF</a>}<Button size="sm" onClick={() => setSelected(report)} disabled={id == null}>Review</Button></div></article>; })}</div></div>)}</div>}
+          <button
+            className={styles.topicHeader}
+            type="button"
+            onClick={() => toggleTopic(topicKey)}
+            aria-expanded={open}
+          >
+            <span className={styles.topicChevron}>
+              {open ? <ChevronDown size={17} aria-hidden /> : <ChevronRight size={17} aria-hidden />}
+            </span>
+            <span className={styles.topicHeaderMain}>
+              <strong className={styles.topicTitle}>{first?.topicTitle ?? `Topic ${topicKey}`}</strong>
+              <small className={styles.topicSubtitle}>{reportCount} report{reportCount === 1 ? '' : 's'}</small>
+            </span>
+          </button>
+          {open && <div className={styles.phaseList}>
+            {Array.from(phases.values()).sort((a, b) => a.phase - b.phase).map((phase) => (
+              <div className={styles.phase} key={phase.phase}>
+                <div className={styles.phaseHeading}>
+                  <h3>{phase.title}</h3>
+                  <span className={styles.phaseHeadingCount}>{phase.reports.length} report{phase.reports.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className={styles.reportList}>
+                  {phase.reports.map((report) => {
+                    const id = report.id ?? report.phasedReportId;
+                    const groupLabel = groupNames.get(report.researchGroupId ?? -1) ?? report.groupName ?? 'Unassigned group';
+                    return (
+                      <article className={styles.report} key={id ?? `${topicKey}-${phase.phase}-${report.researchGroupId}`}>
+                        <div className={styles.reportMain}>
+                          <div className={styles.reportTitle}>
+                            <StatusBadge status={displayStatus(report)} label={displayStatus(report)} size="sm" />
+                            <strong>{groupLabel}</strong>
+                          </div>
+                          <div className={styles.meta}>
+                            <span><Users size={13} aria-hidden /> {report.studentName ?? 'Group member not supplied'}</span>
+                            <span><Calendar size={13} aria-hidden /> Due {dateLabel(report.deadlineAt)}</span>
+                            <span>Submitted {dateLabel(report.submittedAt)}</span>
+                          </div>
+                        </div>
+                        <div className={styles.actions}>
+                          {report.reportFileUrl ? (
+                            <a
+                              className={styles.openPdfLink}
+                              href={report.reportFileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <FileText size={14} aria-hidden /> Open PDF
+                            </a>
+                          ) : (
+                            <span className={styles.noFilePill}>No file uploaded</span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => setSelected(report)}
+                            disabled={id == null}
+                          >
+                            Review
+                          </Button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>}
         </section>;
       })}
     </div>}

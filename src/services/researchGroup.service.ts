@@ -136,6 +136,13 @@ export const deriveGroupStatus = (
 // have to call PUT /api/ResearchGroup/{id} once per selected group, attaching
 // the topicId. Returns a per-group outcome so the caller can surface conflicts
 // honestly (the BE will 409 if the group is locked by another topic).
+//
+// IMPORTANT: the BE uses the existing group's `lecturerId` for ownership
+// checks, and many BE implementations reject PUTs that try to clear required
+// fields to null (which previously caused the "topic has no topic, group has
+// no topic" deadlock). We therefore fetch the current group record first and
+// preserve every existing field — only `topicId` and `assignedAt` are
+// changed.
 export interface GroupAssignOutcome {
   groupId: number;
   ok: boolean;
@@ -146,18 +153,24 @@ export interface GroupAssignOutcome {
 export const assignTopicToGroups = async (
   topicId: number,
   groupIds: number[],
+  fallbackLecturerId: number | null = null,
 ): Promise<GroupAssignOutcome[]> => {
+  // Pre-load each group's existing record so we can echo its fields back.
   const settled = await Promise.allSettled(
-    groupIds.map((groupId) =>
-      researchGroupService.update(groupId, {
-        lecturerId: null,
+    groupIds.map(async (groupId) => {
+      const existing = await researchGroupService.getById(groupId);
+      const payload: ResearchGroupUpdateRequest = {
+        lecturerId:
+          existing?.lecturerId ?? fallbackLecturerId ?? null,
         topicId,
-        name: null,
-        description: null,
-        deadline: null,
+        name: existing?.name ?? null,
+        description: existing?.description ?? null,
+        deadline: existing?.deadline ?? null,
         assignedAt: new Date().toISOString(),
-      }),
-    ),
+      };
+      const updated = await researchGroupService.update(groupId, payload);
+      return updated;
+    }),
   );
   return settled.map((result, idx) => {
     const groupId = groupIds[idx] ?? -1;

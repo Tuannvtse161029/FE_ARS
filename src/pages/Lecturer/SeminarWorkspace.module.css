@@ -171,7 +171,8 @@
   /* The 3px info-rule is a status affordance ("the BE is in a
      fallback state, here's the caveat"), not the templated card
      stripe anti-pattern. The detector overflags it by pattern match. */
-  border-left-width: 3px; /* impeccable-disable-line side-tab */
+  border-left-width: 3px;
+  /* impeccable-disable-line side-tab */
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   color: var(--ars-info);

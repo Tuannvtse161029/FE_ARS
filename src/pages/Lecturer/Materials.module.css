@@ -1,0 +1,1000 @@
+/**
+ * Materials — combined Learning Materials + Shared Materials page.
+ *
+ * Design direction:
+ * - Role accent: --ars-lecturer (#7c2d12)
+ * - Tab-based layout unifying the table (My Materials) and card grid
+ *   (Shared Materials) into a single cohesive page
+ */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinningIcon,
+  .modalCard,
+  .successToastBanner { animation: none !important; }
+}
+
+/* ── Page container ─────────────────────────────────────────── */
+.materialsPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+/* ── Breadcrumbs ───────────────────────────────────────────── */
+.breadcrumbs {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+}
+
+.breadcrumbs a {
+  color: var(--ars-lecturer);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.activeBreadcrumb {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+/* ── Tab Bar ───────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-bottom: 2px solid var(--ars-network);
+  padding-bottom: 0;
+}
+
+.tabBarLeft {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.tabBarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.tabBtn:hover {
+  color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+.tabBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.tabBtnActive {
+  color: var(--ars-lecturer);
+  border-bottom-color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+/* ── Tab Panels ─────────────────────────────────────────────── */
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.tabPanelHidden {
+  display: none;
+}
+
+/* ── Banner ─────────────────────────────────────────────────── */
+.successToastBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-success-bg);
+  border: 1px solid var(--ars-success);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-success);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.toastLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.toastCheckIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toastTitle {
+  font-weight: var(--font-weight-bold);
+  display: block;
+  line-height: 1.4;
+}
+
+.toastSub {
+  font-size: var(--font-size-xs);
+  margin: 2px 0 0;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.toastRight {
+  flex-shrink: 0;
+}
+
+.toastCloseBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  transition: opacity var(--transition-fast);
+}
+
+.toastCloseBtn:hover {
+  opacity: 1;
+}
+
+.toastCloseBtn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ── Error banner ─────────────────────────────────────────── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--ars-error);
+}
+
+.errorBannerIcon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.errorRetryBtn {
+  background: var(--ars-error);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.errorRetryBtn:hover {
+  background: #b91c1c;
+}
+
+.errorRetryBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+/* ── Modal (Add Material form) ────────────────────────── */
+.modalCard {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 560px;
+  box-shadow: var(--shadow-md);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.modalHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+  padding-bottom: var(--space-3);
+}
+
+.modalTitleBlock {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.modalSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin-top: 2px;
+  display: block;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.formLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  min-height: 36px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+.formInputError {
+  border-color: var(--ars-error);
+  background-color: var(--ars-error-bg);
+}
+
+.modalFooter {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+}
+
+.cancelBtn {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-ink-muted);
+}
+
+.cancelBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.submitNavyBtn {
+  background: var(--ars-lecturer);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: background var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+}
+
+.submitNavyBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+}
+
+.submitNavyBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submitNavyBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Table Card (My Materials) ───────────────────────────── */
+.tableCard {
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.tableEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  text-align: center;
+}
+
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead tr {
+  background: var(--ars-paper-inset);
+}
+
+.table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: var(--border-thin);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--ars-network);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--ars-paper-inset);
+}
+
+/* Keyboard-shortcut-selected row */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: rgba(0, 122, 255, 0.08);
+}
+
+.topicNameText {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  display: block;
+}
+
+.topicDescText {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topicActionStack {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.assignGroupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 35%, transparent);
+}
+
+.assignGroupBtn:hover {
+  background: var(--ars-info-bg);
+}
+
+.assignGroupBtn:focus-visible {
+  outline: 2px solid var(--ars-info);
+  outline-offset: 2px;
+}
+
+.closeTopicBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 35%, transparent);
+}
+
+.closeTopicBtn:hover {
+  background: var(--ars-error-bg);
+}
+
+.closeTopicBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+.closeTopicBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Form: textarea (description) ─────────────────────────── */
+.formTextarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.5;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formTextarea::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.formTextarea:focus {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+/* ── Form: source mode toggle (File | URL) ───────────────── */
+.sourceModeToggle {
+  display: inline-flex;
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+  align-self: flex-start;
+}
+
+.modeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.modeBtn:hover:not(.modeBtnActive) {
+  color: var(--ars-ink);
+  background: var(--ars-paper);
+}
+
+.modeBtnActive {
+  background: var(--ars-paper);
+  color: var(--ars-lecturer);
+  box-shadow: var(--shadow-sm);
+}
+
+.modeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Form: file dropzone (reuses Register dropzone language) ─ */
+.fileDropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4);
+  background: var(--ars-paper-inset);
+  border: 2px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--ars-ink-muted);
+  text-align: center;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.fileDropzone:hover {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-paper);
+}
+
+.fileDropzone:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.dropzoneIcon {
+  color: var(--ars-lecturer);
+}
+
+.dropzoneText {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.dropzoneHint {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Form: upload progress bar ─────────────────────────── */
+.uploadProgressBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.uploadProgressBarOuter {
+  width: 100%;
+  height: 8px;
+  background: var(--ars-network);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.uploadProgressBarInner {
+  height: 100%;
+  background: var(--ars-lecturer);
+  border-radius: var(--radius-pill);
+  transition: width 0.2s ease-out;
+}
+
+.uploadProgressLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  text-align: right;
+}
+
+.uploadErrorText {
+  font-size: var(--font-size-xs);
+  color: var(--ars-error);
+  margin-top: var(--space-1);
+}
+
+/* ── Form: uploaded file preview ───────────────────────────── */
+.filePreviewCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-success-bg);
+  border: 1px solid var(--ars-success);
+  border-radius: var(--radius-md);
+}
+
+.filePreviewIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ars-success);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.filePreviewInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filePreviewName {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filePreviewSize {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.filePreviewRemove {
+  background: transparent;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink-muted);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.filePreviewRemove:hover {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: var(--ars-error);
+}
+
+.filePreviewRemove:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+.spinningIcon {
+  animation: spin 0.9s linear infinite;
+}
+
+/* ── Shared Materials (Tab 2) ──────────────────────────────── */
+.sharedToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  gap: var(--space-3);
+}
+
+.sharedEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-node);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.sharedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.sharedCard {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.sharedCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Keyboard-shortcut-selected card */
+.sharedCard.selectedCard {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: 2px;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+}
+
+.sharedCardIcon {
+  color: var(--ars-blue);
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+
+.sharedCardBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sharedCardBody h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.sharedCardBody p {
+  margin: 0;
+  color: color-mix(in srgb, var(--ars-ink) 70%, transparent);
+}
+
+.sharedCardBody small {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.sharedStatus {
+  align-self: flex-start;
+  padding: 2px 8px;
+  background: var(--ars-blue);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.sharedCardActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* (Catalog-metadata demo card grid removed — was a hardcoded placeholder
+   for fields the live Swagger does not expose for SharedMaterial. The
+   BackendGapBanner above surfaces the missing-field truth instead.) */
+
+.demoCard span {
+  flex: 1;
+  color: var(--ars-ink-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Modal overlay (Shared Materials) ─────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+
+.modal {
+  width: min(92vw, 440px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.modal input,
+.modal select {
+  padding: 10px;
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
+.modal input:focus,
+.modal select:focus {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .tableResponsive {
+    overflow-x: auto;
+  }
+
+  .topicActionStack {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assignGroupBtn,
+  .closeTopicBtn {
+    justify-content: center;
+  }
+
+  .modalCard {
+    padding: var(--space-4);
+  }
+
+  .tabBar {
+    overflow-x: auto;
+  }
+
+  .sharedGrid {
+    grid-template-columns: 1fr;
+  }
+}

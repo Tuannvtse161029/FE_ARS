@@ -439,21 +439,31 @@ const ReportColumn = ({
                   ? groupNameById.get(r.researchGroupId) ?? `Group #${r.researchGroupId}`
                   : 'Unassigned';
               const cardSelected = selectedIndex === flatOffset + index;
+              const isOverdue = Boolean(
+                r.submittedAt &&
+                  r.deadlineAt &&
+                  new Date(r.submittedAt) > new Date(r.deadlineAt),
+              );
               return (
                 <li
                   key={String(r.id)}
-                  className={`${styles.reportCard} ${cardSelected ? styles.selectedCard : ''}`}
+                  className={`${styles.reportCard} ${cardSelected ? styles.selectedCard : ''} ${isOverdue ? styles.overdueCard : ''}`}
                 >
                   <div className={styles.reportCardTopRow}>
                     <StatusBadge status={r.status ?? 'WAITING'} />
                     <span className={styles.reportId}>#{id}</span>
+                    {isOverdue && (
+                      <span className={styles.overdueBadge} title="Submitted after the deadline">
+                        Overdue
+                      </span>
+                    )}
                   </div>
                   <div className={styles.reportCardMeta}>
                     <span className={styles.metaLine}>
                       <Users size={12} aria-hidden />
                       {groupName}
                     </span>
-                    <span className={styles.metaLine}>
+                    <span className={isOverdue ? styles.overdueMeta : styles.metaLine}>
                       <Calendar size={12} aria-hidden />
                       Submitted {formatDate(r.submittedAt)}
                     </span>

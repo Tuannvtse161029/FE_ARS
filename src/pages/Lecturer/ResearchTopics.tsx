@@ -41,9 +41,10 @@ import { researchTopicService } from '../../services/researchTopic.service';
 import type { ResearchTopic } from '../../types/research';
 import { canTransitionResearchTopic } from '../../utils/researchStatus';
 import type { ResearchTopicStatus } from '../../types/research';
-import { researchGroupService } from '../../services/researchGroup.service';
+import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
+import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -54,6 +55,7 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { useAuth } from '../../hooks/useAuth';
 import styles from './ResearchTopics.module.css';
 
 interface BannerState {
@@ -67,6 +69,9 @@ const formatTopicId = (id: number): string =>
 
 export const ResearchTopicsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentLecturerId =
+    typeof user?.userId === 'number' ? user.userId : null;
   const {
     topics,
     isLoading,
@@ -74,9 +79,10 @@ export const ResearchTopicsPage = () => {
     refetch: refetchTopics,
   } = useResearchTopics();
 
-  // Groups are only used to compute the "Assigned to N groups" badge per
-  // topic — no mutation happens here.
+  // Groups are used both to compute "Assigned to N groups" badge per
+  // topic and to populate the Assign Topic modal.
   const [groupCounts, setGroupCounts] = useState<Record<number, number>>({});
+  const [allGroups, setAllGroups] = useState<ResearchGroup[]>([]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -90,15 +96,20 @@ export const ResearchTopicsPage = () => {
           acc[tid] = (acc[tid] ?? 0) + 1;
         }
         setGroupCounts(acc);
+        setAllGroups(groups ?? []);
       } catch {
         // Defensive — a failure here must not block the page.
         if (!cancelled) setGroupCounts({});
+        if (!cancelled) setAllGroups([]);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [topics]);
+
+  // ── Assign Topic modal state ─────────────────────────────────────────
+  const [assignModalTopic, setAssignModalTopic] = useState<ResearchTopic | null>(null);
 
   // ── Create Topic modal state ─────────────────────────────────────────
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -504,31 +515,41 @@ export const ResearchTopicsPage = () => {
                         key={tid}
                         className={selectedIndex === index ? styles.selectedRow : ''}
                       >
-                        <td>
-                          <span className={styles.topicIdBadge}>{idLabel}</span>
-                          <span className={styles.topicNameText}>
-                            {topic.title ?? '(untitled topic)'}
-                          </span>
+                        <td data-label="Topic">
+                          <div className={styles.topicTitleCell}>
+                            <span className={styles.topicIdBadge}>{idLabel}</span>
+                            <span className={styles.topicNameText}>
+                              {topic.title ?? '(untitled topic)'}
+                            </span>
+                          </div>
                         </td>
-                        <td className={styles.topicDescText}>
+                        <td className={styles.topicDescText} data-label="Description">
                           {topic.description?.trim() || '—'}
                         </td>
-                        <td>
+                        <td data-label="Status">
                           <StatusBadge status={topicStatus} />
                         </td>
-                        <td>
+                        <td data-label="Groups">
                           <span
-                            className={styles.countBadge}
+                            className={styles.groupCountChip}
                             data-testid="topic-group-count"
                           >
                             {groupCount}
                           </span>
+                          <button
+                            type="button"
+                            className={styles.assignGroupBtn}
+                            onClick={() => setAssignModalTopic(topic)}
+                            title="Assign this topic to a research group"
+                          >
+                            Assign
+                          </button>
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className={styles.topicActionStack}>
                             <button
                               type="button"
-                              className={styles.editTopicBtn}
+                              className={styles.topicActionPrimary}
                               onClick={() => openEditModal(topic)}
                               disabled={!topic.id}
                               title="Edit title / description / materials URL"
@@ -536,6 +557,7 @@ export const ResearchTopicsPage = () => {
                               <Pencil size={14} aria-hidden />
                               Edit
                             </button>
+                            <div className={styles.topicSecondaryCluster}>
                             {topicStatus === 'OPEN' ? (
                               <button
                                 type="button"
@@ -635,6 +657,7 @@ export const ResearchTopicsPage = () => {
                               <BookOpen size={14} aria-hidden />
                               Manage Phases
                             </Link>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -911,6 +934,24 @@ export const ResearchTopicsPage = () => {
         topic={topicForMaterials}
         onClose={handleCloseMaterials}
         onSuccess={() => void refetchTopics()}
+      />
+
+      {/* ASSIGN TOPIC TO GROUPS MODAL */}
+      <AssignTopicModal
+        isOpen={assignModalTopic !== null}
+        topic={assignModalTopic}
+        groups={allGroups}
+        currentLecturerId={currentLecturerId}
+        onClose={() => setAssignModalTopic(null)}
+        onSuccess={(outcomes) => {
+          const succeeded = outcomes.filter((o) => o.ok).length;
+          showBanner(
+            succeeded > 0
+              ? `Topic assigned to ${succeeded} group${succeeded === 1 ? '' : 's'} successfully.`
+              : 'No groups were assigned.',
+          );
+          void refetchTopics();
+        }}
       />
     </div>
   );

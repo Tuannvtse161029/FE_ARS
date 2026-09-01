@@ -20,6 +20,7 @@ import {
   Inbox,
   ArrowRight,
   Lightbulb,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -496,11 +497,22 @@ export const ResearchGroup = () => {
                         const label = m.studentId
                           ? `student #${m.studentId}`
                           : `member #${m.id ?? idx}`;
+                        const isLeader = Boolean(m.isLeader);
                         return (
                           <span
                             key={String(m.id ?? idx)}
-                            className={styles.memberPill}
+                            className={`${styles.memberPill} ${isLeader ? styles.memberPillLeader : ''}`}
+                            data-testid={isLeader ? 'group-leader-pill' : undefined}
                           >
+                            {isLeader && (
+                              <span
+                                className={styles.leaderGlyph}
+                                aria-label="Selected group leader"
+                                title="Selected group leader"
+                              >
+                                <Crown size={10} aria-hidden />
+                              </span>
+                            )}
                             <span
                               className={styles.memberAvatar}
                               data-avatar-tone={avatarToneAt(idx)}

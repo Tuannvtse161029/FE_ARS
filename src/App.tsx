@@ -58,8 +58,10 @@ const GuidanceProjects = lazy(() => import('./pages/Lecturer/GuidanceProjects').
 // Agent lecturer-navigation — top-level Lecturer surface for Research Topics.
 // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
 const ResearchTopicsPage = lazy(() => import('./pages/Lecturer/ResearchTopics').then((m) => ({ default: m.ResearchTopicsPage })));
-const LecturerLearningMaterialsPage = lazy(() => import('./pages/Lecturer/LearningMaterials').then((m) => ({ default: m.LecturerLearningMaterialsPage })));
-const LecturerSharedMaterialsPage = lazy(() => import('./pages/Lecturer/SharedMaterials').then((m) => ({ default: m.LecturerSharedMaterialsPage })));
+// Agent lecturer-navigation — combined Lecturer Materials page. Hosts both
+// Learning Materials and Shared Materials via in-page tabs. The legacy
+// routes are kept on the same page component for backward compatibility.
+const LecturerMaterialsPage = lazy(() => import('./pages/Lecturer/Materials').then((m) => ({ default: m.LecturerMaterialsPage })));
 const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').then((m) => ({ default: m.SubmitReport })));
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
@@ -185,8 +187,10 @@ const App = () => {
                     <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
                     <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
                     <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
-                    <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<LecturerLearningMaterialsPage />} />
-                    <Route path={ROUTES.LECTURER_SHARED_MATERIALS} element={<LecturerSharedMaterialsPage />} />
+                    <Route path={ROUTES.LECTURER_MATERIALS} element={<LecturerMaterialsPage />} />
+                    {/* Backward compatibility: old routes redirect to the new combined page */}
+                    <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<Navigate to={ROUTES.LECTURER_MATERIALS} replace />} />
+                    <Route path={ROUTES.LECTURER_SHARED_MATERIALS} element={<Navigate to={ROUTES.LECTURER_MATERIALS} replace />} />
                   </Route>
                   {/* Subscription management routes — always reachable for
                       Lecturer, even when the subscription is missing / expired.
