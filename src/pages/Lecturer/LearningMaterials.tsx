@@ -32,7 +32,9 @@ import type { LearningMaterial } from '../../services/learningMaterial.service';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
@@ -47,6 +49,9 @@ const formatTitle = (m: LearningMaterial): string => {
   return 'Untitled material';
 };
 
+/** Sortable column ids for the Learning Materials table. */
+type SortColumn = 'title' | 'subField' | 'updatedAt';
+
 export const LecturerLearningMaterialsPage = () => {
   const { user } = useAuth();
   const lecturerId = user?.userId ?? null;
@@ -56,6 +61,10 @@ export const LecturerLearningMaterialsPage = () => {
 
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Default sort by updatedAt (newest first) so freshly added materials
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<LearningMaterial, SortColumn>('updatedAt', 'desc');
 
   // ── Add form state ────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
@@ -97,6 +106,22 @@ export const LecturerLearningMaterialsPage = () => {
     );
   }, [materials, search]);
 
+  const sorted = useMemo(
+    () =>
+      sort.sortedItemsBy(filtered, (m) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return m.title ?? '';
+          case 'subField':
+            return m.subFieldId ?? null;
+          case 'updatedAt':
+          default:
+            return m.updatedAt ?? m.id ?? null;
+        }
+      }),
+    [filtered, sort],
+  );
+
   const {
     page,
     totalPages,
@@ -108,11 +133,11 @@ export const LecturerLearningMaterialsPage = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<LearningMaterial>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<LearningMaterial>(sorted, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
-  }, [search, resetPage]);
+  }, [search, sort.sortState, resetPage]);
 
   // Part 3 — keyboard shortcuts for the learning-materials table.
   // j/k navigate rows, Enter opens the material's PDF,
@@ -443,9 +468,31 @@ export const LecturerLearningMaterialsPage = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>TITLE</th>
-                    <th>SUB-FIELD</th>
-                    <th>UPDATED</th>
+                    <th>
+                      <SortableHeader
+                        column="title"
+                        label="TITLE"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="subField"
+                        label="SUB-FIELD"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        align="right"
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="updatedAt"
+                        label="UPDATED"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
                     <th>ACTION</th>
                   </tr>
                 </thead>

@@ -491,12 +491,11 @@
   outline-offset: 2px;
 }
 
-/* Keyboard-shortcut-selected card (Part 3 — useListShortcuts). */
+/* Keyboard-shortcut-selected card (Part 3 — useListShortcuts) — visual
+   highlight removed per product request. The j/k navigation logic
+   remains intact but no outline is rendered. */
 .reportCard.selectedCard {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: 2px;
-  border-color: var(--ars-blue, #007AFF);
-  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 122, 255, 0.18));
+  /* intentionally empty */
 }
 
 /* Overdue submission — left-side error stripe so the lecturer can

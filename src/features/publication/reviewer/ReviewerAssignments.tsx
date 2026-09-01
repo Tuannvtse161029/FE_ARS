@@ -2,20 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { useTableSort } from '../../../hooks/useTableSort';
 import reviewer from './reviewer.module.css';
-import { statusLabel, type PublicationPaper } from '../types/publication';
+import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
   isAwaitingReviewerResponse,
   isReviewerActionable,
   isReviewerSubmitted,
 } from './reviewerCriteria';
 import { PageHeader } from '../../../components/PageHeader';
+import { SortableHeader } from '../../../components/table/SortableHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
+
+/** Sortable column ids for the Reviewer Assignments table. */
+type SortColumn = 'title' | 'status' | 'actionability' | 'assigned' | 'deadline';
 
 // ReviewerAssignments — Reviewer-only list of Admin-assigned papers.
 //
@@ -60,6 +65,21 @@ export const ReviewerAssignments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<PublicationStatus | 'ALL'>('ALL');
+
+  // Status values that a reviewer can see in their queue.
+  const REVIEWER_STATUS_OPTIONS: ReadonlyArray<PublicationStatus> = [
+    'REVIEWER_ASSIGNED',
+    'UNDER_REVIEW',
+    'REVISION_REQUIRED',
+    'RESUBMITTED',
+    'REVIEWER_RECOMMENDED_ACCEPT',
+    'REVIEWER_RECOMMENDED_REJECT',
+  ];
+
+  // Default sort by assigned (newest first) so recently assigned papers
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<PublicationPaper, SortColumn>('assigned', 'desc');
 
   useEffect(() => {
     let cancelled = false;
@@ -83,8 +103,11 @@ export const ReviewerAssignments = () => {
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return papers;
     return papers.filter((paper) => {
+      if (statusFilter !== 'ALL' && paper.status !== statusFilter) {
+        return false;
+      }
+      if (!term) return true;
       const haystack = [
         paper.title,
         paper.abstract,
@@ -100,18 +123,40 @@ export const ReviewerAssignments = () => {
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [papers, search]);
+  }, [papers, search, statusFilter]);
+
+  // Apply column sort on top of filtered list.
+  const sortedPapers = useMemo(
+    () =>
+      sort.sortedItemsBy(visiblePapers, (paper) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return paper.title ?? '';
+          case 'status':
+            return paper.status;
+          case 'actionability':
+            return actionableLabel(paper);
+          case 'assigned':
+            return paper.assignmentCreatedAt ?? paper.submittedAt ?? null;
+          case 'deadline':
+            return paper.reviewDeadline ?? null;
+          default:
+            return paper.assignmentCreatedAt ?? paper.submittedAt ?? paper.createdAt ?? null;
+        }
+      }),
+    [visiblePapers, sort],
+  );
 
   const rows = useMemo(
     () =>
-      visiblePapers.map((paper) => ({
+      sortedPapers.map((paper) => ({
         paper,
         actionable: actionableLabel(paper),
         actionableTone: actionableTone(paper),
         assignedAt: formatDate(paper.assignmentCreatedAt ?? paper.submittedAt),
         deadline: formatDate(paper.reviewDeadline),
       })),
-    [visiblePapers],
+    [sortedPapers],
   );
 
   // Part 5 — keyboard shortcuts for the reviewer queue.
@@ -184,11 +229,59 @@ export const ReviewerAssignments = () => {
               <table className={reviewer.table}>
                 <thead>
                   <tr>
-                    <th scope="col" className={reviewer.thTitle}>Title</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Actionability</th>
-                    <th scope="col">Assigned</th>
-                    <th scope="col">Deadline</th>
+                    <th scope="col" className={reviewer.thTitle}>
+                      <SortableHeader
+                        column="title"
+                        label="Title"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="status"
+                        label="Status"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={[
+                          { value: 'ALL', label: 'All statuses' },
+                          ...REVIEWER_STATUS_OPTIONS.map((status) => ({
+                            value: status,
+                            label: statusLabel(status),
+                          })),
+                        ]}
+                        activeFilter={statusFilter}
+                        onFilterChange={(next) =>
+                          setStatusFilter(
+                            next as PublicationStatus | 'ALL',
+                          )
+                        }
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="actionability"
+                        label="Actionability"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="assigned"
+                        label="Assigned"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="deadline"
+                        label="Deadline"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
                     <th scope="col" className={reviewer.thActions}>Action</th>
                   </tr>
                 </thead>

@@ -373,11 +373,11 @@
   gap: var(--space-4);
 }
 
-/* Keyboard-shortcut-selected post wrap (Part 4 — useListShortcuts). */
+/* Keyboard-shortcut-selected post wrap (Part 4 — useListShortcuts) —
+   visual highlight removed per product request. The j/k navigation
+   logic remains intact but no outline is rendered. */
 .postList > .selectedPostWrap {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: 4px;
-  border-radius: 12px;
+  /* intentionally empty */
 }
 
 /* ─── PAGINATION ─────────────────────────────────────────── */

@@ -276,11 +276,11 @@
   background: var(--ars-admin-light);
 }
 
-/* Keyboard-shortcut-selected row (Part 5 — useListShortcuts). */
+/* Keyboard-shortcut-selected row (Part 5 — useListShortcuts) — visual
+   highlight removed per product request. The j/k navigation logic
+   remains intact but no outline is rendered. */
 .table tbody tr.selectedRow {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: -2px;
-  background: var(--ars-admin-light);
+  /* intentionally empty */
 }
 
 .titleCell {

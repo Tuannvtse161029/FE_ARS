@@ -478,11 +478,11 @@
   background: var(--ars-paper-inset);
 }
 
-/* Keyboard-shortcut-selected row */
+/* Keyboard-shortcut-selected row — visual highlight removed per product
+   request. The j/k navigation logic remains intact so the underlying
+   keyboard shortcut still works, but no outline or background is rendered. */
 .table tbody tr.selectedRow {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: -2px;
-  background: rgba(0, 122, 255, 0.08);
+  /* intentionally empty */
 }
 
 .topicNameText {
@@ -856,11 +856,10 @@
   box-shadow: var(--shadow-md);
 }
 
-/* Keyboard-shortcut-selected card */
+/* Keyboard-shortcut-selected card — visual highlight removed per product
+   request. */
 .sharedCard.selectedCard {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: 2px;
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+  /* intentionally empty */
 }
 
 .sharedCardIcon {

@@ -45,7 +45,9 @@ import {
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { usePagination } from '../../hooks/usePagination';
+import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
@@ -56,6 +58,15 @@ import { BackendGapBanner } from '../../components/BackendGapBanner';
 import styles from './Materials.module.css';
 
 type TabId = 'my-materials' | 'shared-materials';
+
+// Sortable column ids for the Learning Materials (My Materials) table.
+type LMSortColumn = 'title' | 'subField' | 'updatedAt';
+// Sortable column ids for the Shared Materials table.
+type SMSortColumn = 'paperId' | 'colleague' | 'status' | 'createdAt';
+
+// Shared material status values that appear in the filter dropdown.
+const SHARED_STATUS_OPTIONS = ['ACTIVE', 'ARCHIVED'] as const;
+type SharedMaterialStatusFilter = 'ALL' | typeof SHARED_STATUS_OPTIONS[number];
 
 // ── Learning Materials helpers ─────────────────────────────────────────────
 
@@ -90,6 +101,12 @@ export const LecturerMaterialsPage = () => {
 
   const [lmSearch, setLmSearch] = useState('');
   const [lmRefreshing, setLmRefreshing] = useState(false);
+  // Default sort by updatedAt (newest first) so freshly added materials
+  // surface at the top. The user can override per column header click.
+  const lmSort = useTableSort<LearningMaterial, LMSortColumn>(
+    'updatedAt',
+    'desc',
+  );
 
   // Add form state (Learning Materials)
   const [lmShowForm, setLmShowForm] = useState(false);
@@ -153,6 +170,22 @@ export const LecturerMaterialsPage = () => {
     );
   }, [materials, lmSearch]);
 
+  const lmSorted = useMemo(
+    () =>
+      lmSort.sortedItemsBy(lmFiltered, (m) => {
+        switch (lmSort.sortState.column) {
+          case 'title':
+            return m.title ?? '';
+          case 'subField':
+            return m.subFieldId ?? null;
+          case 'updatedAt':
+          default:
+            return m.updatedAt ?? m.id ?? null;
+        }
+      }),
+    [lmFiltered, lmSort],
+  );
+
   const {
     page: lmPage,
     totalPages: lmTotalPages,
@@ -164,11 +197,11 @@ export const LecturerMaterialsPage = () => {
     next: lmNext,
     prev: lmPrev,
     resetPage: resetLmPage,
-  } = usePagination<LearningMaterial>(lmFiltered, DEFAULT_PAGE_SIZE);
+  } = usePagination<LearningMaterial>(lmSorted, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetLmPage();
-  }, [lmSearch, resetLmPage]);
+  }, [lmSearch, lmSort.sortState, resetLmPage]);
 
   // Keyboard shortcuts for My Materials table
   const { selectedIndex: lmSelectedIndex } = useListShortcuts({
@@ -299,6 +332,14 @@ export const LecturerMaterialsPage = () => {
   const [sharedItems, setSharedItems] = useState<SharedMaterial[]>([]);
   const [sharedLoading, setSharedLoading] = useState(true);
   const [sharedError, setSharedError] = useState<string | null>(null);
+  const [sharedStatusFilter, setSharedStatusFilter] =
+    useState<SharedMaterialStatusFilter>('ALL');
+  // Default sort by createdAt (newest first) so freshly shared papers
+  // surface at the top. The user can override per column header click.
+  const smSort = useTableSort<SharedMaterial, SMSortColumn>(
+    'createdAt',
+    'desc',
+  );
   const [sharedModalOpen, setSharedModalOpen] = useState(false);
   const [sharedEditing, setSharedEditing] = useState<SharedMaterial | null>(null);
   const [sharedPaperId, setSharedPaperId] = useState('');
@@ -339,12 +380,27 @@ export const LecturerMaterialsPage = () => {
   };
 
   const sharedSorted = useMemo(() => {
-    return [...sharedItems].sort((a, b) => {
-      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return db - da; // newest created first
+    // 1) Apply the status filter (client-side; the BE doesn't expose
+    //    `?status=` for SharedMaterial yet).
+    const statusFiltered =
+      sharedStatusFilter === 'ALL'
+        ? sharedItems
+        : sharedItems.filter((item) => item.status === sharedStatusFilter);
+    // 2) Sort using the column the user picked via the header.
+    return smSort.sortedItemsBy(statusFiltered, (item) => {
+      switch (smSort.sortState.column) {
+        case 'paperId':
+          return item.paperId ?? null;
+        case 'colleague':
+          return item.sharedWithColleagueId ?? null;
+        case 'status':
+          return item.status ?? '';
+        case 'createdAt':
+        default:
+          return item.createdAt ?? item.sharedAt ?? null;
+      }
     });
-  }, [sharedItems]);
+  }, [sharedItems, smSort, sharedStatusFilter]);
 
   // Keyboard shortcuts for Shared Materials grid
   const { selectedIndex: sharedSelectedIndex } = useListShortcuts({
@@ -796,9 +852,31 @@ export const LecturerMaterialsPage = () => {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>TITLE</th>
-                      <th>SUB-FIELD</th>
-                      <th>UPDATED</th>
+                      <th>
+                        <SortableHeader
+                          column="title"
+                          label="TITLE"
+                          cycleSort={lmSort.cycleSort}
+                          ariaSortFor={lmSort.ariaSortFor}
+                        />
+                      </th>
+                      <th>
+                        <SortableHeader
+                          column="subField"
+                          label="SUB-FIELD"
+                          cycleSort={lmSort.cycleSort}
+                          ariaSortFor={lmSort.ariaSortFor}
+                          align="right"
+                        />
+                      </th>
+                      <th>
+                        <SortableHeader
+                          column="updatedAt"
+                          label="UPDATED"
+                          cycleSort={lmSort.cycleSort}
+                          ariaSortFor={lmSort.ariaSortFor}
+                        />
+                      </th>
                       <th>ACTION</th>
                     </tr>
                   </thead>
@@ -881,6 +959,23 @@ export const LecturerMaterialsPage = () => {
         className={`${styles.tabPanel} ${activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}
       >
         <div className={styles.sharedToolbar}>
+          <select
+            className={styles.filterSelect}
+            value={sharedStatusFilter}
+            onChange={(event) =>
+              setSharedStatusFilter(
+                event.target.value as SharedMaterialStatusFilter,
+              )
+            }
+            aria-label="Filter shared materials by status"
+          >
+            <option value="ALL">All statuses</option>
+            {SHARED_STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status === 'ACTIVE' ? 'Active' : 'Archived'}
+              </option>
+            ))}
+          </select>
           <span>
             {sharedLoading
               ? 'Loading…'

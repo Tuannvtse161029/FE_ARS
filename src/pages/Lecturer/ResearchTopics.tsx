@@ -37,6 +37,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
+import { useTableSort } from '../../hooks/useTableSort';
 import { researchTopicService } from '../../services/researchTopic.service';
 import type { ResearchTopic } from '../../types/research';
 import { canTransitionResearchTopic } from '../../utils/researchStatus';
@@ -48,6 +49,7 @@ import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
@@ -58,6 +60,22 @@ import { buildConfigureMilestonesUrl } from '../../utils/topicRouting';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import { useAuth } from '../../hooks/useAuth';
 import styles from './ResearchTopics.module.css';
+
+const STATUS_OPTIONS: ReadonlyArray<ResearchTopicStatus> = [
+  'OPEN',
+  'ASSIGNED',
+  'COMPLETED',
+  'CLOSED',
+];
+const STATUS_FILTER_LABELS: Record<ResearchTopicStatus, string> = {
+  OPEN: 'Open',
+  ASSIGNED: 'Assigned',
+  COMPLETED: 'Completed',
+  CLOSED: 'Closed',
+};
+
+/** Sortable column ids for the Research Topics table. */
+type SortColumn = 'title' | 'description' | 'status' | 'groups' | 'createdAt';
 
 interface BannerState {
   visible: boolean;
@@ -150,23 +168,49 @@ export const ResearchTopicsPage = () => {
 
   // ── Toolbar state ───────────────────────────────────────────────────
   const [topicSearch, setTopicSearch] = useState('');
+  const [topicStatusFilter, setTopicStatusFilter] = useState<ResearchTopicStatus | 'ALL'>('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Default sort by createdAt (newest first) so newly created topics
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<ResearchTopic, SortColumn>('createdAt', 'desc');
 
   const filteredTopics = useMemo(() => {
     const query = topicSearch.trim().toLowerCase();
-    const sorted = [...topics].sort((a, b) => {
-      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return db - da; // newest created first
-    });
-    if (!query) return sorted;
-    return sorted.filter((t) =>
-      [t.title ?? '', t.description ?? '', t.status ?? '']
+    const base = topics.filter((t) => {
+      if (topicStatusFilter !== 'ALL' && t.status !== topicStatusFilter) {
+        return false;
+      }
+      if (!query) return true;
+      return [t.title ?? '', t.description ?? '', t.status ?? '']
         .join(' ')
         .toLowerCase()
-        .includes(query),
-    );
-  }, [topics, topicSearch]);
+        .includes(query);
+    });
+    // Sort is applied separately via sort.sortedItemsBy below.
+    return base;
+  }, [topics, topicSearch, topicStatusFilter]);
+
+  // Apply sort on top of filtered list.
+  const sortedTopics = useMemo(
+    () =>
+      sort.sortedItemsBy(filteredTopics, (t) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return t.title ?? '';
+          case 'description':
+            return t.description ?? '';
+          case 'status':
+            return t.status ?? '';
+          case 'groups':
+            return groupCounts[t.id ?? -1] ?? 0;
+          case 'createdAt':
+          default:
+            return t.createdAt ?? null;
+        }
+      }),
+    [filteredTopics, groupCounts, sort],
+  );
 
   const {
     page,
@@ -179,11 +223,11 @@ export const ResearchTopicsPage = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<ResearchTopic>(filteredTopics, DEFAULT_PAGE_SIZE);
+  } = usePagination<ResearchTopic>(sortedTopics, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
-  }, [topicSearch, resetPage]);
+  }, [topicSearch, topicStatusFilter, sort.sortState, resetPage]);
 
   // Part 3 — keyboard shortcuts for the research-topics table.
   // j/k navigate rows, Enter opens the topic's milestones page,
@@ -488,10 +532,52 @@ export const ResearchTopicsPage = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>TOPIC ID &amp; NAME</th>
-                    <th>DESCRIPTION</th>
-                    <th>STATUS</th>
-                    <th>GROUPS</th>
+                    <th>
+                      <SortableHeader
+                        column="title"
+                        label="TOPIC ID &amp; NAME"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="description"
+                        label="DESCRIPTION"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="status"
+                        label="STATUS"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={[
+                          { value: 'ALL', label: 'All statuses' },
+                          ...STATUS_OPTIONS.map((status) => ({
+                            value: status,
+                            label: STATUS_FILTER_LABELS[status],
+                          })),
+                        ]}
+                        activeFilter={topicStatusFilter}
+                        onFilterChange={(next) =>
+                          setTopicStatusFilter(
+                            next as ResearchTopicStatus | 'ALL',
+                          )
+                        }
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="groups"
+                        label="GROUPS"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        align="right"
+                      />
+                    </th>
                     <th>ACTION</th>
                   </tr>
                 </thead>

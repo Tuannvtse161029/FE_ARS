@@ -10,6 +10,7 @@ import { Download, Inbox } from 'lucide-react';
 import styles from './AuditLogs.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
+import { useTableSort } from '../../hooks/useTableSort';
 import type {
   AuditLogEntry,
   AuditLogAction,
@@ -19,6 +20,7 @@ import type {
 import { usePagination } from '../../hooks/usePagination';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -27,6 +29,9 @@ import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
+
+/** Sortable column ids for the Audit Logs table. */
+type SortColumn = 'logId' | 'admin' | 'action' | 'target' | 'timestamp';
 
 const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
   { value: 'past_24h', label: 'Past 24 hours' },
@@ -84,6 +89,7 @@ export default function AuditLogs(): JSX.Element {
   const [search, setSearch] = useState('');
   const [range, setRange] = useState<AuditLogRange>('past_30d');
   const [adminId, setAdminId] = useState<AuditLogQuery['adminId']>('ALL');
+  const [actionFilter, setActionFilter] = useState<AuditLogAction | 'ALL'>('ALL');
   const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
@@ -116,10 +122,34 @@ export default function AuditLogs(): JSX.Element {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [entries]);
 
-  // Newest first by timestamp.
+  // Default sort by timestamp (newest first) so the most recent admin
+  // actions stay at the top of the trail. The user can override per column.
+  const sort = useTableSort<AuditLogEntry, SortColumn>('timestamp', 'desc');
+
+  // Apply sort on top of the entries (no client-side filter — the BE
+  // does the search/range/admin narrowing).
   const sortedEntries = useMemo(
-    () => [...entries].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-    [entries],
+    () =>
+      sort
+        .sortedItemsBy(entries, (entry) => {
+          switch (sort.sortState.column) {
+            case 'logId':
+              return entry.logId;
+            case 'admin':
+              return entry.adminName ?? '';
+            case 'action':
+              return entry.action;
+            case 'target':
+              return entry.target ?? '';
+            case 'timestamp':
+            default:
+              return entry.timestamp ?? null;
+          }
+        })
+        .filter((entry) =>
+          actionFilter === 'ALL' ? true : entry.action === actionFilter,
+        ),
+    [entries, sort, actionFilter],
   );
 
   const {
@@ -137,7 +167,7 @@ export default function AuditLogs(): JSX.Element {
 
   useEffect(() => {
     resetPage();
-  }, [search, range, adminId, resetPage]);
+  }, [search, range, adminId, actionFilter, sort.sortState, resetPage]);
 
   const handleExport = async (): Promise<void> => {
     setExporting(true);
@@ -282,11 +312,57 @@ export default function AuditLogs(): JSX.Element {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Log ID</th>
-                  <th>Admin</th>
-                  <th>Action</th>
-                  <th>Target</th>
-                  <th>Timestamp</th>
+                  <th>
+                    <SortableHeader
+                      column="logId"
+                      label="Log ID"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="admin"
+                      label="Admin"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="action"
+                      label="Action"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={[
+                        { value: 'ALL', label: 'All actions' },
+                        ...Object.entries(ACTION_LABEL).map(([value, label]) => ({
+                          value,
+                          label,
+                        })),
+                      ]}
+                      activeFilter={actionFilter}
+                      onFilterChange={(next) =>
+                        setActionFilter(next as AuditLogAction | 'ALL')
+                      }
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="target"
+                      label="Target"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="timestamp"
+                      label="Timestamp"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
                   <th>Details</th>
                 </tr>
               </thead>

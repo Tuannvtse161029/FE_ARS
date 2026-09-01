@@ -423,11 +423,17 @@
 .actionBtnLecturer {
   background-color: var(--ars-lecturer) !important;
   border-color: var(--ars-lecturer) !important;
+  color: #ffffff !important;
 }
 
 .actionBtnLecturer:hover:not(:disabled) {
   background-color: var(--ars-lecturer-mid) !important;
   border-color: var(--ars-lecturer-mid) !important;
+  color: #ffffff !important;
+}
+
+.actionBtnLecturer:focus-visible {
+  outline-color: var(--ars-lecturer) !important;
 }
 
 /* Lecturer-success accent (used for "Launch Google Meet") */

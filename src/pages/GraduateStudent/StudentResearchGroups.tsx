@@ -49,8 +49,10 @@ import { Button } from '../../components/Button';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import BackendGapBanner from '../../components/BackendGapBanner';
 import { usePagination } from '../../hooks/usePagination';
+import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
@@ -61,6 +63,14 @@ const DEFAULT_FOLDER_KEY = 'milestone';
 const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
+/** Sortable column ids for the Milestone Reports table inside a Group workspace. */
+type ReportsSortColumn =
+  | 'phase'
+  | 'milestone'
+  | 'submitted'
+  | 'deadline'
+  | 'score'
+  | 'status';
 export const StudentResearchGroups = (): JSX.Element => {
   const { user } = useAuth();
   const studentId = user?.userId ?? null;
@@ -238,28 +248,7 @@ export const StudentResearchGroups = (): JSX.Element => {
     return lecturerLookupService.getLecturerDisplayName(lecturerId);
   };
 
-  const filteredReports = useMemo(() => {
-    const lowered = searchText.trim().toLowerCase();
-    return reports
-      .filter((r) => {
-        if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-        if (lowered.length === 0) return true;
-        const haystack = [
-          `Report #${r.id}`,
-          r.status,
-          r.finalOutcomeEvaluation ?? '',
-          r.capacityEvaluation ?? '',
-        ]
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(lowered);
-      })
-      .sort((a, b) => {
-        const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-        const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-        return bTime - aTime;
-      });
-  }, [reports, searchText, statusFilter]);
+  const filteredReports = reports;
 
   const handleRefresh = async (): Promise<void> => {
     await refetch();
@@ -672,6 +661,56 @@ function WorkspaceView({
 }: WorkspaceViewProps): JSX.Element {
   const lecturerId = group.lecturerId;
 
+  // Default sort by submitted (newest first) so recently submitted
+  // reports surface at the top. The user can override per column.
+  const reportsSort =
+    useTableSort<SubmittedPhasedReport, ReportsSortColumn>('submitted', 'desc');
+
+  // Phase Reports table — sorted + status-filtered client-side before
+  // pagination so the column sort and inline status dropdown affect
+  // every page of the result set.
+  const STATUS_FILTER_OPTIONS = [
+    { value: 'all' as const, label: 'All statuses' },
+    { value: 'WAITING' as const, label: 'Waiting' },
+    { value: 'SUBMITTED' as const, label: 'Submitted' },
+    { value: 'EVALUATED' as const, label: 'Evaluated' },
+    { value: 'REJECTED' as const, label: 'Rejected' },
+  ];
+
+  const sortedFilteredReports = useMemo(() => {
+    const lowered = searchText.trim().toLowerCase();
+    const base = reports.filter((r) => {
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (lowered.length === 0) return true;
+      const haystack = [
+        `Report #${r.id}`,
+        r.status,
+        r.finalOutcomeEvaluation ?? '',
+        r.capacityEvaluation ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(lowered);
+    });
+    return reportsSort.sortedItemsBy(base, (report) => {
+      switch (reportsSort.sortState.column) {
+        case 'phase':
+          return report.phaseNumber ?? report.id ?? null;
+        case 'milestone':
+          return report.milestoneTitle ?? '';
+        case 'submitted':
+          return report.submittedAt ?? null;
+        case 'deadline':
+          return report.deadlineAt ?? null;
+        case 'score':
+          return report.lectureFeedback ?? null;
+        case 'status':
+        default:
+          return report.status;
+      }
+    });
+  }, [reports, searchText, statusFilter, reportsSort]);
+
   const {
     page: reportsTablePage,
     totalPages: reportsTotalPages,
@@ -683,11 +722,14 @@ function WorkspaceView({
     next: nextReportsPage,
     prev: prevReportsPage,
     resetPage: resetReportsPage,
-  } = usePagination<SubmittedPhasedReport>(reports, DEFAULT_PAGE_SIZE);
+  } = usePagination<SubmittedPhasedReport>(
+    sortedFilteredReports,
+    DEFAULT_PAGE_SIZE,
+  );
 
   useEffect(() => {
     resetReportsPage();
-  }, [searchText, statusFilter, resetReportsPage]);
+  }, [searchText, statusFilter, reportsSort.sortState, resetReportsPage]);
 
   // Part 3 — keyboard shortcuts for the milestone-reports table.
   // j/k navigate rows, Enter opens the PDF if available,
@@ -932,12 +974,60 @@ function WorkspaceView({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Phase</th>
-                    <th>Milestone</th>
-                    <th>Submitted</th>
-                    <th>Deadline</th>
-                    <th>Status</th>
-                    <th>Score</th>
+                    <th>
+                      <SortableHeader
+                        column="phase"
+                        label="Phase"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="milestone"
+                        label="Milestone"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="submitted"
+                        label="Submitted"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="deadline"
+                        label="Deadline"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="status"
+                        label="Status"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                        filterOptions={STATUS_FILTER_OPTIONS}
+                        activeFilter={statusFilter}
+                        onFilterChange={(next) =>
+                          onStatusFilterChange(next as StatusFilter)
+                        }
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="score"
+                        label="Score"
+                        cycleSort={reportsSort.cycleSort}
+                        ariaSortFor={reportsSort.ariaSortFor}
+                        align="right"
+                      />
+                    </th>
                     <th>Action</th>
                   </tr>
                 </thead>
