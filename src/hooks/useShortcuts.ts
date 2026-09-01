@@ -112,6 +112,7 @@ export const useShortcuts = (specs: ShortcutSpec[]): void => {
         if (spec.modifier !== 'mod' && hasMod(event)) continue;
 
         // Key matching (case-insensitive, ignores Shift state for letters)
+        if (!event.key || !spec.key) continue;
         if (event.key.toLowerCase() !== spec.key.toLowerCase()) continue;
 
         // Input-focus guard — modifiers still allowed when set.

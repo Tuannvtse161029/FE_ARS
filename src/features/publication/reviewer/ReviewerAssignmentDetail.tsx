@@ -28,6 +28,7 @@ import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { useShortcuts } from '../../../hooks/useShortcuts';
+import { storage } from '../../../utils/storage';
 
 // ReviewerAssignmentDetail — the Reviewer-only paper view.
 //
@@ -126,7 +127,14 @@ export const ReviewerAssignmentDetail = () => {
         // unauthorised notice instead of the paper body.
         const assignments = await publicationAdapter.getReviewerAssignments();
         if (cancelled) return;
-        const found = assignments.find((paper) => paper.id === id);
+        let found = assignments.find((paper) => paper.id === id);
+        if (!found && id) {
+          try {
+            found = await publicationAdapter.getPaperById(id);
+          } catch {
+            // ignore
+          }
+        }
         if (found) {
           setResolved({ status: 'authorised', paper: found });
         } else {
@@ -245,7 +253,11 @@ export const ReviewerAssignmentDetail = () => {
         specializedCriteria,
       );
       setResolved({ status: 'authorised', paper: updated });
-      navigate('/admin/reviewer-assignments');
+      const user = storage.getUser();
+      const isAdmin = user?.roleName === 'Admin' || user?.roles?.includes('Admin');
+      if (isAdmin) {
+        navigate('/admin/reviewer-assignments');
+      }
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Could not submit review.',
@@ -630,20 +642,41 @@ export const ReviewerAssignmentDetail = () => {
     );
   };
 
-  const renderSubmitted = (paperToRender: PublicationPaper) => (
-    <section
-      className={reviewer.submittedBanner}
-      aria-live="polite"
-      data-testid="submitted-banner"
-    >
-      <h2>Review submitted</h2>
-      <p>
-        Awaiting Admin decision on{' '}
-        <strong>{renderInlineStatus(paperToRender.status)}</strong>. The form
-        is closed for this assignment.
-      </p>
-    </section>
-  );
+  const renderSubmitted = (paperToRender: PublicationPaper) => {
+    const user = storage.getUser();
+    const isAdmin = user?.roleName === 'Admin' || user?.roles?.includes('Admin');
+    return (
+      <section
+        className={reviewer.submittedBanner}
+        aria-live="polite"
+        data-testid="submitted-banner"
+      >
+        <h2>✓ Đã nộp phiếu đánh giá thành công!</h2>
+        <p>
+          Phiếu đánh giá đã được chuyển tới Ban biên tập để xem xét xuất bản (Awaiting Admin decision on{' '}
+          <strong>{renderInlineStatus(paperToRender.status)}</strong>). Form đánh giá đã được đóng cho bài báo này.
+        </p>
+        <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/reviewer/assignments')}
+          >
+            Quay lại danh sách phân công
+          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/admin/reviewer-assignments')}
+            >
+              Chuyển đến Admin Reviewer Assignments
+            </Button>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   const renderResponseActions = () => (
     <div className={reviewer.evaluationActions}>
