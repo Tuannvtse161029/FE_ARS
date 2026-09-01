@@ -121,34 +121,81 @@ export interface StudentGroupView extends ResearchGroup {
 export const getJoinedGroupsForStudent = async (
   studentId: number,
 ): Promise<StudentGroupView[]> => {
-  const groups = await researchGroupService.getMyGroups();
-  return groups
-    .map((group): StudentGroupView | null => {
-      const id = group.id ?? group.researchGroupId;
-      if (typeof id !== 'number' || id <= 0) return null;
-      const member = (group.members ?? []).find((raw) => {
-        if (!raw || typeof raw !== 'object') return false;
-        const row = raw as { studentId?: unknown };
-        return Number(row.studentId) === studentId;
-      }) as Record<string, unknown> | undefined;
-      if (!member) return null;
-      const membershipId = Number(member.groupMemberId ?? member.id);
-      if (!Number.isFinite(membershipId) || membershipId <= 0) return null;
-      return {
-        id,
-        lecturerId: group.lecturerId ?? null,
-        topicId: group.topicId ?? null,
-        name: group.name ?? `Group #${id}`,
-        description: group.description ?? undefined,
-        deadline: group.deadline ?? undefined,
-        assignedAt: group.assignedAt ?? undefined,
-        membershipId,
-        activityStatus: typeof member.activityStatus === 'string' ? member.activityStatus : undefined,
-        joinedAt: typeof member.joinedAt === 'string' ? member.joinedAt : undefined,
-        isLeader: Boolean(member.isLeader || member.leaderId),
-      };
-    })
-    .filter((item): item is StudentGroupView => item !== null);
+  const [myGroups, allMembers, allGroupsRaw] = await Promise.all([
+    researchGroupService.getMyGroups().catch(() => []),
+    getAllGroupMembers().catch(() => []),
+    getAllResearchGroups().catch(() => []),
+  ]);
+
+  // Use a generic map since myGroups and allGroupsRaw have slightly different
+  // ResearchGroup types (researchGroup.service vs types/research).
+  const groupMap = new Map<number, ResearchGroup>();
+  for (const g of allGroupsRaw) {
+    if (g.id) groupMap.set(g.id, g);
+  }
+  for (const g of myGroups) {
+    const gid = g.id ?? (g as unknown as { researchGroupId?: number }).researchGroupId;
+    if (gid) {
+      groupMap.set(gid, {
+        ...g,
+        id: gid,
+      } as unknown as ResearchGroup);
+    }
+  }
+
+  // Also check local pending applications saved in localStorage
+  let localPendingIds: number[] = [];
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem(`student_pending_groups_${studentId}`);
+      if (raw) localPendingIds = JSON.parse(raw);
+    } catch {}
+  }
+
+  // Find all memberships for this student
+  const studentMemberships = allMembers.filter((m) => m.studentId === studentId);
+  const membershipByGroup = new Map<number, GroupMember>();
+  for (const m of studentMemberships) {
+    if (m.researchGroupId) membershipByGroup.set(m.researchGroupId, m);
+  }
+
+  // Combine from myGroups, studentMemberships, and localPendingIds
+  const resultIds = new Set<number>();
+  for (const g of myGroups) {
+    const gid = g.id ?? (g as unknown as { researchGroupId?: number }).researchGroupId;
+    if (gid) resultIds.add(gid);
+  }
+  for (const m of studentMemberships) {
+    if (m.researchGroupId) resultIds.add(m.researchGroupId);
+  }
+  for (const pid of localPendingIds) {
+    resultIds.add(pid);
+  }
+
+  const list: StudentGroupView[] = [];
+  for (const id of resultIds) {
+    const group = groupMap.get(id);
+    if (!group) continue;
+    const member = membershipByGroup.get(id);
+    const isLocalPending = localPendingIds.includes(id);
+    const rawStatus = member?.activityStatus ?? (isLocalPending ? 'Pending' : 'JOINED');
+    const status = rawStatus || 'JOINED';
+    const rawMember = member as unknown as { isLeader?: unknown; leaderId?: unknown };
+    list.push({
+      id,
+      lecturerId: group.lecturerId ?? null,
+      topicId: group.topicId ?? null,
+      name: group.name ?? `Group #${id}`,
+      description: group.description ?? undefined,
+      deadline: group.deadline ?? undefined,
+      assignedAt: group.assignedAt ?? undefined,
+      membershipId: member?.id ?? id,
+      activityStatus: status,
+      joinedAt: member?.joinedAt ?? new Date().toISOString(),
+      isLeader: Boolean(rawMember?.isLeader || rawMember?.leaderId),
+    });
+  }
+  return list;
 };
 
 export const groupMembershipService = {
