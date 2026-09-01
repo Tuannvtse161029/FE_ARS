@@ -75,6 +75,25 @@ export const AdminPaperSubmissionDetail = () => {
     }
   };
 
+  const assignAuto = async () => {
+    if (!paper) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await publicationAdapter.assignReviewersAuto(paper.id, 3);
+      const items = await publicationAdapter.getAdminSubmissions();
+      const match = items.find((item) => item.id === id) ?? null;
+      if (match) {
+        setPaper(match);
+        setReviewerId(match.reviewerId ? String(match.reviewerId) : '');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The auto-assignment could not be completed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const publish = async () => {
     if (!paper) return;
     setSaving(true);
@@ -84,6 +103,20 @@ export const AdminPaperSubmissionDetail = () => {
       setPaper(updated);
     } catch {
       setError('The publish action could not be performed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reject = async (reason?: string) => {
+    if (!paper) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await publicationAdapter.rejectPaper(paper.id, reason);
+      setPaper(updated);
+    } catch {
+      setError('The reject action could not be performed.');
     } finally {
       setSaving(false);
     }
@@ -214,19 +247,92 @@ export const AdminPaperSubmissionDetail = () => {
             <dd>{paper.reviewer.privateComments || '—'}</dd>
           </dl>
           {Object.keys(paper.reviewer.privateScores).length > 0 && (
-            <table className={adminStyles.reviewScoresTable}>
-              <thead>
-                <tr><th>Criterion</th><th align="right">Score</th></tr>
-              </thead>
-              <tbody>
-                {Object.entries(paper.reviewer.privateScores).map(([criterion, score]) => (
-                  <tr key={criterion}>
-                    <td>{criterion}</td>
-                    <td align="right">{score}</td>
+            <div style={{ marginTop: 14 }}>
+              <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                Điểm số 5 tiêu chí cốt lõi (Core Criteria Scores)
+              </h4>
+              <table className={adminStyles.reviewScoresTable}>
+                <thead>
+                  <tr>
+                    <th>Criterion</th>
+                    <th align="right">Score (1-10)</th>
+                    <th>Private Note</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {Object.entries(paper.reviewer.privateScores).map(([criterion, score]) => (
+                    <tr key={criterion}>
+                      <td><strong style={{ textTransform: 'capitalize' }}>{criterion}</strong></td>
+                      <td align="right"><strong>{score}</strong> / 10</td>
+                      <td style={{ color: '#64748b', fontSize: 12 }}>
+                        {paper.reviewer?.privateNotes?.[criterion] || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {(paper.reviewer.criteria1 || paper.reviewer.criteria2 || paper.reviewer.criteria3) && (
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                Tiêu chí chuyên ngành & Mở rộng (Subfield Criteria & Expanded Criteria)
+              </h4>
+              <div style={{ display: 'grid', gap: 10 }}>
+                {paper.reviewer.criteria1 && (
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+                      1. {paper.reviewer.criteria1}
+                    </div>
+                    {paper.reviewer.expandedCriteria1 && (
+                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
+                        {paper.reviewer.expandedCriteria1}
+                      </div>
+                    )}
+                    {paper.reviewer.evaluationCriteria1 && (
+                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
+                        {paper.reviewer.evaluationCriteria1}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {paper.reviewer.criteria2 && (
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+                      2. {paper.reviewer.criteria2}
+                    </div>
+                    {paper.reviewer.expandedCriteria2 && (
+                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
+                        {paper.reviewer.expandedCriteria2}
+                      </div>
+                    )}
+                    {paper.reviewer.evaluationCriteria2 && (
+                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
+                        {paper.reviewer.evaluationCriteria2}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {paper.reviewer.criteria3 && (
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+                      3. {paper.reviewer.criteria3}
+                    </div>
+                    {paper.reviewer.expandedCriteria3 && (
+                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
+                        {paper.reviewer.expandedCriteria3}
+                      </div>
+                    )}
+                    {paper.reviewer.evaluationCriteria3 && (
+                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
+                        {paper.reviewer.evaluationCriteria3}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -240,9 +346,25 @@ export const AdminPaperSubmissionDetail = () => {
               <div className={adminStyles.actionZone}>
                 <h3 className={adminStyles.actionZoneTitle}>Assign / reassign reviewer</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'assign')?.hint}</p>
+
+                <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px dashed #e2e8f0' }}>
+                  <button
+                    type="button"
+                    className={shared.button}
+                    style={{ background: '#0284c7' }}
+                    disabled={saving}
+                    onClick={() => void assignAuto()}
+                  >
+                    {saving ? 'Đang phân công...' : '⚡ Tự động tìm & phân công 3 Reviewer (Auto-assign)'}
+                  </button>
+                  <p className={shared.fieldHint} style={{ marginTop: 4 }}>
+                    Gọi API <code>POST /api/Paper/{paper.id}/assign-reviewers</code> tự động khớp chuyên ngành & tải công việc.
+                  </p>
+                </div>
+
                 <div className={adminStyles.assignForm}>
                   <label className={shared.field}>
-                    <span>Reviewer account ID</span>
+                    <span>Hoặc nhập thủ công Reviewer ID</span>
                     <input
                       aria-label="Reviewer account ID"
                       inputMode="numeric"
@@ -253,18 +375,18 @@ export const AdminPaperSubmissionDetail = () => {
                   </label>
                   <button
                     type="button"
-                    className={shared.button}
+                    className={shared.buttonSecondary}
                     disabled={saving || !Number.isInteger(Number(reviewerId)) || Number(reviewerId) <= 0}
                     onClick={() => void assign()}
                   >
-                    {saving ? 'Saving...' : 'Assign reviewer'}
+                    {saving ? 'Saving...' : 'Gán Reviewer thủ công'}
                   </button>
                 </div>
               </div>
             )}
             {canPublish(paper) && (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Publish</h3>
+                <h3 className={adminStyles.actionZoneTitle}>Publish (Xuất bản)</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'publish')?.hint}</p>
                 <div className={shared.actions}>
                   <button
@@ -273,7 +395,7 @@ export const AdminPaperSubmissionDetail = () => {
                     disabled={saving}
                     onClick={() => void publish()}
                   >
-                    {saving ? 'Publishing...' : 'Approve and publish'}
+                    {saving ? 'Publishing...' : 'Approve and publish (Xuất bản lên Discover RESEARCH)'}
                   </button>
                 </div>
               </div>
@@ -287,9 +409,19 @@ export const AdminPaperSubmissionDetail = () => {
             )}
             {canReject(paper) && (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Reject</h3>
+                <h3 className={adminStyles.actionZoneTitle}>Reject (Từ chối bài báo)</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'reject')?.hint}</p>
-                <p className={shared.fieldHint}>Unavailable until the backend exposes an Admin rejection endpoint. See the backend publication ticket.</p>
+                <div className={shared.actions}>
+                  <button
+                    type="button"
+                    className={shared.buttonSecondary}
+                    style={{ color: '#dc2626', borderColor: '#fca5a5', fontWeight: 600 }}
+                    disabled={saving}
+                    onClick={() => void reject('Không đạt tiêu chuẩn phản biện chuyên môn.')}
+                  >
+                    {saving ? 'Đang xử lý...' : 'Xác nhận từ chối (Confirm Rejection & Notify Author)'}
+                  </button>
+                </div>
               </div>
             )}
             {canWithdraw(paper) && (

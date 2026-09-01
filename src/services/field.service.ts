@@ -110,4 +110,9 @@ export const fieldService = {
     const response = await api.post<SubField>(API_ENDPOINTS.SUB_FIELD.CREATE, data);
     return response.data;
   },
+
+  getSubFieldById: async (id: number): Promise<any> => {
+    const response = await api.get(API_ENDPOINTS.SUB_FIELD.GET_BY_ID(id));
+    return response.data;
+  },
 };
