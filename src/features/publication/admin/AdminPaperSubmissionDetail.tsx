@@ -316,9 +316,10 @@ export const AdminPaperSubmissionDetail = () => {
           </dd>
           <dt>Institutions</dt>
           <dd>{paper.institutions.map((institution) => institution.name).join(', ')}</dd>
-          <dt>Topic</dt>
+          <dt>Field / Subfield</dt>
           <dd>
-            {[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') || '—'}
+            {[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') ||
+              (paper.subFieldId ? `Subfield #${paper.subFieldId}` : '—')}
           </dd>
           <dt>Keywords</dt>
           <dd>{paper.keywords.join(', ') || '—'}</dd>

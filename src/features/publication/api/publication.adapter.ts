@@ -141,6 +141,27 @@ const toPublicationPaper = (
       : [],
     institutions: [],
     paperType: 'Not supplied',
+    subfield: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = window.localStorage.getItem(`paper_subfield_${paper.id}`);
+        if (saved) return saved;
+      }
+      return subFieldId ? `Subfield #${subFieldId}` : undefined;
+    })(),
+    domain: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = window.localStorage.getItem(`paper_domain_${paper.id}`);
+        if (saved) return saved;
+      }
+      return undefined;
+    })(),
+    field: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = window.localStorage.getItem(`paper_domain_${paper.id}`);
+        if (saved) return saved;
+      }
+      return undefined;
+    })(),
     topics: [],
     keywords: [],
     fileUrl: paper.fileUrl ?? undefined,
@@ -348,13 +369,23 @@ class ApiPublicationAdapter implements PublicationAdapter {
       title: input.title,
       abstract: input.abstract,
       fileUrl: input.fileUrl,
+      subFieldId: input.subFieldId ?? null,
+      openAlexWorkId: input.openAlexId ?? null,
+      doi: input.doi ?? null,
     });
     const draft = await paperService.update(created.id, {
       title: input.title,
       abstract: input.abstract,
       fileUrl: input.fileUrl ?? null,
+      subFieldId: input.subFieldId ?? created.subFieldId ?? null,
+      openAlexWorkId: input.openAlexId ?? created.openAlexWorkId ?? null,
+      doi: input.doi ?? created.doi ?? null,
       status: 'Draft',
     });
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (input.subfield) window.localStorage.setItem(`paper_subfield_${created.id}`, input.subfield);
+      if (input.domain) window.localStorage.setItem(`paper_domain_${created.id}`, input.domain);
+    }
     return toPublicationPaper(draft);
   }
 
@@ -364,6 +395,9 @@ class ApiPublicationAdapter implements PublicationAdapter {
       title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
+      subFieldId: current.subFieldId ?? null,
+      openAlexWorkId: current.openAlexWorkId ?? null,
+      doi: current.doi ?? null,
       status: 'Waiting for Review',
     }));
   }
@@ -473,6 +507,9 @@ class ApiPublicationAdapter implements PublicationAdapter {
       title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
+      subFieldId: current.subFieldId ?? null,
+      openAlexWorkId: current.openAlexWorkId ?? null,
+      doi: current.doi ?? null,
       status: 'Published',
     });
     const authorId = updated.authorId ?? current.authorId ?? (current as unknown as { userId?: number }).userId;
@@ -495,6 +532,9 @@ class ApiPublicationAdapter implements PublicationAdapter {
       title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
+      subFieldId: current.subFieldId ?? null,
+      openAlexWorkId: current.openAlexWorkId ?? null,
+      doi: current.doi ?? null,
       status: 'Rejected',
     });
     const authorId = updated.authorId ?? current.authorId ?? (current as unknown as { userId?: number }).userId;

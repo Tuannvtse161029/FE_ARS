@@ -128,6 +128,7 @@ export interface SubmissionInput {
   abstract: string;
   authors: PublicationAuthor[];
   institutions: PublicationInstitution[];
+  subFieldId?: number | null;
   doi?: string;
   openAlexId?: string;
   externalIdentifier?: string;
