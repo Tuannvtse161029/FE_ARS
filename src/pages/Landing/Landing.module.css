@@ -63,7 +63,7 @@
   background: var(--ink);
   text-decoration: none;
   transform: translateY(-180%);
-  transition: transform 160ms ease;
+  transition: transform var(--transition-fast);
 }
 
 .skipLink:focus {
@@ -159,7 +159,7 @@
   font-size: 0.87rem;
   font-weight: 750;
   text-decoration: none;
-  transition: background 160ms ease, transform 160ms ease;
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .loginButton:hover,
@@ -169,6 +169,11 @@
   background: var(--accent-hover);
   color: var(--ink-on-paper);
   transform: none;
+}
+
+.loginButton:active,
+.primaryButton:active {
+  transform: scale(0.97);
 }
 
 .hero {
@@ -515,7 +520,7 @@
   top: 17px;
   right: 2px;
   color: var(--blue-dark);
-  font-family: Arial, sans-serif;
+  font-family: system-ui, sans-serif;
   font-size: 1.65rem;
   font-weight: 400;
 }
@@ -920,6 +925,154 @@
 .boundariesInner li { color: var(--ink-secondary); border-color: var(--border-subtle); }
 .boundariesInner svg { color: var(--accent-sage); }
 .workspacesSection { background: var(--app-canvas-subtle); }
-.workspace { background: var(--surface-base); border-color: var(--border-subtle); transition: transform var(--duration-standard) var(--motion-ease-standard), box-shadow var(--duration-standard) var(--motion-ease-standard); }
+.workspace { background: var(--surface-base); border-color: var(--border-subtle); transform-origin: 50% 100%; transition: transform var(--transition-fast) var(--motion-ease-standard), box-shadow var(--transition-normal) var(--motion-ease-standard) 120ms; }
 .workspace:hover { transform: translateY(-3px); box-shadow: 0 14px 34px var(--shadow-color); }
 .workspaceGrid, .workflowList, .workflowList li, .faqList, .faqList details { border-color: var(--border-subtle); }
+
+/* ── Workspace card cascade (one-shot, plan 003) ─────────── */
+@keyframes cardRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workspace {
+  animation: cardRise 520ms var(--motion-ease-standard) both;
+  animation-delay: var(--workspace-stagger, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace {
+    animation: none;
+  }
+}
+
+/* ── Hero entrance (one-shot, plan 004) ──────────────────── */
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.heroCopy,
+.dossier {
+  animation: heroRise 620ms var(--motion-ease-standard) both;
+  animation-delay: var(--hero-stagger, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroCopy,
+  .dossier {
+    animation: none;
+  }
+}
+
+/* ── Scroll-driven editorial timeline ────────────────────── */
+/* animation-timeline: scroll() is supported in Chrome 115+, Edge 115+,
+   and Safari 18+. On unsupported browsers the IntersectionObserver
+   fallback below handles all animation without scroll coupling. */
+
+@keyframes stepReveal {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* IntersectionObserver fallback — staggered cascade after section enters */
+.workflowList.revealed .workflowStep {
+  animation: stepReveal 480ms var(--motion-ease-standard) both;
+}
+.workflowList.revealed .workflowStep:nth-child(1) { animation-delay:   0ms; }
+.workflowList.revealed .workflowStep:nth-child(2) { animation-delay:  80ms; }
+.workflowList.revealed .workflowStep:nth-child(3) { animation-delay: 160ms; }
+.workflowList.revealed .workflowStep:nth-child(4) { animation-delay: 240ms; }
+.workflowList.revealed .workflowStep:nth-child(5) { animation-delay: 320ms; }
+
+/* CSS scroll-driven — each step activates in a 20 % window of the page
+   scroll that overlaps the workflow section. animation-range: start end%
+   controls the entry/exit. */
+@supports (animation-timeline: scroll()) {
+  .workflowList {
+    animation-timeline: scroll(root block);
+  }
+  .workflowList li:nth-child(1) { animation: stepReveal 480ms linear both; animation-range:  0% 26%; }
+  .workflowList li:nth-child(2) { animation: stepReveal 480ms linear both; animation-range:  6% 32%; }
+  .workflowList li:nth-child(3) { animation: stepReveal 480ms linear both; animation-range: 12% 38%; }
+  .workflowList li:nth-child(4) { animation: stepReveal 480ms linear both; animation-range: 18% 44%; }
+  .workflowList li:nth-child(5) { animation: stepReveal 480ms linear both; animation-range: 24% 50%; }
+  /* Suppress double-triggering from IntersectionObserver when supported */
+  .workflowList.revealed .workflowStep { animation: none; }
+}
+
+/* ── Publication flow connector stagger ─────────────────── */
+/* Each .flowConnector has data-step="N". When .drawn is applied via
+   IntersectionObserver (staggered 200 ms apart), the icon fades in,
+   translates left-to-right, and reveals a hairline rule via ::after. */
+
+.flowConnector {
+  position: absolute;
+  top: 22px;
+  right: 2px;
+  color: var(--accent-primary);
+  opacity: 0;
+  transform: translateX(-6px) scale(0.7);
+  transition:
+    opacity 360ms var(--motion-ease-standard),
+    transform 420ms var(--motion-ease-standard);
+}
+
+.flowConnector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 18px;
+  height: 1.5px;
+  margin-top: -1px;
+  background: var(--accent-primary);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 360ms var(--motion-ease-standard);
+}
+
+.flowConnector.drawn {
+  opacity: 0.85;
+  transform: translateX(0) scale(1);
+}
+
+.flowConnector.drawn::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flowConnector {
+    transition: none;
+    opacity: 0.85;
+    transform: none;
+  }
+  .flowConnector::after {
+    transition: none;
+    transform: scaleX(1);
+  }
+}
+
+/* ── Smooth in-page scroll (nav anchors) ─────────────────── */
+.page {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    scroll-behavior: auto;
+  }
+}
