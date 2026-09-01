@@ -1,327 +1,212 @@
 /**
  * EmailVerificationLanding — ARS Research Constellation
  *
- * Landing surface for the `verify-email` deep link that arrives in the
- * registration email. Reads `?token=...` from the URL exactly once,
- * hands the token to `useEmailVerification`, and renders one of the
- * three outcome states (verifying / verified / failed).
+ * Editorial "proof" layout for the OTP verification screen:
+ *   - Mono section marker
+ *   - Serif heading
+ *   - Six OTP cells rendered as a typewriter input, monospace digits,
+ *     hairline borders with a 1px amber underline on focus
+ *   - Mono caption for the "To:" email citation
+ *   - Quiet dev-only skip block when the bypass flag is off
  *
  * Anti-patterns explicitly avoided:
  *   - The token is NEVER persisted to localStorage / sessionStorage.
  *   - The page never calls /api/Email/send-test.
- *   - The page never re-triggers the verification effect after the
- *     first attempt; React's strict-mode double-invoke is deduped by
- *     the hook.
+ *   - The dev skip is the only thing that touches localStorage, and it
+ *     writes the well-known `ars_dev_skip_otp` sentinel — never the
+ *     verification token or any OTP code.
  */
-.page {
-  width: 100%;
-}
 
-.logoHeader {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.logoWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-}
-
-.logoImage {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.brandText {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  align-items: center;
-  text-align: center;
-  padding: var(--space-6) 0;
-}
-
-.iconCircle {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.iconCircleSuccess {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #047857;
-}
-
-.iconCirclePending {
-  background-color: rgba(0, 122, 255, 0.12);
-  color: var(--ars-blue);
-}
-
-.iconCircleError {
-  background-color: var(--ars-error-bg, #fee2e2);
-  color: var(--ars-error, #b91c1c);
-}
-
-.title {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  color: var(--ars-ink);
-  margin: 0;
-}
-
-.subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-soft);
-  line-height: var(--line-height-relaxed);
-  margin: 0;
-  max-width: 360px;
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: 100%;
-  margin-top: var(--space-2);
-}
-
-.primaryButton,
-.secondaryButton {
-  width: 100%;
-  font-weight: 600 !important;
-  border-radius: var(--radius-lg) !important;
-  min-height: 44px !important;
-  font-size: var(--font-size-base) !important;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.primaryButton {
-  background-color: var(--ars-blue) !important;
-  border-color: var(--ars-blue) !important;
-  color: var(--ars-paper) !important;
-}
-
-.primaryButton:hover:not(:disabled) {
-  background-color: var(--ars-blue-mid) !important;
-  border-color: var(--ars-blue-mid) !important;
-}
-
-.secondaryButton {
-  background-color: transparent !important;
-  border-color: var(--ars-node) !important;
-  color: var(--ars-ink) !important;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 3px solid rgba(0, 122, 255, 0.2);
-  border-top-color: var(--ars-blue);
-  animation: verify-spin 0.8s linear infinite;
-}
-
-@keyframes verify-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.errorBox {
-  background-color: var(--ars-error-bg, #fee2e2);
-  color: var(--ars-error, #b91c1c);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--font-size-sm);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  width: 100%;
-  text-align: left;
-}
-
-.successBox {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #047857;
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--font-size-sm);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  width: 100%;
-  text-align: center;
-}
-
-/* ── OTP Form & Grid Styles ────────────────────────────────── */
-.header {
-  text-align: center;
-  margin-bottom: var(--space-5);
-}
-
-.form {
+.shell {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  width: 100%;
 }
 
-.formError {
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--ars-error-bg, #fee2e2);
-  color: var(--ars-error, #b91c1c);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  border: 1px solid rgba(153, 27, 27, 0.2);
-}
-
-.otpRow {
+/* ── Section marker ──────────────────────────────────────────── */
+.sectionMarker {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--section-marker-weight);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--section-marker-color);
   display: flex;
-  justify-content: center;
-  gap: var(--space-3);
-  margin: var(--space-2) 0;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
-.otpBox {
-  width: 48px;
-  height: 56px;
-  border: 1.5px solid var(--ars-paper-rule);
-  border-radius: var(--radius-lg);
-  background-color: var(--ars-paper);
-  color: var(--ars-ink);
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast),
-    box-shadow var(--transition-fast);
-  caret-color: var(--ars-blue);
+.markerNum {
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+}
+
+.markerLabel {
+  color: var(--ink-muted);
+}
+
+/* ── Heading + lede ──────────────────────────────────────────── */
+.heading {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-3xl);
+  line-height: var(--line-height-tight);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.lede {
   font-family: var(--font-family-ui);
-  box-sizing: border-box;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink-secondary);
+  margin: 0;
+  max-width: 52ch;
 }
 
-.otpBox:hover:not(:disabled) {
-  border-color: var(--ars-ink-muted);
+.emailCite {
+  font-family: var(--font-family-mono);
+  font-size: 0.92em;
+  letter-spacing: 0.01em;
+  color: var(--ink-primary);
+  background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
+  padding: 0.05em 0.4em;
+  border-radius: var(--radius-sm);
+  word-break: break-all;
 }
 
-.otpBox:focus {
-  border-color: var(--ars-blue);
-  background-color: var(--ars-paper);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
-}
-
-.otpBoxFilled {
-  border-color: var(--ars-blue);
-  background-color: var(--ars-paper);
-}
-
-.otpBoxError {
-  border-color: var(--ars-error, #b91c1c);
-  background-color: var(--ars-error-bg, #fee2e2);
-}
-
-.otpBox:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.submitButton {
-  margin-top: var(--space-2);
-}
-
-.resendRow {
-  display: flex;
+/* ── Status badge (success / error / warning) ────────────────── */
+.statusBadge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: 0.35em 0.85em;
+  border-radius: var(--radius-full);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.statusBadge[data-tone='success'] {
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+}
+
+.statusBadge[data-tone='warning'] {
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+}
+
+.statusBadge[data-tone='danger'] {
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+}
+
+/* ── Loading rail (verifying-token state) ────────────────────── */
+.progressRail {
+  display: inline-flex;
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
 
-.resendLabel {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-soft);
+.progressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+  opacity: 0.3;
+  animation: verify-pulse 1.2s var(--motion-ease-standard) infinite;
 }
 
-.resendTimer {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--ars-blue);
+.progressDot:nth-child(2) {
+  animation-delay: 0.15s;
 }
 
-.resendButton {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: var(--font-size-sm);
-  color: var(--ars-blue);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: color var(--transition-fast);
+.progressDot:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
-.resendButton:hover:not(:disabled) {
-  color: var(--ars-blue-mid);
-  text-decoration: underline;
+@keyframes verify-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
 }
 
-.resendButton:disabled {
-  color: var(--ars-ink-muted);
-  cursor: not-allowed;
+@media (prefers-reduced-motion: reduce) {
+  .progressDot {
+    animation: none;
+    opacity: 0.6;
+  }
 }
 
-.footer {
+/* ── Actions ─────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* ── Form ────────────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
   margin-top: var(--space-3);
-  text-align: center;
 }
 
-.backLink {
-  font-size: var(--font-size-sm);
-  color: var(--ars-blue);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  transition: color var(--transition-fast);
+.formError {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border: 1px solid color-mix(in srgb, var(--status-danger-text) 18%, transparent);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
-.backLink:hover {
-  color: var(--ars-blue-mid);
-  text-decoration: underline;
+.successBox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+  border: 1px solid color-mix(in srgb, var(--status-success-text) 18%, transparent);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
-/* ── Email Field (only rendered when email is empty) ─────── */
+/* ── Email field (only when email is empty) ─────────────────── */
 .emailField {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  text-align: left;
 }
 
 .emailLabel {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 
 .emailInput {
@@ -329,38 +214,254 @@
   min-height: 44px;
   padding: 10px 12px;
   box-sizing: border-box;
-  border: 1.5px solid var(--ars-paper-rule);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background-color: var(--ars-paper);
-  color: var(--ars-ink);
+  background: var(--surface-base);
+  color: var(--ink-primary);
   font: inherit;
-  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .emailInput:hover:not(:disabled) {
-  border-color: var(--ars-ink-muted);
+  border-color: var(--border-strong);
 }
 
 .emailInput:focus-visible {
-  outline: 2px solid var(--ars-blue);
-  outline-offset: 2px;
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 28%, transparent);
 }
 
+/* ── OTP typewriter field ────────────────────────────────────── */
+.otpFieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.otpLegend {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--section-marker-tracking);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  padding: 0;
+}
+
+.otpRow {
+  display: flex;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.otpBox {
+  width: 48px;
+  height: 56px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 2px solid var(--border-strong);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--surface-base);
+  color: var(--ink-primary);
+  font-family: var(--font-family-mono);
+  font-size: 22px;
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  outline: none;
+  caret-color: transparent;
+  box-sizing: border-box;
+  transition:
+    border-color var(--transition-fast),
+    border-bottom-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.otpBox:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.otpBox:focus {
+  border-color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+  box-shadow: 0 4px 0 -1px color-mix(in srgb, var(--accent-primary) 50%, transparent);
+  background: var(--surface-base);
+}
+
+.otpBoxFilled {
+  border-color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--surface-base));
+  color: var(--ink-primary);
+}
+
+.otpBoxError {
+  border-color: var(--status-danger-text);
+  border-bottom-color: var(--status-danger-text);
+  background: var(--status-danger-surface);
+}
+
+.otpBox:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.submitButton {
+  margin-top: var(--space-2);
+}
+
+/* ── Dev-only skip block ─────────────────────────────────────── */
+.devSkipBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--status-warning-surface);
+  border: 1px solid color-mix(in srgb, var(--status-warning-text) 22%, transparent);
+  border-left: 3px solid var(--status-warning-text);
+}
+
+.devSkipNotice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.devSkipBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  padding: 0.2em 0.6em;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--status-warning-text) 14%, transparent);
+  color: var(--status-warning-text);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.devSkipCopy {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--status-warning-text);
+}
+
+.codeChip {
+  font-family: var(--font-family-mono);
+  font-size: 0.92em;
+  padding: 0.05em 0.35em;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--status-warning-text) 12%, transparent);
+  color: inherit;
+  word-break: break-all;
+}
+
+/* ── Resend row ──────────────────────────────────────────────── */
+.resendRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  flex-wrap: wrap;
+}
+
+.resendLabel {
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+}
+
+.resendTimer {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+}
+
+.resendButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  color: var(--accent-primary);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.resendButton:hover:not(:disabled) {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.resendButton:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+/* ── Footer / back link ─────────────────────────────────────── */
+.footer {
+  margin-top: var(--space-3);
+  text-align: center;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--accent-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.backIcon {
+  flex-shrink: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .iconCircle {
-    width: 56px;
-    height: 56px;
+  .heading {
+    font-size: var(--font-size-2xl);
   }
 
-  .title {
-    font-size: var(--font-size-lg);
+  .lede {
+    font-size: var(--font-size-sm);
+  }
+
+  .otpRow {
+    justify-content: space-between;
+    gap: var(--space-2);
   }
 
   .otpBox {
     width: 40px;
     height: 48px;
-    font-size: 20px;
+    font-size: 18px;
+  }
+
+  .devSkipBlock {
+    padding: var(--space-3);
   }
 }

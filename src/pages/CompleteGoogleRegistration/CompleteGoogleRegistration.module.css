@@ -137,6 +137,17 @@
   margin: 0;
 }
 
+.orcidDevNotice {
+  margin: 0 0 var(--spacing-3, 12px);
+  padding: var(--spacing-3, 12px);
+  border-left: 3px solid #f59e0b;
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 6px;
+}
+
 .input {
   width: 100%;
 }

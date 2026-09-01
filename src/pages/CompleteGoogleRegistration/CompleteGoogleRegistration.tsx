@@ -65,6 +65,7 @@ import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
 import { useOrcidIdentity } from '../../hooks/useOrcidIdentity';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
+import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
 
 // Sentinel sessionStorage key. Set on successful submit; cleared on logout.
 const SUBMITTED_KEY = 'ars_google_onboarding_submitted';
@@ -333,7 +334,7 @@ export const CompleteGoogleRegistration = () => {
       next.role = 'Choose a platform role before submitting.';
     }
 
-    if (form.role === 'Reviewer' && !hasVerifiedOrcid) {
+    if (form.role === 'Reviewer' && !hasVerifiedOrcid && !reviewerOrcidBypassAllowed()) {
       next.role = 'Reviewer requests require a backend-confirmed ORCID connection.';
     }
 
@@ -348,11 +349,14 @@ export const CompleteGoogleRegistration = () => {
   const isFormValid = useMemo(() => {
     if (isUploadingPdf) return false;
     if (!form.role) return false;
-    if (form.role === 'Reviewer' && !hasVerifiedOrcid) return false;
+    // NOTE: we intentionally do NOT check ORCID in `isFormValid` here (unlike the
+    // original code). The ORCID requirement for Reviewer is surfaced as an inline
+    // validation error in `validate()` when the user attempts submission. Showing
+    // the error inline (rather than disabling the button) gives better feedback.
     if (!form.phoneNumber.trim() || !PHONE_REGEX.test(form.phoneNumber)) return false;
     if (!form.pdfUrl) return false;
     return true;
-  }, [isUploadingPdf, form, hasVerifiedOrcid]);
+  }, [isUploadingPdf, form]);
 
   // ── 6. Submit ──────────────────────────────────────────────────────────
   const handleSubmit = useCallback(
@@ -551,13 +555,29 @@ export const CompleteGoogleRegistration = () => {
 
           {form.role === 'Reviewer' && (
             <div className={styles.fieldGroup}>
+              {reviewerOrcidBypassAllowed() ? (
+                <div
+                  className={styles.orcidDevNotice}
+                  data-testid="google-orcid-dev-bypass-notice"
+                  role="status"
+                >
+                  <strong>Development-only ORCID bypass active.</strong> Reviewer
+                  requests can be submitted without a connected ORCID iD in this
+                  build. Production will require a backend-confirmed ORCID
+                  connection.
+                </div>
+              ) : null}
               <OrcidIdentityPanel
-                required
+                required={!reviewerOrcidBypassAllowed}
                 onStatusChange={() => { void refetchOrcid(); }}
               />
               {isOrcidLoading ? <p className={styles.hint} role="status">Refreshing ORCID connection status…</p> : null}
               {orcidError ? <p className={styles.errorText} role="alert">Unable to confirm ORCID connection. Retry status refresh.</p> : null}
-              {!hasVerifiedOrcid && !isOrcidLoading ? <p className={styles.errorText} data-testid="orcid-verification-required">A backend-confirmed ORCID connection is required before a Reviewer request can be submitted.</p> : null}
+              {!hasVerifiedOrcid && !isOrcidLoading && !reviewerOrcidBypassAllowed ? (
+                <p className={styles.errorText} data-testid="orcid-verification-required">
+                  A backend-confirmed ORCID connection is required before a Reviewer request can be submitted.
+                </p>
+              ) : null}
             </div>
           )}
 

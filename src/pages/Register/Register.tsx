@@ -18,6 +18,7 @@ import { Info, ExternalLink } from 'lucide-react';
 import { startRegistrationOrcidLink } from '../../services/orcid.service';
 import { type RequestableRole } from '../../utils/registrationRoles';
 import { FieldError } from '../../components/FieldError';
+import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
 import {
   extractServerFieldErrors,
   extractServerMessage,
@@ -278,7 +279,13 @@ export const Register = () => {
     // only role that requires a verified ORCID ticket at the FE layer.
     // The BE is still authoritative (see ticket acceptance criteria) and
     // will reject invalid/missing tickets even if this check is bypassed.
-    if (form.role === 'Reviewer' && !orcidTicket) {
+    //
+    // PROD-002 — when the FE-only ORCID gate is bypassed for development
+    // dummy Reviewer accounts (`VITE_REQUIRE_REVIEWER_ORCID=false`), we
+    // still let the BE decide. We only relax the *frontend* rule; we never
+    // claim an unconnected ORCID is verified, and we never send a fake
+    // ticket. Production-safe default is `true` (gate ON).
+    if (form.role === 'Reviewer' && !reviewerOrcidBypassAllowed() && !orcidTicket) {
       next.role =
         'Reviewer registration requires a verified ORCID connection. Click "Connect ORCID" above and complete the ORCID authorization first.';
     }
@@ -296,9 +303,6 @@ export const Register = () => {
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
     if (!form.consentAccepted) return false;
-    // Same Reviewer gate as validate() so the submit button reflects the
-    // live ticket state.
-    if (form.role === 'Reviewer' && !orcidTicket) return false;
     return true;
   })();
 
@@ -638,7 +642,9 @@ export const Register = () => {
               <h2 id="registration-orcid-title" className={styles.orcidTitle}>Connect your ORCID iD</h2>
               <p className={styles.orcidDescription}>
                 {form.role === 'Reviewer'
-                  ? 'Reviewer requests require a verified ORCID connection. You will authenticate on ORCID, never in ARS.'
+                  ? reviewerOrcidBypassAllowed()
+                    ? 'Reviewer requests normally require a verified ORCID connection, but the development-only bypass is active. You can submit without ORCID; production will require it.'
+                    : 'Reviewer requests require a verified ORCID connection. You will authenticate on ORCID, never in ARS.'
                   : 'Optional for this role. You can also connect ORCID later from your Profile.'}
               </p>
             </div>
@@ -667,6 +673,15 @@ export const Register = () => {
             <p className={styles.orcidNotice}>
               ARS will open the official ORCID authorization page. ARS never asks for your ORCID password.
             </p>
+            {reviewerOrcidBypassAllowed() && form.role === 'Reviewer' ? (
+              <p
+                className={styles.orcidDevNotice}
+                data-testid="register-orcid-dev-bypass-notice"
+                role="status"
+              >
+                Development-only ORCID bypass active — Reviewer role can be requested without connecting ORCID. Production deployment will require ORCID.
+              </p>
+            ) : null}
             {orcidStartError ? <FieldError id="orcid-start-error" message={orcidStartError} /> : null}
           </section>
         )}
