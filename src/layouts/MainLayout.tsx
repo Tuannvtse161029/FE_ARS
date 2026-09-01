@@ -35,7 +35,6 @@ import {
   Flag as ReportsIcon,
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
-  ClipboardCheck,
   Upload,
   BriefcaseBusiness,
   Receipt as AnnualFeesIcon,
@@ -519,15 +518,20 @@ export const MainLayout = () => {
         ];
       case 'Lecturer':
         return [
+          // Top-level entry points (shared with all roles).
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
-          { to: ROUTES.LECTURER_MATERIALS, label: 'Materials', icon: <Library size={20} /> },
-          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
+
+          // PhasedReport core flow — read top-to-bottom in workflow order:
+          // define a Topic → assign Groups → configure Milestones for a
+          // Topic/Group → review Phase Reports submitted against those
+          // milestones → manage reference Materials used by all of the
+          // above.
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
+          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_MATERIALS, label: 'Materials', icon: <Library size={20} /> },
         ];
       case 'Graduate Student':
         return [

@@ -2,19 +2,23 @@
 //
 // The live API exposes phases through the PhasedReport milestone surface:
 //   POST /api/PhasedReport/topic-milestones
-//         body = { topicId, researchGroupId?, phases: [{ phaseNumber, milestoneTitle, deadlineAt }] }
+//         body = { topicId, researchGroupId?, phases: [{ phaseNumber, milestoneTitle?, deadlineAt? }] }
 //
-// Each topic can have at most five phases — the Swagger summary documents
-// "Phase 1..5". Phases beyond five are rejected by the BE, so the FE mirrors
-// that limit and surfaces an explicit validation message instead of writing
-// anything to local state.
+// The BE does not document a fixed phase limit. The lecturer decides how many
+// phases a topic has. A soft sanity cap of 99 is enforced in the UI only to
+// prevent accidental runaway input; it is not a backend contract.
+//
+// Swagger does NOT expose `requirements`, `assessmentCriteria`, or `startAt`
+// on the milestone DTOs — those fields render as read-only placeholders with a
+// BackendGapBanner until the BE ships them.
 //
 // No mock / demo store. No fallback rows. The lecturer page (ConfigureMilestones)
 // is the sole consumer and reads/writes exclusively through this service.
 
 import { phasedReportService, type PhasedReport } from './phasedReport.service';
 
-export const MAX_PHASES_PER_TOPIC = 5;
+// Soft sanity cap — prevents accidental runaway input. Not a backend contract.
+export const MAX_PHASES_PER_TOPIC = 99;
 
 export interface ResearchTopicPhase {
   id: string;
@@ -75,7 +79,7 @@ export const validatePhaseDrafts = (
     return 'Add at least one phase before activating a topic.';
   }
   if (drafts.length > MAX_PHASES_PER_TOPIC) {
-    return `The backend limits each topic to ${MAX_PHASES_PER_TOPIC} phases. Remove the extras before saving.`;
+    return `A topic cannot have more than ${MAX_PHASES_PER_TOPIC} phases. Remove the extras before saving.`;
   }
   let previousEnd: number | null = null;
   for (const [index, draft] of drafts.entries()) {

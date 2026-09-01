@@ -1,0 +1,59 @@
+/* InlineNotice — compact contextual notice used in place of full-width
+ * warning banners. Tinted surface, icon + text only, no border-left stripe
+ * (impeccable craft-floor bans them above 1px). */
+
+.notice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  max-width: 100%;
+}
+
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-top: 1px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.description {
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* info tone — used for "awaiting backend support" notices */
+.info {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-soft);
+  border: 1px solid var(--ars-network);
+}
+
+.info .icon {
+  color: var(--ars-info);
+}
+
+/* warning tone — only when primary action is genuinely blocked */
+.warning {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border: 1px solid color-mix(in srgb, var(--ars-warning) 28%, transparent);
+}
+
+.warning .icon {
+  color: var(--ars-warning);
+}

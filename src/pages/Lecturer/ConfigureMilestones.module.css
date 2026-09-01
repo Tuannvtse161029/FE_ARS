@@ -1189,13 +1189,57 @@
   font-size: 0.7em;
   font-family: var(--font-family-mono);
   font-weight: var(--font-weight-bold);
-  color: var(--ars-warning);
-  background: var(--ars-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--ars-warning) 35%, transparent);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-network);
   padding: 1px var(--space-2);
   border-radius: 999px;
   margin-left: var(--space-2);
   vertical-align: middle;
+}
+
+/* Disabled form control — visually distinct from active inputs so the
+  // lecturer knows it's not editable. Cursor is locked, the text
+  // colour softens, and the placeholder makes the BE-state explicit. */
+.formControlDisabled {
+  cursor: not-allowed;
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.formControlDisabled::placeholder {
+  color: var(--ars-ink-muted);
+  font-style: italic;
+}
+
+.formControlDisabled:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--ars-node);
+}
+
+/* Save summary — a one-line preview the lecturer sees before submitting.
+ * Tells them exactly what they're about to save so there are no
+ * surprises. */
+.saveSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  flex-wrap: wrap;
+}
+
+.saveSummary strong {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Phase limit banner ───────────────────────────────────── */
