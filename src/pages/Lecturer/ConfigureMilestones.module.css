@@ -1011,3 +1011,208 @@
     flex-direction: column;
   }
 }
+
+/* ── Breadcrumb back link ─────────────────────────────────── */
+.backLink {
+  color: var(--ars-ink-muted);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--ars-ink);
+}
+
+/* ── Topic context ────────────────────────────────────────── */
+.topicMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.topicMetaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+}
+
+.topicDescRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  border-top: 1px solid var(--ars-paper-rule);
+}
+
+.topicDescText {
+  margin: 0;
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+  font-style: italic;
+}
+
+.topicDatesRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-6);
+  border-top: 1px solid var(--ars-paper-rule);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.topicDatesRow span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ── Group selection ──────────────────────────────────────── */
+.groupList {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+}
+
+.groupCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  text-align: left;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  gap: var(--space-4);
+}
+
+.groupCard:hover {
+  border-color: var(--ars-lecturer-mid);
+  background: var(--ars-lecturer-light);
+}
+
+.groupCard:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.groupCardSelected {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.groupCardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.groupName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.groupMeta {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.groupCardRight {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+/* ── Phase head actions ───────────────────────────────────── */
+.phaseHeadActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.iconBtn:hover:not(:disabled) {
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Read-only badge ──────────────────────────────────────── */
+.readOnlyBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7em;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-warning);
+  background: var(--ars-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--ars-warning) 35%, transparent);
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+/* ── Phase limit banner ───────────────────────────────────── */
+.phaseLimitBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+}
+
+/* ── Check icon (used in success message) ────────────────── */
+.successHint svg:first-child {
+  flex-shrink: 0;
+}

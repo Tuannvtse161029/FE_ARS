@@ -54,6 +54,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
+import { buildConfigureMilestonesUrl } from '../../utils/topicRouting';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import { useAuth } from '../../hooks/useAuth';
 import styles from './ResearchTopics.module.css';
@@ -153,8 +154,13 @@ export const ResearchTopicsPage = () => {
 
   const filteredTopics = useMemo(() => {
     const query = topicSearch.trim().toLowerCase();
-    if (!query) return topics;
-    return topics.filter((t) =>
+    const sorted = [...topics].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da; // newest created first
+    });
+    if (!query) return sorted;
+    return sorted.filter((t) =>
       [t.title ?? '', t.description ?? '', t.status ?? '']
         .join(' ')
         .toLowerCase()
@@ -188,8 +194,10 @@ export const ResearchTopicsPage = () => {
       const topic = pageItems[index];
       if (!topic || typeof topic.id !== 'number') return;
       // "Open" maps to the topic's milestone-config page, matching the
-      // "Manage Phases" affordance in the row's action stack.
-      navigate(`${ROUTES.CONFIGURE_MILESTONES}?topicId=${topic.id}`);
+      // "Manage Phases" affordance in the row's action stack. The
+      // topic id travels in the URL so refresh / direct links land on
+      // the exact same topic, never on a default or unrelated one.
+      navigate(buildConfigureMilestonesUrl(topic.id));
     },
     onNew: () => setShowCreateModal(true),
   });
@@ -650,9 +658,15 @@ export const ResearchTopicsPage = () => {
                               Manage Materials
                             </button>
                             <Link
-                              to={ROUTES.CONFIGURE_MILESTONES}
+                              to={
+                                typeof topic.id === 'number'
+                                  ? buildConfigureMilestonesUrl(topic.id)
+                                  : ROUTES.CONFIGURE_MILESTONES
+                              }
                               className={styles.materialsTopicBtn}
                               title="Configure reporting phases for this topic"
+                              data-testid="topic-manage-phases"
+                              data-topic-id={topic.id ?? ''}
                             >
                               <BookOpen size={14} aria-hidden />
                               Manage Phases

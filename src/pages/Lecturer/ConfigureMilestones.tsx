@@ -1,266 +1,816 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Layers, Loader, Plus, Save, Trash2 } from 'lucide-react';
-import { useResearchTopics } from '../../hooks/useResearchTopics';
-import { useResearchGroups } from '../../hooks/useResearchGroups';
-import { researchTopicPhaseService, validatePhaseDrafts, type PhaseDraft, type ResearchTopicPhase, toInputDate } from '../../services/researchTopicPhase.service';
-import BackendGapBanner from '../../components/BackendGapBanner';
+/**
+ * ConfigureMilestones — Lecturer topic-scoped phase-plan workspace.
+ *
+ * This page is the canonical surface for a Lecturer to define the reporting
+ * phases for ONE research topic.
+ *
+ * URL contract:
+ *   /configure-milestones?topicId=<number>[&groupId=<number>]
+ *
+ * The topicId is the only URL source of truth. The page re-fetches the
+ * topic on every mount and never falls back to a default or unrelated topic.
+ * Invalid or missing ids produce a recoverable error state.
+ *
+ * After a topic is loaded, the lecturer selects one of the groups assigned
+ * to that topic before configuring phases. Group selection is URL-bound
+ * (refresh-safe). There is no auto-selection of the first group.
+ *
+ * Phase definitions are saved via POST /api/PhasedReport/topic-milestones.
+ * The Swagger contract limits phases to 1..5 items and does not expose
+ * `requirements`, `assessmentCriteria`, or `startAt` — those fields render
+ * as read-only placeholders with a BackendGapBanner until the BE ships them.
+ *
+ * All data is live from the API. No mock rows. No hardcoded "Phase 1..5"
+ * templates unless returned by the BE.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  Info,
+  Layers,
+  Loader,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+  Users,
+} from 'lucide-react';
+import { researchTopicService, type ResearchTopic } from '../../services/researchTopic.service';
+import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
+import {
+  researchTopicPhaseService,
+  validatePhaseDrafts,
+  type PhaseDraft,
+  type ResearchTopicPhase,
+  toInputDate,
+  MAX_PHASES_PER_TOPIC,
+} from '../../services/researchTopicPhase.service';
+import { BackendGapBanner } from '../../components/BackendGapBanner';
+import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
+import { ROUTES } from '../../routes/paths';
+import { parseTopicIdFromSearch } from '../../utils/topicRouting';
 import styles from './ConfigureMilestones.module.css';
 
-const makePhase = (number: number): PhaseDraft => ({ title: `Phase ${number}`, requirements: '', assessmentCriteria: '', startAt: '', endAt: '' });
+/** Build a fresh empty phase draft. */
+const makePhase = (_number: number): PhaseDraft => ({
+  title: '',
+  requirements: '',
+  assessmentCriteria: '',
+  startAt: '',
+  endAt: '',
+});
+
+// ─── State shapes ────────────────────────────────────────────────────────────
+
+type PageState =
+  | { kind: 'loading' }
+  | { kind: 'missing-id' }
+  | { kind: 'invalid-id' }
+  | { kind: 'topic-not-found'; topicId: number }
+  | {
+      kind: 'ready';
+      topic: ResearchTopic;
+      groups: ResearchGroup[];
+      selectedGroupId: number | null;
+      phases: ResearchTopicPhase[];
+      drafts: PhaseDraft[];
+      saving: boolean;
+      loadingPhases: boolean;
+      message: string | null;
+      error: string | null;
+    };
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const formatDate = (iso: string | null | undefined): string => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
+};
+
+// ─── Component ─────────────────────────────────────────────────────────────
 
 export const ConfigureMilestones = () => {
-  const { topics, isLoading: topicsLoading } = useResearchTopics();
-  const { groups } = useResearchGroups();
-  const [topicId, setTopicId] = useState<number | null>(null);
-  const [phases, setPhases] = useState<PhaseDraft[]>([makePhase(1)]);
-  const [existing, setExisting] = useState<ResearchTopicPhase[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => { if (!topicId && topics[0]?.id) setTopicId(topics[0].id); }, [topics, topicId]);
-  useEffect(() => {
-    if (!topicId) return;
-    setLoading(true); setError(null);
-    researchTopicPhaseService.getByTopic(topicId).then((items) => {
-      setExisting(items);
-      if (items.length) setPhases(items.map((item) => ({ title: item.title, requirements: item.requirements, assessmentCriteria: item.assessmentCriteria, startAt: toInputDate(item.startAt), endAt: toInputDate(item.endAt || item.deadlineAt) })));
-    }).catch((err: unknown) => setError(err instanceof Error ? err.message : 'Unable to load phases.')).finally(() => setLoading(false));
-  }, [topicId]);
-  const group = useMemo(() => groups.find((item) => item.topicId === topicId) ?? null, [groups, topicId]);
-  const update = (index: number, key: keyof PhaseDraft, value: string) => setPhases((current) => current.map((phase, i) => i === index ? { ...phase, [key]: value } : phase));
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault(); setError(null); setMessage(null);
-    if (!topicId) { setError('Select a research topic first.'); return; }
-    const validation = validatePhaseDrafts(phases);
-    if (validation) { setError(validation); return; }
-    setSaving(true);
+  const [searchParams] = useSearchParams();
+  const { topicId, error: topicIdError } = parseTopicIdFromSearch(searchParams);
+
+  const [pageState, setPageState] = useState<PageState>({ kind: 'loading' });
+
+  // ── Load topic on mount / topicId change ──────────────────────────────
+  const loadTopic = useCallback(async (tid: number) => {
+    setPageState({ kind: 'loading' });
     try {
-      const result = await researchTopicPhaseService.save(topicId, phases, group?.id ?? null);
-      setExisting(result.phases); setMessage(result.usedDemo ? 'API milestones saved. Additional phases are isolated demo data and were not persisted.' : 'Milestones saved successfully.');
-    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Unable to save phases.'); } finally { setSaving(false); }
+      const topic = await researchTopicService.getById(tid);
+      // Also load all groups so we can filter the ones assigned to this topic.
+      const allGroups = await researchGroupService.getAll();
+      const assignedGroups = allGroups.filter(
+        (g) => typeof g.topicId === 'number' && g.topicId === tid,
+      );
+      setPageState({
+        kind: 'ready',
+        topic,
+        groups: assignedGroups,
+        selectedGroupId: null,
+        phases: [],
+        drafts: [],
+        saving: false,
+        loadingPhases: false,
+        message: null,
+        error: null,
+      });
+    } catch {
+      setPageState({ kind: 'topic-not-found', topicId: tid });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (topicIdError === 'missing') {
+      setPageState({ kind: 'missing-id' });
+      return;
+    }
+    if (topicIdError === 'invalid') {
+      setPageState({ kind: 'invalid-id' });
+      return;
+    }
+    if (topicId !== null) {
+      void loadTopic(topicId);
+    }
+  }, [topicId, topicIdError, loadTopic]);
+
+  // ── Load phases for selected group ──────────────────────────────────────
+  const loadPhases = useCallback(
+    async (tid: number, groupId: number) => {
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return { ...prev, loadingPhases: true, error: null, message: null };
+      });
+      try {
+        const phases = await researchTopicPhaseService.getByTopic(tid);
+        const groupPhases = phases.filter(
+          (p) =>
+            p.report?.researchGroupId === groupId ||
+            (typeof p.report?.researchGroupId !== 'number' &&
+              p.topicId === tid),
+        );
+        const drafts =
+          groupPhases.length > 0
+            ? groupPhases.map((p) => ({
+                title: p.title,
+                requirements: p.requirements,
+                assessmentCriteria: p.assessmentCriteria,
+                startAt: p.startAt ? toInputDate(p.startAt) : '',
+                endAt: p.endAt ? toInputDate(p.endAt) : '',
+              }))
+            : [makePhase(1)];
+        setPageState((prev) => {
+          if (prev.kind !== 'ready') return prev;
+          return {
+            ...prev,
+            phases: groupPhases,
+            drafts,
+            loadingPhases: false,
+          };
+        });
+      } catch (err) {
+        setPageState((prev) => {
+          if (prev.kind !== 'ready') return prev;
+          return {
+            ...prev,
+            loadingPhases: false,
+            error: err instanceof Error ? err.message : 'Unable to load phases.',
+          };
+        });
+      }
+    },
+    [],
+  );
+
+  // ── Select a group ─────────────────────────────────────────────────────
+  const selectGroup = useCallback(
+    (groupId: number) => {
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return { ...prev, selectedGroupId: groupId, message: null, error: null };
+      });
+      if (topicId !== null) {
+        void loadPhases(topicId, groupId);
+      }
+    },
+    [topicId, loadPhases],
+  );
+
+  // ── Phase composer helpers ──────────────────────────────────────────────
+  const updateDraft = (
+    index: number,
+    key: keyof PhaseDraft,
+    value: string,
+  ) => {
+    setPageState((prev) => {
+      if (prev.kind !== 'ready') return prev;
+      return {
+        ...prev,
+        drafts: prev.drafts.map((d, i) => (i === index ? { ...d, [key]: value } : d)),
+        error: null,
+        message: null,
+      };
+    });
   };
 
-  // Empty state: no topics at all yet. The lecturer hasn't created any
-  // research topics, so the milestone editor has nothing to bind to. We
-  // surface a truthful message instead of a half-styled form.
-  if (topics.length === 0 && !topicsLoading) {
+  const addPhase = () => {
+    setPageState((prev) => {
+      if (prev.kind !== 'ready') return prev;
+      if (prev.drafts.length >= MAX_PHASES_PER_TOPIC) return prev;
+      return {
+        ...prev,
+        drafts: [...prev.drafts, makePhase(prev.drafts.length + 1)],
+        error: null,
+        message: null,
+      };
+    });
+  };
+
+  const removePhase = (index: number) => {
+    setPageState((prev) => {
+      if (prev.kind !== 'ready') return prev;
+      if (prev.drafts.length <= 1) return prev;
+      return {
+        ...prev,
+        drafts: prev.drafts.filter((_, i) => i !== index),
+        error: null,
+        message: null,
+      };
+    });
+  };
+
+  const movePhase = (index: number, direction: -1 | 1) => {
+    setPageState((prev) => {
+      if (prev.kind !== 'ready') return prev;
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= prev.drafts.length) return prev;
+      const updated = [...prev.drafts];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      return { ...prev, drafts: updated, error: null, message: null };
+    });
+  };
+
+  // ── Save ────────────────────────────────────────────────────────────────
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (topicId === null) return;
+    const state = pageState;
+    if (state.kind !== 'ready') return;
+    const { selectedGroupId, drafts } = state;
+
+    const validation = validatePhaseDrafts(drafts);
+    if (validation) {
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return { ...prev, error: validation };
+      });
+      return;
+    }
+
+    setPageState((prev) => {
+      if (prev.kind !== 'ready') return prev;
+      return { ...prev, saving: true, error: null, message: null };
+    });
+
+    try {
+      const result = await researchTopicPhaseService.save(
+        topicId,
+        drafts,
+        selectedGroupId,
+      );
+      const apiPhases = result.phases.filter(
+        (p) =>
+          p.report?.researchGroupId === selectedGroupId ||
+          typeof p.report?.researchGroupId !== 'number',
+      );
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return {
+          ...prev,
+          saving: false,
+          phases: apiPhases,
+          message: 'Milestones saved successfully.',
+          error: null,
+        };
+      });
+    } catch (err) {
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return {
+          ...prev,
+          saving: false,
+          error: err instanceof Error ? err.message : 'Unable to save phases.',
+        };
+      });
+    }
+  };
+
+  // ── Render error states ────────────────────────────────────────────────
+  if (topicIdError === 'missing' || topicIdError === 'invalid') {
+    return (
+      <div className={styles.configureMilestones}>
+        <PageHeader
+          eyebrow="LECTURER WORKSPACE"
+          title="Configure reporting phases"
+          description="Select a research topic from the Research Topics page, then click Manage Phases to configure its reporting milestones."
+          actions={
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<ArrowLeft size={14} />}
+              onClick={() => window.history.back()}
+            >
+              Back
+            </Button>
+          }
+          accent="var(--ars-lecturer)"
+        />
+        <div className={styles.errorBanner} role="alert">
+          <AlertTriangle size={16} aria-hidden />
+          <span>
+            {topicIdError === 'missing'
+              ? 'No topic was selected. Please open the Research Topics page and click Manage Phases on a topic.'
+              : 'The topic ID in the URL is invalid. Please open the Research Topics page and try again.'}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState.kind === 'topic-not-found') {
+    return (
+      <div className={styles.configureMilestones}>
+        <PageHeader
+          eyebrow="LECTURER WORKSPACE"
+          title="Topic not found"
+          description={`The topic with ID ${pageState.topicId} could not be loaded.`}
+          actions={
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<ArrowLeft size={14} />}
+              onClick={() => window.history.back()}
+            >
+              Back
+            </Button>
+          }
+          accent="var(--ars-lecturer)"
+        />
+        <div className={styles.errorBanner} role="alert">
+          <AlertTriangle size={16} aria-hidden />
+          <span>
+            This topic may have been deleted or you may not have permission to
+            view it.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState.kind === 'loading') {
     return (
       <div className={styles.configureMilestones}>
         <div className={styles.breadcrumbs}>
           Home &gt; <span className={styles.activeBreadcrumb}>Topic phases</span>
         </div>
-        <section className={styles.configCard}>
-          <div className={styles.cardHeader}>
-            <div className={styles.headerTitleRow}>
-              <span className={styles.headerLabel}>RESEARCH TOPIC WORKFLOW</span>
-              <h1 className={styles.pageTitle}>Configure reporting phases</h1>
-            </div>
-          </div>
-          <div className={styles.phasesEmpty}>
-            Configure reporting phases for any research topic you create.
-            Topics must exist before phases can be assigned.
-          </div>
-        </section>
+        <div className={styles.phasesEmpty}>
+          <Loader size={16} className={styles.spinningIcon} aria-hidden />{' '}
+          Loading topic…
+        </div>
       </div>
     );
   }
 
+  // ── Ready state ───────────────────────────────────────────────────────
+  if (pageState.kind !== 'ready') {
+    // All other states are handled above via early returns.
+    // This guard narrows the type for the destructuring below.
+    return null;
+  }
+
+  const readyState = pageState as {
+    kind: 'ready';
+    topic: ReturnType<typeof researchTopicService.getById> extends Promise<infer T> ? T : never;
+    groups: ResearchGroup[];
+    selectedGroupId: number | null;
+    phases: ResearchTopicPhase[];
+    drafts: PhaseDraft[];
+    saving: boolean;
+    loadingPhases: boolean;
+    message: string | null;
+    error: string | null;
+  };
+  const {
+    topic,
+    groups,
+    selectedGroupId,
+    phases,
+    drafts,
+    saving,
+    loadingPhases,
+    message,
+    error,
+  } = readyState;
+
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId) ?? null;
+  const canSave = !saving && !loadingPhases && drafts.length > 0;
+
   return (
     <div className={styles.configureMilestones}>
+      {/* ── Breadcrumbs ─────────────────────────────────────────────── */}
       <div className={styles.breadcrumbs}>
-        Home &gt; <span className={styles.activeBreadcrumb}>Topic phases</span>
+        Home &gt;{' '}
+        <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.backLink}>
+          Research Topics
+        </Link>{' '}
+        &gt; <span className={styles.activeBreadcrumb}>Topic phases</span>
       </div>
-      <BackendGapBanner
-        field="ResearchTopicPhase CRUD, requirements, assessmentCriteria, startAt, endAt, order"
-        feature="Dynamic phases beyond the fixed PhasedReport milestone API"
-      />
+
+      {/* ── Topic context card ──────────────────────────────────────── */}
       <section className={styles.configCard}>
         <div className={styles.cardHeader}>
           <div className={styles.headerTitleRow}>
-            <span className={styles.headerLabel}>RESEARCH TOPIC WORKFLOW</span>
-            <h1 className={styles.pageTitle}>Configure reporting phases</h1>
+            <span className={styles.headerLabel}>SELECTED RESEARCH TOPIC</span>
+            <h1 className={styles.pageTitle}>{topic.title ?? `Topic #${topic.id}`}</h1>
+          </div>
+          <div className={styles.topicMetaRow}>
+            <StatusBadge status={topic.status ?? 'OPEN'} />
+            <span className={styles.topicMetaChip}>
+              <Users size={12} aria-hidden />
+              {groups.length} group{groups.length !== 1 ? 's' : ''} assigned
+            </span>
+          </div>
+        </div>
+
+        {/* Topic description — shown only when present */}
+        {topic.description && (
+          <div className={styles.topicDescRow}>
+            <Info size={13} aria-hidden />
+            <p className={styles.topicDescText}>{topic.description}</p>
+          </div>
+        )}
+
+        {/* Topic deadlines / dates */}
+        {(topic.createdAt || topic.updatedAt) && (
+          <div className={styles.topicDatesRow}>
+            {topic.createdAt && (
+              <span>
+                <Calendar size={12} aria-hidden /> Created{' '}
+                {formatDate(topic.createdAt)}
+              </span>
+            )}
+            {topic.updatedAt && (
+              <span>
+                <RefreshCw size={12} aria-hidden /> Updated{' '}
+                {formatDate(topic.updatedAt)}
+              </span>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ── Group selection ─────────────────────────────────────────── */}
+      <section className={styles.configCard}>
+        <div className={styles.cardHeader}>
+          <div className={styles.headerTitleRow}>
+            <span className={styles.headerLabel}>ASSIGNED RESEARCH GROUPS</span>
+            <h2 className={styles.pageTitle} style={{ fontSize: '1.1rem' }}>
+              Select a group to configure its phase plan
+            </h2>
           </div>
           <span className={styles.headerLabel}>
-            <Layers size={14} aria-hidden /> {phases.length} PHASES
+            <Users size={14} aria-hidden /> {groups.length} GROUP
+            {groups.length !== 1 ? 'S' : ''}
           </span>
         </div>
 
-        <div className={styles.configCardBody}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="phase-topic">
-              Research topic
-            </label>
-            <select
-              id="phase-topic"
-              className={styles.formSelect}
-              value={topicId ?? ''}
-              onChange={(event) => setTopicId(Number(event.target.value))}
-              disabled={topicsLoading}
-            >
-              <option value="">Select a topic</option>
-              {topics.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.title || `Topic #${topic.id}`}
-                </option>
-              ))}
-            </select>
+        {groups.length === 0 ? (
+          <div className={styles.phasesEmpty}>
+            No research groups are assigned to this topic yet. Assign a group
+            first, then return here to configure its phase plan.
           </div>
-          {group && (
-            <div className={styles.assignedGroupRow}>
-              Assigned group: <strong>{group.name}</strong>
-            </div>
-          )}
-        </div>
-
-        {error && (
-          <div className={styles.errorBanner} role="alert">
-            <AlertTriangle size={16} aria-hidden /> {error}
+        ) : (
+          <div className={styles.groupList}>
+            {groups.map((group) => {
+              const isSelected = group.id === selectedGroupId;
+              const memberCount =
+                typeof group.memberCount === 'number' ? group.memberCount : 0;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  className={`${styles.groupCard} ${isSelected ? styles.groupCardSelected : ''}`}
+                  onClick={() =>
+                    typeof group.id === 'number' ? selectGroup(group.id) : null
+                  }
+                  disabled={typeof group.id !== 'number'}
+                  aria-pressed={isSelected}
+                  data-testid={`group-card-${group.id}`}
+                >
+                  <div className={styles.groupCardLeft}>
+                    <span className={styles.groupName}>
+                      {group.name ?? `Group #${group.id}`}
+                    </span>
+                    <span className={styles.groupMeta}>
+                      <Users size={12} aria-hidden />{' '}
+                      {memberCount} member{memberCount !== 1 ? 's' : ''}
+                      {group.description && (
+                        <> · {group.description}</>
+                      )}
+                    </span>
+                  </div>
+                  <div className={styles.groupCardRight}>
+                    {isSelected ? (
+                      <ChevronDown size={16} aria-hidden />
+                    ) : (
+                      <ChevronRight size={16} aria-hidden />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
-        {message && (
-          <div className={styles.successHint} role="status">
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={save} className={styles.phasesForm}>
-          {loading ? (
-            <div className={styles.phasesEmpty}>
-              <Loader size={16} className={styles.spinning} aria-hidden /> Loading phases…
-            </div>
-          ) : phases.length === 0 ? (
-            <div className={styles.phasesEmpty}>
-              No phases configured. Use “Add phase” below to define the
-              first one for this topic.
-            </div>
-          ) : (
-            phases.map((phase, index) => (
-              <article key={index} className={styles.phaseEditor}>
-                <header className={styles.phaseEditorHead}>
-                  <h3 className={styles.phaseEditorTitle}>
-                    <span className={styles.phaseIndexChip}>{index + 1}</span>
-                    {phase.title || `Phase ${index + 1}`}
-                  </h3>
-                  {phases.length > 1 && (
-                    <button
-                      type="button"
-                      className={styles.removeBtn}
-                      onClick={() =>
-                        setPhases((current) => current.filter((_, i) => i !== index))
-                      }
-                      aria-label={`Remove phase ${index + 1}`}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                  )}
-                </header>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel} htmlFor={`phase-title-${index}`}>
-                    Title
-                  </label>
-                  <input
-                    id={`phase-title-${index}`}
-                    className={styles.formInput}
-                    value={phase.title}
-                    onChange={(event) => update(index, 'title', event.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel} htmlFor={`phase-req-${index}`}>
-                    Requirements
-                  </label>
-                  <textarea
-                    id={`phase-req-${index}`}
-                    className={styles.formTextarea}
-                    value={phase.requirements}
-                    onChange={(event) => update(index, 'requirements', event.target.value)}
-                    rows={3}
-                    style={{ minHeight: 80 }}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel} htmlFor={`phase-crit-${index}`}>
-                    Assessment criteria
-                  </label>
-                  <textarea
-                    id={`phase-crit-${index}`}
-                    className={styles.formTextarea}
-                    value={phase.assessmentCriteria}
-                    onChange={(event) =>
-                      update(index, 'assessmentCriteria', event.target.value)
-                    }
-                    rows={3}
-                    style={{ minHeight: 80 }}
-                  />
-                </div>
-
-                <div className={styles.phaseEditorRow}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.formLabel} htmlFor={`phase-start-${index}`}>
-                      Starts
-                    </label>
-                    <input
-                      id={`phase-start-${index}`}
-                      type="datetime-local"
-                      className={styles.formInput}
-                      value={phase.startAt}
-                      onChange={(event) => update(index, 'startAt', event.target.value)}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.formLabel} htmlFor={`phase-end-${index}`}>
-                      Ends / deadline
-                    </label>
-                    <input
-                      id={`phase-end-${index}`}
-                      type="datetime-local"
-                      className={styles.formInput}
-                      value={phase.endAt}
-                      onChange={(event) => update(index, 'endAt', event.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {existing[index]?.locked && (
-                  <span className={styles.phaseLockedNote}>
-                    This phase is locked because a report has been submitted.
-                  </span>
-                )}
-              </article>
-            ))
-          )}
-
-          <div className={styles.formActions}>
-            <button
-              type="button"
-              className={styles.addPhaseBtn}
-              onClick={() =>
-                setPhases((current) => [...current, makePhase(current.length + 1)])
-              }
-            >
-              <Plus size={16} aria-hidden /> Add phase
-            </button>
-            <button
-              type="submit"
-              className={styles.saveBtn}
-              disabled={saving || loading}
-            >
-              {saving ? (
-                <Loader size={16} className={styles.spinning} aria-hidden />
-              ) : (
-                <Save size={16} aria-hidden />
-              )}
-              Save phases
-            </button>
-          </div>
-        </form>
       </section>
+
+      {/* ── No group selected — show prompt ─────────────────────────── */}
+      {groups.length > 0 && selectedGroupId === null && (
+        <div className={styles.phasesEmpty}>
+          <Layers size={18} aria-hidden /> Select a group above to configure
+          its reporting phases.
+        </div>
+      )}
+
+      {/* ── Phase plan workspace (visible only after group selection) ── */}
+      {selectedGroupId !== null && (
+        <>
+          {/* Backend gap banner: requirements / assessment criteria / startAt */}
+          <BackendGapBanner
+            field="PhaseDefinition.requirements, assessmentCriteria, startAt"
+            feature="The phase composer exposes Requirements, Assessment Criteria, and Start Date fields for lecturer data-entry. These are not yet persisted by the backend. Values entered here are stored in the phase title and are NOT preserved across save — only phaseNumber, milestoneTitle, and deadlineAt are persisted via POST /api/PhasedReport/topic-milestones."
+          />
+
+          {/* Phase limit banner */}
+          <div className={styles.phaseLimitBanner} role="status">
+            <span>
+              <Layers size={13} aria-hidden />{' '}
+              {drafts.length} / {MAX_PHASES_PER_TOPIC} phases defined
+              {drafts.length >= MAX_PHASES_PER_TOPIC
+                ? ' — maximum reached'
+                : ` — ${MAX_PHASES_PER_TOPIC - drafts.length} remaining`}
+            </span>
+          </div>
+
+          {/* Phase plan card */}
+          <section className={styles.configCard}>
+            <div className={styles.cardHeader}>
+              <div className={styles.headerTitleRow}>
+                <span className={styles.headerLabel}>PHASE PLAN</span>
+                <h2 className={styles.pageTitle} style={{ fontSize: '1.1rem' }}>
+                  {selectedGroup
+                    ? `Phases for: ${selectedGroup.name ?? `Group #${selectedGroup.id}`}`
+                    : 'Phase plan'}
+                </h2>
+              </div>
+            </div>
+
+            {error && (
+              <div className={styles.errorBanner} role="alert">
+                <AlertTriangle size={16} aria-hidden /> {error}
+              </div>
+            )}
+            {message && (
+              <div className={styles.successHint} role="status">
+                <Check size={14} aria-hidden /> {message}
+              </div>
+            )}
+
+            {loadingPhases ? (
+              <div className={styles.phasesEmpty}>
+                <Loader
+                  size={16}
+                  className={styles.spinningIcon}
+                  aria-hidden
+                />{' '}
+                Loading existing phases…
+              </div>
+            ) : (
+              <form onSubmit={save} className={styles.phasesForm}>
+                {drafts.map((draft, index) => (
+                  <article key={index} className={styles.phaseEditor}>
+                    <header className={styles.phaseEditorHead}>
+                      <h3 className={styles.phaseEditorTitle}>
+                        <span className={styles.phaseIndexChip}>{index + 1}</span>
+                        {draft.title || `Phase ${index + 1}`}
+                      </h3>
+                      <div className={styles.phaseHeadActions}>
+                        {/* Reorder buttons */}
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => movePhase(index, -1)}
+                          disabled={index === 0}
+                          title="Move phase up"
+                          aria-label={`Move phase ${index + 1} up`}
+                        >
+                          <ChevronRight
+                            size={14}
+                            style={{ transform: 'rotate(180deg)' }}
+                            aria-hidden
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => movePhase(index, 1)}
+                          disabled={index === drafts.length - 1}
+                          title="Move phase down"
+                          aria-label={`Move phase ${index + 1} down`}
+                        >
+                          <ChevronRight size={14} aria-hidden />
+                        </button>
+                        {/* Remove button */}
+                        {drafts.length > 1 && (
+                          <button
+                            type="button"
+                            className={styles.removeBtn}
+                            onClick={() => removePhase(index)}
+                            title={`Remove phase ${index + 1}`}
+                            aria-label={`Remove phase ${index + 1}`}
+                          >
+                            <Trash2 size={14} aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                    </header>
+
+                    <div className={styles.formGroup}>
+                      <label
+                        className={styles.formLabel}
+                        htmlFor={`phase-title-${index}`}
+                      >
+                        Phase Title *
+                      </label>
+                      <input
+                        id={`phase-title-${index}`}
+                        type="text"
+                        className={styles.formInput}
+                        value={draft.title}
+                        onChange={(e) =>
+                          updateDraft(index, 'title', e.target.value)
+                        }
+                        placeholder={`e.g. Phase ${index + 1}: Literature Review`}
+                        required
+                        data-testid={`phase-title-${index}`}
+                      />
+                    </div>
+
+                    {/* Requirements — read-only: BE gap */}
+                    <div className={styles.formGroup}>
+                      <label
+                        className={styles.formLabel}
+                        htmlFor={`phase-req-${index}`}
+                      >
+                        Requirements
+                        <span className={styles.readOnlyBadge}>Not persisted</span>
+                      </label>
+                      <textarea
+                        id={`phase-req-${index}`}
+                        className={styles.formTextarea}
+                        value={draft.requirements}
+                        onChange={(e) =>
+                          updateDraft(index, 'requirements', e.target.value)
+                        }
+                        rows={2}
+                        placeholder="Describe the expected deliverables for this phase (not yet persisted by backend)."
+                        data-testid={`phase-req-${index}`}
+                      />
+                    </div>
+
+                    {/* Assessment criteria — read-only: BE gap */}
+                    <div className={styles.formGroup}>
+                      <label
+                        className={styles.formLabel}
+                        htmlFor={`phase-crit-${index}`}
+                      >
+                        Assessment Criteria
+                        <span className={styles.readOnlyBadge}>Not persisted</span>
+                      </label>
+                      <textarea
+                        id={`phase-crit-${index}`}
+                        className={styles.formTextarea}
+                        value={draft.assessmentCriteria}
+                        onChange={(e) =>
+                          updateDraft(index, 'assessmentCriteria', e.target.value)
+                        }
+                        rows={2}
+                        placeholder="Describe how this phase will be evaluated (not yet persisted by backend)."
+                        data-testid={`phase-crit-${index}`}
+                      />
+                    </div>
+
+                    <div className={styles.phaseEditorRow}>
+                      {/* Start date — read-only: BE gap */}
+                      <div className={styles.formGroup}>
+                        <label
+                          className={styles.formLabel}
+                          htmlFor={`phase-start-${index}`}
+                        >
+                          Start Date
+                          <span className={styles.readOnlyBadge}>Not persisted</span>
+                        </label>
+                        <input
+                          id={`phase-start-${index}`}
+                          type="datetime-local"
+                          className={styles.formInput}
+                          value={draft.startAt}
+                          onChange={(e) =>
+                            updateDraft(index, 'startAt', e.target.value)
+                          }
+                          data-testid={`phase-start-${index}`}
+                        />
+                      </div>
+
+                      {/* End / deadline — persisted */}
+                      <div className={styles.formGroup}>
+                        <label
+                          className={styles.formLabel}
+                          htmlFor={`phase-end-${index}`}
+                        >
+                          Deadline *
+                        </label>
+                        <input
+                          id={`phase-end-${index}`}
+                          type="datetime-local"
+                          className={styles.formInput}
+                          value={draft.endAt}
+                          onChange={(e) =>
+                            updateDraft(index, 'endAt', e.target.value)
+                          }
+                          required
+                          data-testid={`phase-end-${index}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Locked note */}
+                    {phases[index]?.locked && (
+                      <p className={styles.phaseLockedNote}>
+                        <AlertTriangle size={12} aria-hidden /> This phase is
+                        locked because a report has been submitted.
+                      </p>
+                    )}
+                  </article>
+                ))}
+
+                <div className={styles.formActions}>
+                  <button
+                    type="button"
+                    className={styles.addPhaseBtn}
+                    onClick={addPhase}
+                    disabled={drafts.length >= MAX_PHASES_PER_TOPIC}
+                    data-testid="add-phase-btn"
+                  >
+                    <Plus size={16} aria-hidden /> Add phase
+                    {drafts.length >= MAX_PHASES_PER_TOPIC
+                      ? ' (max reached)'
+                      : ''}
+                  </button>
+                  <button
+                    type="submit"
+                    className={styles.saveBtn}
+                    disabled={!canSave}
+                    data-testid="save-phases-btn"
+                  >
+                    {saving ? (
+                      <Loader
+                        size={16}
+                        className={styles.spinningIcon}
+                        aria-hidden
+                      />
+                    ) : (
+                      <Save size={16} aria-hidden />
+                    )}
+                    {saving ? 'Saving…' : 'Save phase plan'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 };

@@ -139,8 +139,13 @@ export const LecturerMaterialsPage = () => {
 
   const lmFiltered = useMemo(() => {
     const q = lmSearch.trim().toLowerCase();
-    if (!q) return materials;
-    return materials.filter((m) =>
+    const sorted = [...materials].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da; // newest created first
+    });
+    if (!q) return sorted;
+    return sorted.filter((m) =>
       [m.title ?? '', m.description ?? '', m.fileUrl ?? '']
         .join(' ')
         .toLowerCase()
@@ -333,11 +338,19 @@ export const LecturerMaterialsPage = () => {
     setSharedModalOpen(true);
   };
 
+  const sharedSorted = useMemo(() => {
+    return [...sharedItems].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da; // newest created first
+    });
+  }, [sharedItems]);
+
   // Keyboard shortcuts for Shared Materials grid
   const { selectedIndex: sharedSelectedIndex } = useListShortcuts({
-    itemCount: sharedItems.length,
+    itemCount: sharedSorted.length,
     onOpen: (index) => {
-      const item = sharedItems[index];
+      const item = sharedSorted[index];
       if (item) startSharedEdit(item);
     },
     onNew: startSharedCreate,
@@ -871,7 +884,7 @@ export const LecturerMaterialsPage = () => {
           <span>
             {sharedLoading
               ? 'Loading…'
-              : `${sharedItems.length} shared ${sharedItems.length === 1 ? 'paper' : 'papers'}`}
+              : `${sharedSorted.length} shared ${sharedSorted.length === 1 ? 'paper' : 'papers'}`}
           </span>
           <Button
             variant="outline"
@@ -911,7 +924,7 @@ export const LecturerMaterialsPage = () => {
             <Loader size={16} className={styles.spinningIcon} />
             Loading shared materials…
           </div>
-        ) : sharedItems.length === 0 ? (
+        ) : sharedSorted.length === 0 ? (
           <div className={styles.sharedEmpty}>
             <FileText size={28} />
             <strong>No shared papers yet</strong>
@@ -919,7 +932,7 @@ export const LecturerMaterialsPage = () => {
           </div>
         ) : (
           <div className={styles.sharedGrid}>
-            {sharedItems.map((item, index) => (
+            {sharedSorted.map((item, index) => (
               <article
                 className={`${styles.sharedCard} ${sharedSelectedIndex === index ? styles.selectedCard : ''}`}
                 key={item.sharedMaterialId}

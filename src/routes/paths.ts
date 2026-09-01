@@ -14,6 +14,12 @@ export const ROUTES = {
   SEMINAR_WORKSPACE: '/seminar-workspace',
   RESEARCH_GROUP: '/research-group',
   CONFIGURE_MILESTONES: '/configure-milestones',
+  // Equivalent deep-link URL for the Lecturer "Manage Phases" button on
+  // the Research Topics table. The route handler reads `:topicId` from the
+  // path and redirects to CONFIGURE_MILESTONES with `?topicId=<id>` so
+  // the page reads its context from a single source of truth.
+  // See docs/LECTURER_PHASE_REPORT_FLOW_DECISIONS.md §1.
+  LECTURER_TOPIC_MILESTONES: '/lecturer/research-topics/:topicId/milestones',
   SUBMIT_REPORT: '/submit-report',
   REVIEW_TASKS: '/review-tasks',
   USERS: '/users',
