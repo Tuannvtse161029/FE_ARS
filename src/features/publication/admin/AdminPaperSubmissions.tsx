@@ -19,7 +19,7 @@ import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
-import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { isAuthorshipAllowed, statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
   doiHref,
   paginateAdminPapers,
@@ -172,6 +172,7 @@ export const AdminPaperSubmissions = () => {
               disabled={Boolean(error)}
             >
               <option value="ALL">All verifications</option>
+              <option value="ALLOW">Allow (Đã xác minh)</option>
               <option value="VERIFIED">Verified</option>
               <option value="PENDING">Pending</option>
               <option value="UNVERIFIED">Unverified</option>
@@ -260,14 +261,39 @@ export const AdminPaperSubmissions = () => {
                         </span>
                       </td>
                       <td data-label="Verification">
-                        <span
-                          className={`${adminStyles.verificationBadge} ${
-                            adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
-                            ''
-                          }`}
-                        >
-                          {paper.researcherVerificationStatus}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                          <span
+                            className={`${adminStyles.verificationBadge} ${
+                              adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
+                              ''
+                            }`}
+                          >
+                            {paper.researcherVerificationStatus}
+                          </span>
+                          {!isAuthorshipAllowed(paper) && (
+                            <button
+                              type="button"
+                              style={{
+                                fontSize: 11,
+                                padding: '3px 8px',
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                              }}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await publicationAdapter.verifyAuthorship(paper.id, true);
+                                void load();
+                              }}
+                            >
+                              ✓ Accept (Allow)
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td data-label="Identifiers">
                         <div className={adminStyles.identifierList}>

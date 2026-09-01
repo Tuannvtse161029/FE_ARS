@@ -79,7 +79,7 @@ export interface PublicationPaper {
   publishedAt?: string;
   reviewer?: PublicationReview;
   reviewerIdentityPublic: boolean;
-  researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+  researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'ALLOW' | 'REJECTED';
   adminNote?: string;
   researcherFeedback?: string;
   reviewRequestId?: number;
@@ -89,6 +89,12 @@ export interface PublicationPaper {
   reviewType?: string | null;
   aiRecommended?: boolean | null;
 }
+
+export const isAuthorshipAllowed = (paper?: PublicationPaper | null): boolean => {
+  if (!paper) return false;
+  const status = (paper.researcherVerificationStatus || '').toUpperCase();
+  return status === 'ALLOW' || status === 'ALLOWED' || status === 'VERIFIED';
+};
 
 export interface PublicationNotification {
   id: string;

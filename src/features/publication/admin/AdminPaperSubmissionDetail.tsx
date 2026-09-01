@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, FileText, Inbox, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, FileText, Inbox, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
@@ -16,6 +16,7 @@ import { ErrorBanner } from '../../../components/ErrorBanner';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
 import {
   statusLabel,
+  isAuthorshipAllowed,
   type PublicationPaper,
   type PublicationStatus,
 } from '../types/publication';
@@ -62,6 +63,8 @@ export const AdminPaperSubmissionDetail = () => {
   const [notFound, setNotFound] = useState(false);
   const [reviewerId, setReviewerId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +159,22 @@ export const AdminPaperSubmissionDetail = () => {
       setError('The reject action could not be performed.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAllowVerification = async () => {
+    if (!paper) return;
+    setVerifying(true);
+    setError(null);
+    setVerificationSuccess(null);
+    try {
+      const updated = await publicationAdapter.verifyAuthorship(paper.id, true);
+      setPaper(updated);
+      setVerificationSuccess('Đã xác nhận quyền sở hữu tác giả thành công! Trạng thái chuyển sang ALLOW.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể xác nhận quyền tác giả.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -495,54 +514,120 @@ export const AdminPaperSubmissionDetail = () => {
             Each action is gated by the current status and persisted through a
             documented backend operation.
           </p>
+          {verificationSuccess && (
+            <div style={{ padding: '10px 14px', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: 8, color: '#065f46', marginBottom: 12 }}>
+              {verificationSuccess}
+            </div>
+          )}
           <div className={shared.actionsStack}>
-            {canAssignReviewer(paper) ? (
-              <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Assign / reassign reviewer</h3>
-                <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'assign')?.hint}</p>
+            {/* Author Verification Zone */}
+            <div
+              className={adminStyles.actionZone}
+              style={{
+                border: '1px solid ' + (isAuthorshipAllowed(paper) ? '#10b981' : '#3b82f6'),
+                background: isAuthorshipAllowed(paper) ? '#f0fdf4' : '#eff6ff',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {isAuthorshipAllowed(paper) ? <CheckCircle2 size={20} color="#059669" /> : <ShieldCheck size={20} color="#2563eb" />}
+                  <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: isAuthorshipAllowed(paper) ? '#065f46' : '#1e40af' }}>
+                    Xác minh quyền tác giả của Researcher (Author Verification)
+                  </h3>
+                </div>
+                <span
+                  className={`${adminStyles.verificationBadge} ${adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ?? ''}`}
+                  style={{ fontSize: 12, padding: '3px 10px', fontWeight: 700 }}
+                >
+                  Trạng thái: {paper.researcherVerificationStatus}
+                </span>
+              </div>
 
-                <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px dashed #e2e8f0' }}>
-                  <button
-                    type="button"
-                    className={shared.button}
-                    style={{ background: '#0284c7' }}
-                    disabled={saving}
-                    onClick={() => void assignAuto()}
-                  >
-                    {saving ? 'Đang phân công...' : '⚡ Tự động tìm & phân công 3 Reviewer (Auto-assign)'}
-                  </button>
-                  <p className={shared.fieldHint} style={{ marginTop: 4 }}>
-                    Gọi API <code>POST /api/Paper/{paper.id}/assign-reviewers</code> tự động khớp chuyên ngành & tải công việc.
+              {isAuthorshipAllowed(paper) ? (
+                <p style={{ color: '#047857', fontSize: 13, margin: '6px 0 0' }}>
+                  ✓ Đã xác nhận quyền sở hữu tác giả chính thức (ALLOW). Bài báo đã đủ điều kiện để phân công phản biện viên (Reviewer).
+                </p>
+              ) : (
+                <>
+                  <p className={adminStyles.actionZoneHint} style={{ color: '#1e3a8a', marginBottom: 12 }}>
+                    Admin cần xác nhận bài báo này thuộc về chính Researcher nộp bài (chuyển trạng thái sang <strong>ALLOW</strong>) thì hệ thống mới mở khóa nút phân công bài báo cho các Reviewer.
+                  </p>
+                  <div className={shared.actions}>
+                    <button
+                      type="button"
+                      className={shared.button}
+                      style={{ background: '#2563eb' }}
+                      disabled={verifying || saving}
+                      onClick={() => void handleAllowVerification()}
+                    >
+                      {verifying ? 'Đang xử lý...' : '✓ Chấp nhận tác quyền (Accept & Allow Verification)'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {canAssignReviewer(paper) ? (
+              !isAuthorshipAllowed(paper) ? (
+                <div className={adminStyles.actionZone} style={{ opacity: 0.8, background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Lock size={18} color="#94a3b8" />
+                    <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: '#64748b' }}>
+                      Phân công Reviewer (Bị khóa)
+                    </h3>
+                  </div>
+                  <p style={{ color: '#dc2626', fontSize: 13, margin: '6px 0 0', fontWeight: 600 }}>
+                    ⚠️ Chưa thể phân công Reviewer: Admin cần bấm nút "Chấp nhận tác quyền (Accept & Allow Verification)" ở trên để chuyển trạng thái sang ALLOW trước khi có thể phân công Reviewer cho bài báo này.
                   </p>
                 </div>
+              ) : (
+                <div className={adminStyles.actionZone}>
+                  <h3 className={adminStyles.actionZoneTitle}>Assign / reassign reviewer</h3>
+                  <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'assign')?.hint}</p>
 
-                <div className={adminStyles.assignForm}>
-                  <label className={shared.field}>
-                    <span>Hoặc nhập thủ công Reviewer ID</span>
-                    <input
-                      aria-label="Reviewer account ID"
-                      inputMode="numeric"
-                      placeholder="Reviewer ID"
-                      value={reviewerId}
-                      onChange={(event) =>
-                        setReviewerId(event.target.value.replace(/\D/g, ''))
+                  <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px dashed #e2e8f0' }}>
+                    <button
+                      type="button"
+                      className={shared.button}
+                      style={{ background: '#0284c7' }}
+                      disabled={saving}
+                      onClick={() => void assignAuto()}
+                    >
+                      {saving ? 'Đang phân công...' : '⚡ Tự động tìm & phân công 3 Reviewer (Auto-assign)'}
+                    </button>
+                    <p className={shared.fieldHint} style={{ marginTop: 4 }}>
+                      Gọi API <code>POST /api/Paper/{paper.id}/assign-reviewers</code> tự động khớp chuyên ngành & tải công việc.
+                    </p>
+                  </div>
+
+                  <div className={adminStyles.assignForm}>
+                    <label className={shared.field}>
+                      <span>Hoặc nhập thủ công Reviewer ID</span>
+                      <input
+                        aria-label="Reviewer account ID"
+                        inputMode="numeric"
+                        placeholder="Reviewer ID"
+                        value={reviewerId}
+                        onChange={(event) =>
+                          setReviewerId(event.target.value.replace(/\D/g, ''))
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className={shared.buttonSecondary}
+                      disabled={
+                        saving ||
+                        !Number.isInteger(Number(reviewerId)) ||
+                        Number(reviewerId) <= 0
                       }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className={shared.buttonSecondary}
-                    disabled={
-                      saving ||
-                      !Number.isInteger(Number(reviewerId)) ||
-                      Number(reviewerId) <= 0
-                    }
-                    onClick={() => void assign()}
-                  >
-                    {saving ? 'Saving...' : 'Gán Reviewer thủ công'}
-                  </button>
+                      onClick={() => void assign()}
+                    >
+                      {saving ? 'Saving...' : 'Gán Reviewer thủ công'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )
             ) : null}
             {canPublish(paper) ? (
               <div className={adminStyles.actionZone}>
