@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -16,11 +17,80 @@ import {
 import { ROUTES } from '../../routes/paths';
 import { useT } from '../../i18n/I18nContext';
 import { LanguageToggle } from '../../components/i18n/LanguageToggle';
+import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Landing.module.css';
 
 export const Landing = () => {
   const t = useT();
+  const workflowListRef = useRef<HTMLOListElement>(null);
+  const flowSectionRef = useRef<HTMLElement>(null);
+  const [workflowListVisible, setWorkflowListVisible] = useState(false);
+  const [flowPathsDrawn, setFlowPathsDrawn] = useState<string[]>([]);
+
+  // ── Scroll-driven observers ─────────────────────────────────
+  // Both observers fire once and disconnect — these are one-shot
+  // entrance animations, not continuous scroll handlers.
+  useEffect(() => {
+    const prefersReduced = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+
+    // Trigger workflow step cascade when the list enters the viewport.
+    const workflowObs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setWorkflowListVisible(true);
+          workflowObs.disconnect();
+        }
+      },
+      { threshold: 0.05 },
+    );
+    if (workflowListRef.current) workflowObs.observe(workflowListRef.current);
+
+    // Trigger SVG connector drawing when the publication flow section
+    // enters the viewport. Each connector animates in sequence.
+    const flowObs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !prefersReduced) {
+          flowObs.disconnect();
+          // Draw connectors one at a time — index 0..3 for 4 connectors.
+          [0, 1, 2, 3].forEach((i) => {
+            setTimeout(() => {
+              setFlowPathsDrawn((prev) =>
+                prev.includes(`p${i}`) ? prev : [...prev, `p${i}`],
+              );
+            }, 80 + i * 200);
+          });
+        } else if (entry.isIntersecting) {
+          // Instant reveal when reduced-motion is preferred.
+          flowObs.disconnect();
+          setFlowPathsDrawn(['p0', 'p1', 'p2', 'p3']);
+        }
+      },
+      { threshold: 0.2 },
+    );
+    if (flowSectionRef.current) flowObs.observe(flowSectionRef.current);
+
+    return () => {
+      workflowObs.disconnect();
+      flowObs.disconnect();
+    };
+  }, []);
+
+  // Scroll the in-page anchor target into view with an eased animation,
+  // matching the sticky header height. Sync the URL hash without triggering
+  // a second browser-side jump.
+  const handleAnchorClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      event.preventDefault();
+      smoothScrollTo(target);
+      window.history.replaceState(null, '', `#${targetId}`);
+    },
+    [],
+  );
 
   // Vietnamese is the default locale; every string below passes an English
   // fallback so the page still reads correctly when the user switches to
@@ -208,9 +278,24 @@ export const Landing = () => {
             className={styles.navigation}
             aria-label={t('landing.navAria', 'Landing page navigation')}
           >
-            <a href="#workflow">{t('landing.navWorkflow', 'Editorial workflow')}</a>
-            <a href="#workspaces">{t('landing.navWorkspaces', 'Workspaces')}</a>
-            <a href="#boundaries">{t('landing.navBoundaries', 'Public access')}</a>
+            <a
+              href="#workflow"
+              onClick={(e) => handleAnchorClick(e, 'workflow')}
+            >
+              {t('landing.navWorkflow', 'Editorial workflow')}
+            </a>
+            <a
+              href="#workspaces"
+              onClick={(e) => handleAnchorClick(e, 'workspaces')}
+            >
+              {t('landing.navWorkspaces', 'Workspaces')}
+            </a>
+            <a
+              href="#boundaries"
+              onClick={(e) => handleAnchorClick(e, 'boundaries')}
+            >
+              {t('landing.navBoundaries', 'Public access')}
+            </a>
           </nav>
           <div className={styles.headerActions}>
             <LanguageToggle />
@@ -225,7 +310,10 @@ export const Landing = () => {
       <main id="main-content">
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroInner}>
-            <div className={styles.heroCopy}>
+            <div
+              className={styles.heroCopy}
+              style={{ '--hero-stagger': '0ms' } as React.CSSProperties}
+            >
               <p className={styles.issueLine}>
                 {t('landing.heroBadge', 'Public entry / Academic research')}
               </p>
@@ -246,14 +334,22 @@ export const Landing = () => {
                   {t('landing.ctaPrimary', 'Log in to ARS')}{' '}
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <a className={styles.textLink} href="#workflow">
+                <a
+                  className={styles.textLink}
+                  href="#workflow"
+                  onClick={(e) => handleAnchorClick(e, 'workflow')}
+                >
                   {t('landing.ctaSecondary', 'Read the workflow')}{' '}
                   <ArrowRight size={16} aria-hidden="true" />
                 </a>
               </div>
             </div>
 
-            <aside className={styles.dossier} aria-labelledby="dossier-title">
+            <aside
+              className={styles.dossier}
+              aria-labelledby="dossier-title"
+              style={{ '--hero-stagger': '80ms' } as React.CSSProperties}
+            >
               <div className={styles.dossierHeader}>
                 <span>{t('landing.dossierTitle', 'ARS editorial dossier')}</span>
                 <ShieldCheck size={20} aria-hidden="true" />
@@ -337,9 +433,12 @@ export const Landing = () => {
               )}
             </h2>
           </div>
-          <ol className={styles.workflowList}>
+          <ol
+            ref={workflowListRef}
+            className={`${styles.workflowList}${workflowListVisible ? ` ${styles.revealed}` : ''}`}
+          >
             {workflow.map((step, index) => (
-              <li key={step.title}>
+              <li key={step.title} className={styles.workflowStep}>
                 <span className={styles.workflowNumber} aria-hidden="true">
                   0{index + 1}
                 </span>
@@ -351,6 +450,7 @@ export const Landing = () => {
             ))}
           </ol>
           <aside
+            ref={flowSectionRef}
             className={styles.publicationFlow}
             aria-label={t('landing.flowAria', 'Publication decision flow diagram')}
           >
@@ -375,7 +475,11 @@ export const Landing = () => {
                     </p>
                   )}
                   {index < publicationFlowSteps.length - 1 && (
-                    <div className={styles.flowConnector} aria-hidden="true">
+                    <div
+                      className={`${styles.flowConnector}${flowPathsDrawn.includes(`p${index}`) ? ` ${styles.drawn}` : ''}`}
+                      aria-hidden="true"
+                      data-step={index}
+                    >
                       <ArrowRight size={14} />
                     </div>
                   )}
@@ -430,8 +534,12 @@ export const Landing = () => {
             </h2>
           </div>
           <div className={styles.workspaceGrid}>
-            {workspaces.map(({ icon: Icon, title, description }) => (
-              <article className={styles.workspace} key={title}>
+            {workspaces.map(({ icon: Icon, title, description }, index) => (
+              <article
+                className={styles.workspace}
+                key={title}
+                style={{ '--workspace-stagger': `${index * 60}ms` } as React.CSSProperties}
+              >
                 <Icon size={24} aria-hidden="true" />
                 <h3>{title}</h3>
                 <p>{description}</p>
