@@ -115,3 +115,15 @@ input_file_*.png
 *.log
 .env.example
 .env.local
+
+# Playwright role-function automation — generated evidence, secrets,
+# local auth state, screenshots, traces, and per-run report folders.
+# Source code, fixtures, helpers, specs, TEST_MATRIX.md, and the safe
+# `.env.playwright.example` MAY be committed later.
+.env.playwright.local
+.env.playwright.*.local
+playwright/.auth/
+test/report/
+test-report/
+tests/automation/Playwright/.auth/
+tests/automation/Playwright/storage/

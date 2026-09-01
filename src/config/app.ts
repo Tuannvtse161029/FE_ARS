@@ -14,6 +14,13 @@ export const AppConfig = {
     // here as a hook for a future, read-only ARS-credits area; the underlying
     // withdrawal/top-up components have been removed from the codebase.
     enableWithdrawals: false,
+    // ── Annual subscription (PayOS) ───────────────────────────────────────
+    // Temporary state: subscription access is disabled until backend
+    // subscription APIs, PayOS verification, and authoritative subscription
+    // status are available. Researcher and Lecturer retain full access.
+    // Set to `true` only after the BE publishes the subscription contract
+    // and VND pricing is approved and configured.
+    enableSubscriptionAccess: false,
   },
 };
 

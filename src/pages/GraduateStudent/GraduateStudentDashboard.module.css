@@ -214,12 +214,32 @@
 }
 
 /* ── Status Callout ────────────────────────────────────── */
+/* Distinctive Graduate Student treatment: a 1px hairline on all sides
+   with a 6px corner-marker dot at the top-left. Replaces the prior
+   `border-left: 3px solid <accent>` template that made every role surface
+   look identical. The corner dot ties the callout to the Graduate
+   Student role accent (--ars-gradstudent) without leaning on a thick
+   color stripe. The section marker above the body (see .calloutMarker)
+   supplies the editorial annotation that distinguishes this surface from
+   generic callouts. */
 .statusCallout {
+  position: relative;
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-gradstudent-mid);
-  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--ars-paper-rule);
+  border-left: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-5) var(--space-5) var(--space-7);
+}
+
+.statusCallout::before {
+  content: '';
+  position: absolute;
+  top: var(--space-5);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-gradstudent);
 }
 
 .calloutHeader {

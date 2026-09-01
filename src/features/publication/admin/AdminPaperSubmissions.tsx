@@ -29,6 +29,7 @@ import {
   verificationBadgeClass,
   type AdminPaperFilters,
 } from './adminPublicationHelpers';
+import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
 
@@ -103,6 +104,20 @@ export const AdminPaperSubmissions = () => {
     () => paginateAdminPapers(papers, { page, pageSize: DEFAULT_PAGE_SIZE, filters }),
     [papers, page, filters],
   );
+
+  // Part 5 — keyboard shortcuts for the admin submissions table.
+  // j/k navigate rows, Enter opens the editorial record for the focused
+  // row, f focuses the toolbar search input. The `a/d/r/x` approve-deny-
+  // reject-export shortcuts target the detail page (see
+  // AdminPaperSubmissionDetail), so this list stays scoped to navigation.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: paging.items.length,
+    onOpen: (index) => {
+      const paper = paging.items[index];
+      if (!paper?.id) return;
+      window.open(`/admin/paper-submissions/${paper.id}`, '_blank', 'noopener,noreferrer');
+    },
+  });
 
   // Reset to page 1 whenever filters change.
   useEffect(() => {
@@ -218,13 +233,13 @@ export const AdminPaperSubmissions = () => {
                 </tr>
               </thead>
               <tbody>
-                {paging.items.map((paper) => {
+                {paging.items.map((paper, index) => {
                   const identifiers = resolveIdentifiers(paper);
                   const reviewer =
                     publicReviewerName(paper) ?? paper.reviewer?.reviewerName ?? null;
                   const fileHref = paper.fileUrl?.trim();
                   return (
-                    <tr key={paper.id}>
+                    <tr key={paper.id} className={selectedIndex === index ? adminStyles.selectedRow : ''}>
                       <td data-label="Submission">
                         <div className={adminStyles.titleCell}>
                           <strong>{paper.title}</strong>

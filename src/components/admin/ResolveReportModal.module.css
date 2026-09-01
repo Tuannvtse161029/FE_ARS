@@ -130,7 +130,12 @@
 .reportedContent {
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--ars-error);
+  /* Softened report-content rule. The 3px error stripe was the same
+     template used on every role card. A 1.5px rule at full saturation
+     + italic body still reads as "this is a reported item being shown
+     for moderator context" while no longer matching the templated card
+     stripes across the rest of the app. */
+  border-left: 1.5px solid var(--ars-error);
   background: var(--ars-error-bg);
   color: var(--ars-error);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;

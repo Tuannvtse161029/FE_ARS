@@ -562,8 +562,7 @@
 
 .phaseCard {
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-lecturer);
+  border: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   padding: var(--space-5);
   display: flex;
@@ -572,6 +571,21 @@
   text-align: left;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   /* Content appears in document order; no entrance effect for routine rows. */
+  /* Lecturer identity: a 6px rust corner-anchor dot at top-left replaces
+     the prior `border-left: 3px solid var(--ars-lecturer)` stripe that
+     was identical across every role surface. */
+  position: relative;
+}
+
+.phaseCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
 }
 
 .phaseCard:hover {

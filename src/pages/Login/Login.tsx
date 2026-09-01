@@ -17,6 +17,7 @@ import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { authService } from '../../services/auth.service';
 import { roleService, type RoleItem } from '../../services/role.service';
 import { useT } from '../../i18n/I18nContext';
+import { useShortcuts } from '../../hooks/useShortcuts';
 
 const Login = () => {
   const t = useT();
@@ -58,6 +59,7 @@ const Login = () => {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
@@ -72,6 +74,29 @@ const Login = () => {
       rememberMe: false,
     },
   });
+
+  // Part 2 — keyboard shortcuts for the login form:
+  //   Ctrl+Enter  → submit the form
+  //   Esc         → reset all fields to default values
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Submit form',
+      description: 'Sign in without clicking the button.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => { void handleSubmit(onSubmit)(); },
+    },
+    {
+      key: 'Escape',
+      label: 'Clear form',
+      description: 'Reset all fields.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => reset(),
+    },
+  ]);
 
   const onSubmit = async (data: LoginFormData) => {
     // Pass the full form payload (now including rememberMe and selectedRole) through to the AuthContext.

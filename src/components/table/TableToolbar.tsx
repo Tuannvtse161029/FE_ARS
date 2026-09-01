@@ -3,6 +3,7 @@ import { RefreshCw, Search } from 'lucide-react';
 import {
   TABLE_TOOLBAR_TESTID,
   TABLE_SEARCH_INPUT_TESTID,
+  TABLE_SEARCH_INPUT_ID,
   TABLE_REFRESH_BTN_TESTID,
 } from '../../utils/tableConstants';
 import styles from './TableToolbar.module.css';
@@ -43,6 +44,7 @@ export const TableToolbar = ({
       </span>
       <input
         type="search"
+        id={TABLE_SEARCH_INPUT_ID}
         className={styles.searchInput}
         value={search}
         placeholder={searchPlaceholder}

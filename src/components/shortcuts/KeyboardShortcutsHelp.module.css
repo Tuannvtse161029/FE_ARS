@@ -1,0 +1,262 @@
+/**
+ * KeyboardShortcutsHelp — modal that lists every keyboard shortcut
+ * the ARS frontend exposes.
+ *
+ * Visual language: a warm-paper card sitting on the dimmed overlay,
+ * matching the editorial register of the rest of the app. Definition
+ * list rows pair a label/description with a row of kbd chips, so
+ * shortcuts read as a quick reference card rather than a data table.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(26, 31, 54, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  padding: var(--space-4);
+  animation: overlayIn 160ms ease-out both;
+}
+
+.modal {
+  background: var(--ars-paper-card, #fbf8f1);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--ars-paper-rule);
+  width: min(640px, 100%);
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 56px rgba(26, 31, 54, 0.28);
+  animation: modalIn 200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+  overflow: hidden;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  border-bottom: 1px solid var(--ars-paper-rule);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.subtitle {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  line-height: var(--line-height-relaxed);
+}
+
+.inlineKbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.78em;
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink);
+}
+
+.iconButton {
+  background: transparent;
+  border: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--ars-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.iconButton:hover {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ars-ink-muted);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.row:hover {
+  background: var(--ars-paper-alt);
+}
+
+.rowLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowLabelText {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ars-ink);
+}
+
+.rowDescription {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}
+
+.rowShortcut {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.plus {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  margin: 0 2px;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-2);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--ars-paper-rule);
+  background: var(--ars-paper-alt);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-soft);
+}
+
+.footerNote {
+  margin: 0;
+}
+
+.footer button {
+  cursor: pointer;
+}
+
+/* Primary-styled close button in the footer. */
+.closeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  color: var(--ars-paper);
+  background: var(--ars-blue);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.closeButton:hover {
+  background: var(--ars-blue-mid);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--ars-blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .modal {
+    max-height: 92vh;
+  }
+  .row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+  .rowShortcut {
+    justify-content: flex-start;
+  }
+}

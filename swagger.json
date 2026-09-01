@@ -253,6 +253,286 @@
         }
       }
     },
+    "/api/AnnualFee": {
+      "get": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Lấy toàn bộ danh sách phí thường niên / gói dịch vụ (Admin only)",
+        "parameters": [
+          {
+            "name": "isActive",
+            "in": "query",
+            "description": "Lọc theo trạng thái kích hoạt (tùy chọn)",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "targetRole",
+            "in": "query",
+            "description": "Lọc theo vai trò (tùy chọn)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billingCycle",
+            "in": "query",
+            "description": "Lọc theo chu kỳ thanh toán (tùy chọn)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnnualFeeResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnnualFeeResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnnualFeeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Tạo mới phí thường niên (Admin only)",
+        "requestBody": {
+          "description": "Thông tin phí thường niên",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/AnnualFee/{id}": {
+      "get": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Lấy chi tiết phí thường niên theo ID (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID phí thường niên",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Cập nhật phí thường niên (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID phí thường niên",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Thông tin cập nhật",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualFeeUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Xóa hoặc vô hiệu hóa phí thường niên (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID phí thường niên",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/AnnualFee/{id}/toggle": {
+      "patch": {
+        "tags": [
+          "AnnualFee"
+        ],
+        "summary": "Bật / Tắt trạng thái kích hoạt của phí thường niên (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID phí thường niên",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualFeeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/AuditLog": {
       "get": {
         "tags": [
@@ -2965,6 +3245,191 @@
         }
       }
     },
+    "/api/GroupMember/{id}/set-leader": {
+      "post": {
+        "tags": [
+          "GroupMember"
+        ],
+        "summary": "Cập nhật / Gán vai trò Trưởng nhóm (Leader) cho thành viên trong nhóm nghiên cứu",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID bản ghi GroupMember",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "ID người dùng (tùy chọn để đối soát)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/GroupMember/set-leader": {
+      "post": {
+        "tags": [
+          "GroupMember"
+        ],
+        "summary": "Cập nhật / Gán vai trò Trưởng nhóm (Leader) qua Request Body",
+        "requestBody": {
+          "description": "Request chứa groupMemberId và userId",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupMemberSetLeaderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupMemberSetLeaderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupMemberSetLeaderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/GroupMember/{id}/remove-leader": {
+      "post": {
+        "tags": [
+          "GroupMember"
+        ],
+        "summary": "Xóa / Hủy vai trò Trưởng nhóm (Leader) của thành viên",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID bản ghi GroupMember",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/GroupMember/{id}/leader": {
+      "delete": {
+        "tags": [
+          "GroupMember"
+        ],
+        "summary": "Xóa / Hủy vai trò Trưởng nhóm (Leader) của thành viên",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID bản ghi GroupMember",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/GuidanceProject": {
       "get": {
         "tags": [
@@ -4650,6 +5115,47 @@
         }
       }
     },
+    "/api/OpenAlex/works/{workId}": {
+      "get": {
+        "tags": [
+          "OpenAlex"
+        ],
+        "summary": "Lấy preview metadata của một OpenAlex Work để Researcher auto-fill form Paper.\r\nEndpoint này chỉ đọc metadata và không ghi vào Papers.",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "description": "Canonical OpenAlex Work ID dạng W + chữ số.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAlexWorkPreviewResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAlexWorkPreviewResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAlexWorkPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Paper": {
       "get": {
         "tags": [
@@ -4751,7 +5257,7 @@
         "tags": [
           "Paper"
         ],
-        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER , TRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST LÊN DANH SÁCH CÓ PHÂN TRANG",
+        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER ,\r\nTRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST\r\nLÊN DANH SÁCH CÓ PHÂN TRANG",
         "parameters": [
           {
             "name": "PageNumber",
@@ -4919,6 +5425,120 @@
         }
       }
     },
+    "/api/Paper/{id}/verify-authorship": {
+      "post": {
+        "tags": [
+          "Paper"
+        ],
+        "summary": "Xác minh tác giả Paper bằng OpenAlex Work ID\r\nvà ORCID đã được xác minh của Creator.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Paper ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "OpenAlex Work ID dùng để kiểm tra authorship",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperAuthorshipVerifyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperAuthorshipVerifyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperAuthorshipVerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperAuthorshipVerificationResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperAuthorshipVerificationResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperAuthorshipVerificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Paper/{id}/assign-reviewers": {
+      "post": {
+        "tags": [
+          "Paper"
+        ],
+        "summary": "Tự động tìm và phân công phản biện viên cho bài báo theo ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID bài báo",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "reviewerCount",
+            "in": "query",
+            "description": "Số lượng phản biện viên cần phân công (mặc định 3)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Payment/create-link": {
       "post": {
         "tags": [
@@ -5069,12 +5689,21 @@
         "tags": [
           "PhasedReport"
         ],
-        "summary": "Lấy toàn bộ danh sách báo cáo tiến độ (có thể lọc theo researchGroupId)",
+        "summary": "Lấy toàn bộ danh sách báo cáo tiến độ (có thể lọc theo researchGroupId hoặc topicId)",
         "parameters": [
           {
             "name": "researchGroupId",
             "in": "query",
             "description": "ID nhóm nghiên cứu (tùy chọn)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "topicId",
+            "in": "query",
+            "description": "ID đề tài nghiên cứu (tùy chọn)",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -5117,9 +5746,9 @@
         "tags": [
           "PhasedReport"
         ],
-        "summary": "Sinh viên nộp báo cáo tiến độ theo giai đoạn (Phase 1 -> Phase 4)",
+        "summary": "Sinh viên / Giảng viên tạo mới một bản ghi báo cáo tiến độ",
         "requestBody": {
-          "description": "Thông tin báo cáo nộp",
+          "description": "Thông tin báo cáo",
           "content": {
             "application/json": {
               "schema": {
@@ -5155,6 +5784,157 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/topic/{topicId}": {
+      "get": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Lấy danh sách 5 Phase Report theo Đề tài nghiên cứu (ResearchTopic)",
+        "parameters": [
+          {
+            "name": "topicId",
+            "in": "path",
+            "description": "ID đề tài nghiên cứu",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/by-topic/{topicId}": {
+      "get": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Lấy danh sách 5 Phase Report theo Đề tài nghiên cứu (ResearchTopic)",
+        "parameters": [
+          {
+            "name": "topicId",
+            "in": "path",
+            "description": "ID đề tài nghiên cứu",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/topic/{topicId}/members": {
+      "get": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "parameters": [
+          {
+            "name": "topicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMemberResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMemberResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMemberResponse"
+                  }
                 }
               }
             }
@@ -5244,6 +6024,15 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "topicId",
+            "in": "query",
+            "description": "ID đề tài nghiên cứu (tùy chọn)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -5263,6 +6052,177 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PhasedReportResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/topic-milestones": {
+      "post": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Giảng viên thiết lập các cột mốc (Phase 1..5) cho Đề tài nghiên cứu (ResearchTopic)",
+        "requestBody": {
+          "description": "Thông tin topicId và danh sách các Phase kèm Deadline",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicMilestonesCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicMilestonesCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicMilestonesCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhasedReportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/submit": {
+      "post": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Trưởng nhóm (Leader) nộp bài báo cáo vào giai đoạn Phase Report (Tự động kiểm tra Deadline & gán trạng thái OnTime / Overdue)",
+        "requestBody": {
+          "description": "Thông tin nộp bài (phasedReportId hoặc topicId + phaseNumber, file url, groupId, memberId)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportSubmitRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportSubmitRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/{id}/evaluate": {
+      "put": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Giảng viên đánh giá, chấm điểm và ghi nhận xét (LecturerDescription) cho Phase Report của nhóm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID báo cáo cần đánh giá",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Thông tin đánh giá (nhận xét, điểm, năng lực, kết quả)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportEvaluationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportEvaluationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportEvaluationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
                 }
               }
             }
@@ -5315,12 +6275,12 @@
         "tags": [
           "PhasedReport"
         ],
-        "summary": "Giảng viên chấm điểm & đánh giá báo cáo tiến độ (Pass/Reject, điểm số và nhận xét)",
+        "summary": "Cập nhật thông tin báo cáo tiến độ",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "ID báo cáo cần chấm điểm / cập nhật",
+            "description": "ID báo cáo cần cập nhật",
             "required": true,
             "schema": {
               "type": "integer",
@@ -5329,7 +6289,7 @@
           }
         ],
         "requestBody": {
-          "description": "Dữ liệu đánh giá",
+          "description": "Dữ liệu cập nhật",
           "content": {
             "application/json": {
               "schema": {
@@ -7387,6 +8347,56 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReviewRequestResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ReviewRequest/auto-assign": {
+      "post": {
+        "tags": [
+          "ReviewRequest"
+        ],
+        "summary": "Tự động tìm và phân công phản biện viên phù hợp cho bài báo theo SubFieldId và các ràng buộc tải công việc",
+        "requestBody": {
+          "description": "Thông tin PaperId và số lượng Reviewer cần thiết (ví dụ: 1, 3, 5)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoAssignReviewersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoAssignReviewersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoAssignReviewersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoAssignReviewersResponse"
                 }
               }
             }
@@ -9924,7 +10934,7 @@
         "tags": [
           "User"
         ],
-        "summary": "Lấy chi tiết thông tin người dùng theo ID",
+        "summary": "Lấy chi tiết thông tin người dùng theo ID (Công khai cho người dùng đã đăng nhập)",
         "parameters": [
           {
             "name": "id",
@@ -11116,6 +12126,171 @@
         },
         "additionalProperties": false
       },
+      "AnnualFeeCreateRequest": {
+        "required": [
+          "billingCycle",
+          "priceVnd",
+          "targetRole",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "targetRole": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "priceVnd": {
+            "minimum": 1,
+            "type": "number",
+            "format": "double"
+          },
+          "billingCycle": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnnualFeeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceVnd": {
+            "type": "number",
+            "format": "double"
+          },
+          "billingCycle": {
+            "type": "string",
+            "nullable": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnnualFeeUpdateRequest": {
+        "required": [
+          "billingCycle",
+          "priceVnd",
+          "targetRole",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "targetRole": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "priceVnd": {
+            "minimum": 1,
+            "type": "number",
+            "format": "double"
+          },
+          "billingCycle": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignedReviewerDto": {
+        "type": "object",
+        "properties": {
+          "reviewerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reviewFee": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "reviewRequestId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "AuditLogCreateRequest": {
         "type": "object",
         "properties": {
@@ -11218,6 +12393,63 @@
           "hasNext": {
             "type": "boolean",
             "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AutoAssignReviewersRequest": {
+        "required": [
+          "paperId"
+        ],
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reviewerCount": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AutoAssignReviewersResponse": {
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paperTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "requestedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignedReviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignedReviewerDto"
+            },
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -11823,6 +13055,10 @@
             "type": "string",
             "nullable": true
           },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
           "authorAvatar": {
             "type": "string",
             "nullable": true
@@ -11967,6 +13203,10 @@
             "nullable": true
           },
           "author": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
             "type": "string",
             "nullable": true
           },
@@ -12200,6 +13440,13 @@
             "type": "string",
             "nullable": true
           },
+          "leaderId": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isLeader": {
+            "type": "boolean"
+          },
           "joinedAt": {
             "type": "string",
             "format": "date-time",
@@ -12254,6 +13501,27 @@
           "hasNext": {
             "type": "boolean",
             "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GroupMemberSetLeaderRequest": {
+        "type": "object",
+        "properties": {
+          "groupMemberId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "researchGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13216,6 +14484,295 @@
         },
         "additionalProperties": false
       },
+      "OpenAlexWorkAuthorshipResponse": {
+        "type": "object",
+        "properties": {
+          "rawAuthorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawOrcid": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorOpenAlexId": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorOrcid": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCorresponding": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewAuthorResponse": {
+        "type": "object",
+        "properties": {
+          "rawAuthorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawOrcid": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorOpenAlexId": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorOrcid": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCorresponding": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "institutions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenAlexWorkPreviewInstitutionResponse"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewConceptResponse": {
+        "type": "object",
+        "properties": {
+          "conceptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "conceptName": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewInstitutionResponse": {
+        "type": "object",
+        "properties": {
+          "openAlexId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "ror": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "openAlexWorkId": {
+            "type": "string",
+            "nullable": true
+          },
+          "lookupStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceFetchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "abstract": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicationYear": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "doi": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "citedByCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isRetracted": {
+            "type": "boolean"
+          },
+          "isOpenAccess": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "openAccessStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenAlexWorkPreviewAuthorResponse"
+            },
+            "nullable": true
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenAlexWorkPreviewTopicResponse"
+            },
+            "nullable": true
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenAlexWorkPreviewConceptResponse"
+            },
+            "nullable": true
+          },
+          "source": {
+            "$ref": "#/components/schemas/OpenAlexWorkPreviewSourceResponse"
+          },
+          "externalUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "retryAfterSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewSourceResponse": {
+        "type": "object",
+        "properties": {
+          "openAlexSourceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "issnL": {
+            "type": "string",
+            "nullable": true
+          },
+          "issns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "hostOrganizationOpenAlexId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAlexWorkPreviewTopicResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "nullable": true
+          },
+          "topicName": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subFieldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldId": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "domainId": {
+            "type": "string",
+            "nullable": true
+          },
+          "domainName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "OpenAlexWorkResponse": {
         "type": "object",
         "properties": {
@@ -13404,6 +14961,10 @@
             "type": "string",
             "nullable": true
           },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
           "verifiedAt": {
             "type": "string",
             "format": "date-time",
@@ -13411,6 +14972,165 @@
           },
           "canConnect": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaperAuthorRequest": {
+        "required": [
+          "authorName"
+        ],
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rawAuthorName": {
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "orcidId": {
+            "maxLength": 19,
+            "type": "string",
+            "nullable": true
+          },
+          "openAlexAuthorId": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
+          },
+          "isCorresponding": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaperAuthorResponse": {
+        "type": "object",
+        "properties": {
+          "paperAuthorId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "authorOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawAuthorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "orcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "openAlexAuthorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCorresponding": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaperAuthorshipVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paperStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "openAlexWorkId": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorshipVerificationStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorshipVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "authorshipVerificationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedOrcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "orcidDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOrcidMatch": {
+            "type": "boolean"
+          },
+          "isNameMatch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "matchSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchedAuthorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "openAlexLookupStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "openAlexMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "work": {
+            "$ref": "#/components/schemas/OpenAlexWorkResponse"
+          },
+          "authorships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenAlexWorkAuthorshipResponse"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaperAuthorshipVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "openAlexWorkId": {
+            "maxLength": 50,
+            "pattern": "^W[0-9]+$",
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13453,6 +15173,39 @@
           "subFieldId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "openAlexWorkId": {
+            "maxLength": 50,
+            "pattern": "^W[0-9]+$",
+            "type": "string",
+            "nullable": true
+          },
+          "doi": {
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sourceName": {
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "issnValue": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaperAuthorRequest"
+            },
             "nullable": true
           }
         },
@@ -13515,6 +15268,58 @@
           },
           "authorName": {
             "type": "string",
+            "nullable": true
+          },
+          "authorOrcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorOrcidDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorIsOrcidVerified": {
+            "type": "boolean"
+          },
+          "openAlexWorkId": {
+            "type": "string",
+            "nullable": true
+          },
+          "doi": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sourceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "issnValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorshipVerificationStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorshipVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "authorshipVerificationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaperAuthorResponse"
+            },
             "nullable": true
           }
         },
@@ -13601,6 +15406,39 @@
           "subFieldId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "openAlexWorkId": {
+            "maxLength": 50,
+            "pattern": "^W[0-9]+$",
+            "type": "string",
+            "nullable": true
+          },
+          "doi": {
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sourceName": {
+            "maxLength": 255,
+            "type": "string",
+            "nullable": true
+          },
+          "issnValue": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaperAuthorRequest"
+            },
             "nullable": true
           }
         },
@@ -13704,6 +15542,11 @@
       "PhasedReportCreateRequest": {
         "type": "object",
         "properties": {
+          "topicId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "researchGroupId": {
             "type": "integer",
             "format": "int32",
@@ -13731,6 +15574,10 @@
             "format": "double",
             "nullable": true
           },
+          "lecturerDescription": {
+            "type": "string",
+            "nullable": true
+          },
           "phaseNumber": {
             "type": "integer",
             "format": "int32",
@@ -13744,9 +15591,41 @@
             "type": "string",
             "nullable": true
           },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "submittedAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PhasedReportEvaluationRequest": {
+        "type": "object",
+        "properties": {
+          "lecturerDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "lectureFeedback": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "capacityEvaluation": {
+            "type": "string",
+            "nullable": true
+          },
+          "finalOutcomeEvaluation": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -13764,6 +15643,15 @@
             "format": "int32",
             "nullable": true
           },
+          "topicId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "topicTitle": {
+            "type": "string",
+            "nullable": true
+          },
           "groupMemberId": {
             "type": "integer",
             "format": "int32",
@@ -13786,6 +15674,10 @@
             "format": "double",
             "nullable": true
           },
+          "lecturerDescription": {
+            "type": "string",
+            "nullable": true
+          },
           "phaseNumber": {
             "type": "integer",
             "format": "int32",
@@ -13797,6 +15689,16 @@
           },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "submittedAt": {
@@ -13816,6 +15718,10 @@
           "studentName": {
             "type": "string",
             "nullable": true
+          },
+          "isOverdue": {
+            "type": "boolean",
+            "readOnly": true
           }
         },
         "additionalProperties": false
@@ -13858,9 +15764,49 @@
         },
         "additionalProperties": false
       },
+      "PhasedReportSubmitRequest": {
+        "type": "object",
+        "properties": {
+          "phasedReportId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "topicId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "phaseNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "researchGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reportFileUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupMemberId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PhasedReportUpdateRequest": {
         "type": "object",
         "properties": {
+          "topicId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "researchGroupId": {
             "type": "integer",
             "format": "int32",
@@ -13888,6 +15834,10 @@
             "format": "double",
             "nullable": true
           },
+          "lecturerDescription": {
+            "type": "string",
+            "nullable": true
+          },
           "phaseNumber": {
             "type": "integer",
             "format": "int32",
@@ -13899,6 +15849,11 @@
           },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "submittedAt": {
@@ -14402,6 +16357,14 @@
             "nullable": true
           },
           "avatarInitials": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "roleName": {
             "type": "string",
             "nullable": true
           },
@@ -16358,6 +18321,47 @@
         },
         "additionalProperties": false
       },
+      "TopicMilestonesCreateRequest": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "researchGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "phases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopicPhaseItem"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TopicPhaseItem": {
+        "type": "object",
+        "properties": {
+          "phaseNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "milestoneTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TransactionCreateRequest": {
         "type": "object",
         "properties": {
@@ -16544,6 +18548,10 @@
             "nullable": true
           },
           "orcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "orcidDisplayName": {
             "type": "string",
             "nullable": true
           },

@@ -23,6 +23,8 @@ import { EvaluateReportModal, type EvaluationAction } from '../../components/lec
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
+import { EmptyState } from '../../components/EmptyState';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './EvaluateReports.module.css';
 
 interface BannerState {
@@ -131,9 +133,33 @@ export const EvaluateReports = () => {
     return map;
   }, [groups]);
 
+  // Flat list of all reviewable reports in render order (Submitted → Rejected
+  // → Waiting). The keyboard shortcut j/k walks this single flat list; the
+  // visual highlight re-maps the selected index back to whichever column the
+  // selected report lives in.
+  const allReviewableReports = useMemo<PhasedReport[]>(
+    () => [...submitted, ...rejected, ...waiting],
+    [submitted, rejected, waiting],
+  );
+
   // Modal state
   const [selectedReport, setSelectedReport] = useState<PhasedReport | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Part 3 — keyboard shortcuts for the review console. The columns are
+  // walked as a single flat list (Submitted → Rejected → Waiting). Enter
+  // opens the Evaluate modal for the selected report. There is no `n`
+  // (no create flow) or `f` (no search/filter on this page) shortcut.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: allReviewableReports.length,
+    onOpen: (index) => {
+      const report = allReviewableReports[index];
+      if (!report) return;
+      setSelectedReport(report);
+      setIsModalOpen(true);
+    },
+    onFilterFocus: null,
+  });
 
   const [banner, setBanner] = useState<BannerState>({
     visible: false,
@@ -280,6 +306,10 @@ export const EvaluateReports = () => {
           isLoading={isLoadingReports || isLoadingGroups}
           groupNameById={groupNameById}
           onOpen={openModal}
+          selectedIndex={
+            selectedIndex < submitted.length ? selectedIndex : -1
+          }
+          flatOffset={0}
           emptyText="No submissions waiting for your review."
         />
         <ReportColumn
@@ -289,6 +319,13 @@ export const EvaluateReports = () => {
           isLoading={isLoadingReports || isLoadingGroups}
           groupNameById={groupNameById}
           onOpen={openModal}
+          selectedIndex={
+            selectedIndex >= submitted.length &&
+            selectedIndex < submitted.length + rejected.length
+              ? selectedIndex
+              : -1
+          }
+          flatOffset={submitted.length}
           emptyText="No rejected reports awaiting a student resubmission."
         />
         <ReportColumn
@@ -298,6 +335,12 @@ export const EvaluateReports = () => {
           isLoading={isLoadingReports || isLoadingGroups}
           groupNameById={groupNameById}
           onOpen={openModal}
+          selectedIndex={
+            selectedIndex >= submitted.length + rejected.length
+              ? selectedIndex
+              : -1
+          }
+          flatOffset={submitted.length + rejected.length}
           emptyText="No reports in the WAITING state."
         />
       </div>
@@ -340,6 +383,16 @@ interface ReportColumnProps {
   isLoading: boolean;
   groupNameById: Map<number, string>;
   onOpen: (report: PhasedReport) => void;
+  /**
+   * The flat-list selected index in the parent (EvaluateReports) column
+   * collection, or `-1` if the keyboard-selected report is not in this column.
+   */
+  selectedIndex: number;
+  /**
+   * Offset into the parent's flat list. The card's local index is
+   * `parentSelectedIndex - flatOffset`.
+   */
+  flatOffset: number;
   emptyText: string;
 }
 
@@ -350,6 +403,8 @@ const ReportColumn = ({
   isLoading,
   groupNameById,
   onOpen,
+  selectedIndex,
+  flatOffset,
   emptyText,
 }: ReportColumnProps) => {
   const toneClass = {
@@ -370,22 +425,24 @@ const ReportColumn = ({
             <span>Loading…</span>
           </div>
         ) : reports.length === 0 ? (
-          <div className={styles.columnEmpty}>
-            <Inbox size={20} className={styles.emptyIcon} aria-hidden />
-            <span>{emptyText}</span>
-          </div>
+          <EmptyState
+            icon={<Inbox size={20} aria-hidden />}
+            description={emptyText}
+            compact
+          />
         ) : (
           <ul className={styles.reportList}>
-            {reports.map((r) => {
+            {reports.map((r, index) => {
               const id = typeof r.id === 'number' ? r.id : '—';
               const groupName =
                 typeof r.researchGroupId === 'number'
                   ? groupNameById.get(r.researchGroupId) ?? `Group #${r.researchGroupId}`
                   : 'Unassigned';
+              const cardSelected = selectedIndex === flatOffset + index;
               return (
                 <li
                   key={String(r.id)}
-                  className={styles.reportCard}
+                  className={`${styles.reportCard} ${cardSelected ? styles.selectedCard : ''}`}
                 >
                   <div className={styles.reportCardTopRow}>
                     <StatusBadge status={r.status ?? 'WAITING'} />

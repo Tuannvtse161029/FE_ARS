@@ -26,6 +26,7 @@ import {
   validatePhoneNumber,
   validatePassword,
 } from '../../utils/validationRules';
+import { useShortcuts } from '../../hooks/useShortcuts';
 
 interface FormState {
   fullName: string;
@@ -86,11 +87,56 @@ export const Register = () => {
   const [isStartingOrcid, setIsStartingOrcid] = useState(false);
   const [orcidStartError, setOrcidStartError] = useState<string | null>(null);
 
+  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — the BE-owned ORCID callback
+  // stashes an opaque `registrationTicket` in sessionStorage when a user
+  // completes the ORCID verification during the registration flow. The
+  // Register page reads it back here and forwards it as
+  // `RegisterPayload.orcidTicket` on submit. Reviewer registrations
+  // require it; other roles do not.
+  //
+  // The ticket is the only ORCID-related value we ever persist client-side.
+  // No ORCID OAuth code, state, access token, or refresh token is stored.
+  const [orcidTicket, setOrcidTicket] = useState<string | null>(null);
+
   // GIS-credential Google sign-up UI state. Same double-submit guard as the
   // Login page so rapid clicks cannot fire the GIS callback twice.
   const googleInFlightRef = useRef(false);
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+
+  // Part 2 — keyboard shortcuts for the registration form:
+  //   Ctrl+Enter  → submit the form
+  //   Esc         → reset all fields to default values
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Submit form',
+      description: 'Create your account without clicking the button.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => {
+        // Trigger native form submission so the existing onSubmit handler
+        // fires with a proper FormEvent — no logic duplication needed.
+        const form = document.getElementById('register-form') as HTMLFormElement | null;
+        form?.requestSubmit();
+      },
+    },
+    {
+      key: 'Escape',
+      label: 'Clear form',
+      description: 'Reset all fields.',
+      group: 'form',
+      allowInInputs: true,
+      handler: () => {
+        setForm(initialForm);
+        setErrors({});
+        setSubmitError(null);
+        setPdfFile(null);
+        setPdfUrl(null);
+      },
+    },
+  ]);
 
   useEffect(() => {
     authService.logout();
@@ -113,6 +159,20 @@ export const Register = () => {
         setRolesError(err instanceof Error ? err.message : 'Unable to load available roles.');
       });
     return () => { cancelled = true; };
+  }, []);
+
+  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — pull the opaque ORCID
+  // registration ticket out of sessionStorage when the page mounts and
+  // whenever the browser returns with `?orcid=verified` (i.e. the BE
+  // callback page redirected here). The ticket is required for Reviewer
+  // submissions and optional for every other role.
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('orcidRegistrationTicket');
+      setOrcidTicket(stored && stored.trim() ? stored : null);
+    } catch {
+      setOrcidTicket(null);
+    }
   }, []);
 
   const handleStartOrcid = async () => {
@@ -214,6 +274,15 @@ export const Register = () => {
         'You must accept the Privacy Policy and Terms before registering.';
     }
 
+    // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — Reviewer registration is the
+    // only role that requires a verified ORCID ticket at the FE layer.
+    // The BE is still authoritative (see ticket acceptance criteria) and
+    // will reject invalid/missing tickets even if this check is bypassed.
+    if (form.role === 'Reviewer' && !orcidTicket) {
+      next.role =
+        'Reviewer registration requires a verified ORCID connection. Click "Connect ORCID" above and complete the ORCID authorization first.';
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -227,6 +296,9 @@ export const Register = () => {
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
     if (!form.consentAccepted) return false;
+    // Same Reviewer gate as validate() so the submit button reflects the
+    // live ticket state.
+    if (form.role === 'Reviewer' && !orcidTicket) return false;
     return true;
   })();
 
@@ -258,6 +330,12 @@ export const Register = () => {
         phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
+        // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — only attach the
+        // opaque ticket when the user actually completed the ORCID
+        // verification on the registration flow. Non-Reviewer
+        // registrations will simply omit the field; the BE accepts an
+        // absent `orcidTicket` for those roles.
+        ...(orcidTicket ? { orcidTicket } : {}),
       };
 
       await authService.registerUser(payload);
@@ -271,6 +349,16 @@ export const Register = () => {
 
       // Clear any session artifacts so the user is purely in unauthenticated verification state
       authService.logout();
+
+      // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — the ticket has done its
+      // job (it reached the BE inside `registerUser`). Drop it from
+      // sessionStorage so a refresh after the OTP page cannot replay it.
+      try {
+        sessionStorage.removeItem('orcidRegistrationTicket');
+      } catch {
+        /* ignore */
+      }
+      setOrcidTicket(null);
 
       // Trigger sending registration verification email / OTP
       void authService.sendRegistrationOtp(form.email.trim());
@@ -365,7 +453,7 @@ export const Register = () => {
         </p>
       </header>
 
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form id="register-form" className={styles.form} onSubmit={handleSubmit} noValidate>
         {submitError && (
           <div className={styles.formError} role="alert">
             {submitError}
@@ -554,18 +642,28 @@ export const Register = () => {
                   : 'Optional for this role. You can also connect ORCID later from your Profile.'}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              leftIcon={<ExternalLink size={16} aria-hidden="true" />}
-              onClick={() => void handleStartOrcid()}
-              disabled={isSubmitting || isUploadingPdf || isStartingOrcid}
-              isLoading={isStartingOrcid}
-              data-testid="register-connect-orcid-button"
-            >
-              Connect ORCID
-            </Button>
+            {orcidTicket ? (
+              <span
+                className={styles.orcidVerifiedBadge}
+                data-testid="register-orcid-verified-badge"
+                role="status"
+              >
+                ORCID verified
+              </span>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                leftIcon={<ExternalLink size={16} aria-hidden="true" />}
+                onClick={() => void handleStartOrcid()}
+                disabled={isSubmitting || isUploadingPdf || isStartingOrcid}
+                isLoading={isStartingOrcid}
+                data-testid="register-connect-orcid-button"
+              >
+                Connect ORCID
+              </Button>
+            )}
             <p className={styles.orcidNotice}>
               ARS will open the official ORCID authorization page. ARS never asks for your ORCID password.
             </p>

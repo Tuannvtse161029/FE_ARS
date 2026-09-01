@@ -17,14 +17,20 @@
 .paper::before {
   content: '';
   position: absolute;
+  /* Top accent rule. Replaces the prior left-side 3px stripe that read
+     identically to the templated card stripes on every other role
+     surface. The horizontal accent + the warm paper background + the
+     OpenAlex-style metadata below give the publication card a distinct
+     "scholarly journal" identity — closer to a printed abstract page
+     than a UI template. */
   left: 0;
   top: 0;
-  bottom: 0;
-  width: 3px;
+  right: 0;
+  height: 2px;
   background: var(--card-accent, var(--ars-blue));
-  opacity: 0.45;
+  opacity: 0.55;
   border-top-left-radius: var(--radius-lg);
-  border-bottom-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
 }
 
 .paper:hover {

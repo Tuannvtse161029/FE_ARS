@@ -64,8 +64,7 @@
 
 .groupCard {
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-lecturer);
+  border: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
   display: flex;
@@ -73,6 +72,22 @@
   gap: var(--space-3);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   animation: fadeIn 0.25s ease-out;
+  /* Lecturer identity: a 6px rust corner-anchor at top-left replaces the
+     prior `border-left: 3px solid var(--ars-lecturer)` stripe that was
+     identical across roles. The dot, paired with the lecturer accent on
+     headings and primary buttons, gives this surface a distinct identity. */
+  position: relative;
+}
+
+.groupCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
 }
 
 .groupCard:hover {

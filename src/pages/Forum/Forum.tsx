@@ -19,10 +19,14 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
+import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useForumPosts, useCreateForumPost } from '../../hooks/useForumPosts';
 import { useFollow } from '../../hooks/useFollow';
 import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { ROUTES } from '../../routes/paths';
 import { ForumPostCard } from '../../components/forum/ForumPostCard';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { EmptyState } from '../../components/EmptyState';
@@ -55,6 +59,8 @@ const SORT_QUERY_VALUE: Record<SortBy, string> = {
 
 export const Forum = () => {
   const { isVerified, canCreatePost } = usePermissions();
+  const { canInteract, reason: interactDisabledReason } =
+    useCanInteractInForum();
   const { user } = useAuth();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
@@ -133,6 +139,30 @@ export const Forum = () => {
     ? '—'
     : `${filteredPosts.length} post${filteredPosts.length === 1 ? '' : 's'}`;
 
+  // Part 4 — keyboard shortcuts for the Forum feed.
+  // j/k navigate posts, Enter opens a comments section,
+  // n opens the create-post modal, f focuses the search field.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: paginatedPosts.length,
+    onOpen: (index) => {
+      const post = paginatedPosts[index];
+      if (!post) return;
+      // "Open" expands the focused post's comments by toggling its
+      // engagement row. ForumPostCard collapses comments by default;
+      // pressing Enter on a focused post is the most common navigation
+      // gesture here, so we expose the comments thread.
+      const event = new CustomEvent('ars:forum-select-post', {
+        detail: { postId: post.id ?? null },
+      });
+      window.dispatchEvent(event);
+    },
+    onNew: () => {
+      if (!canInteract) return;
+      setIsCreateModalOpen(true);
+    },
+    filterFocusId: 'forum-search-input',
+  });
+
   // ─── Trending tags + Forum stats (sidebar density) ─────────────────────────
   // Derived purely from the loaded `posts` collection — no mock data, no extra
   // API calls. Tags come straight off `post.tags` (already in the ForumPost
@@ -210,15 +240,17 @@ export const Forum = () => {
             size="md"
             leftIcon={<Plus size={14} />}
             onClick={() => {
-              if (!canCreatePost) return;
+              if (!canInteract) return;
               setIsCreateModalOpen(true);
             }}
-            disabled={!canCreatePost}
+            disabled={!canInteract}
             title={
-              canCreatePost
+              canInteract
                 ? undefined
-                : 'Posting is disabled until your account is approved by an Administrator.'
+                : interactDisabledReason ??
+                  'Posting is disabled until your account is approved by an Administrator.'
             }
+            data-testid="forum-create-post"
           >
             Create post
           </Button>
@@ -249,6 +281,7 @@ export const Forum = () => {
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Filters</div>
             <Input
+              id="forum-search-input"
               label="Search"
               placeholder="Search posts…"
               value={searchTerm}
@@ -356,6 +389,32 @@ export const Forum = () => {
             </div>
           )}
 
+          {/* Subscription-locked banner — shown only to Researcher /
+              Lecturer whose subscription is missing or expired. Admin /
+              Reviewer / Graduate Student never see this banner. */}
+          {!canInteract && canCreatePost && (
+            <div
+              className={styles.pendingBanner}
+              role="status"
+              aria-live="polite"
+              data-testid="forum-subscription-banner"
+            >
+              <span className={styles.pendingBannerIcon}>
+                <AlertTriangle size={18} />
+              </span>
+              <div className={styles.pendingBannerText}>
+                <p className={styles.pendingBannerTitle}>
+                  Read-only access — your ARS subscription is inactive or has expired.
+                </p>
+                <p className={styles.pendingBannerHint}>
+                  {interactDisabledReason ??
+                    'Renew your subscription to continue interacting with the Forum.'}{' '}
+                  <a href={ROUTES.SUBSCRIPTION}>View subscription plans</a>.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Feed Toolbar */}
           <div className={styles.feedToolbar}>
             <div className={styles.feedToolbarLeft}>
@@ -432,14 +491,18 @@ export const Forum = () => {
               />
             )}
 
-            {paginatedPosts.map((post) => (
-              <ForumPostCard
+            {paginatedPosts.map((post, index) => (
+              <div
                 key={post.id}
-                post={post}
-                isVerified={isVerified}
-                currentUserId={currentUserId}
-                currentUserName={currentUserName}
-              />
+                className={selectedIndex === index ? styles.selectedPostWrap : undefined}
+              >
+                <ForumPostCard
+                  post={post}
+                  isVerified={isVerified}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              </div>
             ))}
           </div>
 
@@ -523,6 +586,24 @@ const CreatePostModal = ({
   const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Part 4 — Ctrl/Cmd+Enter publishes the post. The handler runs against
+  // a ref so the latest `handlePublish` is always invoked regardless of
+  // when the keyboard listener fires.
+  const publishRef = useRef<() => Promise<void>>(async () => {});
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Publish post',
+      description: 'Submit the new forum post (Ctrl/Cmd + Enter).',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        void publishRef.current();
+      },
+    },
+  ]);
   // Local submitError captures synchronous failures (e.g. attachment upload
   // errors). The hook's `error` already handles BE failures with a sanitized
   // 5xx message — we surface whichever is more relevant.
@@ -590,6 +671,9 @@ const CreatePostModal = ({
       setSubmitError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     }
   };
+  // Keep the publish ref pointing at the latest implementation so the
+  // keyboard handler always calls the freshest closure.
+  publishRef.current = handlePublish;
 
   const avatarInitials = initialsFromName(currentUserName);
   const paletteIndex = currentUserId % PALETTE.length;

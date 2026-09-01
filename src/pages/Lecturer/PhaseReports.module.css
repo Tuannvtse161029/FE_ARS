@@ -19,7 +19,7 @@
 .meta span { display:inline-flex; align-items:center; gap:var(--space-1); }
 .actions { flex-shrink:0; }
 .actions a { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--accent-primary); font-size:var(--font-size-xs); }
-.loading, .empty, .error { padding:var(--space-6); border:1px solid var(--border-subtle); border-radius:var(--radius-md); background:var(--surface-sunken); }
+.loading, .error { padding:var(--space-6); border:1px solid var(--border-subtle); border-radius:var(--radius-md); background:var(--surface-sunken); }
 .loading { display:flex; align-items:center; gap:var(--space-2); }
 .error { color:var(--status-danger-text); background:var(--status-danger-surface); border-color:var(--status-danger-text); }
 @media (max-width: 700px) { .report { align-items:flex-start; flex-direction:column; } .actions { width:100%; justify-content:flex-end; } }

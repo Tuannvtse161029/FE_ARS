@@ -263,7 +263,13 @@
   height: 100%;
   background: var(--ars-lecturer);
   border-radius: 999px;
-  transition: width 0.3s ease;
+  /* Transform-based progress. Replaces the prior `transition: width`
+     that triggered layout reflow on every percentage change. scaleX is
+     GPU-composited and transform-origin: left keeps the fill anchored
+     to the left edge. */
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform 0.3s ease;
 }
 
 .progressSub {

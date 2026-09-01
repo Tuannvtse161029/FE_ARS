@@ -20,6 +20,10 @@ import {
 } from '../../hooks/useForumComments';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { ROUTES } from '../../routes/paths';
 import { ErrorBanner } from '../ErrorBanner';
 import { EmptyState } from '../EmptyState';
 import { ReportModal } from './ReportModal';
@@ -102,6 +106,7 @@ export const CommentSection = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isVerified } = usePermissions();
+  const { canInteract, reason: interactDisabledReason } = useCanInteractInForum();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
   const currentUserName =
@@ -198,7 +203,7 @@ export const CommentSection = ({
 
   const handleToggleVote = async (comment: ForumComment) => {
     const targetId = comment.id || comment.forumCommentId || 0;
-    if (!targetId || !isVerified || !currentUserId) return;
+    if (!targetId || !canInteract || !currentUserId) return;
 
     const previousIsUpvoted = Boolean(comment.isUpvoted);
     const previousCount = comment.upvoteCount ?? 0;
@@ -254,7 +259,7 @@ export const CommentSection = ({
 
   const submitNewComment = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || !currentUserId) return;
+    if (!trimmed || !currentUserId || !canInteract) return;
     setSubmitting(true);
     setActionError(null);
     const result = await create({
@@ -272,7 +277,61 @@ export const CommentSection = ({
     }
   };
 
+  // Part 4 — keyboard shortcuts for navigating the comment thread.
+  // j/k walk the comments list, Enter opens the edit textarea for the
+  // focused comment. The `n` and `f` shortcuts are intentionally omitted
+  // — comments don't have a "create new" or filter affordance.
+  const { selectedIndex: commentSelectedIndex } = useListShortcuts({
+    itemCount: localComments.length,
+    onOpen: (index) => {
+      const comment = localComments[index];
+      if (!comment) return;
+      const targetId = comment.id || comment.forumCommentId || 0;
+      if (!targetId) return;
+      if (canInteract) {
+        setEditingId(targetId);
+        setEditDraft(comment.content ?? '');
+      }
+    },
+    onFilterFocus: null,
+  });
+
+  // Part 4 — Ctrl/Cmd+Enter to post the reply, plain Enter to save an
+  // active edit. The hooks are wired at the top via refs so the latest
+  // closures always run.
+  const submitRef = useRef<() => Promise<void>>(async () => {});
+  const saveEditRef = useRef<(comment: ForumComment) => Promise<void>>(async () => {});
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Post comment',
+      description: 'Submit the comment reply (Ctrl/Cmd + Enter).',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        void submitRef.current();
+      },
+    },
+    {
+      key: 'Enter',
+      label: 'Save edit',
+      description: 'Save the comment edit while editing.',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        const activeComment = localComments.find(
+          (c) => (c.id ?? c.forumCommentId) === editingId,
+        );
+        if (activeComment) {
+          void saveEditRef.current(activeComment);
+        }
+      },
+    },
+  ]);
+
   const startEdit = (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     setEditingId(targetId);
     setEditDraft(comment.content ?? '');
@@ -285,6 +344,7 @@ export const CommentSection = ({
   };
 
   const saveEdit = async (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId) return;
     const trimmed = editDraft.trim();
@@ -313,8 +373,13 @@ export const CommentSection = ({
       setActionError('Failed to update comment. Please try again.');
     }
   };
+  // Wire the keyboard shortcuts' refs to the freshest closures so they
+  // always invoke the latest implementation regardless of render timing.
+  submitRef.current = submitNewComment;
+  saveEditRef.current = saveEdit;
 
   const deleteComment = async (comment: ForumComment) => {
+    if (!canInteract) return;
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId) return;
     const confirmed = window.confirm('Delete this comment? This cannot be undone.');
@@ -422,14 +487,14 @@ export const CommentSection = ({
 
           {!isLoading && !error && localComments.length > 0 && (
             <ul className={styles.commentList}>
-              {localComments.map((comment) => {
+              {localComments.map((comment, commentIndex) => {
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
                 const isEditing = editingId === (comment.id || comment.forumCommentId);
                 return (
                   <li
                     key={comment.id}
-                    className={`${styles.commentItem} ${comment.replyId ? styles.replyItem : ''}`}
+                    className={`${styles.commentItem} ${comment.replyId ? styles.replyItem : ''} ${commentIndex === commentSelectedIndex ? styles.selectedComment : ''}`}
                   >
                     <div className={styles.commentMeta}>
                       <button
@@ -527,7 +592,7 @@ export const CommentSection = ({
 
                     {!isEditing && (
                       <div className={styles.commentActions}>
-                        {isVerified && (
+                        {canInteract && (
                           <button
                             type="button"
                             className={`${styles.actionBtn} ${styles.actionBtnUpvote} ${
@@ -545,7 +610,7 @@ export const CommentSection = ({
                           </button>
                         )}
 
-                        {isOwner && (
+                        {isOwner && canInteract && (
                           <>
                             <button
                               type="button"
@@ -568,6 +633,19 @@ export const CommentSection = ({
                             </button>
                           </>
                         )}
+
+                        {!canInteract && interactDisabledReason && (
+                          <span
+                            className={styles.actionBtn}
+                            title={interactDisabledReason}
+                            aria-label={interactDisabledReason}
+                            data-testid="comment-action-disabled-reason"
+                            style={{ cursor: 'not-allowed', opacity: 0.6 }}
+                          >
+                            <ThumbsUp size={14} />
+                            <span>{comment.upvoteCount ?? 0}</span>
+                          </span>
+                        )}
                       </div>
                     )}
                   </li>
@@ -576,8 +654,9 @@ export const CommentSection = ({
             </ul>
           )}
 
-          {/* Create form — only for verified/authenticated users */}
-          {isVerified && currentUserId != null && (
+          {/* Create form — only for users who can interact (approved +
+              subscription ACTIVE for Researcher / Lecturer). */}
+          {canInteract && currentUserId != null && (
             <div className={styles.createForm}>
               <textarea
                 className={styles.createTextarea}
@@ -598,6 +677,26 @@ export const CommentSection = ({
               >
                 Post
               </Button>
+            </div>
+          )}
+
+          {/* Read-only hint for users who cannot interact */}
+          {!canInteract && isVerified && interactDisabledReason && (
+            <div
+              className={styles.createForm}
+              data-testid="comment-create-disabled"
+              role="status"
+              aria-live="polite"
+              style={{
+                padding: 'var(--space-3)',
+                border: '1px dashed var(--ars-node)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--ars-ink-muted)',
+                fontSize: 'var(--font-size-sm)',
+              }}
+            >
+              {interactDisabledReason}{' '}
+              <a href={ROUTES.SUBSCRIPTION}>View subscription plans</a>.
             </div>
           )}
 

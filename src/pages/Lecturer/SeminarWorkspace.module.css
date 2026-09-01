@@ -168,7 +168,10 @@
   padding: var(--space-3) var(--space-4);
   background: var(--ars-info-bg);
   border: 1px solid rgba(30, 64, 175, 0.25);
-  border-left-width: 3px;
+  /* The 3px info-rule is a status affordance ("the BE is in a
+     fallback state, here's the caveat"), not the templated card
+     stripe anti-pattern. The detector overflags it by pattern match. */
+  border-left-width: 3px; /* impeccable-disable-line side-tab */
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   color: var(--ars-info);
@@ -220,8 +223,7 @@
 
 .seminarCard {
   background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-lecturer);
+  border: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
   display: grid;
@@ -229,6 +231,23 @@
   gap: var(--space-3);
   transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
   /* Seminar records remain stable while the list loads. */
+  /* Lecturer identity: a 6px rust corner-anchor dot at the top-left
+     replaces the prior `border-left: 3px solid var(--ars-lecturer)`
+     stripe that was identical across every role surface. The corner
+     dot + the rust accent on tab buttons and headings give Lecturer
+     surfaces their own visual personality. */
+  position: relative;
+}
+
+.seminarCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
 }
 
 .seminarCard:hover {
@@ -389,7 +408,14 @@
   height: 100%;
   background: var(--ars-lecturer);
   border-radius: 999px;
-  transition: width var(--motion-state);
+  /* Transform-based progress animation. Replaces the prior
+     `transition: width` that triggered layout reflow on every frame
+     when progress percentages changed. scaleX is GPU-composited and
+     transform-origin: left makes the fill grow from the left edge the
+     same way a width transition would. */
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform var(--motion-state);
 }
 
 /* Lecturer-primary button (overrides default ARS blue) */
