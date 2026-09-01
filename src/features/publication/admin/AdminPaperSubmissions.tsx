@@ -10,10 +10,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
 import { TableToolbar } from '../../../components/table/TableToolbar';
 import { TablePagination } from '../../../components/table/TablePagination';
+import { SortableHeader } from '../../../components/table/SortableHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
@@ -32,6 +34,9 @@ import {
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
+
+/** Sortable column ids for the Admin Paper Submissions table. */
+type SortColumn = 'title' | 'status' | 'verification' | 'reviewer' | 'submittedAt';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
@@ -68,6 +73,10 @@ export const AdminPaperSubmissions = () => {
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
 
+  // Default sort by submittedAt (newest first) so recently submitted papers
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<PublicationPaper, SortColumn>('submittedAt', 'desc');
+
   const load = async (): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -100,9 +109,30 @@ export const AdminPaperSubmissions = () => {
     [search, statusFilter, verificationFilter],
   );
 
+  // Apply column sort on top of the items that pass filters.
+  const sortedItems = useMemo(
+    () =>
+      sort.sortedItemsBy(papers, (paper) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return paper.title ?? '';
+          case 'status':
+            return paper.status;
+          case 'verification':
+            return paper.researcherVerificationStatus ?? '';
+          case 'reviewer':
+            return paper.reviewer?.reviewerName ?? '';
+          case 'submittedAt':
+          default:
+            return paper.submittedAt ?? paper.createdAt ?? null;
+        }
+      }),
+    [papers, sort],
+  );
+
   const paging = useMemo(
-    () => paginateAdminPapers(papers, { page, pageSize: DEFAULT_PAGE_SIZE, filters }),
-    [papers, page, filters],
+    () => paginateAdminPapers(sortedItems, { page, pageSize: DEFAULT_PAGE_SIZE, filters }),
+    [sortedItems, page, filters],
   );
 
   // Part 5 — keyboard shortcuts for the admin submissions table.
@@ -119,10 +149,10 @@ export const AdminPaperSubmissions = () => {
     },
   });
 
-  // Reset to page 1 whenever filters change.
+  // Reset to page 1 whenever filters or sort change.
   useEffect(() => {
     setPage(1);
-  }, [filters]);
+  }, [filters, sort.sortState]);
 
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
@@ -222,11 +252,62 @@ export const AdminPaperSubmissions = () => {
             >
               <thead>
                 <tr>
-                  <th scope="col">Submission</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Verification</th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="title"
+                      label="Submission"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="status"
+                      label="Status"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={STATUS_OPTIONS.map((opt) => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
+                      activeFilter={statusFilter}
+                      onFilterChange={(next) =>
+                        setStatusFilter(
+                          next as AdminPaperFilters['status'],
+                        )
+                      }
+                    />
+                  </th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="verification"
+                      label="Verification"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={[
+                        { value: 'ALL', label: 'All verifications' },
+                        { value: 'ALLOW', label: 'Allow' },
+                        { value: 'VERIFIED', label: 'Verified' },
+                        { value: 'PENDING', label: 'Pending' },
+                        { value: 'UNVERIFIED', label: 'Unverified' },
+                      ]}
+                      activeFilter={verificationFilter}
+                      onFilterChange={(next) =>
+                        setVerificationFilter(
+                          next as AdminPaperFilters['verification'],
+                        )
+                      }
+                    />
+                  </th>
                   <th scope="col">Identifiers</th>
-                  <th scope="col">Reviewer</th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="reviewer"
+                      label="Reviewer"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
                   <th scope="col">Manuscript</th>
                   <th scope="col" align="right">
                     Actions

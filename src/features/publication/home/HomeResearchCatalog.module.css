@@ -133,11 +133,13 @@
   gap: var(--space-4);
 }
 
-/* Keyboard-shortcut-selected card wrap (Part 4 — useListShortcuts). */
+/* Keyboard-shortcut-selected card wrap (Part 4 — useListShortcuts).
+   Visual highlight removed per product request — the j/k navigation
+   logic remains so the underlying keyboard shortcut still works, but
+   no outline is rendered so the first card does not auto-highlight
+   on page load. */
 .results > .selectedCardWrap {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: 4px;
-  border-radius: var(--radius-md, 12px);
+  /* intentionally empty */
 }
 
 /* ── Pagination ────────────────────────────────────────────── */

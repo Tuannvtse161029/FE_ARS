@@ -11,6 +11,7 @@ import styles from './ContentReports.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { ResolveReportModal } from '../../components/admin/ResolveReportModal';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
+import { useTableSort } from '../../hooks/useTableSort';
 import type {
   ViolationReport,
   ViolationReportsQuery,
@@ -20,6 +21,7 @@ import type {
 import { usePagination } from '../../hooks/usePagination';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -28,6 +30,9 @@ import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
+
+/** Sortable column ids for the Content Reports table. */
+type SortColumn = 'reason' | 'type' | 'reporter' | 'reported' | 'status' | 'createdAt';
 
 const STATUS_OPTIONS: Array<{
   value: ViolationReportStatus | 'ALL';
@@ -85,10 +90,30 @@ export default function ContentReports(): JSX.Element {
     [reports],
   );
 
-  // Newest first by date.
+  // Default sort by date (newest first) so freshly filed reports surface
+  // at the top. The user can override per column header click.
+  const sort = useTableSort<ViolationReport, SortColumn>('createdAt', 'desc');
+
   const sortedReports = useMemo(
-    () => [...reports].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [reports],
+    () =>
+      sort.sortedItemsBy(reports, (row) => {
+        switch (sort.sortState.column) {
+          case 'reason':
+            return row.reason ?? '';
+          case 'type':
+            return row.type ?? '';
+          case 'reporter':
+            return row.reportedByName ?? '';
+          case 'reported':
+            return row.targetAuthorName ?? '';
+          case 'status':
+            return row.status;
+          case 'createdAt':
+          default:
+            return row.date ?? null;
+        }
+      }),
+    [reports, sort],
   );
 
   const {
@@ -106,7 +131,7 @@ export default function ContentReports(): JSX.Element {
 
   useEffect(() => {
     resetPage();
-  }, [search, statusFilter, resetPage]);
+  }, [search, statusFilter, sort.sortState, resetPage]);
 
   const openReport = (report: ViolationReport): void => {
     setActiveReport(report);
@@ -241,12 +266,64 @@ export default function ContentReports(): JSX.Element {
               <thead>
                 <tr>
                   <th>Report ID</th>
-                  <th>Type</th>
-                  <th>Target Author</th>
-                  <th>Reason</th>
-                  <th>Reported By</th>
-                  <th>Date</th>
-                  <th>Status</th>
+                  <th>
+                    <SortableHeader
+                      column="type"
+                      label="Type"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="reported"
+                      label="Target Author"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="reason"
+                      label="Reason"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="reporter"
+                      label="Reported By"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="createdAt"
+                      label="Date"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="status"
+                      label="Status"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={STATUS_OPTIONS.map((opt) => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
+                      activeFilter={statusFilter}
+                      onFilterChange={(next) =>
+                        setStatusFilter(
+                          next as ViolationReportsQuery['status'],
+                        )
+                      }
+                    />
+                  </th>
                   <th className={styles.actionCell}>Action</th>
                 </tr>
               </thead>

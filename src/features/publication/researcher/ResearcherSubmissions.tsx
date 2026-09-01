@@ -2,14 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inbox, Plus } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { useTableSort } from '../../../hooks/useTableSort';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
+import { SortableHeader } from '../../../components/table/SortableHeader';
 import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import styles from './researcher.module.css';
+
+/** Sortable column ids for the Researcher Submissions table. */
+type SortColumn = 'title' | 'status' | 'reviewer' | 'submittedAt';
 
 // ResearcherSubmissions — Researcher-only list of manuscripts the
 // current author owns. Coordinator authority: the route /researcher/
@@ -61,6 +66,10 @@ export const ResearcherSubmissions = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<PublicationStatus | 'ALL'>('ALL');
 
+  // Default sort by submittedAt (newest first) so recently submitted
+  // submissions surface at the top. The user can override per column.
+  const sort = useTableSort<PublicationPaper, SortColumn>('submittedAt', 'desc');
+
   useEffect(() => {
     let cancelled = false;
     setError(null);
@@ -111,13 +120,28 @@ export const ResearcherSubmissions = () => {
         .toLowerCase();
       return haystack.includes(term);
     });
-    return [...filtered].sort((a, b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      if (timeB !== timeA) return timeB - timeA;
-      return Number(b.id) - Number(a.id);
-    });
+    // Sort is applied via sort.sortedItemsBy below.
+    return filtered;
   }, [papers, search, statusFilter]);
+
+  // Apply column sort on top of filtered list.
+  const sortedPapers = useMemo(
+    () =>
+      sort.sortedItemsBy(visiblePapers, (paper) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return paper.title ?? '';
+          case 'status':
+            return paper.status;
+          case 'reviewer':
+            return paper.reviewer?.reviewerName ?? '';
+          case 'submittedAt':
+          default:
+            return paper.submittedAt ?? paper.createdAt ?? null;
+        }
+      }),
+    [visiblePapers, sort],
+  );
 
   return (
     <section className={styles.page}>
@@ -236,15 +260,58 @@ export const ResearcherSubmissions = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col" className={styles.thTitle}>Title</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Reviewer</th>
-                    <th scope="col">Updated</th>
+                    <th scope="col" className={styles.thTitle}>
+                      <SortableHeader
+                        column="title"
+                        label="Title"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="status"
+                        label="Status"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={STATUS_FILTER_OPTIONS.map(
+                          (option) => ({
+                            value: option,
+                            label:
+                              option === 'ALL'
+                                ? 'All statuses'
+                                : statusLabel(option),
+                          }),
+                        )}
+                        activeFilter={statusFilter}
+                        onFilterChange={(next) =>
+                          setStatusFilter(
+                            next as PublicationStatus | 'ALL',
+                          )
+                        }
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="reviewer"
+                        label="Reviewer"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th scope="col">
+                      <SortableHeader
+                        column="submittedAt"
+                        label="Updated"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
                     <th scope="col" className={styles.thActions}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visiblePapers.map((paper) => {
+                  {sortedPapers.map((paper) => {
                     const showReviewer =
                       paper.status === 'REVIEWER_ASSIGNED' ||
                       paper.status === 'UNDER_REVIEW' ||

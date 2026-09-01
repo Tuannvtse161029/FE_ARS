@@ -344,12 +344,18 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
   text-decoration: none;
+}
+
+.viewBtn svg,
+.viewBtn > * {
+  color: #ffffff;
 }
 
 .viewBtn:hover {
   background: var(--ars-lecturer-mid);
+  color: #ffffff;
 }
 
 .viewBtn:focus-visible {
@@ -592,11 +598,17 @@
 .lecturerPrimary {
   background-color: var(--ars-lecturer) !important;
   border-color: var(--ars-lecturer) !important;
+  color: #ffffff !important;
 }
 
 .lecturerPrimary:hover:not(:disabled) {
   background-color: var(--ars-lecturer-mid) !important;
   border-color: var(--ars-lecturer-mid) !important;
+  color: #ffffff !important;
+}
+
+.lecturerPrimary:focus-visible {
+  outline-color: var(--ars-lecturer) !important;
 }
 
 .lecturerOutline {

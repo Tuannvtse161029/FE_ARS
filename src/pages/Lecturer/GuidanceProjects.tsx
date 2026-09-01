@@ -27,12 +27,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
+import { useTableSort } from '../../hooks/useTableSort';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
 import { canTransitionGuidanceProject, normalizeGuidanceProjectStatus } from '../../utils/researchStatus';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
@@ -55,6 +57,9 @@ const STATUS_FILTERS: ReadonlyArray<{ key: StatusFilter; label: string }> = [
   { key: 'COMPLETED', label: 'Completed' },
   { key: 'CANCELLED', label: 'Cancelled' },
 ];
+
+/** Sortable column ids for the Guidance Projects table. */
+type SortColumn = 'title' | 'status' | 'student' | 'group' | 'createdAt';
 
 interface BannerState {
   visible: boolean;
@@ -125,6 +130,10 @@ export const GuidanceProjects = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
 
+  // Default sort by createdAt (newest first) so newly created projects
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<GuidanceProject, SortColumn>('createdAt', 'desc');
+
   const filtered = useMemo<GuidanceProject[]>(() => {
     const normalisedSearch = search.trim().toLowerCase();
     const base = myProjects.filter((p) => {
@@ -143,12 +152,29 @@ export const GuidanceProjects = () => {
         studentLabel.toLowerCase().includes(normalisedSearch)
       );
     });
-    // Newest first by createdAt.
-    return [...base].sort(
-      (a, b) =>
-        new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
-    );
+    return base;
   }, [myProjects, statusFilter, search]);
+
+  // Apply sort on top of filtered list.
+  const sorted = useMemo(
+    () =>
+      sort.sortedItemsBy(filtered, (p) => {
+        switch (sort.sortState.column) {
+          case 'title':
+            return p.title ?? '';
+          case 'status':
+            return p.status;
+          case 'student':
+            return p.studentId ?? null;
+          case 'group':
+            return p.researchGroupName ?? '';
+          case 'createdAt':
+          default:
+            return p.createdAt ?? null;
+        }
+      }),
+    [filtered, sort],
+  );
 
   // Counts by status — surfaces in the pill labels.
   const countsByStatus = useMemo(() => {
@@ -176,11 +202,11 @@ export const GuidanceProjects = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<GuidanceProject>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<GuidanceProject>(sorted, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
-  }, [search, statusFilter, resetPage]);
+  }, [search, statusFilter, sort.sortState, resetPage]);
 
   const isRefreshing = isLoading && myProjects.length > 0;
 
@@ -475,9 +501,46 @@ export const GuidanceProjects = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>PROJECT</th>
-                    <th>STUDENT</th>
-                    <th>STATUS</th>
+                    <th>
+                      <SortableHeader
+                        column="title"
+                        label="PROJECT"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="student"
+                        label="STUDENT"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="status"
+                        label="STATUS"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={STATUS_FILTERS.map((f) => ({
+                          value: f.key,
+                          label: f.label,
+                        }))}
+                        activeFilter={statusFilter}
+                        onFilterChange={(next) =>
+                          setStatusFilter(next as StatusFilter)
+                        }
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="createdAt"
+                        label="CREATED"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
                     <th>ACTIONS</th>
                   </tr>
                 </thead>

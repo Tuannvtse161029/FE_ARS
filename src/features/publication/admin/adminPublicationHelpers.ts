@@ -98,17 +98,17 @@ const buildSearchHaystack = (paper: PublicationPaper): string => {
     .toLowerCase();
 };
 
-const matchesSearch = (paper: PublicationPaper, term: string): boolean => {
+export const matchesSearch = (paper: PublicationPaper, term: string): boolean => {
   if (!term) return true;
   return buildSearchHaystack(paper).includes(term);
 };
 
-const matchesStatus = (paper: PublicationPaper, status: PublicationStatus | 'ALL'): boolean => {
+export const matchesStatus = (paper: PublicationPaper, status: PublicationStatus | 'ALL'): boolean => {
   if (status === 'ALL') return true;
   return paper.status === status;
 };
 
-const matchesVerification = (
+export const matchesVerification = (
   paper: PublicationPaper,
   verification: AdminPaperFilters['verification'],
 ): boolean => {

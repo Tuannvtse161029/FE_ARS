@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Eye, Inbox, Search, X } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
+import { useTableSort } from '../../hooks/useTableSort';
 import {
   adminUserService,
   isPendingVerification,
@@ -23,6 +24,7 @@ import {
 import type { User } from '../../types/auth';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -33,6 +35,17 @@ import VerificationDetailsModal from './VerificationDetailsModal';
 import styles from './RoleRequests.module.css';
 
 type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
+/**
+ * Sortable column identifiers for the Role Requests table.
+ * Each id maps to a value extractor on the User row.
+ */
+type SortColumn =
+  | 'name'
+  | 'email'
+  | 'role'
+  | 'verification'
+  | 'createdAt';
 
 const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
 
@@ -82,6 +95,10 @@ export const RoleRequests = () => {
   const [selected, setSelected] = useState<User | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Default to newest-created-first so a newly submitted request doesn't
+  // disappear at the bottom of the queue. The user can override per column.
+  const sort = useTableSort<User, SortColumn>('createdAt', 'desc');
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -105,36 +122,52 @@ export const RoleRequests = () => {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return rows
-      .filter((row) => {
-        const verification = normalizeVerificationStatus(row.verificationStatus);
-        const matchesStatus =
-          status === 'PENDING'
-            ? verification === 'Pending'
-            : status === 'ACCEPTED'
-            ? verification === 'Accepted'
-            : status === 'REJECTED'
-            ? verification === 'Rejected'
-            : true;
-        if (!matchesStatus) return false;
-        if (!query) return true;
-        const haystack = [
-          row.fullName ?? '',
-          row.email ?? '',
-          row.username ?? '',
-          String(row.id),
-          row.roleName ?? '',
-          row.accountTier ?? '',
-        ]
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(query);
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
-      );
+    return rows.filter((row) => {
+      const verification = normalizeVerificationStatus(row.verificationStatus);
+      const matchesStatus =
+        status === 'PENDING'
+          ? verification === 'Pending'
+          : status === 'ACCEPTED'
+          ? verification === 'Accepted'
+          : status === 'REJECTED'
+          ? verification === 'Rejected'
+          : true;
+      if (!matchesStatus) return false;
+      if (!query) return true;
+      const haystack = [
+        row.fullName ?? '',
+        row.email ?? '',
+        row.username ?? '',
+        String(row.id),
+        row.roleName ?? '',
+        row.accountTier ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    });
   }, [rows, search, status]);
+
+  // Apply the current sort on top of the filtered list. When no column is
+  // active (cleared after two clicks), the default createdAt-desc order
+  // takes over so newly created requests surface at the top.
+  const sorted = useMemo(() => {
+    return sort.sortedItemsBy(filtered, (row) => {
+      switch (sort.sortState.column) {
+        case 'name':
+          return (row.fullName ?? row.username ?? '').toLowerCase();
+        case 'email':
+          return row.email ?? '';
+        case 'role':
+          return row.roleName ?? '';
+        case 'verification':
+          return normalizeVerificationStatus(row.verificationStatus) ?? '';
+        case 'createdAt':
+        default:
+          return row.createdAt ?? null;
+      }
+    });
+  }, [filtered, sort]);
 
   const {
     page,
@@ -147,11 +180,11 @@ export const RoleRequests = () => {
     next,
     prev,
     resetPage,
-  } = usePagination<User>(filtered, DEFAULT_PAGE_SIZE);
+  } = usePagination<User>(sorted, DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     resetPage();
-  }, [search, status, resetPage]);
+  }, [search, status, sort.sortState, resetPage]);
 
   const handleOpenDetails = (row: User) => {
     setSelected(row);
@@ -253,10 +286,48 @@ export const RoleRequests = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Assigned / Pending Role</th>
-                    <th>Email Verification</th>
-                    <th>Verification Status</th>
+                    <th>
+                      <SortableHeader
+                        column="name"
+                        label="User"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="role"
+                        label="Assigned / Pending Role"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="email"
+                        label="Email"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="verification"
+                        label="Verification Status"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={[
+                          { value: 'ALL', label: 'All statuses' },
+                          { value: 'PENDING', label: 'Pending' },
+                          { value: 'ACCEPTED', label: 'Approved' },
+                          { value: 'REJECTED', label: 'Denied' },
+                        ]}
+                        activeFilter={status}
+                        onFilterChange={(next) =>
+                          setStatus(next as StatusFilter)
+                        }
+                      />
+                    </th>
                     <th>Actions</th>
                   </tr>
                 </thead>

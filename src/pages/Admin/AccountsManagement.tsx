@@ -11,6 +11,7 @@ import { Inbox, Eye, Pause, Play } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
+import { useTableSort } from '../../hooks/useTableSort';
 import { adminService } from '../../services/admin.service';
 import type {
   AccountItem,
@@ -20,6 +21,7 @@ import type {
 } from '../../types/admin';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { SortableHeader } from '../../components/table/SortableHeader';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -31,6 +33,9 @@ import styles from './AccountsManagement.module.css';
 type StatusFilter = 'ALL' | AccountStatus;
 type PlanFilter = 'ALL' | AccountPlan;
 type RoleFilter = 'ALL' | AccountRoleName;
+
+/** Sortable column ids for the Accounts table. */
+type SortColumn = 'name' | 'email' | 'roles' | 'plan' | 'joined' | 'status';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
@@ -127,14 +132,30 @@ export const AccountsManagement = () => {
   const statusClass = (s: AccountStatus) =>
     s === 'ACTIVE' ? styles.statusActive : styles.statusSuspended;
 
+  // Default sort by joinedDate (newest first) so newly registered accounts
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<AccountItem, SortColumn>('joined', 'desc');
+
   const sorted = useMemo(
     () =>
-      [...accounts].sort(
-        (a, b) =>
-          // Newest first by joinedDate (handle both ISO and locale date strings).
-          new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime(),
-      ),
-    [accounts],
+      sort.sortedItemsBy(accounts, (row) => {
+        switch (sort.sortState.column) {
+          case 'name':
+            return row.name ?? '';
+          case 'email':
+            return row.email ?? '';
+          case 'roles':
+            return row.roles.join(', ');
+          case 'plan':
+            return row.plan;
+          case 'status':
+            return row.status;
+          case 'joined':
+          default:
+            return row.joinedDate ?? null;
+        }
+      }),
+    [accounts, sort],
   );
 
   const {
@@ -154,7 +175,7 @@ export const AccountsManagement = () => {
   // never hides rows that belong to the new filter.
   useEffect(() => {
     resetPage();
-  }, [search, status, plan, role, resetPage]);
+  }, [search, status, plan, role, sort.sortState, resetPage]);
 
   const hasNoMatch =
     !loading &&
@@ -277,11 +298,60 @@ export const AccountsManagement = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Roles</th>
-                    <th>Plan</th>
-                    <th>Joined</th>
-                    <th>Status</th>
+                    <th>
+                      <SortableHeader
+                        column="name"
+                        label="User"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="roles"
+                        label="Roles"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="plan"
+                        label="Plan"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={[
+                          { value: 'ALL', label: 'All plans' },
+                          { value: 'PREMIUM', label: 'Premium' },
+                          { value: 'FREE_TIER', label: 'Free Tier' },
+                        ]}
+                        activeFilter={plan}
+                        onFilterChange={(next) => setPlan(next as PlanFilter)}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="joined"
+                        label="Joined"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="status"
+                        label="Status"
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                        filterOptions={[
+                          { value: 'ALL', label: 'All statuses' },
+                          { value: 'ACTIVE', label: 'Active' },
+                          { value: 'SUSPENDED', label: 'Suspended' },
+                        ]}
+                        activeFilter={status}
+                        onFilterChange={(next) => setStatus(next as StatusFilter)}
+                      />
+                    </th>
                     <th>Actions</th>
                   </tr>
                 </thead>

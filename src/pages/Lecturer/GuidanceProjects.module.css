@@ -195,11 +195,17 @@
 .lecturerPrimary {
   background-color: var(--ars-lecturer) !important;
   border-color: var(--ars-lecturer) !important;
+  color: #ffffff !important;
 }
 
 .lecturerPrimary:hover:not(:disabled) {
   background-color: var(--ars-lecturer-mid) !important;
   border-color: var(--ars-lecturer-mid) !important;
+  color: #ffffff !important;
+}
+
+.lecturerPrimary:focus-visible {
+  outline-color: var(--ars-lecturer) !important;
 }
 
 .lecturerOutline {
@@ -675,11 +681,11 @@
   background: var(--ars-paper-inset);
 }
 
-/* Keyboard-shortcut-selected row (Part 3 — useListShortcuts). */
+/* Keyboard-shortcut-selected row — visual highlight removed per product
+   request. The j/k navigation logic remains intact so the underlying
+   keyboard shortcut still works, but no outline or background is rendered. */
 .table tbody tr.selectedRow {
-  outline: 2px solid var(--ars-blue, #007AFF);
-  outline-offset: -2px;
-  background: rgba(0, 122, 255, 0.08);
+  /* intentionally empty */
 }
 
 .titleCell {

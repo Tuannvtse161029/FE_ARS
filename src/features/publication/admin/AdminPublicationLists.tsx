@@ -8,10 +8,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
 import { TableToolbar } from '../../../components/table/TableToolbar';
 import { TablePagination } from '../../../components/table/TablePagination';
+import { SortableHeader } from '../../../components/table/SortableHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
@@ -24,9 +26,11 @@ import {
 } from '../types/publication';
 import {
   doiHref,
-  paginateAdminPapers,
   publicReviewerName,
   resolveIdentifiers,
+  matchesSearch,
+  matchesStatus,
+  matchesVerification,
   statusBadgeClass,
   verificationBadgeClass,
   type AdminPaperFilters,
@@ -43,6 +47,13 @@ interface AdminListConfig {
   /** Human-friendly item label used by the pagination control. */
   itemLabel: string;
 }
+
+type AdminListSortColumn =
+  | 'title'
+  | 'status'
+  | 'verification'
+  | 'reviewer'
+  | 'submittedAt';
 
 const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
   eyebrow: 'ADMIN · REVIEWER QUEUE',
@@ -90,6 +101,13 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  // Default sort by submittedAt (newest first) so recently submitted papers
+  // surface at the top. The user can override per column header click.
+  const sort = useTableSort<PublicationPaper, AdminListSortColumn>(
+    'submittedAt',
+    'desc',
+  );
 
   const handlePublish = async (paper: PublicationPaper) => {
     if (publishingId || rejectingId) return;
@@ -179,14 +197,55 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     [search, statusFilter, verificationFilter],
   );
 
+  // Apply the search/status/verification filter and sort in two passes so
+  // the column sort affects the full filtered set (not just the visible
+  // page of rows). The published-list view pre-narrows `scoped` so a
+  // paper outside its owned statuses never enters the result set.
+  const sortedFiltered = useMemo(() => {
+    const filtered = scoped.filter((paper) => {
+      if (!matchesStatus(paper, statusFilter)) return false;
+      if (!matchesVerification(paper, verificationFilter)) return false;
+      if (search.trim() && !matchesSearch(paper, search.trim().toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+    return sort.sortedItemsBy(filtered, (paper) => {
+      switch (sort.sortState.column) {
+        case 'title':
+          return paper.title ?? '';
+        case 'status':
+          return paper.status;
+        case 'verification':
+          return paper.researcherVerificationStatus ?? '';
+        case 'reviewer':
+          return paper.reviewer?.reviewerName ?? '';
+        case 'submittedAt':
+        default:
+          return paper.submittedAt ?? paper.createdAt ?? null;
+      }
+    });
+  }, [scoped, sort, statusFilter, verificationFilter, search]);
+
+  const totalCount = sortedFiltered.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / DEFAULT_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * DEFAULT_PAGE_SIZE;
+  const pagedItems = sortedFiltered.slice(start, start + DEFAULT_PAGE_SIZE);
   const paging = useMemo(
-    () => paginateAdminPapers(scoped, { page, pageSize: DEFAULT_PAGE_SIZE, filters }),
-    [scoped, page, filters],
+    () => ({
+      items: pagedItems,
+      totalCount,
+      page: safePage,
+      pageSize: DEFAULT_PAGE_SIZE,
+      totalPages,
+    }),
+    [pagedItems, totalCount, safePage, totalPages],
   );
 
   useEffect(() => {
     setPage(1);
-  }, [filters]);
+  }, [filters, sort.sortState]);
 
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
@@ -303,11 +362,65 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
             <table className={adminStyles.table} aria-label={config.title}>
               <thead>
                 <tr>
-                  <th scope="col">Paper</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Verification</th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="title"
+                      label="Paper"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="status"
+                      label="Status"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={[
+                        { value: 'ALL', label: 'All' },
+                        ...config.statusOptions.map((status) => ({
+                          value: status,
+                          label: statusLabel(status),
+                        })),
+                      ]}
+                      activeFilter={statusFilter}
+                      onFilterChange={(next) =>
+                        setStatusFilter(
+                          next as AdminPaperFilters['status'],
+                        )
+                      }
+                    />
+                  </th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="verification"
+                      label="Verification"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                      filterOptions={[
+                        { value: 'ALL', label: 'All verifications' },
+                        { value: 'VERIFIED', label: 'Verified' },
+                        { value: 'ALLOW', label: 'Allow' },
+                        { value: 'PENDING', label: 'Pending' },
+                        { value: 'UNVERIFIED', label: 'Unverified' },
+                      ]}
+                      activeFilter={verificationFilter}
+                      onFilterChange={(next) =>
+                        setVerificationFilter(
+                          next as AdminPaperFilters['verification'],
+                        )
+                      }
+                    />
+                  </th>
                   <th scope="col">Identifiers</th>
-                  <th scope="col">Reviewer</th>
+                  <th scope="col">
+                    <SortableHeader
+                      column="reviewer"
+                      label="Reviewer"
+                      cycleSort={sort.cycleSort}
+                      ariaSortFor={sort.ariaSortFor}
+                    />
+                  </th>
                   <th scope="col">Manuscript</th>
                   <th scope="col" align="right">
                     Actions
