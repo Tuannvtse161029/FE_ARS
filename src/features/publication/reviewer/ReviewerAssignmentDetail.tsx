@@ -245,6 +245,7 @@ export const ReviewerAssignmentDetail = () => {
         specializedCriteria,
       );
       setResolved({ status: 'authorised', paper: updated });
+      navigate('/admin/reviewer-assignments');
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Could not submit review.',
