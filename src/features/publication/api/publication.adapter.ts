@@ -18,7 +18,6 @@ import {
   type ReviewerRecommendation,
   type SubmissionInput,
 } from '../types/publication';
-import { demoPublicationPapers } from '../demo/publication.demo';
 import { notificationService } from '../../../services/notification.service';
 import type { SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
 export class PublicationBackendContractError extends Error {
@@ -105,8 +104,8 @@ const toPublicationPaper = (
   evaluation: DetailedEvaluation | null = null,
 ): PublicationPaper => {
   const status = assignmentStatus(request, evaluation) ?? paperStatus(paper.status);
-  const authorId = paper.authorId ?? paper.userId;
-  const subFieldId = paper.subFieldId ?? paper.subfieldId;
+  const authorId = paper.authorId ?? (paper as unknown as { userId?: number }).userId;
+  const subFieldId = paper.subFieldId ?? (paper as unknown as { subfieldId?: number }).subfieldId;
   const authorName = paper.authorName?.trim();
   const reviewerName = request?.reviewerName?.trim();
   const scores: Record<string, number> = {};
@@ -411,12 +410,12 @@ class ApiPublicationAdapter implements PublicationAdapter {
   async publishPaper(id: string): Promise<PublicationPaper> {
     const current = await paperService.getById(id);
     const updated = await paperService.update(id, {
-      title: current.title,
+      title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
       status: 'Published',
     });
-    const authorId = updated.authorId ?? current.authorId ?? current.userId;
+    const authorId = updated.authorId ?? current.authorId ?? (current as unknown as { userId?: number }).userId;
     if (authorId) {
       try {
         await notificationService.create({
@@ -433,12 +432,12 @@ class ApiPublicationAdapter implements PublicationAdapter {
   async rejectPaper(id: string, reason?: string): Promise<PublicationPaper> {
     const current = await paperService.getById(id);
     const updated = await paperService.update(id, {
-      title: current.title,
+      title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
       status: 'Rejected',
     });
-    const authorId = updated.authorId ?? current.authorId ?? current.userId;
+    const authorId = updated.authorId ?? current.authorId ?? (current as unknown as { userId?: number }).userId;
     if (authorId) {
       try {
         await notificationService.create({

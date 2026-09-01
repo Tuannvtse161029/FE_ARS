@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
+import shared from '../components/PublicationShared.module.css';
 import {
   REVIEWER_CRITERIA,
   REVIEWER_RECOMMENDATIONS,
@@ -623,7 +624,6 @@ export const ReviewerAssignmentDetail = () => {
           >
             {saving ? 'Đang gửi...' : 'Nộp phiếu đánh giá cho Admin'}
           </Button>
-        </div>
         </div>
       </form>
     );
