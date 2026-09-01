@@ -45,6 +45,7 @@ export interface PublicationAdapter {
   ): Promise<PublicationPaper>;
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
   assignReviewersAuto(id: string, reviewerCount?: number): Promise<unknown>;
+  verifyAuthorship(id: string, allow?: boolean): Promise<PublicationPaper>;
   publishPaper(id: string): Promise<PublicationPaper>;
   rejectPaper(id: string, reason?: string): Promise<PublicationPaper>;
 }
@@ -176,7 +177,38 @@ const toPublicationPaper = (
         }
       : undefined,
     reviewerIdentityPublic: false,
-    researcherVerificationStatus: 'PENDING',
+    researcherVerificationStatus: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = window.localStorage.getItem(`paper_verification_${paper.id}`);
+        if (saved === 'ALLOW' || saved === 'REJECTED') {
+          return saved;
+        }
+      }
+      const rawAuthStatus = (paper as unknown as { authorshipVerificationStatus?: string }).authorshipVerificationStatus;
+      const authorIsOrcidVerified = (paper as unknown as { authorIsOrcidVerified?: boolean }).authorIsOrcidVerified;
+      if (rawAuthStatus) {
+        const norm = rawAuthStatus.trim().toUpperCase();
+        if (norm === 'ALLOW' || norm === 'ALLOWED' || norm === 'VERIFIED') {
+          return 'ALLOW';
+        }
+        if (norm === 'REJECTED' || norm === 'DENIED') {
+          return 'REJECTED';
+        }
+      }
+      if (authorIsOrcidVerified) {
+        return 'ALLOW';
+      }
+      if (
+        status === 'READY_FOR_REVIEWER' ||
+        status === 'REVIEWER_ASSIGNED' ||
+        status === 'UNDER_REVIEW' ||
+        status === 'PUBLISHED' ||
+        status === 'REVIEWER_RECOMMENDED_ACCEPT'
+      ) {
+        return 'ALLOW';
+      }
+      return 'PENDING';
+    })(),
     reviewRequestId: request?.id,
     reviewerId: request?.reviewerId ?? undefined,
     reviewDeadline: request?.deadline ?? undefined,
@@ -273,7 +305,13 @@ class ApiPublicationAdapter implements PublicationAdapter {
     const requestMap = latestRequestByPaper(requests);
     return papers
       .filter((paper) => paper.authorId === userId)
-      .map((paper) => toPublicationPaper(paper, requestMap.get(String(paper.id))));
+      .map((paper) => toPublicationPaper(paper, requestMap.get(String(paper.id))))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return Number(b.id) - Number(a.id);
+      });
   }
 
   async getReviewerAssignments(): Promise<PublicationPaper[]> {
@@ -405,6 +443,28 @@ class ApiPublicationAdapter implements PublicationAdapter {
 
   async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {
     return paperService.assignReviewers(id, reviewerCount);
+  }
+
+  async verifyAuthorship(id: string, allow = true): Promise<PublicationPaper> {
+    const statusValue = allow ? 'ALLOW' : 'REJECTED';
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`paper_verification_${id}`, statusValue);
+    }
+    const current = await paperService.getById(id);
+    const authorId = current.authorId ?? (current as unknown as { userId?: number }).userId;
+    if (authorId) {
+      try {
+        await notificationService.create({
+          userId: authorId,
+          message: allow
+            ? `Bài báo "${current.title}" của bạn đã được Ban biên tập xác nhận quyền sở hữu tác giả chính thức (Status: ALLOW).`
+            : `Bài báo "${current.title}" của bạn không được Ban biên tập xác nhận quyền sở hữu tác giả.`,
+        });
+      } catch (err) {
+        console.warn('Failed to send authorship notification:', err);
+      }
+    }
+    return toPublicationPaper(current);
   }
 
   async publishPaper(id: string): Promise<PublicationPaper> {

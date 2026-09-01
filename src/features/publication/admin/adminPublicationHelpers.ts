@@ -113,6 +113,9 @@ const matchesVerification = (
   verification: AdminPaperFilters['verification'],
 ): boolean => {
   if (verification === 'ALL') return true;
+  if (verification === 'ALLOW' || verification === 'VERIFIED') {
+    return paper.researcherVerificationStatus === 'ALLOW' || paper.researcherVerificationStatus === 'VERIFIED';
+  }
   return paper.researcherVerificationStatus === verification;
 };
 
@@ -167,8 +170,10 @@ export const verificationBadgeClass = (
   status: PublicationPaper['researcherVerificationStatus'],
 ): string => {
   switch (status) {
+    case 'ALLOW':
     case 'VERIFIED': return 'verificationVerified';
     case 'PENDING': return 'verificationPending';
+    case 'REJECTED':
     case 'UNVERIFIED': return 'verificationUnverified';
     default: return 'verificationUnverified';
   }
