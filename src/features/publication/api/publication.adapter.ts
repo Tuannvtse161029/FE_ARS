@@ -201,8 +201,8 @@ const toPublicationPaper = (
     researcherVerificationStatus: (() => {
       if (typeof window !== 'undefined' && window.localStorage) {
         const saved = window.localStorage.getItem(`paper_verification_${paper.id}`);
-        if (saved === 'ALLOW' || saved === 'REJECTED') {
-          return saved;
+        if (saved === 'ALLOW' || saved === 'REJECTED' || saved === 'VERIFIED') {
+          return saved === 'ALLOW' ? 'VERIFIED' : saved;
         }
       }
       const rawAuthStatus = (paper as unknown as { authorshipVerificationStatus?: string }).authorshipVerificationStatus;
@@ -210,23 +210,29 @@ const toPublicationPaper = (
       if (rawAuthStatus) {
         const norm = rawAuthStatus.trim().toUpperCase();
         if (norm === 'ALLOW' || norm === 'ALLOWED' || norm === 'VERIFIED') {
-          return 'ALLOW';
+          return 'VERIFIED';
         }
         if (norm === 'REJECTED' || norm === 'DENIED') {
           return 'REJECTED';
         }
       }
       if (authorIsOrcidVerified) {
-        return 'ALLOW';
+        return 'VERIFIED';
+      }
+      if (
+        status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
+        status === 'ADMIN_APPROVED' ||
+        status === 'PUBLISHED' ||
+        evaluation != null
+      ) {
+        return 'VERIFIED';
       }
       if (
         status === 'READY_FOR_REVIEWER' ||
         status === 'REVIEWER_ASSIGNED' ||
-        status === 'UNDER_REVIEW' ||
-        status === 'PUBLISHED' ||
-        status === 'REVIEWER_RECOMMENDED_ACCEPT'
+        status === 'UNDER_REVIEW'
       ) {
-        return 'ALLOW';
+        return 'VERIFIED';
       }
       return 'PENDING';
     })(),
@@ -453,8 +459,25 @@ class ApiPublicationAdapter implements PublicationAdapter {
     const updated = await reviewRequestService.update(request.id!, {
       status: 'Completed',
     });
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`paper_verification_${id}`, 'VERIFIED');
+    }
+    const currentPaper = await paperService.getById(id);
+    const authorId = currentPaper.authorId ?? (currentPaper as unknown as { userId?: number }).userId;
+    if (authorId) {
+      try {
+        await notificationService.create({
+          userId: authorId,
+          message: recommendation === 'ACCEPT'
+            ? `Bài báo "${currentPaper.title}" của bạn đã được phản biện viên đánh giá: Khuyến nghị chấp thuận đăng (ACCEPT). Chờ Ban biên tập quyết định xuất bản.`
+            : `Bài báo "${currentPaper.title}" của bạn đã nhận đánh giá từ phản biện viên: Khuyến nghị từ chối / chỉnh sửa (REJECT).`,
+        });
+      } catch (err) {
+        console.warn('Failed to send reviewer submission notification:', err);
+      }
+    }
     return toPublicationPaper(
-      await paperService.getById(id),
+      currentPaper,
       { ...request, ...updated, id: request.id },
       evaluation,
     );
