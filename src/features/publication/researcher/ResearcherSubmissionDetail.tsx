@@ -244,6 +244,13 @@ export const ResearcherSubmissionDetail = () => {
               <dd>{paper.paperType || 'Not supplied'}</dd>
             </div>
             <div>
+              <dt>Field / Subfield</dt>
+              <dd>
+                {[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') ||
+                  (paper.subFieldId ? `Subfield #${paper.subFieldId}` : 'Not supplied')}
+              </dd>
+            </div>
+            <div>
               <dt>Authors</dt>
               <dd>{paper.authors.map((author) => author.name).join(', ') || 'Not supplied'}</dd>
             </div>

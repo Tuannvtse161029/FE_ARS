@@ -227,6 +227,7 @@ export const ResearcherSubmissionForm = () => {
       const draft = await publicationAdapter.createDraft({
         title: title.trim(),
         abstract: abstract.trim(),
+        subFieldId: selectedSubFieldId ?? undefined,
         authors: [
           {
             id: '',
