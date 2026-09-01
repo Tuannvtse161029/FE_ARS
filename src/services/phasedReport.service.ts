@@ -190,6 +190,17 @@ export const phasedReportService = {
     }
   },
 
+  getByGroupId: async (groupId: number): Promise<PhasedReport[]> => {
+    try {
+      const response = await api.get<PhasedReport[]>(
+        API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.BY_GROUP(groupId),
+      );
+      return normalizePhasedReportList(response.data);
+    } catch {
+      return [];
+    }
+  },
+
   getMembersByTopic: async (topicId: number): Promise<GroupMember[]> => {
     const response = await api.get<GroupMember[]>(
       PHASED_REPORT_ENDPOINTS.MEMBERS_BY_TOPIC(topicId),
@@ -378,7 +389,13 @@ export interface SubmittedPhasedReport {
   capacityEvaluation?: string;
   finalOutcomeEvaluation?: string;
   lectureFeedback?: number;
+  lecturerDescription?: string;
   submittedAt?: string;
+  deadlineAt?: string;
+  isOverdue?: boolean;
+  studentName?: string;
+  topicTitle?: string;
+  groupName?: string;
   status: PhasedReportStatus;
   phaseNumber?: number;
   milestoneTitle?: string;
@@ -423,9 +440,17 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
     ...(typeof raw.lectureFeedback === 'number'
       ? { lectureFeedback: raw.lectureFeedback }
       : {}),
+    ...(typeof raw.lecturerDescription === 'string'
+      ? { lecturerDescription: raw.lecturerDescription }
+      : {}),
     ...(typeof raw.submittedAt === 'string'
       ? { submittedAt: raw.submittedAt }
       : {}),
+    ...(typeof raw.deadlineAt === 'string' ? { deadlineAt: raw.deadlineAt } : {}),
+    ...(typeof raw.isOverdue === 'boolean' ? { isOverdue: raw.isOverdue } : {}),
+    ...(typeof raw.studentName === 'string' ? { studentName: raw.studentName } : {}),
+    ...(typeof raw.topicTitle === 'string' ? { topicTitle: raw.topicTitle } : {}),
+    ...(typeof raw.groupName === 'string' ? { groupName: raw.groupName } : {}),
     ...(typeof raw.phaseNumber === 'number' ? { phaseNumber: raw.phaseNumber } : {}),
     ...(typeof raw.milestoneTitle === 'string' ? { milestoneTitle: raw.milestoneTitle } : {}),
     status,
