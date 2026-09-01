@@ -211,12 +211,12 @@ export const SubmitReport = (): JSX.Element => {
       <nav className={styles.breadcrumbs}>
         Home &gt; Collaborative Workspace &gt;{' '}
         {primaryGroup?.name ?? 'Research Group'} &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Submit Progress Report (5 phases)</span>
+        <span className={styles.activeBreadcrumb}>Submit Progress Report</span>
       </nav>
 
       <header className={styles.headerRow}>
         <div>
-          <h1 className={styles.pageTitle}>Submit Research Report by Phase (5 phases)</h1>
+          <h1 className={styles.pageTitle}>Submit Research Report by Phase</h1>
           <p className={styles.pageSubtitle}>
             Track 5 progress milestones for your topic and submit reports on schedule. Your supervisor will review and respond directly.
           </p>
@@ -310,9 +310,9 @@ export const SubmitReport = (): JSX.Element => {
           )}
         </section>
 
-        {/* 5 Phases List */}
+        {/* Phase Report List */}
         <section className={`${styles.card} ${styles.milestonesCard}`}>
-          <h2 className={styles.cardTitle}>5 phase report milestones</h2>
+          <h2 className={styles.cardTitle}>Phase report milestones</h2>
 
           {rejection ? (
             <RejectionFeedbackBanner
@@ -333,7 +333,7 @@ export const SubmitReport = (): JSX.Element => {
             <div className={styles.emptyState}>
               <Clock size={18} />
               <span>
-                Your supervisor has not set up the 5 phase milestones for this topic yet. Please ask them to configure milestones on the milestone setup page.
+                Your supervisor has not configured any phase milestones for this topic yet. Ask them to set up milestones so your group can begin submitting reports.
               </span>
             </div>
           ) : (

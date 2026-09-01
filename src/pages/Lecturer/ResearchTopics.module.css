@@ -960,3 +960,106 @@
     padding: var(--space-4);
   }
 }
+
+/* ── Manage Phases (primary action per row) ──────────────────
+ * The lecturer's core workflow is "configure reporting phases for this
+ * topic", so it should sit on top of the row's action stack and use the
+ * lecturer accent. The disabled state pairs the visual with an
+ * explanatory hint so the lecturer knows why it's locked. */
+
+.managePhasesBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-lecturer);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+  min-height: 36px;
+}
+
+.managePhasesBtn:hover {
+  background: var(--ars-lecturer-mid);
+  border-color: var(--ars-lecturer-mid);
+}
+
+.managePhasesBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.managePhasesCount {
+  font-family: var(--font-family-mono);
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  color: #ffffff;
+}
+
+.managePhasesDisabledBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-paper);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.managePhasesHint {
+  font-family: var(--font-family-mono);
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-regular);
+  background: var(--ars-paper-inset);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  color: var(--ars-ink-muted);
+}
+
+/* Compact secondary Edit button — same shape as the lecturer-tone
+ * outline pattern, but demoted visually below Manage Phases. */
+.topicActionSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-paper);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-lecturer);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.topicActionSecondary:hover:not(:disabled) {
+  background: var(--ars-lecturer-light);
+}
+
+.topicActionSecondary:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.topicActionSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

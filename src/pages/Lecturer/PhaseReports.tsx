@@ -36,7 +36,7 @@ import {
 } from '../../services/phasedReport.service';
 import { EvaluateReportModal } from '../../components/lecturer/EvaluateReportModal';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
-import { BackendGapBanner } from '../../components/BackendGapBanner';
+import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { EmptyState } from '../../components/EmptyState';
@@ -273,11 +273,21 @@ export const PhaseReports = () => {
         </div>
       )}
 
-      {/* ── Backend gap notice ────────────────────────────────── */}
-      <BackendGapBanner
-        field="PhasedReport.phaseId / resubmission lineage"
-        feature="Stable phase identity and persisted rejected-report revision history"
-      />
+      {/* ── Compact inline notice — replaces the prior full-width
+          BackendGapBanner. Only surfaces when there's something to explain
+          about the resubmission lineage. Otherwise quiet. */}
+      {ownedReports.some(
+        (r) =>
+          r.status === 'SUBMITTED' &&
+          typeof (r as { previousReportId?: unknown }).previousReportId !==
+            'number',
+      ) && (
+        <InlineNotice
+          tone="info"
+          title="Resubmission lineage"
+          description="Older reports are detected via the legacy __LINEAGE__: sentinel. New BE responses will populate the structured previousReportId column."
+        />
+      )}
 
       {/* ── Error ────────────────────────────────────────────── */}
       {error && (
@@ -305,7 +315,27 @@ export const PhaseReports = () => {
         />
       ) : (
         <div className={styles.topics}>
-          {Array.from(topicGrouped.entries()).map(([topicKey, topicGroup]) => {
+          {/* Topic ordering: any topic with at least one SUBMITTED / REJECTED
+              report needing lecturer review surfaces first. Within each
+              priority bucket the lecturer's natural newest-first order is
+              preserved. */}
+          {Array.from(topicGrouped.entries())
+            .map(([key, group]) => ({ key, group }))
+            .sort((a, b) => {
+              const aHas = Array.from(a.group.phases.values()).some((p) =>
+                p.reports.some(
+                  (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
+                ),
+              );
+              const bHas = Array.from(b.group.phases.values()).some((p) =>
+                p.reports.some(
+                  (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
+                ),
+              );
+              if (aHas !== bHas) return aHas ? -1 : 1;
+              return 0;
+            })
+            .map(({ key: topicKey, group: topicGroup }) => {
             const open = openTopics[topicKey] !== false;
             const reportCount = topicGroup.phases.size;
             const totalReports = Array.from(topicGroup.phases.values()).reduce(
@@ -421,7 +451,12 @@ export const PhaseReports = () => {
                                       size="sm"
                                       variant="primary"
                                       onClick={() => setSelected(report)}
-                                      disabled={id == null}
+                                      disabled={id == null || !report.reportFileUrl}
+                                      title={
+                                        !report.reportFileUrl
+                                          ? 'Review opens once a student uploads the report PDF.'
+                                          : 'Open the evaluation modal'
+                                      }
                                     >
                                       Review
                                     </Button>

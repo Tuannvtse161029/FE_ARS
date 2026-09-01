@@ -1,0 +1,129 @@
+/* PhaseTimeline — compact horizontal stepper. Tokens-only; never uses
+ * colored border-left stripes or decorative gradients (impeccable bans). */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-family-ui);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.markerRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+  color: var(--ars-ink-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.connector {
+  flex: 1;
+  width: 1px;
+  min-height: 14px;
+  background: var(--ars-network);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: var(--space-3);
+  min-width: 0;
+}
+
+.stepTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.3;
+}
+
+.titleBody {
+  font-weight: var(--font-weight-regular);
+  color: var(--ars-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 36ch;
+}
+
+.stateLabel {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.metaText {
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.7rem;
+}
+
+/* state colours — always paired with an icon + label, never colour alone */
+.step[data-state='upcoming'] .dot {
+  background: var(--ars-paper);
+  border-color: var(--ars-node);
+  color: var(--ars-ink-muted);
+}
+
+.step[data-state='dueSoon'] .dot {
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+  color: var(--ars-warning);
+}
+
+.step[data-state='overdue'] .dot {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+
+.step[data-state='submitted'] .dot {
+  background: var(--ars-info-bg);
+  border-color: var(--ars-info);
+  color: var(--ars-info);
+}
+
+.step[data-state='accepted'] .dot {
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+  color: var(--ars-success);
+}
+
+/* narrow viewport: keep vertical orientation but shrink padding */
+@media (max-width: 480px) {
+  .step {
+    grid-template-columns: 20px 1fr;
+    gap: var(--space-2);
+  }
+}

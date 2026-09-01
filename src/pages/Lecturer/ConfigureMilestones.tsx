@@ -16,9 +16,10 @@
  * (refresh-safe). There is no auto-selection of the first group.
  *
  * Phase definitions are saved via POST /api/PhasedReport/topic-milestones.
- * The Swagger contract limits phases to 1..5 items and does not expose
- * `requirements`, `assessmentCriteria`, or `startAt` — those fields render
- * as read-only placeholders with a BackendGapBanner until the BE ships them.
+ * The BE Swagger contract does not document a fixed phase limit. The lecturer
+ * defines the phase count freely (1..N). `requirements`, `assessmentCriteria`,
+ * and `startAt` are not yet persisted by the backend — they render as
+ * read-only inputs with a BackendGapBanner until the BE ships them.
  *
  * All data is live from the API. No mock rows. No hardcoded "Phase 1..5"
  * templates unless returned by the BE.
@@ -52,7 +53,7 @@ import {
   toInputDate,
   MAX_PHASES_PER_TOPIC,
 } from '../../services/researchTopicPhase.service';
-import { BackendGapBanner } from '../../components/BackendGapBanner';
+import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -556,20 +557,21 @@ export const ConfigureMilestones = () => {
       {/* ── Phase plan workspace (visible only after group selection) ── */}
       {selectedGroupId !== null && (
         <>
-          {/* Backend gap banner: requirements / assessment criteria / startAt */}
-          <BackendGapBanner
-            field="PhaseDefinition.requirements, assessmentCriteria, startAt"
-            feature="The phase composer exposes Requirements, Assessment Criteria, and Start Date fields for lecturer data-entry. These are not yet persisted by the backend. Values entered here are stored in the phase title and are NOT preserved across save — only phaseNumber, milestoneTitle, and deadlineAt are persisted via POST /api/PhasedReport/topic-milestones."
+          {/* Compact inline notice — replaced the prior full-width BackendGapBanner.
+              The fields it warns about remain honest about their persistence
+              state without overpowering the workflow. */}
+          <InlineNotice
+            tone="info"
+            title="Additional phase details awaiting backend support"
+            description="Requirements, assessment criteria, and start date are not yet persisted by the BE — only the phase title and deadline will save."
+            className={styles.phaseLimitBanner}
           />
 
-          {/* Phase limit banner */}
+          {/* Phase count indicator (no hard limit — BE supports 1..N phases) */}
           <div className={styles.phaseLimitBanner} role="status">
             <span>
               <Layers size={13} aria-hidden />{' '}
-              {drafts.length} / {MAX_PHASES_PER_TOPIC} phases defined
-              {drafts.length >= MAX_PHASES_PER_TOPIC
-                ? ' — maximum reached'
-                : ` — ${MAX_PHASES_PER_TOPIC - drafts.length} remaining`}
+              {drafts.length} phase{drafts.length !== 1 ? 's' : ''} defined
             </span>
           </div>
 
@@ -677,68 +679,70 @@ export const ConfigureMilestones = () => {
                       />
                     </div>
 
-                    {/* Requirements — read-only: BE gap */}
+                    {/* Requirements — visible for product discovery but disabled because
+              the BE does not persist this field. We accept no user input
+              and do not pretend the value will save. */}
                     <div className={styles.formGroup}>
                       <label
                         className={styles.formLabel}
                         htmlFor={`phase-req-${index}`}
                       >
                         Requirements
-                        <span className={styles.readOnlyBadge}>Not persisted</span>
+                        <span className={styles.readOnlyBadge}>Unavailable</span>
                       </label>
                       <textarea
                         id={`phase-req-${index}`}
-                        className={styles.formTextarea}
+                        className={`${styles.formTextarea} ${styles.formControlDisabled}`}
                         value={draft.requirements}
-                        onChange={(e) =>
-                          updateDraft(index, 'requirements', e.target.value)
-                        }
+                        onChange={() => undefined}
                         rows={2}
-                        placeholder="Describe the expected deliverables for this phase (not yet persisted by backend)."
+                        placeholder="Requirements are awaiting backend support."
+                        disabled
+                        aria-disabled
                         data-testid={`phase-req-${index}`}
                       />
                     </div>
 
-                    {/* Assessment criteria — read-only: BE gap */}
+                    {/* Assessment criteria — visible for product discovery but disabled. */}
                     <div className={styles.formGroup}>
                       <label
                         className={styles.formLabel}
                         htmlFor={`phase-crit-${index}`}
                       >
                         Assessment Criteria
-                        <span className={styles.readOnlyBadge}>Not persisted</span>
+                        <span className={styles.readOnlyBadge}>Unavailable</span>
                       </label>
                       <textarea
                         id={`phase-crit-${index}`}
-                        className={styles.formTextarea}
+                        className={`${styles.formTextarea} ${styles.formControlDisabled}`}
                         value={draft.assessmentCriteria}
-                        onChange={(e) =>
-                          updateDraft(index, 'assessmentCriteria', e.target.value)
-                        }
+                        onChange={() => undefined}
                         rows={2}
-                        placeholder="Describe how this phase will be evaluated (not yet persisted by backend)."
+                        placeholder="Assessment criteria are awaiting backend support."
+                        disabled
+                        aria-disabled
                         data-testid={`phase-crit-${index}`}
                       />
                     </div>
 
                     <div className={styles.phaseEditorRow}>
-                      {/* Start date — read-only: BE gap */}
+                      {/* Start date — visible for product discovery but disabled. */}
                       <div className={styles.formGroup}>
                         <label
                           className={styles.formLabel}
                           htmlFor={`phase-start-${index}`}
                         >
                           Start Date
-                          <span className={styles.readOnlyBadge}>Not persisted</span>
+                          <span className={styles.readOnlyBadge}>Unavailable</span>
                         </label>
                         <input
                           id={`phase-start-${index}`}
                           type="datetime-local"
-                          className={styles.formInput}
+                          className={`${styles.formInput} ${styles.formControlDisabled}`}
                           value={draft.startAt}
-                          onChange={(e) =>
-                            updateDraft(index, 'startAt', e.target.value)
-                          }
+                          onChange={() => undefined}
+                          disabled
+                          aria-disabled
                           data-testid={`phase-start-${index}`}
                         />
                       </div>
@@ -775,6 +779,29 @@ export const ConfigureMilestones = () => {
                   </article>
                 ))}
 
+                {/* Save summary — one-line preview so the lecturer knows
+                    exactly what they're about to persist. Format follows
+                    the brief: "N phases · <group name> · Last deadline <date>". */}
+                <div className={styles.saveSummary} aria-live="polite">
+                  <strong>{drafts.length}</strong>
+                  <span>phase{drafts.length !== 1 ? 's' : ''} ·</span>
+                  <strong>
+                    {selectedGroup?.name ?? `Group #${selectedGroupId}`}
+                  </strong>
+                  <span>· Last deadline</span>
+                  <strong>
+                    {(() => {
+                      const lastEnd = drafts
+                        .map((d) => d.endAt)
+                        .filter((d) => d && !Number.isNaN(new Date(d).getTime()))
+                        .sort()
+                        .pop();
+                      if (!lastEnd) return 'not set';
+                      return new Date(lastEnd).toLocaleDateString();
+                    })()}
+                  </strong>
+                </div>
+
                 <div className={styles.formActions}>
                   <button
                     type="button"
@@ -784,9 +811,6 @@ export const ConfigureMilestones = () => {
                     data-testid="add-phase-btn"
                   >
                     <Plus size={16} aria-hidden /> Add phase
-                    {drafts.length >= MAX_PHASES_PER_TOPIC
-                      ? ' (max reached)'
-                      : ''}
                   </button>
                   <button
                     type="submit"

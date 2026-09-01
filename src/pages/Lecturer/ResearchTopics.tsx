@@ -555,17 +555,56 @@ export const ResearchTopicsPage = () => {
                         </td>
                         <td data-label="Actions">
                           <div className={styles.topicActionStack}>
-                            <button
-                              type="button"
-                              className={styles.topicActionPrimary}
-                              onClick={() => openEditModal(topic)}
-                              disabled={!topic.id}
-                              title="Edit title / description / materials URL"
-                            >
-                              <Pencil size={14} aria-hidden />
-                              Edit
-                            </button>
+                            {/* Manage Phases is the lecturer's primary
+                                workflow for this topic — promote it to the
+                                first row, full width, so it never gets
+                                buried under a stack of secondary buttons. */}
+                            {groupCount === 0 ? (
+                              <button
+                                type="button"
+                                className={styles.managePhasesDisabledBtn}
+                                disabled
+                                title="Assign at least one research group to this topic before configuring phases."
+                                data-testid="topic-manage-phases-disabled"
+                                data-topic-id={topic.id ?? ''}
+                                aria-disabled
+                              >
+                                <BookOpen size={14} aria-hidden />
+                                Manage Phases
+                                <span className={styles.managePhasesHint}>
+                                  Assign a group first
+                                </span>
+                              </button>
+                            ) : (
+                              <Link
+                                to={
+                                  typeof topic.id === 'number'
+                                    ? buildConfigureMilestonesUrl(topic.id)
+                                    : ROUTES.CONFIGURE_MILESTONES
+                                }
+                                className={styles.managePhasesBtn}
+                                title="Configure reporting phases for this topic"
+                                data-testid="topic-manage-phases"
+                                data-topic-id={topic.id ?? ''}
+                              >
+                                <BookOpen size={14} aria-hidden />
+                                Manage Phases
+                                <span className={styles.managePhasesCount}>
+                                  {groupCount} group{groupCount === 1 ? '' : 's'}
+                                </span>
+                              </Link>
+                            )}
                             <div className={styles.topicSecondaryCluster}>
+                              <button
+                                type="button"
+                                className={styles.topicActionSecondary}
+                                onClick={() => openEditModal(topic)}
+                                disabled={!topic.id}
+                                title="Edit title / description / materials URL"
+                              >
+                                <Pencil size={14} aria-hidden />
+                                Edit
+                              </button>
                             {topicStatus === 'OPEN' ? (
                               <button
                                 type="button"
@@ -657,20 +696,6 @@ export const ResearchTopicsPage = () => {
                               <Library size={14} aria-hidden />
                               Manage Materials
                             </button>
-                            <Link
-                              to={
-                                typeof topic.id === 'number'
-                                  ? buildConfigureMilestonesUrl(topic.id)
-                                  : ROUTES.CONFIGURE_MILESTONES
-                              }
-                              className={styles.materialsTopicBtn}
-                              title="Configure reporting phases for this topic"
-                              data-testid="topic-manage-phases"
-                              data-topic-id={topic.id ?? ''}
-                            >
-                              <BookOpen size={14} aria-hidden />
-                              Manage Phases
-                            </Link>
                             </div>
                           </div>
                         </td>

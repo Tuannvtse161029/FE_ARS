@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Lightbulb,
   Crown,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -72,6 +73,22 @@ type AvatarTone = (typeof avatarTones)[number] | 'muted';
 
 const avatarToneAt = (idx: number): AvatarTone =>
   avatarTones[idx % avatarTones.length] ?? 'muted';
+
+// Visual tone for the deadline pill in the card meta strip. Pairs color
+// with an icon (already in the markup) and a text label (the due date),
+// so the meaning is never carried by color alone.
+const deadlineTone = (
+  deadlineLabel: string,
+): 'dueSoon' | 'overdue' | 'safe' => {
+  if (!deadlineLabel) return 'safe';
+  const parsed = new Date(deadlineLabel).getTime();
+  if (Number.isNaN(parsed)) return 'safe';
+  const dayMs = 24 * 60 * 60 * 1000;
+  const delta = parsed - Date.now();
+  if (delta < 0) return 'overdue';
+  if (delta <= 7 * dayMs) return 'dueSoon';
+  return 'safe';
+};
 
 export const ResearchGroup = () => {
   const { user } = useAuth();
@@ -338,6 +355,11 @@ export const ResearchGroup = () => {
         }
         actions={headerActions}
         accent="var(--ars-lecturer)"
+        titleAccessory={
+          <span className={styles.headerMetaCount}>
+            {groups.length} {groups.length === 1 ? 'group' : 'groups'}
+          </span>
+        }
       />
 
       {banner.visible && (
@@ -410,6 +432,38 @@ export const ResearchGroup = () => {
         </div>
       </div>
 
+      {/* Compact hero strip — at-a-glance group counts so the lecturer
+          doesn't have to scan every card to know how many groups they own,
+          which have no topic assigned, and which are due soon. */}
+      <div className={styles.statStrip} aria-label="Research groups summary">
+        <div className={styles.statCell}>
+          <span className={styles.statLabel}>Groups</span>
+          <span className={styles.statValue}>{groups.length}</span>
+          <span className={styles.statHint}>
+            {groupSearch.trim() && groupTotalItems !== groups.length
+              ? `${groupTotalItems} match "${groupSearch.trim()}"`
+              : 'owned by you'}
+          </span>
+        </div>
+        <div className={styles.statCell}>
+          <span className={styles.statLabel}>Total Members</span>
+          <span className={styles.statValue}>{members.length}</span>
+          <span className={styles.statHint}>across all groups</span>
+        </div>
+        <div className={styles.statCell}>
+          <span className={styles.statLabel}>Due in 7 days</span>
+          <span className={styles.statValue}>
+            {groups.filter((g) => {
+              if (!g.deadline) return false;
+              const ms = new Date(g.deadline).getTime();
+              const dayMs = 24 * 60 * 60 * 1000;
+              return ms - Date.now() <= 7 * dayMs && ms >= Date.now();
+            }).length}
+          </span>
+          <span className={styles.statHint}>deadlines approaching</span>
+        </div>
+      </div>
+
       <TableToolbar
         search={groupSearch}
         onSearchChange={setGroupSearch}
@@ -451,11 +505,6 @@ export const ResearchGroup = () => {
                     <span className={styles.idPill}>{idLabel}</span>
                     <StatusBadge status={status} />
                   </div>
-                  {deadlineLabel && (
-                    <span className={styles.deadlinePill}>
-                      Due {deadlineLabel}
-                    </span>
-                  )}
                 </div>
 
                 <h4 className={styles.groupTitle}>
@@ -464,7 +513,7 @@ export const ResearchGroup = () => {
 
                 <div className={styles.topicRow}>
                   <Lightbulb size={12} aria-hidden />
-                  Topic:{' '}
+                  <span>Topic:</span>
                   {topic ? (
                     <Link
                       to={ROUTES.LECTURER_RESEARCH_TOPICS}
@@ -482,6 +531,31 @@ export const ResearchGroup = () => {
                   {grp.description?.trim() ||
                     'No description provided for this group yet.'}
                 </p>
+
+                {/* Compact meta strip — single row with the most important
+                    signals. Replaces scattered meta pills. */}
+                <div
+                  className={styles.cardMetaStrip}
+                  aria-label="Group quick facts"
+                >
+                  <span title="Member count">
+                    <Users size={12} aria-hidden />
+                    {roster.length} member{roster.length === 1 ? '' : 's'}
+                  </span>
+                  <span
+                    data-tone={deadlineTone(deadlineLabel)}
+                    title="Next deadline"
+                  >
+                    <Calendar size={12} aria-hidden />
+                    {deadlineLabel
+                      ? `Due ${deadlineLabel}`
+                      : 'No deadline'}
+                  </span>
+                  <span title="Topic assignment">
+                    <Lightbulb size={12} aria-hidden />
+                    {topic ? 'Assigned topic' : 'No topic yet'}
+                  </span>
+                </div>
 
                 <div className={styles.membersSection}>
                   <span className={styles.membersLabel}>

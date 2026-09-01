@@ -54,7 +54,8 @@ import {
 } from '../../services/groupMember.service';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { MilestoneProgress } from '../../components/research/MilestoneProgress';
-import BackendGapBanner from '../../components/BackendGapBanner';
+import { PhaseTimeline, type PhaseTimelineItem } from '../../components/research/PhaseTimeline';
+import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
@@ -174,6 +175,62 @@ export const LecturerGroupDetail = (): JSX.Element => {
     () => deriveGroupStatus(group, relatedTopic?.status ?? null),
     [group, relatedTopic],
   );
+
+  // Phase timeline derived from the live PhasedReport API. Each phase
+  // collapses to one timeline item; the state reflects the highest-
+  // priority submission state found for the phase.
+  const phaseTimelineItems = useMemo<PhaseTimelineItem[]>(() => {
+    const byPhase = new Map<number, typeof reports[number]>();
+    for (const r of reports) {
+      if (typeof r.phaseNumber !== 'number') continue;
+      const existing = byPhase.get(r.phaseNumber);
+      // Prefer the most-recently-submitted row for this phase.
+      if (!existing || (r.submittedAt ?? '') > (existing.submittedAt ?? '')) {
+        byPhase.set(r.phaseNumber, r);
+      }
+    }
+    const phases = Array.from(byPhase.keys()).sort((a, b) => a - b);
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    return phases.map((phaseNumber) => {
+      const report = byPhase.get(phaseNumber);
+      const status = (report?.status ?? '').toLowerCase();
+      const deadlineMs = report?.deadlineAt
+        ? new Date(report.deadlineAt).getTime()
+        : NaN;
+      const overdue = Boolean(
+        report?.isOverdue ??
+          (report?.submittedAt && report?.deadlineAt &&
+            new Date(report.submittedAt) > new Date(report.deadlineAt)),
+      );
+      let state: PhaseTimelineItem['state'] = 'upcoming';
+      if (status === 'evaluated' || status === 'passed' || status === 'approved') {
+        state = 'accepted';
+      } else if (status === 'submitted' || status === 'pending_review') {
+        state = overdue ? 'overdue' : 'submitted';
+      } else if (
+        Number.isFinite(deadlineMs) &&
+        deadlineMs < now &&
+        status !== 'rejected' &&
+        status !== 'denied'
+      ) {
+        state = 'overdue';
+      } else if (
+        Number.isFinite(deadlineMs) &&
+        deadlineMs - now <= 7 * dayMs &&
+        deadlineMs >= now
+      ) {
+        state = 'dueSoon';
+      }
+      return {
+        number: phaseNumber,
+        title: report?.milestoneTitle ?? '',
+        state,
+        deadline: report?.deadlineAt ?? null,
+        submittedAt: report?.submittedAt ?? null,
+      };
+    });
+  }, [reports]);
 
   const ownerLecturerId =
     typeof group?.lecturerId === 'number' && group.lecturerId > 0
@@ -578,6 +635,26 @@ export const LecturerGroupDetail = (): JSX.Element => {
         )}
       </section>
 
+      {/* Phase progress — visual stepper is the dominant object on this
+          page. It reads top-to-bottom in workflow order so the lecturer
+          can see exactly where the group is in the journey without
+          scanning tables or counts. */}
+      {phaseTimelineItems.length > 0 && (
+        <section className={styles.card} aria-labelledby="phaseProgressTitle">
+          <header className={styles.cardHeader}>
+            <h2 id="phaseProgressTitle" className={styles.cardTitle}>
+              Phase progress
+            </h2>
+            <span className={styles.cardHint}>
+              Where this group is in the reporting journey.
+            </span>
+          </header>
+          <div className={styles.cardBody}>
+            <PhaseTimeline items={phaseTimelineItems} />
+          </div>
+        </section>
+      )}
+
       {/* Milestone summary */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
@@ -608,12 +685,12 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <div className={styles.cardBody}>
               <MilestoneProgress reports={reports} className={styles.cardInner} />
             </div>
-            <div className={styles.gapNote} role="note">
-              <AlertTriangle size={14} aria-hidden />
-              <span>
-                The BE does not yet expose <code>GET /api/Milestone</code>. This
-                card counts Phased Reports as a stand-in.
-              </span>
+            <div className={styles.gapNote}>
+              <InlineNotice
+                tone="info"
+                title="Milestone API unavailable"
+                description="A dedicated milestone endpoint is not exposed yet. This card counts Phased Reports as a stand-in."
+              />
             </div>
           </>
         )}
@@ -636,9 +713,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
               <UserPlus size={14} aria-hidden /> Invite students
             </button>
           </div>
-          <BackendGapBanner
-            field="ResearchGroup maximum member count"
-            feature="The four-member limit is enforced in this interface; the BE contract does not document the constraint"
+          <InlineNotice
+            tone="info"
+            title="Maximum 4 members per group"
+            description="The four-member limit is enforced in this interface; the BE contract does not document the constraint."
           />
           <span className={styles.cardHint}>
             Manage student members in this group.

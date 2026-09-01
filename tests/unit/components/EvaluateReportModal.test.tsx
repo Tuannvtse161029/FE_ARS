@@ -84,6 +84,10 @@ const REPORT: PhasedReport = {
   status: 'SUBMITTED',
   reportFileUrl: 'https://fb.storage/x.pdf',
   submittedAt: '2025-01-02T10:30:00Z',
+  phaseNumber: 3,
+  milestoneTitle: 'Phase 3 — Reading Comprehension',
+  groupName: 'NLP Lab Group A',
+  topicTitle: 'Reading Comprehension',
 };
 
 const renderModal = (overrides: Partial<{ isOpen: boolean; report: PhasedReport | null }> = {}) =>
@@ -110,9 +114,12 @@ describe('<EvaluateReportModal>', () => {
 
   it('renders the title and subtitle with report meta', () => {
     renderModal();
-    expect(screen.getByText(/Evaluate Phased Report/)).toBeInTheDocument();
-    expect(screen.getByText(/#5/)).toBeInTheDocument();
-    expect(screen.getByText(/#7/)).toBeInTheDocument();
+    // Title is the phase/milestone context, not a generic modal title.
+    expect(screen.getByText(/Phase 3/)).toBeInTheDocument();
+    // Subtitle shows group + topic context rather than raw IDs.
+    expect(screen.getByText(/NLP Lab Group A/)).toBeInTheDocument();
+    // Topic title appears in the subtitle line.
+    expect(screen.getAllByText(/Reading Comprehension/).length).toBeGreaterThan(0);
   });
 
   it('shows the status badge', () => {
@@ -160,10 +167,10 @@ describe('<EvaluateReportModal>', () => {
     );
 
     // Default mode is "approve"
-    const textarea = screen.getByLabelText(/Final Outcome Evaluation/);
+    const textarea = screen.getByLabelText(/Outcome notes/);
     await user.type(textarea, 'Solid work');
-    await user.clear(screen.getByLabelText(/Lecture Feedback/));
-    await user.type(screen.getByLabelText(/Lecture Feedback/), '9');
+    await user.clear(screen.getByLabelText(/Grade/));
+    await user.type(screen.getByLabelText(/Grade/), '9');
     // The submit button shares its label with the mode-tab "Approve & Evaluate".
     // Use the allBy* variant to grab the actual submit button (the second match).
     const buttons = screen.getAllByRole('button', { name: /Approve & Evaluate/i });
@@ -188,7 +195,7 @@ describe('<EvaluateReportModal>', () => {
     renderModal();
     await user.click(screen.getByRole('button', { name: /Reject with Feedback/i }));
     // Reject submit button should not call the service when both fields are blank
-    await user.click(screen.getByRole('button', { name: /Reject Submission/i }));
+    await user.click(screen.getByRole('button', { name: /Request Revision/i }));
     expect(rejectMock).not.toHaveBeenCalled();
     expect(evaluateMock).not.toHaveBeenCalled();
   });
@@ -203,9 +210,9 @@ describe('<EvaluateReportModal>', () => {
     renderModal();
 
     await user.click(screen.getByRole('button', { name: /Reject with Feedback/i }));
-    const reason = screen.getByLabelText(/Rejection Reason/);
+    const reason = screen.getByLabelText(/What needs to change/);
     await user.type(reason, 'Needs more detail');
-    await user.click(screen.getByRole('button', { name: /Reject Submission/i }));
+    await user.click(screen.getByRole('button', { name: /Request Revision/i }));
 
     await waitFor(() =>
       expect(rejectMock).toHaveBeenCalledWith(
@@ -218,8 +225,8 @@ describe('<EvaluateReportModal>', () => {
   it('grade outside 0..10 is a no-op', async () => {
     const user = userEvent.setup();
     renderModal();
-    await user.clear(screen.getByLabelText(/Lecture Feedback/));
-    await user.type(screen.getByLabelText(/Lecture Feedback/), '11');
+    await user.clear(screen.getByLabelText(/Grade/));
+    await user.type(screen.getByLabelText(/Grade/), '11');
     const buttons = screen.getAllByRole('button', { name: /Approve & Evaluate/i });
     const submitBtn = buttons[buttons.length - 1]!;
     await user.click(submitBtn);
@@ -243,7 +250,7 @@ describe('<EvaluateReportModal>', () => {
     evaluateMock.mockRejectedValueOnce(new Error('Server exploded'));
     const user = userEvent.setup();
     renderModal();
-    await user.type(screen.getByLabelText(/Final Outcome Evaluation/), 'OK');
+    await user.type(screen.getByLabelText(/Outcome notes/), 'OK');
     const buttons = screen.getAllByRole('button', { name: /Approve & Evaluate/i });
     const submitBtn = buttons[buttons.length - 1]!;
     await user.click(submitBtn);

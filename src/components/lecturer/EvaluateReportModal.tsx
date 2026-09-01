@@ -155,16 +155,28 @@ export const EvaluateReportModal = ({
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
       <div className={styles.modalCard}>
-        {/* Header */}
+        {/* Header — show topic / phase / group context instead of raw IDs.
+              The lecturer almost never reads `#3427` cold; they read "the
+              literature review submission from NLP Lab Group A". */}
         <div className={styles.modalHeaderRow}>
           <div className={styles.modalTitleBlock}>
             <span className={styles.modalIconCircle}>
               <ClipboardCheck size={18} aria-hidden />
             </span>
             <div>
-              <h3 className={styles.modalTitle}>Evaluate Phased Report</h3>
+              <h3 className={styles.modalTitle}>
+                {report.milestoneTitle ??
+                  `Phase ${report.phaseNumber ?? '—'}`}
+              </h3>
               <span className={styles.modalSubtitle}>
-                Report #{report.id ?? '—'} · Group #{report.researchGroupId ?? '—'} ·
+                {report.groupName ?? report.topicTitle
+                  ? `${report.groupName ?? 'Unassigned group'}${
+                      report.topicTitle
+                        ? ` · ${report.topicTitle}`
+                        : ''
+                    }`
+                  : `Report #${report.id ?? '—'}`}
+                {' · '}
                 Submitted {formatDateTime(report.submittedAt)}
               </span>
             </div>
@@ -237,7 +249,7 @@ export const EvaluateReportModal = ({
         <form className={styles.modalForm} onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor="lectureFeedback">
-              Lecture Feedback (0 – 10)
+              Grade (0 – 10)
             </label>
             <input
               id="lectureFeedback"
@@ -250,13 +262,13 @@ export const EvaluateReportModal = ({
               onChange={(e) => setLectureFeedback(e.target.value)}
             />
             <span className={styles.helperText}>
-              Numeric score stored on <code>lectureFeedback</code>.
+              Numeric grade that students will see on their dashboard.
             </span>
           </div>
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor="capacityEvaluation">
-              Đánh giá Năng lực (Capacity Evaluation)
+              Capacity assessment
             </label>
             <select
               id="capacityEvaluation"
@@ -264,19 +276,19 @@ export const EvaluateReportModal = ({
               value={capacityEvaluation}
               onChange={(e) => setCapacityEvaluation(e.target.value)}
             >
-              <option value="Xuất sắc">Xuất sắc (Excellent)</option>
-              <option value="Tốt">Tốt (Good)</option>
-              <option value="Khá">Khá (Fair)</option>
-              <option value="Đạt yêu cầu">Đạt yêu cầu (Pass)</option>
-              <option value="Chưa đạt">Chưa đạt (Need Improvement)</option>
+              <option value="Xuất sắc">Excellent</option>
+              <option value="Tốt">Good</option>
+              <option value="Khá">Fair</option>
+              <option value="Đạt yêu cầu">Pass</option>
+              <option value="Chưa đạt">Needs improvement</option>
             </select>
           </div>
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor="finalOutcomeEvaluation">
               {isRejectMode
-                ? 'Feedback Notes (visible to student)'
-                : 'Final Outcome Evaluation'}
+                ? 'Feedback for the student'
+                : 'Outcome notes'}
             </label>
             <textarea
               id="finalOutcomeEvaluation"
@@ -286,19 +298,19 @@ export const EvaluateReportModal = ({
               onChange={(e) => setFinalOutcomeEvaluation(e.target.value)}
               placeholder={
                 isRejectMode
-                  ? 'Summarise the work so far and what needs to change.'
+                  ? 'Summarise what is working and what needs to change.'
                   : 'A short paragraph describing the final outcome and what was learned.'
               }
             />
             <span className={styles.helperText}>
-              Free-text feedback stored on <code>finalOutcomeEvaluation</code>.
+              Visible to the student on their submission.
             </span>
           </div>
 
           {isRejectMode && (
             <div className={styles.formGroup}>
               <label className={styles.formLabel} htmlFor="rejectionReason">
-                Rejection Reason{' '}
+                What needs to change?{' '}
                 <span className={styles.requiredStar}>*</span>
               </label>
               <textarea
@@ -307,11 +319,12 @@ export const EvaluateReportModal = ({
                 rows={3}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Why is this submission being rejected? (Will be stored in capacityEvaluation until BE ships a structured column.)"
+                placeholder="Why is this submission being rejected? (Required for a request-revision decision.)"
                 required
               />
               <span className={styles.helperText}>
-                A rejection reason is required when rejecting a submission.
+                A specific reason is required before the lecturer can submit
+                a revision request.
               </span>
             </div>
           )}
@@ -391,7 +404,17 @@ export const EvaluateReportModal = ({
             <button
               type="submit"
               className={isRejectMode ? styles.submitRejectBtn : styles.submitApproveBtn}
-              disabled={isLoading}
+              disabled={
+                isLoading ||
+                (isRejectMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim())
+              }
+              title={
+                isLoading
+                  ? 'Submission in progress'
+                  : isRejectMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim()
+                    ? 'Add a rejection reason or feedback before submitting.'
+                    : undefined
+              }
             >
               {isLoading ? (
                 <Loader size={14} className={styles.spinningIcon} aria-hidden />
@@ -403,7 +426,7 @@ export const EvaluateReportModal = ({
               {isLoading
                 ? 'Submitting…'
                 : isRejectMode
-                ? 'Reject Submission'
+                ? 'Request Revision'
                 : 'Approve & Evaluate'}
             </button>
           </div>
