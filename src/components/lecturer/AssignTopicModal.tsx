@@ -1,4 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+
+const useLocalDialogFocus = (open: boolean, busy: boolean, onClose: () => void) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open) { openerRef.current?.focus(); return; }
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]')?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]'));
+      if (!focusable.length) return;
+      const index = focusable.indexOf(document.activeElement as HTMLElement);
+      if (index === 0 && event.shiftKey) { event.preventDefault(); focusable[focusable.length - 1].focus(); }
+      else if (index === focusable.length - 1 && !event.shiftKey) { event.preventDefault(); focusable[0].focus(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', handleKeyDown); };
+  }, [open, busy, onClose]);
+  return dialogRef;
+};
 import { Settings, Check, X, AlertTriangle, Loader, Users } from 'lucide-react';
 import {
   assignTopicToGroups,
@@ -27,6 +49,7 @@ export const AssignTopicModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [outcomes, setOutcomes] = useState<GroupAssignOutcome[] | null>(null);
+  const dialogRef = useLocalDialogFocus(isOpen, isSubmitting, onClose);
 
   // Default: groups already assigned to this topic are pre-selected. Other
   // groups (with `topicId === null` OR assigned to a *different* topic) are
@@ -104,7 +127,7 @@ export const AssignTopicModal = ({
   const selectedCount = selectedGroupIds.size;
 
   return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+    <div ref={dialogRef} className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="assign-topic-title">
       <div className={styles.modalCard}>
         <div className={styles.modalHeaderRow}>
           <div className={styles.modalTitleBlock}>
@@ -112,7 +135,7 @@ export const AssignTopicModal = ({
               <Settings size={18} aria-hidden />
             </span>
             <div>
-              <h3 className={styles.modalTitle}>Assign Research Topic to Groups</h3>
+              <h3 id="assign-topic-title" className={styles.modalTitle}>Assign Research Topic to Groups</h3>
               <span className={styles.modalSubtitle}>
                 Choose which groups receive this topic
               </span>
@@ -191,7 +214,7 @@ export const AssignTopicModal = ({
                       {group.name ?? '(unnamed group)'}
                     </span>
                     <span className={styles.checkboxMembersCount}>
-                      <Users size={12} aria-hidden style={{ marginRight: 4 }} />
+                      <Users size={12} aria-hidden />
                       {group.deadline
                         ? `Due ${new Date(group.deadline).toISOString().slice(0, 10)}`
                         : 'No deadline'}

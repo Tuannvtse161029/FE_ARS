@@ -63,12 +63,16 @@ describe('phasedReportService', () => {
   });
 
   describe('evaluatePhasedReport', () => {
-    it('PUTs EVALUATED + numeric grade + free-text outcome', async () => {
+    it('PUTs /evaluate with numeric grade + free-text outcome (BE /evaluate contract)', async () => {
+      // The live BE exposes a dedicated POST→/evaluate action instead of a
+      // generic PUT on /api/PhasedReport/{id}. The service's try-block now
+      // targets that endpoint with the PhasedReportEvaluationRequest DTO and
+      // writes status 'Passed' (mixed-case, per the BE contract).
       putMock.mockResolvedValueOnce({
         data: {
           id: 5,
           researchGroupId: 7,
-          status: 'EVALUATED',
+          status: 'Passed',
           lectureFeedback: 9,
           finalOutcomeEvaluation: 'Solid work',
         },
@@ -77,33 +81,27 @@ describe('phasedReportService', () => {
         lectureFeedback: 9,
         finalOutcomeEvaluation: 'Solid work',
       });
-      expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5', {
-        researchGroupId: null,
-        groupMemberId: null,
-        reportFileUrl: null,
-        capacityEvaluation: null,
-        finalOutcomeEvaluation: 'Solid work',
+      expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5/evaluate', {
+        lecturerDescription: 'Solid work',
         lectureFeedback: 9,
-        submittedAt: null,
-        status: 'EVALUATED',
+        capacityEvaluation: 'Tốt',
+        finalOutcomeEvaluation: 'Solid work',
+        status: 'Passed',
       });
-      expect(result.status).toBe('EVALUATED');
+      expect(result.status).toBe('Passed');
     });
 
-    it('sends lectureFeedback: null when omitted', async () => {
+    it('defaults lectureFeedback to 9.0 when omitted', async () => {
       putMock.mockResolvedValueOnce({
-        data: { id: 5, status: 'EVALUATED' },
+        data: { id: 5, status: 'Passed' },
       });
       await evaluatePhasedReport(5, { finalOutcomeEvaluation: 'OK' });
-      expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5', {
-        researchGroupId: null,
-        groupMemberId: null,
-        reportFileUrl: null,
-        capacityEvaluation: null,
+      expect(putMock).toHaveBeenCalledWith('/api/PhasedReport/5/evaluate', {
+        lecturerDescription: 'OK',
+        lectureFeedback: 9,
+        capacityEvaluation: 'Tốt',
         finalOutcomeEvaluation: 'OK',
-        lectureFeedback: null,
-        submittedAt: null,
-        status: 'EVALUATED',
+        status: 'Passed',
       });
     });
   });
@@ -119,17 +117,18 @@ describe('phasedReportService', () => {
     });
 
     it('accepts when only finalOutcomeEvaluation is provided', async () => {
+      // The BE rejects with status 'Rejected' (mixed-case) per the contract.
       putMock.mockResolvedValueOnce({
         data: {
           id: 5,
           researchGroupId: 7,
-          status: 'REJECTED',
+          status: 'Rejected',
           finalOutcomeEvaluation: 'Need more detail',
         },
       });
       await rejectPhasedReport(5, { finalOutcomeEvaluation: 'Need more detail' });
       const body = putMock.mock.calls[0][1];
-      expect(body.status).toBe('REJECTED');
+      expect(body.status).toBe('Rejected');
       expect(body.finalOutcomeEvaluation).toBe('Need more detail');
       expect(body.capacityEvaluation).toBe('Need more detail');
     });
@@ -153,7 +152,12 @@ describe('phasedReportService', () => {
   });
 
   describe('submitPhasedReport', () => {
-    it('POSTs researchGroupId + reportFileUrl + status SUBMITTED', async () => {
+    it('POSTs researchGroupId + groupMemberId + reportFileUrl to /submit (BE leader-submit contract)', async () => {
+      // The live BE exposes a dedicated POST→/submit endpoint with the
+      // PhasedReportSubmitRequest DTO (researchGroupId + groupMemberId +
+      // reportFileUrl + optional phaseNumber/topicId/phasedReportId).
+      // `status` and `submittedAt` are NOT part of the wire body — the BE
+      // stamps them on the server when the row is persisted.
       postMock.mockResolvedValueOnce({
         data: {
           id: 100,
@@ -168,12 +172,21 @@ describe('phasedReportService', () => {
       });
       const body = postMock.mock.calls[0][1];
       expect(body.researchGroupId).toBe(7);
+      expect(body.groupMemberId).toBe(0);
       expect(body.reportFileUrl).toBe('https://fb/x.pdf');
-      expect(body.status).toBe('SUBMITTED');
-      expect(typeof body.submittedAt).toBe('string');
+      // status / submittedAt are server-stamped, not sent on the wire.
+      expect(body.status).toBeUndefined();
+      expect(body.submittedAt).toBeUndefined();
     });
 
-    it('throws when BE response is missing id / researchGroupId', async () => {
+    it('throws when BE response is missing id / researchGroupId (covers the fallback /create path too)', async () => {
+      // The live flow is `submitLeaderReport` (POST /submit) → on missing-id
+      // the service falls back to POST /create. Both calls would hit the
+      // mock; queue a second identical response so the fallback's
+      // `toStrict(response.data)` reaches the same error.
+      postMock.mockResolvedValueOnce({
+        data: { reportFileUrl: 'x' /* missing ids */ },
+      });
       postMock.mockResolvedValueOnce({
         data: { reportFileUrl: 'x' /* missing ids */ },
       });
@@ -301,23 +314,17 @@ describe('phasedReportService', () => {
   });
 
   describe('listReportsForGroup', () => {
-    it('issues GET /api/PhasedReport with the BE filter param', async () => {
+    it('uses the dedicated group-scoped endpoint', async () => {
       getMock.mockResolvedValueOnce({
-        data: [
-          { id: 1, researchGroupId: 7, status: 'SUBMITTED' },
-          { id: 2, researchGroupId: 8, status: 'SUBMITTED' },
-        ],
+        data: [{ id: 1, researchGroupId: 7, status: 'SUBMITTED' }],
       });
       const list = await listReportsForGroup(7);
-      expect(getMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/PhasedReport'),
-        expect.objectContaining({ params: { researchGroupId: 7 } }),
-      );
+      expect(getMock).toHaveBeenCalledWith('/api/PhasedReport/group/7');
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe(1);
     });
 
-    it('filters server-side leakage client-side defensively', async () => {
+    it('maps every row returned by the scoped endpoint', async () => {
       getMock.mockResolvedValueOnce({
         data: [
           { id: 1, researchGroupId: 7 },
@@ -325,7 +332,7 @@ describe('phasedReportService', () => {
         ],
       });
       const list = await listReportsForGroup(7);
-      expect(list).toHaveLength(1);
+      expect(list).toHaveLength(2);
     });
   });
 

@@ -1,8 +1,26 @@
+/**
+ * AnnualFees — Admin annual-subscription management.
+ *
+ * The backend contract for `annualFeeService.listAnnualFees()` is not yet
+ * exposed (per BTR-AGENT30-C). The page renders an honest unavailable state
+ * when the API call fails OR returns zero rows, without fabricating sample
+ * fee tiers. If the API later returns real data, it falls through to the
+ * token-driven table view.
+ */
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Loader, RefreshCw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { annualFeeService } from '../../services/annualFee.service';
 import type { AnnualFeeDto } from '../../types/annualFee';
+import { useAdminGuard } from '../../hooks/useAdminGuard';
+import { PageHeader } from '../../components/PageHeader';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import styles from './AnnualFees.module.css';
+
+const ROLE_ACCENT = 'var(--ars-admin)';
+
+const BACKEND_UNAVAILABLE_MESSAGE =
+  'Annual fee tiers are unavailable until the backend exposes the annual-fee contract. The table below will populate automatically once the API is live.';
 
 const formatCycle = (cycle: string | null | undefined): string => {
   if (cycle === 'Annual') return 'Annual (12 months)';
@@ -16,8 +34,11 @@ const formatPrice = (priceVnd: number | null | undefined): string =>
     : 'Not supplied';
 
 const AnnualFees = (): JSX.Element => {
+  useAdminGuard();
+
   const [fees, setFees] = useState<AnnualFeeDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
@@ -34,6 +55,7 @@ const AnnualFees = (): JSX.Element => {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -41,74 +63,102 @@ const AnnualFees = (): JSX.Element => {
     void load();
   }, [load]);
 
+  const unavailable = error !== null || (!loading && fees.length === 0);
+
   return (
-    <section className={styles.page} aria-labelledby="annual-fees-heading">
-      <header className={styles.pageHeader}>
-        <div>
-          <h1 id="annual-fees-heading" className={styles.title}>
-            Annual Fees &amp; Subscriptions
-          </h1>
-          <p className={styles.subtitle}>
-            Manage annual subscription fees offered to Researchers and Lecturers.
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.refreshButton}
-            onClick={() => void load()}
+    <div className={styles.page}>
+      <PageHeader
+        eyebrow="ADMIN · ANNUAL FEES"
+        title="Annual Fees & Subscriptions"
+        description="Manage annual subscription fees offered to Researchers and Lecturers."
+        accent={ROLE_ACCENT}
+        actions={
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => {
+              setRefreshing(true);
+              void load();
+            }}
             disabled={loading}
+            data-testid="annual-fees-refresh"
           >
-            <RefreshCw size={14} className={loading ? styles.spinningIcon : undefined} />
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
-      </header>
+            {loading || refreshing ? 'Refreshing…' : 'Refresh'}
+          </Button>
+        }
+      />
 
       {loading ? (
-        <div className={styles.emptyState} role="status">
-          <Loader size={20} className={styles.spinningIcon} />
-          <p>Loading annual fees...</p>
-        </div>
-      ) : error ? (
-        <div className={styles.errorState} role="alert">
-          <AlertTriangle size={18} />
-          <div>
-            <strong>Annual Fees unavailable</strong>
-            <p>{error}</p>
+        <div className={styles.tableCard}>
+          <div className={styles.loadingState} role="status">
+            <SkeletonRow count={6} rowHeight={28} withHeader />
           </div>
         </div>
-      ) : fees.length === 0 ? (
-        <div className={styles.emptyState}>No annual fee tiers are configured.</div>
+      ) : unavailable ? (
+        <div className={styles.tableCard}>
+          <div
+            className={styles.unavailableNotice}
+            role="status"
+            data-testid="annual-fees-unavailable"
+          >
+            <AlertTriangle size={26} aria-hidden />
+            <strong>Backend contract unavailable</strong>
+            <span>{BACKEND_UNAVAILABLE_MESSAGE}</span>
+            {error ? <span>Reason: {error}</span> : null}
+          </div>
+        </div>
       ) : (
         <div className={styles.tableCard}>
-          <table className={styles.table} data-testid="annual-fees-table">
-            <thead>
-              <tr>
-                <th scope="col">Role</th>
-                <th scope="col">Plan Title</th>
-                <th scope="col">Price</th>
-                <th scope="col">Billing Cycle</th>
-                <th scope="col">Features</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fees.map((fee) => (
-                <tr key={fee.id} data-testid="annual-fees-row">
-                  <td><span className={styles.rolePill}>{fee.targetRole}</span></td>
-                  <td><strong>{fee.title}</strong></td>
-                  <td>{formatPrice(fee.priceVnd)}</td>
-                  <td><span className={styles.cycleBadge}>{formatCycle(fee.billingCycle)}</span></td>
-                  <td>{fee.features?.join(', ') || 'Not supplied'}</td>
-                  <td>{fee.isActive ? 'Active' : 'Inactive'}</td>
+          <div className={styles.tableResponsive}>
+            <table className={styles.table} data-testid="annual-fees-table">
+              <thead>
+                <tr>
+                  <th scope="col">Role</th>
+                  <th scope="col">Plan Title</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Billing Cycle</th>
+                  <th scope="col">Features</th>
+                  <th scope="col">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fees.map((fee) => (
+                  <tr key={fee.id} data-testid="annual-fees-row">
+                    <td>
+                      <span className={styles.rolePill}>{fee.targetRole}</span>
+                    </td>
+                    <td>
+                      <strong>{fee.title}</strong>
+                    </td>
+                    <td>{formatPrice(fee.priceVnd)}</td>
+                    <td>
+                      <span className={styles.cycleBadge}>
+                        {formatCycle(fee.billingCycle)}
+                      </span>
+                    </td>
+                    <td>
+                      {fee.features?.join(', ') || 'Not supplied'}
+                    </td>
+                    <td>
+                      <span
+                        className={`${styles.statusPill} ${
+                          fee.isActive
+                            ? styles.statusActive
+                            : styles.statusInactive
+                        }`}
+                      >
+                        {fee.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-    </section>
+
+    </div>
   );
 };
 

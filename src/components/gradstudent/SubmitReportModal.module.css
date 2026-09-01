@@ -188,7 +188,13 @@
 .progressBar {
   height: 100%;
   background: linear-gradient(90deg, #2563eb, #3b82f6);
-  transition: width 200ms ease;
+  /* Transform-based progress. Replaces the prior `transition: width`
+     that triggered layout reflow on every percentage change. scaleX is
+     GPU-composited and transform-origin: left makes the fill grow from
+     the left edge the same way a width transition would. */
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform 200ms ease;
 }
 
 .progressLabel {

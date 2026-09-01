@@ -221,10 +221,10 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
     await waitFor(() => expect(markRead).toHaveBeenCalledWith(1));
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
-  it('does NOT navigate when the mark-read call fails', async () => {
+  it('navigates even when an optimistic mark-read request fails', async () => {
     const markRead = vi.fn().mockResolvedValue(false);
     const onNavigate = vi.fn();
     setupHook({
@@ -240,7 +240,7 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
     await waitFor(() => expect(markRead).toHaveBeenCalled());
-    expect(onNavigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
   it('falls back to the safe destination when the role cannot reach the target (RBAC)', async () => {
@@ -378,7 +378,7 @@ describe('<NotificationCenter />', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(markRead).toHaveBeenCalledWith(1));
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
   });
 
   // ── Spec-required vital tests ───────────────────────────────────────────
@@ -415,7 +415,7 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-bell'));
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/papers'));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/researcher/submissions'));
     expect(markRead).not.toHaveBeenCalled();
   });
 
@@ -465,7 +465,11 @@ describe('<NotificationCenter />', () => {
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/seminar-workspace'));
   });
 
-  it('routes withdrawal notifications to the safe fallback while the withdrawal feature is disabled', async () => {
+  it('routes legacy [Wallet] withdrawal notifications to the safe fallback', async () => {
+    // With the wallet money flows retired (see docs/WALLET_SCOPE_CHANGE.md),
+    // any stale `[Wallet]…` notification rows must resolve to the safe
+    // fallback. The resolver no longer recognizes wallet-prefixed kinds
+    // at all, so they fall through to `unknown` → `/forum`.
     setupAuth('Reviewer');
     const markRead = vi.fn().mockResolvedValue(true);
     const onNavigate = vi.fn();
@@ -482,10 +486,7 @@ describe('<NotificationCenter />', () => {
     fireEvent.click(screen.getByTestId('notification-item-1'));
 
     await waitFor(() => expect(markRead).toHaveBeenCalledWith(1));
-    // The withdrawal destination is suppressed — the safe fallback wins so
-    // a withdrawn feature cannot be deep-linked by a stale notification.
     expect(onNavigate).toHaveBeenCalledWith('/forum');
-    expect(onNavigate).not.toHaveBeenCalledWith('/earnings-wallet');
   });
 
   it('routes forum-reply notifications to /forum for any role', async () => {

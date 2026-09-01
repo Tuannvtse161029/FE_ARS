@@ -1,36 +1,17 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
-import { AppConfig } from '../config/app';
-import { WithdrawalFeatureDisabledError } from './withdrawal.service';
 import type { User } from '../types/auth';
-import { notificationService } from './notification.service';
 import { userService } from './user.service';
 import type {
   RoleRequest,
   RoleRequestDecision,
   AccountItem,
   AccountsQuery,
-  WithdrawalRequestItem,
   AnalyticsSummary,
   AnalyticsTimeSeries,
   AnalyticsRange,
   AnalyticsMetric,
 } from '../types/admin';
-
-// Centralized withdrawal feature gate — mirrors withdrawal.service.ts. While
-// the flag is off, every admin-side withdrawal mutation short-circuits with
-// `WithdrawalFeatureDisabledError` so a stale visible UI cannot complete
-// payouts or deny requests. Restore by re-enabling the flag in
-// src/config/app.ts (AppConfig.features.enableWithdrawals = true).
-const guardAdminWithdrawalCall = (method: string) => {
-  if (AppConfig.features.enableWithdrawals !== true) {
-    if (import.meta.env?.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn(`[adminService] ${method} blocked: withdrawal feature is disabled.`);
-    }
-    throw new WithdrawalFeatureDisabledError();
-  }
-};
 
 // Surface-level messages: NEVER leak raw axios messages to admins.
 const ROLE_REQUESTS_UNAVAILABLE =
@@ -263,92 +244,6 @@ async function mutateAccount(
   }
 }
 
-// ── Withdrawals (3-state manual flow) ─────────────────────────────────────
-// Normalize a raw withdrawal row from the live BE
-// into the Admin-facing shape. The BE returns the reviewer's submission
-// reason as `Note`; the Admin modal reads `requestReason`. We do the mapping
-// once here so downstream code never has to handle both spellings. (Phase C
-// defect 5 — see WithdrawalRequestItem.requestReason in src/types/admin.ts.)
-//
-// Exported so tests can verify the normalization in isolation without going
-// through the full service.
-export const normalizeWithdrawalItem = (
-  raw: WithdrawalRequestItem,
-): WithdrawalRequestItem => {
-  const { note, ...rest } = raw;
-  void note; // explicit "we intentionally discard `note` after extraction"
-  const requestReason =
-    raw.requestReason !== undefined && raw.requestReason !== null
-      ? raw.requestReason
-      : raw.note !== undefined && raw.note !== null
-        ? raw.note
-        : null;
-  return { ...rest, requestReason };
-};
-
-async function getReviewerWithdrawals(): Promise<WithdrawalRequestItem[]> {
-  guardAdminWithdrawalCall('getReviewerWithdrawals');
-  const response = await api.get<WithdrawalRequestItem[]>(
-    API_ENDPOINTS.ADMIN.WITHDRAWALS.GET_ALL,
-  );
-  return (response.data ?? []).map(normalizeWithdrawalItem);
-}
-
-async function markWithdrawalProcessing(id: number): Promise<WithdrawalRequestItem> {
-  guardAdminWithdrawalCall('markWithdrawalProcessing');
-  const response = await api.post<WithdrawalRequestItem>(
-    API_ENDPOINTS.ADMIN.WITHDRAWALS.ACCEPT(id),
-    {},
-  );
-  return normalizeWithdrawalItem(response.data);
-}
-
-/**
- * Completes the withdrawal by moving ACCEPTED_PROCESSING → COMPLETED,
- * posting the receipt URL, and notifying the reviewer. The notification
- * failure is swallowed so the payout flow isn't blocked by email/notification
- * outages (the receipt is the authoritative record).
- */
-async function completeWithdrawal(
-  id: number,
-  proofReceiptUrl: string,
-  reviewerId: number,
-  reviewerName: string,
-  amountVnd: number,
-): Promise<WithdrawalRequestItem> {
-  guardAdminWithdrawalCall('completeWithdrawal');
-  const response = await api.post<WithdrawalRequestItem>(
-    API_ENDPOINTS.ADMIN.WITHDRAWALS.COMPLETE(id),
-    { proofReceiptUrl },
-  );
-  await notifyReviewer(reviewerId, reviewerName, amountVnd).catch(() => undefined);
-  return normalizeWithdrawalItem(response.data);
-}
-
-async function denyWithdrawal(id: number, reason: string): Promise<WithdrawalRequestItem> {
-  guardAdminWithdrawalCall('denyWithdrawal');
-  const response = await api.post<WithdrawalRequestItem>(
-    API_ENDPOINTS.ADMIN.WITHDRAWALS.DENY(id),
-    { reason },
-  );
-  return normalizeWithdrawalItem(response.data);
-}
-
-async function notifyReviewer(
-  userId: number,
-  reviewerName: string,
-  amountVnd: number,
-): Promise<void> {
-  const formatted = amountVnd.toLocaleString('vi-VN');
-  await notificationService.create({
-    userId,
-    message: `Your withdrawal of ${formatted} VND has been completed. The transfer receipt is attached for your records.`,
-    isRead: false,
-  });
-  // `reviewerName` is accepted for future templated-message support.
-  void reviewerName;
-}
-
 // ── Analytics ──────────────────────────────────────────────────────────────
 async function getAnalyticsSummary(signal?: AbortSignal): Promise<AnalyticsSummary> {
   try {
@@ -389,10 +284,6 @@ export const adminService = {
   getAccounts,
   suspendAccount,
   unsuspendAccount,
-  getReviewerWithdrawals,
-  markWithdrawalProcessing,
-  completeWithdrawal,
-  denyWithdrawal,
   getAnalyticsSummary,
   getAnalyticsTimeseries,
   // Kept as a no-op compatibility hook for legacy test doubles. Runtime data

@@ -14,6 +14,8 @@ export type PageSizeOption = (typeof PAGE_SIZE_OPTIONS)[number];
 export const TABLE_TOOLBAR_TESTID = 'table-toolbar';
 export const TABLE_PAGINATION_TESTID = 'table-pagination';
 export const TABLE_SEARCH_INPUT_TESTID = 'table-search-input';
+/** Stable id used by the `f` (focus filter) keyboard shortcut. */
+export const TABLE_SEARCH_INPUT_ID = 'table-search-input';
 export const TABLE_REFRESH_BTN_TESTID = 'table-refresh-btn';
 export const TABLE_EMPTY_TESTID = 'table-empty';
 export const TABLE_LOADING_TESTID = 'table-loading';

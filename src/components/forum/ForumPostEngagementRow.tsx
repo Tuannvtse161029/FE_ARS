@@ -1,5 +1,4 @@
 import { Heart, MessageCircle } from 'lucide-react';
-import type { CSSProperties } from 'react';
 import type { ForumPostViewModel } from '../../types/forumPostViewModel';
 import styles from './ForumPostEngagementRow.module.css';
 
@@ -52,8 +51,6 @@ export interface ForumPostEngagementRowProps {
    * exercise the like-flow path; production callers leave it undefined.
    */
   likeMutationAvailable?: boolean;
-  /** Optional inline style (the parent uses this for fine-grained layout). */
-  style?: CSSProperties;
 }
 
 const formatCount = (value: number | null): string =>
@@ -92,7 +89,6 @@ export const ForumPostEngagementRow = ({
   onLikeClick,
   likeInFlight = false,
   likeMutationAvailable,
-  style,
 }: ForumPostEngagementRowProps) => {
   // The Like button is enabled ONLY when all four conditions hold:
   //   1. the viewer is allowed to mutate (verified, not Guest)
@@ -112,7 +108,6 @@ export const ForumPostEngagementRow = ({
     <div
       className={styles.engagementRow}
       data-testid="forum-post-engagement-row"
-      style={style}
       role="group"
       aria-label="Post engagement"
     >

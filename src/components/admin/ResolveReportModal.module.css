@@ -1,21 +1,31 @@
+/**
+ * ResolveReportModal — Admin violation report resolution.
+ *
+ * Token-driven. Split-pane layout: report metadata on the left, action
+ * selection on the right. Admin-violet primary selection, with the
+ * reported content callout in admin-error palette to distinguish it as
+ * private moderation evidence.
+ */
+
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 .modal {
   width: 100%;
   max-width: 880px;
   max-height: 90vh;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -25,15 +35,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--ars-network);
+  flex-shrink: 0;
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0f172a;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
 }
 
 .closeButton {
@@ -41,13 +53,22 @@
   border: 0;
   font-size: 22px;
   line-height: 1;
-  color: #64748b;
+  color: var(--ars-ink-muted);
   cursor: pointer;
   padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
 }
+
 .closeButton:hover {
-  color: #0f172a;
+  color: var(--ars-ink);
 }
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
 .closeButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -56,8 +77,8 @@
 .content {
   display: grid;
   grid-template-columns: 1.05fr 1fr;
-  gap: 24px;
-  padding: 24px;
+  gap: var(--space-5);
+  padding: var(--space-5);
   overflow-y: auto;
 }
 
@@ -65,186 +86,279 @@
 .rightPane {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .metaGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 16px;
+  gap: var(--space-3) var(--space-4);
 }
+
 .metaItem {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
+
 .metaItemFull {
   grid-column: 1 / -1;
 }
+
 .metaLabel {
-  font-size: 11px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #94a3b8;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-bold);
 }
+
 .metaValue {
-  font-size: 14px;
-  color: #0f172a;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-medium);
 }
 
 .reportedContentBlock {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
+
 .reportedContent {
   margin: 0;
-  padding: 12px 14px;
-  border-left: 3px solid #ef4444;
-  background: #fef2f2;
-  color: #7f1d1d;
-  border-radius: 0 8px 8px 0;
+  padding: var(--space-3) var(--space-4);
+  /* Softened report-content rule. The 3px error stripe was the same
+     template used on every role card. A 1.5px rule at full saturation
+     + italic body still reads as "this is a reported item being shown
+     for moderator context" while no longer matching the templated card
+     stripes across the rest of the app. */
+  border-left: 1.5px solid var(--ars-error);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-style: italic;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
 .fieldLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 6px;
 }
+
 .noteInput {
   resize: vertical;
   min-height: 70px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
   font-family: inherit;
-}
-.noteInput:focus {
-  outline: 2px solid #007aff;
-  outline-offset: -1px;
-  border-color: transparent;
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
+.noteInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.noteInput:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.noteInput:focus {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-admin-mid);
+}
+
+.noteInput:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+/* ── Action list (right pane) ───────────────────────────── */
 .actionsHeading {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
 }
 
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
+
 .actionButton {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
   text-align: left;
-  padding: 12px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  font-family: var(--font-family-ui);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
-.actionButton:hover {
-  border-color: #94a3b8;
+
+.actionButton:hover:not(:disabled) {
+  border-color: var(--ars-admin-mid);
 }
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
 .actionButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 .actionSelected {
-  border-color: #007aff;
-  background: #eff6ff;
+  border-color: var(--ars-admin);
+  background: var(--ars-admin-light);
 }
 
 .actionRadio {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--ars-ink-muted);
   border-radius: 50%;
   margin-top: 2px;
   position: relative;
+  transition: border-color var(--transition-fast);
 }
+
 .actionRadioChecked {
-  border-color: #007aff;
+  border-color: var(--ars-admin);
 }
+
 .actionRadioChecked::after {
   content: '';
   position: absolute;
   inset: 3px;
-  background: #007aff;
+  background: var(--ars-admin);
   border-radius: 50%;
 }
 
 .actionLabel {
   display: block;
-  font-weight: 600;
-  color: #0f172a;
-  font-size: 14px;
-}
-.actionDescription {
-  display: block;
-  color: #475569;
-  font-size: 12.5px;
-  margin-top: 2px;
-  line-height: 1.4;
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
 }
 
+.actionDescription {
+  display: block;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  margin-top: 4px;
+  line-height: var(--line-height-normal);
+}
+
+/* ── Error banner (submission failure) ──────────────────── */
 .error {
-  margin: 0 24px 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
-  font-size: 13px;
-  border: 1px solid #fecaca;
+  margin: 0 var(--space-5) var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--ars-error);
+  font-weight: var(--font-weight-medium);
 }
 
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+  flex-shrink: 0;
 }
 
 .cancelButton {
-  background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
-  padding: 9px 16px;
-  border-radius: 8px;
-  font-weight: 500;
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink-soft);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  min-height: 36px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
+
+.cancelButton:hover:not(:disabled) {
+  background: var(--ars-paper);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.cancelButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
 .cancelButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .confirmButton {
-  background: #007aff;
-  border: 1px solid #007aff;
-  color: white;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-weight: 600;
+  background: var(--ars-admin);
+  border: 1px solid var(--ars-admin);
+  color: var(--ars-paper);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  min-height: 36px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
+
+.confirmButton:hover:not(:disabled) {
+  background: var(--ars-admin-mid);
+  border-color: var(--ars-admin-mid);
+}
+
+.confirmButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
 .confirmButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;

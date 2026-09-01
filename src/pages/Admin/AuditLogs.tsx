@@ -1,6 +1,15 @@
+/**
+ * AuditLogs — Admin system-wide audit trail.
+ *
+ * High-density table with range / admin / search filters and a CSV
+ * export action. Uses shared PageHeader, TableToolbar, TablePagination,
+ * EmptyState, ErrorBanner, SkeletonRow.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, Inbox } from 'lucide-react';
 import styles from './AuditLogs.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
+import { useAdminGuard } from '../../hooks/useAdminGuard';
 import type {
   AuditLogEntry,
   AuditLogAction,
@@ -10,7 +19,14 @@ import type {
 import { usePagination } from '../../hooks/usePagination';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
   { value: 'past_24h', label: 'Past 24 hours' },
@@ -58,6 +74,8 @@ const ACTION_LABEL: Record<AuditLogAction, string> = {
 };
 
 export default function AuditLogs(): JSX.Element {
+  useAdminGuard();
+
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,28 +164,29 @@ export default function AuditLogs(): JSX.Element {
   };
 
   return (
-    <section className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.title}>System Audit Logs</h1>
-          <p className={styles.subtitle}>
-            Chronological record of every privileged admin action. Export the
-            current filter as a CSV for compliance reviews.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={styles.exportButton}
-          onClick={handleExport}
-          disabled={exporting || loading}
-        >
-          {exporting ? 'Exporting…' : 'Export Logs (.CSV)'}
-        </button>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        eyebrow="ADMIN · AUDIT TRAIL"
+        title="System Audit Logs"
+        description="Chronological record of every privileged admin action. Export the current filter as a CSV for compliance reviews."
+        accent={ROLE_ACCENT}
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Download size={14} />}
+            onClick={() => void handleExport()}
+            disabled={exporting || loading || totalItems === 0}
+            data-testid="audit-export-csv"
+          >
+            {exporting ? 'Exporting…' : 'Export Logs (.CSV)'}
+          </Button>
+        }
+      />
 
       <TableToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={error ? () => undefined : setSearch}
         onRefresh={() => {
           setRefreshing(true);
           void load();
@@ -183,6 +202,7 @@ export default function AuditLogs(): JSX.Element {
               onChange={(e) => setRange(e.target.value as AuditLogRange)}
               aria-label="Filter by range"
               data-testid="audit-range-filter"
+              disabled={Boolean(error)}
             >
               {RANGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -199,6 +219,7 @@ export default function AuditLogs(): JSX.Element {
               }}
               aria-label="Filter by admin"
               data-testid="audit-admin-filter"
+              disabled={Boolean(error)}
             >
               <option value="ALL">All Admins</option>
               {adminOptions.map((opt) => (
@@ -212,32 +233,52 @@ export default function AuditLogs(): JSX.Element {
       />
 
       {loading ? (
-        <div
-          className={styles.placeholder}
-          data-testid="audit-loading"
-          role="status"
-        >
-          Loading audit logs…
+        <div className={styles.tableCard}>
+          <div
+            className={styles.loadingState}
+            data-testid="audit-loading"
+            role="status"
+          >
+            <SkeletonRow count={8} rowHeight={28} withHeader />
+          </div>
         </div>
       ) : error ? (
         <div
-          className={styles.errorState}
           data-testid="audit-error"
-          role="alert"
+          className={styles.errorWrap}
         >
-          Failed to load: {error}
+          <ErrorBanner
+            tone="error"
+            title="Could not load audit logs"
+            message={error}
+            retry={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void load()}
+                disabled={loading || refreshing}
+              >
+                {loading || refreshing ? 'Retrying…' : 'Retry'}
+              </Button>
+            }
+          />
         </div>
       ) : totalItems === 0 ? (
-        <div
-          className={styles.placeholder}
-          data-testid="audit-empty"
-          role="status"
-        >
-          No audit entries match these filters.
+        <div className={styles.tableCard}>
+          <div
+            className={styles.emptyWrap}
+            data-testid="audit-empty"
+          >
+            <EmptyState
+              icon={<Inbox size={20} />}
+              title="No audit entries match these filters"
+              description="Try widening the date range or clearing the search box. Every privileged admin action should land here."
+            />
+          </div>
         </div>
       ) : (
-        <>
-          <div className={styles.tableWrapper}>
+        <div className={styles.tableCard}>
+          <div className={styles.tableResponsive}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -285,8 +326,8 @@ export default function AuditLogs(): JSX.Element {
             onPage={setPage}
             itemLabel="audit entries"
           />
-        </>
+        </div>
       )}
-    </section>
+    </div>
   );
 }

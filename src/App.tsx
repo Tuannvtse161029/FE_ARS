@@ -3,10 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from './routes/paths';
 import { PrivateRoute, PublicRoute } from './routes/PrivateRoute';
 import { RoleRouteGuard } from './routes/RoleRouteGuard';
+import { SubscriptionRouteGuard } from './routes/SubscriptionRouteGuard';
 import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
-import { AppConfig } from './config/app';
 import './styles/globals.css';
 
 // Public auth pages — kept as eager imports because every cold-load starts
@@ -24,6 +24,14 @@ import { CompleteGoogleRegistration } from './pages/CompleteGoogleRegistration/C
 // `AuthLayout` because the recipient of the link is not authenticated
 // yet.
 import { EmailVerificationLanding } from './pages/Auth/EmailVerificationLanding';
+// FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — public ORCID OAuth callback
+// landing page. Lives outside `PublicRoute` because the page itself
+// decides where to continue based on the URL fragment (`context`).
+// Registration callbacks happen before a user has an ARS JWT, and
+// account-link callbacks already have one — the page must accept both.
+const OrcidCallback = lazy(() =>
+  import('./pages/OrcidCallback/OrcidCallback').then((m) => ({ default: m.OrcidCallback })),
+);
 
 // Every authenticated page is split into its own chunk via React.lazy so
 // the initial bundle only carries the route the user opens. Recharts
@@ -44,16 +52,17 @@ const SeminarWorkspace = lazy(() => import('./pages/Lecturer/SeminarWorkspace').
 const ResearchGroup = lazy(() => import('./pages/Lecturer/ResearchGroup').then((m) => ({ default: m.ResearchGroup })));
 const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilestones').then((m) => ({ default: m.ConfigureMilestones })));
 const EvaluateReports = lazy(() => import('./pages/Lecturer/EvaluateReports').then((m) => ({ default: m.EvaluateReports })));
+const PhaseReports = lazy(() => import('./pages/Lecturer/PhaseReports').then((m) => ({ default: m.PhaseReports })));
 const LecturerGroupDetail = lazy(() => import('./pages/Lecturer/GroupDetail').then((m) => ({ default: m.LecturerGroupDetail })));
 const GuidanceProjects = lazy(() => import('./pages/Lecturer/GuidanceProjects').then((m) => ({ default: m.GuidanceProjects })));
 // Agent lecturer-navigation — top-level Lecturer surface for Research Topics.
 // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
 const ResearchTopicsPage = lazy(() => import('./pages/Lecturer/ResearchTopics').then((m) => ({ default: m.ResearchTopicsPage })));
 const LecturerLearningMaterialsPage = lazy(() => import('./pages/Lecturer/LearningMaterials').then((m) => ({ default: m.LecturerLearningMaterialsPage })));
+const LecturerSharedMaterialsPage = lazy(() => import('./pages/Lecturer/SharedMaterials').then((m) => ({ default: m.LecturerSharedMaterialsPage })));
 const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').then((m) => ({ default: m.SubmitReport })));
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
-const EarningsWallet = lazy(() => import('./pages/Reviewer/EarningsWallet').then((m) => ({ default: m.EarningsWallet })));
 const Profile = lazy(() => import('./pages/Profile/Profile').then((m) => ({ default: m.Profile })));
 const ProfessionalProfile = lazy(() => import('./pages/Reviewer/ProfessionalProfile').then((m) => ({ default: m.ProfessionalProfile })));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
@@ -69,8 +78,13 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 // Admin Annual Fees tab. It renders an honest backend-unavailable state
 // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
-const CheckoutReturn = lazy(() => import('./pages/Payment/CheckoutReturn').then((m) => ({ default: m.default })));
-const PremiumPackagesPreview = lazy(() => import('./pages/PremiumPackages/PremiumPackagesPreview').then((m) => ({ default: m.default })));
+// Researcher / Lecturer subscription page. Renders the current status,
+// plans, and `Proceed to Pay` button. Lives behind the existing role
+// guards so only Researcher / Lecturer reach it.
+const Subscription = lazy(() => import('./pages/Subscription/Subscription').then((m) => ({ default: m.Subscription })));
+// PayOS return landing. The BE redirects here after a PayOS checkout;
+// the page verifies status via the BE and never unlocks access itself.
+const SubscriptionReturn = lazy(() => import('./pages/Subscription/SubscriptionReturn').then((m) => ({ default: m.SubscriptionReturn })));
 const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => ({ default: m.LegalPolicy })));
 
 /**
@@ -140,25 +154,55 @@ const App = () => {
                 page itself enforces auth-state handoff. */}
             <Route path={ROUTES.GOOGLE_OAUTH_CALLBACK} element={<GoogleCallback />} />
 
+            {/* FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — ORCID OAuth callback
+                landing page. The BE redirects the browser here after
+                /api/Auth/orcid/callback. The page parses the URL fragment
+                (#success=&context=...) once, branches on `context`, and
+                replaces itself with /profile (account link) or /register
+                (registration). Public route — must accept both authenticated
+                users (account link) and unauthenticated visitors
+                (registration) because the registration callback runs before
+                a JWT exists. The page itself is responsible for not leaking
+                OAuth codes / provider tokens into sessionStorage. */}
+            <Route path={ROUTES.ORCID_OAUTH_CALLBACK} element={<OrcidCallback />} />
+
             {/* Private Routes */}
             <Route element={<PrivateRoute />}>
               <Route element={<MainLayout />}>
 
-                {/* Lecturer-only routes */}
+                {/* Lecturer-only routes. Wrapped in SubscriptionRouteGuard so a
+                    Lecturer with a missing / inactive / expired subscription is
+                    redirected to /subscription instead of seeing an empty
+                    workspace. /subscription and /subscription/return are
+                    themselves mounted OUTSIDE this guard so the user can
+                    always reach them to renew or see verification status. */}
                 <Route element={<RoleRouteGuard allow={['Lecturer']} />}>
-                  <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
-                  <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
-                  <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
-                  <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
-                  <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
-                  <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
-                  <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<LecturerLearningMaterialsPage />} />
+                  <Route element={<SubscriptionRouteGuard />}>
+                    <Route path={ROUTES.RESEARCH_GROUP} element={<ResearchGroup />} />
+                    <Route path={ROUTES.CONFIGURE_MILESTONES} element={<ConfigureMilestones />} />
+                    <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
+                    <Route path={ROUTES.LECTURER_PHASE_REPORTS} element={<PhaseReports />} />
+                    <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
+                    <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
+                    <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
+                    <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<LecturerLearningMaterialsPage />} />
+                    <Route path={ROUTES.LECTURER_SHARED_MATERIALS} element={<LecturerSharedMaterialsPage />} />
+                  </Route>
+                  {/* Subscription management routes — always reachable for
+                      Lecturer, even when the subscription is missing / expired.
+                      This is the page the gate redirects users TO. */}
+                  <Route path={ROUTES.SUBSCRIPTION} element={<Subscription />} />
+                  <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
 
                 {/* Seminar workspace is shared by Lecturer (manage) and
-                    Researcher (view schedule, join Meet, submit feedback). */}
+                    Researcher (view schedule, join Meet, submit feedback).
+                    Wrapped in the subscription gate so a missing / expired
+                    subscription locks out both roles. */}
                 <Route element={<RoleRouteGuard allow={['Lecturer', 'Researcher']} />}>
-                  <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
+                  <Route element={<SubscriptionRouteGuard />}>
+                    <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
+                  </Route>
                 </Route>
 
                 {/* Graduate Student-only routes */}
@@ -168,13 +212,22 @@ const App = () => {
                   <Route path={ROUTES.GRADUATE_STUDENT_DASHBOARD} element={<GraduateStudentDashboard />} />
                 </Route>
 
-                {/* Researcher-only publication routes. Reviewer selection is Admin-owned. */}
+                {/* Researcher-only publication routes. Reviewer selection is Admin-owned.
+                    Wrapped in SubscriptionRouteGuard so a Researcher with a missing
+                    or expired subscription is bounced to /subscription instead of
+                    seeing an empty /papers workspace. */}
                 <Route element={<RoleRouteGuard allow={['Researcher']} />}>
-                  <Route path={ROUTES.PAPERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
-                  <Route path={ROUTES.RESEARCHER_SUBMISSIONS} element={<ResearcherSubmissions />} />
-                  <Route path={ROUTES.RESEARCHER_SUBMISSION_NEW} element={<ResearcherSubmissionForm />} />
-                  <Route path={ROUTES.RESEARCHER_SUBMISSION_DETAIL} element={<ResearcherSubmissionDetail />} />
-                  <Route path={ROUTES.REVIEWERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
+                  <Route element={<SubscriptionRouteGuard />}>
+                    <Route path={ROUTES.PAPERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
+                    <Route path={ROUTES.RESEARCHER_SUBMISSIONS} element={<ResearcherSubmissions />} />
+                    <Route path={ROUTES.RESEARCHER_SUBMISSION_NEW} element={<ResearcherSubmissionForm />} />
+                    <Route path={ROUTES.RESEARCHER_SUBMISSION_DETAIL} element={<ResearcherSubmissionDetail />} />
+                    <Route path={ROUTES.REVIEWERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
+                  </Route>
+                  {/* Subscription management routes — always reachable for
+                      Researcher, even when the subscription is missing / expired. */}
+                  <Route path={ROUTES.SUBSCRIPTION} element={<Subscription />} />
+                  <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
 
                 {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}
@@ -201,14 +254,6 @@ const App = () => {
 
                 {/* Shared / cross-role routes */}
                 <Route path={ROUTES.FORUM} element={<Forum />} />
-                <Route
-                  path={ROUTES.EARNINGS_WALLET}
-                  element={
-                    AppConfig.features.enableWithdrawals
-                      ? <EarningsWallet />
-                      : <Navigate to={ROUTES.FORUM} replace />
-                  }
-                />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
                 {/* Public profile viewing: forum authors/commenters of every
                     authenticated role must be able to open another user's
@@ -227,25 +272,6 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                 </Route>
-                <Route path={ROUTES.PAYMENT_RETURN} element={<CheckoutReturn />} />
-                {/* Agent admin-annual-fees — the user-facing premium-packages
-                    surface is temporarily hidden for non-Admin roles while
-                    the BE-side annual-fee CRUD endpoint is being finalized.
-                    `AppConfig.features.premiumPackagesEnabled` is the single
-                    source of truth for this gate. Flipping the flag back to
-                    `true` re-enables the page for everyone; in the meantime
-                    direct navigation bounces to /forum. Admins use
-                    /admin/packages + /admin/annual-fees instead. */}
-                <Route
-                  path={ROUTES.PREMIUM_PACKAGES}
-                  element={
-                    AppConfig.features.premiumPackagesEnabled ? (
-                      <PremiumPackagesPreview />
-                    ) : (
-                      <Navigate to={ROUTES.FORUM} replace />
-                    )
-                  }
-                />
               </Route>
             </Route>
 

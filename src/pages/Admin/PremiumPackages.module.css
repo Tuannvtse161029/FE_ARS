@@ -1,234 +1,282 @@
+/**
+ * PremiumPackages — Admin subscription catalog management.
+ *
+ * Card-grid layout. Each card represents a single package per role with
+ * status, price, and feature list. Admin accent (violet) throughout.
+ */
+
+@keyframes adminSpin {
+  to { transform: rotate(360deg); }
+}
+
 .page {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 32px 40px;
+  gap: var(--space-5);
+  color: var(--ars-ink);
 }
 
-.pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.title {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: #0f172a;
-}
-.subtitle {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.createButton {
-  background: #007aff;
-  border: 1px solid #007aff;
-  color: #ffffff;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-}
-.createButton:hover {
-  background: #0062cc;
-}
-
+/* ── Grid + card ───────────────────────────────────────── */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
+  gap: var(--space-4);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  position: relative;
 }
+
 .card:hover {
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
+  border-color: var(--ars-admin-mid);
+  box-shadow: var(--shadow-sm);
 }
 
 .cardInactive {
-  opacity: 0.7;
-  background: #f8fafc;
+  opacity: 0.72;
+  background: var(--ars-paper);
 }
 
 .cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
-.rolePill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.cardTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .cardTitle {
-  margin: 8px 0 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+}
+
+/* ── Pills (role / status) ─────────────────────────────── */
+.rolePill {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  width: fit-content;
+  border: 1px solid transparent;
 }
 
 .statusPill {
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-.statusActive {
-  background: #dcfce7;
-  color: #166534;
-}
-.statusInactive {
-  background: #f1f5f9;
-  color: #475569;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
+.statusActive {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+
+.statusInactive {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-soft);
+}
+
+/* ── Price block ──────────────────────────────────────── */
 .price {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
+
 .priceAmount {
-  font-size: 26px;
-  font-weight: 800;
-  color: #0f172a;
-}
-.priceCurrency {
-  font-size: 13px;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-}
-.priceCycle {
-  font-size: 13px;
-  color: #94a3b8;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
 }
 
+.priceCurrency {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.priceCycle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+}
+
+/* ── Features list ─────────────────────────────────────── */
 .features {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.featureItem {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 13.5px;
-  color: #1e293b;
-  line-height: 1.45;
-}
-.featureBullet {
-  color: #16a34a;
-  font-weight: 700;
+  gap: var(--space-2);
 }
 
+.featureItem {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  line-height: var(--line-height-normal);
+}
+
+.featureBullet {
+  color: var(--ars-success);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+/* ── Footer (subscriber count + actions) ───────────────── */
 .cardFooter {
   margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ars-network);
 }
 
 .subscriberCount {
-  font-size: 13px;
-  color: #475569;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
 }
+
 .subscriberCount strong {
-  color: #0f172a;
-  font-size: 15px;
+  color: var(--ars-ink);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   margin-right: 4px;
+  font-family: var(--font-family-mono);
 }
 
 .cardActions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .toggleSwitch {
-  background: #e2e8f0;
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
+  min-height: 28px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
-.toggleSwitch:hover {
-  background: #cbd5e1;
+
+.toggleSwitch:hover:not(:disabled) {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-ink-muted);
 }
+
 .toggleSwitch[aria-pressed='true'] {
-  background: #dcfce7;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+  color: var(--ars-success);
+}
+
+.toggleSwitch[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+}
+
+.toggleSwitch:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
 }
 
 .dangerButton {
-  background: transparent;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-error);
+  color: var(--ars-error);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
+  min-height: 28px;
+  font-family: var(--font-family-ui);
+  transition: background-color var(--transition-fast);
 }
-.dangerButton:hover {
-  background: #fef2f2;
+
+.dangerButton:hover:not(:disabled) {
+  background: var(--ars-error-bg);
 }
+
+.dangerButton:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
 .dangerButton:disabled,
 .toggleSwitch:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* ── States ─────────────────────────────────────────────── */
 .placeholder {
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 48px;
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-10) var(--space-5);
   text-align: center;
-  color: #64748b;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
 }
 
 .errorState {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  padding: 24px;
-  color: #b91c1c;
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  color: var(--ars-error);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
 }

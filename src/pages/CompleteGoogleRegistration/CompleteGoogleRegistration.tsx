@@ -5,8 +5,9 @@
 // endpoint authenticates via the ARS JWT (carried by the shared axios
 // `Authorization` header) — we do NOT echo the upstream Google ID token
 // into the request body. The Request schema fields the BE acknowledges
-// are: `pdfUrl`, `phoneNumber`, `role` (required) plus `orcidId` for
-// Reviewer and `consents` (optional). The user id is derived from the
+// `pdfUrl`, `phoneNumber`, and `role` (required). ORCID linkage is validated
+// separately through the backend-authoritative `GET /api/Auth/orcid/status`;
+// the browser never submits an ORCID iD as proof of ownership.
 // JWT subject server-side.
 //
 // Surfacing rules:
@@ -60,7 +61,8 @@ import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../utils/storage';
 import { ROUTES } from '../../routes/paths';
 import type { BusinessRole, EffectiveRole, UserRole } from '../../types/auth';
-import { normalizeOrcid, hasValidOrcidChecksum } from '../../services/orcid.service';
+import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
+import { useOrcidIdentity } from '../../hooks/useOrcidIdentity';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
 
@@ -72,7 +74,6 @@ const PHONE_REGEX = /^[+\d\s\-()]{8,20}$/;
 interface FormState {
   phoneNumber: string;
   role: BusinessRole | '';
-  orcidId: string;
   pdfUrl: string | null;
   pdfFile: File | null;
 }
@@ -80,7 +81,6 @@ interface FormState {
 const initialForm: FormState = {
   phoneNumber: '',
   role: '',
-  orcidId: '',
   pdfUrl: null,
   pdfFile: null,
 };
@@ -123,6 +123,11 @@ export const CompleteGoogleRegistration = () => {
     effectiveRole: string | null;
     requestStatus: string | null;
   } | null>(null);
+  const { status: orcidStatus, isLoading: isOrcidLoading, error: orcidError, refetch: refetchOrcid } = useOrcidIdentity();
+  const hasVerifiedOrcid =
+    orcidStatus?.isConnected === true &&
+    orcidStatus.isVerified === true &&
+    Boolean(orcidStatus.orcidId);
 
   // Hard guard against double-submit. The ref is mutated synchronously
   // before any await so a React 18 StrictMode double-invoke (or a rapid
@@ -286,43 +291,9 @@ export const CompleteGoogleRegistration = () => {
 
   const handleRoleChange = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
     const nextRole = e.target.value as FormState['role'];
-    setForm((prev) => ({
-      ...prev,
-      role: nextRole,
-      // Changing away from Reviewer HIDES and CLEARS the ORCID value so a
-      // stale iD never leaks into a non-Reviewer payload.
-      orcidId: nextRole === 'Reviewer' ? prev.orcidId : '',
-    }));
-    setErrors((prev) => ({
-      ...prev,
-      role: undefined,
-      orcidId: undefined,
-    }));
+    setForm((prev) => ({ ...prev, role: nextRole }));
+    setErrors((prev) => ({ ...prev, role: undefined }));
   }, []);
-
-  const handleOrcidChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const nextOrcid = e.target.value;
-    setForm((prev) => ({ ...prev, orcidId: nextOrcid }));
-    // Eager validation: surface ORCID errors as soon as the user has typed
-    // a syntactically recognizable 16-char string, even before they submit.
-    setErrors((prev) => {
-      const next = { ...prev };
-      if (nextOrcid.length === 0) {
-        next.orcidId = undefined;
-      } else {
-        const normalized = normalizeOrcid(nextOrcid);
-        if (!normalized) {
-          next.orcidId =
-            'Reviewer onboarding requires an ORCID iD (0000-0000-0000-0000 or full URL).';
-        } else if (!hasValidOrcidChecksum(normalized)) {
-          next.orcidId = 'The ORCID iD does not pass the ISO 7064 checksum.';
-        } else {
-          next.orcidId = undefined;
-        }
-      }
-      return next;
-    });
-  };
 
   const handleUploadComplete = useCallback((file: File, url: string) => {
     setForm((prev) => ({ ...prev, pdfFile: file, pdfUrl: url }));
@@ -362,14 +333,8 @@ export const CompleteGoogleRegistration = () => {
       next.role = 'Choose a platform role before submitting.';
     }
 
-    if (form.role === 'Reviewer') {
-      const normalized = normalizeOrcid(form.orcidId);
-      if (!normalized) {
-        next.orcidId =
-          'Reviewer onboarding requires an ORCID iD (0000-0000-0000-0000 or full URL).';
-      } else if (!hasValidOrcidChecksum(normalized)) {
-        next.orcidId = 'The ORCID iD does not pass the ISO 7064 checksum.';
-      }
+    if (form.role === 'Reviewer' && !hasVerifiedOrcid) {
+      next.role = 'Reviewer requests require a backend-confirmed ORCID connection.';
     }
 
     if (!form.pdfUrl) {
@@ -378,19 +343,16 @@ export const CompleteGoogleRegistration = () => {
 
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [form]);
+  }, [form, hasVerifiedOrcid]);
 
   const isFormValid = useMemo(() => {
     if (isUploadingPdf) return false;
     if (!form.role) return false;
-    if (form.role === 'Reviewer') {
-      const normalized = normalizeOrcid(form.orcidId);
-      if (!normalized || !hasValidOrcidChecksum(normalized)) return false;
-    }
+    if (form.role === 'Reviewer' && !hasVerifiedOrcid) return false;
     if (!form.phoneNumber.trim() || !PHONE_REGEX.test(form.phoneNumber)) return false;
     if (!form.pdfUrl) return false;
     return true;
-  }, [isUploadingPdf, form]);
+  }, [isUploadingPdf, form, hasVerifiedOrcid]);
 
   // ── 6. Submit ──────────────────────────────────────────────────────────
   const handleSubmit = useCallback(
@@ -417,7 +379,6 @@ export const CompleteGoogleRegistration = () => {
           pdfUrl,
           phoneNumber: form.phoneNumber,
           role,
-          orcidId: role === 'Reviewer' ? form.orcidId : undefined,
         });
 
         // Persist the "submitted" sentinel so a page refresh renders the
@@ -590,37 +551,13 @@ export const CompleteGoogleRegistration = () => {
 
           {form.role === 'Reviewer' && (
             <div className={styles.fieldGroup}>
-              <label htmlFor="orcidId" className={styles.fieldLabel}>
-                ORCID iD <span aria-hidden="true">*</span>
-              </label>
-              <Input
-                id="orcidId"
-                name="orcidId"
-                type="text"
-                value={form.orcidId}
-                onChange={handleOrcidChange}
-                placeholder="0000-0000-0000-0000 or https://orcid.org/..."
-                disabled={isSubmitting || isUploadingPdf}
-                className={styles.input}
-                error={errors.orcidId}
-                aria-describedby="orcid-help"
-                data-testid="orcid-input"
-                autoComplete="off"
+              <OrcidIdentityPanel
+                required
+                onStatusChange={() => { void refetchOrcid(); }}
               />
-              {errors.orcidId && (
-                <p
-                  className={styles.errorText}
-                  role="alert"
-                  data-testid="orcid-error"
-                >
-                  {errors.orcidId}
-                </p>
-              )}
-              <p className={styles.hint} id="orcid-help">
-                Reviewer onboarding requires a canonical ORCID iD with a
-                valid checksum. We never call OpenAlex or any external
-                service from the browser.
-              </p>
+              {isOrcidLoading ? <p className={styles.hint} role="status">Refreshing ORCID connection status…</p> : null}
+              {orcidError ? <p className={styles.errorText} role="alert">Unable to confirm ORCID connection. Retry status refresh.</p> : null}
+              {!hasVerifiedOrcid && !isOrcidLoading ? <p className={styles.errorText} data-testid="orcid-verification-required">A backend-confirmed ORCID connection is required before a Reviewer request can be submitted.</p> : null}
             </div>
           )}
 

@@ -26,7 +26,8 @@
     "e2e:researcher-reviewer": "playwright test --config playwright.reviewer-flow.config.ts",
     "e2e:reviewer-withdrawal": "playwright test --config playwright.withdrawal-flow.config.ts",
     "e2e:google-onboarding": "playwright test --config playwright.google-onboarding.config.ts",
-    "e2e:google-onboarding:headed": "playwright test --config playwright.google-onboarding.headed.config.ts"
+    "e2e:google-onboarding:headed": "playwright test --config playwright.google-onboarding.headed.config.ts",
+    "e2e:roles": "playwright test --config tests/automation/Playwright/playwright.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

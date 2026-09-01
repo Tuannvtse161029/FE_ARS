@@ -11,7 +11,7 @@ export type VerificationStatus = 'Pending' | 'Accepted' | 'Rejected' | null;
 export type AccountTier = 'Free' | 'Premium' | 'Enterprise';
 
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
   rememberMe?: boolean;
   selectedRole?: string;

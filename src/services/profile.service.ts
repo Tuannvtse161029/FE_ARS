@@ -134,7 +134,6 @@ function coerceProfile(raw: unknown, authenticatedUserId: number): Profile {
     publicationCount: asNumber('publicationCount'),
     majorFieldName: asString('majorFieldName'),
     subFieldName: asString('subFieldName'),
-    reviewFee: asNumber('reviewFee'),
     isAvailable: asBoolean('isAvailable'),
     isOrcidVerified: asBoolean('isOrcidVerified'),
     orcidId: asString('orcidId'),

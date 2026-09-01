@@ -1,11 +1,13 @@
+/**
+ * AccountsManagement — Admin user moderation queue.
+ *
+ * Search + role/plan/status filters + suspend/unsuspend inline modal.
+ * Uses the shared PageHeader, TableToolbar, TablePagination, ErrorBanner,
+ * and EmptyState primitives. All inline styles in the original file have
+ * been moved to CSS Modules.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  Inbox,
-  Eye,
-  Pause,
-  Play,
-} from 'lucide-react';
+import { Inbox, Eye, Pause, Play } from 'lucide-react';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
@@ -18,12 +20,19 @@ import type {
 } from '../../types/admin';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import styles from './AccountsManagement.module.css';
 
 type StatusFilter = 'ALL' | AccountStatus;
 type PlanFilter = 'ALL' | AccountPlan;
 type RoleFilter = 'ALL' | AccountRoleName;
+
+const ROLE_ACCENT = 'var(--ars-admin)';
 
 const initialsOf = (name: string) =>
   name
@@ -156,25 +165,21 @@ export const AccountsManagement = () => {
       plan !== 'ALL' ||
       role !== 'ALL');
 
+  const isSelf = (id: number) =>
+    currentUserId != null && currentUserId === id;
+
   return (
     <div className={styles.page}>
-      <div className={styles.breadcrumbs}>
-        Home &gt; Admin &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Accounts</span>
-      </div>
-
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Accounts Management</h1>
-          <p className={styles.pageSubtitle}>
-            Search, filter, and moderate user accounts across roles and plans.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="ADMIN · ACCOUNTS"
+        title="Accounts Management"
+        description="Search, filter, and moderate user accounts across roles and plans."
+        accent={ROLE_ACCENT}
+      />
 
       <TableToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={error ? () => undefined : setSearch}
         onRefresh={() => {
           setRefreshing(true);
           void load();
@@ -230,38 +235,41 @@ export const AccountsManagement = () => {
             data-testid="accounts-loading"
             role="status"
           >
-            <span className={styles.spinning} />
-            <span>Loading accounts…</span>
+            <SkeletonRow count={8} rowHeight={28} withHeader />
           </div>
         ) : error ? (
-          <div
-            className={styles.errorState}
-            data-testid="accounts-error"
-            role="alert"
-          >
-            <AlertTriangle size={20} color="#ef4444" />
-            <span>{error}</span>
-            <button className={styles.retryBtn} onClick={() => void load()}>
-              Retry
-            </button>
+          <div data-testid="accounts-error" className={styles.errorWrap}>
+            <ErrorBanner
+              tone="error"
+              title="Could not load accounts"
+              message={error}
+              retry={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void load()}
+                  disabled={loading || refreshing}
+                >
+                  {loading || refreshing ? 'Retrying…' : 'Retry'}
+                </Button>
+              }
+            />
           </div>
         ) : hasNoMatch ? (
-          <div
-            className={styles.emptyState}
-            data-testid="accounts-empty"
-            role="status"
-          >
-            <Inbox size={32} color="#94a3b8" />
-            <span>No accounts match the current filters.</span>
+          <div className={styles.emptyWrap}>
+            <EmptyState
+              icon={<Inbox size={20} />}
+              title="No accounts match the current filters."
+              description="Adjust the search query or clear one of the role/plan/status filters."
+            />
           </div>
         ) : totalItems === 0 ? (
-          <div
-            className={styles.emptyState}
-            data-testid="accounts-empty"
-            role="status"
-          >
-            <Inbox size={32} color="#94a3b8" />
-            <span>No accounts have been provisioned yet.</span>
+          <div className={styles.emptyWrap}>
+            <EmptyState
+              icon={<Inbox size={20} />}
+              title="No accounts have been provisioned yet."
+              description="When new users register, they will appear in this list."
+            />
           </div>
         ) : (
           <>
@@ -269,12 +277,12 @@ export const AccountsManagement = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>USER</th>
-                    <th>ROLES</th>
-                    <th>PLAN</th>
-                    <th>JOINED</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
+                    <th>User</th>
+                    <th>Roles</th>
+                    <th>Plan</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,13 +345,7 @@ export const AccountsManagement = () => {
                             title="View profile"
                             type="button"
                           >
-                            <Eye
-                              size={13}
-                              style={{
-                                marginRight: 4,
-                                verticalAlign: '-2px',
-                              }}
-                            />
+                            <Eye size={13} />
                             View Profile
                           </button>
                           {a.status === 'ACTIVE' ? (
@@ -352,25 +354,16 @@ export const AccountsManagement = () => {
                               onClick={() =>
                                 setConfirm({ account: a, next: 'SUSPENDED' })
                               }
-                              disabled={
-                                actingId === a.id ||
-                                (currentUserId != null && currentUserId === a.id)
-                              }
+                              disabled={actingId === a.id || isSelf(a.id)}
                               title={
-                                currentUserId === a.id
+                                isSelf(a.id)
                                   ? 'You cannot suspend your own admin account.'
                                   : undefined
                               }
                               type="button"
                             >
-                              <Pause
-                                size={13}
-                                style={{
-                                  marginRight: 4,
-                                  verticalAlign: '-2px',
-                                }}
-                              />
-                              Suspend User
+                              <Pause size={13} />
+                              Suspend
                             </button>
                           ) : (
                             <button
@@ -378,25 +371,16 @@ export const AccountsManagement = () => {
                               onClick={() =>
                                 setConfirm({ account: a, next: 'ACTIVE' })
                               }
-                              disabled={
-                                actingId === a.id ||
-                                (currentUserId != null && currentUserId === a.id)
-                              }
+                              disabled={actingId === a.id || isSelf(a.id)}
                               title={
-                                currentUserId === a.id
+                                isSelf(a.id)
                                   ? 'You cannot change the status of your own admin account.'
                                   : undefined
                               }
                               type="button"
                             >
-                              <Play
-                                size={13}
-                                style={{
-                                  marginRight: 4,
-                                  verticalAlign: '-2px',
-                                }}
-                              />
-                              Unsuspend User
+                              <Play size={13} />
+                              Unsuspend
                             </button>
                           )}
                         </div>
@@ -427,15 +411,19 @@ export const AccountsManagement = () => {
           onClick={() => setConfirm(null)}
           role="dialog"
           aria-modal="true"
+          aria-labelledby="accounts-confirm-title"
         >
           <div
             className={styles.modalCard}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className={styles.modalTitle}>
+            <span
+              id="accounts-confirm-title"
+              className={styles.modalTitle}
+            >
               {confirm.next === 'SUSPENDED'
-                ? 'Suspend Account?'
-                : 'Unsuspend Account?'}
+                ? 'Suspend account?'
+                : 'Unsuspend account?'}
             </span>
             <p className={styles.modalBody}>
               {confirm.next === 'SUSPENDED' ? (

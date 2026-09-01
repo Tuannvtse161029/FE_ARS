@@ -75,53 +75,6 @@ export interface AccountsQuery {
   status?: AccountStatus | 'ALL';
 }
 
-// ── Withdrawals (Figma screens 4–5) ────────────────────────────────────────
-// 3-state manual payout flow per the Figma:
-//   PENDING → ACCEPTED_PROCESSING → COMPLETED, with DENIED as a terminal.
-export type WithdrawalStatus =
-  | 'PENDING'
-  | 'ACCEPTED_PROCESSING'
-  | 'COMPLETED'
-  | 'DENIED';
-
-export interface WithdrawalRequestItem {
-  // Mirrors the existing WithdrawalRequest.id (normalized to `id`).
-  txId: number;
-  userId: number;
-  reviewerName: string;
-  amountVnd: number;
-  currency?: string;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
-  requestDate: string;
-  status: WithdrawalStatus;
-  proofReceiptUrl: string | null;
-  /**
-   * Reason the reviewer supplied when creating the withdrawal request
-   * (mirrors `dbo.WithdrawalRequest.Note`).
-   *
-   * The BE returns this as `Note`; `adminService.getReviewerWithdrawals`
-   * normalizes `note → requestReason` at the service boundary so downstream
-   * consumers (modals, tests, audit log) never have to handle both spellings.
-   *
-   * Distinct from `rejectionReason` (the Admin's denial justification).
-   * Distinct from any internal Admin note (not modelled yet).
-   */
-  requestReason?: string | null;
-  /**
-   * Wire-shape alias for `requestReason`. The BE surfaces this as `Note` on
-   * `dbo.WithdrawalRequest`. Optional on the type so consumers that only
-   * care about the normalized Admin-facing shape can ignore it; the
-   * `adminService.normalizeWithdrawalItem` helper always strips it before
-   * returning.
-   */
-  note?: string | null;
-  rejectionReason?: string;
-  processingAt?: string | null;
-  completedAt?: string | null;
-}
-
 // ── Analytics (Figma screen 1) ────────────────────────────────────────────
 export type AnalyticsRange = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type AnalyticsMetric = 'user_registrations' | 'revenue';

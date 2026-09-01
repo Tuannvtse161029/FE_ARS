@@ -2,7 +2,7 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 
 // Mirrors GET /api/ProfessionalProfile response shape:
-// { userId, orcidId, hindex, totalCitations, publicationCount, syncStatus, reviewFee, isAvailable, updatedAt }
+// { userId, orcidId, hindex, totalCitations, publicationCount, syncStatus, isAvailable, updatedAt }
 export interface ReviewerProfile {
   userId: number;
   orcidId: string | null;
@@ -14,7 +14,6 @@ export interface ReviewerProfile {
   majorFieldName?: string | null;
   subFieldId?: number | null;
   subFieldName?: string | null;
-  reviewFee: number | null;
   // Whether this reviewer is currently accepting review requests.
   // May be missing on older API responses — treat as false in that case.
   isAvailable?: boolean;
@@ -30,7 +29,6 @@ export interface ProfessionalProfileUpdateRequest {
   syncStatus?: string | null;
   majorFieldId?: number | null;
   subFieldId?: number | null;
-  reviewFee?: number | null;
   isAvailable?: boolean | null;
 }
 

@@ -94,7 +94,7 @@ export const filterSeminarsForViewer = (
 ): Seminar[] => {
   if (canMutateSeminar(role)) return seminars;
   if (!canViewSeminar(role)) return [];
-  if (currentUserId == null) return seminars;
+  if (currentUserId == null) return [];
   const invitedSeminarIds = new Set<number>();
   for (const p of participants) {
     if (p.userId === currentUserId && p.seminarId != null) {
@@ -102,7 +102,7 @@ export const filterSeminarsForViewer = (
     }
   }
   if (invitedSeminarIds.size === 0) {
-    return seminars;
+    return [];
   }
   return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
 };

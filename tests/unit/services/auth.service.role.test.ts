@@ -53,7 +53,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'admin@arsplatform.com',
+      email: 'admin@arsplatform.com',
       password: 'password',
     });
 
@@ -76,7 +76,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'admin@arsplatform.com',
+      email: 'admin@arsplatform.com',
       password: 'password',
     });
 
@@ -99,7 +99,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'researcher@arsplatform.com',
+      email: 'researcher@arsplatform.com',
       password: 'password',
     });
 
@@ -125,7 +125,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'pending@arsplatform.com',
+      email: 'pending@arsplatform.com',
       password: 'password',
     });
 
@@ -150,7 +150,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'pending@arsplatform.com',
+      email: 'pending@arsplatform.com',
       password: 'password',
     });
 
@@ -173,7 +173,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'researcher@arsplatform.com',
+      email: 'researcher@arsplatform.com',
       password: 'password',
     });
 
@@ -197,7 +197,7 @@ describe('auth.service.login – roleId plumbing', () => {
     });
 
     const result = await authService.login({
-      username: 'researcher@arsplatform.com',
+      email: 'researcher@arsplatform.com',
       password: 'password',
     });
 

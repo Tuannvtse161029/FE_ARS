@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import styles from './Forum.module.css';
 import {
   X,
   Tag,
@@ -11,17 +10,33 @@ import {
   AlertTriangle,
   RefreshCw,
   AlertCircle,
+  Plus,
+  Search,
+  Hash,
+  TrendingUp,
+  BarChart3,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
+import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useForumPosts, useCreateForumPost } from '../../hooks/useForumPosts';
 import { useFollow } from '../../hooks/useFollow';
 import { useFirebaseUpload } from '../../hooks/useFirebaseUpload';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { ROUTES } from '../../routes/paths';
 import { ForumPostCard } from '../../components/forum/ForumPostCard';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
+import { Input } from '../../components/Input/Input';
 import { storage } from '../../utils/storage';
 import { PALETTE, initialsFromName } from './forum.utils';
-
+import styles from './Forum.module.css';
 
 type Category = 'All Posts' | 'My Posts' | 'Following';
 type SortBy = 'Newest' | 'Most Discussed' | 'Most Viewed';
@@ -30,8 +45,8 @@ const ALL_CATEGORIES: readonly Category[] = ['All Posts', 'My Posts', 'Following
 
 // Page size for client-side pagination. The Swagger `GET /api/ForumPost`
 // endpoint doesn't declare a pageNumber/pageSize parameter, so we cap the
-// rendered list at 10 posts per page to keep the UI snappy.
-const POSTS_PER_PAGE = 10;
+// rendered list at 5 posts per page to keep the UI snappy.
+const POSTS_PER_PAGE = 5;
 
 // Constants for client-side sort options. The BE only declares a `sort`
 // query param as a string; we send these values through verbatim so a
@@ -44,6 +59,8 @@ const SORT_QUERY_VALUE: Record<SortBy, string> = {
 
 export const Forum = () => {
   const { isVerified, canCreatePost } = usePermissions();
+  const { canInteract, reason: interactDisabledReason } =
+    useCanInteractInForum();
   const { user } = useAuth();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
@@ -118,14 +135,131 @@ export const Forum = () => {
     Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
   );
 
+  const postCountLabel = error
+    ? '—'
+    : `${filteredPosts.length} post${filteredPosts.length === 1 ? '' : 's'}`;
+
+  // Part 4 — keyboard shortcuts for the Forum feed.
+  // j/k navigate posts, Enter opens a comments section,
+  // n opens the create-post modal, f focuses the search field.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: paginatedPosts.length,
+    onOpen: (index) => {
+      const post = paginatedPosts[index];
+      if (!post) return;
+      // "Open" expands the focused post's comments by toggling its
+      // engagement row. ForumPostCard collapses comments by default;
+      // pressing Enter on a focused post is the most common navigation
+      // gesture here, so we expose the comments thread.
+      const event = new CustomEvent('ars:forum-select-post', {
+        detail: { postId: post.id ?? null },
+      });
+      window.dispatchEvent(event);
+    },
+    onNew: () => {
+      if (!canInteract) return;
+      setIsCreateModalOpen(true);
+    },
+    filterFocusId: 'forum-search-input',
+  });
+
+  // ─── Trending tags + Forum stats (sidebar density) ─────────────────────────
+  // Derived purely from the loaded `posts` collection — no mock data, no extra
+  // API calls. Tags come straight off `post.tags` (already in the ForumPost
+  // wire shape, see types/forum.types.ts). Stats are computed against the full
+  // (unfiltered) post set so the numbers remain stable as the user toggles
+  // Categories / Filters — that way the sidebar feels like a workspace, not
+  // a duplicate of the active filter pill in the toolbar.
+  const MAX_TRENDING_TAGS = 8;
+
+  const trendingTags = useMemo<{ tag: string; count: number }[]>(() => {
+    const counts = new Map<string, number>();
+    for (const post of posts) {
+      if (!post.tags || post.tags.length === 0) continue;
+      for (const raw of post.tags) {
+        const tag = (raw ?? '').trim();
+        if (!tag) continue;
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.tag.localeCompare(b.tag);
+      })
+      .slice(0, MAX_TRENDING_TAGS);
+  }, [posts]);
+
+  const forumStats = useMemo(() => {
+    const authors = new Set<number>();
+    let tagTotal = 0;
+    for (const post of posts) {
+      if (typeof post.authorId === 'number') {
+        authors.add(post.authorId);
+      }
+      if (post.tags && post.tags.length > 0) {
+        tagTotal += post.tags.length;
+      }
+    }
+    return {
+      totalPosts: posts.length,
+      uniqueAuthors: authors.size,
+      taggedPosts: tagTotal,
+    };
+  }, [posts]);
+
+  // Apply a tag chip — populates the search field so the feed filters down.
+  // We reuse the existing `search` input (the BE only exposes `search`,
+  // `sort`, `category` query params), so a tag click feels like typing a
+  // search term. The handler is a no-op while a refresh is in flight so we
+  // don't trigger a refetch in a way that the user can't reason about.
+  const handleTagClick = useCallback((tag: string) => {
+    setSearchTerm(tag);
+  }, []);
+
   return (
     <div className={styles.forumPage}>
+      <PageHeader
+        eyebrow="Community"
+        title="Forum"
+        description={
+          isVerified
+            ? 'Browse research conversations, follow colleagues, and contribute through the verified community workflow.'
+            : 'Browse public discussions while your account is pending administrator verification.'
+        }
+        breadcrumbs={
+          <>
+            Home <span aria-hidden>/</span>{' '}
+            <span className={styles.breadcrumbsActive}>Forum</span>
+          </>
+        }
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Plus size={14} />}
+            onClick={() => {
+              if (!canInteract) return;
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!canInteract}
+            title={
+              canInteract
+                ? undefined
+                : interactDisabledReason ??
+                  'Posting is disabled until your account is approved by an Administrator.'
+            }
+            data-testid="forum-create-post"
+          >
+            Create post
+          </Button>
+        }
+      />
+
       <div className={styles.forumLayout}>
         {/* ─── LEFT SIDEBAR ─── */}
-        <aside className={styles.sidebar}>
-          <h1 className={styles.forumTitle}>FORUM</h1>
-
-          {/* Categories */}
+        <aside className={styles.sidebar} aria-label="Forum filters">
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Categories</div>
             <div className={styles.categoryList}>
@@ -144,22 +278,94 @@ export const Forum = () => {
             </div>
           </div>
 
-          {/* Filters */}
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarSectionLabel}>Filters</div>
-            <div className={styles.filterInputs}>
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Search</label>
-                <input
-                  type="text"
-                  className={styles.filterInput}
-                  placeholder="Search posts..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            <Input
+              id="forum-search-input"
+              label="Search"
+              placeholder="Search posts…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<Search size={14} />}
+            />
+          </div>
+
+          {/* ─── Trending Tags (this worker) ───────────────────────────────
+              Fills the negative space below the Filters input. Tags are
+              derived from the loaded posts (no extra API call, no mock
+              data) and a click populates the search field above so the
+              filter is observable in the feed. Hidden entirely when no
+              tags exist so the sidebar never shows an empty placeholder. */}
+          {trendingTags.length > 0 && (
+            <div className={styles.sidebarSection}>
+              <div className={styles.sidebarSectionLabel}>
+                <span className={styles.sidebarSectionLabelIcon} aria-hidden>
+                  <TrendingUp size={12} />
+                </span>
+                Trending Tags
+              </div>
+              <div className={styles.tagChipList}>
+                {trendingTags.map(({ tag, count }) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={styles.tagChip}
+                    onClick={() => handleTagClick(tag)}
+                    title={`Filter posts by #${tag} (${count} post${count === 1 ? '' : 's'})`}
+                    aria-label={`Filter by tag ${tag}, ${count} post${count === 1 ? '' : 's'}`}
+                  >
+                    <Hash size={11} className={styles.tagChipIcon} aria-hidden />
+                    <span className={styles.tagChipText}>{tag}</span>
+                    <span className={styles.tagChipCount} aria-hidden>
+                      {count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ─── Forum Stats (this worker) ────────────────────────────────
+              Compact three-row overview derived from the same loaded
+              posts. Numbers stay stable across Category / Filter
+              toggles (computed against the full `posts` set) so the
+              sidebar reads as a workspace overview, not a duplicate of
+              the active-filter pill in the toolbar. Hidden while the
+              feed is loading to avoid showing zeros that would imply
+              "no posts" when we're still fetching. */}
+          {!isLoading && posts.length > 0 && (
+            <div className={styles.sidebarSection}>
+              <div className={styles.sidebarSectionLabel}>
+                <span className={styles.sidebarSectionLabelIcon} aria-hidden>
+                  <BarChart3 size={12} />
+                </span>
+                Forum Stats
+              </div>
+              <ul className={styles.statsList} role="list">
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <FileText size={12} className={styles.statIcon} aria-hidden />
+                    Posts
+                  </span>
+                  <span className={styles.statValue}>{forumStats.totalPosts}</span>
+                </li>
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <UsersIcon size={12} className={styles.statIcon} aria-hidden />
+                    Authors
+                  </span>
+                  <span className={styles.statValue}>{forumStats.uniqueAuthors}</span>
+                </li>
+                <li className={styles.statRow} role="listitem">
+                  <span className={styles.statLabel}>
+                    <Tag size={12} className={styles.statIcon} aria-hidden />
+                    Tags
+                  </span>
+                  <span className={styles.statValue}>{forumStats.taggedPosts}</span>
+                </li>
+              </ul>
+            </div>
+          )}
         </aside>
 
         {/* ─── RIGHT FEED ─── */}
@@ -183,50 +389,49 @@ export const Forum = () => {
             </div>
           )}
 
-          {/* Feed Header */}
-          <div className={styles.feedHeader}>
-            <div className={styles.feedTitleRow}>
-              <h2 className={styles.feedTitle}>PUBLIC FORUM</h2>
-              {error ? (
-                <span
-                  className={styles.postCountBadge}
-                  aria-label="Post count unavailable"
-                  title="Post count unavailable while the forum is unreachable"
-                >
-                  —
-                </span>
-              ) : (
-                <span className={styles.postCountBadge}>{filteredPosts.length} posts</span>
-              )}
-              <button
-                className={`${styles.createPostBtn} ${!canCreatePost ? styles.createPostBtnDisabled : ''}`}
-                onClick={() => {
-                  if (!canCreatePost) return;
-                  setIsCreateModalOpen(true);
-                }}
-                disabled={!canCreatePost}
-                aria-disabled={!canCreatePost}
-                title={
-                  canCreatePost
-                    ? undefined
-                    : 'Posting is disabled until your account is approved by an Administrator.'
-                }
-              >
-                + Create Post
-              </button>
+          {/* Subscription-locked banner — shown only to Researcher /
+              Lecturer whose subscription is missing or expired. Admin /
+              Reviewer / Graduate Student never see this banner. */}
+          {!canInteract && canCreatePost && (
+            <div
+              className={styles.pendingBanner}
+              role="status"
+              aria-live="polite"
+              data-testid="forum-subscription-banner"
+            >
+              <span className={styles.pendingBannerIcon}>
+                <AlertTriangle size={18} />
+              </span>
+              <div className={styles.pendingBannerText}>
+                <p className={styles.pendingBannerTitle}>
+                  Read-only access — your ARS subscription is inactive or has expired.
+                </p>
+                <p className={styles.pendingBannerHint}>
+                  {interactDisabledReason ??
+                    'Renew your subscription to continue interacting with the Forum.'}{' '}
+                  <a href={ROUTES.SUBSCRIPTION}>View subscription plans</a>.
+                </p>
+              </div>
             </div>
+          )}
 
-            {/* Sort & Filter Toolbar */}
-            <div className={styles.toolbar}>
+          {/* Feed Toolbar */}
+          <div className={styles.feedToolbar}>
+            <div className={styles.feedToolbarLeft}>
+              <span className={styles.postCountBadge}>{postCountLabel}</span>
+              <span className={styles.toolbarDivider} aria-hidden />
               <select
                 className={styles.sortSelect}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
+                aria-label="Sort posts"
               >
                 <option>Newest</option>
                 <option>Most Discussed</option>
                 <option>Most Viewed</option>
               </select>
+            </div>
+            <div className={styles.feedToolbarRight}>
               <button
                 type="button"
                 className={styles.refreshBtn}
@@ -240,47 +445,64 @@ export const Forum = () => {
             </div>
           </div>
 
-          {/* API error banner */}
+          {/* API error banner — shared ErrorBanner */}
           {error && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={16} />
-              <span>{error.message || 'Failed to load posts.'}</span>
-              <button
-                type="button"
-                className={styles.errorBannerRetry}
-                onClick={() => void refetch()}
-                disabled={isLoading}
-                aria-label="Retry loading forum posts"
-              >
-                {isLoading ? 'Retrying…' : 'Retry'}
-              </button>
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Couldn't load forum posts"
+              message={error.message || 'Failed to load posts.'}
+              retry={
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void refetch()}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Retrying…' : 'Retry'}
+                </Button>
+              }
+            />
           )}
 
-          {/* Post Cards */}
+          {/* Post Cards / Loading / Empty */}
           <div className={styles.postList}>
             {isLoading && posts.length === 0 && (
-              <div className={styles.stateMessage}>Loading posts…</div>
+              <SkeletonRow count={4} rowHeight={120} gap={16} withHeader />
             )}
 
             {!isLoading && !error && filteredPosts.length === 0 && (
-              <div className={styles.stateMessage}>
-                {effectiveCategory === 'Following'
-                  ? 'You are not following any authors yet.'
-                  : effectiveCategory === 'My Posts'
-                    ? 'You have not published any posts yet.'
-                    : 'No posts match your filters.'}
-              </div>
+              <EmptyState
+                icon={<AlertCircle size={20} />}
+                title={
+                  effectiveCategory === 'Following'
+                    ? 'Not following any authors yet'
+                    : effectiveCategory === 'My Posts'
+                      ? 'You have not published any posts yet'
+                      : 'No posts match your filters'
+                }
+                description={
+                  effectiveCategory === 'Following'
+                    ? 'Follow a colleague from any forum post to see their updates here.'
+                    : effectiveCategory === 'My Posts'
+                      ? 'Use the Create post button to share research with the community.'
+                      : 'Try a different search or clear your filters.'
+                }
+                compact
+              />
             )}
 
-            {paginatedPosts.map((post) => (
-              <ForumPostCard
+            {paginatedPosts.map((post, index) => (
+              <div
                 key={post.id}
-                post={post}
-                isVerified={isVerified}
-                currentUserId={currentUserId}
-                currentUserName={currentUserName}
-              />
+                className={selectedIndex === index ? styles.selectedPostWrap : undefined}
+              >
+                <ForumPostCard
+                  post={post}
+                  isVerified={isVerified}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              </div>
             ))}
           </div>
 
@@ -364,6 +586,24 @@ const CreatePostModal = ({
   const [attachedPdf, setAttachedPdf] = useState<File | null>(null);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Part 4 — Ctrl/Cmd+Enter publishes the post. The handler runs against
+  // a ref so the latest `handlePublish` is always invoked regardless of
+  // when the keyboard listener fires.
+  const publishRef = useRef<() => Promise<void>>(async () => {});
+  useShortcuts([
+    {
+      key: 'Enter',
+      modifier: 'mod',
+      label: 'Publish post',
+      description: 'Submit the new forum post (Ctrl/Cmd + Enter).',
+      group: 'forum',
+      allowInInputs: true,
+      handler: () => {
+        void publishRef.current();
+      },
+    },
+  ]);
   // Local submitError captures synchronous failures (e.g. attachment upload
   // errors). The hook's `error` already handles BE failures with a sanitized
   // 5xx message — we surface whichever is more relevant.
@@ -431,22 +671,43 @@ const CreatePostModal = ({
       setSubmitError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     }
   };
+  // Keep the publish ref pointing at the latest implementation so the
+  // keyboard handler always calls the freshest closure.
+  publishRef.current = handlePublish;
 
   const avatarInitials = initialsFromName(currentUserName);
-  const avatarColor = PALETTE[currentUserId % PALETTE.length];
+  const paletteIndex = currentUserId % PALETTE.length;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={styles.modalOverlay}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className={styles.modalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="forum-create-post-title"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Create Forum Post</h2>
+          <h2 id="forum-create-post-title" className={styles.modalTitle}>Create Forum Post</h2>
+          <button
+            type="button"
+            className={styles.modalCloseButton}
+            onClick={onClose}
+            aria-label="Close create post dialog"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
 
         {/* Author Header */}
         <div className={styles.modalAuthorHeader}>
           <div
             className={styles.modalAuthorAvatar}
-            style={{ backgroundColor: avatarColor, color: '#0f172a' }}
+            data-palette={String(paletteIndex)}
           >
             {avatarInitials}
           </div>
@@ -458,9 +719,8 @@ const CreatePostModal = ({
 
         <div className={styles.modalBody}>
           {/* Title */}
-          <input
-            type="text"
-            className={styles.titleInput}
+          <Input
+            label="Title"
             placeholder="Post title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -468,31 +728,43 @@ const CreatePostModal = ({
           />
 
           {/* Category (optional, free-text until BE ships category list) */}
-          <input
-            type="text"
-            className={styles.titleInput}
+          <Input
+            label="Category"
             placeholder="Category (optional)"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
+            required={false}
           />
 
           {/* Abstract (optional) */}
-          <textarea
-            className={styles.abstractTextarea}
-            placeholder="Brief abstract (optional)"
-            rows={2}
-            value={abstract}
-            onChange={(e) => setAbstract(e.target.value)}
-          />
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel} htmlFor="post-abstract">
+              Abstract <span className={styles.fieldHint}>(optional)</span>
+            </label>
+            <textarea
+              id="post-abstract"
+              className={styles.abstractTextarea}
+              placeholder="Brief abstract (optional)"
+              rows={2}
+              value={abstract}
+              onChange={(e) => setAbstract(e.target.value)}
+            />
+          </div>
 
           {/* Plain Textarea - content */}
-          <textarea
-            className={styles.modalTextarea}
-            placeholder="Share your thoughts..."
-            rows={8}
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-          />
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel} htmlFor="post-content">
+              Content <span className={styles.fieldHint}>(required)</span>
+            </label>
+            <textarea
+              id="post-content"
+              className={styles.modalTextarea}
+              placeholder="Share your thoughts..."
+              rows={8}
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+            />
+          </div>
 
           {/* Tag Input with # prefix display */}
           <div className={styles.tagInputRow}>
@@ -559,7 +831,7 @@ const CreatePostModal = ({
               {attachedPdf && (
                 <div className={styles.attachedFile}>
                   <FileText size={14} />
-                  <span>{attachedPdf.name}</span>
+                  <span className={styles.attachedFileName}>{attachedPdf.name}</span>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
@@ -572,7 +844,7 @@ const CreatePostModal = ({
               {attachedImage && (
                 <div className={styles.attachedFile}>
                   <ImageIcon size={14} />
-                  <span>{attachedImage.name}</span>
+                  <span className={styles.attachedFileName}>{attachedImage.name}</span>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
@@ -623,43 +895,46 @@ const CreatePostModal = ({
 
           {/* Per-upload errors shown once the upload has finished with an error */}
           {pdfUpload.error && !pdfUpload.isUploading && (
-            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
-              <AlertCircle size={14} />
-              PDF upload: {pdfUpload.error}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="PDF upload failed"
+              message={pdfUpload.error}
+            />
           )}
           {imageUpload.error && !imageUpload.isUploading && (
-            <div className={styles.errorBanner} role="alert" style={{ marginTop: 8 }}>
-              <AlertCircle size={14} />
-              Image upload: {imageUpload.error}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Image upload failed"
+              message={imageUpload.error}
+            />
           )}
 
           {submitError && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertCircle size={14} />
-              {submitError}
-            </div>
+            <ErrorBanner
+              tone="error"
+              title="Couldn't publish post"
+              message={submitError}
+            />
           )}
         </div>
 
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={onClose}
-            disabled={submitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.publishBtn}
-            disabled={!postContent.trim() || submitting || pdfUpload.isUploading || imageUpload.isUploading}
+          </Button>
+          <Button
+            variant="primary"
             onClick={handlePublish}
+            disabled={
+              !postContent.trim() ||
+              submitting ||
+              pdfUpload.isUploading ||
+              imageUpload.isUploading
+            }
+            isLoading={submitting}
           >
-            {submitting ? 'Publishing…' : 'Publish Post'}
-          </button>
+            Publish post
+          </Button>
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@
 export { useFetch } from './useFetch';
 export { useApiCall } from './useApiCall';
 export { useMajorFields, useSubFields } from './useMajorFields';
-export { useWallet } from './useWallet';
 export { useReviewerProfiles, useReviewerAvailability } from './useReviewerProfiles';
 export { useFollowers, useFollowReviewer, useFollowCounts } from './useFollowers';
 // useFollow — Agent 34: forum follow / unfollow hook with optimistic UI
@@ -14,8 +13,6 @@ export { useUserRoles, useAssignRole } from './useUserRoles';
 export { useCommentVotes, useVoteOnComment } from './useCommentVotes';
 export { useForumPosts, useCreateForumPost } from './useForumPosts';
 export { useForumComments, useForumCommentMutations } from './useForumComments';
-export { useCreatePaymentLink, useCancelPayment } from './useCreatePaymentLink';
-export { useReceiptUpload } from './useReceiptUpload';
 export { useImageUpload } from './useImageUpload';
 export { useAdminGuard } from './useAdminGuard';
 export { useVerifiedGuard } from './useVerifiedGuard';
@@ -36,3 +33,10 @@ export { useLecturerProfile } from './useLecturerProfile';
 // Agent 15 — Table pagination helper.
 export { usePagination } from './usePagination';
 export type { UsePaginationResult } from './usePagination';
+// Part 1 — Keyboard shortcuts foundation. Registered by components that
+// declare global key handlers; the hook itself lives at src/hooks/useShortcuts.ts.
+export { useShortcuts } from './useShortcuts';
+export type { ShortcutSpec, ShortcutHandler } from './useShortcuts';
+// Part 3 — List/table keyboard navigation: j/k row nav, Enter open, n new, f filter.
+export { useListShortcuts } from './useListShortcuts';
+export type { UseListShortcutsOptions } from './useListShortcuts';

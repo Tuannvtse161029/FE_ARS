@@ -54,6 +54,7 @@ import {
 } from '../../services/groupMember.service';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { MilestoneProgress } from '../../components/research/MilestoneProgress';
+import BackendGapBanner from '../../components/BackendGapBanner';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
@@ -269,6 +270,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const openInviteModal = () => {
+    if (members.length >= 4) {
+      setInviteError('This group already has the maximum of 4 members. Remove a member before inviting another.');
+      return;
+    }
     setInviteEmailsInput('');
     setInviteError(null);
     setShowInviteModal(true);
@@ -286,6 +291,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
       .split(/[\n,;]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
+
+    if (members.length + emails.length > 4) {
+      setInviteError(`A group can have at most 4 members. You can invite ${Math.max(0, 4 - members.length)} more student(s).`);
+      return;
+    }
 
     if (emails.length === 0) {
       setInviteError('Please enter at least one valid email address.');
@@ -310,10 +320,13 @@ export const LecturerGroupDetail = (): JSX.Element => {
         variant: 'success',
       });
       await loadMembers();
-    } catch (err) {
-      setInviteError(
-        err instanceof Error ? err.message : 'Failed to send invitations.',
-      );
+    } catch (err: any) {
+      const status = err?.response?.status;
+      setInviteError(status === 401
+        ? 'Your session has expired. Please sign in again.'
+        : status === 403
+          ? 'You are not allowed to invite students to this group.'
+          : err?.response?.data?.message || err?.message || 'Failed to send invitations.');
     } finally {
       setIsInviting(false);
     }
@@ -324,6 +337,12 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const handleSetLeader = async (member: GroupMember) => {
     const memberId = member.groupMemberId ?? member.id;
     if (!memberId) return;
+    const currentLeader = members.find((candidate) => candidate.isLeader);
+    if (currentLeader && currentLeader.id !== memberId) {
+      const currentName = currentLeader.studentName || `Student #${currentLeader.studentId ?? currentLeader.id}`;
+      const nextName = member.studentName || `Student #${member.studentId ?? member.id}`;
+      if (!window.confirm(`Replace ${currentName} as group leader with ${nextName}?`)) return;
+    }
     setLeaderActionLoading(memberId);
     try {
       await groupMemberService.setLeader(memberId, member.studentId ?? undefined);
@@ -334,7 +353,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
       });
       await loadMembers();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Không thể gán vai trò Trưởng nhóm.';
+      const status = err?.response?.status;
+      const msg = status === 401 ? 'Your session has expired. Please sign in again.' : status === 403 ? 'You are not allowed to change the group leader.' : err?.response?.data?.message || err?.message || 'Unable to assign group leader.';
       setBanner({
         visible: true,
         text: msg,
@@ -358,7 +378,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
       });
       await loadMembers();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Không thể hủy vai trò Trưởng nhóm.';
+      const status = err?.response?.status;
+      const msg = status === 401 ? 'Your session has expired. Please sign in again.' : status === 403 ? 'You are not allowed to change the group leader.' : err?.response?.data?.message || err?.message || 'Unable to remove group leader.';
       setBanner({
         visible: true,
         text: msg,
@@ -577,16 +598,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {relatedTopic ? (
           <div className={styles.cardInner} data-testid="group-detail-topic-summary">
             <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
-            <span style={{ marginLeft: 12 }}>
+            <span className={styles.topicSummaryText}>
               <strong>{relatedTopic.title ?? `RT-${group.topicId}`}</strong>
               {relatedTopic.description?.trim() && (
-                <div
-                  style={{
-                    color: '#475569',
-                    fontSize: 13,
-                    marginTop: 4,
-                  }}
-                >
+                <div className={styles.topicSummaryDesc}>
                   {relatedTopic.description}
                 </div>
               )}
@@ -594,7 +609,6 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <Link
               to={ROUTES.LECTURER_RESEARCH_TOPICS}
               className={styles.openLink}
-              style={{ marginLeft: 'auto' }}
               data-testid="group-detail-topic-link"
             >
               <ExternalLink size={14} aria-hidden /> Open topic
@@ -660,19 +674,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {/* MEMBERS LIST (L2.b) */}
       <section className={styles.card}>
         <header className={styles.cardHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div className={styles.cardHeaderRow}>
             <h2 className={styles.cardTitle}>
               <Users size={16} aria-hidden /> Group members ({members.length})
             </h2>
             <button
               type="button"
-              className={styles.primaryBtn}
+              className={styles.inviteStudentsBtn}
               onClick={openInviteModal}
-              style={{ fontSize: 13, padding: '6px 12px', gap: 6 }}
+              disabled={members.length >= 4 || isMembersLoading}
+              title={members.length >= 4 ? 'Maximum of 4 members reached' : 'Invite students'}
             >
               <UserPlus size={14} aria-hidden /> Invite students
             </button>
           </div>
+          <BackendGapBanner field="ResearchGroup maximum member count" feature="The four-member limit is enforced in this interface; the live backend contract does not document the constraint" />
           <span className={styles.cardHint}>
             Manage student members in this group. You can invite new students directly by email.
           </span>
@@ -729,7 +745,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
+                        <strong style={{ fontSize: '0.95rem', color: 'var(--ink-primary)' }}>
                           {m.studentName || `Student #${m.studentId ?? mid}`}
                         </strong>
                         {m.isLeader && (
@@ -1046,7 +1062,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   }}
                   disabled={isInviting}
                 />
-                <span className={styles.cardHint} style={{ marginTop: 4 }}>
+                <span className={styles.cardHint}>
                   The system will automatically find student accounts and add them as group members.
                 </span>
               </div>
@@ -1070,7 +1086,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 <button
                   type="submit"
                   className={styles.primaryBtn}
-                  disabled={isInviting || !inviteEmailsInput.trim()}
+                  disabled={isInviting || !inviteEmailsInput.trim() || members.length >= 4}
                 >
                   {isInviting ? (
                     <Loader size={14} className={styles.spinningIcon} aria-hidden />

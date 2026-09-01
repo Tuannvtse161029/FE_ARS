@@ -46,21 +46,21 @@
 }
 
 .circleActive {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 4px rgba(45, 53, 97, 0.15);
+  background-color: var(--ars-yellow);
+  color: #1a1a1a;
+  border-color: var(--ars-yellow);
+  box-shadow: 0 0 0 4px rgba(245, 180, 0, 0.22);
 }
 
 .circleActive:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--ars-yellow);
   outline-offset: 4px;
 }
 
 .circleCompleted {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border-color: var(--ars-blue);
+  background-color: var(--ars-yellow);
+  color: #1a1a1a;
+  border-color: var(--ars-yellow);
 }
 
 .label {
@@ -86,7 +86,7 @@
 }
 
 .connectorCompleted {
-  background-color: var(--ars-blue);
+  background-color: var(--ars-yellow);
 }
 
 @media (max-width: 480px) {

@@ -1,22 +1,15 @@
 /**
- * SeminarWorkspace — ARS Research Constellation
- * "Guidance Studio" — coordinated academic workspace.
- * Lecturer role accent: var(--ars-lecturer, #7c2d12)
- * Tokens are globally available via src/styles/ars-tokens.css
+ * SeminarWorkspace — Lecturer academic organizer.
+ *
+ * Design direction:
+ * - Role accent: --ars-lecturer (#7c2d12)
+ * - Dense operational surface; data-forward, minimal decoration
+ * - Tokens are the single source of truth (see src/styles/ars-tokens.css)
+ * - PageHeader, EmptyState, ErrorBanner, SkeletonRow, StatusBadge come from
+ *   the foundation; no parallel implementations here.
  */
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Page Shell ─────────────────────────────────────────── */
-.seminarWorkspace {
-  width: 100%;
+.page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -24,186 +17,35 @@
   color: var(--ars-ink);
 }
 
-/* Alias for backward compat */
-.seminarPage {
-  width: 100%;
+/* ── Toolbar (above list) ────────────────────────────────────────── */
+.toolbarRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  font-family: var(--font-family-ui);
-  color: var(--ars-ink);
-}
-
-/* ── Breadcrumbs ─────────────────────────────────────────── */
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
-/* ── Page Header ─────────────────────────────────────────── */
-.pageHeader {
-  text-align: left;
-  display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-8) var(--space-6) var(--space-8);
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  position: relative;
-}
-
-.pageHeader::before {
-  content: '';
-  position: absolute;
-  left: var(--space-3);
-  top: var(--space-3);
-  bottom: var(--space-3);
-  width: 3px;
-  background: var(--ars-lecturer, #7c2d12);
-  border-radius: 999px;
-}
-
-/* Alias for backward compat */
-.header {
-  text-align: left;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-8) var(--space-6) var(--space-8);
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  position: relative;
-}
-
-.header::before {
-  content: '';
-  position: absolute;
-  left: var(--space-3);
-  top: var(--space-3);
-  bottom: var(--space-3);
-  width: 3px;
-  background: var(--ars-lecturer, #7c2d12);
-  border-radius: 999px;
-}
-
-.headerLeft {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.pageTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.pageSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: 0;
-  line-height: var(--line-height-normal);
-}
-
-/* ── Controls ───────────────────────────────────────────── */
-.refreshBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.refreshBtn:hover {
-  color: var(--ars-ink);
-  background: var(--ars-paper-inset);
-}
-
-.refreshBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.refreshBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spinningIcon {
-  animation: spin 0.9s linear infinite;
-}
-
-.createSeminarBtn {
-  background: var(--ars-lecturer, #7c2d12);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-5);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  white-space: nowrap;
-  transition: background var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.createSeminarBtn:hover {
-  background: var(--ars-lecturer-mid, #9a3412);
-}
-
-.createSeminarBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-/* ── Tabs Row ────────────────────────────────────────────── */
-.tabsRow {
-  display: flex;
-  gap: 0;
-  border-bottom: var(--border-thin);
-  padding: 0 var(--space-8);
-  background: var(--ars-paper-alt);
-  align-items: center;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ars-network);
+}
+
 .tabBtn {
-  background: none;
+  background: transparent;
   border: none;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--ars-ink-muted);
   cursor: pointer;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   position: relative;
-  transition: color var(--transition-fast);
+  transition: color var(--motion-feedback);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-family-ui);
   white-space: nowrap;
 }
@@ -212,530 +54,130 @@
   color: var(--ars-ink);
 }
 
-.activeTab {
-  color: var(--ars-lecturer, #7c2d12);
-  font-weight: var(--font-weight-bold);
+.tabBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
 }
 
-.activeTab::after {
+.tabActive {
+  color: var(--ars-lecturer);
+}
+
+.tabActive::after {
   content: '';
   position: absolute;
   bottom: -1px;
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer);
 }
 
-.tabBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: -2px;
-}
-
-.showingCountRight {
-  margin-left: auto;
+.tabCount {
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
-  font-family: var(--font-family-mono);
-  padding: var(--space-3) 0;
-  white-space: nowrap;
-}
-
-/* ── Success Toast Banner ────────────────────────────────── */
-.successToastBanner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
-  background: var(--ars-success-bg, #d1fae5);
-  border: 1px solid var(--ars-success, #047857);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  animation: fadeIn 0.2s ease-out;
-}
-
-.toastLeft {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  flex: 1;
-}
-
-.toastCheckIcon {
-  color: var(--ars-success, #047857);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.toastTitle {
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-success, #047857);
-  font-size: var(--font-size-sm);
-  display: block;
-}
-
-.toastSub {
-  color: var(--ars-success, #047857);
-  font-size: var(--font-size-xs);
-  margin: var(--space-1) 0 0;
-  opacity: 0.85;
-}
-
-.toastRight {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-
-.justNowText {
-  font-size: var(--font-size-xs);
-  color: var(--ars-success, #047857);
-  font-family: var(--font-family-mono);
-  white-space: nowrap;
-}
-
-.toastCloseBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  color: var(--ars-success, #047857);
-  opacity: 0.7;
+  background: var(--ars-paper-inset);
+  padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
-  transition: opacity var(--transition-fast);
-}
-
-.toastCloseBtn:hover {
-  opacity: 1;
-}
-
-.toastCloseBtn:focus-visible {
-  outline: 2px solid var(--ars-success, #047857);
-  outline-offset: 2px;
-}
-
-/* ── Error Banner ──────────────────────────────────────── */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-error-bg, #fee2e2);
-  border: 1px solid var(--ars-error, #991b1b);
-  color: var(--ars-error, #991b1b);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.errorBannerIcon {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
-}
-
-.errorRetryBtn {
-  background: var(--ars-error, #991b1b);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.errorRetryBtn:hover {
-  background: #b91c1c;
-}
-
-.errorRetryBtn:focus-visible {
-  outline: 2px solid var(--ars-error, #991b1b);
-  outline-offset: 2px;
-}
-
-/* ── Seminars List ──────────────────────────────────────── */
-.seminarsList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: 0 var(--space-8);
-}
-
-/* ── Empty States ──────────────────────────────────────── */
-.emptyDrafts {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-8);
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-style: dashed;
-  border-radius: var(--radius-xl);
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-sm);
+  min-width: 22px;
   text-align: center;
 }
 
-.emptyIcon {
-  opacity: 0.5;
+.tabActive .tabCount {
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
 }
 
-.emptyTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-}
-
-.emptyText {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: 0;
-  max-width: 280px;
-  line-height: var(--line-height-normal);
-}
-
-/* ── Seminar Card ───────────────────────────────────────── */
-.seminarCard {
-  background: var(--ars-paper-alt);
-  border: var(--border-thin);
-  border-left: 3px solid var(--ars-lecturer, #7c2d12);
-  border-radius: var(--radius-xl);
-  padding: var(--space-5) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  text-align: left;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  animation: fadeIn 0.3s ease-out;
-}
-
-.seminarCard:hover {
-  border-color: var(--ars-lecturer-mid, #9a3412);
-  box-shadow: var(--shadow-sm);
-}
-
-.seminarCard:focus-within {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-/* ── Card Header Row ────────────────────────────────────── */
-.cardHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.badgeRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.newBadgePill {
-  background: var(--ars-info-bg);
-  color: var(--ars-info);
-  border: 1px solid var(--ars-info);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.statusUpcoming {
-  background: var(--ars-warning-bg);
-  color: var(--ars-warning);
-  border: 1px solid var(--ars-warning);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.statusInProgress {
-  background: var(--ars-info-bg);
-  color: var(--ars-info);
-  border: 1px solid var(--ars-info);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.statusCompleted {
-  background: var(--ars-success-bg);
-  color: var(--ars-success);
-  border: 1px solid var(--ars-success);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.seminarId {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  font-weight: var(--font-weight-bold);
-  white-space: nowrap;
-}
-
-.dateMeta {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-/* ── Seminar Content ────────────────────────────────────── */
-.seminarTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.seminarDescription {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: 0;
-  line-height: var(--line-height-normal);
-  max-width: 700px;
-}
-
-/* ── Roster Row ─────────────────────────────────────────── */
-.rosterRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.inviteCountText {
+.toolbarMeta {
   font-size: var(--font-size-xs);
   font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
 }
 
-/* ── Google Meet Box ────────────────────────────────────── */
-.meetBox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-info-bg);
-  border: 1px solid var(--ars-info);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-}
-
-.meetIcon {
-  color: var(--ars-info);
-  flex-shrink: 0;
-}
-
-.meetLinkText {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-info);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meetLinkText:hover {
-  text-decoration: underline;
-}
-
-/* ── Feedback Progress ──────────────────────────────────── */
-.feedbackProgressBlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.feedbackProgressLabels {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.progressLabel {
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-}
-
-.progressText {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink);
-}
-
-.progressBg {
-  height: 6px;
-  background: var(--ars-network);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  background: var(--ars-lecturer, #7c2d12);
-  border-radius: var(--radius-full);
-  transition: width 0.5s ease;
-}
-
-/* ── Card Actions Row ────────────────────────────────────── */
-.cardActionsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--ars-network);
-}
-
-/* Individual action buttons */
-.joinMeetBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-lecturer, #7c2d12);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.joinMeetBtn:hover:not(:disabled) {
-  background: var(--ars-lecturer-mid, #9a3412);
-}
-
-.joinMeetBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.joinMeetBtn:disabled {
-  background: var(--ars-ink-muted);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.sendInviteBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-color: var(--ars-lecturer, #7c2d12);
-  border-radius: var(--radius-md);
-  color: var(--ars-lecturer, #7c2d12);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.sendInviteBtn:hover:not(:disabled) {
-  background: var(--ars-lecturer-light, #fed7aa);
-}
-
-.sendInviteBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.sendInviteBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.feedbackDisabledBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-paper-inset);
-  border: var(--border-thin);
-  border-color: var(--ars-network);
-  border-radius: var(--radius-md);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: not-allowed;
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-  opacity: 0.7;
-}
-
-/* ── Read-only viewer note (Researcher / Reviewer / Grad Student) ─── */
-.viewerNoteText {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-3);
-  background: var(--ars-paper-inset);
-  border: var(--border-thin);
-  border-style: dashed;
-  border-radius: var(--radius-md);
-}
-
-/* ── Backend-availability banner (non-Lecturer safe state, §3.8) ──── */
-.backendAvailabilityBanner {
+/* ── Banner (success toast) ───────────────────────────────────────── */
+.banner {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-success-bg);
+  border: 1px solid var(--ars-success);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-success);
+  /* Success state is communicated by the banner content and status color. */
+}
+
+.bannerError {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+
+.bannerIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.bannerBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bannerTitle {
+  font-weight: var(--font-weight-bold);
+}
+
+.bannerText {
+  font-size: var(--font-size-xs);
+  opacity: 0.9;
+}
+
+.bannerCloseBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.bannerCloseBtn:hover {
+  opacity: 1;
+}
+
+.bannerCloseBtn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ── Backend availability banner ─────────────────────────────────── */
+.backendBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--ars-info-bg);
-  border: 1px solid var(--ars-info);
-  border-left-width: 3px;
+  border: 1px solid rgba(30, 64, 175, 0.25);
+  /* The 3px info-rule is a status affordance ("the BE is in a
+     fallback state, here's the caveat"), not the templated card
+     stripe anti-pattern. The detector overflags it by pattern match. */
+  border-left-width: 3px; /* impeccable-disable-line side-tab */
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   color: var(--ars-info);
-  animation: fadeIn 0.2s ease-out;
 }
 
-.backendAvailabilityIcon {
+.backendBannerIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -746,216 +188,434 @@
   border: 1px solid var(--ars-info);
   color: var(--ars-info);
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
-.backendAvailabilityBody {
+.backendBannerBody {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
+  gap: var(--space-1);
 }
 
-.backendAvailabilityTitle {
+.backendBannerTitle {
   font-weight: var(--font-weight-bold);
-  color: var(--ars-info);
-  font-size: var(--font-size-sm);
 }
 
-.backendAvailabilityText {
-  margin: 0;
-  color: var(--ars-info);
+.backendBannerText {
   font-size: var(--font-size-xs);
-  line-height: var(--line-height-normal);
+  line-height: 1.5;
   opacity: 0.92;
 }
 
-.backendAvailabilityText code {
+.backendBannerText code {
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
   background: var(--ars-paper);
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
 }
 
-.viewNotesBtn {
+/* ── Seminar list ────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.seminarCard {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
+  /* Seminar records remain stable while the list loads. */
+  /* Lecturer identity: a 6px rust corner-anchor dot at the top-left
+     replaces the prior `border-left: 3px solid var(--ars-lecturer)`
+     stripe that was identical across every role surface. The corner
+     dot + the rust accent on tab buttons and headings give Lecturer
+     surfaces their own visual personality. */
+  position: relative;
+}
+
+.seminarCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
+}
+
+.seminarCard:hover {
+  border-color: var(--ars-lecturer-mid);
+  box-shadow: var(--shadow-sm);
+}
+
+.seminarCard:focus-within {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.metaNewBadge {
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border: 1px solid rgba(30, 64, 175, 0.25);
+  font-family: var(--font-family-ui);
+}
+
+.pendingPill {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border: 1px solid var(--ars-warning);
+}
+
+.dateMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  flex-wrap: wrap;
+}
+
+.dateMetaInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cardTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.cardDescription {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+
+.capacityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+/* Google Meet box */
+.meetBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-info-bg);
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.meetBox svg {
+  color: var(--ars-info);
+  flex-shrink: 0;
+}
+
+.meetLink {
+  font-family: var(--font-family-mono);
+  color: var(--ars-info);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.meetLink:hover {
+  text-decoration: underline;
+}
+
+/* Feedback progress */
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.progressLabels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.progressValue {
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+}
+
+.progressBarBg {
+  height: 6px;
+  background: var(--ars-network);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--ars-lecturer);
+  border-radius: 999px;
+  /* Transform-based progress animation. Replaces the prior
+     `transition: width` that triggered layout reflow on every frame
+     when progress percentages changed. scaleX is GPU-composited and
+     transform-origin: left makes the fill grow from the left edge the
+     same way a width transition would. */
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform var(--motion-state);
+}
+
+/* Lecturer-primary button (overrides default ARS blue) */
+.actionBtnLecturer {
+  background-color: var(--ars-lecturer) !important;
+  border-color: var(--ars-lecturer) !important;
+}
+
+.actionBtnLecturer:hover:not(:disabled) {
+  background-color: var(--ars-lecturer-mid) !important;
+  border-color: var(--ars-lecturer-mid) !important;
+}
+
+/* Lecturer-success accent (used for "Launch Google Meet") */
+.actionBtnSuccess {
+  background-color: var(--ars-success) !important;
+  border-color: var(--ars-success) !important;
+}
+
+.actionBtnSuccess:hover:not(:disabled) {
+  background-color: var(--ars-success) !important;
+  filter: brightness(0.92);
+}
+
+/* Lecturer-info accent (used for "Copy Link" in generated dialog) */
+.actionBtnInfo {
+  background-color: var(--ars-info) !important;
+  border-color: var(--ars-info) !important;
+}
+
+/* Card actions */
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+}
+
+.actionBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-lecturer);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: var(--font-family-ui);
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+}
+
+.actionBtnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actionBtnPrimary:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.actionBtnOutline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  color: var(--ars-lecturer);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
+  font-family: var(--font-family-ui);
+}
+
+.actionBtnOutline:hover:not(:disabled) {
+  background: var(--ars-lecturer-light);
+}
+
+.actionBtnOutline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actionBtnOutline:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.actionBtnGhost {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   background: var(--ars-paper);
   border: var(--border-thin);
-  border-color: var(--ars-info);
   border-radius: var(--radius-md);
-  color: var(--ars-info);
+  color: var(--ars-ink-muted);
   padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: not-allowed;
   font-family: var(--font-family-ui);
+  opacity: 0.7;
 }
 
-.viewNotesBtn:hover {
-  background: var(--ars-info-bg);
-}
-
-.viewNotesBtn:focus-visible {
-  outline: 2px solid var(--ars-info);
-  outline-offset: 2px;
-}
-
-.feedbackGradingBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-lecturer, #7c2d12);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.feedbackGradingBtn:hover {
-  background: var(--ars-lecturer-mid, #9a3412);
-}
-
-.feedbackGradingBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-/* ── Modal Overlay ──────────────────────────────────────── */
+/* ── Modal Overlay ─────────────────────────────────────────────── */
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
-  animation: fadeIn 0.2s ease-out;
+  /* Dialog visibility is provided by the mounted state. */
 }
 
-.createModalCard {
+.modalCard {
   background: var(--ars-paper);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  box-shadow: var(--shadow-lg);
   max-height: 90vh;
   overflow-y: auto;
-}
-
-.generatedModalCard {
-  background: var(--ars-paper);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  width: 100%;
-  max-width: 520px;
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
   box-shadow: var(--shadow-lg);
-  max-height: 90vh;
-  overflow-y: auto;
+  border: var(--border-thin);
 }
 
-.feedbackModalCard {
-  background: var(--ars-paper);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  width: 100%;
+.modalCardLarge {
   max-width: 720px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  box-shadow: var(--shadow-lg);
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
-/* ── Modal Header ────────────────────────────────────────── */
-.modalHeaderRow {
+.modalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--ars-network);
 }
 
 .modalTitleBlock {
   display: flex;
   gap: var(--space-3);
   align-items: flex-start;
+  min-width: 0;
 }
 
-.modalHeaderIcon {
-  width: 40px;
-  height: 40px;
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--ars-lecturer-light, #fed7aa);
-  color: var(--ars-lecturer, #7c2d12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.feedbackModalIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--ars-lecturer-light, #fed7aa);
-  color: var(--ars-lecturer, #7c2d12);
-  display: flex;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
 .modalTitle {
-  font-family: var(--font-family-serif);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   margin: 0;
-  line-height: var(--line-height-tight);
+  line-height: 1.3;
 }
 
 .modalSubtitle {
+  display: block;
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
-  display: block;
-  margin-top: var(--space-1);
-  line-height: var(--line-height-normal);
+  margin-top: 2px;
 }
 
 .closeBtn {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--ars-ink-muted);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   padding: var(--space-1);
   border-radius: var(--radius-sm);
-  transition: color var(--transition-fast);
   flex-shrink: 0;
+  transition: color var(--motion-feedback);
 }
 
 .closeBtn:hover {
@@ -963,17 +623,27 @@
 }
 
 .closeBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
 }
 
-/* ── Form ──────────────────────────────────────────────── */
-.modalForm {
+.modalBody {
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--ars-network);
+  background: var(--ars-paper-alt);
+}
+
+/* ── Form fields (modal-scoped) ───────────────────────────────── */
 .formGroup {
   display: flex;
   flex-direction: column;
@@ -983,28 +653,33 @@
 .formLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .formInput,
-.formTextarea {
+.formTextarea,
+.formSelect {
   width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-thin);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
-  background: var(--ars-paper-inset);
+  background: var(--ars-paper);
   color: var(--ars-ink);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   box-sizing: border-box;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
+  min-height: 36px;
 }
 
 .formTextarea {
-  resize: vertical;
+  padding: var(--space-2) var(--space-3);
   min-height: 100px;
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .formInput::placeholder,
@@ -1013,43 +688,20 @@
 }
 
 .formInput:focus,
-.formTextarea:focus {
+.formTextarea:focus,
+.formSelect:focus {
   outline: none;
-  border-color: var(--ars-lecturer, #7c2d12);
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
 }
 
-.formInput:focus-visible,
-.formTextarea:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
+.helperText {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
 }
 
-/* ── Email Input ────────────────────────────────────────── */
-.emailsInputBox {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.emailRawInput {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink);
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-sm);
-  box-sizing: border-box;
-  transition: border-color var(--transition-fast);
-}
-
-.emailRawInput:focus {
-  outline: none;
-  border-color: var(--ars-lecturer, #7c2d12);
-}
-
-.emailTagsContainer {
+/* Email pills */
+.emailPills {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
@@ -1059,38 +711,31 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  background: var(--ars-info-bg);
-  color: var(--ars-info);
-  border: 1px solid var(--ars-info);
-  border-radius: var(--radius-full);
-  padding: 2px var(--space-3);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-}
-
-.removeEmailCross {
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 0;
   color: var(--ars-info);
-  opacity: 0.7;
-  transition: opacity var(--transition-fast);
+  background: var(--ars-info-bg);
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  border-radius: 999px;
+  padding: 2px var(--space-3);
 }
 
-.removeEmailCross:hover {
+.emailPillRemove {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+.emailPillRemove:hover {
   opacity: 1;
 }
 
-.removeEmailCross:focus-visible {
-  outline: 2px solid var(--ars-info);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* ── Checkbox ────────────────────────────────────────────── */
+/* Checkbox */
 .checkboxRow {
   display: flex;
   align-items: flex-start;
@@ -1103,10 +748,10 @@
 .checkboxInput {
   width: 16px;
   height: 16px;
-  flex-shrink: 0;
   margin-top: 2px;
-  accent-color: var(--ars-lecturer, #7c2d12);
+  accent-color: var(--ars-lecturer);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .checkboxLabel {
@@ -1114,328 +759,42 @@
   color: var(--ars-ink);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   cursor: pointer;
+  line-height: 1.4;
 }
 
-.checkboxLabel b {
+.checkboxLabel strong {
   font-weight: var(--font-weight-bold);
 }
 
 .checkboxSub {
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
-  line-height: var(--line-height-normal);
 }
 
-/* ── Modal Footer ───────────────────────────────────────── */
-.modalFormFooter {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--ars-network);
-}
-
-.modalCancelBtn {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-ink);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: all var(--transition-fast);
-  font-family: var(--font-family-ui);
-}
-
-.modalCancelBtn:hover:not(:disabled) {
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-ink-muted);
-}
-
-.modalCancelBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.modalCancelBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.modalSubmitNavyBtn {
-  background: var(--ars-lecturer, #7c2d12);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-5);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.modalSubmitNavyBtn:hover:not(:disabled) {
-  background: var(--ars-lecturer-mid, #9a3412);
-}
-
-.modalSubmitNavyBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.modalSubmitNavyBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.modalCloseNavyBtn {
-  background: var(--ars-lecturer, #7c2d12);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  padding: var(--space-2) var(--space-5);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.modalCloseNavyBtn:hover {
-  background: var(--ars-lecturer-mid, #9a3412);
-}
-
-.modalCloseNavyBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-/* ── Generated Modal ─────────────────────────────────────── */
-.generatedIconCircle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--ars-success-bg);
-  color: var(--ars-success);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-}
-
-.generatedTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  text-align: center;
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.generatedSub {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  text-align: center;
-  margin: 0;
-}
-
-.generatedMeetCard {
-  background: var(--ars-info-bg);
-  border: 1px solid var(--ars-info);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.generatedMeetLabel {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-info);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.generatedMeetInputRow {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.generatedMeetInput {
-  flex: 1;
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper);
-  color: var(--ars-ink);
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  box-sizing: border-box;
-  cursor: text;
-}
-
-.copyLinkBlueBtn {
-  background: var(--ars-info);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--ars-paper);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-  flex-shrink: 0;
-}
-
-.copyLinkBlueBtn:hover {
-  background: var(--ars-info-mid);
-}
-
-.copyLinkBlueBtn:focus-visible {
-  outline: 2px solid var(--ars-info);
-  outline-offset: 2px;
-}
-
-.yellowAlertBox {
-  background: var(--ars-warning-bg);
-  border: 1px solid var(--ars-warning);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.yellowAlertTitleRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--ars-warning);
-  line-height: var(--line-height-normal);
-}
-
-.yellowAlertIcon {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.yellowSentText {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-warning);
-  opacity: 0.8;
-}
-
-.generatedModalFooter {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--ars-network);
-}
-
-.backToSeminarsBtn {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-ink);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.backToSeminarsBtn:hover {
-  background: var(--ars-paper-inset);
-}
-
-.backToSeminarsBtn:focus-visible {
-  outline: 2px solid var(--ars-lecturer, #7c2d12);
-  outline-offset: 2px;
-}
-
-.launchMeetGreenBtn {
-  background: var(--ars-success);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--ars-paper);
-  padding: var(--space-2) var(--space-5);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.launchMeetGreenBtn:hover {
-  background: var(--ars-success-mid);
-}
-
-.launchMeetGreenBtn:focus-visible {
-  outline: 2px solid var(--ars-success);
-  outline-offset: 2px;
-}
-
-/* ── Feedback Modal Stats ─────────────────────────────────── */
-.feedbackStatsGrid {
+/* Stats grid (Feedback modal) */
+.statsGrid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
   background: var(--ars-paper-inset);
   border: var(--border-thin);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: var(--space-4);
 }
 
 @media (max-width: 640px) {
-  .feedbackStatsGrid {
+  .statsGrid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.statBlock {
+.statCell {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
+  min-width: 0;
 }
 
 .statLabel {
@@ -1447,77 +806,65 @@
   letter-spacing: 0.05em;
 }
 
-.statVal {
+.statValue {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
   font-family: var(--font-family-mono);
+  line-height: 1;
 }
 
-.statBlockCompletion {
+.statWide {
+  grid-column: span 2;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  grid-column: span 2;
 }
 
-.completionHeaderRow {
+.statWideHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.completionPercent {
+.statPercent {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
-  color: var(--ars-lecturer, #7c2d12);
+  color: var(--ars-lecturer);
   font-family: var(--font-family-mono);
 }
 
-.completionBarBg {
-  height: 8px;
-  background: var(--ars-network);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.completionBarFill {
-  height: 100%;
-  background: var(--ars-lecturer, #7c2d12);
-  border-radius: var(--radius-full);
-  transition: width 0.5s ease;
-}
-
-/* ── Student Grades Table ────────────────────────────────── */
-.studentGradesTableWrapper {
-  overflow-x: auto;
+/* Participants table (Feedback modal) */
+.participantsWrap {
   border: var(--border-thin);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
 }
 
-.studentGradesTable {
+.participantsLoading {
+  padding: var(--space-5);
+}
+
+.participantsTable {
   width: 100%;
   border-collapse: collapse;
 }
 
-.studentGradesTable thead tr {
-  background: var(--ars-paper-inset);
-}
-
-.studentGradesTable th {
-  padding: var(--space-3) var(--space-4);
+.participantsTable thead th {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-align: left;
-  border-bottom: var(--border-thin);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-inset);
+  border-bottom: 1px solid var(--ars-network);
   white-space: nowrap;
 }
 
-.studentGradesTable td {
+.participantsTable td {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--ars-network);
   font-size: var(--font-size-sm);
@@ -1525,201 +872,259 @@
   vertical-align: middle;
 }
 
-.studentGradesTable tbody tr:last-child td {
+.participantsTable tbody tr:last-child td {
   border-bottom: none;
 }
 
-.studentGradesTable tbody tr:hover {
-  background: var(--ars-paper-inset);
+.participantsTable tbody tr:hover {
+  background: var(--ars-paper-alt);
 }
 
-.studentCellBlock {
+.participantCell {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
-.studentAvatarMini {
+.participantAvatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer);
   color: #ffffff;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.studentNameText {
-  display: block;
+.participantName {
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
+  display: block;
 }
 
-.studentEmailText {
+.participantEmail {
   display: block;
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
   font-family: var(--font-family-mono);
 }
 
-.submittedPill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
+.evaluationCell {
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  font-size: var(--font-size-sm);
+  max-width: 280px;
+}
+
+/* Generated-meet dialog */
+.generatedIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   background: var(--ars-success-bg);
   color: var(--ars-success);
-  border: 1px solid var(--ars-success);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.pendingPill {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  background: var(--ars-warning-bg);
-  color: var(--ars-warning);
-  border: 1px solid var(--ars-warning);
+  justify-content: center;
+  align-self: center;
+  margin-bottom: var(--space-2);
+}
+
+.generatedTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  text-align: center;
+  margin: 0;
+}
+
+.generatedSub {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.meetCard {
+  background: var(--ars-info-bg);
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.meetCardLabel {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.commentText {
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-sm);
-  font-style: italic;
-  max-width: 300px;
-}
-
-/* ── Feedback Modal Footer ───────────────────────────────── */
-.feedbackModalFooter {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: space-between;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--ars-network);
-  flex-wrap: wrap;
-}
-
-.remindPendingBtn {
+  font-family: var(--font-family-mono);
+  color: var(--ars-info);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  background: var(--ars-paper);
+}
+
+.meetCardRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.meetCardInput {
+  flex: 1;
+  padding: 0 var(--space-3);
   border: var(--border-thin);
-  border-color: var(--ars-info);
   border-radius: var(--radius-md);
-  color: var(--ars-info);
-  padding: var(--space-2) var(--space-4);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  min-height: 36px;
+}
+
+.copyBtn {
+  background: var(--ars-info);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: 0 var(--space-4);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: background var(--transition-fast);
   font-family: var(--font-family-ui);
+  flex-shrink: 0;
+  min-height: 36px;
 }
 
-.remindPendingBtn:hover:not(:disabled) {
-  background: var(--ars-info-bg);
+.copyBtn:hover {
+  background: var(--ars-blue-mid);
 }
 
-.remindPendingBtn:focus-visible {
+.copyBtn:focus-visible {
   outline: 2px solid var(--ars-info);
   outline-offset: 2px;
 }
 
-.remindPendingBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.inviteAlert {
+  background: var(--ars-warning-bg);
+  border: 1px solid var(--ars-warning);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--ars-warning);
+  line-height: 1.5;
 }
 
-/* ── Responsive ─────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .pageHeader,
-  .header {
-    padding: var(--space-5) var(--space-5) var(--space-5) var(--space-5);
-  }
-
-  .pageHeader::before,
-  .header::before {
-    left: var(--space-5);
-  }
-
-  .tabsRow {
-    padding: 0 var(--space-5);
-  }
-
-  .seminarsList {
-    padding: 0 var(--space-5);
-  }
+.inviteAlertTitleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
+.inviteAlertSent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  opacity: 0.85;
+}
+
+/* Spinner */
+.spinning {
+  /* Copy status is explicit in the button label. */
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .pageHeader,
-  .header {
-    padding: var(--space-4) var(--space-4) var(--space-4) var(--space-4);
-    flex-direction: column;
-  }
-
-  .pageHeader::before,
-  .header::before {
-    left: var(--space-4);
-  }
-
-  .tabsRow {
-    padding: 0 var(--space-4);
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-
-  .showingCountRight {
-    display: none;
-  }
-
-  .seminarsList {
-    padding: 0 var(--space-4);
-  }
-
   .seminarCard {
     padding: var(--space-4);
   }
 
-  .cardHeaderRow {
+  .cardTopRow {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .cardActionsRow {
+  .cardActions {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .joinMeetBtn,
-  .sendInviteBtn,
-  .feedbackDisabledBtn,
-  .viewNotesBtn,
-  .feedbackGradingBtn {
-    width: 100%;
+  .actionBtnPrimary,
+  .actionBtnOutline,
+  .actionBtnGhost {
     justify-content: center;
   }
 
-  .createModalCard,
-  .generatedModalCard,
-  .feedbackModalCard {
-    padding: var(--space-5) var(--space-4);
-    max-width: 100%;
+  .modalHeader,
+  .modalBody,
+  .modalFooter {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
   }
+}
 
-  .feedbackStatsGrid {
-    grid-template-columns: 1fr 1fr;
-  }
+/* ── Seminar List Pagination ─────────────────────────────────────── */
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.paginationBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--space-3);
+  background-color: var(--ars-paper);
+  border: 1px solid var(--ars-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.paginationBtn:hover:not(:disabled) {
+  background-color: var(--ars-paper-alt);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.paginationBtn:focus-visible {
+  outline: 2px solid var(--ars-yellow);
+  outline-offset: 2px;
+}
+
+.paginationBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-semibold);
 }

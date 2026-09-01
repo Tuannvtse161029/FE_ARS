@@ -1,9 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ── Vietnamese-friendly font: Roboto ──────────────
+         Roboto carries the full Latin-Extended-A and Vietnamese-specific
+         code points (ă, â, ê, ô, ơ, ư plus every tone combination). The
+         preconnect warm-up keeps the request off the critical render path;
+         `display=swap` shows the system fallback immediately so text is never
+         invisible. The subset list includes `vietnamese` so the browser only
+         downloads the Vietnamese glyphs the user actually needs.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <meta
       name="description"
       content="ARS is a trusted academic platform for research discovery, structured paper review, seminars, and role-based collaboration."

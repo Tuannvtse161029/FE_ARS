@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '../../../components/Button';
 import { X } from '../../../assets/icons/XIcon';
 import styles from './PolicyModal.module.css';
@@ -19,6 +19,13 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
   onAccept,
 }) => {
   const [activeTab, setActiveTab] = useState<PolicyTab>(initialTab);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const closeDialog = (): void => {
+    onClose();
+    openerRef.current?.focus();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -31,11 +38,46 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
   }, [isOpen, initialTab]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         onClose();
+        openerRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) {
+        return;
+      }
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
@@ -46,21 +88,24 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
     <div
       className={styles.overlay}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {
+          closeDialog();
+        }
       }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="policy-dialog-title"
     >
-      <div className={styles.modal}>
+      <div ref={dialogRef} className={styles.modal}>
         <div className={styles.header}>
           <h2 id="policy-dialog-title" className={styles.title}>
             {activeTab === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             className={styles.closeBtn}
-            onClick={onClose}
+            onClick={closeDialog}
             aria-label="Close dialog"
           >
             <X size={20} />
@@ -94,7 +139,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>1. Information We Collect</h3>
                 <p className={styles.paragraph}>
-                  When you register and use the Academic Research System (ARS), we collect the following types of information:
+                  When you register and use the Academic Research Sharing (ARS), we collect the following types of information:
                 </p>
                 <ul className={styles.list}>
                   <li><strong>Account Identity:</strong> Full Name, Email Address, Contact Phone Number, and Password.</li>

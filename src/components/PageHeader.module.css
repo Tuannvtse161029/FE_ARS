@@ -1,0 +1,116 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) 0 var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-5);
+  position: relative;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 52px;
+  height: 3px;
+  background: var(--ph-accent, var(--accent-primary));
+  border-radius: var(--radius-sm);
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.breadcrumbs {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-1);
+}
+
+.eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ph-accent, var(--accent-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.title {
+  font-family: var(--font-family-ui);
+  font-size: clamp(var(--font-size-2xl), 2.5vw, var(--font-size-3xl));
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
+   Title cluster: keeps the <h1> + optional accessory (e.g. StatusBadge)
+   on a single flex row so the accessory reads as part of the heading.
+   `flex-wrap: wrap` + `align-items: baseline` makes the accessory wrap
+   under the title on narrow viewports rather than overflowing the
+   right-side `actions` slot. */
+.titleCluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.titleCluster > .title {
+  /* Reset the `h1` margin so the cluster's gap controls spacing.
+     We only target the direct child of `.titleCluster` so any nested
+     headings inside `titleAccessory` retain their own margins. */
+  margin: 0;
+}
+
+.titleAccessory {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  /* Pull the accessory slightly toward the title baseline so it visually
+     reads as inline with the heading text rather than a stacked element. */
+  transform: translateY(-0.1em);
+}
+/* === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) === */
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 60ch;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .title {
+    font-size: var(--font-size-2xl);
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}

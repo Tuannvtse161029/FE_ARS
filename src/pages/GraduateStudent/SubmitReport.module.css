@@ -1,8 +1,13 @@
 /**
  * SubmitReport — ARS Research Constellation
  * "Research Journey" — Graduate Student workspace.
- * Graduate Student role accent: var(--ars-gradstudent, #7c3aed)
+ *
+ * Graduate Student role accent: var(--ars-gradstudent, #1e3a8a)
  * Tokens are globally available via src/styles/ars-tokens.css
+ *
+ * Page CSS owns the two-column layout, detail rows, and report card.
+ * Shared surfaces (`PageHeader`, `EmptyState`, `ErrorBanner`, `SkeletonRow`,
+ * `Button`) own their own styling.
  */
 
 @keyframes spin {
@@ -19,62 +24,233 @@
   color: var(--ars-ink);
 }
 
-/* ── Breadcrumbs ───────────────────────────────────────── */
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-}
-
-/* ── Header Row ─────────────────────────────────────────── */
-.headerRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.pageTitle {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: var(--line-height-tight);
-}
-
-.pageSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: var(--space-1) 0 0;
-  max-width: 720px;
-  line-height: var(--line-height-normal);
-}
-
-/* ── Error Banner ──────────────────────────────────────── */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-error-bg);
-  border: 1px solid rgba(153, 27, 27, 0.2);
-  color: var(--ars-error);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
 .spin {
   animation: spin 0.9s linear infinite;
 }
 
-/* ── Grid ─────────────────────────────────────────────── */
+/* ── Leader Permission ─────────────────────────────────── */
+.leaderNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+}
+
+.leaderNoticeActive {
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+  color: var(--ars-warning);
+}
+
+.leaderNoticeRestricted {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-network);
+  color: var(--ars-ink-soft);
+}
+
+.leaderNoticeTitle,
+.leaderNoticeText {
+  margin: 0;
+}
+
+.leaderNoticeTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.leaderNoticeText {
+  margin-top: var(--space-1);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Milestone List ────────────────────────────────────── */
+.milestonesCard {
+  grid-column: span 2;
+}
+
+.phaseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.phaseCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  background: var(--ars-paper);
+}
+
+.phaseCardPassed {
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+}
+
+.phaseHeader,
+.phaseIdentity,
+.phaseStatusRow,
+.submittedFile,
+.completedState {
+  display: flex;
+  align-items: center;
+}
+
+.phaseHeader {
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.phaseIdentity,
+.phaseStatusRow,
+.submittedFile,
+.completedState {
+  gap: var(--space-2);
+}
+
+.phaseNumber {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--ars-gradstudent);
+  color: var(--ars-paper);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.phaseNumberPassed {
+  background: var(--ars-success);
+}
+
+.phaseTitle {
+  margin: 0;
+  color: var(--ars-ink);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.statusPassed { background: var(--ars-success-bg); border-color: var(--ars-success); color: var(--ars-success); }
+.statusOnTime { background: var(--ars-info-bg); border-color: var(--ars-info); color: var(--ars-info); }
+.statusOverdue,
+.statusRejected { background: var(--ars-error-bg); border-color: var(--ars-error); color: var(--ars-error); }
+.statusPending { background: var(--ars-paper-inset); border-color: var(--ars-network); color: var(--ars-ink-muted); }
+
+.gradeText {
+  color: var(--ars-success);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.phaseMetadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.phaseMetadata p { margin: 0; }
+
+.submittedFile {
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
+}
+
+.fileLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ars-info);
+  font-weight: var(--font-weight-semibold);
+}
+
+.fileLink:focus-visible,
+.submitPhaseButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.feedbackNote {
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.phaseActionRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+}
+
+.submitPhaseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--ars-gradstudent);
+  color: var(--ars-paper);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.submitPhaseButton:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.actionExplanation {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  text-align: right;
+}
+
+.completedState {
+  color: var(--ars-success);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
 .grid {
   display: grid;
   grid-template-columns: 0.85fr 1.15fr;
@@ -167,30 +343,11 @@
   outline: none;
   font-family: var(--font-family-ui);
   transition: border-color var(--transition-fast);
-  cursor: pointer;
+  min-height: var(--space-9);
 }
 
 .phaseSelect:focus {
   border-color: var(--ars-gradstudent);
-}
-
-/* ── Empty State ──────────────────────────────────────── */
-.emptyState {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-style: dashed;
-  color: var(--ars-ink-muted);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-}
-
-.emptyState svg {
-  flex-shrink: 0;
-  opacity: 0.6;
 }
 
 /* ── Active Report Card ───────────────────────────────── */
@@ -262,37 +419,6 @@
   margin-top: var(--space-2);
 }
 
-.submitBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--ars-gradstudent);
-  border: none;
-  color: #ffffff;
-  padding: var(--space-2) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-  font-family: var(--font-family-ui);
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: var(--ars-gradstudent-mid);
-}
-
-.submitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.submitBtn:focus-visible {
-  outline: 2px solid var(--ars-gradstudent);
-  outline-offset: 2px;
-}
-
 .successHint {
   display: inline-flex;
   align-items: center;
@@ -312,10 +438,26 @@
   .grid {
     grid-template-columns: 1fr;
   }
+
+  .milestonesCard {
+    grid-column: auto;
+  }
 }
 
-@media (max-width: 768px) {
-  .headerRow {
-    flex-direction: column;
+@media (max-width: 640px) {
+  .phaseCard {
+    padding: var(--space-4);
+  }
+
+  .phaseActionRow {
+    align-items: stretch;
+  }
+
+  .submitPhaseButton {
+    width: 100%;
+  }
+
+  .actionExplanation {
+    text-align: left;
   }
 }

@@ -3,6 +3,7 @@
  * Wraps Google's Identity Services (GIS) button with a fallback.
  */
 .wrap {
+  position: relative;
   width: 100%;
   display: flex;
   flex-direction: column;

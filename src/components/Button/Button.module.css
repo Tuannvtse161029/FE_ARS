@@ -10,18 +10,18 @@
   gap: var(--space-2);
   font-family: var(--font-family-ui);
   font-weight: var(--font-weight-semibold);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+    box-shadow var(--transition-fast);
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  letter-spacing: -0.005em;
 }
 
 /* ── Disabled State ─────────────────────────────────────── */
@@ -34,96 +34,100 @@
 
 /* ── Focus Visible (keyboard) ───────────────────────────── */
 .button:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 /* ── Button Sizes ─────────────────────────────────────────── */
+/* Compact rhythm — drops `lg` from 52px to 40px and `md` from 44px to 36px
+   so table rows and form fields stay aligned. `sm` is for inline tertiary
+   actions (e.g. "Resubmit" links next to a status). No translateY on hover
+   anymore; we only shift background-color / border-color to avoid the
+   pillowy lift that read as AI-generated. */
 .button--sm {
-  padding: var(--space-2) var(--space-3);
+  padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
-  min-height: 32px;
+  min-height: 28px;
+  border-width: 1px;
 }
 
 .button--md {
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--font-size-base);
-  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  border-width: 1px;
 }
 
 .button--lg {
-  padding: var(--space-4) var(--space-6);
-  font-size: var(--font-size-lg);
-  min-height: 52px;
+  padding: 0 var(--space-5);
+  font-size: var(--font-size-base);
+  min-height: 40px;
+  border-width: 1px;
 }
 
 /* ── Primary Variant (ARS Blue) ─────────────────────────── */
 .button--primary {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  border-color: var(--ars-blue);
+  background-color: var(--action-primary);
+  color: var(--ink-on-paper);
+  border-color: var(--action-primary);
+  box-shadow: 0 1px 2px var(--shadow-color);
 }
 
 .button--primary:hover:not(:disabled) {
-  background-color: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .button--primary:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--accent-ochre);
+  border-color: var(--accent-ochre);
 }
 
 /* ── Secondary Variant (Reviewer Green) ────────────────── */
 .button--secondary {
-  background-color: var(--ars-reviewer);
-  color: var(--ars-paper);
-  border-color: var(--ars-reviewer);
+  background-color: var(--accent-sage);
+  color: var(--ink-on-paper);
+  border-color: var(--accent-sage);
+  box-shadow: 0 1px 2px var(--shadow-color);
 }
 
 .button--secondary:hover:not(:disabled) {
-  background-color: var(--ars-reviewer-mid);
-  border-color: var(--ars-reviewer-mid);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: color-mix(in srgb, var(--accent-sage) 82%, var(--ink-on-paper));
+  border-color: var(--accent-sage);
 }
 
 .button--secondary:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--surface-sunken);
+  border-color: var(--border-strong);
 }
 
 /* ── Outline Variant ────────────────────────────────────── */
 .button--outline {
   background-color: transparent;
-  color: var(--ars-blue);
-  border-color: var(--ars-blue);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .button--outline:hover:not(:disabled) {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
 }
 
 .button--outline:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--ars-node);
 }
 
 /* ── Ghost Variant ──────────────────────────────────────── */
 .button--ghost {
   background-color: transparent;
-  color: var(--ars-ink-soft);
+  color: var(--ink-secondary);
   border-color: transparent;
 }
 
 .button--ghost:hover:not(:disabled) {
-  background-color: var(--ars-node);
-  color: var(--ars-ink);
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
 }
 
 .button--ghost:active:not(:disabled) {
@@ -132,22 +136,19 @@
 
 /* ── Danger Variant ─────────────────────────────────────── */
 .button--danger {
-  background-color: var(--ars-error);
-  color: var(--ars-paper);
-  border-color: var(--ars-error);
+  background-color: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-text);
 }
 
 .button--danger:hover:not(:disabled) {
-  background-color: var(--ars-error-bg);
-  border-color: var(--ars-error-bg);
-  color: var(--ars-error);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: color-mix(in srgb, var(--status-danger-surface) 78%, var(--status-danger-text));
+  border-color: var(--status-danger-text);
 }
 
 .button--danger:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--surface-sunken);
+  border-color: var(--status-danger-text);
 }
 
 /* ── Full Width ─────────────────────────────────────────── */

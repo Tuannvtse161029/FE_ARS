@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -47,11 +47,14 @@ import { LearningMaterialModal } from '../../components/lecturer/LearningMateria
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
-import styles from './ResearchGroup.module.css';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
+import styles from './ResearchTopics.module.css';
 
 interface BannerState {
   visible: boolean;
@@ -63,6 +66,7 @@ const formatTopicId = (id: number): string =>
   `RT-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 export const ResearchTopicsPage = () => {
+  const navigate = useNavigate();
   const {
     topics,
     isLoading,
@@ -163,6 +167,21 @@ export const ResearchTopicsPage = () => {
   useEffect(() => {
     resetPage();
   }, [topicSearch, resetPage]);
+
+  // Part 3 — keyboard shortcuts for the research-topics table.
+  // j/k navigate rows, Enter opens the topic's milestones page,
+  // n opens the create-topic modal, f focuses the search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pageItems.length,
+    onOpen: (index) => {
+      const topic = pageItems[index];
+      if (!topic || typeof topic.id !== 'number') return;
+      // "Open" maps to the topic's milestone-config page, matching the
+      // "Manage Phases" affordance in the row's action stack.
+      navigate(`${ROUTES.CONFIGURE_MILESTONES}?topicId=${topic.id}`);
+    },
+    onNew: () => setShowCreateModal(true),
+  });
 
   const showBanner = (text: string, variant: 'success' | 'error' = 'success') => {
     setBanner({ visible: true, text, variant });
@@ -313,41 +332,45 @@ export const ResearchTopicsPage = () => {
 
   return (
     <div className={styles.researchGroupPage} data-testid="lecturer-research-topics">
+      <PageHeader
+        eyebrow="LECTURER WORKSPACE"
+        title="Research Topics"
+        description="Create, edit and assign research topics. Topics are the canonical source of truth — research groups reference them."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={
+                isLoading ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <RefreshCw size={14} aria-hidden />
+                )
+              }
+              onClick={() => void handleRefresh()}
+              disabled={isLoading}
+              aria-label="Refresh"
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<Plus size={16} aria-hidden />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Research Topic
+            </Button>
+          </>
+        }
+        accent="var(--ars-lecturer)"
+      />
+
       {/* Breadcrumbs */}
       <div className={styles.breadcrumbs}>
         Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
         <span className={styles.activeBreadcrumb}>Research Topics</span>
-      </div>
-
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Research Topics</h1>
-          <p className={styles.pageSubtitle}>
-            Create, edit and assign research topics. Topics are the canonical
-            source of truth — research groups reference them.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => void handleRefresh()}
-            disabled={isLoading}
-            aria-label="Refresh"
-          >
-            <RefreshCw size={14} aria-hidden />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className={styles.createGroupBtn}
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={16} aria-hidden />
-            Create Research Topic
-          </button>
-        </div>
       </div>
 
       {/* BANNER */}
@@ -454,7 +477,7 @@ export const ResearchTopicsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((topic) => {
+                  {pageItems.map((topic, index) => {
                     const tid = typeof topic.id === 'number' ? topic.id : -1;
                     const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
                     const topicStatus =
@@ -477,7 +500,10 @@ export const ResearchTopicsPage = () => {
                         : null;
                     const groupCount = tid >= 0 ? groupCounts[tid] ?? 0 : 0;
                     return (
-                      <tr key={tid}>
+                      <tr
+                        key={tid}
+                        className={selectedIndex === index ? styles.selectedRow : ''}
+                      >
                         <td>
                           <span className={styles.topicIdBadge}>{idLabel}</span>
                           <span className={styles.topicNameText}>
@@ -601,6 +627,14 @@ export const ResearchTopicsPage = () => {
                               <Library size={14} aria-hidden />
                               Manage Materials
                             </button>
+                            <Link
+                              to={ROUTES.CONFIGURE_MILESTONES}
+                              className={styles.materialsTopicBtn}
+                              title="Configure reporting phases for this topic"
+                            >
+                              <BookOpen size={14} aria-hidden />
+                              Manage Phases
+                            </Link>
                           </div>
                         </td>
                       </tr>
@@ -632,7 +666,6 @@ export const ResearchTopicsPage = () => {
               <div className={styles.modalTitleBlock}>
                 <span
                   className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
                 >
                   <Lightbulb size={18} aria-hidden />
                 </span>
@@ -756,10 +789,7 @@ export const ResearchTopicsPage = () => {
           <div className={styles.modalCard}>
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
-                <span
-                  className={styles.modalIconCircle}
-                  style={{ backgroundColor: '#faf5ff', color: '#7c3aed' }}
-                >
+                <span className={styles.modalIconCircle}>
                   <Lightbulb size={18} aria-hidden />
                 </span>
                 <div>

@@ -3,14 +3,14 @@
  * ARS Research Constellation — Graduate Student Landing Page
  *
  * Features:
- * - Large progress timeline showing research milestones
- * - Current milestone with lecturer feedback
- * - Role-specific slate-blue accent
- * - Section markers, editorial typography, minimal motion
+ * - PageHeader + MetricCard grid summarizing the student's group, topic,
+ *   lecturer, and milestones at a glance
+ * - Two-column layout: current milestone card + recent activity feed
+ * - Role-specific slate-blue accent (`--ars-gradstudent`)
+ * - Empty/loading/error states use shared utilities
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle,
   Calendar,
   CheckCircle2,
   Clock,
@@ -30,24 +30,29 @@ import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
-import {
-  lecturerLookupService,
-} from '../../services/lecturerLookup.service';
+import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
 import type {
   GuidanceProjectStatus,
-  PhasedReportStatus,
 } from '../../types/research';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
-import { WorkspaceHeader } from '../../components/workspace/WorkspaceHeader';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { Button } from '../../components/Button';
 import { MetricCard } from '../../components/workspace/MetricCard';
-import { ActivityFeed, type ActivityEntry } from '../../components/workspace/ActivityFeed';
+import {
+  ActivityFeed,
+  type ActivityEntry,
+} from '../../components/workspace/ActivityFeed';
+import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import styles from './GraduateStudentDashboard.module.css';
 
 // Default folder key for Firebase uploads.
 const DEFAULT_FOLDER_KEY = 'milestone';
 
-// Role accent
+// Role accent — slate-blue for graduate students
 const ROLE_ACCENT = 'var(--ars-gradstudent)';
 
 const GUIDANCE_STATUS_PALETTE: Record<GuidanceProjectStatus, string> = {
@@ -148,7 +153,7 @@ export const GraduateStudentDashboard = (): JSX.Element => {
       title: `Report #${report.id}`,
       meta: report.status,
       time: report.submittedAt ? formatRelativeTime(report.submittedAt) : undefined,
-      tag: <StatusBadgeInline status={report.status} />,
+      tag: <StatusBadge status={report.status} size="sm" />,
       onClick: report.reportFileUrl
         ? () => window.open(report.reportFileUrl!, '_blank', 'noopener,noreferrer')
         : undefined,
@@ -192,10 +197,10 @@ export const GraduateStudentDashboard = (): JSX.Element => {
   if (!user) {
     return (
       <div className={styles.page}>
-        <WorkspaceHeader
-          marker="01 / RESEARCH JOURNEY"
+        <PageHeader
+          eyebrow="RESEARCH JOURNEY"
           title="Graduate Student Workspace"
-          subtitle="Please sign in to view your workspace."
+          description="Please sign in to view your workspace."
           accent={ROLE_ACCENT}
         />
       </div>
@@ -205,17 +210,14 @@ export const GraduateStudentDashboard = (): JSX.Element => {
   if (isLoading && !guidanceProject && joinedGroups.length === 0) {
     return (
       <div className={styles.page}>
-        <WorkspaceHeader
-          marker="01 / RESEARCH JOURNEY"
+        <PageHeader
+          eyebrow="RESEARCH JOURNEY"
           title="Graduate Student Workspace"
-          subtitle={`Welcome back, ${user.username}. Loading your research journey…`}
+          description={`Welcome back, ${user.username}. Loading your research journey…`}
           accent={ROLE_ACCENT}
-          annotation="Loading research data…"
         />
         <div className={styles.loadingGrid}>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={styles.metricSkeleton} />
-          ))}
+          <SkeletonRow count={4} rowHeight={100} gap={16} />
         </div>
       </div>
     );
@@ -257,28 +259,29 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
   return (
     <div className={styles.page}>
-      {/* ── Workspace Header ──────────────────────────────── */}
-      <WorkspaceHeader
-        marker="01 / RESEARCH JOURNEY"
+      {/* ── Page Header ─────────────────────────────────── */}
+      <PageHeader
+        eyebrow="RESEARCH JOURNEY"
         title={`${user.username}'s Research Journey`}
-        subtitle="Track your guidance project, milestones, and lecturer feedback."
+        description="Track your guidance project, milestones, and lecturer feedback."
         accent={ROLE_ACCENT}
-        annotation={`Lecturer: ${lecturerName}`}
         actions={
-          <button
-            type="button"
-            className={styles.refreshBtn}
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={
+              isLoading || reportsLoading ? (
+                <Loader2 size={13} className={styles.spin} />
+              ) : (
+                <RefreshCw size={13} />
+              )
+            }
             onClick={handleRefresh}
             disabled={isLoading || reportsLoading}
             aria-label="Refresh dashboard"
           >
-            {isLoading || reportsLoading ? (
-              <Loader2 size={13} className={styles.spin} />
-            ) : (
-              <RefreshCw size={13} />
-            )}
-            <span>Refresh</span>
-          </button>
+            Refresh
+          </Button>
         }
       />
 
@@ -294,13 +297,27 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
         {/* ── Error Banner ──────────────────────────────── */}
         {error ? (
-          <div className={styles.errorBanner} role="alert">
-            <AlertCircle size={14} />
-            <span>{error.message}</span>
-          </div>
+          <ErrorBanner
+            tone="error"
+            message={error.message}
+          />
         ) : null}
 
-        {/* ── Metric Cards ──────────────────────────────── */}
+        {/* ── Current milestone: primary student task ────── */}
+        <div className={styles.primaryTask}>
+          <GuidanceProjectCard
+            guidanceProject={guidanceProject}
+            isLoading={reportsLoading}
+            lecturerName={lecturerName}
+            hasGroup={joinedGroups.length > 0}
+            hasTopic={primaryTopic !== null}
+            onOpenSubmit={() => setSubmitting(true)}
+            currentMilestone={currentMilestone}
+            onResubmit={handleResubmit}
+          />
+        </div>
+
+        {/* ── Research context ──────────────────────────── */}
         <div className={styles.metricGrid}>
           {metricCards.map((card, i) => (
             <div key={i} className={`${styles.metricWrapper} ${card.empty ? styles.metricWrapperEmpty : ''}`}>
@@ -315,21 +332,8 @@ export const GraduateStudentDashboard = (): JSX.Element => {
           ))}
         </div>
 
-        {/* ── Two-column layout: Milestone + Activity ─────── */}
+        {/* ── Activity timeline ─────────────────────────── */}
         <div className={styles.twoCol}>
-          {/* Left: Guidance Project Card */}
-          <GuidanceProjectCard
-            guidanceProject={guidanceProject}
-            isLoading={reportsLoading}
-            lecturerName={lecturerName}
-            hasGroup={joinedGroups.length > 0}
-            hasTopic={primaryTopic !== null}
-            onOpenSubmit={() => setSubmitting(true)}
-            currentMilestone={currentMilestone}
-            onResubmit={handleResubmit}
-          />
-
-          {/* Right: Activity Timeline */}
           <div className={styles.rightCol}>
             <ActivityFeed
               marker="02 / SUBMISSION LOG"
@@ -403,24 +407,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
 // ── Sub-components ────────────────────────────────────────────────
 
-function StatusBadgeInline({ status }: { status: PhasedReportStatus }): JSX.Element {
-  const palette: Record<PhasedReportStatus, string> = {
-    WAITING: styles.statusInlineWaiting,
-    SUBMITTED: styles.statusInlineSubmitted,
-    EVALUATED: styles.statusInlineEvaluated,
-    REJECTED: styles.statusInlineRejected,
-    Pending: styles.statusInlineWaiting,
-    OnTime: styles.statusInlineSubmitted,
-    Overdue: styles.statusInlineRejected,
-    Passed: styles.statusInlineEvaluated,
-  };
-  return (
-    <span className={`${styles.statusInline} ${palette[status]}`}>
-      {status}
-    </span>
-  );
-}
-
 interface GuidanceProjectCardProps {
   guidanceProject: import('../../types/research').GuidanceProject | null;
   isLoading: boolean;
@@ -450,23 +436,28 @@ function GuidanceProjectCard({
           <span className={styles.cardMarker}>02 / GUIDANCE PROJECT</span>
           <h2 className={styles.cardTitle}>Current Project</h2>
         </div>
-        <div className={styles.emptyCard}>
-          <Inbox size={18} />
-          <span>
-            You don&apos;t have an active guidance project. Once a lecturer
-            invites you, a card will appear here.
-          </span>
+        <EmptyState
+          icon={<Inbox size={24} />}
+          title="No active guidance project"
+          description="Once a lecturer invites you, a card will appear here."
+          compact
+        />
+        <div className={styles.actionRow}>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<HelpCircle size={13} />}
+            disabled
+            aria-label="Request supervision"
+            aria-describedby="request-supervision-unavailable"
+            title="Request supervision is not yet available — the Grad-initiated POST endpoint is on the BE gap ticket (§D.3)."
+          >
+            Request supervision
+          </Button>
+          <p id="request-supervision-unavailable" className={styles.actionHint}>
+            Supervision requests will be available after the backend adds the student-initiated request endpoint.
+          </p>
         </div>
-        <button
-          type="button"
-          className={styles.primaryBtn}
-          disabled
-          aria-disabled="true"
-          title="Request supervision is not yet available — the Grad-initiated POST endpoint is on the BE gap ticket (§D.3)."
-        >
-          <HelpCircle size={13} />
-          <span>Request supervision</span>
-        </button>
       </section>
     );
   }
@@ -492,15 +483,16 @@ function GuidanceProjectCard({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className={styles.secondaryBtn}
-          disabled
-          aria-disabled="true"
-          title="Withdraw is disabled in the PROPOSED state."
-        >
-          Withdraw
-        </button>
+        <div className={styles.actionRow}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            title="Withdraw is disabled in the PROPOSED state."
+          >
+            Withdraw
+          </Button>
+        </div>
       </section>
     );
   }
@@ -554,35 +546,33 @@ function GuidanceProjectCard({
             </div>
           </div>
         ) : (
-          <div className={styles.emptyCard}>
-            <Calendar size={18} />
-            <span>
-              No active milestone. Click <strong>Submit milestone</strong> to
-              upload your first report.
-            </span>
-          </div>
+          <EmptyState
+            icon={<Calendar size={24} />}
+            title="No active milestone"
+            description="Click Submit milestone to upload your first report."
+            compact
+          />
         )}
 
         <div className={styles.actionRow}>
-          <button
-            type="button"
-            className={styles.primaryBtn}
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<FileText size={13} />}
             onClick={onOpenSubmit}
             disabled={!hasGroup || !hasTopic}
             aria-label="Submit milestone report"
           >
-            <FileText size={13} />
-            <span>{currentMilestone ? 'Update submission' : 'Submit milestone'}</span>
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryBtn}
+            {currentMilestone ? 'Update submission' : 'Submit milestone'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled
-            aria-disabled="true"
             title="Withdraw is disabled in this build."
           >
             Withdraw
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -628,18 +618,11 @@ function GuidanceProjectCard({
       <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.CANCELLED}`}>
         CANCELLED
       </span>
-      <div className={styles.warnCard}>
-        <AlertCircle size={14} className={styles.warnIcon} />
-        <div>
-          <p className={styles.warnTitle}>Project cancelled</p>
-          <p className={styles.warnBody}>
-            Either you or your lecturer withdrew from this guidance project.
-          </p>
-          <p className={styles.warnBody} style={{ fontStyle: 'italic', marginTop: 4 }}>
-            Cancellation reason is not yet captured by the platform.
-          </p>
-        </div>
-      </div>
+      <ErrorBanner
+        tone="warning"
+        title="Project cancelled"
+        message="Either you or your lecturer withdrew from this guidance project. Cancellation reason is not yet captured by the platform."
+      />
     </section>
   );
 }

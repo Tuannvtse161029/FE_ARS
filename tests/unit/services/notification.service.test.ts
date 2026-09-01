@@ -4,9 +4,9 @@
  * Verifies the strict-TS boundary against the live Swagger contract:
  *   GET  /api/Notification            — list
  *   GET  /api/Notification/{id}       — detail
- *   PUT  /api/Notification/{id}       — mark read
+ *   PUT  /api/Notification/{id}/read  — mark read
+ *   PUT  /api/Notification/mark-all-read — mark all read atomically
  *   DELETE /api/Notification/{id}     — remove
- *   fan-out of PUT                    — mark-all-read (no Swagger endpoint)
  *
  * The service is the only place where DTO normalization happens; every
  * downstream hook/component consumes the strict shape and must not need
@@ -52,6 +52,7 @@ describe('notificationService', () => {
       expect(list).toHaveLength(2);
       expect(list[0]).toEqual({
         id: 1,
+        notificationId: 1,
         userId: 7,
         message: '[Review] accepted',
         isRead: false,
@@ -78,6 +79,7 @@ describe('notificationService', () => {
       const list = await notificationService.getAll();
       expect(list[0]).toEqual({
         id: 5,
+        notificationId: 5,
         userId: 3,
         message: '',
         isRead: true,
@@ -94,6 +96,7 @@ describe('notificationService', () => {
       const row = await notificationService.getById(9);
       expect(row).toEqual({
         id: 9,
+        notificationId: 9,
         userId: 2,
         message: 'hi',
         isRead: true,
@@ -117,50 +120,47 @@ describe('notificationService', () => {
   });
 
   describe('markRead', () => {
-    it('sends PUT with { isRead: true }', async () => {
+    it('uses the dedicated mark-read endpoint', async () => {
       mockedApi.put.mockResolvedValueOnce({
         data: { id: 1, userId: 7, message: 'x', isRead: true },
       });
       const row = await notificationService.markRead(1);
-      expect(mockedApi.put).toHaveBeenCalledWith('/api/Notification/1', { isRead: true });
+      expect(mockedApi.put).toHaveBeenCalledWith('/api/Notification/1/read');
       expect(row.isRead).toBe(true);
     });
   });
 
   describe('markAllRead', () => {
-    it('fans out PUT /api/Notification/{id} for every unread row', async () => {
-      mockedApi.put
-        .mockResolvedValueOnce({ data: { id: 1, userId: 1, message: 'a', isRead: true } })
-        .mockResolvedValueOnce({ data: { id: 2, userId: 1, message: 'b', isRead: true } });
+    it('uses one atomic mark-all-read request', async () => {
+      mockedApi.put.mockResolvedValueOnce({ data: null });
       const { updated, failures } = await notificationService.markAllRead([
         { id: 1, userId: 1, message: 'a', isRead: false },
         { id: 2, userId: 1, message: 'b', isRead: false },
         { id: 3, userId: 1, message: 'c', isRead: true }, // already read, skipped
       ]);
-      expect(mockedApi.put).toHaveBeenCalledTimes(2);
-      expect(updated).toHaveLength(2);
+      expect(mockedApi.put).toHaveBeenCalledTimes(1);
+      expect(mockedApi.put).toHaveBeenCalledWith('/api/Notification/mark-all-read');
+      expect(updated).toHaveLength(3);
+      expect(updated.every((item) => item.isRead)).toBe(true);
       expect(failures).toEqual([]);
     });
 
-    it('captures failed ids without throwing', async () => {
-      mockedApi.put
-        .mockResolvedValueOnce({ data: { id: 1, userId: 1, message: 'a', isRead: true } })
-        .mockRejectedValueOnce(new Error('network'));
-      const { updated, failures } = await notificationService.markAllRead([
+    it('propagates an atomic endpoint failure', async () => {
+      mockedApi.put.mockRejectedValueOnce(new Error('network'));
+      await expect(notificationService.markAllRead([
         { id: 1, userId: 1, message: 'a', isRead: false },
         { id: 2, userId: 1, message: 'b', isRead: false },
-      ]);
-      expect(updated).toHaveLength(1);
-      expect(failures).toEqual([2]);
+      ])).rejects.toThrow('network');
     });
 
-    it('returns empty when there are no unread rows', async () => {
+    it('still calls the atomic endpoint when the local list has no unread rows', async () => {
+      mockedApi.put.mockResolvedValueOnce({ data: null });
       const { updated, failures } = await notificationService.markAllRead([
         { id: 1, userId: 1, message: 'a', isRead: true },
       ]);
-      expect(updated).toEqual([]);
+      expect(updated).toEqual([{ id: 1, userId: 1, message: 'a', isRead: true }]);
       expect(failures).toEqual([]);
-      expect(mockedApi.put).not.toHaveBeenCalled();
+      expect(mockedApi.put).toHaveBeenCalledWith('/api/Notification/mark-all-read');
     });
   });
 

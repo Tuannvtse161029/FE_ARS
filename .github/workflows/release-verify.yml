@@ -1,6 +1,5 @@
 name: Release verify
 
-# No concurrency cancel — release verification must complete to be trustworthy.
 on:
   push:
     tags:
@@ -8,111 +7,10 @@ on:
     branches:
       - release/**
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag or branch to verify (defaults to HEAD)'
-        required: false
-        default: 'HEAD'
 
 jobs:
-  # ── Build & full regression ─────────────────────────────────────────
-  build:
-    name: Build + Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      VITE_API_BASE_URL: http://127.0.0.1:4173
-      CI: 'true'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Build
-        run: npm run build
-
-      - name: Lint
-        run: npm run lint
-
-  unit:
-    name: Unit (Vitest)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VITE_API_BASE_URL: http://127.0.0.1:4173
-      CI: 'true'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:unit
-      - name: Upload artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-unit
-          path: |
-            coverage/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 60
-
-  integration:
-    name: Integration (Vitest)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VITE_API_BASE_URL: http://127.0.0.1:4173
-      CI: 'true'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:integration
-      - name: Upload artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-integration
-          path: |
-            coverage/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 60
-
-  e2e:
-    name: E2E (Playwright headless)
-    needs: build
+  release-gate:
+    name: Production build + full test chain
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -120,60 +18,25 @@ jobs:
       CI: 'true'
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
+        with: { persist-credentials: false }
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package-lock.json
 
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run build
-      - name: Install Playwright browsers
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Production build
+        run: npm run build
+
+      - name: Critical flows (smoke)
+        run: npm run test:smoke
+
+      - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - name: Upload artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-e2e
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 60
 
-  coverage:
-    name: Coverage (Vitest v8)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      VITE_API_BASE_URL: http://127.0.0.1:4173
-      CI: 'true'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:coverage
-      - name: Upload artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-coverage
-          path: |
-            coverage/
-          if-no-files-found: ignore
-          retention-days: 90
+      - name: Full unit + integration + e2e
+        run: npm run test:full

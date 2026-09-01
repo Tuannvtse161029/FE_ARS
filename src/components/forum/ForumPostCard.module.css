@@ -1,0 +1,302 @@
+/**
+ * ForumPostCard.module.css — ARS Research Constellation
+ *
+ * Single feed card. Post chrome (author row, title, abstract, tags,
+ * attachments, overflow menu). Engagement row + comments live in their
+ * own components.
+ */
+
+.card {
+  position: relative;
+  background: var(--post-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color var(--transition-fast);
+}
+
+.cardOpen {
+  /* Open-state indicator: a quiet 2px accent inset at the top-left
+     corner. Replaces the prior `inset 3px 0 0 var(--accent-primary)`
+     stripe that read identically to the templated card stripes across
+     every role surface. The top accent + the existing border-color +
+     shadow lift communicate "this is the post I'm reading" without
+     relying on the same left-vertical stripe used everywhere else. */
+  border-color: var(--accent-primary);
+  box-shadow:
+    inset 0 2px 0 0 var(--accent-primary),
+    0 12px 28px var(--shadow-color);
+}
+
+.card:hover {
+  border-color: var(--ars-node);
+}
+
+.card:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ─── Author row ─────────────────────────────────────────── */
+.authorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+  background-color: var(--surface-paper-muted);
+  color: var(--ink-on-paper);
+  border: 1px solid var(--border-strong);
+}
+
+.avatarButton {
+  composes: avatar;
+  cursor: pointer;
+  border-color: var(--ars-network);
+}
+
+.avatarButton:hover {
+  background-color: var(--surface-paper);
+}
+
+.avatarButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.authorInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.authorName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: var(--font-family-ui);
+}
+
+.authorName:hover {
+  color: var(--accent-primary);
+}
+
+.authorName:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.timestamp {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.authorActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ─── Title / abstract ───────────────────────────────────── */
+.title {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.abstract {
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* ─── Attachments ────────────────────────────────────────── */
+.attachmentRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.attachmentLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+  text-decoration: none;
+  border: 1px solid rgba(45, 53, 97, 0.2);
+  background-color: var(--surface-sunken);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.attachmentLink:hover {
+  background-color: var(--ars-node);
+  border-color: var(--ars-ink-muted);
+}
+
+.attachmentLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ─── Tags ───────────────────────────────────────────────── */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-secondary);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 10px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+/* ─── Overflow menu ──────────────────────────────────────── */
+.actions {
+  position: relative;
+  z-index: 5;
+}
+
+.menuTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.menuTrigger:hover {
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
+  border-color: var(--border-subtle);
+}
+
+.menuTrigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.menuDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  text-align: left;
+  min-height: 32px;
+}
+
+.menuItem:hover {
+  background-color: var(--surface-selected);
+  color: var(--ink-primary);
+}
+
+.menuItem:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.menuItemReport {
+  color: var(--ars-error);
+}
+
+.menuItemReport:hover {
+  background-color: var(--ars-error-bg);
+}
+
+.menuIcon {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.menuItemReport .menuIcon {
+  color: var(--ars-error);
+}
+
+/* Archive Dusk compatibility overrides for remaining interactive chrome. */
+.attachmentLink { border-color: var(--border-subtle); }
+.attachmentLink:focus-visible,
+.menuTrigger:focus-visible,
+.menuItem:focus-visible { outline-color: var(--focus-ring); }
+.menuDropdown { box-shadow: 0 12px 28px var(--shadow-color); }
+.menuItemReport, .menuItemReport .menuIcon { color: var(--status-danger-text); }
+.menuItemReport:hover { background: var(--status-danger-surface); }

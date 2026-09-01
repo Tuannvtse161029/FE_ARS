@@ -78,7 +78,7 @@ const mapPremiumPackage = (row: PremiumPackageApiRow): PremiumPackage | null => 
 
 const requirePremiumPackage = (row: PremiumPackageApiRow): PremiumPackage => {
   const mapped = mapPremiumPackage(row);
-  if (!mapped) throw new AdminBackendContractError('The backend returned an invalid premium package.');
+  if (!mapped) throw new AdminBackendContractError('The backend returned an invalid subscription package.');
   return mapped;
 };
 
@@ -129,7 +129,7 @@ async function resolveViolationByPayload(
   return mapReport(response.data);
 }
 
-// ── Premium packages ───────────────────────────────────────────────────────
+// ── Subscription packages ──────────────────────────────────────────────────
 async function getPremiumPackages(): Promise<PremiumPackage[]> {
   const response = await api.get<PremiumPackageApiRow[]>(API_ENDPOINTS.ADMIN.PACKAGES.GET_ALL);
   return (response.data ?? []).map(mapPremiumPackage).filter((item): item is PremiumPackage => item !== null);

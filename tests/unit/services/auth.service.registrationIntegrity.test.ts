@@ -79,7 +79,7 @@ describe('authService.login — isActive lockout-safe fallback', () => {
       },
     });
 
-    const result = await authService.login({ username: 'test5@gmail.com', password: 'pass' });
+    const result = await authService.login({ email: 'test5@gmail.com', password: 'pass' });
 
     // CRITICAL: The lockout-safe fallback is false, not true.
     // Previously this was `?? true` which let Test 5 into Researcher routes.
@@ -97,7 +97,7 @@ describe('authService.login — isActive lockout-safe fallback', () => {
       },
     });
 
-    const result = await authService.login({ username: 'approved@ars.com', password: 'pass' });
+    const result = await authService.login({ email: 'approved@ars.com', password: 'pass' });
     expect(result.isActive).toBe(true);
   });
 
@@ -112,7 +112,7 @@ describe('authService.login — isActive lockout-safe fallback', () => {
       },
     });
 
-    const result = await authService.login({ username: 'pending@ars.com', password: 'pass' });
+    const result = await authService.login({ email: 'pending@ars.com', password: 'pass' });
     expect(result.isActive).toBe(false);
   });
 });
@@ -126,14 +126,14 @@ describe('authService.login — verificationStatus and accountTier', () => {
   it('parses verificationStatus from BE response', async () => {
     postMock.mockResolvedValueOnce(mockSuccessResponse({ verificationStatus: 'Accepted' }));
 
-    const result = await authService.login({ username: 'test5@gmail.com', password: 'pass' });
+    const result = await authService.login({ email: 'test5@gmail.com', password: 'pass' });
     expect(result.verificationStatus).toBe('Accepted');
   });
 
   it('defaults verificationStatus to Pending when absent', async () => {
     postMock.mockResolvedValueOnce(mockSuccessResponse({ verificationStatus: undefined }));
 
-    const result = await authService.login({ username: 'test5@gmail.com', password: 'pass' });
+    const result = await authService.login({ email: 'test5@gmail.com', password: 'pass' });
     // Lockout-safe: absent = Pending (unapproved)
     expect(result.verificationStatus).toBe('Pending');
   });
@@ -141,14 +141,14 @@ describe('authService.login — verificationStatus and accountTier', () => {
   it('defaults accountTier to Free when absent', async () => {
     postMock.mockResolvedValueOnce(mockSuccessResponse({ accountTier: undefined }));
 
-    const result = await authService.login({ username: 'test5@gmail.com', password: 'pass' });
+    const result = await authService.login({ email: 'test5@gmail.com', password: 'pass' });
     expect(result.accountTier).toBe('Free');
   });
 
   it('parses Premium accountTier from BE response', async () => {
     postMock.mockResolvedValueOnce(mockSuccessResponse({ accountTier: 'Premium' }));
 
-    const result = await authService.login({ username: 'test5@gmail.com', password: 'pass' });
+    const result = await authService.login({ email: 'test5@gmail.com', password: 'pass' });
     expect(result.accountTier).toBe('Premium');
   });
 });

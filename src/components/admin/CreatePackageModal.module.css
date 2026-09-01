@@ -1,20 +1,28 @@
+/**
+ * CreatePackageModal — Admin subscription catalog builder.
+ *
+ * Token-driven. Admin-violet primary button. z-index 1100 to layer above
+ * the in-page context if needed.
+ */
+
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 .modal {
   width: 100%;
   max-width: 640px;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   max-height: 92vh;
@@ -25,25 +33,39 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--ars-network);
+  flex-shrink: 0;
 }
+
 .title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0f172a;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
 }
+
 .closeButton {
   background: transparent;
   border: 0;
   font-size: 22px;
   line-height: 1;
-  color: #64748b;
+  color: var(--ars-ink-muted);
   cursor: pointer;
   padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
 }
-.closeButton:hover { color: #0f172a; }
+
+.closeButton:hover {
+  color: var(--ars-ink);
+}
+
+.closeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .form {
   display: flex;
@@ -53,11 +75,11 @@
 }
 
 .body {
-  padding: 24px;
+  padding: var(--space-5);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .fieldRow,
@@ -65,64 +87,101 @@
 .toggleRow {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .fieldRowSplit {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .input,
 .select {
-  height: 38px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
-  background: #ffffff;
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  min-height: 36px;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
+
+.input::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--ars-ink-muted);
+}
+
 .input:focus,
 .select:focus {
-  outline: 2px solid #007aff;
-  outline-offset: -1px;
-  border-color: transparent;
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 1px;
+  border-color: var(--ars-admin-mid);
+}
+
+.input:disabled,
+.select:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
 }
 
 .featuresList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
+
 .featureRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
+
 .featureRow .input {
   flex: 1;
 }
 
 .removeFeatureButton {
-  width: 38px;
-  height: 38px;
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #b91c1c;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ars-error);
+  background: var(--ars-paper);
+  color: var(--ars-error);
+  border-radius: var(--radius-sm);
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  transition: background-color var(--transition-fast);
+  flex-shrink: 0;
 }
+
+.removeFeatureButton:hover:not(:disabled) {
+  background: var(--ars-error-bg);
+}
+
+.removeFeatureButton:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
 .removeFeatureButton:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -134,97 +193,169 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px dashed #007aff;
+  border: 1px dashed var(--ars-admin-mid);
   background: transparent;
-  color: #007aff;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13px;
+  color: var(--ars-admin);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  font-family: var(--font-family-ui);
+  transition: background-color var(--transition-fast);
 }
-.addFeatureButton:hover {
-  background: #eff6ff;
+
+.addFeatureButton:hover:not(:disabled) {
+  background: var(--ars-admin-light);
+}
+
+.addFeatureButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+.addFeatureButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .toggleRow {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .toggle {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   padding: 6px 10px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-network);
   border-radius: 999px;
   cursor: pointer;
-  font-weight: 600;
-  color: #475569;
-  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
+
 .toggleOn {
-  background: #dcfce7;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+  color: var(--ars-success);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .toggleKnob {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #cbd5e1;
-  transition: background 0.15s ease;
+  background: var(--ars-ink-muted);
+  transition: background-color var(--transition-fast);
 }
+
 .toggleOn .toggleKnob {
-  background: #16a34a;
+  background: var(--ars-success);
 }
+
 .toggleLabel {
-  font-size: 12.5px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.04em;
 }
 
 .error {
-  margin: 0 24px 8px;
+  margin: 0 var(--space-5) var(--space-2);
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
-  font-size: 13px;
-  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--ars-error);
 }
 
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+  flex-shrink: 0;
 }
 
 .cancelButton {
-  background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
-  padding: 9px 16px;
-  border-radius: 8px;
-  font-weight: 500;
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink-soft);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  min-height: 36px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
-.cancelButton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cancelButton:hover:not(:disabled) {
+  background: var(--ars-paper);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.cancelButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .confirmButton {
-  background: #007aff;
-  border: 1px solid #007aff;
-  color: white;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-weight: 600;
+  background: var(--ars-admin);
+  border: 1px solid var(--ars-admin);
+  color: var(--ars-paper);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  min-height: 36px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
+
+.confirmButton:hover:not(:disabled) {
+  background: var(--ars-admin-mid);
+  border-color: var(--ars-admin-mid);
+}
+
+.confirmButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
 .confirmButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;

@@ -127,8 +127,14 @@
   color: #ffffff;
   border: 1.5px solid #2563eb;
 }
-.acceptBtn:hover {
+.acceptBtn:hover:not(:disabled) {
   background: #1d4ed8;
+}
+
+.acceptBtn:disabled,
+.declineBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .declineBtn {
@@ -153,6 +159,25 @@
   background: #ffffff;
   border-color: #cbd5e1;
   color: #0f172a;
+}
+
+.acceptBtn:focus-visible,
+.declineBtn:focus-visible,
+.dismissBtn:focus-visible {
+  outline: 2px solid var(--focus-ring, #1e3a8a);
+  outline-offset: 2px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (max-width: 640px) {
