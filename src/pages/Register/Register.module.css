@@ -113,6 +113,18 @@
   grid-column: 1 / -1;
 }
 
+.orcidDevNotice {
+  grid-column: 1 / -1;
+  margin: var(--spacing-1) 0 0;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-left: 3px solid #f59e0b;
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  border-radius: var(--radius-md, 6px);
+}
+
 .orcidVerifiedBadge {
   display: inline-flex;
   align-items: center;
