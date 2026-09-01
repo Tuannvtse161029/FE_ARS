@@ -94,7 +94,7 @@ export const ResearcherSubmissions = () => {
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return papers.filter((paper) => {
+    const filtered = papers.filter((paper) => {
       if (statusFilter !== 'ALL' && paper.status !== statusFilter) return false;
       if (!term) return true;
       const haystack = [
@@ -110,6 +110,12 @@ export const ResearcherSubmissions = () => {
         .join(' ')
         .toLowerCase();
       return haystack.includes(term);
+    });
+    return [...filtered].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return Number(b.id) - Number(a.id);
     });
   }, [papers, search, statusFilter]);
 

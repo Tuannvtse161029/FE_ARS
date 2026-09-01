@@ -18,6 +18,12 @@ export interface Paper {
   subFieldId?: number | null;
   authorId?: number | null;
   authorName?: string | null;
+  openAlexWorkId?: string | null;
+  doi?: string | null;
+  authorshipVerificationStatus?: string | null;
+  authorshipVerifiedAt?: string | null;
+  authorshipVerificationReason?: string | null;
+  authorIsOrcidVerified?: boolean;
 }
 
 /** Exact `PaperCreateRequest` shape; title and abstract are required. */
@@ -29,6 +35,8 @@ export interface PaperCreateRequest {
   isOpenAccess?: boolean | null;
   quartile?: string | null;
   subFieldId?: number | null;
+  openAlexWorkId?: string | null;
+  doi?: string | null;
 }
 
 /** Exact `PaperUpdateRequest` shape; title and abstract remain required. */
@@ -41,6 +49,8 @@ export interface PaperUpdateRequest {
   isOpenAccess?: boolean | null;
   quartile?: string | null;
   subFieldId?: number | null;
+  openAlexWorkId?: string | null;
+  doi?: string | null;
 }
 
 export interface GetPapersParams extends PaginationParams {
@@ -82,6 +92,18 @@ export const paperService = {
 
   delete: async (id: number | string): Promise<void> => {
     await api.delete(API_ENDPOINTS.PAPER.DELETE(Number(id)));
+  },
+
+  assignReviewers: async (
+    id: string | number,
+    reviewerCount = 3,
+  ): Promise<unknown> => {
+    const response = await api.post(
+      API_ENDPOINTS.PAPER.ASSIGN_REVIEWERS(id),
+      null,
+      { params: { reviewerCount } },
+    );
+    return response.data;
   },
 };
 

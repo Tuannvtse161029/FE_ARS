@@ -55,10 +55,11 @@ export const API_ENDPOINTS = {
   PAPER: {
     BASE: '/api/paper',
     GET_ALL: '/api/paper',
-    GET_BY_ID: (id: number) => `/api/paper/${id}`,
+    GET_BY_ID: (id: number | string) => `/api/paper/${id}`,
     CREATE: '/api/paper',
-    UPDATE: (id: number) => `/api/paper/${id}`,
-    DELETE: (id: number) => `/api/paper/${id}`,
+    UPDATE: (id: number | string) => `/api/paper/${id}`,
+    DELETE: (id: number | string) => `/api/paper/${id}`,
+    ASSIGN_REVIEWERS: (id: number | string) => `/api/Paper/${id}/assign-reviewers`,
   },
   PROFESSIONAL_PROFILE: {
     GET_ALL: '/api/ProfessionalProfile',

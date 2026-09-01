@@ -39,6 +39,16 @@ export interface PublicationReview {
   recommendation: ReviewerRecommendation;
   privateComments: string;
   privateScores: Record<string, number>;
+  privateNotes?: Record<string, string>;
+  criteria1?: string | null;
+  expandedCriteria1?: string | null;
+  evaluationCriteria1?: string | null;
+  criteria2?: string | null;
+  expandedCriteria2?: string | null;
+  evaluationCriteria2?: string | null;
+  criteria3?: string | null;
+  expandedCriteria3?: string | null;
+  evaluationCriteria3?: string | null;
   submittedAt?: string;
 }
 
@@ -48,6 +58,8 @@ export interface PublicationPaper {
   abstract: string;
   authors: PublicationAuthor[];
   institutions: PublicationInstitution[];
+  subFieldId?: number | null;
+  authorId?: number | null;
   doi?: string;
   openAlexId?: string;
   externalIdentifier?: string;
@@ -67,7 +79,7 @@ export interface PublicationPaper {
   publishedAt?: string;
   reviewer?: PublicationReview;
   reviewerIdentityPublic: boolean;
-  researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+  researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'ALLOW' | 'REJECTED';
   adminNote?: string;
   researcherFeedback?: string;
   reviewRequestId?: number;
@@ -77,6 +89,12 @@ export interface PublicationPaper {
   reviewType?: string | null;
   aiRecommended?: boolean | null;
 }
+
+export const isAuthorshipAllowed = (paper?: PublicationPaper | null): boolean => {
+  if (!paper) return false;
+  const status = (paper.researcherVerificationStatus || '').toUpperCase();
+  return status === 'ALLOW' || status === 'ALLOWED' || status === 'VERIFIED';
+};
 
 export interface PublicationNotification {
   id: string;
@@ -110,6 +128,7 @@ export interface SubmissionInput {
   abstract: string;
   authors: PublicationAuthor[];
   institutions: PublicationInstitution[];
+  subFieldId?: number | null;
   doi?: string;
   openAlexId?: string;
   externalIdentifier?: string;
@@ -139,5 +158,10 @@ export const canAppearInPublicCatalog = (paper: PublicationPaper): boolean =>
 export const publicReviewerName = (paper: Pick<PublicationPaper, 'reviewerIdentityPublic' | 'reviewer'>): string | null =>
   paper.reviewerIdentityPublic ? paper.reviewer?.reviewerName ?? null : null;
 
-export const statusLabel = (status: PublicationStatus): string =>
-  status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+export const statusLabel = (status: PublicationStatus): string => {
+  if (status === 'REVIEWER_RECOMMENDED_REJECT') return 'Reviewer Recommended Reject (Đề xuất từ chối)';
+  if (status === 'REVIEWER_RECOMMENDED_ACCEPT') return 'Reviewer Recommended Accept (Đề xuất chấp nhận)';
+  if (status === 'ADMIN_REJECTED') return 'Denied (Bị từ chối)';
+  if (status === 'PUBLISHED') return 'Published (Đã xuất bản)';
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+};
