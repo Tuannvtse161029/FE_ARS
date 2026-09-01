@@ -133,6 +133,13 @@
   gap: var(--space-4);
 }
 
+/* Keyboard-shortcut-selected card wrap (Part 4 — useListShortcuts). */
+.results > .selectedCardWrap {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: 4px;
+  border-radius: var(--radius-md, 12px);
+}
+
 /* ── Pagination ────────────────────────────────────────────── */
 .pagination {
   display: flex;

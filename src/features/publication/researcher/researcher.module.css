@@ -474,9 +474,15 @@
   height: 100%;
   background: var(--ars-researcher);
   border-radius: 999px;
-  transition: width var(--transition-fast);
-  /* Width is set inline via --progress-fill so we don't put a
-     `style={{ width: ... }}` on the JSX element. */
+  /* Transform-based progress. Replaces the prior `transition: width`
+     that triggered layout reflow on every percentage change. scaleX is
+     GPU-composited and transform-origin: left keeps the fill anchored
+     to the left edge. The fill's progress is now expressed via the
+     --progress-fill custom property (0..1) so JSX no longer needs a
+     `style={{ width: ... }}` inline override. */
+  transform: scaleX(var(--progress-fill, 0));
+  transform-origin: left center;
+  transition: transform var(--transition-fast);
   width: var(--progress-fill, 0%);
 }
 

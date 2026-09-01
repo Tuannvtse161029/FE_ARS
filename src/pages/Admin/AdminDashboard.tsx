@@ -22,7 +22,6 @@ import type {
   AnalyticsRange,
   AnalyticsSummary,
   AnalyticsTimeSeries,
-  RoleRequest,
 } from '../../types/admin';
 import { MetricCard } from '../../components/workspace/MetricCard';
 import styles from './AdminDashboard.module.css';
@@ -53,13 +52,6 @@ const formatChartDate = (value: string) => {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' });
 };
-
-const formatDate = (value: string) =>
-  new Date(value).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
 
 const logDiag = (label: string, error: unknown) => {
   if (import.meta.env.DEV) {
@@ -179,17 +171,10 @@ const AnalyticsChart = ({
   );
 };
 
-interface AdminDashboardProps {
-  onSelectRoleRequest?: (request: RoleRequest) => void;
-}
-
-export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => {
+export const AdminDashboard = () => {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const [recentRequests, setRecentRequests] = useState<RoleRequest[]>([]);
-  const [requestsError, setRequestsError] = useState<string | null>(null);
-  const [loadingRecentRequests, setLoadingRecentRequests] = useState(true);
   const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
   const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<AnalyticsRange>('monthly');
@@ -210,20 +195,6 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
       if (!signal.aborted) setSummaryError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingSummary(false);
-    }
-  }, []);
-
-  const loadRecentRequests = useCallback(async (signal: AbortSignal) => {
-    setLoadingRecentRequests(true);
-    setRequestsError(null);
-    try {
-      const data = await adminService.getRoleRequests(signal);
-      if (!signal.aborted) setRecentRequests(data.slice(0, 8));
-    } catch (error) {
-      logDiag('role requests failed', error);
-      if (!signal.aborted) setRequestsError(DASHBOARD_UNAVAILABLE);
-    } finally {
-      if (!signal.aborted) setLoadingRecentRequests(false);
     }
   }, []);
 
@@ -254,11 +225,10 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
     const requestId = ++requestIdRef.current;
     await Promise.allSettled([
       loadSummary(controller.signal),
-      loadRecentRequests(controller.signal),
       loadAnalytics(range, controller.signal),
     ]);
     if (requestId !== requestIdRef.current) return;
-  }, [analyticsRange, loadAnalytics, loadRecentRequests, loadSummary]);
+  }, [analyticsRange, loadAnalytics, loadSummary]);
 
   const handleAnalyticsRangeChange = (range: AnalyticsRange) => {
     if (range === analyticsRange) return;
@@ -273,56 +243,6 @@ export const AdminDashboard = ({ onSelectRoleRequest }: AdminDashboardProps) => 
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        <section className={styles.queueSection} aria-labelledby="role-request-queue-title">
-          <div className={styles.sectionHeading}>
-            <div>
-              <p className={styles.sectionEyebrow}>Role verification</p>
-              <h2 id="role-request-queue-title">Requests awaiting review</h2>
-            </div>
-            <span className={styles.queueCount} aria-live="polite">
-              {loadingRecentRequests ? 'Loading requests' : `${recentRequests.length} shown`}
-            </span>
-          </div>
-
-          {requestsError ? (
-            <WidgetErrorState message={requestsError} onRetry={() => void loadAll()} testId="role-requests-error" />
-          ) : loadingRecentRequests ? (
-            <div className={styles.queueLoading} role="status">Loading role requests...</div>
-          ) : recentRequests.length === 0 ? (
-            <div className={styles.queueEmpty}>No role requests need review right now.</div>
-          ) : (
-            <div className={styles.queueTableWrap}>
-              <table className={styles.queueTable}>
-                <thead>
-                  <tr>
-                    <th scope="col">Request</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Received</th>
-                    <th scope="col"><span className={styles.srOnly}>Open request</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentRequests.map((request) => (
-                    <tr key={request.id}>
-                      <td>
-                        <span className={styles.requestName}>{request.userName}</span>
-                        <span className={styles.requestEmail}>{request.email}</span>
-                      </td>
-                      <td><span className={styles.statusTag}>{request.status}</span></td>
-                      <td className={styles.requestDate}>{formatDate(request.submissionDate)}</td>
-                      <td className={styles.actionCell}>
-                        <button type="button" onClick={() => onSelectRoleRequest?.(request)}>
-                          Review request
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
         <section className={styles.analyticsSection} aria-label="Platform analytics">
           <AnalyticsChart
             metric="user_registrations"

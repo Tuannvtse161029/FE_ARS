@@ -12,7 +12,7 @@ export interface EmptyStateProps {
   /** Lucide icon, 24px recommended */
   icon: ReactNode;
   /** Short title (Inter 14/600) */
-  title: string;
+  title?: string;
   /** One-line description in muted ink (Inter 13/400) */
   description?: string;
   /** Optional primary action (button node) */
@@ -36,7 +36,7 @@ export const EmptyState = ({
     <div className={styles.iconWrap} aria-hidden>
       {icon}
     </div>
-    <p className={styles.title}>{title}</p>
+    {title && <p className={styles.title}>{title}</p>}
     {description && <p className={styles.description}>{description}</p>}
     {action && <div className={styles.action}>{action}</div>}
   </div>

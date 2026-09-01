@@ -15,6 +15,7 @@ import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
+import { useListShortcuts } from '../../../hooks/useListShortcuts';
 
 // ReviewerAssignments — Reviewer-only list of Admin-assigned papers.
 //
@@ -113,6 +114,19 @@ export const ReviewerAssignments = () => {
     [visiblePapers],
   );
 
+  // Part 5 — keyboard shortcuts for the reviewer queue.
+  // j/k navigate assignments, Enter opens the focused assignment,
+  // f focuses the toolbar search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: rows.length,
+    onOpen: (index) => {
+      const row = rows[index];
+      if (!row?.paper?.id) return;
+      navigate(`/reviewer/assignments/${row.paper.id}`);
+    },
+    filterFocusId: 'reviewer-assignments-search',
+  });
+
   return (
     <section className={reviewer.page}>
       <PageHeader
@@ -139,6 +153,7 @@ export const ReviewerAssignments = () => {
                   Search assignments
                 </span>
                 <input
+                  id="reviewer-assignments-search"
                   type="search"
                   className={reviewer.searchInput}
                   value={search}
@@ -178,11 +193,12 @@ export const ReviewerAssignments = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ paper, actionable, actionableTone, assignedAt, deadline }) => (
+                  {rows.map(({ paper, actionable, actionableTone, assignedAt, deadline }, index) => (
                     <tr
                       key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
                       data-testid="assignment-row"
                       data-paper-id={paper.id}
+                      className={selectedIndex === index ? reviewer.selectedRow : ''}
                     >
                       <td className={reviewer.tdTitle}>
                         <Link

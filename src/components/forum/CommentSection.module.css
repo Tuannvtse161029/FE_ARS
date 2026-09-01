@@ -58,8 +58,18 @@
 .replyItem {
   margin-left: var(--space-6);
   background: var(--reply-surface);
-  border-left: 3px solid var(--accent-sage);
+  /* Softened reply rule. The 3px sage stripe was identical to the card
+     stripes elsewhere, which made replies feel like templated cards.
+     A 1.5px rule at 0.7 opacity still reads as "this is a reply" while
+     distinguishing the affordance from the top-level comment above. */
+  border-left: 1.5px solid color-mix(in srgb, var(--accent-sage) 70%, transparent);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* Keyboard-shortcut-selected comment (Part 4 — useListShortcuts). */
+.commentItem.selectedComment {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: 2px;
 }
 
 .commentMeta {

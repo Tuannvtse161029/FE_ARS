@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -53,6 +53,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './ResearchTopics.module.css';
 
 interface BannerState {
@@ -65,6 +66,7 @@ const formatTopicId = (id: number): string =>
   `RT-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 export const ResearchTopicsPage = () => {
+  const navigate = useNavigate();
   const {
     topics,
     isLoading,
@@ -165,6 +167,21 @@ export const ResearchTopicsPage = () => {
   useEffect(() => {
     resetPage();
   }, [topicSearch, resetPage]);
+
+  // Part 3 — keyboard shortcuts for the research-topics table.
+  // j/k navigate rows, Enter opens the topic's milestones page,
+  // n opens the create-topic modal, f focuses the search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pageItems.length,
+    onOpen: (index) => {
+      const topic = pageItems[index];
+      if (!topic || typeof topic.id !== 'number') return;
+      // "Open" maps to the topic's milestone-config page, matching the
+      // "Manage Phases" affordance in the row's action stack.
+      navigate(`${ROUTES.CONFIGURE_MILESTONES}?topicId=${topic.id}`);
+    },
+    onNew: () => setShowCreateModal(true),
+  });
 
   const showBanner = (text: string, variant: 'success' | 'error' = 'success') => {
     setBanner({ visible: true, text, variant });
@@ -460,7 +477,7 @@ export const ResearchTopicsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((topic) => {
+                  {pageItems.map((topic, index) => {
                     const tid = typeof topic.id === 'number' ? topic.id : -1;
                     const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
                     const topicStatus =
@@ -483,7 +500,10 @@ export const ResearchTopicsPage = () => {
                         : null;
                     const groupCount = tid >= 0 ? groupCounts[tid] ?? 0 : 0;
                     return (
-                      <tr key={tid}>
+                      <tr
+                        key={tid}
+                        className={selectedIndex === index ? styles.selectedRow : ''}
+                      >
                         <td>
                           <span className={styles.topicIdBadge}>{idLabel}</span>
                           <span className={styles.topicNameText}>

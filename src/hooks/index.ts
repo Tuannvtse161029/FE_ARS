@@ -33,3 +33,10 @@ export { useLecturerProfile } from './useLecturerProfile';
 // Agent 15 — Table pagination helper.
 export { usePagination } from './usePagination';
 export type { UsePaginationResult } from './usePagination';
+// Part 1 — Keyboard shortcuts foundation. Registered by components that
+// declare global key handlers; the hook itself lives at src/hooks/useShortcuts.ts.
+export { useShortcuts } from './useShortcuts';
+export type { ShortcutSpec, ShortcutHandler } from './useShortcuts';
+// Part 3 — List/table keyboard navigation: j/k row nav, Enter open, n new, f filter.
+export { useListShortcuts } from './useListShortcuts';
+export type { UseListShortcutsOptions } from './useListShortcuts';

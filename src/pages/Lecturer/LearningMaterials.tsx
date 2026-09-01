@@ -38,6 +38,7 @@ import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './LearningMaterials.module.css';
 
 const formatTitle = (m: LearningMaterial): string => {
@@ -112,6 +113,19 @@ export const LecturerLearningMaterialsPage = () => {
   useEffect(() => {
     resetPage();
   }, [search, resetPage]);
+
+  // Part 3 — keyboard shortcuts for the learning-materials table.
+  // j/k navigate rows, Enter opens the material's PDF,
+  // n toggles the add-material form, f focuses the search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pageItems.length,
+    onOpen: (index) => {
+      const material = pageItems[index];
+      if (!material?.fileUrl) return;
+      window.open(material.fileUrl, '_blank', 'noopener,noreferrer');
+    },
+    onNew: () => setShowForm((v) => !v),
+  });
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -436,10 +450,13 @@ export const LecturerLearningMaterialsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((m) => {
+                  {pageItems.map((m, index) => {
                     const id = typeof m.id === 'number' ? m.id : -1;
                     return (
-                      <tr key={String(m.id ?? id)}>
+                      <tr
+                        key={String(m.id ?? id)}
+                        className={selectedIndex === index ? styles.selectedRow : ''}
+                      >
                         <td>
                           <span className={styles.topicNameText}>
                             {formatTitle(m)}

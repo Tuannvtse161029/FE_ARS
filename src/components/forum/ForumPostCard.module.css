@@ -19,8 +19,16 @@
 }
 
 .cardOpen {
+  /* Open-state indicator: a quiet 2px accent inset at the top-left
+     corner. Replaces the prior `inset 3px 0 0 var(--accent-primary)`
+     stripe that read identically to the templated card stripes across
+     every role surface. The top accent + the existing border-color +
+     shadow lift communicate "this is the post I'm reading" without
+     relying on the same left-vertical stripe used everywhere else. */
   border-color: var(--accent-primary);
-  box-shadow: inset 3px 0 0 var(--accent-primary), 0 12px 28px var(--shadow-color);
+  box-shadow:
+    inset 0 2px 0 0 var(--accent-primary),
+    0 12px 28px var(--shadow-color);
 }
 
 .card:hover {

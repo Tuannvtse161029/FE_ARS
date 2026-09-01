@@ -244,16 +244,70 @@ export interface OrcidPersonMetadata {
 // ── ORCID account-link contract ─────────────────────────────────────────────
 
 /**
- * Starts the registration ORCID OAuth flow. Swagger declares `200` without a
- * response body, so the browser must follow the server/provider redirect.
+ * Response shape returned by `POST /api/Auth/orcid/account/start` and
+ * `POST /api/Auth/orcid/registration/start`.
+ *
+ * The BE hands the browser a top-level `authorizationUrl` to navigate to.
+ * The FE must NOT assume Axios will follow this redirect for the user —
+ * `start*OrcidLink()` explicitly calls `window.location.assign(...)`.
  */
-export async function startRegistrationOrcidLink(): Promise<void> {
-  await api.post<void>(API_ENDPOINTS.AUTH.ORCID_REGISTRATION_START);
+export interface OrcidLinkStartResponse {
+  authorizationUrl: string;
+  context: 'ACCOUNT_LINK' | 'REGISTRATION' | string;
+  expiresAt: string;
 }
 
-/** Starts the authenticated account ORCID OAuth flow; the server derives user ID from JWT. */
+/**
+ * Validate the ORCID redirect target and navigate the top-level window to it.
+ *
+ * Only the canonical `orcid.org` host (or any `*.orcid.org` subdomain) is
+ * permitted — this prevents the BE (or a future interceptor) from steering
+ * the user to a phishing site while the FE pretends to follow an ORCID
+ * authorization URL.
+ */
+const navigateToOrcidAuthorization = (authorizationUrl: string): void => {
+  let target: URL;
+  try {
+    target = new URL(authorizationUrl);
+  } catch {
+    throw new Error('Invalid ORCID authorization URL returned by the server.');
+  }
+
+  const isAllowedHost =
+    target.protocol === 'https:' &&
+    (target.hostname === 'orcid.org' ||
+      target.hostname.endsWith('.orcid.org'));
+
+  if (!isAllowedHost) {
+    throw new Error('Invalid ORCID authorization URL returned by the server.');
+  }
+
+  window.location.assign(target.toString());
+};
+
+/**
+ * Starts the registration ORCID OAuth flow. The BE returns a
+ * `{ authorizationUrl, context, expiresAt }` body; the FE must explicitly
+ * navigate the top-level browser to `authorizationUrl` — Axios will not
+ * follow the redirect automatically.
+ */
+export async function startRegistrationOrcidLink(): Promise<void> {
+  const response = await api.post<OrcidLinkStartResponse>(
+    API_ENDPOINTS.AUTH.ORCID_REGISTRATION_START,
+  );
+  navigateToOrcidAuthorization(response.data.authorizationUrl);
+}
+
+/**
+ * Starts the authenticated account ORCID OAuth flow; the BE derives the
+ * user ID from the JWT. Same contract as `startRegistrationOrcidLink` —
+ * the FE navigates the browser to the returned `authorizationUrl`.
+ */
 export async function startAccountOrcidLink(): Promise<void> {
-  await api.post<void>(API_ENDPOINTS.AUTH.ORCID_ACCOUNT_START);
+  const response = await api.post<OrcidLinkStartResponse>(
+    API_ENDPOINTS.AUTH.ORCID_ACCOUNT_START,
+  );
+  navigateToOrcidAuthorization(response.data.authorizationUrl);
 }
 
 /** Retrieves the current authenticated user's ORCID connection state. */

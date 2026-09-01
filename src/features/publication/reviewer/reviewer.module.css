@@ -123,6 +123,13 @@
   background: var(--ars-paper-inset);
 }
 
+/* Keyboard-shortcut-selected row (Part 5 — useListShortcuts). */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: var(--ars-paper-inset);
+}
+
 .tdTitle {
   min-width: 220px;
   max-width: 360px;

@@ -276,6 +276,13 @@
   background: var(--ars-admin-light);
 }
 
+/* Keyboard-shortcut-selected row (Part 5 — useListShortcuts). */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: var(--ars-admin-light);
+}
+
 .titleCell {
   display: grid;
   gap: 4px;

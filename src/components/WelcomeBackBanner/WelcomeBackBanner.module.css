@@ -19,7 +19,6 @@
   padding: var(--space-3) var(--space-4);
   background-color: var(--ars-paper-alt);
   border: 1px solid var(--ars-network);
-  border-left: 3px solid var(--ars-blue-mid);
   border-radius: var(--radius-md);
   color: var(--ars-ink);
   font-family: var(--font-family-ui);
@@ -28,7 +27,25 @@
   box-shadow: var(--shadow-sm);
   animation: welcomeSlideIn var(--transition-normal) ease-out both;
   /* Allow long welcome messages to wrap inside the banner */
+  /* Top accent rule. Replaces the prior `border-left: 3px solid
+     var(--ars-blue-mid)` stripe that read identically to the templated
+     card stripes across every role surface. The horizontal accent + the
+     "welcome back" glyph + the warm paper card give the banner a
+     distinctive journal-masthead feel instead of a UI template. */
+  position: relative;
+  overflow: hidden;
   flex-wrap: wrap;
+}
+
+.banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ars-blue-mid);
+  opacity: 0.7;
 }
 
 .bannerIcon {

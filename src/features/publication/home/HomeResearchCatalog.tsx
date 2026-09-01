@@ -10,6 +10,7 @@ import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { publicReviewerName } from '../types/publication';
 import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
+import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import styles from './HomeResearchCatalog.module.css';
 
 const PAGE_SIZE = 8;
@@ -90,6 +91,19 @@ export const HomeResearchCatalog = () => {
   const updateQuery = (patch: Partial<CatalogQuery>) =>
     setQuery((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
 
+  // Part 4 — keyboard shortcuts for the public research catalog.
+  // j/k walk the cards, Enter opens the focused paper's detail view
+  // (window.open so it doesn't replace the catalog), f focuses search.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: papers.length,
+    onOpen: (index) => {
+      const paper = papers[index];
+      if (!paper?.id) return;
+      window.open(`/papers/${paper.id}`, '_blank', 'noopener,noreferrer');
+    },
+    filterFocusId: 'public-catalog-search-input',
+  });
+
   return (
     <section className={styles.catalog}>
       <WorkspaceHeader
@@ -106,6 +120,7 @@ export const HomeResearchCatalog = () => {
         <label className={styles.search}>
           <Search size={18} aria-hidden="true" />
           <input
+            id="public-catalog-search-input"
             aria-label="Search published research"
             value={query.query ?? ''}
             onChange={(event) => updateQuery({ query: event.target.value })}
@@ -216,12 +231,16 @@ export const HomeResearchCatalog = () => {
         />
       ) : (
         <div className={styles.results} data-testid="public-paper-results">
-          {papers.map((paper) => (
-            <PublishedPaperCard
+          {papers.map((paper, index) => (
+            <div
               key={paper.id}
-              paper={paper}
-              publicReviewerName={publicReviewerName(paper)}
-            />
+              className={selectedIndex === index ? styles.selectedCardWrap : undefined}
+            >
+              <PublishedPaperCard
+                paper={paper}
+                publicReviewerName={publicReviewerName(paper)}
+              />
+            </div>
           ))}
         </div>
       )}

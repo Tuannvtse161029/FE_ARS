@@ -483,6 +483,13 @@
   background: var(--ars-paper-inset);
 }
 
+/* Keyboard-shortcut-selected row (Part 3 — useListShortcuts). */
+.table tbody tr.selectedRow {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: -2px;
+  background: rgba(0, 122, 255, 0.08);
+}
+
 .topicIdBadge {
   display: inline-block;
   font-family: var(--font-family-mono);

@@ -78,6 +78,29 @@ export const ROUTES = {
   // exactly once to `POST /api/Auth/verify-email?token=...` and renders
   // one of three outcomes (verified / expired / malformed).
   VERIFY_EMAIL: '/verify-email',
+  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — public deep-link landing for
+  // the BE-owned ORCID OAuth handoff. The BE redirects the browser here
+  // with a URL fragment (`#success=true&context=...&registrationTicket=...`
+  // for registration, or `#success=true&context=ACCOUNT_LINK` for
+  // authenticated account linking). The page parses the fragment once,
+  // branches by `context`, and replaces itself with the right destination
+  // (Profile for account link, Register for registration). The page must
+  // stay outside authenticated-only route guards because the registration
+  // callback happens before the user has an ARS JWT.
+  ORCID_OAUTH_CALLBACK: '/auth/orcid/callback',
+  // Agent researcher-lecturer-subscription — Researcher / Lecturer paid
+  // access via PayOS. The page lists 6- and 12-month plans sourced from
+  // the BE, exposes a `Proceed to Pay` button that calls
+  // `POST /api/Subscription/order`, and shows the documented
+  // awaiting-API banner when the BE contract is not yet live. The route
+  // itself is always allowed for Researcher / Lecturer (the lock applies
+  // to other workspace routes, not to the subscription page).
+  SUBSCRIPTION: '/subscription',
+  // PayOS return landing. The BE redirects here after the user scans the
+  // PayOS QR code. The page shows "Payment received. We are verifying
+  // your subscription." and refetches subscription state — it never
+  // activates access from the browser query string.
+  SUBSCRIPTION_RETURN: '/subscription/return',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

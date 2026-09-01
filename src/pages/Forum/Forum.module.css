@@ -373,6 +373,13 @@
   gap: var(--space-4);
 }
 
+/* Keyboard-shortcut-selected post wrap (Part 4 — useListShortcuts). */
+.postList > .selectedPostWrap {
+  outline: 2px solid var(--ars-blue, #007AFF);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
 /* ─── PAGINATION ─────────────────────────────────────────── */
 .pagination {
   display: flex;
@@ -881,10 +888,17 @@
 
 .uploadProgressBarFill {
   height: 100%;
-  width: var(--upload-progress, 0%);
+  /* Transform-based upload progress. Replaces the prior
+     `transition: width` that triggered layout reflow on every
+     percentage change. The fill's width is now expressed via the
+     --upload-progress custom property (0..1), composed with scaleX,
+     so JSX no longer needs a `style={{ width }}` inline override. */
+  width: 100%;
+  transform: scaleX(var(--upload-progress, 0));
+  transform-origin: left center;
   background-color: var(--accent-primary);
   border-radius: 2px;
-  transition: width 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .uploadProgressPct {

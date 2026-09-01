@@ -46,6 +46,7 @@ import { TablePagination } from '../../components/table/TablePagination';
 import BackendGapBanner from '../../components/BackendGapBanner';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import styles from './StudentResearchGroups.module.css';
@@ -397,6 +398,19 @@ function WorkspaceView({
     resetReportsPage();
   }, [searchText, statusFilter, resetReportsPage]);
 
+  // Part 3 — keyboard shortcuts for the milestone-reports table.
+  // j/k navigate rows, Enter opens the PDF if available,
+  // f focuses the toolbar search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pagedReports.length,
+    onOpen: (index) => {
+      const report = pagedReports[index];
+      if (report?.reportFileUrl) {
+        window.open(report.reportFileUrl, '_blank', 'noopener,noreferrer');
+      }
+    },
+  });
+
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
   useEffect(() => {
@@ -628,8 +642,12 @@ function WorkspaceView({
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedReports.map((report) => (
-                    <tr key={report.id} data-testid="srg-row">
+                  {pagedReports.map((report, index) => (
+                    <tr
+                      key={report.id}
+                      data-testid="srg-row"
+                      className={selectedIndex === index ? styles.selectedRow : ''}
+                    >
                       <td>
                         <span className={styles.reportIdPill}>
                           #{report.id}

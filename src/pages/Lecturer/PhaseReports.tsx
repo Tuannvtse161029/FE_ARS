@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, ChevronDown, ChevronRight, FileText, Loader, RefreshCw, Users } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, FileText, Inbox, Loader, RefreshCw, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { phasedReportService, type PhasedReport } from '../../services/phasedReport.service';
@@ -8,6 +8,7 @@ import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
+import { EmptyState } from '../../components/EmptyState';
 import styles from './PhaseReports.module.css';
 
 const dateLabel = (value?: string | null) => {
@@ -72,7 +73,13 @@ export const PhaseReports = () => {
     <PageHeader eyebrow="LECTURER WORKSPACE" title="Phase Reports" description="Review submissions grouped by topic, phase, and research group." actions={<Button variant="outline" onClick={() => void load()} disabled={loading || groupsLoading} leftIcon={<RefreshCw size={15} />}>Refresh</Button>} />
     <BackendGapBanner field="PhasedReport.phaseId / resubmission lineage" feature="Stable phase identity and persisted rejected-report revision history" />
     {error && <div className={styles.error} role="alert">{error}</div>}
-    {loading || groupsLoading ? <div className={styles.loading}><Loader size={18} /> Loading reports…</div> : grouped.size === 0 ? <div className={styles.empty}>No phase reports are available for your research groups.</div> : <div className={styles.topics}>
+    {loading || groupsLoading ? <div className={styles.loading}><Loader size={18} /> Loading reports…</div> : grouped.size === 0 ? (
+      <EmptyState
+        icon={<Inbox size={24} aria-hidden />}
+        title="No phase reports yet"
+        description="Once a student submits a phase report for one of your research groups, it will appear here for review."
+      />
+    ) : <div className={styles.topics}>
       {Array.from(grouped.entries()).map(([topicKey, phases]) => {
         const open = openTopics[topicKey] !== false;
         const first = Array.from(phases.values())[0]?.reports[0];

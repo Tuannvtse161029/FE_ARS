@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
@@ -21,6 +21,7 @@ import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
+import { useShortcuts } from '../../../hooks/useShortcuts';
 
 // ReviewerAssignmentDetail — the Reviewer-only paper view.
 //
@@ -222,6 +223,52 @@ export const ReviewerAssignmentDetail = () => {
       setSaving(false);
     }
   };
+
+  // Part 5 — keyboard shortcuts for the reviewer detail page.
+  // `a` accepts the focused assignment, `d` declines it, Ctrl/Cmd+Enter
+  // submits the evaluation form. Shortcuts are only registered when the
+  // paper is in the appropriate status (REVIEWER_ASSIGNED for a/d,
+  // UNDER_REVIEW for submit).
+  const handleAcceptRef = useRef<() => void>(() => undefined);
+  handleAcceptRef.current = () => void handleAccept(true);
+  const handleDeclineRef = useRef<() => void>(() => undefined);
+  handleDeclineRef.current = () => void handleAccept(false);
+  const submitRef = useRef<() => void>(() => undefined);
+  submitRef.current = () => {
+    if (!canReview || submitted) return;
+    void submitEvaluation({
+      preventDefault: () => undefined,
+    } as unknown as React.FormEvent<HTMLFormElement>);
+  };
+  useShortcuts([
+    ...(awaitingResponse
+      ? [
+          {
+            key: 'a',
+            label: 'Accept assignment',
+            description: 'Accept the review assignment (a).',
+            group: 'reviewer' as const,
+            handler: () => handleAcceptRef.current(),
+          },
+          {
+            key: 'd',
+            label: 'Decline assignment',
+            description: 'Decline the review assignment (d).',
+            group: 'reviewer' as const,
+            handler: () => handleDeclineRef.current(),
+          },
+        ]
+      : []),
+    {
+      key: 'Enter',
+      modifier: 'mod' as const,
+      label: 'Submit evaluation',
+      description: 'Submit the review evaluation (Ctrl/Cmd + Enter).',
+      group: 'reviewer',
+      allowInInputs: true,
+      handler: () => submitRef.current(),
+    },
+  ]);
 
   const renderMetadata = (paperToRender: PublicationPaper) => {
     const items: Array<{ label: string; value: string }> = [

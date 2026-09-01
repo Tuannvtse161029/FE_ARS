@@ -10,6 +10,8 @@ import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
+import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
+import { useShortcuts } from '../hooks/useShortcuts';
 import { useI18n } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
@@ -41,6 +43,7 @@ import {
   ClipboardList as AssignmentsIcon,
   FileCheck2 as PublicationIcon,
   Menu as MenuIcon,
+  Search,
 } from 'lucide-react';
 import {
   ChevronLeftIcon,
@@ -282,8 +285,35 @@ export const MainLayout = () => {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getStoredSidebarCollapsed);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Global keyboard shortcuts — Part 1 of the keyboard-shortcut rollout.
+  // The `?` shortcut opens the KeyboardShortcutsHelp modal from anywhere
+  // in the app. The `useShortcuts` hook auto-skips text inputs and modal
+  // surfaces so it never interferes with typing. Future shortcuts (list
+  // navigation, form submit) will be registered by their respective pages.
+  useShortcuts([
+    {
+      key: '?',
+      modifier: undefined,
+      label: 'Show keyboard shortcuts',
+      description: 'Open the keyboard shortcuts reference.',
+      group: 'global',
+      allowInInputs: true,
+      handler: () => setShortcutsOpen(true),
+    },
+    {
+      key: '/',
+      label: 'Focus search',
+      description: 'Move focus to the global search bar.',
+      group: 'global',
+      handler: () => searchRef.current?.focus(),
+    },
+  ]);
 
   // Theme bootstrap (this worker / Agent 38) — read the persisted choice on
   // mount and apply it to <html data-theme="..."> so token cascade flips
@@ -369,10 +399,12 @@ export const MainLayout = () => {
     setIsMobileNavOpen(false);
   }, [location.pathname]);
 
-  // Auto-dismiss toast after 3 seconds
+  // Auto-dismiss toast after 6 seconds (was 3s; too short for screen
+  // readers and slow readers to finish the message). The close button
+  // is the primary way to dismiss for users who want to read longer.
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 3000);
+      const timer = setTimeout(() => setToastMessage(null), 6000);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -488,6 +520,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.LECTURER_GUIDANCE_PROJECTS, label: 'Guidance Projects', icon: <ClipboardCheck size={20} /> },
           { to: ROUTES.LECTURER_LEARNING_MATERIALS, label: 'Learning Materials', icon: <PapersIcon size={20} /> },
@@ -510,6 +543,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SUBSCRIPTION, label: 'My Subscription', icon: <PackagesIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
         ];
@@ -561,7 +595,14 @@ export const MainLayout = () => {
           <strong>{displayedRole}</strong>
         </div>
 
-        <nav className={styles.sidebarNav} aria-label="Workspace navigation">
+        <nav
+          className={styles.sidebarNav}
+          aria-label={
+            isSidebarCollapsed
+              ? 'Workspace navigation (collapsed)'
+              : 'Workspace navigation'
+          }
+        >
           {navItems.map((item, index) => {
             if (item.to.startsWith('#')) {
               return (
@@ -669,6 +710,38 @@ export const MainLayout = () => {
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
+            {/* Global search bar — Part 2 keyboard shortcuts. Accessible
+                from any authenticated route. The `/` key focuses it; users
+                can type and press Enter to search. The actual search
+                routing is implemented in a later part. */}
+            <div className={styles.searchContainer}>
+              <span className={styles.searchIcon} aria-hidden>
+                <Search size={14} />
+              </span>
+              <input
+                ref={searchRef}
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search the platform"
+              />
+            </div>
+
+            {/* Keyboard shortcuts help — opens the shortcuts reference modal.
+                Also reachable from anywhere on the page via the `?` key.
+                The kbd chip gives a visual affordance without being noisy. */}
+            <button
+              type="button"
+              className={styles.shortcutButton}
+              onClick={() => setShortcutsOpen(true)}
+              aria-label="Show keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              <span aria-hidden>?</span>
+            </button>
+
             {/* Theme toggle (Agent 38) — sun/moon button placed to the LEFT
                 of the wallet/notifications/user pill so it's easy to find.
                 Clicking flips the data-theme attribute on the MainLayout
@@ -699,7 +772,12 @@ export const MainLayout = () => {
                 Vietnamese (default) and English. */}
             <LanguageToggle />
 
-            {/* Reviewer availability toggle — only shown for Reviewer role */}
+            {/* Reviewer availability toggle — only shown for Reviewer role.
+                The toggle announces its current state to assistive tech via
+                `aria-pressed`, and `aria-describedby` ties it to a
+                screen-reader-only explanation of what "available" means on
+                the platform. The visible label carries a tooltip via the
+                title attribute so sighted users also see context on hover. */}
             {activeRole === 'Reviewer' && (
               <div className={styles.availabilityToggle}>
                 <button
@@ -709,7 +787,12 @@ export const MainLayout = () => {
                   disabled={isUpdatingAvailability || beAvailabilityLoading}
                   aria-label={isReviewerAvailable ? 'Turn off availability' : 'Turn on availability'}
                   aria-pressed={isReviewerAvailable}
-                  title={isReviewerAvailable ? 'Click to go unavailable' : 'Click to go available'}
+                  aria-describedby="availability-help"
+                  title={
+                    isReviewerAvailable
+                      ? 'You are receiving review assignments. Click to pause new assignments.'
+                      : 'You are not receiving review assignments. Click to start receiving them.'
+                  }
                 >
                   <span
                     className={`${styles.toggleKnob} ${isReviewerAvailable ? styles.toggleKnobOn : styles.toggleKnobOff}`}
@@ -719,6 +802,11 @@ export const MainLayout = () => {
                   className={`${styles.availabilityLabel} ${isReviewerAvailable ? styles.availabilityLabelAvailable : styles.availabilityLabelUnavailable}`}
                 >
                   {isReviewerAvailable ? 'Available' : 'Unavailable'}
+                </span>
+                <span id="availability-help" className={styles.srOnly}>
+                  Controls whether the platform assigns new peer-review
+                  invitations to you. When available, the Admin can route
+                  new manuscript assignments to you.
                 </span>
               </div>
             )}
@@ -754,6 +842,13 @@ export const MainLayout = () => {
         <main key={location.key} className={styles.contentBody}>
           <Outlet />
         </main>
+
+        {/* Keyboard shortcuts help modal — opened by the `?` key or the
+            header button. Global so it works from any page. */}
+        <KeyboardShortcutsHelp
+          open={shortcutsOpen}
+          onClose={() => setShortcutsOpen(false)}
+        />
       </div>
     </div>
   );

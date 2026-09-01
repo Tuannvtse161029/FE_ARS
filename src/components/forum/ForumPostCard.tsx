@@ -11,6 +11,7 @@ import { FollowButton } from './FollowButton';
 import { ReportModal } from './ReportModal';
 import { ForumPostEngagementRow } from './ForumPostEngagementRow';
 import { useForumComments } from '../../hooks/useForumComments';
+import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { forumPostService } from '../../services/forumPost.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
@@ -36,6 +37,10 @@ export const ForumPostCard = ({
     id: number;
     preview: string;
   } | null>(null);
+
+  // Combined permission: approved by Admin AND (not Researcher/Lecturer,
+  // or subscription ACTIVE).
+  const { canInteract } = useCanInteractInForum();
 
   // Lifted out of `CommentSection` so the engagement-row Comments button
   // is the single source of truth for expand/collapse. We start expanded
@@ -88,7 +93,7 @@ export const ForumPostCard = ({
   };
 
   const handleLikeClick = async () => {
-    if (!currentUserId || !isVerified || likeInFlight) return;
+    if (!currentUserId || !canInteract || likeInFlight) return;
     const prevLiked = isLiked;
     const prevCount = likesCount;
     const nextLiked = !prevLiked;
@@ -245,7 +250,7 @@ export const ForumPostCard = ({
       {/* Engagement row — Like → Comments */}
       <ForumPostEngagementRow
         viewModel={viewModel}
-        canMutate={isVerified && currentUserId != null}
+        canMutate={canInteract && currentUserId != null}
         commentsExpanded={!commentsCollapsed}
         onToggleComments={handleToggleComments}
         onLikeClick={handleLikeClick}

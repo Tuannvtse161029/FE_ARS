@@ -23,7 +23,7 @@ import {
   FileText,
   Lightbulb,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
@@ -37,6 +37,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type {
   GuidanceProject,
   GuidanceProjectStatus,
@@ -101,6 +102,7 @@ const createdToGuidanceProject = (
 
 export const GuidanceProjects = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const lecturerId = user?.userId ?? null;
 
   const {
@@ -217,6 +219,19 @@ export const GuidanceProjects = () => {
     setCreateError(null);
     setShowCreate(true);
   };
+
+  // Part 3 — keyboard shortcuts for the guidance-projects table.
+  // j/k navigate rows, Enter opens the row in the review console,
+  // n opens the create-proposal modal, f focuses the search input.
+  const { selectedIndex } = useListShortcuts({
+    itemCount: pageItems.length,
+    onOpen: (index) => {
+      const project = pageItems[index];
+      if (!project) return;
+      navigate(`${ROUTES.LECTURER_EVALUATE_REPORTS}?projectId=${project.id}`);
+    },
+    onNew: handleOpenCreate,
+  });
 
   const handleCloseCreate = () => {
     if (isCreating) return; // ignore during submit
@@ -467,7 +482,7 @@ export const GuidanceProjects = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((project) => {
+                  {pageItems.map((project, index) => {
                     const canCancel = canTransitionGuidanceProject(
                       project.status,
                       'CANCELLED',
@@ -481,7 +496,11 @@ export const GuidanceProjects = () => {
                         ? pendingTransition.to
                         : null;
                     return (
-                      <tr key={project.id} data-testid="gp-row">
+                      <tr
+                        key={project.id}
+                        data-testid="gp-row"
+                        className={selectedIndex === index ? styles.selectedRow : ''}
+                      >
                         <td>
                           <div className={styles.titleCell}>
                             <span className={styles.titlePill}>GP-{project.id}</span>
