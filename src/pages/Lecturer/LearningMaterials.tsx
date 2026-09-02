@@ -29,6 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { learningMaterialService } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
+import { learningMaterialUsageService, type MaterialUsage } from '../../services/phaseMaterial.service';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -66,7 +67,21 @@ export const LecturerLearningMaterialsPage = () => {
   // surface at the top. The user can override per column header click.
   const sort = useTableSort<LearningMaterial, SortColumn>('updatedAt', 'desc');
 
-  // ── Add form state ────────────────────────────────────────────────────
+  // ── Material usages state — keyed by materialId ─────────────────────
+  // Tracks where each material is used (phase + group + topic).
+  // Fetched lazily when the user clicks Delete.
+  const [materialUsages, setMaterialUsages] = useState<
+    Map<number, MaterialUsage[]>
+  >(new Map());
+  const [loadingUsages, setLoadingUsages] = useState<
+    Map<number, boolean>
+  >(new Map());
+
+  // ── Delete-confirmation dialog state ──────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newFileUrl, setNewFileUrl] = useState('');
@@ -214,17 +229,50 @@ export const LecturerLearningMaterialsPage = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  /**
+   * Fetch usages for a material and open the delete confirmation.
+   * If all usages are expired, we still open the dialog but without the warning.
+   * If any usage is active (phase deadline not passed), we show the warning.
+   */
+  const openDeleteConfirm = async (id: number, title: string) => {
     if (!id) return;
-    if (
-      typeof window !== 'undefined' &&
-      typeof window.confirm === 'function'
-    ) {
-      const ok = window.confirm(
-        'Delete this material? This cannot be undone.',
-      );
-      if (!ok) return;
+
+    // Optimistically mark this material as loading its usages.
+    setLoadingUsages((prev) => {
+      const next = new Map(prev);
+      next.set(id, true);
+      return next;
+    });
+    setDeleteTarget({ id, title });
+
+    try {
+      const usages = await learningMaterialUsageService.getUsages(id);
+      setMaterialUsages((prev) => {
+        const next = new Map(prev);
+        next.set(id, usages);
+        return next;
+      });
+    } catch {
+      // If we fail to load usages, treat as if there are none —
+      // the user can still attempt deletion and the server will respond.
+      setMaterialUsages((prev) => {
+        const next = new Map(prev);
+        next.set(id, []);
+        return next;
+      });
+    } finally {
+      setLoadingUsages((prev) => {
+        const next = new Map(prev);
+        next.set(id, false);
+        return next;
+      });
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteTarget(null);
     try {
       await learningMaterialService.delete(id);
       showBanner('Material deleted.');
@@ -234,6 +282,10 @@ export const LecturerLearningMaterialsPage = () => {
         err instanceof Error ? err.message : 'Failed to delete the material.';
       showBanner(message, 'error');
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteTarget(null);
   };
 
   return (
@@ -493,6 +545,7 @@ export const LecturerLearningMaterialsPage = () => {
                         ariaSortFor={sort.ariaSortFor}
                       />
                     </th>
+                    <th>USED IN</th>
                     <th>ACTION</th>
                   </tr>
                 </thead>
@@ -520,6 +573,49 @@ export const LecturerLearningMaterialsPage = () => {
                             : '—'}
                         </td>
                         <td>{m.updatedAt ? m.updatedAt.split('T')[0] : '—'}</td>
+                        {/* Used In — shows where this material is assigned. */}
+                        <td>
+                          {(() => {
+                            const usages = materialUsages.get(id) ?? null;
+                            const isLoadingU = loadingUsages.get(id) ?? false;
+                            if (isLoadingU) {
+                              return (
+                                <span className={styles.usageLoading}>
+                                  <Loader size={12} className={styles.spinningIcon} aria-hidden />
+                                  Checking…
+                                </span>
+                              );
+                            }
+                            if (!usages || usages.length === 0) {
+                              return (
+                                <span className={styles.usageNone}>—</span>
+                              );
+                            }
+                            return (
+                              <div className={styles.usageList}>
+                                {usages.map((u) => (
+                                  <span
+                                    key={u.phaseMaterialId}
+                                    className={
+                                      u.isExpired
+                                        ? styles.usageBadgeExpired
+                                        : styles.usageBadgeActive
+                                    }
+                                    title={`Deadline: ${u.phaseDeadlineAt ? new Date(u.phaseDeadlineAt).toLocaleDateString('vi-VN') : 'unknown'}`}
+                                  >
+                                    {u.isExpired ? '✓ ' : '⚠ '}
+                                    Phase {u.phaseNumber} · {u.researchGroupName}
+                                    {u.isExpired && (
+                                      <span className={styles.usageExpiredNote}>
+                                        {' '}(expired)
+                                      </span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td>
                           <div className={styles.topicActionStack}>
                             {m.fileUrl && (
@@ -536,7 +632,9 @@ export const LecturerLearningMaterialsPage = () => {
                             <button
                               type="button"
                               className={styles.closeTopicBtn}
-                              onClick={() => void handleDelete(id)}
+                              onClick={() =>
+                                void openDeleteConfirm(id, formatTitle(m))
+                              }
                               disabled={id < 0}
                               aria-label={`Delete ${formatTitle(m)}`}
                             >
@@ -565,6 +663,136 @@ export const LecturerLearningMaterialsPage = () => {
           </>
         )}
       </div>
+
+      {/* ── Delete confirmation dialog ────────────────────────────────── */}
+      {deleteTarget && (
+        <div className={styles.confirmOverlay} role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+          <div className={styles.confirmCard}>
+            <div className={styles.confirmHeader}>
+              <AlertTriangle size={20} aria-hidden />
+              <h3 id="delete-dialog-title" className={styles.confirmTitle}>
+                Delete "{deleteTarget.title}"?
+              </h3>
+            </div>
+
+            {(() => {
+              const usages = materialUsages.get(deleteTarget.id) ?? null;
+              const isLoadingU = loadingUsages.get(deleteTarget.id) ?? false;
+
+              if (isLoadingU) {
+                return (
+                  <div className={styles.confirmBody}>
+                    <p>Checking where this material is used…</p>
+                    <div className={styles.confirmLoadingRow}>
+                      <Loader size={16} className={styles.spinningIcon} aria-hidden />
+                      <span>Loading usage data…</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const activeUsages =
+                usages?.filter((u) => !u.isExpired) ?? [];
+              const expiredUsages =
+                usages?.filter((u) => u.isExpired) ?? [];
+
+              return (
+                <div className={styles.confirmBody}>
+                  {usages && usages.length > 0 ? (
+                    <>
+                      <p className={styles.confirmDesc}>
+                        This material is currently assigned to:
+                      </p>
+                      <ul className={styles.usageConfirmList}>
+                        {usages.map((u) => (
+                          <li
+                            key={u.phaseMaterialId}
+                            className={
+                              u.isExpired
+                                ? styles.usageConfirmExpired
+                                : styles.usageConfirmActive
+                            }
+                          >
+                            <span>
+                              <strong>Phase {u.phaseNumber}</strong> —{' '}
+                              {u.phaseTitle ?? 'Untitled phase'} of{' '}
+                              <strong>{u.researchGroupName}</strong> (
+                              {u.topicTitle})
+                            </span>
+                            <span className={styles.usageConfirmDeadline}>
+                              Deadline:{' '}
+                              {u.phaseDeadlineAt
+                                ? new Date(
+                                    u.phaseDeadlineAt,
+                                  ).toLocaleDateString('vi-VN')
+                                : 'not set'}
+                              {u.isExpired && (
+                                <span className={styles.expiredTag}>
+                                  {' '}
+                                  — Expired
+                                </span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {activeUsages.length > 0 && (
+                        <div
+                          className={styles.confirmWarning}
+                          role="alert"
+                        >
+                          <AlertTriangle size={14} aria-hidden />
+                          <span>
+                            Deleting now will remove the material from{' '}
+                            <strong>{activeUsages.length}</strong> active
+                            phase{activeUsages.length !== 1 ? 's' : ''}. The
+                            students assigned to those phases will lose access
+                            to the file.
+                          </span>
+                        </div>
+                      )}
+
+                      {expiredUsages.length > 0 && activeUsages.length === 0 && (
+                        <div className={styles.confirmInfoSafe}>
+                          <span>
+                            All phases using this material have expired. It is
+                            safe to delete.
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className={styles.confirmDesc}>
+                      This material is not assigned to any phase. Deleting it
+                      will remove it from your library permanently. This cannot
+                      be undone.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div className={styles.confirmFooter}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={cancelDelete}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.deleteDangerBtn}
+                onClick={() => void confirmDelete()}
+              >
+                <Trash2 size={14} aria-hidden />
+                Delete Material
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
