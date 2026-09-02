@@ -195,12 +195,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--ars-admin);
-  border: 1px solid var(--ars-admin);
+  background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);
   padding: 6px 12px;
   cursor: pointer;
-  color: var(--ars-paper);
+  color: var(--ink-primary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   font-family: var(--font-family-ui);
@@ -301,9 +301,9 @@
 }
 
 .retryBtn {
-  background: var(--ars-admin);
-  color: var(--ars-paper);
-  border: 1px solid var(--ars-admin);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);
   padding: 6px 12px;
   cursor: pointer;

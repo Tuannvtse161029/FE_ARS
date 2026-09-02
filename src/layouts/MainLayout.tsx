@@ -38,7 +38,6 @@ import {
   ScrollText as AuditLogsIcon,
   Upload,
   BriefcaseBusiness,
-  Receipt as AnnualFeesIcon,
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
   FileCheck2 as PublicationIcon,
@@ -551,10 +550,8 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts', icon: <AccountsIcon size={20} /> },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
-          { to: ROUTES.ADMIN_PACKAGES, label: 'Packages', icon: <PackagesIcon size={20} /> },
-          // Annual Fees stays visible as a production dependency state while
-          // its backend contract is being implemented.
-          { to: ROUTES.ADMIN_ANNUAL_FEES, label: 'Annual Fees', icon: <AnnualFeesIcon size={20} /> },
+          { to: ROUTES.ADMIN_PACKAGES, label: 'Annual Fees', icon: <PackagesIcon size={20} /> },
+
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: 'Audit Logs', icon: <AuditLogsIcon size={20} /> },
         ];
       case 'Reviewer':

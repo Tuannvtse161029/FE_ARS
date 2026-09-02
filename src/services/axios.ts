@@ -49,6 +49,15 @@ api.interceptors.response.use(
   },
   (error: AxiosError<AxiosErrorResponse>) => {
     loadingTracker.end();
+
+    // An AbortController cancellation is an expected lifecycle event (for
+    // example, React Strict Mode remounts and analytics range changes). Keep
+    // the original cancellation error intact rather than presenting it as a
+    // network failure to callers.
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+
     const requestUrl = (error.config?.url ?? '').toLowerCase();
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 

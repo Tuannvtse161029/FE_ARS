@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-
     "preview": "vite preview",
-
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.unit.config.ts",
@@ -21,7 +19,6 @@
     "test:affected": "node scripts/run-affected-tests.mjs",
     "test:full": "node scripts/run-all-tests.mjs",
     "test:coverage": "vitest run --coverage --config vitest.config.ts",
-
     "e2e:production": "playwright test --config playwright.config.ts",
     "e2e:researcher-reviewer": "playwright test --config playwright.reviewer-flow.config.ts",
     "e2e:reviewer-withdrawal": "playwright test --config playwright.withdrawal-flow.config.ts",
@@ -45,7 +42,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
@@ -56,14 +53,15 @@
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
-    "eslint": "^9.17.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
-    "globals": "^15.14.0",
+    "globals": "^15.15.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.62.1",
     "typescript": "~5.6.2",
-    "typescript-eslint": "^8.18.2",
+    "typescript-eslint": "^8.69.0",
     "vite": "^6.0.5",
     "vitest": "^4.1.10"
   },

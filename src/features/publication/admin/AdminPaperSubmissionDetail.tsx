@@ -170,9 +170,9 @@ export const AdminPaperSubmissionDetail = () => {
     try {
       const updated = await publicationAdapter.verifyAuthorship(paper.id, true);
       setPaper(updated);
-      setVerificationSuccess('Đã xác nhận quyền sở hữu tác giả thành công! Trạng thái chuyển sang ALLOW.');
+      setVerificationSuccess('Authorship was verified successfully. The status is now ALLOW.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể xác nhận quyền tác giả.');
+      setError(err instanceof Error ? err.message : 'Authorship could not be verified.');
     } finally {
       setVerifying(false);
     }
@@ -420,7 +420,7 @@ export const AdminPaperSubmissionDetail = () => {
           {Object.keys(paper.reviewer.privateScores).length > 0 && (
             <div style={{ marginTop: 14 }}>
               <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
-                Điểm số 5 tiêu chí cốt lõi (Core Criteria Scores)
+                Core criteria scores
               </h4>
               <table className={adminStyles.reviewScoresTable}>
                 <thead>
@@ -448,7 +448,7 @@ export const AdminPaperSubmissionDetail = () => {
           {(paper.reviewer.criteria1 || paper.reviewer.criteria2 || paper.reviewer.criteria3) && (
             <div style={{ marginTop: 16 }}>
               <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
-                Tiêu chí chuyên ngành & Mở rộng (Subfield Criteria & Expanded Criteria)
+                Specialized and expanded criteria
               </h4>
               <div style={{ display: 'grid', gap: 10 }}>
                 {paper.reviewer.criteria1 && (
@@ -533,25 +533,25 @@ export const AdminPaperSubmissionDetail = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {isAuthorshipAllowed(paper) ? <CheckCircle2 size={20} color="#059669" /> : <ShieldCheck size={20} color="#2563eb" />}
                   <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: isAuthorshipAllowed(paper) ? '#065f46' : '#1e40af' }}>
-                    Xác minh quyền tác giả của Researcher (Author Verification)
+                    Researcher authorship verification
                   </h3>
                 </div>
                 <span
                   className={`${adminStyles.verificationBadge} ${adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ?? ''}`}
                   style={{ fontSize: 12, padding: '3px 10px', fontWeight: 700 }}
                 >
-                  Trạng thái: {paper.researcherVerificationStatus}
+                  Status: {paper.researcherVerificationStatus}
                 </span>
               </div>
 
               {isAuthorshipAllowed(paper) ? (
                 <p style={{ color: '#047857', fontSize: 13, margin: '6px 0 0' }}>
-                  ✓ Đã xác nhận quyền sở hữu tác giả chính thức (ALLOW). Bài báo đã đủ điều kiện để phân công phản biện viên (Reviewer).
+                  Authorship has been officially verified (ALLOW). This paper is eligible for reviewer assignment.
                 </p>
               ) : (
                 <>
                   <p className={adminStyles.actionZoneHint} style={{ color: '#1e3a8a', marginBottom: 12 }}>
-                    Admin cần xác nhận bài báo này thuộc về chính Researcher nộp bài (chuyển trạng thái sang <strong>ALLOW</strong>) thì hệ thống mới mở khóa nút phân công bài báo cho các Reviewer.
+                    Verify authorship so the system can unlock reviewer assignment for this paper.
                   </p>
                   <div className={shared.actions}>
                     <button
@@ -561,7 +561,7 @@ export const AdminPaperSubmissionDetail = () => {
                       disabled={verifying || saving}
                       onClick={() => void handleAllowVerification()}
                     >
-                      {verifying ? 'Đang xử lý...' : '✓ Chấp nhận tác quyền (Accept & Allow Verification)'}
+                      {verifying ? 'Verifying…' : 'Verify authorship'}
                     </button>
                   </div>
                 </>
@@ -574,11 +574,11 @@ export const AdminPaperSubmissionDetail = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <Lock size={18} color="#94a3b8" />
                     <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: '#64748b' }}>
-                      Phân công Reviewer (Bị khóa)
+                      Reviewer assignment is locked
                     </h3>
                   </div>
                   <p style={{ color: '#dc2626', fontSize: 13, margin: '6px 0 0', fontWeight: 600 }}>
-                    ⚠️ Chưa thể phân công Reviewer: Admin cần bấm nút "Chấp nhận tác quyền (Accept & Allow Verification)" ở trên để chuyển trạng thái sang ALLOW trước khi có thể phân công Reviewer cho bài báo này.
+                    Reviewer assignment requires authorship verification. Verify authorship above to continue.
                   </p>
                 </div>
               ) : (
@@ -594,16 +594,16 @@ export const AdminPaperSubmissionDetail = () => {
                       disabled={saving}
                       onClick={() => void assignAuto()}
                     >
-                      {saving ? 'Đang phân công...' : '⚡ Tự động tìm & phân công 3 Reviewer (Auto-assign)'}
+                      {saving ? 'Assigning…' : 'Automatically assign 3 reviewers'}
                     </button>
                     <p className={shared.fieldHint} style={{ marginTop: 4 }}>
-                      Gọi API <code>POST /api/Paper/{paper.id}/assign-reviewers</code> tự động khớp chuyên ngành & tải công việc.
+                      The API automatically matches subject expertise and workload.
                     </p>
                   </div>
 
                   <div className={adminStyles.assignForm}>
                     <label className={shared.field}>
-                      <span>Hoặc nhập thủ công Reviewer ID</span>
+                      <span>Or enter a reviewer ID manually</span>
                       <input
                         aria-label="Reviewer account ID"
                         inputMode="numeric"
@@ -624,7 +624,7 @@ export const AdminPaperSubmissionDetail = () => {
                       }
                       onClick={() => void assign()}
                     >
-                      {saving ? 'Saving...' : 'Gán Reviewer thủ công'}
+                      {saving ? 'Saving…' : 'Assign reviewer manually'}
                     </button>
                   </div>
                 </div>
@@ -632,7 +632,7 @@ export const AdminPaperSubmissionDetail = () => {
             ) : null}
             {canPublish(paper) ? (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Publish (Xuất bản)</h3>
+                <h3 className={adminStyles.actionZoneTitle}>Publish</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'publish')?.hint}</p>
                 <div className={shared.actions}>
                   <button
@@ -641,7 +641,7 @@ export const AdminPaperSubmissionDetail = () => {
                     disabled={saving}
                     onClick={() => void publish()}
                   >
-                    {saving ? 'Publishing...' : 'Approve and publish (Xuất bản lên Discover RESEARCH)'}
+                    {saving ? 'Publishing…' : 'Approve and publish'}
                   </button>
                 </div>
               </div>
@@ -660,7 +660,7 @@ export const AdminPaperSubmissionDetail = () => {
             ) : null}
             {canReject(paper) ? (
               <div className={adminStyles.actionZone}>
-                <h3 className={adminStyles.actionZoneTitle}>Reject (Từ chối bài báo)</h3>
+                <h3 className={adminStyles.actionZoneTitle}>Reject paper</h3>
                 <p className={adminStyles.actionZoneHint}>{actions.find((action) => action.id === 'reject')?.hint}</p>
                 <div className={shared.actions}>
                   <button
@@ -668,9 +668,9 @@ export const AdminPaperSubmissionDetail = () => {
                     className={shared.buttonSecondary}
                     style={{ color: '#dc2626', borderColor: '#fca5a5', fontWeight: 600 }}
                     disabled={saving}
-                    onClick={() => void reject('Không đạt tiêu chuẩn phản biện chuyên môn.')}
+                    onClick={() => void reject('The submission does not meet the editorial review standard.')}
                   >
-                    {saving ? 'Đang xử lý...' : 'Xác nhận từ chối (Confirm Rejection & Notify Author)'}
+                    {saving ? 'Processing…' : 'Confirm rejection and notify author'}
                   </button>
                 </div>
               </div>

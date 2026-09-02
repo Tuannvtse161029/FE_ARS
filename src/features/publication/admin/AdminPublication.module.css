@@ -164,21 +164,21 @@
   color: var(--ars-admin);
 }
 
-.statusDraft          { background: #eef0f4; color: #3a4156; }
-.statusSubmitted      { background: #e0e7ff; color: #1e3a8a; }
-.statusScreening      { background: var(--ars-admin-light); color: var(--ars-admin); }
-.statusVerification   { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusReady          { background: var(--ars-info-bg); color: var(--ars-info); }
-.statusAssigned       { background: var(--ars-info-bg); color: var(--ars-info); }
-.statusUnderReview    { background: var(--ars-info-bg); color: var(--ars-info); }
-.statusRevision       { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusResubmitted    { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusRecommendAccept { background: var(--ars-success-bg); color: var(--ars-success); }
-.statusRecommendReject { background: var(--ars-error-bg); color: var(--ars-error); }
-.statusApproved       { background: #ccfbf1; color: #115e59; }
-.statusPublished      { background: var(--ars-success-bg); color: var(--ars-success); }
-.statusRejected       { background: var(--ars-error-bg); color: var(--ars-error); }
-.statusWithdrawn      { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
+.statusDraft          { background: var(--status-neutral-surface); color: var(--status-neutral-text); }
+.statusSubmitted      { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusScreening      { background: var(--surface-selected); color: var(--ink-primary); }
+.statusVerification   { background: var(--status-warning-surface); color: var(--status-warning-text); }
+.statusReady          { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusAssigned       { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusUnderReview    { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusRevision       { background: var(--status-warning-surface); color: var(--status-warning-text); }
+.statusResubmitted    { background: var(--status-warning-surface); color: var(--status-warning-text); }
+.statusRecommendAccept { background: var(--status-success-surface); color: var(--status-success-text); }
+.statusRecommendReject { background: var(--status-danger-surface); color: var(--status-danger-text); }
+.statusApproved       { background: var(--status-success-surface); color: var(--status-success-text); }
+.statusPublished      { background: var(--status-success-surface); color: var(--status-success-text); }
+.statusRejected       { background: var(--status-danger-surface); color: var(--status-danger-text); }
+.statusWithdrawn      { background: var(--status-neutral-surface); color: var(--status-neutral-text); }
 
 /* ── Verification badge ──────────────────────────────── */
 .verificationBadge {
@@ -199,7 +199,57 @@
 .verificationPending    { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .verificationUnverified { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
 
-/* ── Identifier chips ─────────────────────────────────── */
+.verificationActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.rowActionGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.verifyActionButton,
+.rejectActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.verifyActionButton {
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+.verifyActionButton:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.verifyActionButton:focus-visible,
+.rejectActionButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.verifyActionButton:disabled,
+.rejectActionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+
 .identifierList {
   display: flex;
   flex-wrap: wrap;
@@ -682,10 +732,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #16a34a;
-  border: 1px solid #15803d;
+  background: var(--status-success-text);
+  border: 1px solid var(--status-success-text);
   border-radius: var(--radius-sm);
-  color: #ffffff;
+  color: var(--ink-on-dark);
   padding: 5px 12px;
   font: inherit;
   font-size: var(--font-size-xs);
@@ -698,8 +748,8 @@
 }
 
 .publishButton:hover:not(:disabled) {
-  background: #15803d;
-  color: #ffffff;
+  background: var(--status-success-text);
+  color: var(--ink-on-dark);
   transform: translateY(-1px);
 }
 
@@ -712,9 +762,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+  border: 1px solid var(--status-success-text);
   border-radius: var(--radius-sm);
   padding: 4px 10px;
   font-size: var(--font-size-xs);
@@ -725,10 +775,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
+  background: var(--status-danger-surface);
+  border: 1px solid var(--status-danger-text);
   border-radius: var(--radius-sm);
-  color: #b91c1c;
+  color: var(--status-danger-text);
   padding: 5px 10px;
   font: inherit;
   font-size: var(--font-size-xs);
@@ -739,8 +789,8 @@
 }
 
 .rejectActionButton:hover:not(:disabled) {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--status-danger-text);
+  color: var(--ink-on-dark);
 }
 
 .rejectActionButton:disabled {
@@ -748,6 +798,19 @@
   cursor: not-allowed;
 }
 
+.feedbackCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.feedbackCloseButton:hover { opacity: 0.7; }
+.feedbackCloseButton:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .feedbackBanner {
   margin-bottom: var(--space-4);
   padding: 12px 16px;
@@ -761,13 +824,13 @@
 }
 
 .feedbackSuccess {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
+  background: var(--status-success-surface);
+  border: 1px solid var(--status-success-text);
+  color: var(--status-success-text);
 }
 
 .feedbackError {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--status-danger-surface);
+  border: 1px solid var(--status-danger-text);
+  color: var(--status-danger-text);
 }

@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, Inbox } from 'lucide-react';
+import { ExternalLink, FileText, Inbox, X } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
@@ -96,6 +96,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{
     type: 'success' | 'error';
@@ -120,40 +121,47 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
       );
       setActionFeedback({
         type: 'success',
-        message: `Đã xuất bản bài báo "${paper.title}" lên Discover Research thành công! Tác giả đã nhận được thông báo.`,
+        message: `The paper "${paper.title}" was published successfully and its author was notified.`,
       });
     } catch (e) {
       setActionFeedback({
         type: 'error',
-        message: e instanceof Error ? e.message : 'Không thể xuất bản bài báo.',
+        message: e instanceof Error ? e.message : 'The paper could not be published.',
       });
     } finally {
       setPublishingId(null);
     }
   };
 
+  const handleDeactivate = async (paper: PublicationPaper) => {
+    if (deactivatingId || rejectingId) return;
+    if (!window.confirm(`Deactivate the published paper "${paper.title}"? It will be hidden from the public catalog.`)) return;
+    setDeactivatingId(paper.id);
+    setActionFeedback(null);
+    try {
+      await publicationAdapter.deactivatePublishedPaper(paper.id);
+      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)));
+      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" is now inactive.` });
+    } catch (e) {
+      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : 'The paper could not be deactivated.' });
+    } finally {
+      setDeactivatingId(null);
+    }
+  };
+
+
   const handleReject = async (paper: PublicationPaper) => {
     if (publishingId || rejectingId) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn từ chối bài báo "${paper.title}"?`)) return;
+    const reason = window.prompt(`Provide a rejection reason for "${paper.title}".`)?.trim();
+    if (!reason) return;
     setRejectingId(paper.id);
     setActionFeedback(null);
     try {
-      await publicationAdapter.rejectPaper(
-        paper.id,
-        'Ban biên tập đã từ chối xuất bản bài báo theo kết luận phản biện.',
-      );
-      setPapers((prev) =>
-        prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)),
-      );
-      setActionFeedback({
-        type: 'success',
-        message: `Đã từ chối bài báo "${paper.title}". Tác giả đã nhận được thông báo.`,
-      });
+      await publicationAdapter.rejectPaper(paper.id, reason);
+      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)));
+      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" was rejected and its author was notified.` });
     } catch (e) {
-      setActionFeedback({
-        type: 'error',
-        message: e instanceof Error ? e.message : 'Không thể từ chối bài báo.',
-      });
+      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : 'The paper could not be rejected.' });
     } finally {
       setRejectingId(null);
     }
@@ -317,10 +325,11 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           <span>{actionFeedback.message}</span>
           <button
             type="button"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+            className={adminStyles.feedbackCloseButton}
+            aria-label="Dismiss message"
             onClick={() => setActionFeedback(null)}
           >
-            ✕
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       ) : null}
@@ -535,20 +544,20 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                       </td>
                       <td data-label="Actions" align="right">
                         <div className={shared.actions}>
-                          {/* Nút Review */}
+                          {/* Review record */}
                           <Link
                             className={adminStyles.previewButton}
                             to={`/admin/paper-submissions/${paper.id}`}
-                            title="Xem chi tiết biên tập và đánh giá phản biện"
+                            title="Open the editorial and reviewer record"
                           >
                             <FileText size={13} aria-hidden="true" /> Review
                           </Link>
 
-                          {/* Nút Public kế bên nút Review */}
+                          {/* Publication action */}
                           {paper.status === 'PUBLISHED' ? (
-                            <span className={adminStyles.publishedBadge}>
-                              ✓ Đã đăng
-                            </span>
+                            <button type="button" className={adminStyles.publishButton} onClick={() => void handleDeactivate(paper)} disabled={deactivatingId === paper.id} title="Deactivate this published paper">
+                              {deactivatingId === paper.id ? 'Deactivating…' : <><FileText size={13} aria-hidden="true" /> Deactivate</>}
+                            </button>
                           ) : (paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
                               paper.status === 'ADMIN_APPROVED' ||
                               paper.reviewer?.recommendation === 'ACCEPT') ? (
@@ -557,26 +566,19 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                               className={adminStyles.publishButton}
                               disabled={publishingId === paper.id}
                               onClick={() => void handlePublish(paper)}
-                              title="Xuất bản bài báo lên Discover Research"
+                              title="Publish this paper"
                             >
-                              {publishingId === paper.id ? (
-                                'Đang đăng...'
-                              ) : (
-                                <>
-                                  <ExternalLink size={13} aria-hidden="true" /> Public
-                                </>
-                              )}
+                              {publishingId === paper.id ? 'Publishing…' : <><ExternalLink size={13} aria-hidden="true" /> Publish</>}
                             </button>
-                          ) : paper.status === 'REVIEWER_RECOMMENDED_REJECT' ||
-                            paper.reviewer?.recommendation === 'REJECT' ? (
+                          ) : paper.status === 'REVIEWER_RECOMMENDED_REJECT' || paper.reviewer?.recommendation === 'REJECT' ? (
                             <button
                               type="button"
                               className={adminStyles.rejectActionButton}
                               disabled={rejectingId === paper.id}
                               onClick={() => void handleReject(paper)}
-                              title="Từ chối xuất bản bài báo"
+                              title="Reject this paper"
                             >
-                              {rejectingId === paper.id ? 'Đang xử lý...' : 'Từ chối'}
+                              Reject
                             </button>
                           ) : null}
 
