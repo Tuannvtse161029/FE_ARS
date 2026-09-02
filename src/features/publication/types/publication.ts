@@ -159,9 +159,8 @@ export const publicReviewerName = (paper: Pick<PublicationPaper, 'reviewerIdenti
   paper.reviewerIdentityPublic ? paper.reviewer?.reviewerName ?? null : null;
 
 export const statusLabel = (status: PublicationStatus): string => {
-  if (status === 'REVIEWER_RECOMMENDED_REJECT') return 'Reviewer Recommended Reject (Đề xuất từ chối)';
-  if (status === 'REVIEWER_RECOMMENDED_ACCEPT') return 'Reviewer Recommended Accept (Đề xuất chấp nhận)';
-  if (status === 'ADMIN_REJECTED') return 'Denied (Bị từ chối)';
-  if (status === 'PUBLISHED') return 'Published (Đã xuất bản)';
+  if (status === 'REVIEWER_RECOMMENDED_REJECT') return 'Reviewer recommended rejection';
+  if (status === 'REVIEWER_RECOMMENDED_ACCEPT') return 'Reviewer recommended acceptance';
+  if (status === 'ADMIN_REJECTED') return 'Rejected';
   return status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 };

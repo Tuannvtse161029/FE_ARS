@@ -395,10 +395,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 16px;
-  border: 1px solid var(--ars-admin);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);
-  background: var(--ars-admin);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
@@ -538,9 +538,9 @@
 }
 
 .primaryButton {
-  border-color: var(--ars-admin);
-  background: var(--ars-admin);
-  color: var(--ars-paper);
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .primaryButton:hover:not(:disabled) {

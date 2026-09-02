@@ -43,7 +43,7 @@ const METRIC_TITLES: Record<AnalyticsMetric, string> = {
   revenue: 'Revenue',
 };
 
-const formatNumber = (value: number) => new Intl.NumberFormat('vi-VN').format(value);
+const formatNumber = (value: number) => new Intl.NumberFormat('en-US').format(value);
 
 const formatRevenue = (value: number) => `${formatNumber(value)} VND`;
 
@@ -52,6 +52,10 @@ const formatChartDate = (value: string) => {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' });
 };
+
+const isRequestCancelled = (error: unknown) =>
+  (error as { name?: string; code?: string })?.name === 'CanceledError' ||
+  (error as { code?: string })?.code === 'ERR_CANCELED';
 
 const logDiag = (label: string, error: unknown) => {
   if (import.meta.env.DEV) {
@@ -191,8 +195,9 @@ export const AdminDashboard = () => {
       const data = await adminService.getAnalyticsSummary(signal);
       if (!signal.aborted) setSummary(data);
     } catch (error) {
+      if (signal.aborted || isRequestCancelled(error)) return;
       logDiag('summary failed', error);
-      if (!signal.aborted) setSummaryError(DASHBOARD_UNAVAILABLE);
+      setSummaryError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingSummary(false);
     }
@@ -211,8 +216,9 @@ export const AdminDashboard = () => {
         setRevenue(revenueData);
       }
     } catch (error) {
+      if (signal.aborted || isRequestCancelled(error)) return;
       logDiag('analytics failed', error);
-      if (!signal.aborted) setAnalyticsError(DASHBOARD_UNAVAILABLE);
+      setAnalyticsError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingAnalytics(false);
     }
@@ -243,6 +249,23 @@ export const AdminDashboard = () => {
   return (
     <div className={styles.page}>
       <div className={styles.content}>
+        <section className={styles.snapshotSection} aria-labelledby="platform-snapshot-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionEyebrow}>Live snapshot</p>
+              <h2 id="platform-snapshot-title">Platform records</h2>
+            </div>
+          </div>
+          {summaryError ? (
+            <WidgetErrorState message={summaryError} onRetry={() => void loadAll()} testId="summary-error" />
+          ) : (
+            <div className={styles.metricGrid}>
+              <MetricCard label="Registered members" value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)} annotation="Current total from analytics" icon={<UsersIcon size={16} />} accent={ROLE_ACCENT} />
+              <MetricCard label="Published papers" value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)} annotation="Current published-paper total" icon={<PapersIcon size={16} />} accent={ROLE_ACCENT} />
+            </div>
+          )}
+        </section>
+
         <section className={styles.analyticsSection} aria-label="Platform analytics">
           <AnalyticsChart
             metric="user_registrations"
@@ -264,34 +287,6 @@ export const AdminDashboard = () => {
           />
         </section>
 
-        <section className={styles.snapshotSection} aria-labelledby="platform-snapshot-title">
-          <div className={styles.sectionHeading}>
-            <div>
-              <p className={styles.sectionEyebrow}>Live snapshot</p>
-              <h2 id="platform-snapshot-title">Platform records</h2>
-            </div>
-          </div>
-          {summaryError ? (
-            <WidgetErrorState message={summaryError} onRetry={() => void loadAll()} testId="summary-error" />
-          ) : (
-            <div className={styles.metricGrid}>
-              <MetricCard
-                label="Registered members"
-                value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)}
-                annotation="Current total from analytics"
-                icon={<UsersIcon size={16} />}
-                accent={ROLE_ACCENT}
-              />
-              <MetricCard
-                label="Research papers"
-                value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)}
-                annotation="Current total from analytics"
-                icon={<PapersIcon size={16} />}
-                accent={ROLE_ACCENT}
-              />
-            </div>
-          )}
-        </section>
       </div>
     </div>
   );

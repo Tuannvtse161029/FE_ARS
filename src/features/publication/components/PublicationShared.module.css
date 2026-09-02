@@ -163,10 +163,10 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  border: 1px solid var(--ars-blue);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
-  background: var(--ars-blue);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
   cursor: pointer;
   min-height: 36px;
   padding: 8px 14px;
@@ -179,8 +179,8 @@
 }
 
 .button:hover:not(:disabled) {
-  background: var(--ars-blue-mid);
-  border-color: var(--ars-blue-mid);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
   box-shadow: var(--shadow-sm);
 }
 
@@ -189,7 +189,7 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -260,7 +260,7 @@
 }
 
 .buttonSecondary:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -277,7 +277,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--ars-blue);
+  color: var(--ink-primary);
   cursor: pointer;
   min-height: 32px;
   padding: 6px 10px;
@@ -463,7 +463,7 @@
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-color: var(--ars-blue-mid);
   background: var(--ars-paper);
@@ -554,7 +554,7 @@
 }
 
 .tab:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -629,7 +629,7 @@
   background: var(--ars-blue-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ars-blue);
+  color: var(--ink-primary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
@@ -669,7 +669,7 @@
 .buttonGhost:focus-visible,
 .buttonDanger:focus-visible,
 .tab:focus-visible {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -736,7 +736,7 @@
 }
 
 :global(.publication-page table tbody tr:focus-within) {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -828,7 +828,7 @@
 /* Plain <a> tags inside publication panels (manuscript file link, etc.) */
 :global(.publication-panel a:not([class*="button"]):not([class*="status"])),
 :global(.publication-page a:not([class*="button"]):not([class*="status"])) {
-  color: var(--ars-blue);
+  color: var(--ink-primary);
   font-weight: var(--font-weight-semibold);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -843,7 +843,7 @@
 
 :global(.publication-panel a:focus-visible),
 :global(.publication-page a:focus-visible) {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -904,7 +904,7 @@
 
 :global(.actions input[type="text"]:focus),
 :global(.actions input:not([type])[aria-label]:focus) {
-  outline: 2px solid var(--ars-blue-mid);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-color: var(--ars-blue-mid);
 }

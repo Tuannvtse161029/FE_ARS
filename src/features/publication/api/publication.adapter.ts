@@ -49,6 +49,7 @@ export interface PublicationAdapter {
   verifyAuthorship(id: string, allow?: boolean): Promise<PublicationPaper>;
   publishPaper(id: string): Promise<PublicationPaper>;
   rejectPaper(id: string, reason?: string): Promise<PublicationPaper>;
+  deactivatePublishedPaper(id: string): Promise<PublicationPaper>;
 }
 
 const normalizedText = (value: string | null | undefined): string =>
@@ -601,6 +602,27 @@ class ApiPublicationAdapter implements PublicationAdapter {
       } catch (err) {
         console.warn('Failed to send rejection notification:', err);
       }
+    }
+    return toPublicationPaper(updated);
+  }
+
+  async deactivatePublishedPaper(id: string): Promise<PublicationPaper> {
+    const current = await paperService.getById(id);
+    const updated = await paperService.update(id, {
+      title: current.title ?? '',
+      abstract: current.abstract ?? '',
+      fileUrl: current.fileUrl ?? null,
+      subFieldId: current.subFieldId ?? null,
+      openAlexWorkId: current.openAlexWorkId ?? null,
+      doi: current.doi ?? null,
+      status: 'Inactive',
+    });
+    const authorId = updated.authorId ?? current.authorId ?? (current as { userId?: number }).userId;
+    if (authorId) {
+      await notificationService.create({
+        userId: authorId,
+        message: `Your paper "${current.title}" was made inactive by the editorial team and is no longer visible in the published catalog.`,
+      }).catch(() => undefined);
     }
     return toPublicationPaper(updated);
   }

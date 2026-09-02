@@ -411,8 +411,8 @@
 }
 
 .retryBtn {
-  background: var(--ars-admin);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
   border: none;
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);

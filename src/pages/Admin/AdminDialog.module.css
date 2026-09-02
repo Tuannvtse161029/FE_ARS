@@ -323,9 +323,9 @@
 .button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .primaryButton {
-  border-color: var(--ars-admin);
-  background: var(--ars-admin);
-  color: var(--ars-paper);
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -346,18 +346,18 @@
 
 /* ORCID brand green button — used for "Check ORCID" actions. */
 .orcidButton {
-  border-color: #A6CE39 !important;
-  background: #A6CE39 !important;
-  color: #fff !important;
+  border-color: var(--accent-primary) !important;
+  background: var(--accent-primary) !important;
+  color: var(--ink-primary) !important;
 }
 
 .orcidButton:hover:not(:disabled) {
-  background: #8FB72C !important;
-  border-color: #8FB72C !important;
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
 }
 
 .orcidButton:focus-visible {
-  outline: 2px solid #A6CE39;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

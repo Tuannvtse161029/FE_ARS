@@ -387,9 +387,9 @@
 }
 
 .confirmBtnUnsuspend {
-  background: var(--ars-admin);
-  border-color: var(--ars-admin);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .confirmBtnUnsuspend:hover:not(:disabled) {

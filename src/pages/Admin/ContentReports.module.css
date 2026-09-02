@@ -164,9 +164,9 @@
 
 /* ── Action button ──────────────────────────────────────── */
 .reviewButton {
-  background: var(--ars-admin);
-  border: 1px solid var(--ars-admin);
-  color: var(--ars-paper);
+  background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  color: var(--ink-primary);
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);

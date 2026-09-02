@@ -109,9 +109,9 @@
   --ars-gradstudent-mid: #1d4ed8;
 
   /* Admin — violet (system oversight) */
-  --ars-admin: #4c1d95;
-  --ars-admin-light: #ede9fe;
-  --ars-admin-mid: #7c3aed;
+  --ars-admin: var(--accent-primary);
+  --ars-admin-light: var(--surface-selected);
+  --ars-admin-mid: var(--accent-hover);
 
   /* ── Status Colors ──────────────────────────────────────── */
   --ars-success: #047857;

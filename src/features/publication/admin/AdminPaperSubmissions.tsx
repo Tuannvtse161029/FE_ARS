@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, Inbox } from 'lucide-react';
+import { CircleCheck, CircleX, ExternalLink, FileText, Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
@@ -68,7 +68,7 @@ export const AdminPaperSubmissions = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<AdminPaperFilters['status']>('ALL');
+  const [statusFilter, setStatusFilter] = useState<AdminPaperFilters['status']>('SUBMITTED');
   const [verificationFilter, setVerificationFilter] =
     useState<AdminPaperFilters['verification']>('ALL');
   const [page, setPage] = useState(1);
@@ -203,7 +203,7 @@ export const AdminPaperSubmissions = () => {
               disabled={Boolean(error)}
             >
               <option value="ALL">All verifications</option>
-              <option value="ALLOW">Allow (Đã xác minh)</option>
+              <option value="ALLOW">Allow</option>
               <option value="VERIFIED">Verified</option>
               <option value="PENDING">Pending</option>
               <option value="UNVERIFIED">Unverified</option>
@@ -343,7 +343,7 @@ export const AdminPaperSubmissions = () => {
                         </span>
                       </td>
                       <td data-label="Verification">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                        <div className={adminStyles.verificationActions}>
                           <span
                             className={`${adminStyles.verificationBadge} ${
                               adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
@@ -353,27 +353,32 @@ export const AdminPaperSubmissions = () => {
                             {paper.researcherVerificationStatus}
                           </span>
                           {!isAuthorshipAllowed(paper) && (
-                            <button
-                              type="button"
-                              style={{
-                                fontSize: 11,
-                                padding: '3px 8px',
-                                background: '#2563eb',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                whiteSpace: 'nowrap',
-                              }}
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await publicationAdapter.verifyAuthorship(paper.id, true);
-                                void load();
-                              }}
-                            >
-                              ✓ Accept (Allow)
-                            </button>
+                            <div className={adminStyles.rowActionGroup}>
+                              <button
+                                type="button"
+                                className={adminStyles.verifyActionButton}
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  await publicationAdapter.verifyAuthorship(paper.id, true);
+                                  void load();
+                                }}
+                              >
+                                <CircleCheck size={13} aria-hidden="true" /> Verify
+                              </button>
+                              <button
+                                type="button"
+                                className={adminStyles.rejectActionButton}
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  const reason = window.prompt(`Provide a rejection reason for "${paper.title}".`)?.trim();
+                                  if (!reason) return;
+                                  await publicationAdapter.rejectPaper(paper.id, reason);
+                                  void load();
+                                }}
+                              >
+                                <CircleX size={13} aria-hidden="true" /> Reject
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

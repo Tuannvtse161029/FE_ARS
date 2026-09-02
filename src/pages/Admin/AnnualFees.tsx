@@ -34,6 +34,7 @@ const BACKEND_UNAVAILABLE_MESSAGE =
   'Annual fee tiers are unavailable until the backend exposes the annual-fee contract. The table below will populate automatically once the API is live.';
 
 const formatCycle = (cycle: string | null | undefined): string => {
+  if (cycle === 'Quarterly') return 'Quarterly (3 months)';
   if (cycle === 'Annual') return 'Annual (12 months)';
   if (cycle === 'SixMonth') return 'Six-month (6 months)';
   return cycle ?? 'Not supplied';

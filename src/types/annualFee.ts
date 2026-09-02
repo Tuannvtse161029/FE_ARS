@@ -17,7 +17,7 @@
 // therefore renders an explicit unavailable state until the backend ticket is
 // implemented; it never fabricates fee rows.
 
-export type AnnualFeeBillingCycle = 'Annual' | 'SixMonth';
+export type AnnualFeeBillingCycle = 'Quarterly' | 'SixMonth' | 'Annual';
 
 export interface AnnualFeeDto {
   id: number;
@@ -38,11 +38,10 @@ export interface AnnualFeeDto {
 }
 
 export interface AnnualFeeUpsertRequest {
-  id: number | null;
-  targetRole: string | null;
-  title: string | null;
-  priceVnd: number | null;
-  billingCycle: AnnualFeeBillingCycle | null;
-  features: string[] | null;
-  isActive: boolean | null;
+  targetRole: string;
+  title: string;
+  priceVnd: number;
+  billingCycle: AnnualFeeBillingCycle;
+  features: null;
+  isActive: boolean;
 }
