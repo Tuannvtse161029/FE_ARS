@@ -55,7 +55,6 @@ import {
 } from '../../services/researchTopicPhase.service';
 import { learningMaterialService, type LearningMaterial } from '../../services/learningMaterial.service';
 import { phasedReportService } from '../../services/phasedReport.service';
-import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -671,15 +670,11 @@ export const ConfigureMilestones = () => {
       {/* ── Phase plan workspace (visible only after group selection) ── */}
       {selectedGroupId !== null && (
         <>
-          {/* Compact inline notice — replaced the prior full-width BackendGapBanner.
-              The fields it warns about remain honest about their persistence
-              state without overpowering the workflow. */}
-          <InlineNotice
-            tone="info"
-            title="Additional phase details awaiting backend support"
-            description="Requirements, assessment criteria, and start date are not yet persisted by the BE — only the phase title and deadline will save."
-            className={styles.phaseLimitBanner}
-          />
+          {/* Compact inline notice — all formerly "Unavailable" phase fields
+              (requirements, assessment criteria, start date) are now persisted
+              by the BE Swagger `TopicPhaseItem`. The notice was retained as a
+              product-level reminder that the phase plan is still editable
+              after saving, but is no longer needed. */}
 
           {/* Phase count indicator (no hard limit — BE supports 1..N phases) */}
           <div className={styles.phaseLimitBanner} role="status">
@@ -793,70 +788,68 @@ export const ConfigureMilestones = () => {
                       />
                     </div>
 
-                    {/* Requirements — visible for product discovery but disabled because
-              the BE does not persist this field. We accept no user input
-              and do not pretend the value will save. */}
+                    {/* Requirements — now persisted by the BE Swagger `TopicPhaseItem`. */}
                     <div className={styles.formGroup}>
                       <label
                         className={styles.formLabel}
                         htmlFor={`phase-req-${index}`}
                       >
                         Requirements
-                        <span className={styles.readOnlyBadge}>Unavailable</span>
+                        <span className={styles.optionalBadge}>Optional</span>
                       </label>
                       <textarea
                         id={`phase-req-${index}`}
-                        className={`${styles.formTextarea} ${styles.formControlDisabled}`}
+                        className={styles.formTextarea}
                         value={draft.requirements}
-                        onChange={() => undefined}
+                        onChange={(e) =>
+                          updateDraft(index, 'requirements', e.target.value)
+                        }
                         rows={2}
-                        placeholder="Requirements are awaiting backend support."
-                        disabled
-                        aria-disabled
+                        placeholder="Describe what the group must deliver for this phase."
                         data-testid={`phase-req-${index}`}
                       />
                     </div>
 
-                    {/* Assessment criteria — visible for product discovery but disabled. */}
+                    {/* Assessment criteria — now persisted by the BE Swagger `TopicPhaseItem`. */}
                     <div className={styles.formGroup}>
                       <label
                         className={styles.formLabel}
                         htmlFor={`phase-crit-${index}`}
                       >
                         Assessment Criteria
-                        <span className={styles.readOnlyBadge}>Unavailable</span>
+                        <span className={styles.optionalBadge}>Optional</span>
                       </label>
                       <textarea
                         id={`phase-crit-${index}`}
-                        className={`${styles.formTextarea} ${styles.formControlDisabled}`}
+                        className={styles.formTextarea}
                         value={draft.assessmentCriteria}
-                        onChange={() => undefined}
+                        onChange={(e) =>
+                          updateDraft(index, 'assessmentCriteria', e.target.value)
+                        }
                         rows={2}
-                        placeholder="Assessment criteria are awaiting backend support."
-                        disabled
-                        aria-disabled
+                        placeholder="Describe how this phase will be evaluated."
                         data-testid={`phase-crit-${index}`}
                       />
                     </div>
 
                     <div className={styles.phaseEditorRow}>
-                      {/* Start date — visible for product discovery but disabled. */}
+                      {/* Start date — now persisted by the BE Swagger `TopicPhaseItem`. */}
                       <div className={styles.formGroup}>
                         <label
                           className={styles.formLabel}
                           htmlFor={`phase-start-${index}`}
                         >
                           Start Date
-                          <span className={styles.readOnlyBadge}>Unavailable</span>
+                          <span className={styles.optionalBadge}>Optional</span>
                         </label>
                         <input
                           id={`phase-start-${index}`}
                           type="datetime-local"
-                          className={`${styles.formInput} ${styles.formControlDisabled}`}
+                          className={styles.formInput}
                           value={draft.startAt}
-                          onChange={() => undefined}
-                          disabled
-                          aria-disabled
+                          onChange={(e) =>
+                            updateDraft(index, 'startAt', e.target.value)
+                          }
                           data-testid={`phase-start-${index}`}
                         />
                       </div>

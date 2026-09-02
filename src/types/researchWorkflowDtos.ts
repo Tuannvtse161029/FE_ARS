@@ -193,7 +193,23 @@ export interface TopicPhaseItem {
 export interface TopicMilestonesCreateRequest {
   topicId: number;
   researchGroupId?: number | null;
-  phases: TopicPhaseItem[];
+  /**
+   * Phase definitions. The BE Swagger schema now accepts `requirements`,
+   * `assessmentCriteria`, `startDate`, and `phaseTitle` in addition to the
+   * canonical fields. The BE persists all of them and echoes them back in
+   * the PhasedReportResponse.
+   */
+  phases: Array<{
+    phaseNumber: number;
+    milestoneTitle?: string | null;
+    phaseTitle?: string | null;
+    requirements?: string | null;
+    assessmentCriteria?: string | null;
+    criteria?: string | null;
+    startDate?: string | null;
+    deadlineAt: string;
+    deadline?: string | null;
+  }>;
 }
 
 export interface PhasedReportSubmitRequest {
