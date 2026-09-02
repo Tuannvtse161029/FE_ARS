@@ -344,6 +344,23 @@
   border-color: #7f1d1d;
 }
 
+/* ORCID brand green button — used for "Check ORCID" actions. */
+.orcidButton {
+  border-color: #A6CE39 !important;
+  background: #A6CE39 !important;
+  color: #fff !important;
+}
+
+.orcidButton:hover:not(:disabled) {
+  background: #8FB72C !important;
+  border-color: #8FB72C !important;
+}
+
+.orcidButton:focus-visible {
+  outline: 2px solid #A6CE39;
+  outline-offset: 2px;
+}
+
 .secondaryButton {
   border-color: var(--ars-node);
   background: var(--ars-paper);

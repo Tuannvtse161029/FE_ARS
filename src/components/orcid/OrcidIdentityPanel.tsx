@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ExternalLink, Link2, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 import { startAccountOrcidLink } from '../../services/orcid.service';
 import { Button } from '../Button';
 import { useOrcidIdentity } from '../../hooks/useOrcidIdentity';
+import { OrcidBrandLogo } from './OrcidBrandLogo';
 import styles from './OrcidIdentityPanel.module.css';
 
 interface OrcidIdentityPanelProps {
@@ -15,6 +16,11 @@ interface OrcidIdentityPanelProps {
  * intentionally unavailable until the backend defines their redirect/result and
  * unlink contracts. This avoids handling OAuth codes in React or asserting a
  * local connection state.
+ *
+ * Visual identity: ORCID is a third-party identity provider. The panel uses
+ * the official ORCID brand green (#A6CE39) and renders the ORCID iD logo
+ * alongside every action so users immediately understand which service they
+ * are being asked to connect to.
  */
 export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidIdentityPanelProps) => {
   const { status, isLoading, error, refetch } = useOrcidIdentity();
@@ -43,17 +49,42 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
   };
 
   if (isLoading && !status) {
-    return <section className={styles.panel} aria-label="ORCID identity"><p role="status">Checking ORCID connection…</p></section>;
+    return (
+      <section className={styles.panel} aria-label="ORCID identity">
+        <div className={styles.loadingRow}>
+          <OrcidBrandLogo size={24} ariaLabel="ORCID iD" />
+          <p role="status">Checking ORCID connection…</p>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className={styles.panel} aria-label="ORCID identity" data-testid="orcid-identity-panel">
+    <section
+      className={`${styles.panel} ${linked ? styles.panelLinked : styles.panelUnlinked}`}
+      aria-label="ORCID identity"
+      data-testid="orcid-identity-panel"
+    >
       <div className={styles.heading}>
-        <div>
-          <h2>ORCID identity</h2>
-          <p>{required ? 'A verified ORCID connection is required for Reviewer requests.' : 'An ORCID connection is optional for this role.'}</p>
+        <div className={styles.headingLeft}>
+          <OrcidBrandLogo
+            size={32}
+            ariaLabel="ORCID iD"
+            className={styles.brandLogo}
+          />
+          <div>
+            <h2 className={styles.headingTitle}>ORCID iD</h2>
+            <p className={styles.headingSubtitle}>
+              {required
+                ? 'A verified ORCID iD is required for Reviewer requests.'
+                : 'An ORCID iD is optional for this role.'}
+            </p>
+          </div>
         </div>
-        <span className={linked ? styles.verified : styles.unlinked} data-testid="orcid-link-status">
+        <span
+          className={linked ? styles.verified : styles.unlinked}
+          data-testid="orcid-link-status"
+        >
           {linked ? 'Verified' : 'Not connected'}
         </span>
       </div>
@@ -61,26 +92,58 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
       {linked ? (
         <div className={styles.record}>
           <span className={styles.orcidId}>{status?.orcidId}</span>
-          <a href={`https://orcid.org/${encodeURIComponent(status?.orcidId ?? '')}`} target="_blank" rel="noreferrer">
+          <a
+            href={`https://orcid.org/${encodeURIComponent(status?.orcidId ?? '')}`}
+            target="_blank"
+            rel="noreferrer"
+            className={styles.recordLink}
+          >
             View public record <ExternalLink size={14} aria-hidden="true" />
           </a>
         </div>
       ) : (
-        <p className={styles.detail}>Connect through ORCID to let the server verify your research identity. ARS never collects ORCID credentials or stores provider tokens in this browser.</p>
+        <p className={styles.detail}>
+          ORCID is a third-party identity provider used by researchers worldwide.
+          Click <strong>Connect ORCID iD</strong> below — we will redirect you to
+          the official ORCID site to authorize this connection. ARS never collects
+          ORCID credentials or stores provider tokens in this browser.
+        </p>
       )}
 
       {error ? <p className={styles.error} role="alert">{error.message}</p> : null}
       {connectError ? <p className={styles.error} role="alert">{connectError}</p> : null}
+
       <div className={styles.actions}>
         {!linked ? (
-          <Button type="button" variant="primary" size="sm" leftIcon={<Link2 size={14} />} onClick={() => void startConnection()} isLoading={isConnecting} disabled={isLoading}>
-            Connect ORCID
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            leftIcon={<OrcidBrandLogo size={18} ariaLabel="ORCID iD" />}
+            onClick={() => void startConnection()}
+            isLoading={isConnecting}
+            disabled={isLoading}
+            className={styles.connectButton}
+            data-testid="orcid-connect-button"
+          >
+            Connect ORCID iD
           </Button>
         ) : null}
-        <Button type="button" variant="outline" size="sm" leftIcon={<RefreshCw size={14} />} onClick={() => void notify()} isLoading={isLoading}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw size={14} />}
+          onClick={() => void notify()}
+          isLoading={isLoading}
+        >
           Refresh status
         </Button>
-        {linked ? <span className={styles.contractNotice}>Disconnect is unavailable because no backend unlink endpoint is documented.</span> : null}
+        {linked ? (
+          <span className={styles.contractNotice}>
+            Disconnect is unavailable because no backend unlink endpoint is documented.
+          </span>
+        ) : null}
       </div>
     </section>
   );

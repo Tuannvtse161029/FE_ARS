@@ -83,60 +83,145 @@
   line-height: var(--line-height-relaxed);
 }
 
+/* ── ORCID section (third-party identity provider) ─────── */
 .orcidConnection {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  align-items: stretch;
+  padding: var(--space-4, 16px);
+  border: 1px solid #c8d880;
+  border-radius: var(--radius-md, 6px);
+  background: #f7ffeb;
+  border-left: 4px solid #A6CE39;
+}
+
+/* Header: wordmark logo left-aligned above content. */
+.orcidHeader {
+  display: flex;
   align-items: center;
-  padding: var(--spacing-4);
-  border: 1px solid var(--ars-paper-rule);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper-alt);
+}
+
+.orcidHeaderLogo {
+  height: 26px;
+  width: auto;
+  border-radius: 13px;
+}
+
+.orcidBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.orcidAction {
+  display: flex;
+  align-items: center;
 }
 
 .orcidTitle {
   margin: 0;
-  color: var(--color-text-primary);
+  color: #3a6b1e;
   font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-lg, 18px);
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .orcidDescription,
 .orcidNotice {
-  margin: var(--spacing-1) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-relaxed);
+  margin: 0;
+  color: #52627a;
+  font-size: var(--font-size-sm, 14px);
+  line-height: 1.6;
 }
 
 .orcidNotice {
-  grid-column: 1 / -1;
+  font-style: italic;
 }
 
 .orcidDevNotice {
   grid-column: 1 / -1;
-  margin: var(--spacing-1) 0 0;
+  margin: 0;
   padding: var(--spacing-2) var(--spacing-3);
   border-left: 3px solid #f59e0b;
   background-color: #fef3c7;
   color: #92400e;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-sm, 14px);
   line-height: var(--line-height-relaxed);
   border-radius: var(--radius-md, 6px);
 }
 
+/* "ORCID verified" badge — ORCID green pill with check icon. */
 .orcidVerifiedBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-1);
-  padding: var(--spacing-1) var(--spacing-3);
-  border-radius: var(--radius-pill, 999px);
-  background-color: #d1fae5;
-  border: 1px solid #10b981;
-  color: #065f46;
-  font-size: var(--font-size-sm);
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-1) var(--spacing-3, 12px);
+  border-radius: 999px;
+  background-color: #A6CE39;
+  color: #fff;
+  font-size: var(--font-size-sm, 14px);
   font-weight: 600;
-  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+/* ── ORCID Connect button — full ORCID brand green pill ─── */
+.orcidConnectBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+  height: 40px;
+  padding: 0 var(--space-3, 12px);
+  border: none;
+  border-radius: 20px;
+  background: #A6CE39;
+  cursor: pointer;
+  transition: background 150ms ease, transform 100ms ease;
+  overflow: hidden;
+}
+
+.orcidConnectBtn:hover:not(:disabled) {
+  background: #8FB72C;
+  transform: translateY(-1px);
+}
+
+.orcidConnectBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.orcidConnectBtn:focus-visible {
+  outline: 2px solid #A6CE39;
+  outline-offset: 3px;
+}
+
+.orcidConnectBtn:disabled {
+  background: #d4edb0;
+  color: #6b9a25;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.orcidBtnLogo {
+  height: 26px;
+  width: auto;
+  pointer-events: none;
+}
+
+/* Spinner while connecting */
+.orcidBtnSpinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: orcidSpin 600ms linear infinite;
+}
+
+@keyframes orcidSpin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 560px) {
@@ -417,7 +502,17 @@
 .brandText, .pageTitle, .fieldLabel, .roleBannerTitle, .orcidTitle { color: var(--ink-primary); }
 .pageSubtitle, .passwordHelper, .roleBannerText, .orcidDescription,
 .orcidNotice, .optionalText, .footerText, .consentText, .divider { color: var(--ink-secondary); }
-.orcidConnection, .roleBanner { background: var(--surface-sunken); border-color: var(--border-subtle); }
+.roleBanner { background: var(--surface-sunken); border-color: var(--border-subtle); }
+
+/* ORCID brand overrides — always win over Archive Dusk surface vars. */
+.orcidConnection {
+  background: #f7ffeb !important;
+  border-color: #c8d880 !important;
+  border-left: 4px solid #A6CE39 !important;
+}
+.orcidTitle { color: #3a6b1e !important; }
+.orcidDescription,
+.orcidNotice { color: #52627a !important; }
 .nativeInput, .nativeSelect { background-color: var(--control-bg); color: var(--control-text); border-color: var(--border-subtle); }
 .nativeInput:focus, .nativeSelect:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent); }
 .nativeInput--error, .nativeInput--error:focus, .nativeSelect--error, .nativeSelect--error:focus {

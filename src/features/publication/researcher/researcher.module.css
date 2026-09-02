@@ -493,51 +493,94 @@
   align-items: center;
 }
 
-.openAlexConfirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--ars-ink-soft);
-  font-size: var(--font-size-xs);
+/* ── OpenAlex integration ──────────────────────────────────────────
+   OpenAlex is a third-party scholarly metadata source. Its visual presence
+   here is intentionally subordinate — a small "via OpenAlex" attribution
+   rather than a co-primary brand. The form section heading reads as an ARS
+   feature ("Import metadata"); the OpenAlex mark appears as a 12px chip
+   next to it. */
+
+.openAlexSection {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--ars-paper-rule);
+  background: transparent;
 }
 
-.openAlexConfirm strong {
+.openAlexHeading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Subordinate "via OpenAlex" attribution chip — sits next to the section
+   heading. Uses a small (12px) mark and a quiet slate color so it never
+   competes with the ARS form title. */
+.openAlexAttribution {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-network);
+}
+
+.openAlexAttribution svg {
+  width: 12px !important;
+  height: 12px !important;
+  display: block;
+  flex-shrink: 0;
+}
+
+.openAlexOptional {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+}
+
+.openAlexCode {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+  background: var(--ars-paper-inset);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
   color: var(--ars-ink);
+  border: 1px solid var(--ars-paper-rule);
+}
+
+/* ── OpenAlex preview panel ───────────────────────────────────────── */
+.openAlexPreviewHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.openAlexPreviewHeader h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
 }
 
 .openAlexPreview {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--ars-network);
+  border: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
-  background: var(--ars-paper-inset);
+  background: var(--ars-paper-card);
 }
 
 .openAlexPreview h3,
 .openAlexPreview p {
-  margin: 0;
-}
-
-.openAlexPreview h3 {
-  color: var(--ars-ink);
-  font-size: var(--font-size-sm);
-}
-
-.openAlexPreview p,
-.openAlexPreview dt,
-.openAlexPreview dd {
-  font-size: var(--font-size-xs);
-  line-height: var(--line-height-normal);
-}
-
-.openAlexPreview dl {
-  display: grid;
-  grid-template-columns: minmax(100px, 1fr) minmax(0, 4fr);
-  gap: var(--space-2) var(--space-3);
   margin: 0;
 }
 
@@ -549,6 +592,42 @@
   margin: 0;
   color: var(--ars-ink);
   overflow-wrap: anywhere;
+}
+
+.openAlexPreview dl {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(0, 4fr);
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+/* ── Confirmed / skipped inline state ────────────────────────────── */
+.openAlexConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-card);
+  border: 1px solid var(--ars-paper-rule);
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+}
+
+.openAlexConfirmIcon {
+  color: var(--ars-success);
+  flex-shrink: 0;
+}
+
+.openAlexConfirmLabel {
+  color: var(--ars-ink-soft);
+}
+
+.openAlexConfirmLabel strong {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
 }
 
 .openAlexLink {

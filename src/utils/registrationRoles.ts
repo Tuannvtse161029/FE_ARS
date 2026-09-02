@@ -59,3 +59,26 @@ export function isRequestableRole(value: unknown): value is RequestableRole {
 }
 
 export default REGISTRATION_ROLES;
+
+/**
+ * Roles that may connect an ORCID iD.
+ *
+ * Per product decision, ORCID is restricted to roles that produce or evaluate
+ * scholarly outputs — Researcher, Reviewer, and Lecturer. Graduate Students are
+ * the base tier and do not (yet) hold their own ORCID iD on this platform; if
+ * a Graduate Student is later promoted to Researcher / Reviewer / Lecturer
+ * they can connect ORCID from that point on. Keep this list as the single
+ * source of truth so Profile, Register, and any future ORCID entrypoint stay
+ * in lockstep.
+ */
+export const ORCID_ELIGIBLE_ROLES: ReadonlyArray<RequestableRole> = [
+  'Researcher',
+  'Reviewer',
+  'Lecturer',
+] as const;
+
+/** True iff the role string is on the ORCID-eligible list. */
+export function isOrcidEligibleRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return (ORCID_ELIGIBLE_ROLES as ReadonlyArray<string>).includes(role);
+}

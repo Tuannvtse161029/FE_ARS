@@ -12,6 +12,7 @@ import {
 import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
+import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
 import styles from './researcher.module.css';
 
 const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
@@ -508,16 +509,27 @@ export const ResearcherSubmissionForm = () => {
         </section>
 
         {/* ── OpenAlex Work ID (optional) ───────────────────────── */}
-        <section className={styles.formSection} aria-labelledby="form-section-openalex">
+        <section className={`${styles.formSection} ${styles.openAlexSection}`} aria-labelledby="form-section-openalex">
           <header className={styles.formSectionHeader}>
-            <h2 className={styles.formSectionTitle} id="form-section-openalex">
-              OpenAlex Scan (optional)
-            </h2>
-            <p className={styles.formSectionHint}>Review metadata before copying it into this form.</p>
+            <div className={styles.openAlexHeading}>
+              <h2 className={styles.formSectionTitle} id="form-section-openalex">
+                Import metadata <span className={styles.openAlexOptional}>(optional)</span>
+              </h2>
+              <span className={styles.openAlexAttribution}>
+                <OpenAlexBrandLogo variant="mark" ariaLabel="" />
+                <span>via OpenAlex</span>
+              </span>
+            </div>
+            <p className={styles.formSectionHint}>
+              Pull publication metadata from the open scholarly index. Enter a W-prefixed
+              work ID (e.g.{' '}
+              <code className={styles.openAlexCode}>W2741809807</code>) and confirm the
+              preview before anything is copied into this form.
+            </p>
           </header>
 
           <div className={`${styles.field} ${styles.full}`}>
-            <label htmlFor="submission-openalex">OpenAlex ID</label>
+            <label htmlFor="submission-openalex">OpenAlex Work ID</label>
             <input
               id="submission-openalex"
               data-testid="submission-openalex-input"
@@ -531,8 +543,8 @@ export const ResearcherSubmissionForm = () => {
               }
             />
             <p className={styles.fieldHint}>
-              Enter a W-prefixed work ID. The scan requests metadata from the ARS backend;
-              no data is copied until you confirm the preview.
+              The lookup requests metadata from the ARS backend; no data is copied until
+              you confirm the preview.
             </p>
 
             {openAlexState.stage === 'idle' && (
@@ -541,11 +553,12 @@ export const ResearcherSubmissionForm = () => {
                   type="button"
                   variant="primary"
                   size="sm"
-                  disabled={!openAlexDraft.trim() || openAlexScanning}
                   onClick={() => void handleScanOpenAlex()}
+                  disabled={!openAlexDraft.trim() || openAlexScanning}
                   data-testid="submission-openalex-scan"
+                  isLoading={openAlexScanning}
                 >
-                  {openAlexScanning ? 'Scanning...' : 'OpenAlex Scan'}
+                  Look up metadata
                 </Button>
                 <Button
                   type="button"
@@ -608,7 +621,13 @@ export const ResearcherSubmissionForm = () => {
 
             {openAlexState.stage === 'preview' && (
               <div className={styles.openAlexPreview} data-testid="submission-openalex-preview">
-                <h3>OpenAlex imported metadata</h3>
+                <div className={styles.openAlexPreviewHeader}>
+                  <h3>Imported metadata</h3>
+                  <span className={styles.openAlexAttribution}>
+                    <OpenAlexBrandLogo variant="mark" ariaLabel="" />
+                    <span>via OpenAlex</span>
+                  </span>
+                </div>
                 <dl>
                   {openAlexState.metadata.title && <><dt>Title</dt><dd>{openAlexState.metadata.title}</dd></>}
                   {openAlexState.metadata.abstract && <><dt>Abstract</dt><dd>{openAlexState.metadata.abstract}</dd></>}
@@ -636,10 +655,15 @@ export const ResearcherSubmissionForm = () => {
             )}
 
             {openAlexState.stage === 'confirmed' && (
-              <p className={styles.openAlexConfirm} data-testid="submission-openalex-confirmed">
-                <CheckCircle2 size={12} aria-hidden />
-                <span>OpenAlex ID attached:</span>
-                <strong>{openAlexState.metadata.id}</strong>
+              <div className={styles.openAlexConfirm} data-testid="submission-openalex-confirmed">
+                <CheckCircle2 size={14} aria-hidden className={styles.openAlexConfirmIcon} />
+                <span className={styles.openAlexConfirmLabel}>
+                  Imported metadata attached (ID <strong>{openAlexState.metadata.id}</strong>)
+                </span>
+                <span className={styles.openAlexAttribution}>
+                  <OpenAlexBrandLogo variant="mark" ariaLabel="" />
+                  <span>via OpenAlex</span>
+                </span>
                 <button
                   type="button"
                   className={styles.openAlexLink}
@@ -647,13 +671,15 @@ export const ResearcherSubmissionForm = () => {
                 >
                   Change
                 </button>
-              </p>
+              </div>
             )}
 
             {openAlexState.stage === 'skipped' && (
-              <p className={styles.openAlexConfirm} data-testid="submission-openalex-skipped">
-                <AlertTriangle size={12} aria-hidden />
-                <span>OpenAlex lookup skipped.</span>
+              <div className={styles.openAlexConfirm} data-testid="submission-openalex-skipped">
+                <AlertTriangle size={14} aria-hidden className={styles.openAlexConfirmIcon} />
+                <span className={styles.openAlexConfirmLabel}>
+                  Metadata lookup skipped
+                </span>
                 <button
                   type="button"
                   className={styles.openAlexLink}
@@ -661,7 +687,7 @@ export const ResearcherSubmissionForm = () => {
                 >
                   Provide an ID
                 </button>
-              </p>
+              </div>
             )}
           </div>
         </section>

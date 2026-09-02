@@ -1,25 +1,36 @@
+/**
+ * OrcidIdentityMarker — verified ORCID iD badge.
+ *
+ * Renders the ORCID brand logo as an inline link to the user's public ORCID record.
+ * The circular "iD" badge is used by default; the wordmark variant is available
+ * when more visual prominence is needed.
+ */
+
 .marker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-left: var(--space-2);
-  border: 1px solid var(--ars-node);
-  border-radius: 50%;
-  color: var(--ars-ink-soft);
   text-decoration: none;
   vertical-align: middle;
+  /* Slight breathing room around the logo. */
+  padding: 1px;
+  border-radius: 4px;
+  transition: opacity 150ms ease;
 }
 
 .marker:hover {
-  border-color: var(--ars-ink-muted);
-  color: var(--ars-ink);
+  opacity: 0.8;
 }
 
 .marker:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid #A6CE39;
   outline-offset: 2px;
+}
+
+/* When the circular badge is used, constrain the link to the icon size. */
+.logo {
+  display: block;
+  pointer-events: none;
 }
 
 .srOnly {

@@ -10,6 +10,7 @@ import {
   Server,
   X,
 } from 'lucide-react';
+import { OpenAlexBrandLogo } from '../../components/openalex/OpenAlexBrandLogo';
 import {
   lookupOrcid,
   normalizeOrcid,
@@ -175,10 +176,11 @@ const WorkItem = ({ work, index }: WorkItemProps) => (
           href={work.openalexUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className={styles.workLink}
+          className={styles.workLinkOpenAlex}
           data-testid={`orcid-work-openalex-${index}`}
         >
-          OpenAlex
+          <OpenAlexBrandLogo variant="mark" ariaLabel="OpenAlex" />
+          <span>OpenAlex</span>
         </a>
       )}
     </div>

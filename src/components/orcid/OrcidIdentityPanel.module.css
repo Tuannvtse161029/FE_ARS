@@ -1,3 +1,16 @@
+/**
+ * OrcidIdentityPanel — ORCID iD identity management panel.
+ *
+ * Visual direction:
+ * - ORCID brand green (#A6CE39) is the primary accent throughout.
+ * - The "Connect ORCID iD" button uses ORCID green, not the app's primary blue,
+ *   because ORCID is a third-party identity provider — the colour signals
+ *   ORCID, not ARS.
+ * - The verified/unlinked badge uses ORCID green for verified, amber for unlinked.
+ * - The heading left side renders the ORCID iD logo alongside the title so users
+ *   immediately recognise the service.
+ */
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -8,16 +21,181 @@
   background: var(--ars-paper-alt, #fff);
 }
 
-.heading { display: flex; gap: var(--space-3, 12px); justify-content: space-between; align-items: flex-start; }
-.heading h2 { margin: 0; font-size: var(--font-size-md, 16px); color: var(--ars-ink, #172033); }
-.heading p, .detail { margin: 4px 0 0; color: var(--ars-ink-soft, #52627a); font-size: var(--font-size-sm, 14px); }
-.verified, .unlinked { flex: 0 0 auto; border-radius: var(--radius-sm, 4px); padding: 3px 8px; font-size: var(--font-size-xs, 12px); font-weight: 600; }
-.verified { background: var(--ars-success-bg, #ecfdf3); color: var(--ars-success, #16794a); }
-.unlinked { background: var(--ars-warning-bg, #fff8e8); color: var(--ars-warning, #9a6300); }
-.record { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px); }
-.orcidId { font-family: var(--font-family-mono, monospace); color: var(--ars-ink, #172033); }
-.record a { display: inline-flex; align-items: center; gap: 4px; color: var(--ars-blue, #007aff); font-size: var(--font-size-sm, 14px); }
-.actions { display: flex; gap: var(--space-3, 12px); align-items: center; flex-wrap: wrap; }
-.contractNotice { color: var(--ars-ink-muted, #69788d); font-size: var(--font-size-xs, 12px); }
-.error { margin: 0; color: var(--ars-danger, #b42318); font-size: var(--font-size-sm, 14px); }
-@media (max-width: 560px) { .heading { flex-direction: column; } }
+/* Subtle green left accent border signals ORCID brand. */
+.panelLinked {
+  border-left: 4px solid #A6CE39;
+}
+
+.panelUnlinked {
+  border-left: 4px solid #d1d5db;
+}
+
+/* Loading row — keeps the logo and text aligned. */
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  color: var(--ars-ink-soft, #52627a);
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* ── Heading ──────────────────────────────────────────────── */
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3, 12px);
+}
+
+.headingLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 12px);
+}
+
+.brandLogo {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.headingTitle {
+  margin: 0;
+  font-size: var(--font-size-md, 16px);
+  font-weight: 700;
+  color: var(--ars-ink, #172033);
+  line-height: 1.3;
+}
+
+.headingSubtitle {
+  margin: 3px 0 0;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--ars-ink-soft, #52627a);
+  line-height: 1.5;
+}
+
+/* ── Status badges ────────────────────────────────────────── */
+.verified,
+.unlinked {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.verified {
+  background: #A6CE39;
+  color: #fff;
+}
+
+.unlinked {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+/* ── Record (verified ORCID ID display) ──────────────────── */
+.record {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: #f7ffeb;
+  border: 1px solid #A6CE39;
+  border-radius: var(--radius-md, 6px);
+}
+
+.orcidId {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-sm, 14px);
+  color: #3a6b1e;
+  font-weight: 600;
+}
+
+.recordLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #3a6b1e;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 150ms ease;
+}
+
+.recordLink:hover {
+  color: #2a5016;
+}
+
+/* ── Detail text ─────────────────────────────────────────── */
+.detail {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--ars-ink-soft, #52627a);
+  line-height: 1.6;
+}
+
+/* ── Actions ─────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: var(--space-3, 12px);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* The "Connect ORCID iD" button uses ORCID brand green.
+   Not the app's primary blue — this signals ORCID, not ARS. */
+.connectButton {
+  background: #A6CE39 !important;
+  border-color: #A6CE39 !important;
+  color: #fff !important;
+}
+
+.connectButton:hover {
+  background: #8FB72C !important;
+  border-color: #8FB72C !important;
+}
+
+.connectButton:focus-visible {
+  outline: 2px solid #A6CE39;
+  outline-offset: 2px;
+}
+
+.connectButton:disabled {
+  background: #d4edb0 !important;
+  border-color: #d4edb0 !important;
+  color: #6b9a25 !important;
+  cursor: not-allowed;
+}
+
+.contractNotice {
+  color: var(--ars-ink-muted, #69788d);
+  font-size: var(--font-size-xs, 12px);
+  line-height: 1.5;
+}
+
+.error {
+  margin: 0;
+  color: var(--ars-danger, #b42318);
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .heading {
+    flex-direction: column;
+  }
+
+  .headingLeft {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

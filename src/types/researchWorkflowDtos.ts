@@ -164,6 +164,8 @@ export interface PhasedReportUpdateRequest {
   milestoneTitle?: string | null;
   status?: string | null;
   submittedAt: string | null;
+  /** URL of the learning material assigned to this phase's report. */
+  phasedMaterialsUrl?: string | null;
 }
 
 // ---------- TopicMilestones & Phase Reports ----------

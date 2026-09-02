@@ -54,7 +54,7 @@ import {
   MAX_PHASES_PER_TOPIC,
 } from '../../services/researchTopicPhase.service';
 import { learningMaterialService, type LearningMaterial } from '../../services/learningMaterial.service';
-import { phaseMaterialService } from '../../services/phaseMaterial.service';
+import { phasedReportService } from '../../services/phasedReport.service';
 import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
@@ -168,15 +168,15 @@ export const ConfigureMilestones = () => {
         };
       });
 
-      // Fire phases + materials + existing assignments in parallel.
-      const [phasesResult, materialsResult, assignmentsResult] =
-        await Promise.allSettled([
-          researchTopicPhaseService.getByTopic(tid),
-          learningMaterialService.getAll(),
-          phaseMaterialService.getByTopicGroup(tid, groupId),
-        ]);
+      // Fire phases + materials in parallel. Assignments are derived from the
+      // PhasedReport rows returned by getByTopic (via phasedMaterialsUrl) —
+      // no separate PhaseMaterial API call is needed.
+      const [phasesResult, materialsResult] = await Promise.allSettled([
+        researchTopicPhaseService.getByTopic(tid),
+        learningMaterialService.getAll(),
+      ]);
 
-      // Extract phases.
+      // Extract phases for the selected group.
       const phases =
         phasesResult.status === 'fulfilled'
           ? (phasesResult.value as ResearchTopicPhase[]).filter(
@@ -197,14 +197,19 @@ export const ConfigureMilestones = () => {
             })
           : [];
 
-      // Build a map of phaseNumber → learningMaterialId from existing assignments.
+      // Build a reverse map: materialUrl → materialId so we can resolve
+      // phasedMaterialsUrl (a URL) back to an id for the dropdown.
+      const materialUrlToId = new Map<string | null, number>();
+      for (const m of materials) {
+        const id = typeof m.id === 'number' ? m.id : -1;
+        if (id > 0) materialUrlToId.set(m.fileUrl ?? null, id);
+      }
+
+      // Derive existing material assignments from PhasedReport.phasedMaterialsUrl.
       const assignmentMap = new Map<number, number | null>();
-      if (assignmentsResult.status === 'fulfilled') {
-        for (const a of assignmentsResult.value) {
-          if (a.phaseNumber != null) {
-            assignmentMap.set(a.phaseNumber, a.learningMaterialId ?? null);
-          }
-        }
+      for (const phase of phases) {
+        const url = phase.report?.phasedMaterialsUrl ?? null;
+        assignmentMap.set(phase.phaseNumber, materialUrlToId.get(url) ?? null);
       }
 
       const drafts =
@@ -354,23 +359,47 @@ export const ConfigureMilestones = () => {
           typeof p.report?.researchGroupId !== 'number',
       );
 
-      // Step 2 — persist each phase's material assignment.
-      const assignErrors: string[] = [];
+      // Step 2 — persist each phase's material by updating the PhasedReport row
+      // with its phasedMaterialsUrl. The BE supports phasedMaterialsUrl on
+      // PhasedReportCreateRequest/UpdateRequest. result.phases already contains
+      // the raw PhasedReport (with phasedReportId) from the topic-milestones
+      // POST response, so no extra fetch is needed.
+      const materialErrors: string[] = [];
       await Promise.all(
-        drafts.map((draft, index) =>
-          phaseMaterialService
-            .assignForPhase({
-              topicId,
-              researchGroupId: selectedGroupId!,
-              phaseNumber: index + 1,
-              learningMaterialId: draft.learningMaterialId,
+        drafts.map((draft, index) => {
+          const reportRow = apiPhases.find(
+            (p) => p.phaseNumber === index + 1,
+          );
+          const reportId = reportRow?.report?.phasedReportId;
+          if (!reportId) {
+            // No report row for this phase — nothing to update.
+            return Promise.resolve();
+          }
+          // Resolve the selected material ID to a URL (null = unassign).
+          const materialUrl =
+            draft.learningMaterialId != null
+              ? materials.find((m) => (m.id as number) === draft.learningMaterialId)?.fileUrl ?? null
+              : null;
+          return phasedReportService
+            .update(reportId, {
+              researchGroupId: reportRow.report?.researchGroupId ?? null,
+              groupMemberId: reportRow.report?.groupMemberId ?? null,
+              reportFileUrl: reportRow.report?.reportFileUrl ?? null,
+              capacityEvaluation: reportRow.report?.capacityEvaluation ?? null,
+              finalOutcomeEvaluation: reportRow.report?.finalOutcomeEvaluation ?? null,
+              lectureFeedback: reportRow.report?.lectureFeedback ?? null,
+              phaseNumber: reportRow.report?.phaseNumber ?? null,
+              milestoneTitle: reportRow.report?.milestoneTitle ?? null,
+              status: reportRow.report?.status ?? null,
+              submittedAt: reportRow.report?.submittedAt ?? null,
+              phasedMaterialsUrl: materialUrl,
             })
             .catch((err) => {
-              assignErrors.push(
+              materialErrors.push(
                 `Phase ${index + 1} material: ${err instanceof Error ? err.message : 'failed'}`,
               );
-            }),
-        ),
+            });
+        }),
       );
 
       setPageState((prev) => {
@@ -380,11 +409,11 @@ export const ConfigureMilestones = () => {
           saving: false,
           phases: apiPhases,
           message:
-            assignErrors.length > 0
+            materialErrors.length > 0
               ? `Milestones saved. Some material assignments could not be saved (see below).`
               : 'Milestones saved successfully.',
           error:
-            assignErrors.length > 0 ? assignErrors.join('\n') : null,
+            materialErrors.length > 0 ? materialErrors.join('\n') : null,
         };
       });
     } catch (err) {

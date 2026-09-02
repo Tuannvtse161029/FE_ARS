@@ -108,6 +108,8 @@ export interface PhasedReport {
   submittedAt?: string | null;
   isOverdue?: boolean | null;
   status?: string | null;
+  /** URL of the learning material assigned to this phase. Set via PUT /api/PhasedReport/{id}. */
+  phasedMaterialsUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
