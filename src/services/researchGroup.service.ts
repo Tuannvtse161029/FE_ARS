@@ -21,6 +21,11 @@ export interface ResearchGroup {
   description?: string | null;
   deadline?: string | null;
   assignedAt?: string | null;
+  /**
+   * Group-level starter materials URL. Read back from `ResearchGroups.materialsUrl`.
+   * Nullable per Swagger.
+   */
+  materialsUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
   lecturerName?: string | null;
@@ -167,6 +172,11 @@ export const assignTopicToGroups = async (
         description: existing?.description ?? null,
         deadline: existing?.deadline ?? null,
         assignedAt: new Date().toISOString(),
+        // Echo the group's existing starter-materials URL so the BE doesn't
+        // null it out as a side-effect of the topic reassignment. The
+        // AssignTopicModal UI can later pass an explicit override when the
+        // lecturer picks a fresh material for the group.
+        materialsUrl: existing?.materialsUrl ?? null,
       };
       const updated = await researchGroupService.update(groupId, payload);
       return updated;

@@ -55,6 +55,14 @@ export interface ResearchGroupCreateRequest {
   description: string | null;
   deadline: string | null;
   assignedAt: string | null;
+  /**
+   * Optional material URL the lecturer attaches to the group. This is the
+   * group-level (not topic-level, not phase-level) "starter pack" of reading
+   * materials that help the group understand the assigned topic. The BE
+   * persists this on the `ResearchGroups.materialsUrl` column. Nullable per
+   * Swagger; omit or pass `null` when the group has no materials attached.
+   */
+  materialsUrl?: string | null;
 }
 
 export interface ResearchGroupUpdateRequest {
@@ -64,6 +72,12 @@ export interface ResearchGroupUpdateRequest {
   description: string | null;
   deadline: string | null;
   assignedAt: string | null;
+  /**
+   * See `ResearchGroupCreateRequest.materialsUrl`. Echoed back on PUT so the
+   * BE preserves the existing value when the caller doesn't intentionally
+   * change it.
+   */
+  materialsUrl?: string | null;
 }
 
 // ---------- ResearchTopic ----------
