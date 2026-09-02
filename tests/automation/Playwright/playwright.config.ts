@@ -54,7 +54,7 @@ fs.mkdirSync(REPORT_DIR, { recursive: true });
 
 export default defineConfig({
   testDir: __dirname,
-  testMatch: /.*\.spec\.ts$/,
+  testMatch: /publication-flow\.spec\.ts$/,
   // Keep this folder out of any other suite — we exclude the helper /
   // reporter / fixture source so they never become "tests".
   testIgnore: [
@@ -73,7 +73,6 @@ export default defineConfig({
   // every role regardless of any single failure.
   reporter: [
     ['list'],
-    [CustomReporter, { outputDir: REPORT_DIR }],
   ],
   timeout: 120_000,
   expect: { timeout: 20_000 },

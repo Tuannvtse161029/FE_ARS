@@ -11,7 +11,7 @@
  *     available for other input shapes).
  */
 import type { Page } from '@playwright/test';
-import { ROUTES } from '../../../src/routes/paths';
+import { ROUTES } from '../../../../src/routes/paths';
 
 export async function loginAs(
   page: Page,
@@ -36,19 +36,24 @@ export async function loginAs(
   await passwordInput.fill(password);
   await passwordInput.press('Enter');
 
-  // Clear the password field so any post-failure screenshot does not
-  // include it (filling leaves the value in DOM until cleared).
-  await passwordInput.fill('');
-
   // Wait for the post-login redirect. The landing route differs per
   // role but the PrivateRoute always routes through PublicRoute first;
   // either the role landing or `/complete-google-registration` is fine.
-  await page.waitForURL(
-    (url) =>
-      !url.pathname.startsWith('/login') &&
-      !url.pathname.startsWith('/forgot-password'),
-    { timeout: 30_000 },
-  );
+  // The password field becomes disabled while the form submits, so we
+  // don't try to clear it after Enter — the form clear is best-effort
+  // and failures here are not the test's concern.
+  try {
+    await page.waitForURL(
+      (url) =>
+        !url.pathname.startsWith('/login') &&
+        !url.pathname.startsWith('/forgot-password'),
+      { timeout: 30_000 },
+    );
+  } finally {
+    // Best-effort clear of the password field; the field may be
+    // disabled while the form is submitting, so swallow that error.
+    await passwordInput.fill('').catch(() => {});
+  }
 }
 
 export async function logout(page: Page): Promise<void> {

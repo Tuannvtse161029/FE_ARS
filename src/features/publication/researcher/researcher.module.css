@@ -265,18 +265,22 @@
 }
 
 @media (max-width: 760px) {
+
   .toolbar,
   .attentionPanel {
     flex-direction: column;
     align-items: stretch;
   }
+
   .attentionActions {
     justify-content: flex-start;
   }
+
   .searchField,
   .statusField {
     max-width: 100%;
   }
+
   .table thead th,
   .table tbody td {
     padding: var(--space-3);
@@ -493,34 +497,160 @@
   align-items: center;
 }
 
-/* ── OpenAlex integration ──────────────────────────────────────────
-   OpenAlex is a third-party scholarly metadata source. Its visual presence
-   here is intentionally subordinate — a small "via OpenAlex" attribution
-   rather than a co-primary brand. The form section heading reads as an ARS
-   feature ("Import metadata"); the OpenAlex mark appears as a 12px chip
-   next to it. */
-
+/* ── OpenAlex metadata lookup ────────────────────────────────────────
+   The import module borrows the reference's composed, horizontal workflow:
+   OpenAlex identity, Work ID entry, and the lookup command share one surface.
+   The backend contract and all preview/confirmation states remain unchanged. */
 .openAlexSection {
-  padding-top: var(--space-4);
-  margin-top: var(--space-4);
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  margin-top: var(--space-2);
   border-top: 1px solid var(--ars-paper-rule);
+}
+
+.openAlexSectionHeader {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.openAlexOptional {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.openAlexLookupSurface {
+  display: grid;
+  grid-template-columns: minmax(178px, 0.85fr) minmax(0, 2.15fr);
+  overflow: hidden;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  box-shadow: 0 1px 2px var(--shadow-color);
+}
+
+.openAlexBrandLockup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--ars-paper-inset);
+  border-right: 1px solid var(--ars-network);
+}
+
+.openAlexBrandMark {
+  width: 120px !important;
+  height: 50px !important;
+  flex: 0 0 auto;
+}
+
+.openAlexBrandName,
+.openAlexBrandLabel {
+  margin: 0;
+}
+
+.openAlexBrandName {
+  color: var(--ars-ink);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+}
+
+.openAlexBrandLabel {
+  margin-top: 2px;
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.openAlexEntry {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+
+.openAlexEntry>label {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.openAlexInputRow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.openAlexInputRow input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  padding: 0 var(--space-3);
+}
+
+.openAlexInputRow input:hover {
+  border-color: var(--ars-ink-muted);
+}
+
+.openAlexInputRow input:focus {
+  outline: none;
+  border-color: var(--ars-researcher);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+}
+
+.openAlexInputRow input:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.openAlexLookupButton {
+  align-self: stretch;
+  min-height: 40px;
+  background: var(--ars-ink) !important;
+  border-color: var(--ars-ink) !important;
+  color: var(--ars-paper) !important;
+}
+
+.openAlexLookupButton:hover:not(:disabled) {
+  background: var(--ars-ink-soft) !important;
+  border-color: var(--ars-ink-soft) !important;
+}
+
+.openAlexSecondaryActions {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+.openAlexSecondaryActions button {
+  padding-left: 0;
+  color: var(--ars-ink-muted);
+}
+
+.openAlexSecondaryActions button:hover:not(:disabled) {
+  color: var(--ars-researcher);
   background: transparent;
 }
 
-.openAlexHeading {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-/* Subordinate "via OpenAlex" attribution chip — sits next to the section
-   heading. Uses a small (12px) mark and a quiet slate color so it never
-   competes with the ARS form title. */
+/* Small attribution remains for the returned preview and confirmation rows. */
 .openAlexAttribution {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
@@ -532,27 +662,35 @@
   border: 1px solid var(--ars-network);
 }
 
-.openAlexAttribution svg {
-  width: 12px !important;
-  height: 12px !important;
+.openAlexAttribution img {
+  width: 20px !important;
+  height: 20px !important;
   display: block;
   flex-shrink: 0;
 }
 
-.openAlexOptional {
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
-}
+@media (max-width: 760px) {
+  .openAlexLookupSurface {
+    grid-template-columns: 1fr;
+  }
 
-.openAlexCode {
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-xs);
-  background: var(--ars-paper-inset);
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  color: var(--ars-ink);
-  border: 1px solid var(--ars-paper-rule);
+  .openAlexBrandLockup {
+    padding: var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--ars-network);
+  }
+
+  .openAlexEntry {
+    padding: var(--space-4);
+  }
+
+  .openAlexInputRow {
+    flex-direction: column;
+  }
+
+  .openAlexLookupButton {
+    width: 100%;
+  }
 }
 
 /* ── OpenAlex preview panel ───────────────────────────────────────── */
@@ -606,7 +744,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-10);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--ars-paper-card);
@@ -682,6 +820,7 @@
   .formGrid {
     grid-template-columns: 1fr;
   }
+
   .formFooter {
     flex-direction: column;
     align-items: stretch;

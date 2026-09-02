@@ -355,7 +355,8 @@ export const ConfigureMilestones = () => {
       const apiPhases = result.phases.filter(
         (p) =>
           p.report?.researchGroupId === selectedGroupId ||
-          typeof p.report?.researchGroupId !== 'number',
+          (typeof p.report?.researchGroupId !== 'number' &&
+            p.topicId === topicId),
       );
 
       // Step 2 — persist each phase's material by updating the PhasedReport row
@@ -370,15 +371,19 @@ export const ConfigureMilestones = () => {
             (p) => p.phaseNumber === index + 1,
           );
           const reportId = reportRow?.report?.phasedReportId;
-          if (!reportId) {
-            // No report row for this phase — nothing to update.
+          // Short-circuit: skip Step 2 entirely when the lecturer did not
+          // pick a learning material. The PUT is the call that previously
+          // wiped `requirements`, `assessmentCriteria`, and `startDate`
+          // because the FE's older `PhasedReportUpdateRequest` DTO did
+          // not declare those fields — even though the BE's DTO did. By
+          // skipping the PUT when no material is attached, we keep the
+          // values just written by `topic-milestones` intact.
+          if (!reportId || draft.learningMaterialId == null) {
             return Promise.resolve();
           }
-          // Resolve the selected material ID to a URL (null = unassign).
+          // Resolve the selected material ID to a URL.
           const materialUrl =
-            draft.learningMaterialId != null
-              ? materials.find((m) => (m.id as number) === draft.learningMaterialId)?.fileUrl ?? null
-              : null;
+            materials.find((m) => (m.id as number) === draft.learningMaterialId)?.fileUrl ?? null;
           return phasedReportService
             .update(reportId, {
               researchGroupId: reportRow.report?.researchGroupId ?? null,
@@ -392,6 +397,14 @@ export const ConfigureMilestones = () => {
               status: reportRow.report?.status ?? null,
               submittedAt: reportRow.report?.submittedAt ?? null,
               phasedMaterialsUrl: materialUrl,
+              // Echo the rich milestone fields back to the BE so this PUT
+              // doesn't null them out. The BE's PhasedReportUpdateRequest
+              // schema lists these fields; the FE's TypeScript DTO is now
+              // aligned with that schema (see types/researchWorkflowDtos.ts).
+              topicId: reportRow.report?.topicId ?? null,
+              requirements: reportRow.report?.requirements ?? null,
+              assessmentCriteria: reportRow.report?.assessmentCriteria ?? null,
+              startDate: reportRow.report?.startDate ?? null,
             })
             .catch((err) => {
               materialErrors.push(

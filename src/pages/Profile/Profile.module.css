@@ -25,6 +25,13 @@
   color: var(--ars-ink);
 }
 
+/* ── Extras group: publications + forum posts sections ── */
+.extrasGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
 /* ── Identity card ───────────────────────────────────────── */
 .identityCard {
   display: flex;

@@ -569,6 +569,7 @@ export const MainLayout = () => {
           // Top-level entry points (shared with all roles).
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
 
           // PhasedReport core flow — read top-to-bottom in workflow order:
           // define a Topic → assign Groups → configure Milestones for a

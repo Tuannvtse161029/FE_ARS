@@ -1,0 +1,268 @@
+/* ProfileExtrasSection — Publications + Forum posts preview sections
+ * rendered beneath the main Profile view card.
+ *
+ * Design language: ARS Research Constellation (CSS Modules + --ars-* tokens).
+ * No invented tokens; every value is sourced from the existing global scale.
+ *
+ * Visual notes:
+ *   - Both sections share the same chrome (card / header / body) so the
+ *     profile reads as one composed document, not a stack of strangers.
+ *   - Item rows are visually distinct from the parent view card: tighter
+ *     density, mono metadata, hairline separators, no nested borders.
+ *   - Empty states are honest: no fabricated placeholders, no mock data.
+ */
+
+.extrasWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.extrasCard {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.extrasCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  width: 3px;
+  background: var(--profile-accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.extrasHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+  flex-wrap: wrap;
+}
+
+.extrasTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.extrasTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.extrasSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.viewAllLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--profile-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-feedback);
+  white-space: nowrap;
+}
+
+.viewAllLink:hover {
+  background: color-mix(in srgb, var(--profile-accent) 10%, transparent);
+}
+
+.viewAllLink:focus-visible {
+  outline: 2px solid var(--profile-accent);
+  outline-offset: 2px;
+}
+
+/* ── Item list ─────────────────────────────────────────── */
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.item:hover {
+  border-color: color-mix(in srgb, var(--profile-accent) 40%, var(--ars-network));
+  background: color-mix(in srgb, var(--profile-accent) 4%, var(--ars-paper));
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--profile-accent);
+  outline-offset: 2px;
+}
+
+.itemHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.itemTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.metaDot {
+  color: var(--ars-network);
+}
+
+.itemAbstract {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.itemTag {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink-soft);
+}
+
+/* ── Loading skeleton rows ──────────────────────────────── */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeletonRow {
+  height: 64px;
+  background: linear-gradient(
+    90deg,
+    var(--ars-paper) 0%,
+    color-mix(in srgb, var(--ars-network) 60%, var(--ars-paper)) 50%,
+    var(--ars-paper) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-network);
+  animation: extrasShimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes extrasShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow {
+    animation: none;
+  }
+}
+
+/* ── Empty / error states ──────────────────────────────── */
+.extrasEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.extrasEmptyIcon {
+  color: var(--ars-ink-muted);
+  opacity: 0.6;
+}
+
+.extrasEmptyTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-soft);
+  margin: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .extrasCard {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .itemHead {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .itemMeta {
+    white-space: normal;
+  }
+}
