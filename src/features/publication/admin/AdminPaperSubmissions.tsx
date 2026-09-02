@@ -18,6 +18,7 @@ import { TablePagination } from '../../../components/table/TablePagination';
 import { SortableHeader } from '../../../components/table/SortableHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
+import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
@@ -396,7 +397,14 @@ export const AdminPaperSubmissions = () => {
                           ) : null}
                           {identifiers.openAlexId ? (
                             <span className={adminStyles.identifierChip}>
-                              OpenAlex: {identifiers.openAlexId}
+                              <OpenAlexBrandLogo
+                                variant="mark"
+                                ariaLabel="OpenAlex"
+                              />
+                              <span className={adminStyles.identifierChipOpenAlex}>
+                                OpenAlex
+                              </span>
+                              <span>{identifiers.openAlexId}</span>
                             </span>
                           ) : null}
                           {identifiers.externalIdentifier ? (

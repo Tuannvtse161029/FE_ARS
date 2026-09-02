@@ -8,15 +8,16 @@ import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { ROUTES } from '../../routes/paths';
 import type { UserRole, RegisterPayload } from '../../types/auth';
+import { OrcidBrandLogo } from '../../components/orcid/OrcidBrandLogo';
 import { PdfDropzone } from './components/PdfDropzone';
 import { SamplePdfModal } from './components/SamplePdfModal';
 import { PolicyModal, type PolicyTab } from './components/PolicyModal';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
-import { Info, ExternalLink } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { startRegistrationOrcidLink } from '../../services/orcid.service';
-import { type RequestableRole } from '../../utils/registrationRoles';
+import { isOrcidEligibleRole, type RequestableRole } from '../../utils/registrationRoles';
 import { FieldError } from '../../components/FieldError';
 import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
 import {
@@ -636,43 +637,74 @@ export const Register = () => {
           {rolesError && <FieldError id="role-load-error" message={rolesError} />}
         </div>
 
-        {(
+        {isOrcidEligibleRole(form.role) && (
           <section className={styles.orcidConnection} aria-labelledby="registration-orcid-title">
-            <div>
-              <h2 id="registration-orcid-title" className={styles.orcidTitle}>Connect your ORCID iD</h2>
+            <div className={styles.orcidHeader}>
+              <OrcidBrandLogo
+                variant="wordmark"
+                size={22}
+                ariaLabel="ORCID iD"
+                className={styles.orcidHeaderLogo}
+              />
+            </div>
+
+            <div className={styles.orcidBody}>
+              <h2 id="registration-orcid-title" className={styles.orcidTitle}>
+                Connect your ORCID iD
+              </h2>
               <p className={styles.orcidDescription}>
                 {form.role === 'Reviewer'
                   ? reviewerOrcidBypassAllowed()
-                    ? 'Reviewer requests normally require a verified ORCID connection, but the development-only bypass is active. You can submit without ORCID; production will require it.'
-                    : 'Reviewer requests require a verified ORCID connection. You will authenticate on ORCID, never in ARS.'
-                  : 'Optional for this role. You can also connect ORCID later from your Profile.'}
+                    ? 'Reviewer requests normally require a verified ORCID iD, but the development-only bypass is active. You can submit without ORCID; production will require it.'
+                    : 'Reviewer requests require a verified ORCID iD. You will authenticate on ORCID, never in ARS.'
+                  : 'Optional for Researcher and Lecturer. You can also connect ORCID later from your Profile.'}
               </p>
             </div>
-            {orcidTicket ? (
-              <span
-                className={styles.orcidVerifiedBadge}
-                data-testid="register-orcid-verified-badge"
-                role="status"
-              >
-                ORCID verified
-              </span>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                leftIcon={<ExternalLink size={16} aria-hidden="true" />}
-                onClick={() => void handleStartOrcid()}
-                disabled={isSubmitting || isUploadingPdf || isStartingOrcid}
-                isLoading={isStartingOrcid}
-                data-testid="register-connect-orcid-button"
-              >
-                Connect ORCID
-              </Button>
+
+            <div className={styles.orcidAction}>
+              {orcidTicket ? (
+                <span
+                  className={styles.orcidVerifiedBadge}
+                  data-testid="register-orcid-verified-badge"
+                  role="status"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <circle cx="7" cy="7" r="7" fill="#A6CE39" />
+                    <path d="M4 7.5L6 9.5L10 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  ORCID verified
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.orcidConnectBtn}
+                  onClick={() => void handleStartOrcid()}
+                  disabled={isSubmitting || isUploadingPdf || isStartingOrcid}
+                  aria-busy={isStartingOrcid}
+                  data-testid="register-connect-orcid-button"
+                >
+                  {isStartingOrcid ? (
+                    <>
+                      <span className={styles.orcidBtnSpinner} aria-hidden="true" />
+                      Connecting…
+                    </>
+                  ) : (
+                    <OrcidBrandLogo
+                      variant="wordmark"
+                      size={22}
+                      ariaLabel="Connect with ORCID iD"
+                      className={styles.orcidBtnLogo}
+                    />
+                  )}
+                </button>
+              )}
+            </div>
+
+            {!orcidTicket && (
+              <p className={styles.orcidNotice}>
+                We will open the official ORCID authorization page. ARS never asks for your ORCID password — authentication happens entirely on orcid.org.
+              </p>
             )}
-            <p className={styles.orcidNotice}>
-              ARS will open the official ORCID authorization page. ARS never asks for your ORCID password.
-            </p>
             {reviewerOrcidBypassAllowed() && form.role === 'Reviewer' ? (
               <p
                 className={styles.orcidDevNotice}

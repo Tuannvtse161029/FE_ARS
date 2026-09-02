@@ -51,6 +51,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
 import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
+import { isOrcidEligibleRole } from '../../utils/registrationRoles';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -606,7 +607,7 @@ export const Profile = () => {
         </div>
       </section>
 
-      {isOwner && roleName !== 'Admin' && (
+      {isOwner && isOrcidEligibleRole(roleName) && (
         <OrcidIdentityPanel required={roleName === 'Reviewer'} />
       )}
 

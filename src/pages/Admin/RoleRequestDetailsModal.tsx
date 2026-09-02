@@ -127,7 +127,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
         <footer className={styles.footer}>
           <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">Close</button>
           {request.isOrcidVerified === true && request.orcidId && onOpenOrcidCheck ? (
-            <button className={`${styles.button} ${styles.primaryButton}`} onClick={onOpenOrcidCheck} type="button">
+            <button className={`${styles.button} ${styles.orcidButton}`} onClick={onOpenOrcidCheck} type="button">
               Check ORCID
             </button>
           ) : null}

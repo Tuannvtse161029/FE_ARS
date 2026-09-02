@@ -8,6 +8,7 @@ import {
   collectPaperExternalLinks,
   resolveAuthorLinks,
 } from './publicationLinks';
+import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
 import card from './PublishedPaperCard.module.css';
 
 export interface PublishedPaperCardProps {
@@ -171,9 +172,15 @@ export const PublishedPaperCard = ({
                 <span className={card.identifierPlain}>Not supplied</span>
               )}
             </div>
-            {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
+                        {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
               <div className={card.detailRow}>
-                <span className={card.detailLabel}>OpenAlex</span>
+                <span className={card.detailLabel}>
+                  <OpenAlexBrandLogo
+                    variant="mark"
+                    ariaLabel="OpenAlex"
+                  />
+                  <span aria-hidden="true">OpenAlex</span>
+                </span>
                 <a className={card.identifierLink} href={paperExternalLinks[1].href} rel="noopener noreferrer" target="_blank">
                   <ExternalLink size={12} aria-hidden="true" />
                   <span>{paper.openAlexId}</span>
