@@ -37,6 +37,7 @@ vi.mock('../../../src/services/learningMaterial.service', () => ({
     create: vi.fn(),
     delete: vi.fn(),
   },
+  defaultLearningMaterialFolderPath: () => 'lecturer-materials',
 }));
 
 vi.mock('../../../src/services/sharedMaterial.service', () => ({

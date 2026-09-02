@@ -7,6 +7,7 @@ import type { UserRole } from '../types/auth';
 import { useReviewerAvailability } from '../hooks/useReviewerProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
+import { landingRouteForRoleName } from '../utils/roleNormalizer';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
@@ -245,10 +246,16 @@ const ProfileDropdown = ({
   );
 };
 
-const ARSPlatformLogo = () => (
-  <div className={styles.logoContainer}>
+const ARSPlatformLogo = ({ onClick }: { onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void }) => (
+  <a
+    href={ROUTES.LANDING}
+    className={styles.logoContainer}
+    onClick={onClick}
+    aria-label="Go to homepage"
+    title="Go to homepage"
+  >
     <img src={arsLogo} alt="ARS Platform" />
-  </div>
+  </a>
 );
 
 interface NavItem {
@@ -262,7 +269,34 @@ interface NavItem {
   // NavLink's default prefix matching would otherwise mark every Admin child
   // route as "Dashboard" (Phase C defect 3B).
   end?: boolean;
+  // Additional path prefixes that should also mark this item as active
+  // in the sidebar. Used when a parent list route (e.g. `/research-group`)
+  // has a detail page at a different prefix (e.g. `/lecturer/groups/:id`),
+  // so the user still sees which section they're in. React Router's default
+  // prefix matching only walks down `to`, not sideways to sibling routes.
+  activeFor?: string[];
 }
+
+/**
+ * Returns true when the current pathname should mark the given nav item
+ * as active. We combine React Router's default "starts with `to`" rule
+ * with any explicit `activeFor` prefixes declared on the item so parent
+ * list routes can stay highlighted on their child detail pages.
+ */
+const isNavItemActive = (item: NavItem, pathname: string): boolean => {
+  const toPrefix = item.to;
+  if (item.end) {
+    if (pathname === toPrefix) return true;
+  } else if (pathname === toPrefix || pathname.startsWith(`${toPrefix}/`)) {
+    return true;
+  }
+  if (item.activeFor) {
+    return item.activeFor.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+  }
+  return false;
+};
 
 export const MainLayout = () => {
   const { user, logout } = useAuth();
@@ -271,6 +305,20 @@ export const MainLayout = () => {
 
   // Active role is derived solely from the authenticated user's role as set by the BE at login.
   const activeRole: UserRole = (user?.role as UserRole) ?? 'Researcher';
+
+  // Single landing destination used by the sidebar logo: Admin → /admin,
+  // every other signed-in role → /home. Mirrors landingRouteForRoleName so
+  // clicking the logo never feels like a half-step away from home.
+  const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    // Let modifier-clicks / non-left-clicks behave normally (new tab, etc.).
+    if (event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const destination = user
+      ? landingRouteForRoleName(activeRole)
+      : ROUTES.LANDING;
+    navigate(destination);
+  };
 
   const { isGuest } = usePermissions();
   const displayedRole: string = isGuest ? 'Guest' : activeRole;
@@ -528,7 +576,7 @@ export const MainLayout = () => {
           // milestones → manage reference Materials used by all of the
           // above.
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
-          { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} /> },
+          { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} />, activeFor: ['/lecturer/groups'] },
           { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
           { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_MATERIALS, label: 'Materials', icon: <Library size={20} /> },
@@ -586,7 +634,7 @@ export const MainLayout = () => {
         className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isMobileNavOpen ? styles.sidebarOpen : ''}`}
       >
         <div className={styles.sidebarHeader}>
-          <ARSPlatformLogo />
+          <ARSPlatformLogo onClick={handleLogoClick} />
           <button
             type="button"
             className={styles.sidebarClose}
@@ -635,7 +683,11 @@ export const MainLayout = () => {
                 aria-label={item.label}
                 title={item.label}
                 className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
+                  `${styles.navItem} ${
+                    isActive || isNavItemActive(item, location.pathname)
+                      ? styles.navItemActive
+                      : ''
+                  }`
                 }
               >
                 <span className={styles.navIcon}>{item.icon}</span>

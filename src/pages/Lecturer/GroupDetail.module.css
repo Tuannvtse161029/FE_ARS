@@ -48,6 +48,45 @@
   align-items: center;
 }
 
+/* ── Breadcrumb ─────────────────────────────────────────────── */
+/* Provides the "Research Groups > [Group Name]" context tab
+   so users can always see where they are in the hierarchy. */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a {
+  color: var(--ars-lecturer);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  transition: opacity var(--transition-fast);
+}
+
+.breadcrumb a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.breadcrumbSep {
+  color: var(--ars-ink-muted);
+  opacity: 0.5;
+}
+
+.breadcrumbCurrent {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .backBtn {
   display: inline-flex;
   align-items: center;
@@ -200,28 +239,27 @@
 }
 
 /* ── Meta strip ─────────────────────────────────────────────── */
+/* 2-column grid replaces the full-width flat row to eliminate
+   negative space while keeping all four data points visible. */
 .metaStrip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
   background: var(--surface-sunken);
   border: var(--border-thin);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  padding: var(--space-4);
 }
 
 .metaCell {
-  flex: 1;
-  min-width: 160px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-4) var(--space-5);
-  border-right: 1px solid var(--border-subtle);
-}
-
-.metaCell:last-child {
-  border-right: none;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  min-width: 0;
 }
 
 .metaLabel {
@@ -243,6 +281,22 @@
   display: block;
 }
 
+/* ── Cards grid ──────────────────────────────────────────────── */
+/* 2-column responsive grid; each row is always two equal halves
+   so Assigned topic / Group members and Phase progress / Milestone
+   summary sit side-by-side. Learning materials always span full width. */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Full-width children span both columns */
+.cardsGrid .cardFull {
+  grid-column: 1 / -1;
+}
+
 /* ── Section card ───────────────────────────────────────────── */
 .card {
   background: var(--surface-raised);
@@ -251,13 +305,18 @@
   overflow: hidden;
   animation: fadeIn 0.25s ease-out;
   position: relative;
+  /* Slightly tighter cards inside the grid */
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .card::before {
   content: '';
   position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
+  top: var(--space-3);
+  left: var(--space-3);
   width: 6px;
   height: 6px;
   border-radius: 999px;
@@ -269,9 +328,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
+  padding-left: var(--space-4);
 }
 
 .cardHeaderRow {
@@ -285,14 +343,14 @@
 
 .cardTitle {
   font-family: var(--font-family-ui);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
   margin: 0;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding-left: var(--space-4);
+  line-height: var(--line-height-normal);
 }
 
 .cardHint {
@@ -302,7 +360,7 @@
   line-height: 1.5;
   flex: 1 1 100%;
   min-width: 0;
-  margin-top: var(--space-1);
+  margin-top: 2px;
 }
 
 .cardHint a {
@@ -316,7 +374,7 @@
 }
 
 .cardBody {
-  padding: var(--space-5);
+  padding: 0;
 }
 
 /* ── Topic summary row ──────────────────────────────────────── */
@@ -324,7 +382,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
   flex-wrap: wrap;
 }
 
@@ -1039,19 +1096,24 @@
   }
 
   .pageTitle,
-  .pageSubtitle,
-  .cardTitle {
+  .pageSubtitle {
     padding-left: var(--space-3);
   }
 
-  .metaCell {
-    flex: 1 1 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
+  .metaStrip {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .metaCell:last-child {
-    border-bottom: none;
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardsGrid .cardFull {
+    grid-column: 1;
+  }
+
+  .card {
+    padding: var(--space-3);
   }
 
   .memberRow {

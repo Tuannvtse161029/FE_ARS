@@ -249,8 +249,41 @@
   gap: var(--space-4);
   width: 100%;
   max-width: 560px;
-  box-shadow: var(--shadow-md);
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
   animation: fadeIn 0.25s ease-out;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink-muted);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.modalCloseBtn:hover:not(:disabled) {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: var(--ars-error);
+}
+
+.modalCloseBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.modalCloseBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modalHeaderRow {

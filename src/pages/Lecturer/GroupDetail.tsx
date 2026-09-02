@@ -496,17 +496,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   return (
     <div className={styles.root} data-testid="lecturer-group-detail">
-      {/* Back row — on its own line above the title for clear page hierarchy */}
-      <div className={styles.backRow}>
-        <button
-          type="button"
-          className={styles.backBtn}
-          onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
-          aria-label="Back to research groups"
-        >
-          <ArrowLeft size={14} aria-hidden />
-          Back
-        </button>
+      {/* Breadcrumb — "Research Groups > [Group Name]" so the lecturer
+          always knows their location in the hierarchy. */}
+      <div className={styles.breadcrumb}>
+        <Link to={ROUTES.RESEARCH_GROUP}>Research Groups</Link>
+        <span className={styles.breadcrumbSep} aria-hidden>/</span>
+        <span className={styles.breadcrumbCurrent} title={groupName}>
+          {groupName}
+        </span>
       </div>
 
       {/* Page header — title + subtitle left, status + actions right */}
@@ -597,279 +594,284 @@ export const LecturerGroupDetail = (): JSX.Element => {
         </div>
       </section>
 
-      {/* Assigned topic */}
-      <section className={styles.card}>
-        <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Assigned topic</h2>
-          <span className={styles.cardHint}>
-            The Research Topic this group is working on. Manage topics on the{' '}
-            <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Research Topics</Link> page.
-          </span>
-        </header>
-        {relatedTopic ? (
-          <div className={styles.cardBody}>
-            <div className={styles.cardInner}>
-              <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
-              <div className={styles.topicSummaryText}>
-                <strong className={styles.topicSummaryTitle}>
-                  {relatedTopic.title ?? `RT-${group.topicId}`}
-                </strong>
-                {relatedTopic.description?.trim() && (
-                  <span className={styles.topicSummaryDesc}>
-                    {relatedTopic.description}
-                  </span>
-                )}
-              </div>
-              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.openLink}>
-                <ExternalLink size={14} aria-hidden /> Open topic
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.cardBody}>
-            <div className={styles.emptyState}>
-              No research topic assigned yet.{' '}
-              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Assign one from Research Topics.</Link>
-            </div>
-          </div>
-        )}
-      </section>
+      {/* Section cards — 2-column grid on desktop, 1-column on mobile.
+          Row 1: Assigned topic + Group members
+          Row 2: Phase progress + Milestone summary
+          Row 3: Learning materials (full width) */}
+      <div className={styles.cardsGrid}>
 
-      {/* Phase progress — visual stepper is the dominant object on this
-          page. It reads top-to-bottom in workflow order so the lecturer
-          can see exactly where the group is in the journey without
-          scanning tables or counts. */}
-      {phaseTimelineItems.length > 0 && (
-        <section className={styles.card} aria-labelledby="phaseProgressTitle">
+        {/* Assigned topic */}
+        <section className={styles.card}>
           <header className={styles.cardHeader}>
-            <h2 id="phaseProgressTitle" className={styles.cardTitle}>
-              Phase progress
-            </h2>
+            <h2 className={styles.cardTitle}>Assigned topic</h2>
             <span className={styles.cardHint}>
-              Where this group is in the reporting journey.
+              The Research Topic this group is working on.{' '}
+              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Manage on Research Topics page.</Link>
             </span>
           </header>
-          <div className={styles.cardBody}>
-            <PhaseTimeline items={phaseTimelineItems} />
-          </div>
-        </section>
-      )}
-
-      {/* Milestone summary */}
-      <section className={styles.card}>
-        <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Milestone summary</h2>
-          <span className={styles.cardHint}>
-            Visual summary of all Phased Reports this group has submitted.
-          </span>
-        </header>
-        {reportsError && (
-          <div className={styles.errorPanel} role="alert">
-            <AlertTriangle size={14} aria-hidden />
-            <span>Could not load reports: {reportsError.message}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => void refetchReports()}>
-              Retry
-            </button>
-          </div>
-        )}
-        {reports.length === 0 && !isReportsLoading && !reportsError && (
-          <div className={styles.cardBody}>
-            <div className={styles.emptyState}>
-              <FileText size={18} aria-hidden />
-              No phased reports submitted yet.
-            </div>
-          </div>
-        )}
-        {reports.length > 0 && (
-          <>
+          {relatedTopic ? (
             <div className={styles.cardBody}>
-              <MilestoneProgress reports={reports} className={styles.cardInner} />
-            </div>
-            <div className={styles.gapNote}>
-              <InlineNotice
-                tone="info"
-                title="Milestone API unavailable"
-                description="A dedicated milestone endpoint is not exposed yet. This card counts Phased Reports as a stand-in."
-              />
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* Members */}
-      <section className={styles.card}>
-        <header className={styles.cardHeader}>
-          <div className={styles.cardHeaderRow}>
-            <h2 className={styles.cardTitle}>
-              <Users size={16} aria-hidden /> Group members ({members.length})
-            </h2>
-            <button
-              type="button"
-              className={styles.inviteStudentsBtn}
-              onClick={openInviteModal}
-              disabled={members.length >= 4 || isMembersLoading}
-              title={members.length >= 4 ? 'Maximum of 4 members reached' : 'Invite students'}
-            >
-              <UserPlus size={14} aria-hidden /> Invite students
-            </button>
-          </div>
-          <InlineNotice
-            tone="info"
-            title="Maximum 4 members per group"
-            description="The four-member limit is enforced in this interface; the BE contract does not document the constraint."
-          />
-          <span className={styles.cardHint}>
-            Manage student members in this group.
-          </span>
-        </header>
-        {membersError && (
-          <div className={styles.errorPanel} role="alert">
-            <AlertTriangle size={14} aria-hidden />
-            <span>{membersError}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => void loadMembers()}>
-              Retry
-            </button>
-          </div>
-        )}
-        {isMembersLoading ? (
-          <div className={styles.loadingPanel}>
-            <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            Loading members\u2026
-          </div>
-        ) : members.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Users size={18} aria-hidden />
-            No students have joined this group yet.
-          </div>
-        ) : (
-          <ul className={styles.memberList}>
-            {sortedMembers.map((m) => {
-              const mid = typeof m.id === 'number' ? m.id : -1;
-              const isBusy = leaderActionLoading === mid;
-              const initials = (m.studentName ?? '').trim().slice(0, 2).toUpperCase() || 'ST';
-              return (
-                <li key={`member-${mid}`} className={styles.memberRow}>
-                  <div className={styles.memberIdentity}>
-                    <div
-                      className={`${styles.memberAvatar} ${m.isLeader ? styles.memberAvatarLeader : ''}`}
-                      aria-hidden
-                    >
-                      {m.isLeader ? <Crown size={18} /> : initials}
-                    </div>
-                    <div className={styles.memberBody}>
-                      <div className={styles.memberNameRow}>
-                        <span className={styles.memberStudent}>
-                          {m.studentName || `Student #${m.studentId ?? mid}`}
-                        </span>
-                        {m.isLeader && (
-                          <span className={styles.leaderBadge}>
-                            <Crown size={12} aria-hidden />
-                            Trưởng nhóm (Leader)
-                          </span>
-                        )}
-                      </div>
-                      <div className={styles.memberMeta}>
-                        {m.studentEmail && <span>{m.studentEmail}</span>}
-                        <span>
-                          Status: <strong>{m.activityStatus ?? 'Joined'}</strong>
-                        </span>
-                        <span>Joined {formatDateOnly(m.joinedAt ?? null)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={styles.memberActions}>
-                    {m.isLeader ? (
-                      <button
-                        type="button"
-                        className={styles.removeLeaderBtn}
-                        onClick={() => void handleRemoveLeader(m)}
-                        disabled={isBusy}
-                      >
-                        {isBusy
-                          ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
-                          : <X size={14} aria-hidden />}
-                        Hủy Trưởng nhóm
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.setLeaderBtn}
-                        onClick={() => void handleSetLeader(m)}
-                        disabled={isBusy}
-                      >
-                        {isBusy
-                          ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
-                          : <Crown size={14} className={styles.leaderCrown} aria-hidden />}
-                        Gán Trưởng nhóm
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {/* Learning materials */}
-      <section className={styles.card}>
-        <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <Library size={16} aria-hidden /> Learning materials
-          </h2>
-          <span className={styles.cardHint}>
-            Scoped to your lecturer library.
-          </span>
-        </header>
-        {materialsError && (
-          <div className={styles.errorPanel} role="alert">
-            <AlertTriangle size={14} aria-hidden />
-            <span>{materialsError.message}</span>
-            <button type="button" className={styles.retryBtn} onClick={() => void refetchMaterials()}>
-              Retry
-            </button>
-          </div>
-        )}
-        {isMaterialsLoading ? (
-          <div className={styles.loadingPanel}>
-            <Loader size={14} className={styles.spinningIcon} aria-hidden />
-            Loading materials\u2026
-          </div>
-        ) : materials.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Library size={18} aria-hidden />
-            No learning materials attached yet.
-          </div>
-        ) : (
-          <ul className={styles.materialList}>
-            {materials.map((m) => {
-              const id = typeof m.id === 'number' ? m.id : -1;
-              const title = (m.title ?? '').trim() || `Material #${id}`;
-              return (
-                <li key={`mat-${id}`} className={styles.materialRow}>
-                  <div className={styles.materialMeta}>
-                    <span className={styles.materialTitle}>{title}</span>
-                    {m.description?.trim() && (
-                      <span className={styles.materialDesc}>{m.description}</span>
-                    )}
-                  </div>
-                  {m.fileUrl && (
-                    <a
-                      className={styles.openLink}
-                      href={m.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink size={14} aria-hidden />
-                      Open
-                    </a>
+              <div className={styles.cardInner}>
+                <StatusBadge status={deriveGroupStatus(group, relatedTopic.status)} />
+                <div className={styles.topicSummaryText}>
+                  <strong className={styles.topicSummaryTitle}>
+                    {relatedTopic.title ?? `RT-${group.topicId}`}
+                  </strong>
+                  {relatedTopic.description?.trim() && (
+                    <span className={styles.topicSummaryDesc}>
+                      {relatedTopic.description}
+                    </span>
                   )}
-                </li>
-              );
-            })}
-          </ul>
+                </div>
+                <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.openLink}>
+                  <ExternalLink size={14} aria-hidden /> Open topic
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.cardBody}>
+              <div className={styles.emptyState}>
+                No research topic assigned yet.{' '}
+                <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Assign one from Research Topics.</Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Group members */}
+        <section className={styles.card}>
+          <header className={styles.cardHeader}>
+            <div className={styles.cardHeaderRow}>
+              <h2 className={styles.cardTitle}>
+                <Users size={16} aria-hidden /> Group members ({members.length})
+              </h2>
+              <button
+                type="button"
+                className={styles.inviteStudentsBtn}
+                onClick={openInviteModal}
+                disabled={members.length >= 4 || isMembersLoading}
+                title={members.length >= 4 ? 'Maximum of 4 members reached' : 'Invite students'}
+              >
+                <UserPlus size={14} aria-hidden /> Invite students
+              </button>
+            </div>
+            <InlineNotice
+              tone="info"
+              title="Maximum 4 members per group"
+              description="The four-member limit is enforced in this interface; the BE contract does not document the constraint."
+            />
+            <span className={styles.cardHint}>
+              Manage student members in this group.
+            </span>
+          </header>
+          {membersError && (
+            <div className={styles.errorPanel} role="alert">
+              <AlertTriangle size={14} aria-hidden />
+              <span>{membersError}</span>
+              <button type="button" className={styles.retryBtn} onClick={() => void loadMembers()}>
+                Retry
+              </button>
+            </div>
+          )}
+          {isMembersLoading ? (
+            <div className={styles.loadingPanel}>
+              <Loader size={14} className={styles.spinningIcon} aria-hidden />
+              Loading members\u2026
+            </div>
+          ) : members.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Users size={18} aria-hidden />
+              No students have joined this group yet.
+            </div>
+          ) : (
+            <ul className={styles.memberList}>
+              {sortedMembers.map((m) => {
+                const mid = typeof m.id === 'number' ? m.id : -1;
+                const isBusy = leaderActionLoading === mid;
+                const initials = (m.studentName ?? '').trim().slice(0, 2).toUpperCase() || 'ST';
+                return (
+                  <li key={`member-${mid}`} className={styles.memberRow}>
+                    <div className={styles.memberIdentity}>
+                      <div
+                        className={`${styles.memberAvatar} ${m.isLeader ? styles.memberAvatarLeader : ''}`}
+                        aria-hidden
+                      >
+                        {m.isLeader ? <Crown size={18} /> : initials}
+                      </div>
+                      <div className={styles.memberBody}>
+                        <div className={styles.memberNameRow}>
+                          <span className={styles.memberStudent}>
+                            {m.studentName || `Student #${m.studentId ?? mid}`}
+                          </span>
+                          {m.isLeader && (
+                            <span className={styles.leaderBadge}>
+                              <Crown size={12} aria-hidden />
+                              Trưởng nhóm (Leader)
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.memberMeta}>
+                          {m.studentEmail && <span>{m.studentEmail}</span>}
+                          <span>
+                            Status: <strong>{m.activityStatus ?? 'Joined'}</strong>
+                          </span>
+                          <span>Joined {formatDateOnly(m.joinedAt ?? null)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.memberActions}>
+                      {m.isLeader ? (
+                        <button
+                          type="button"
+                          className={styles.removeLeaderBtn}
+                          onClick={() => void handleRemoveLeader(m)}
+                          disabled={isBusy}
+                        >
+                          {isBusy
+                            ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
+                            : <X size={14} aria-hidden />}
+                          Hủy Trưởng nhóm
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.setLeaderBtn}
+                          onClick={() => void handleSetLeader(m)}
+                          disabled={isBusy}
+                        >
+                          {isBusy
+                            ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
+                            : <Crown size={14} className={styles.leaderCrown} aria-hidden />}
+                          Gán Trưởng nhóm
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Phase progress */}
+        {phaseTimelineItems.length > 0 && (
+          <section className={styles.card} aria-labelledby="phaseProgressTitle">
+            <header className={styles.cardHeader}>
+              <h2 id="phaseProgressTitle" className={styles.cardTitle}>
+                Phase progress
+              </h2>
+              <span className={styles.cardHint}>
+                Where this group is in the reporting journey.
+              </span>
+            </header>
+            <div className={styles.cardBody}>
+              <PhaseTimeline items={phaseTimelineItems} />
+            </div>
+          </section>
         )}
-      </section>
+
+        {/* Milestone summary */}
+        <section className={styles.card}>
+          <header className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Milestone summary</h2>
+            <span className={styles.cardHint}>
+              Phased Report counts as a milestone stand-in.
+            </span>
+          </header>
+          {reportsError && (
+            <div className={styles.errorPanel} role="alert">
+              <AlertTriangle size={14} aria-hidden />
+              <span>Could not load reports: {reportsError.message}</span>
+              <button type="button" className={styles.retryBtn} onClick={() => void refetchReports()}>
+                Retry
+              </button>
+            </div>
+          )}
+          {reports.length === 0 && !isReportsLoading && !reportsError && (
+            <div className={styles.cardBody}>
+              <div className={styles.emptyState}>
+                <FileText size={18} aria-hidden />
+                No phased reports submitted yet.
+              </div>
+            </div>
+          )}
+          {reports.length > 0 && (
+            <>
+              <div className={styles.cardBody}>
+                <MilestoneProgress reports={reports} className={styles.cardInner} />
+              </div>
+              <div className={styles.gapNote}>
+                <InlineNotice
+                  tone="info"
+                  title="Milestone API unavailable"
+                  description="A dedicated milestone endpoint is not exposed yet. This card counts Phased Reports as a stand-in."
+                />
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Learning materials — full width */}
+        <section className={`${styles.card} ${styles.cardFull}`}>
+          <header className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>
+              <Library size={16} aria-hidden /> Learning materials
+            </h2>
+            <span className={styles.cardHint}>
+              Scoped to your lecturer library.
+            </span>
+          </header>
+          {materialsError && (
+            <div className={styles.errorPanel} role="alert">
+              <AlertTriangle size={14} aria-hidden />
+              <span>{materialsError.message}</span>
+              <button type="button" className={styles.retryBtn} onClick={() => void refetchMaterials()}>
+                Retry
+              </button>
+            </div>
+          )}
+          {isMaterialsLoading ? (
+            <div className={styles.loadingPanel}>
+              <Loader size={14} className={styles.spinningIcon} aria-hidden />
+              Loading materials\u2026
+            </div>
+          ) : materials.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Library size={18} aria-hidden />
+              No learning materials attached yet.
+            </div>
+          ) : (
+            <ul className={styles.materialList}>
+              {materials.map((m) => {
+                const id = typeof m.id === 'number' ? m.id : -1;
+                const title = (m.title ?? '').trim() || `Material #${id}`;
+                return (
+                  <li key={`mat-${id}`} className={styles.materialRow}>
+                    <div className={styles.materialMeta}>
+                      <span className={styles.materialTitle}>{title}</span>
+                      {m.description?.trim() && (
+                        <span className={styles.materialDesc}>{m.description}</span>
+                      )}
+                    </div>
+                    {m.fileUrl && (
+                      <a
+                        className={styles.openLink}
+                        href={m.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink size={14} aria-hidden />
+                        Open
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+      </div>
 
       {/* ── Edit Group modal ─────────────────────────────────── */}
       {showEditModal && (

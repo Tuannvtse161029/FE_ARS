@@ -20,8 +20,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   Calendar,
-  ChevronDown,
   ChevronRight,
+  Clock,
   FileText,
   Inbox,
   Loader,
@@ -100,7 +100,6 @@ export const PhaseReports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PhasedReport | null>(null);
-  const [openTopics, setOpenTopics] = useState<Record<string, boolean>>({});
 
   // Determine page mode
   const isScoped = urlTopicId !== null;
@@ -194,20 +193,8 @@ export const PhaseReports = () => {
     [groups],
   );
 
-  const toggleTopic = (key: string) =>
-    setOpenTopics((current) => ({
-      ...current,
-      [key]: current[key] === false,
-    }));
-
-  // When scoped by topicId, we collapse all other topics and open the one
-  // matching the URL param automatically.
-  useEffect(() => {
-    if (urlTopicId !== null) {
-      const key = String(urlTopicId);
-      setOpenTopics((current) => ({ ...current, [key]: true }));
-    }
-  }, [urlTopicId]);
+  // When scoped by topicId, the URL is the source of truth — no
+  // client-side open/close state needed for the topic grid.
 
   return (
     <div className={styles.page}>
@@ -336,142 +323,191 @@ export const PhaseReports = () => {
               return 0;
             })
             .map(({ key: topicKey, group: topicGroup }) => {
-            const open = openTopics[topicKey] !== false;
             const reportCount = topicGroup.phases.size;
             const totalReports = Array.from(topicGroup.phases.values()).reduce(
               (acc, p) => acc + p.reports.length,
               0,
             );
+            const needsReview = Array.from(
+              topicGroup.phases.values(),
+            ).some((p) =>
+              p.reports.some(
+                (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
+              ),
+            );
+            const focusHref = isScoped
+              ? '/lecturer/phase-reports'
+              : `/lecturer/phase-reports?topicId=${topicGroup.topicId}`;
+            const focusLabel = isScoped ? 'Back to all topics' : 'Open topic';
             return (
-              <section className={styles.topic} key={topicKey}>
-                <button
-                  className={styles.topicHeader}
-                  type="button"
-                  onClick={() => toggleTopic(topicKey)}
-                  aria-expanded={open}
-                >
-                  <span className={styles.topicChevron}>
-                    {open ? (
-                      <ChevronDown size={17} aria-hidden />
-                    ) : (
-                      <ChevronRight size={17} aria-hidden />
+              <Link
+                to={focusHref}
+                className={styles.topicCard}
+                key={topicKey}
+                title={focusLabel}
+              >
+                <div className={styles.topicCardHeader}>
+                  <span className={styles.topicCardTitleWrap}>
+                    <h3 className={styles.topicCardTitle}>
+                      {topicGroup.topicTitle}
+                    </h3>
+                    {needsReview && (
+                      <span className={styles.topicCardPulse} aria-hidden />
                     )}
                   </span>
-                  <span className={styles.topicHeaderMain}>
-                    <strong className={styles.topicTitle}>
-                      {topicGroup.topicTitle}
-                    </strong>
-                    <small className={styles.topicSubtitle}>
-                      {totalReports} report{totalReports !== 1 ? 's' : ''} ·{' '}
-                      {reportCount} phase{reportCount !== 1 ? 's' : ''}
-                    </small>
+                  <ChevronRight
+                    size={18}
+                    className={styles.topicCardArrow}
+                    aria-hidden
+                  />
+                </div>
+                <div className={styles.topicCardStats}>
+                  <span className={styles.topicStat}>
+                    <FileText size={14} aria-hidden />
+                    <strong>{totalReports}</strong> report
+                    {totalReports !== 1 ? 's' : ''}
                   </span>
-                  {!isScoped && topicGroup.topicId > 0 && (
-                    <Link
-                      to={`/lecturer/phase-reports?topicId=${topicGroup.topicId}`}
-                      className={styles.topicDrillLink}
-                      onClick={(e) => e.stopPropagation()}
-                      title="View only this topic"
-                    >
-                      Focus topic
-                    </Link>
+                  <span className={styles.topicStat}>
+                    <Inbox size={14} aria-hidden />
+                    <strong>{reportCount}</strong> phase
+                    {reportCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className={styles.topicCardFooter}>
+                  <span className={styles.topicCardAction}>
+                    {focusLabel}
+                  </span>
+                  {needsReview && (
+                    <span className={styles.topicCardReviewPill}>
+                      Needs review
+                    </span>
                   )}
-                </button>
-
-                {open && (
-                  <div className={styles.phaseList}>
-                    {Array.from(topicGroup.phases.values())
-                      .sort((a, b) => a.phase - b.phase)
-                      .map((phase) => (
-                        <div className={styles.phase} key={phase.phase}>
-                          <div className={styles.phaseHeading}>
-                            <h3>{phase.title}</h3>
-                            <span className={styles.phaseHeadingCount}>
-                              {phase.reports.length} report
-                              {phase.reports.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <div className={styles.reportList}>
-                            {phase.reports.map((report) => {
-                              const id = report.id ?? report.phasedReportId;
-                              const groupLabel =
-                                groupNames.get(report.researchGroupId ?? -1) ??
-                                report.groupName ??
-                                'Unassigned group';
-                              return (
-                                <article
-                                  className={styles.report}
-                                  key={
-                                    id ??
-                                    `${topicKey}-${phase.phase}-${report.researchGroupId}`
-                                  }
-                                >
-                                  <div className={styles.reportMain}>
-                                    <div className={styles.reportTitle}>
-                                      <StatusBadge
-                                        status={displayStatus(report)}
-                                        label={displayStatus(report)}
-                                        size="sm"
-                                      />
-                                      <strong>{groupLabel}</strong>
-                                    </div>
-                                    <div className={styles.meta}>
-                                      <span>
-                                        <Users size={13} aria-hidden />{' '}
-                                        {report.studentName ??
-                                          'Group member not supplied'}
-                                      </span>
-                                      <span>
-                                        <Calendar size={13} aria-hidden /> Due{' '}
-                                        {dateLabel(report.deadlineAt)}
-                                      </span>
-                                      <span>
-                                        Submitted{' '}
-                                        {dateLabel(report.submittedAt)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className={styles.actions}>
-                                    {report.reportFileUrl ? (
-                                      <a
-                                        className={styles.openPdfLink}
-                                        href={report.reportFileUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        <FileText size={14} aria-hidden /> Open
-                                        PDF
-                                      </a>
-                                    ) : (
-                                      <span className={styles.noFilePill}>
-                                        No file uploaded
-                                      </span>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant="primary"
-                                      onClick={() => setSelected(report)}
-                                      disabled={id == null || !report.reportFileUrl}
-                                      title={
-                                        !report.reportFileUrl
-                                          ? 'Review opens once a student uploads the report PDF.'
-                                          : 'Open the evaluation modal'
-                                      }
-                                    >
-                                      Review
-                                    </Button>
-                                  </div>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </section>
+                </div>
+              </Link>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Scoped phase reports ───────────────────────────────── */}
+      {isScoped && !loading && !groupsLoading && topicGrouped.size > 0 && (
+        <div className={styles.scopedPhases}>
+          {Array.from(topicGrouped.entries()).map(([, topicGroup]) => (
+            <section className={styles.topicDetail} key={topicGroup.topicId}>
+              <header className={styles.topicDetailHeader}>
+                <h2 className={styles.topicDetailTitle}>
+                  {topicGroup.topicTitle}
+                </h2>
+                <Link
+                  to="/lecturer/phase-reports"
+                  className={styles.backToTopicsLink}
+                >
+                  ← Back to all topics
+                </Link>
+              </header>
+              <div className={styles.phaseList}>
+                {Array.from(topicGroup.phases.values())
+                  .sort((a, b) => a.phase - b.phase)
+                  .map((phase) => (
+                    <div className={styles.phase} key={phase.phase}>
+                      <div className={styles.phaseHeading}>
+                        <h3>{phase.title}</h3>
+                        <span className={styles.phaseHeadingCount}>
+                          {phase.reports.length} report
+                          {phase.reports.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className={styles.reportList}>
+                        {phase.reports.map((report) => {
+                          const id = report.id ?? report.phasedReportId;
+                          const groupLabel =
+                            groupNames.get(report.researchGroupId ?? -1) ??
+                            report.groupName ??
+                            'Unassigned group';
+                          return (
+                            <article
+                              className={styles.report}
+                              key={id ?? `${phase.phase}-${report.researchGroupId}`}
+                            >
+                              <div className={styles.reportMain}>
+                                <div className={styles.reportTitle}>
+                                  <StatusBadge
+                                    status={displayStatus(report)}
+                                    label={displayStatus(report)}
+                                    size="sm"
+                                  />
+                                </div>
+                                <strong className={styles.reportGroupName}>
+                                  {groupLabel}
+                                </strong>
+                                <div className={styles.meta}>
+                                  <span className={styles.metaItem}>
+                                    <Users size={13} aria-hidden />
+                                    <span className={styles.metaLabel}>
+                                      Student
+                                    </span>
+                                    <span className={styles.metaValue}>
+                                      {report.studentName ?? 'Not supplied'}
+                                    </span>
+                                  </span>
+                                  <span className={styles.metaItem}>
+                                    <Clock size={13} aria-hidden />
+                                    <span className={styles.metaLabel}>
+                                      Deadline
+                                    </span>
+                                    <span className={styles.metaValue}>
+                                      {dateLabel(report.deadlineAt)}
+                                    </span>
+                                  </span>
+                                  <span className={styles.metaItem}>
+                                    <Calendar size={13} aria-hidden />
+                                    <span className={styles.metaLabel}>
+                                      Submitted
+                                    </span>
+                                    <span className={styles.metaValue}>
+                                      {dateLabel(report.submittedAt)}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                              <div className={styles.actions}>
+                                {report.reportFileUrl ? (
+                                  <a
+                                    className={styles.openPdfLink}
+                                    href={report.reportFileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <FileText size={14} aria-hidden /> Open PDF
+                                  </a>
+                                ) : (
+                                  <span className={styles.noFilePill}>
+                                    No file uploaded
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => setSelected(report)}
+                                  disabled={id == null || !report.reportFileUrl}
+                                  title={
+                                    !report.reportFileUrl
+                                      ? 'Review opens once a student uploads the report PDF.'
+                                      : 'Open the evaluation modal'
+                                  }
+                                >
+                                  Review
+                                </Button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
