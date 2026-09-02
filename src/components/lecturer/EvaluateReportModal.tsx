@@ -137,13 +137,17 @@ export const EvaluateReportModal = ({
       // an instant UX without an extra round-trip.
       return;
     }
-    if (Number.isNaN(grade) || grade < 0 || grade > 10) {
+    if (mode === 'approve' && (Number.isNaN(grade) || grade < 0 || grade > 10)) {
       return;
     }
     await submit(mode, {
-      lectureFeedback: grade,
+      ...(mode === 'approve'
+        ? {
+            lectureFeedback: grade,
+            capacityEvaluation,
+          }
+        : {}),
       lecturerDescription: trimmedReason || trimmedOutcome,
-      capacityEvaluation: capacityEvaluation || (isRejectMode ? trimmedReason : 'Tốt'),
       finalOutcomeEvaluation: trimmedOutcome,
       rejectionReason: trimmedReason,
     });
@@ -247,42 +251,46 @@ export const EvaluateReportModal = ({
         </div>
 
         <form className={styles.modalForm} onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="lectureFeedback">
-              Grade (0 – 10)
-            </label>
-            <input
-              id="lectureFeedback"
-              type="number"
-              min={0}
-              max={10}
-              step={0.5}
-              className={styles.formInput}
-              value={lectureFeedback}
-              onChange={(e) => setLectureFeedback(e.target.value)}
-            />
-            <span className={styles.helperText}>
-              Numeric grade that students will see on their dashboard.
-            </span>
-          </div>
+          {!isRejectMode && (
+            <>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="lectureFeedback">
+                  Grade (0 – 10)
+                </label>
+                <input
+                  id="lectureFeedback"
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  className={styles.formInput}
+                  value={lectureFeedback}
+                  onChange={(e) => setLectureFeedback(e.target.value)}
+                />
+                <span className={styles.helperText}>
+                  Numeric grade that students will see on their dashboard.
+                </span>
+              </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="capacityEvaluation">
-              Capacity assessment
-            </label>
-            <select
-              id="capacityEvaluation"
-              className={styles.formInput}
-              value={capacityEvaluation}
-              onChange={(e) => setCapacityEvaluation(e.target.value)}
-            >
-              <option value="Xuất sắc">Excellent</option>
-              <option value="Tốt">Good</option>
-              <option value="Khá">Fair</option>
-              <option value="Đạt yêu cầu">Pass</option>
-              <option value="Chưa đạt">Needs improvement</option>
-            </select>
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="capacityEvaluation">
+                  Capacity assessment
+                </label>
+                <select
+                  id="capacityEvaluation"
+                  className={styles.formInput}
+                  value={capacityEvaluation}
+                  onChange={(e) => setCapacityEvaluation(e.target.value)}
+                >
+                  <option value="Xuất sắc">Excellent</option>
+                  <option value="Tốt">Good</option>
+                  <option value="Khá">Fair</option>
+                  <option value="Đạt yêu cầu">Pass</option>
+                  <option value="Chưa đạt">Needs improvement</option>
+                </select>
+              </div>
+            </>
+          )}
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor="finalOutcomeEvaluation">

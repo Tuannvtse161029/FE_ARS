@@ -102,4 +102,7 @@ export const useI18n = (): I18nContextValue => {
 export const useT = (): I18nContextValue['t'] => useI18n().t;
 
 /** Convenience hook returning the active locale label. */
-export const useLocale = (): Locale => useI18n().locale;
+export const useLocale = (): Locale => {
+  const ctx = useContext(I18nContext);
+  return ctx?.locale ?? DEFAULT_LOCALE;
+};

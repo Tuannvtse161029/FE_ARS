@@ -48,6 +48,11 @@ const formatSeminarId = (id: number): string =>
 
 const formatBytesTitle = (raw: string): string => raw;
 
+const toLocalDateTimeInputValue = (date: Date): string => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+};
+
 export const SeminarWorkspace = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [currentSeminarPage, setCurrentSeminarPage] = useState(1);
@@ -168,7 +173,7 @@ export const SeminarWorkspace = () => {
   );
 
   const minDateTime = useMemo(
-    () => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+    () => toLocalDateTimeInputValue(new Date(Date.now() + 60 * 60 * 1000)),
     [],
   );
 
@@ -722,18 +727,9 @@ export const SeminarWorkspace = () => {
                   id="seminar-date"
                   type="datetime-local"
                   className={styles.formInput}
-                  value={
-                    dateTime ? new Date(dateTime).toISOString().slice(0, 16) : ''
-                  }
+                  value={dateTime}
                   min={minDateTime}
-                  onChange={(e) => {
-                    const localValue = e.target.value;
-                    if (!localValue) {
-                      setDateTime('');
-                      return;
-                    }
-                    setDateTime(new Date(localValue).toISOString());
-                  }}
+                  onChange={(e) => setDateTime(e.target.value)}
                   required
                 />
               </div>

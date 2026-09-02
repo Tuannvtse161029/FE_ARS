@@ -28,6 +28,74 @@
   animation: spin 0.9s linear infinite;
 }
 
+/* ── Page Header ────────────────────────────────────────── */
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: var(--space-4) var(--space-5) 0;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.activeBreadcrumb {
+  color: var(--ink-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.headerRow {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-strong);
+  animation: reportHeaderReveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.headerRow::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: var(--space-5);
+  width: 4rem;
+  height: 3px;
+  background: var(--accent-primary);
+}
+
+.pageTitle {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.75rem, 3vw, 2.65rem);
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.pageSubtitle {
+  max-width: 68ch;
+  margin: var(--space-3) 0 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+@keyframes reportHeaderReveal {
+  from {
+    opacity: 0.01;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ── Leader Permission ─────────────────────────────────── */
 .leaderNotice {
   display: flex;
@@ -123,7 +191,7 @@
   justify-content: center;
   flex: 0 0 32px;
   border-radius: 50%;
-  background: var(--ars-gradstudent);
+  background: var(--accent-primary);
   color: var(--ars-paper);
   font-family: var(--font-family-mono);
   font-size: var(--font-size-sm);
@@ -223,7 +291,7 @@
   padding: var(--space-2) var(--space-4);
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--ars-gradstudent);
+  background: var(--accent-primary);
   color: var(--ars-paper);
   font: inherit;
   font-weight: var(--font-weight-semibold);
@@ -275,7 +343,7 @@
   font-family: var(--font-family-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ars-gradstudent);
+  color: var(--accent-primary);
   border-bottom: 1px solid var(--ars-network);
   padding-bottom: var(--space-3);
   margin: 0;
@@ -445,6 +513,23 @@
 }
 
 @media (max-width: 640px) {
+  .breadcrumbs {
+    padding-inline: var(--space-4);
+  }
+
+  .headerRow {
+    align-items: flex-start;
+    padding-inline: var(--space-4);
+  }
+
+  .headerRow::after {
+    left: var(--space-4);
+  }
+
+  .pageTitle {
+    font-size: 1.8rem;
+  }
+
   .phaseCard {
     padding: var(--space-4);
   }
@@ -459,5 +544,12 @@
 
   .actionExplanation {
     text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .headerRow {
+    animation: none;
   }
 }
