@@ -224,6 +224,42 @@ export const LecturerMaterialsPage = () => {
     }
   };
 
+  const closeLmForm = () => {
+    setLmShowForm(false);
+    setLmUploadedFile(null);
+    lmResetUpload();
+    setLmSourceMode('file');
+    setLmTitle('');
+    setLmDescription('');
+    setLmFileUrl('');
+    setLmTitleError(null);
+    setLmUrlError(null);
+    setLmFormError(null);
+  };
+
+  // ESC key closes the Add Material modal — restores parity with the
+  // Shared Materials modal pattern (focus is left where it was).
+  // Also locks body scroll so the page underneath doesn't move while
+  // the dialog is open (mirrors the behavior of the Shared Materials
+  // modal pattern, which lives outside this hook).
+  useEffect(() => {
+    if (!lmShowForm) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeLmForm();
+      }
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lmShowForm]);
+
   const handleLmAdd = async (e: FormEvent) => {
     e.preventDefault();
     if (!lecturerId) {
@@ -290,6 +326,7 @@ export const LecturerMaterialsPage = () => {
       setLmSourceMode('file');
       setLmTitleError(null);
       setLmUrlError(null);
+      setLmShowForm(false);
       showBanner('Material added to your library.');
       await refetchLearning();
     } catch (err) {
@@ -552,9 +589,10 @@ export const LecturerMaterialsPage = () => {
               variant="primary"
               size="sm"
               leftIcon={<Plus size={14} aria-hidden />}
-              onClick={() => setLmShowForm((v) => !v)}
+              onClick={() => setLmShowForm(true)}
+              data-testid="open-add-material-modal"
             >
-              {lmShowForm ? 'Hide form' : 'Add Material'}
+              Add Material
             </Button>
           </div>
         )}
@@ -584,19 +622,39 @@ export const LecturerMaterialsPage = () => {
         )}
 
         {lmShowForm && (
-          <form onSubmit={handleLmAdd} className={styles.modalCard}>
+          <div
+            className={styles.overlay}
+            role="presentation"
+            onClick={(event) => {
+              // Close only when the click lands on the overlay itself, not
+              // on the modal card or any of its descendants.
+              if (event.target === event.currentTarget) {
+                closeLmForm();
+              }
+            }}
+          >
+          <form onSubmit={handleLmAdd} className={styles.modalCard} role="dialog" aria-modal="true" aria-labelledby="lm-modal-title">
             <div className={styles.modalHeaderRow}>
               <div className={styles.modalTitleBlock}>
                 <span className={styles.modalIconCircle}>
                   <Library size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Add a learning material</h3>
+                  <h3 id="lm-modal-title" className={styles.modalTitle}>Add a learning material</h3>
                   <span className={styles.modalSubtitle}>
                     Upload a file or paste a URL — both are optional.
                   </span>
                 </div>
               </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={closeLmForm}
+                aria-label="Close"
+                disabled={lmSubmitting}
+              >
+                <X size={16} aria-hidden />
+              </button>
             </div>
             <div className={styles.modalForm}>
               {/* Title */}
@@ -781,18 +839,7 @@ export const LecturerMaterialsPage = () => {
                 <button
                   type="button"
                   className={styles.cancelBtn}
-                  onClick={() => {
-                    setLmShowForm(false);
-                    setLmUploadedFile(null);
-                    lmResetUpload();
-                    setLmSourceMode('file');
-                    setLmTitle('');
-                    setLmDescription('');
-                    setLmFileUrl('');
-                    setLmTitleError(null);
-                    setLmUrlError(null);
-                    setLmFormError(null);
-                  }}
+                  onClick={closeLmForm}
                   disabled={lmSubmitting}
                 >
                   Cancel
@@ -820,6 +867,7 @@ export const LecturerMaterialsPage = () => {
               </div>
             </div>
           </form>
+          </div>
         )}
 
         <TableToolbar
