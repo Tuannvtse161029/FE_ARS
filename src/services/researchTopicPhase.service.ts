@@ -56,7 +56,7 @@ const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
   if (typeof report.phaseNumber !== 'number' || typeof report.topicId !== 'number') {
     return null;
   }
-  const end = report.deadlineAt ?? '';
+  const end = report.deadlineAt ?? report.deadline ?? '';
   // Prefer camelCase (startDate) over startedAt; fall back to empty string.
   const start =
     report.startDate ?? report.startedAt ?? '';

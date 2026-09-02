@@ -100,6 +100,8 @@ export interface PhasedReport {
   phaseNumber?: number | null;
   milestoneTitle?: string | null;
   deadlineAt?: string | null;
+  /** Legacy/API alias for deadlineAt returned by some report responses. */
+  deadline?: string | null;
   reportFileUrl?: string | null;
   capacityEvaluation?: string | null;
   finalOutcomeEvaluation?: string | null;

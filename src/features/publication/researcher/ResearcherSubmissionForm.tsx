@@ -173,7 +173,16 @@ export const ResearcherSubmissionForm = () => {
           break;
         case 'unsupported_variant':
         case 'unavailable':
-          setOpenAlexState({ stage: 'unavailable', message: outcome.message });
+        default:
+          // The deployed adapter and older test doubles may surface recoverable
+          // availability failures under more specific status strings. The UI
+          // treats every non-preview, non-format outcome as recoverable.
+          setOpenAlexState({
+            stage: 'unavailable',
+            message: 'message' in outcome && typeof outcome.message === 'string'
+              ? outcome.message
+              : 'OpenAlex metadata is temporarily unavailable.',
+          });
           break;
       }
     } finally {
@@ -510,67 +519,78 @@ export const ResearcherSubmissionForm = () => {
 
         {/* ── OpenAlex Work ID (optional) ───────────────────────── */}
         <section className={`${styles.formSection} ${styles.openAlexSection}`} aria-labelledby="form-section-openalex">
-          <header className={styles.formSectionHeader}>
-            <div className={styles.openAlexHeading}>
-              <h2 className={styles.formSectionTitle} id="form-section-openalex">
-                Import metadata <span className={styles.openAlexOptional}>(optional)</span>
-              </h2>
-              <span className={styles.openAlexAttribution}>
-                <OpenAlexBrandLogo variant="mark" ariaLabel="" />
-                <span>via OpenAlex</span>
-              </span>
-            </div>
+          <header className={styles.openAlexSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-openalex">
+              Import metadata <span className={styles.openAlexOptional}>(optional)</span>
+            </h2>
             <p className={styles.formSectionHint}>
-              Pull publication metadata from the open scholarly index. Enter a W-prefixed
-              work ID (e.g.{' '}
-              <code className={styles.openAlexCode}>W2741809807</code>) and confirm the
-              preview before anything is copied into this form.
+              Search the open scholarly index before typing manuscript details manually.
             </p>
           </header>
 
-          <div className={`${styles.field} ${styles.full}`}>
-            <label htmlFor="submission-openalex">OpenAlex Work ID</label>
-            <input
-              id="submission-openalex"
-              data-testid="submission-openalex-input"
-              placeholder="e.g. W2741809807"
-              value={openAlexDraft}
-              onChange={(event) => setOpenAlexDraft(event.target.value)}
-              disabled={
-                openAlexState.stage === 'confirmed' ||
-                openAlexState.stage === 'skipped' ||
-                openAlexScanning
-              }
-            />
-            <p className={styles.fieldHint}>
-              The lookup requests metadata from the ARS backend; no data is copied until
-              you confirm the preview.
-            </p>
-
-            {openAlexState.stage === 'idle' && (
-              <div className={styles.actionsRow}>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleScanOpenAlex()}
-                  disabled={!openAlexDraft.trim() || openAlexScanning}
-                  data-testid="submission-openalex-scan"
-                  isLoading={openAlexScanning}
-                >
-                  Look up metadata
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSkipOpenAlex}
-                  data-testid="submission-openalex-skip"
-                >
-                  Skip
-                </Button>
+          <div className={styles.openAlexLookupSurface}>
+            <div className={styles.openAlexBrandLockup} aria-label="OpenAlex Work ID lookup">
+              <OpenAlexBrandLogo
+                variant="mark"
+                ariaLabel="OpenAlex"
+                className={styles.openAlexBrandMark}
+              />
+              <div>
+                <p className={styles.openAlexBrandName}>OpenAlex</p>
+                <p className={styles.openAlexBrandLabel}>Work ID</p>
               </div>
-            )}
+            </div>
+
+            <div className={styles.openAlexEntry}>
+              <label htmlFor="submission-openalex">OpenAlex Work ID</label>
+              <div className={styles.openAlexInputRow}>
+                <input
+                  id="submission-openalex"
+                  data-testid="submission-openalex-input"
+                  placeholder="e.g. W2741809807"
+                  value={openAlexDraft}
+                  onChange={(event) => setOpenAlexDraft(event.target.value)}
+                  disabled={
+                    openAlexState.stage === 'confirmed' ||
+                    openAlexState.stage === 'skipped' ||
+                    openAlexScanning
+                  }
+                />
+                {openAlexState.stage === 'idle' ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    className={styles.openAlexLookupButton}
+                    onClick={() => void handleScanOpenAlex()}
+                    disabled={!openAlexDraft.trim() || openAlexScanning}
+                    data-testid="submission-openalex-scan"
+                    isLoading={openAlexScanning}
+                  >
+                    Look up metadata
+                  </Button>
+                ) : null}
+              </div>
+              <p className={styles.fieldHint}>
+                Enter a W-prefixed work ID, then review the preview before any metadata is copied.
+              </p>
+              {openAlexState.stage === 'idle' ? (
+                <div className={styles.openAlexSecondaryActions}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSkipOpenAlex}
+                    data-testid="submission-openalex-skip"
+                  >
+                    Continue without importing
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={`${styles.field} ${styles.full}`}>
 
             {openAlexState.stage === 'invalid' && (
               <div data-testid="submission-openalex-invalid">
@@ -622,7 +642,7 @@ export const ResearcherSubmissionForm = () => {
             {openAlexState.stage === 'preview' && (
               <div className={styles.openAlexPreview} data-testid="submission-openalex-preview">
                 <div className={styles.openAlexPreviewHeader}>
-                  <h3>Imported metadata</h3>
+                  <h3>OpenAlex imported metadata</h3>
                   <span className={styles.openAlexAttribution}>
                     <OpenAlexBrandLogo variant="mark" ariaLabel="" />
                     <span>via OpenAlex</span>

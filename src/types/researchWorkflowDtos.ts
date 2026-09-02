@@ -180,6 +180,15 @@ export interface PhasedReportUpdateRequest {
   submittedAt: string | null;
   /** URL of the learning material assigned to this phase's report. */
   phasedMaterialsUrl?: string | null;
+  // ── Live Swagger additions ────────────────────────────────────────────
+  // Echo these back on PUT so the BE doesn't wipe the values written by the
+  // preceding POST /api/PhasedReport/topic-milestones call. With the older
+  // DTO shape the BE silently nulled `requirements`, `assessmentCriteria`,
+  // and `startDate` because they were absent from the update payload.
+  topicId?: number | null;
+  requirements?: string | null;
+  assessmentCriteria?: string | null;
+  startDate?: string | null;
 }
 
 // ---------- TopicMilestones & Phase Reports ----------

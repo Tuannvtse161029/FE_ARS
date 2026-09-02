@@ -44,6 +44,9 @@ import { validateVietnameseName } from '../../utils/validationRules';
 import { useFollowCounts } from '../../hooks/useFollowers';
 import { followerService } from '../../services/follower.service';
 import { FollowListModal } from '../../components/profile/FollowListModal';
+import { ProfilePublicationsSection } from '../../components/profile/ProfilePublicationsSection';
+import { ProfileForumSection } from '../../components/profile/ProfileForumSection';
+import { useProfileExtras } from '../../hooks/useProfileExtras';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button';
 import { SkeletonRow } from '../../components/SkeletonRow';
@@ -273,6 +276,17 @@ export const Profile = () => {
   const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
+
+  // Live preview of this user's published papers + forum posts. Only
+  // fetches when we actually have a resolved userId (skipped during the
+  // unauthenticated / loading guards above). Sections are read-only and
+  // render identically for owner and visitor.
+  const {
+    publications,
+    forumPosts,
+    isLoading: isExtrasLoading,
+    error: extrasError,
+  } = useProfileExtras(targetUserId);
 
   const [isFollowingTarget, setIsFollowingTarget] = useState<boolean>(false);
   const [isFollowActionLoading, setIsFollowActionLoading] = useState<boolean>(false);
@@ -667,6 +681,26 @@ export const Profile = () => {
           onCancel={handleCancelEdit}
         />
       )}
+
+      {/* Published papers + Forum posts — read-only previews of this
+          user's activity on the rest of the ARS platform. Both sections
+          render the same chrome so the profile reads as one document. */}
+      {targetUserId && mode === 'view' ? (
+        <div className={styles.extrasGroup}>
+          <ProfilePublicationsSection
+            publications={publications}
+            isLoading={isExtrasLoading}
+            error={extrasError}
+            isOwner={isOwner}
+          />
+          <ProfileForumSection
+            posts={forumPosts}
+            isLoading={isExtrasLoading}
+            error={extrasError}
+            isOwner={isOwner}
+          />
+        </div>
+      ) : null}
 
       {targetUserId && (
         <FollowListModal
