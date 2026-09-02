@@ -33,6 +33,7 @@ import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
+import { getAllGroupMembers } from '../../services/groupMembership.service';
 import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
 import { notificationService } from '../../services/notification.service';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
@@ -140,14 +141,38 @@ export const StudentResearchGroups = (): JSX.Element => {
     }
   }, [searchParams]);
 
-  // Load all research groups for the Explore & Join surface
+  // Load all research groups for the Explore & Join surface.
+  // Strategy:
+  //   1. Try GET /api/ResearchGroup (works if BE allows student read)
+  //   2. If that fails (403/401), fall back to:
+  //      a. GET /api/GroupMember → collect unique researchGroupIds
+  //      b. GET /api/ResearchGroup/{id} for each unique id
   const loadAllGroups = async () => {
     setLoadingAllGroups(true);
     try {
-      const list = await researchGroupService.getAll();
+      let list: ResearchGroup[] = [];
+      try {
+        list = await researchGroupService.getAll();
+        console.log('[ResearchGroups] getAll returned', list.length, 'groups');
+      } catch (primaryErr) {
+        console.warn('[ResearchGroups] getAll failed, trying fallback via GroupMember:', primaryErr);
+        // Fallback: get all members to discover group IDs, then fetch each group
+        const allMembers = await getAllGroupMembers().catch(() => []);
+        const uniqueGroupIds = [...new Set(
+          allMembers.map((m: { researchGroupId?: number }) => m.researchGroupId).filter(Boolean)
+        )] as number[];
+        console.log('[ResearchGroups] Fallback: unique group IDs from members:', uniqueGroupIds);
+        const results = await Promise.allSettled(
+          uniqueGroupIds.map((gid) => researchGroupService.getById(gid))
+        );
+        list = results
+          .filter((r): r is PromiseFulfilledResult<ResearchGroup> => r.status === 'fulfilled')
+          .map((r) => r.value);
+        console.log('[ResearchGroups] Fallback resolved:', list.length, 'groups');
+      }
       setAllGroups(list);
     } catch (err) {
-      console.warn('Failed to load all research groups:', err);
+      console.error('[ResearchGroups] loadAllGroups completely failed:', err);
     } finally {
       setLoadingAllGroups(false);
     }
