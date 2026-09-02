@@ -1,0 +1,88 @@
+.backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: rgba(255, 248, 232, 0.96);
+  color: #231d10;
+}
+
+.content {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  width: min(100%, 300px);
+  text-align: center;
+}
+
+.mark {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 42px;
+}
+
+.mark span {
+  display: block;
+  width: 8px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  box-shadow: 0 4px 10px rgba(151, 106, 20, 0.2);
+  animation: researchPulse 900ms cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.mark span:nth-child(2) {
+  height: 38px;
+  animation-delay: 150ms;
+}
+
+.mark span:nth-child(3) {
+  height: 18px;
+  animation-delay: 300ms;
+}
+
+.content p {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+}
+
+.detail {
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+:global(:root[data-theme='archive-dusk']) .backdrop {
+  background: rgba(24, 22, 16, 0.96);
+  color: #f4e9c9;
+}
+
+:global(:root[data-theme='archive-dusk']) .mark span {
+  background: var(--accent-primary);
+  box-shadow: 0 4px 14px rgba(214, 168, 65, 0.16);
+}
+
+@keyframes researchPulse {
+  from {
+    transform: scaleY(0.72);
+    opacity: 0.58;
+  }
+
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark span {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

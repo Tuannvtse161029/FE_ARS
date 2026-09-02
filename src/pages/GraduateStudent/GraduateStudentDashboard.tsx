@@ -52,8 +52,8 @@ import styles from './GraduateStudentDashboard.module.css';
 // Default folder key for Firebase uploads.
 const DEFAULT_FOLDER_KEY = 'milestone';
 
-// Role accent — slate-blue for graduate students
-const ROLE_ACCENT = 'var(--ars-gradstudent)';
+// Role accent — Graduate Student workspace uses the shared gold action color.
+const ROLE_ACCENT = 'var(--accent-primary)';
 
 const GUIDANCE_STATUS_PALETTE: Record<GuidanceProjectStatus, string> = {
   PROPOSED: styles.statusSubmitted,

@@ -584,7 +584,6 @@ export const MainLayout = () => {
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.GRADUATE_STUDENT_DASHBOARD, label: 'Research Journey', icon: <DashboardIcon size={20} />, end: true },
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },

@@ -8,13 +8,15 @@ import { SubscriptionRouteGuard } from './routes/SubscriptionRouteGuard';
 import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
+import { DelayedLoadingOverlay } from './components/DelayedLoadingOverlay';
+import { GlobalLoadingOverlay } from './components/GlobalLoadingOverlay';
 import './styles/globals.css';
 
 // Public auth pages — kept as eager imports because every cold-load starts
 // on one of them and they share no heavy dependencies with each other.
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { Landing } from './pages/Landing';
+const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })));
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
@@ -96,22 +98,7 @@ const LegalPolicy = lazy(() => import('./pages/Legal/LegalPolicy').then((m) => (
  * inside individual pages — those pages render once their module finishes
  * downloading.
  */
-const RouteFallback = () => (
-  <div
-    role="status"
-    aria-live="polite"
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '60vh',
-      color: '#64748b',
-      fontSize: 14,
-    }}
-  >
-    Loading…
-  </div>
-);
+const RouteFallback = () => <DelayedLoadingOverlay isLoading label="Loading page" />;
 
 /**
  * Lecturer topic-scoped deep link.
@@ -137,6 +124,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <GlobalLoadingOverlay />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public project introduction. It intentionally sits outside

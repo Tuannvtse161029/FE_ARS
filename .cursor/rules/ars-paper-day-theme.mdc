@@ -1,0 +1,29 @@
+---
+description: Enforces the ARS Paper Day yellow, white, and black interface theme.
+globs: "src/**/*.{css,module.css,tsx,ts}"
+alwaysApply: false
+---
+
+# ARS Paper Day Theme
+
+Use the ARS Paper Day design system for new or updated frontend UI.
+
+- Use semantic variables from `src/styles/ars-tokens.css`; do not add arbitrary color literals in component CSS.
+- Primary actions and selected states use `--accent-primary` with `--ink-primary` text. Never use white text on yellow.
+- Keep normal surfaces white or warm white (`--surface-raised`, `--surface-paper`, `--app-canvas`), with near-black ink (`--ink-primary`) for high-emphasis text.
+- Use `--accent-hover` for hover states and `--focus-ring` for visible keyboard focus.
+- Preserve paired semantic status tokens for success, warning, danger, and information. Yellow is not a substitute for status feedback.
+- Use `--font-family-serif` for page and modal headings; use `--font-family-ui` for interface controls and body text.
+- Use `--border-subtle` and `--border-strong` for structure rather than arbitrary gray borders.
+- Every interactive element needs hover, disabled, and `:focus-visible` states. Respect `prefers-reduced-motion`.
+
+```css
+/* Correct: semantic Paper Day action */
+.primaryButton {
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border: 1px solid var(--accent-primary);
+}
+
+/* Avoid: hard-coded blue or white-on-yellow action text */
+```

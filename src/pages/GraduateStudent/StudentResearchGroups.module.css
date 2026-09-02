@@ -411,181 +411,316 @@
   }
 }
 
-/* ── Tabs for Overview ──────────────────────────────────── */
+/* ── Group Explorer ─────────────────────────────────────── */
 .tabContainer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 8px;
-  padding-bottom: 2px;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-strong);
+  margin-bottom: var(--space-2);
 }
 
 .tabButton {
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  padding: 10px 18px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #64748b;
-  cursor: pointer;
+  appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  margin-bottom: -2px;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
 
 .tabButton:hover {
-  color: #1e3a8a;
-  background: #f1f5f9;
-  border-radius: 8px 8px 0 0;
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+
+.tabButton:focus-visible,
+.dismissFeedback:focus-visible,
+.exploreInput:focus-visible,
+.detailBtn:focus-visible,
+.submitPhaseBtn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .tabButtonActive {
-  color: #1e3a8a;
-  border-bottom-color: #1e3a8a;
-  font-weight: 700;
+  border-bottom-color: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .tabBadge {
-  background: #e2e8f0;
-  color: #334155;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 9999px;
+  min-width: 1.5rem;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .tabButtonActive .tabBadge {
-  background: #1e3a8a;
-  color: #ffffff;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
-/* ── Capacity & Join Badges ─────────────────────────────── */
-.capacityBadge {
+.capacityBadge,
+.capacityFullBadge,
+.pendingBadge,
+.leaderBadge,
+.completedBadge,
+.fullButton {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+  gap: var(--space-1);
+  width: fit-content;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.capacityBadge,
+.completedBadge {
+  background: var(--status-success-surface);
+  border-color: var(--status-success-text);
+  color: var(--status-success-text);
 }
 
 .capacityFullBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+  background: var(--status-danger-surface);
+  border-color: var(--status-danger-text);
+  color: var(--status-danger-text);
 }
 
-.pendingBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #fefce8;
-  color: #854d0e;
-  border: 1px solid #fde047;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+.pendingBadge,
+.leaderBadge {
+  background: var(--status-warning-surface);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .fullButton {
-  background: #f1f5f9 !important;
-  color: #94a3b8 !important;
-  border: 1px solid #cbd5e1 !important;
-  cursor: not-allowed !important;
-  opacity: 0.8;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 6px 14px !important;
-  border-radius: 8px !important;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.pendingExplanation {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+}
+
+.groupActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.applySuccessBanner,
+.applyErrorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }
 
 .applySuccessBanner {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  color: #166534;
-  padding: 12px 16px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  background: var(--status-success-surface);
+  border-color: var(--status-success-text);
+  color: var(--status-success-text);
 }
 
 .applyErrorBanner {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 10px;
+  background: var(--status-danger-surface);
+  border-color: var(--status-danger-text);
+  color: var(--status-danger-text);
+}
+
+.feedbackMessage {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  line-height: var(--line-height-normal);
+}
+
+.dismissFeedback {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dismissFeedback:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.exploreSearch {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
 }
 
-/* ── Phase Action Buttons ────────────────────────────────── */
-.phaseActionGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.exploreSearch:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 3px 12px rgba(29, 28, 25, 0.1);
 }
 
-.detailBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #f8fafc;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
+.exploreSearchIcon {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
 }
 
-.detailBtn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+.exploreInput {
+  width: 100%;
+  min-height: 2rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  outline: 0;
 }
 
+.exploreInput::placeholder {
+  color: var(--ink-muted);
+}
+
+.milestoneName {
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.overdueDate {
+  color: var(--status-danger-text);
+}
+
+.overdueLabel {
+  margin-left: var(--space-1);
+  color: var(--status-danger-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.scoreValue {
+  color: var(--status-success-text);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailBtn,
 .submitPhaseBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: #1e3a8a;
-  color: #ffffff;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
+  gap: var(--space-1);
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 0.15s;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.detailBtn {
+  border: 1px solid var(--border-strong);
+  background: var(--control-bg);
+  color: var(--ink-primary);
+}
+
+.detailBtn:hover {
+  border-color: var(--accent-primary);
+  background: var(--surface-sunken);
+}
+
+.submitPhaseBtn {
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
 .submitPhaseBtn:hover {
-  background: #1d4ed8;
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 
+@media (max-width: 768px) {
+  .groupCard {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .groupActions {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .tabContainer {
+    overflow-x: auto;
+  }
+
+  .tabButton {
+    flex: 0 0 auto;
+  }
+
+  .tableHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupCardLeft {
+    align-items: flex-start;
+  }
+
+  .groupTitleRow {
+    align-items: flex-start;
+  }
+
+  .tabButton {
+    padding-inline: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabButton,
+  .detailBtn,
+  .submitPhaseBtn,
+  .exploreSearch {
+    transition: none;
+  }
+}

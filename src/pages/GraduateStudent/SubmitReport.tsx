@@ -13,6 +13,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
@@ -28,9 +29,9 @@ import styles from './SubmitReport.module.css';
 
 const DEFAULT_FOLDER_KEY = 'milestone';
 
-const formatDate = (iso?: string | null): string => {
+const formatDate = (iso: string | null | undefined, locale: string): string => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('vi-VN', {
+  return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -52,6 +53,7 @@ const normalizeWorkspaceLabel = (raw: string): string => {
 
 export const SubmitReport = (): JSX.Element => {
   const { user } = useAuth();
+  const locale = useLocale();
   const studentId = user?.userId ?? null;
 
   const {
@@ -302,7 +304,7 @@ export const SubmitReport = (): JSX.Element => {
                 <span className={styles.detailVal}>
                   <Calendar size={12} />
                   {primaryGroup.deadline
-                    ? formatDate(primaryGroup.deadline)
+                    ? formatDate(primaryGroup.deadline, locale)
                     : 'No deadline set'}
                 </span>
               </div>
@@ -379,9 +381,9 @@ export const SubmitReport = (): JSX.Element => {
                     </div>
 
                     <div className={styles.phaseMetadata}>
-                      <p><strong>Deadline:</strong> {formatDate(phase.deadlineAt)}</p>
+                      <p><strong>Deadline:</strong> {formatDate(phase.deadlineAt, locale)}</p>
                       {phase.submittedAt && (
-                        <p><strong>Submitted at:</strong> {formatDate(phase.submittedAt)}</p>
+                        <p><strong>Submitted at:</strong> {formatDate(phase.submittedAt, locale)}</p>
                       )}
                     </div>
 

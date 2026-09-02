@@ -3,6 +3,7 @@ import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
 import type { AxiosErrorResponse } from '../types/api';
 import { clearAuthSession } from './auth.service';
+import { loadingTracker } from './loadingTracker';
 
 let sessionFailureHandled = false;
 
@@ -16,6 +17,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    loadingTracker.begin();
     const token = storage.getToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -23,6 +25,9 @@ api.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
+    // The request can fail before Axios creates a response, so close the
+    // tracker here as well as in the response interceptor.
+    loadingTracker.end();
     return Promise.reject(error);
   }
 );
@@ -35,6 +40,7 @@ api.interceptors.request.use(
 // the navigation happens immediately after.
 api.interceptors.response.use(
   (response) => {
+    loadingTracker.end();
     const url = (response.config.url ?? '').toLowerCase();
     if (url.includes('/api/auth/')) {
       sessionFailureHandled = false;
@@ -42,6 +48,7 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError<AxiosErrorResponse>) => {
+    loadingTracker.end();
     const requestUrl = (error.config?.url ?? '').toLowerCase();
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
