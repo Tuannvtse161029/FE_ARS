@@ -600,3 +600,217 @@
     padding: var(--space-4);
   }
 }
+
+/* ── Usage badges (Used In column) ──────────────────────── */
+.usageLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.78em;
+  color: var(--ars-ink-muted);
+}
+
+.usageNone {
+  color: var(--ars-ink-muted);
+  font-size: 0.85em;
+}
+
+.usageList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.usageBadgeActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75em;
+  font-weight: var(--font-weight-semibold);
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-2);
+  line-height: 1.5;
+}
+
+.usageBadgeExpired {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75em;
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-2);
+  line-height: 1.5;
+}
+
+.usageExpiredNote {
+  font-weight: normal;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+/* ── Delete confirmation overlay ─────────────────────────── */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.confirmCard {
+  background: var(--ars-paper);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.confirmHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  color: var(--ars-ink);
+}
+
+.confirmTitle {
+  font-size: 1.05rem;
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.confirmDesc {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--ars-ink-secondary);
+  line-height: 1.5;
+}
+
+.confirmLoadingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ars-ink-muted);
+  font-size: 0.85em;
+}
+
+.usageConfirmList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.usageConfirmList li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.usageConfirmActive {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.usageConfirmExpired {
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-node);
+  color: var(--ars-ink-secondary);
+}
+
+.usageConfirmDeadline {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.expiredTag {
+  color: #166534;
+  font-style: italic;
+}
+
+.confirmWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.confirmWarning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.confirmInfoSafe {
+  padding: var(--space-3);
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  color: var(--ars-ink-secondary);
+}
+
+.confirmFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.deleteDangerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.deleteDangerBtn:hover {
+  background: #b91c1c;
+}
+
+.deleteDangerBtn:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}

@@ -43,6 +43,14 @@ export const useResearchTopics = (): UseResearchTopicsResult => {
             status,
             materialsUrl: typeof t.materialsUrl === 'string' ? t.materialsUrl : undefined,
             assignedGroupId: typeof t.assignedGroupIds?.[0] === 'number' ? t.assignedGroupIds[0] : undefined,
+            // Forward createdAt / updatedAt so the table's default
+            // "newest first" sort (useTableSort('createdAt','desc'))
+            // actually works. Without them, every row has undefined
+            // createdAt, and the sort comparator pins nulls to the
+            // bottom regardless of direction — making new topics land
+            // at the end of the table.
+            createdAt: typeof t.createdAt === 'string' ? t.createdAt : undefined,
+            updatedAt: typeof t.updatedAt === 'string' ? t.updatedAt : undefined,
           });
         }
       }

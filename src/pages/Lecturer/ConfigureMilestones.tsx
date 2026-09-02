@@ -53,6 +53,8 @@ import {
   toInputDate,
   MAX_PHASES_PER_TOPIC,
 } from '../../services/researchTopicPhase.service';
+import { learningMaterialService, type LearningMaterial } from '../../services/learningMaterial.service';
+import { phaseMaterialService } from '../../services/phaseMaterial.service';
 import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
@@ -68,6 +70,7 @@ const makePhase = (_number: number): PhaseDraft => ({
   assessmentCriteria: '',
   startAt: '',
   endAt: '',
+  learningMaterialId: null,
 });
 
 // ─── State shapes ────────────────────────────────────────────────────────────
@@ -86,6 +89,8 @@ type PageState =
       drafts: PhaseDraft[];
       saving: boolean;
       loadingPhases: boolean;
+      materials: LearningMaterial[];
+      loadingMaterials: boolean;
       message: string | null;
       error: string | null;
     };
@@ -125,6 +130,8 @@ export const ConfigureMilestones = () => {
         drafts: [],
         saving: false,
         loadingPhases: false,
+        materials: [],
+        loadingMaterials: false,
         message: null,
         error: null,
       });
@@ -152,45 +159,86 @@ export const ConfigureMilestones = () => {
     async (tid: number, groupId: number) => {
       setPageState((prev) => {
         if (prev.kind !== 'ready') return prev;
-        return { ...prev, loadingPhases: true, error: null, message: null };
+        return {
+          ...prev,
+          loadingPhases: true,
+          loadingMaterials: true,
+          error: null,
+          message: null,
+        };
       });
-      try {
-        const phases = await researchTopicPhaseService.getByTopic(tid);
-        const groupPhases = phases.filter(
-          (p) =>
-            p.report?.researchGroupId === groupId ||
-            (typeof p.report?.researchGroupId !== 'number' &&
-              p.topicId === tid),
-        );
-        const drafts =
-          groupPhases.length > 0
-            ? groupPhases.map((p) => ({
-                title: p.title,
-                requirements: p.requirements,
-                assessmentCriteria: p.assessmentCriteria,
-                startAt: p.startAt ? toInputDate(p.startAt) : '',
-                endAt: p.endAt ? toInputDate(p.endAt) : '',
-              }))
-            : [makePhase(1)];
-        setPageState((prev) => {
-          if (prev.kind !== 'ready') return prev;
-          return {
-            ...prev,
-            phases: groupPhases,
-            drafts,
-            loadingPhases: false,
-          };
-        });
-      } catch (err) {
-        setPageState((prev) => {
-          if (prev.kind !== 'ready') return prev;
-          return {
-            ...prev,
-            loadingPhases: false,
-            error: err instanceof Error ? err.message : 'Unable to load phases.',
-          };
-        });
+
+      // Fire phases + materials + existing assignments in parallel.
+      const [phasesResult, materialsResult, assignmentsResult] =
+        await Promise.allSettled([
+          researchTopicPhaseService.getByTopic(tid),
+          learningMaterialService.getAll(),
+          phaseMaterialService.getByTopicGroup(tid, groupId),
+        ]);
+
+      // Extract phases.
+      const phases =
+        phasesResult.status === 'fulfilled'
+          ? (phasesResult.value as ResearchTopicPhase[]).filter(
+              (p) =>
+                p.report?.researchGroupId === groupId ||
+                (typeof p.report?.researchGroupId !== 'number' &&
+                  p.topicId === tid),
+            )
+          : [];
+
+      // Sort materials newest-first by createdAt for the dropdown.
+      const materials =
+        materialsResult.status === 'fulfilled'
+          ? [...(materialsResult.value as LearningMaterial[])].sort((a, b) => {
+              const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return bTime - aTime; // newest first
+            })
+          : [];
+
+      // Build a map of phaseNumber → learningMaterialId from existing assignments.
+      const assignmentMap = new Map<number, number | null>();
+      if (assignmentsResult.status === 'fulfilled') {
+        for (const a of assignmentsResult.value) {
+          if (a.phaseNumber != null) {
+            assignmentMap.set(a.phaseNumber, a.learningMaterialId ?? null);
+          }
+        }
       }
+
+      const drafts =
+        phases.length > 0
+          ? phases.map((p) => ({
+              title: p.title,
+              requirements: p.requirements,
+              assessmentCriteria: p.assessmentCriteria,
+              startAt: p.startAt ? toInputDate(p.startAt) : '',
+              endAt: p.endAt ? toInputDate(p.endAt) : '',
+              learningMaterialId:
+                assignmentMap.get(p.phaseNumber) ?? null,
+            }))
+          : [makePhase(1)];
+
+      const phaseError =
+        phasesResult.status === 'rejected'
+          ? phasesResult.reason instanceof Error
+            ? phasesResult.reason.message
+            : 'Unable to load phases.'
+          : null;
+
+      setPageState((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        return {
+          ...prev,
+          phases,
+          drafts,
+          materials,
+          loadingPhases: false,
+          loadingMaterials: false,
+          error: phaseError,
+        };
+      });
     },
     [],
   );
@@ -213,10 +261,18 @@ export const ConfigureMilestones = () => {
   const updateDraft = (
     index: number,
     key: keyof PhaseDraft,
-    value: string,
+    rawValue: string | number | null,
   ) => {
     setPageState((prev) => {
       if (prev.kind !== 'ready') return prev;
+      const value =
+        key === 'learningMaterialId'
+          ? rawValue === 'null' || rawValue === '' || rawValue == null
+            ? null
+            : typeof rawValue === 'number'
+              ? rawValue
+              : Number(rawValue)
+          : rawValue;
       return {
         ...prev,
         drafts: prev.drafts.map((d, i) => (i === index ? { ...d, [key]: value } : d)),
@@ -286,6 +342,7 @@ export const ConfigureMilestones = () => {
     });
 
     try {
+      // Step 1 — save milestone definitions (title, deadline, phase order).
       const result = await researchTopicPhaseService.save(
         topicId,
         drafts,
@@ -296,14 +353,38 @@ export const ConfigureMilestones = () => {
           p.report?.researchGroupId === selectedGroupId ||
           typeof p.report?.researchGroupId !== 'number',
       );
+
+      // Step 2 — persist each phase's material assignment.
+      const assignErrors: string[] = [];
+      await Promise.all(
+        drafts.map((draft, index) =>
+          phaseMaterialService
+            .assignForPhase({
+              topicId,
+              researchGroupId: selectedGroupId!,
+              phaseNumber: index + 1,
+              learningMaterialId: draft.learningMaterialId,
+            })
+            .catch((err) => {
+              assignErrors.push(
+                `Phase ${index + 1} material: ${err instanceof Error ? err.message : 'failed'}`,
+              );
+            }),
+        ),
+      );
+
       setPageState((prev) => {
         if (prev.kind !== 'ready') return prev;
         return {
           ...prev,
           saving: false,
           phases: apiPhases,
-          message: 'Milestones saved successfully.',
-          error: null,
+          message:
+            assignErrors.length > 0
+              ? `Milestones saved. Some material assignments could not be saved (see below).`
+              : 'Milestones saved successfully.',
+          error:
+            assignErrors.length > 0 ? assignErrors.join('\n') : null,
         };
       });
     } catch (err) {
@@ -410,6 +491,8 @@ export const ConfigureMilestones = () => {
     drafts: PhaseDraft[];
     saving: boolean;
     loadingPhases: boolean;
+    materials: LearningMaterial[];
+    loadingMaterials: boolean;
     message: string | null;
     error: string | null;
   };
@@ -421,6 +504,8 @@ export const ConfigureMilestones = () => {
     drafts,
     saving,
     loadingPhases,
+    materials,
+    loadingMaterials,
     message,
     error,
   } = readyState;
@@ -767,6 +852,60 @@ export const ConfigureMilestones = () => {
                           data-testid={`phase-end-${index}`}
                         />
                       </div>
+                    </div>
+
+                    {/* Material assignment — optional dropdown, sorted newest-first */}
+                    <div className={styles.formGroup}>
+                      <label
+                        className={styles.formLabel}
+                        htmlFor={`phase-material-${index}`}
+                      >
+                        Assigned Material
+                        <span className={styles.optionalBadge}>Optional</span>
+                      </label>
+                      {loadingMaterials ? (
+                        <select
+                          id={`phase-material-${index}`}
+                          className={styles.formSelect}
+                          disabled
+                          aria-busy="true"
+                        >
+                          <option value="">Loading materials…</option>
+                        </select>
+                      ) : (
+                        <select
+                          id={`phase-material-${index}`}
+                          className={styles.formSelect}
+                          value={
+                            draft.learningMaterialId != null
+                              ? String(draft.learningMaterialId)
+                              : ''
+                          }
+                          onChange={(e) =>
+                            updateDraft(
+                              index,
+                              'learningMaterialId',
+                              e.target.value ? Number(e.target.value) : 'null',
+                            )
+                          }
+                          data-testid={`phase-material-${index}`}
+                        >
+                          <option value="">— None —</option>
+                          {materials.map((m: LearningMaterial) => {
+                            const id = typeof m.id === 'number' ? m.id : -1;
+                            if (id < 0) return null;
+                            return (
+                              <option key={id} value={id}>
+                                {m.title ?? `Material #${id}`}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      )}
+                      <span className={styles.formHint}>
+                        Select a material from your library to assign to this
+                        phase.
+                      </span>
                     </div>
 
                     {/* Locked note */}

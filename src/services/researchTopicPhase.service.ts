@@ -42,6 +42,8 @@ export interface PhaseDraft {
   assessmentCriteria: string;
   startAt: string;
   endAt: string;
+  /** ID of the LearningMaterial assigned to this phase (null = none). */
+  learningMaterialId: number | null;
 }
 
 const toInputDate = (value: string | null | undefined): string => {

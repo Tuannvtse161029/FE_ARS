@@ -288,6 +288,13 @@ export const API_ENDPOINTS = {
       CREATE: '/api/LearningMaterial',
       UPDATE: (id: number) => `/api/LearningMaterial/${id}`,
       DELETE: (id: number) => `/api/LearningMaterial/${id}`,
+      GET_USAGES: (id: number) => `/api/LearningMaterial/${id}/usages`,
+    },
+    PHASE_MATERIAL: {
+      GET_BY_PHASE:
+        '/api/PhaseMaterial',
+      ASSIGN: '/api/PhaseMaterial',
+      DELETE: (id: number) => `/api/PhaseMaterial/${id}`,
     },
     SHARED_MATERIAL: {
       GET_ALL: '/api/SharedMaterial',
