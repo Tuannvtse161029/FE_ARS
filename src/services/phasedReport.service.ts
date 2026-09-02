@@ -108,8 +108,21 @@ export interface PhasedReport {
   submittedAt?: string | null;
   isOverdue?: boolean | null;
   status?: string | null;
-  /** URL of the learning material assigned to this phase. Set via PUT /api/PhasedReport/{id}. */
+  /**
+   * URL of the learning material assigned to this phase. Set via PUT /api/PhasedReport/{id}.
+   */
   phasedMaterialsUrl?: string | null;
+  /** Phase-level requirements text. Persisted via POST /api/PhasedReport/topic-milestones. */
+  requirements?: string | null;
+  /**
+   * Phase assessment criteria text. Persisted via POST /api/PhasedReport/topic-milestones.
+   * The BE also exposes a `criteria` alias with the same value.
+   */
+  assessmentCriteria?: string | null;
+  criteria?: string | null;
+  /** Phase start datetime. Persisted via POST /api/PhasedReport/topic-milestones. */
+  startDate?: string | null;
+  startedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

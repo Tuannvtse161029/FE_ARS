@@ -57,15 +57,23 @@ const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
     return null;
   }
   const end = report.deadlineAt ?? '';
+  // Prefer camelCase (startDate) over startedAt; fall back to empty string.
+  const start =
+    report.startDate ?? report.startedAt ?? '';
+  // Prefer camelCase (assessmentCriteria) over criteria alias.
+  const criteria =
+    report.assessmentCriteria ?? report.criteria ?? '';
   return {
     id: `api-${report.topicId}-${report.phaseNumber}`,
     topicId: report.topicId,
     phaseNumber: report.phaseNumber,
+    // milestoneTitle is the canonical field; phaseTitle is a readOnly alias.
     title: report.milestoneTitle ?? `Phase ${report.phaseNumber}`,
-    requirements: '',
-    assessmentCriteria: '',
-    startAt: '',
-    endAt: end,
+    // requirements and assessmentCriteria are now persisted by the BE Swagger.
+    requirements: report.requirements ?? '',
+    assessmentCriteria: criteria,
+    startAt: start ? toInputDate(start) : '',
+    endAt: end ? toInputDate(end) : '',
     deadlineAt: end,
     order: report.phaseNumber,
     locked: Boolean(report.submittedAt),
@@ -144,10 +152,16 @@ export const researchTopicPhaseService = {
       researchGroupId,
       phases: drafts.map((draft, index) => ({
         phaseNumber: index + 1,
-        milestoneTitle: draft.title.trim(),
+        milestoneTitle: draft.title.trim() || null,
         deadlineAt: new Date(
           draft.endAt || draft.startAt,
         ).toISOString(),
+        // BE Swagger now accepts these fields on TopicPhaseItem.
+        requirements: draft.requirements || null,
+        assessmentCriteria: draft.assessmentCriteria || null,
+        startDate: draft.startAt
+          ? new Date(draft.startAt).toISOString()
+          : null,
       })),
     });
     const apiPhases = response
