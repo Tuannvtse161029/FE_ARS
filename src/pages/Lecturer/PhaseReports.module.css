@@ -47,11 +47,6 @@
   font-family: var(--font-family-ui);
 }
 
-/* ── Topic accordion list ────────────────────────────────── */
-.topics {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
 /* ── Topic grid (overview) ─────────────────────────────── */
 .topics {
   display: grid;
