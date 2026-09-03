@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Inbox, Plus } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import styles from './PremiumPackages.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { CreatePackageModal } from '../../components/admin/CreatePackageModal';
@@ -22,14 +23,15 @@ import { Button } from '../../components/Button/Button';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
-const ROLE_LABEL: Record<PremiumPackage['targetRole'], string> = {
-  RESEARCHER: 'Researcher',
-  REVIEWER: 'Reviewer',
-  LECTURER: 'Lecturer',
-};
-
 export default function PremiumPackages(): JSX.Element {
+  const { t } = useI18n();
   useAdminGuard();
+
+  const ROLE_LABEL: Record<PremiumPackage['targetRole'], string> = {
+    RESEARCHER: t('admin.packages.role.researcher'),
+    REVIEWER: t('admin.packages.role.reviewer'),
+    LECTURER: t('admin.packages.role.lecturer'),
+  };
 
   const [packages, setPackages] = useState<PremiumPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,11 +49,11 @@ export default function PremiumPackages(): JSX.Element {
       const data = await adminAuxiliaryService.getPremiumPackages();
       setPackages(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load packages.');
+      setError(e instanceof Error ? e.message : t('admin.packages.error.tryAgain'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -65,7 +67,7 @@ export default function PremiumPackages(): JSX.Element {
       setCreateOpen(false);
       await load();
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : 'Failed to create package.');
+      setCreateError(e instanceof Error ? e.message : t('admin.packages.error.createFailed'));
     } finally {
       setCreateSubmitting(false);
     }
@@ -77,7 +79,7 @@ export default function PremiumPackages(): JSX.Element {
       await adminAuxiliaryService.togglePremiumPackage(pkg.packageId, !pkg.isActive);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to toggle package.');
+      setError(e instanceof Error ? e.message : t('admin.packages.error.toggleFailed'));
     } finally {
       setBusyPackageId(null);
     }
@@ -85,7 +87,7 @@ export default function PremiumPackages(): JSX.Element {
 
   const handleDelete = async (pkg: PremiumPackage): Promise<void> => {
     const ok = window.confirm(
-      `Delete the package "${pkg.title}"? This cannot be undone.`,
+      t('admin.packages.action.deleteConfirm').replace('{title}', pkg.title),
     );
     if (!ok) return;
     setBusyPackageId(pkg.packageId);
@@ -93,7 +95,7 @@ export default function PremiumPackages(): JSX.Element {
       await adminAuxiliaryService.deletePremiumPackage(pkg.packageId);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete package.');
+      setError(e instanceof Error ? e.message : t('admin.packages.error.deleteFailed'));
     } finally {
       setBusyPackageId(null);
     }
@@ -102,9 +104,9 @@ export default function PremiumPackages(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · ANNUAL FEES"
-        title="Annual Fees"
-        description="Create and manage annual fees offered to each eligible role."
+        eyebrow={t('admin.packages.eyebrow')}
+        title={t('admin.packages.title')}
+        description={t('admin.packages.description')}
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -114,7 +116,7 @@ export default function PremiumPackages(): JSX.Element {
             onClick={() => setCreateOpen(true)}
             data-testid="open-create-package"
           >
-            Create new Annual Fees
+            {t('admin.packages.create')}
           </Button>
         }
       />
@@ -126,7 +128,7 @@ export default function PremiumPackages(): JSX.Element {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title="Could not load packages"
+          title={t('admin.packages.error.loadFailed')}
           message={error}
           retry={
             <Button
@@ -135,15 +137,15 @@ export default function PremiumPackages(): JSX.Element {
               onClick={() => void load()}
               disabled={loading}
             >
-              {loading ? 'Retrying…' : 'Retry'}
+              {loading ? t('admin.packages.retrying') : t('admin.packages.retry')}
             </Button>
           }
         />
       ) : packages.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} />}
-          title="No annual fees yet"
-          description="Create an annual fee to begin offering annual access to eligible roles."
+          title={t('admin.packages.empty.title')}
+          description={t('admin.packages.empty.description')}
           action={
             <Button
               variant="primary"
@@ -151,7 +153,7 @@ export default function PremiumPackages(): JSX.Element {
               leftIcon={<Plus size={14} />}
               onClick={() => setCreateOpen(true)}
             >
-              Create new Annual Fees
+              {t('admin.packages.create')}
             </Button>
           }
         />
@@ -176,7 +178,7 @@ export default function PremiumPackages(): JSX.Element {
                       pkg.isActive ? styles.statusActive : styles.statusInactive
                     }`}
                   >
-                    {pkg.isActive ? 'Active' : 'Inactive'}
+                    {pkg.isActive ? t('admin.packages.status.active') : t('admin.packages.status.inactive')}
                   </span>
                 </header>
 
@@ -184,7 +186,7 @@ export default function PremiumPackages(): JSX.Element {
                   <span className={styles.priceAmount}>
                     {pkg.priceVnd.toLocaleString('vi-VN')}
                   </span>
-                  <span className={styles.priceCurrency}>VND</span>
+                  <span className={styles.priceCurrency}>{t('admin.packages.priceVnd')}</span>
                   <span className={styles.priceCycle}>
                     /{pkg.billingCycle.toLowerCase()}
                   </span>
@@ -193,7 +195,7 @@ export default function PremiumPackages(): JSX.Element {
                 <footer className={styles.cardFooter}>
                   <span className={styles.subscriberCount}>
                     <strong>{pkg.subscriberCount.toLocaleString('vi-VN')}</strong>{' '}
-                    subscribers
+                    {t('admin.packages.subscribers')}
                   </span>
                   <div className={styles.cardActions}>
                     <button
@@ -203,7 +205,7 @@ export default function PremiumPackages(): JSX.Element {
                       disabled={busy}
                       aria-pressed={pkg.isActive}
                     >
-                      {pkg.isActive ? 'Deactivate' : 'Activate'}
+                      {pkg.isActive ? t('admin.packages.action.deactivate') : t('admin.packages.action.activate')}
                     </button>
                     <button
                       type="button"
@@ -211,7 +213,7 @@ export default function PremiumPackages(): JSX.Element {
                       onClick={() => handleDelete(pkg)}
                       disabled={busy}
                     >
-                      Delete
+                      {t('admin.packages.action.delete')}
                     </button>
                   </div>
                 </footer>

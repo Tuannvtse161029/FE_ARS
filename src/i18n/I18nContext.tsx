@@ -89,7 +89,12 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
 export const useI18n = (): I18nContextValue => {
   const ctx = useContext(I18nContext);
   if (!ctx) {
-    throw new Error('useI18n must be used inside an <I18nProvider>.');
+    return {
+      locale: DEFAULT_LOCALE,
+      setLocale: () => {},
+      toggleLocale: () => {},
+      t: (key: string, fallback?: string) => translate(DEFAULT_LOCALE, key, fallback),
+    };
   }
   return ctx;
 };

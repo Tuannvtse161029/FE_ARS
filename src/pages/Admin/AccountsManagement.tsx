@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Inbox, Eye, Pause, Play } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
@@ -63,6 +64,7 @@ interface ConfirmState {
 }
 
 export const AccountsManagement = () => {
+  const { t } = useI18n();
   useAdminGuard();
 
   const { user: currentAuth } = useAuth();
@@ -91,12 +93,12 @@ export const AccountsManagement = () => {
       });
       setAccounts(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load accounts.');
+      setError(e instanceof Error ? e.message : t('admin.accounts.error.failedToLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, status, plan, role]);
+  }, [search, status, plan, role, t]);
 
   useEffect(() => {
     void load();
@@ -106,7 +108,7 @@ export const AccountsManagement = () => {
     if (!confirm) return;
     const id = confirm.account.id;
     if (currentUserId != null && currentUserId === id) {
-      setError('You cannot suspend or restore your own admin account.');
+      setError(t('admin.accounts.error.cannotSuspendSelf'));
       setConfirm(null);
       return;
     }
@@ -121,7 +123,7 @@ export const AccountsManagement = () => {
       );
       setConfirm(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update account.');
+      setError(e instanceof Error ? e.message : t('admin.accounts.error.failedToUpdate'));
     } finally {
       setActingId(null);
     }
@@ -192,9 +194,9 @@ export const AccountsManagement = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · ACCOUNTS"
-        title="Accounts Management"
-        description="Search, filter, and moderate user accounts across roles and plans."
+        eyebrow={t('admin.accounts.eyebrow')}
+        title={t('admin.accounts.title')}
+        description={t('admin.accounts.description')}
         accent={ROLE_ACCENT}
       />
 
@@ -206,8 +208,8 @@ export const AccountsManagement = () => {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search by name, email, or ID"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.accounts.searchPlaceholder')}
+        refreshLabel={t('admin.accounts.refresh')}
         filters={
           <>
             <select
@@ -217,11 +219,11 @@ export const AccountsManagement = () => {
               aria-label="Filter by role"
               data-testid="accounts-role-filter"
             >
-              <option value="ALL">All Roles</option>
-              <option value="LECTURER">Lecturer</option>
-              <option value="RESEARCHER">Researcher</option>
-              <option value="REVIEWER">Reviewer</option>
-              <option value="GRADUATE_STUDENT">Graduate Student</option>
+              <option value="ALL">{t('admin.accounts.filter.allRoles')}</option>
+              <option value="LECTURER">{t('admin.accounts.filter.role.lecturer')}</option>
+              <option value="RESEARCHER">{t('admin.accounts.filter.role.researcher')}</option>
+              <option value="REVIEWER">{t('admin.accounts.filter.role.reviewer')}</option>
+              <option value="GRADUATE_STUDENT">{t('admin.accounts.filter.role.graduateStudent')}</option>
             </select>
             <select
               className={styles.select}
@@ -230,9 +232,9 @@ export const AccountsManagement = () => {
               aria-label="Filter by plan"
               data-testid="accounts-plan-filter"
             >
-              <option value="ALL">All Plans</option>
-              <option value="PREMIUM">Premium</option>
-              <option value="FREE_TIER">Free Tier</option>
+              <option value="ALL">{t('admin.accounts.filter.allPlans')}</option>
+              <option value="PREMIUM">{t('admin.accounts.filter.plan.premium')}</option>
+              <option value="FREE_TIER">{t('admin.accounts.filter.plan.freeTier')}</option>
             </select>
             <select
               className={styles.select}
@@ -241,9 +243,9 @@ export const AccountsManagement = () => {
               aria-label="Filter by status"
               data-testid="accounts-status-filter"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="SUSPENDED">Suspended</option>
+              <option value="ALL">{t('admin.accounts.filter.allStatuses')}</option>
+              <option value="ACTIVE">{t('admin.accounts.filter.status.active')}</option>
+              <option value="SUSPENDED">{t('admin.accounts.filter.status.suspended')}</option>
             </select>
           </>
         }
@@ -262,7 +264,7 @@ export const AccountsManagement = () => {
           <div data-testid="accounts-error" className={styles.errorWrap}>
             <ErrorBanner
               tone="error"
-              title="Could not load accounts"
+              title={t('admin.accounts.error.loadFailed')}
               message={error}
               retry={
                 <Button
@@ -271,7 +273,7 @@ export const AccountsManagement = () => {
                   onClick={() => void load()}
                   disabled={loading || refreshing}
                 >
-                  {loading || refreshing ? 'Retrying…' : 'Retry'}
+                  {loading || refreshing ? t('admin.accounts.retrying') : t('admin.accounts.retry')}
                 </Button>
               }
             />
@@ -280,16 +282,16 @@ export const AccountsManagement = () => {
           <div className={styles.emptyWrap}>
             <EmptyState
               icon={<Inbox size={20} />}
-              title="No accounts match the current filters."
-              description="Adjust the search query or clear one of the role/plan/status filters."
+              title={t('admin.accounts.empty.noMatchTitle')}
+              description={t('admin.accounts.empty.noMatchDesc')}
             />
           </div>
         ) : totalItems === 0 ? (
           <div className={styles.emptyWrap}>
             <EmptyState
               icon={<Inbox size={20} />}
-              title="No accounts have been provisioned yet."
-              description="When new users register, they will appear in this list."
+              title={t('admin.accounts.empty.noDataTitle')}
+              description={t('admin.accounts.empty.noDataDesc')}
             />
           </div>
         ) : (
@@ -301,7 +303,7 @@ export const AccountsManagement = () => {
                     <th>
                       <SortableHeader
                         column="name"
-                        label="User"
+                        label={t('admin.accounts.table.user')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -309,7 +311,7 @@ export const AccountsManagement = () => {
                     <th>
                       <SortableHeader
                         column="roles"
-                        label="Roles"
+                        label={t('admin.accounts.table.roles')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -317,13 +319,13 @@ export const AccountsManagement = () => {
                     <th>
                       <SortableHeader
                         column="plan"
-                        label="Plan"
+                        label={t('admin.accounts.table.plan')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         filterOptions={[
-                          { value: 'ALL', label: 'All plans' },
-                          { value: 'PREMIUM', label: 'Premium' },
-                          { value: 'FREE_TIER', label: 'Free Tier' },
+                          { value: 'ALL', label: t('admin.accounts.filter.allPlans') },
+                          { value: 'PREMIUM', label: t('admin.accounts.filter.plan.premium') },
+                          { value: 'FREE_TIER', label: t('admin.accounts.filter.plan.freeTier') },
                         ]}
                         activeFilter={plan}
                         onFilterChange={(next) => setPlan(next as PlanFilter)}
@@ -332,7 +334,7 @@ export const AccountsManagement = () => {
                     <th>
                       <SortableHeader
                         column="joined"
-                        label="Joined"
+                        label={t('admin.accounts.table.joined')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -340,19 +342,19 @@ export const AccountsManagement = () => {
                     <th>
                       <SortableHeader
                         column="status"
-                        label="Status"
+                        label={t('admin.accounts.table.status')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         filterOptions={[
-                          { value: 'ALL', label: 'All statuses' },
-                          { value: 'ACTIVE', label: 'Active' },
-                          { value: 'SUSPENDED', label: 'Suspended' },
+                          { value: 'ALL', label: t('admin.accounts.filter.allStatuses') },
+                          { value: 'ACTIVE', label: t('admin.accounts.filter.status.active') },
+                          { value: 'SUSPENDED', label: t('admin.accounts.filter.status.suspended') },
                         ]}
                         activeFilter={status}
                         onFilterChange={(next) => setStatus(next as StatusFilter)}
                       />
                     </th>
-                    <th>Actions</th>
+                    <th>{t('admin.accounts.table.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -380,7 +382,7 @@ export const AccountsManagement = () => {
                         <span
                           className={`${styles.planTag} ${planClass(a.plan)}`}
                         >
-                          {a.plan === 'PREMIUM' ? 'Premium' : 'Free Tier'}
+                          {a.plan === 'PREMIUM' ? t('admin.accounts.filter.plan.premium') : t('admin.accounts.filter.plan.freeTier')}
                         </span>
                       </td>
                       <td>
@@ -391,16 +393,16 @@ export const AccountsManagement = () => {
                           <span
                             className={`${styles.statusTag} ${statusClass(a.status)}`}
                           >
-                            {a.status}
+                            {a.status === 'ACTIVE' ? t('admin.accounts.filter.status.active') : t('admin.accounts.filter.status.suspended')}
                           </span>
                           {a.status === 'SUSPENDED' && a.suspendedUntil ? (
                             <span
                               className={styles.suspendedUntilPill}
-                              title={`Auto-lifted on ${formatSuspendedUntil(
+                              title={`${t('admin.accounts.status.autoLiftedOn')} ${formatSuspendedUntil(
                                 a.suspendedUntil,
                               )}`}
                             >
-                              until {formatSuspendedUntil(a.suspendedUntil)}
+                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.suspendedUntil)}
                             </span>
                           ) : null}
                         </div>
@@ -412,11 +414,11 @@ export const AccountsManagement = () => {
                             onClick={() =>
                               window.open(`/profile/${a.id}`, '_blank')
                             }
-                            title="View profile"
+                            title={t('admin.accounts.action.viewProfile')}
                             type="button"
                           >
                             <Eye size={13} />
-                            View Profile
+                            {t('admin.accounts.action.viewProfile')}
                           </button>
                           {a.status === 'ACTIVE' ? (
                             <button
@@ -427,13 +429,13 @@ export const AccountsManagement = () => {
                               disabled={actingId === a.id || isSelf(a.id)}
                               title={
                                 isSelf(a.id)
-                                  ? 'You cannot suspend your own admin account.'
+                                  ? t('admin.accounts.action.suspendTitle')
                                   : undefined
                               }
                               type="button"
                             >
                               <Pause size={13} />
-                              Suspend
+                              {t('admin.accounts.action.suspend')}
                             </button>
                           ) : (
                             <button
@@ -444,13 +446,13 @@ export const AccountsManagement = () => {
                               disabled={actingId === a.id || isSelf(a.id)}
                               title={
                                 isSelf(a.id)
-                                  ? 'You cannot change the status of your own admin account.'
+                                  ? t('admin.accounts.action.unsuspendTitle')
                                   : undefined
                               }
                               type="button"
                             >
                               <Play size={13} />
-                              Unsuspend
+                              {t('admin.accounts.action.unsuspend')}
                             </button>
                           )}
                         </div>
@@ -469,7 +471,7 @@ export const AccountsManagement = () => {
               onPrev={prev}
               onNext={next}
               onPage={setPage}
-              itemLabel="accounts"
+              itemLabel={t('admin.accounts.itemLabel')}
             />
           </>
         )}
@@ -492,22 +494,21 @@ export const AccountsManagement = () => {
               className={styles.modalTitle}
             >
               {confirm.next === 'SUSPENDED'
-                ? 'Suspend account?'
-                : 'Unsuspend account?'}
+                ? t('admin.accounts.modal.suspendTitle')
+                : t('admin.accounts.modal.unsuspendTitle')}
             </span>
             <p className={styles.modalBody}>
               {confirm.next === 'SUSPENDED' ? (
                 <>
-                  You are about to suspend{' '}
-                  <strong>{confirm.account.name}</strong> ({confirm.account.email}
-                  ). They will be unable to sign in or take action on the
-                  platform until you unsuspend them.
+                  {t('admin.accounts.modal.suspendBody')
+                    .replace('{name}', confirm.account.name)
+                    .replace('{email}', confirm.account.email)}
                 </>
               ) : (
                 <>
-                  You are about to restore access for{' '}
-                  <strong>{confirm.account.name}</strong> ({confirm.account.email}
-                  ).
+                  {t('admin.accounts.modal.unsuspendBody')
+                    .replace('{name}', confirm.account.name)
+                    .replace('{email}', confirm.account.email)}
                 </>
               )}
             </p>
@@ -518,7 +519,7 @@ export const AccountsManagement = () => {
                 disabled={actingId !== null}
                 type="button"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 className={`${styles.modalBtn} ${
@@ -530,7 +531,7 @@ export const AccountsManagement = () => {
                 disabled={actingId !== null}
                 type="button"
               >
-                {confirm.next === 'SUSPENDED' ? 'Suspend' : 'Unsuspend'}
+                {confirm.next === 'SUSPENDED' ? t('admin.accounts.action.suspend') : t('admin.accounts.action.unsuspend')}
               </button>
             </div>
           </div>

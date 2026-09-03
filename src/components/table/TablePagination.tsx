@@ -1,6 +1,7 @@
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TABLE_PAGINATION_TESTID } from '../../utils/tableConstants';
 import styles from './TablePagination.module.css';
+import { useI18n } from '../../i18n/I18nContext';
 
 export interface TablePaginationProps {
   page: number;
@@ -44,6 +45,7 @@ export const TablePagination = ({
   onPage,
   itemLabel = 'items',
 }: TablePaginationProps) => {
+  const { t } = useI18n();
   if (totalItems === 0) {
     // No data — leave the toolbar alone; caller renders its own empty state.
     return null;
@@ -57,7 +59,7 @@ export const TablePagination = ({
       aria-label="Pagination"
     >
       <span className={styles.paginationInfo}>
-        Showing <strong>{startIndex}</strong>–<strong>{endIndex}</strong> of{' '}
+        {t('common.showing', 'Showing')} <strong>{startIndex}</strong>–<strong>{endIndex}</strong> {t('common.of', 'of')}{' '}
         <strong>{totalItems}</strong> {itemLabel}
       </span>
       <div className={styles.paginationControls}>
@@ -66,11 +68,11 @@ export const TablePagination = ({
           className={styles.paginationBtn}
           onClick={onPrev}
           disabled={page <= 1}
-          aria-label="Previous page"
+          aria-label={t('common.prevPage', 'Previous page')}
           data-testid="table-pagination-prev"
         >
           <ChevronLeft size={14} />
-          Previous
+          {t('common.previous')}
         </button>
         {pages.map((p, idx) =>
           p === '…' ? (
@@ -90,7 +92,7 @@ export const TablePagination = ({
               }`}
               onClick={() => onPage(p)}
               aria-current={p === page ? 'page' : undefined}
-              aria-label={`Page ${p}`}
+              aria-label={`${t('common.page', 'Page')} ${p}`}
               data-testid={`table-pagination-page-${p}`}
               disabled={isRefreshing}
             >
@@ -106,10 +108,10 @@ export const TablePagination = ({
           className={styles.paginationBtn}
           onClick={onNext}
           disabled={page >= totalPages}
-          aria-label="Next page"
+          aria-label={t('common.nextPage', 'Next page')}
           data-testid="table-pagination-next"
         >
-          Next
+          {t('common.next')}
           <ChevronRight size={14} />
         </button>
       </div>

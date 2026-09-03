@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, X } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import type { User } from '../../types/auth';
 import { displayAccountTier } from '../../services/user.service';
@@ -22,6 +23,7 @@ export const VerificationDetailsModal = ({
   open,
   onClose,
 }: Props) => {
+  const { t } = useI18n();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -52,13 +54,13 @@ export const VerificationDetailsModal = ({
         <header className={styles.header}>
           <div>
             <h2 id="verification-details-title" className={styles.title}>
-              User #{user.id}
+              {t('admin.roleRequests.details.title').replace('{id}', String(user.id))}
             </h2>
             <p className={styles.subtitle}>
-              Submitted {user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}
+              {t('admin.roleRequests.details.submitted')} {user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}
             </p>
           </div>
-          <button ref={closeRef} className={styles.iconButton} onClick={onClose} type="button" aria-label="Close details dialog">
+          <button ref={closeRef} className={styles.iconButton} onClick={onClose} type="button" aria-label={t('admin.roleRequests.details.closeLabel')}>
             <X size={18} />
           </button>
         </header>
@@ -66,30 +68,30 @@ export const VerificationDetailsModal = ({
         <div className={styles.splitBody}>
           <div className={styles.content}>
             <dl className={styles.detailsGrid}>
-              <div><dt>Full name</dt><dd>{user.fullName || '—'}</dd></div>
-              <div><dt>Email</dt><dd>{user.email}</dd></div>
-              <div><dt>Email verification</dt><dd>{user.isEmailVerified ? 'Verified' : 'Not verified'}</dd></div>
-              <div><dt>Business role</dt><dd>{user.roleName ?? 'Pending role assignment'}</dd></div>
-              <div><dt>Account tier</dt><dd>{displayAccountTier(user.accountTier)}</dd></div>
-              <div><dt>Verification status</dt><dd>{user.verificationStatus ?? 'Pending'}</dd></div>
-              <div><dt>Account active</dt><dd>{user.isActive ? 'Active' : 'Suspended'}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.fullName')}</dt><dd>{user.fullName || '—'}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.email')}</dt><dd>{user.email}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.emailVerified')}</dt><dd>{user.isEmailVerified ? t('admin.roleRequests.table.emailVerified') : t('admin.roleRequests.table.emailNotVerified')}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.businessRole')}</dt><dd>{user.roleName ?? t('admin.roleRequests.table.pendingRole')}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.accountTier')}</dt><dd>{displayAccountTier(user.accountTier)}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.verificationStatus')}</dt><dd>{user.verificationStatus ? t(`common.status.${user.verificationStatus.toLowerCase()}`) : t('common.status.pending')}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.accountActive')}</dt><dd>{user.isActive ? t('admin.accounts.filter.status.active') : t('admin.accounts.filter.status.suspended')}</dd></div>
               <div className={styles.fullWidth}>
-                <dt>ORCID identity connection</dt>
-                <dd className={styles.missing}>Connection status is not provided by this verification response.</dd>
+                <dt>{t('admin.roleRequests.details.orcid')}</dt>
+                <dd className={styles.missing}>{t('admin.roleRequests.details.orcidMissing')}</dd>
                 <p className={styles.identityDisclosure}>
-                  An ORCID connection is an identity signal; approving this request remains an ARS role decision.
+                  {t('admin.roleRequests.details.orcidDisclosure')}
                 </p>
               </div>
-              <div><dt>Created</dt><dd>{user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.created')}</dt><dd>{user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}</dd></div>
             </dl>
           </div>
 
           <div className={styles.documentPane}>
             <div className={styles.documentHeader}>
-              <span>Proof document</span>
+              <span>{t('admin.roleRequests.details.proofDocument')}</span>
               {proofUrl ? (
                 <a href={proofUrl} target="_blank" rel="noreferrer noopener" className={styles.textLink}>
-                  <ExternalLink size={14} /> Open in new tab
+                  <ExternalLink size={14} /> {t('admin.roleRequests.details.openNewTab')}
                 </a>
               ) : null}
             </div>
@@ -100,7 +102,7 @@ export const VerificationDetailsModal = ({
             ) : (
               <div className={styles.emptyDocument}>
                 <FileText size={22} />
-                <span>No proof document available.</span>
+                <span>{t('admin.roleRequests.details.noProofDocument')}</span>
               </div>
             )}
           </div>
@@ -108,7 +110,7 @@ export const VerificationDetailsModal = ({
 
         <footer className={styles.footer}>
           <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">
-            Close
+            {t('common.cancel')}
           </button>
         </footer>
       </section>

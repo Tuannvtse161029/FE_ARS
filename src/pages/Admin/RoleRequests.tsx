@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Eye, Inbox, Search, X } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
@@ -51,13 +52,6 @@ const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'ACCEPTED', 'REJECTED'];
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
-const VERIFICATION_STATUS_LABEL: Record<AdminVerificationStatus | 'UNKNOWN', string> = {
-  Pending: 'Pending',
-  Accepted: 'Accepted',
-  Rejected: 'Rejected',
-  UNKNOWN: 'Unknown',
-};
-
 const statusFilterToVerification = (
   filter: StatusFilter,
 ): AdminVerificationStatus | null => {
@@ -73,18 +67,8 @@ const statusFilterToVerification = (
   }
 };
 
-// Accept / Reject buttons are intentionally disabled while the BE
-// verification-mutation endpoint is missing (BTR-AGENT29-C). Centralized
-// so the title attribute and tooltip stay in sync across all rows.
-const VERIFICATION_MUTATION_DISABLED_TITLE =
-  'Accept is unavailable — the verification-mutation endpoint is not yet exposed by the backend.';
-
-const formatRoleCell = (user: User): string => {
-  const roleName = user.roleName?.trim();
-  return roleName && roleName.length > 0 ? roleName : 'Pending role assignment';
-};
-
 export const RoleRequests = () => {
+  const { t } = useI18n();
   useAdminGuard();
   const [rows, setRows] = useState<User[]>([]);
   const [search, setSearch] = useState('');
@@ -94,6 +78,20 @@ export const RoleRequests = () => {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<User | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const VERIFICATION_STATUS_LABEL: Record<AdminVerificationStatus | 'UNKNOWN', string> = {
+    Pending: t('common.status.pending'),
+    Accepted: t('common.status.accepted'),
+    Rejected: t('common.status.rejected'),
+    UNKNOWN: t('common.status.unknown'),
+  };
+
+  const VERIFICATION_MUTATION_DISABLED_TITLE = t('admin.roleRequests.action.mutationDisabled');
+
+  const formatRoleCell = (user: User): string => {
+    const roleName = user.roleName?.trim();
+    return roleName && roleName.length > 0 ? roleName : t('admin.roleRequests.table.pendingRole');
+  };
 
   // Default to newest-created-first so a newly submitted request doesn't
   // disappear at the bottom of the queue. The user can override per column.
@@ -108,13 +106,13 @@ export const RoleRequests = () => {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Role requests could not be loaded. Please try again.',
+          : t('admin.roleRequests.error.tryAgain'),
       );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -200,9 +198,9 @@ export const RoleRequests = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · VERIFICATION"
-        title="Role Requests"
-        description="Review and process user role verification requests. Pending requests are auto-loaded; use the filter to inspect approved or rejected history."
+        eyebrow={t('admin.roleRequests.eyebrow')}
+        title={t('admin.roleRequests.title')}
+        description={t('admin.roleRequests.description')}
         accent={ROLE_ACCENT}
       />
 
@@ -214,8 +212,8 @@ export const RoleRequests = () => {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search by name, email, ID, or role"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.roleRequests.searchPlaceholder')}
+        refreshLabel={t('admin.roleRequests.refresh')}
         filters={
           <>
             <span className={styles.filterIcon}>
@@ -232,10 +230,10 @@ export const RoleRequests = () => {
               {STATUS_FILTERS.map((filterStatus) => (
                 <option key={filterStatus} value={filterStatus}>
                   {filterStatus === 'PENDING'
-                    ? 'Pending'
+                    ? t('common.status.pending')
                     : filterStatus === 'ACCEPTED'
-                    ? 'Approved'
-                    : 'Denied'}
+                    ? t('common.status.approved')
+                    : t('common.status.denied')}
                 </option>
               ))}
             </select>
@@ -252,7 +250,7 @@ export const RoleRequests = () => {
           <div className={styles.errorWrap} data-testid="role-requests-error">
             <ErrorBanner
               tone="error"
-              title="Could not load role requests"
+              title={t('admin.roleRequests.error.loadFailed')}
               message={error}
               retry={
                 <Button
@@ -261,7 +259,7 @@ export const RoleRequests = () => {
                   onClick={() => void load()}
                   disabled={loading || refreshing}
                 >
-                  {loading || refreshing ? 'Retrying…' : 'Retry'}
+                  {loading || refreshing ? t('admin.roleRequests.retrying') : t('admin.roleRequests.retry')}
                 </Button>
               }
             />
@@ -269,16 +267,16 @@ export const RoleRequests = () => {
         ) : hasNoMatch ? (
           <EmptyState
             icon={<Inbox size={20} />}
-            title="No matching role requests"
-            description={`No role requests match "${search.trim()}"${
-              status !== 'PENDING' ? ` in ${status.toLowerCase()}` : ''
-            }.`}
+            title={t('admin.roleRequests.empty.noMatchTitle')}
+            description={t('admin.roleRequests.empty.noMatchDesc')
+              .replace('{search}', search.trim())
+              .replace('{status}', status !== 'PENDING' ? t('admin.roleRequests.empty.noMatchDescStatus').replace('{status}', t(`common.status.${status.toLowerCase()}`)) : '')}
           />
         ) : totalItems === 0 ? (
           <EmptyState
             icon={<Inbox size={20} />}
-            title={`No ${status.toLowerCase()} role requests`}
-            description="When users submit a verification request, it will appear here."
+            title={t('admin.roleRequests.empty.noDataTitle').replace('{status}', t(`common.status.${status.toLowerCase()}`))}
+            description={t('admin.roleRequests.empty.noDataDesc')}
           />
         ) : (
           <>
@@ -289,7 +287,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="name"
-                        label="User"
+                        label={t('admin.roleRequests.table.user')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -297,7 +295,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="role"
-                        label="Assigned / Pending Role"
+                        label={t('admin.roleRequests.table.role')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -305,7 +303,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="email"
-                        label="Email"
+                        label={t('admin.roleRequests.table.email')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -313,14 +311,14 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="verification"
-                        label="Verification Status"
+                        label={t('admin.roleRequests.table.verificationStatus')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         filterOptions={[
-                          { value: 'ALL', label: 'All statuses' },
-                          { value: 'PENDING', label: 'Pending' },
-                          { value: 'ACCEPTED', label: 'Approved' },
-                          { value: 'REJECTED', label: 'Denied' },
+                          { value: 'ALL', label: t('admin.roleRequests.status.allStatuses') },
+                          { value: 'PENDING', label: t('common.status.pending') },
+                          { value: 'ACCEPTED', label: t('common.status.approved') },
+                          { value: 'REJECTED', label: t('common.status.denied') },
                         ]}
                         activeFilter={status}
                         onFilterChange={(next) =>
@@ -328,7 +326,7 @@ export const RoleRequests = () => {
                         }
                       />
                     </th>
-                    <th>Actions</th>
+                    <th>{t('admin.roleRequests.table.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -355,11 +353,11 @@ export const RoleRequests = () => {
                         <td>
                           {row.isEmailVerified ? (
                             <span className={`${styles.statusPill} ${styles.statusAPPROVED}`}>
-                              Verified
+                              {t('admin.roleRequests.table.emailVerified')}
                             </span>
                           ) : (
                             <span className={`${styles.statusPill} ${styles.statusPENDING}`}>
-                              Not verified
+                              {t('admin.roleRequests.table.emailNotVerified')}
                             </span>
                           )}
                         </td>
@@ -382,10 +380,10 @@ export const RoleRequests = () => {
                               className={`${styles.actionButton} ${styles.inspectButton}`}
                               onClick={() => handleOpenDetails(row)}
                               type="button"
-                              title="View full submission details & proof document"
+                              title={t('admin.roleRequests.action.viewDetailsTitle')}
                             >
                               <Eye size={14} />
-                              View Details
+                              {t('admin.roleRequests.action.viewDetails')}
                             </button>
 
                             {pending && (
@@ -399,7 +397,7 @@ export const RoleRequests = () => {
                                   disabled
                                 >
                                   <Check size={14} />
-                                  Accept
+                                  {t('admin.roleRequests.action.accept')}
                                 </button>
                                 <button
                                   className={`${styles.actionButton} ${styles.denyButton}`}
@@ -410,7 +408,7 @@ export const RoleRequests = () => {
                                   disabled
                                 >
                                   <X size={14} />
-                                  Reject
+                                  {t('admin.roleRequests.action.reject')}
                                 </button>
                               </>
                             )}
@@ -431,7 +429,7 @@ export const RoleRequests = () => {
               onPrev={prev}
               onNext={next}
               onPage={setPage}
-              itemLabel="role requests"
+              itemLabel={t('admin.roleRequests.itemLabel')}
             />
           </>
         )}

@@ -13,7 +13,7 @@ import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBa
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
 import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
 import { useShortcuts } from '../hooks/useShortcuts';
-import { useI18n } from '../i18n/I18nContext';
+import { useI18n, useLocale } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -178,6 +178,8 @@ const ProfileDropdown = ({
   onProfileClick: () => void;
   showProfileAction: boolean;
 }) => {
+  const locale = useLocale();
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
@@ -231,19 +233,19 @@ const ProfileDropdown = ({
       </button>
 
       {isOpen && (
-        <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label="Account menu">
+        <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label={copy('Account menu', 'Menu tài khoản')}>
           {showProfileAction ? (
             <>
               <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
                 <User size={16} />
-                <span>My Profile & Role Upgrades</span>
+                <span>{copy('My Profile & Role Upgrades', 'Hồ sơ cá nhân & Nâng cấp vai trò')}</span>
               </button>
               <div className={styles.dropdownDivider}></div>
             </>
           ) : null}
           <button type="button" role="menuitem" className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
             <LogOut size={16} />
-            <span>Log out</span>
+            <span>{copy('Log out', 'Đăng xuất')}</span>
           </button>
         </div>
       )}
@@ -383,6 +385,28 @@ export const MainLayout = () => {
   };
 
   const { t: tr } = useI18n();
+  const locale = useLocale();
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
+
+  const formatRole = (role: string): string => {
+    if (locale !== 'vi') return role;
+    switch (role) {
+      case 'Graduate Student':
+        return 'Học viên cao học';
+      case 'Lecturer':
+        return 'Giảng viên';
+      case 'Researcher':
+        return 'Nhà nghiên cứu';
+      case 'Reviewer':
+        return 'Người phản biện';
+      case 'Admin':
+        return 'Quản trị viên';
+      case 'Guest':
+        return 'Khách';
+      default:
+        return role;
+    }
+  };
 
   const handleToggleSidebar = (): void => {
     setIsSidebarCollapsed((collapsed) => !collapsed);
@@ -537,7 +561,7 @@ export const MainLayout = () => {
     // workspace shortcuts the verified-guard would bounce them from anyway.
     if (isGuest) {
       return [
-        { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
+        { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
       ];
     }
     switch (activeRole) {
@@ -548,57 +572,57 @@ export const MainLayout = () => {
           // React Router's NavLink default prefix matching would otherwise
           // keep Dashboard highlighted on every admin page (Phase C
           // defect 3B).
-          { to: ROUTES.ADMIN, label: 'Dashboard', icon: <DashboardIcon size={20} />, end: true },
-          { to: ROUTES.ADMIN_PAPER_SUBMISSIONS, label: 'Paper Submissions', icon: <PapersIcon size={20} /> },
-          { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: 'Reviewer Assignments', icon: <AssignmentsIcon size={20} /> },
-          { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: 'Published Papers', icon: <PublicationIcon size={20} /> },
-          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: 'User Verification', icon: <RoleRequestsIcon size={20} /> },
-          { to: ROUTES.ADMIN_ACCOUNTS, label: 'Accounts', icon: <AccountsIcon size={20} /> },
-          { to: ROUTES.ADMIN_TRANSACTIONS, label: 'Transactions', icon: <TransactionsIcon size={20} /> },
-          { to: ROUTES.ADMIN_REPORTS, label: 'Reports', icon: <ReportsIcon size={20} /> },
-          { to: ROUTES.ADMIN_PACKAGES, label: 'Annual Fees', icon: <PackagesIcon size={20} /> },
+          { to: ROUTES.ADMIN, label: copy('Dashboard', 'Bảng điều khiển'), icon: <DashboardIcon size={20} />, end: true },
+          { to: ROUTES.ADMIN_PAPER_SUBMISSIONS, label: copy('Paper Submissions', 'Bài nộp duyệt'), icon: <PapersIcon size={20} /> },
+          { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: copy('Reviewer Assignments', 'Phân công phản biện'), icon: <AssignmentsIcon size={20} /> },
+          { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: copy('Published Papers', 'Bài báo đã xuất bản'), icon: <PublicationIcon size={20} /> },
+          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: copy('User Verification', 'Xác thực người dùng'), icon: <RoleRequestsIcon size={20} /> },
+          { to: ROUTES.ADMIN_ACCOUNTS, label: copy('Accounts', 'Tài khoản'), icon: <AccountsIcon size={20} /> },
+          { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
+          { to: ROUTES.ADMIN_REPORTS, label: copy('Reports', 'Báo cáo vi phạm'), icon: <ReportsIcon size={20} /> },
+          { to: ROUTES.ADMIN_PACKAGES, label: copy('Annual Fees', 'Phí thường niên'), icon: <PackagesIcon size={20} /> },
 
-          { to: ROUTES.ADMIN_AUDIT_LOGS, label: 'Audit Logs', icon: <AuditLogsIcon size={20} /> },
+          { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký hệ thống'), icon: <AuditLogsIcon size={20} /> },
         ];
       case 'Reviewer':
         return [
-          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.REVIEWER_ASSIGNMENTS, label: 'Review Assignments', icon: <AssignmentsIcon size={20} /> },
-          { to: ROUTES.PROFESSIONAL_PROFILE, label: 'Professional Profile', icon: <BriefcaseBusiness size={20} />, end: true },
+          { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.REVIEWER_ASSIGNMENTS, label: copy('Review Assignments', 'Nhiệm vụ phản biện'), icon: <AssignmentsIcon size={20} /> },
+          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
         ];
       case 'Lecturer':
         return [
           // Top-level entry points (shared with all roles).
-          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
+          { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
 
           // PhasedReport core flow — read top-to-bottom in workflow order:
           // define a Topic → assign Groups → configure Milestones for a
           // Topic/Group → review Phase Reports submitted against those
           // milestones → manage reference Materials used by all of the
           // above.
-          { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: 'Research Topics', icon: <GroupIcon size={20} /> },
-          { to: ROUTES.RESEARCH_GROUP, label: 'Research Groups', icon: <GroupIcon size={20} />, activeFor: ['/lecturer/groups'] },
-          { to: ROUTES.CONFIGURE_MILESTONES, label: 'Milestones', icon: <Settings size={20} /> },
-          { to: ROUTES.LECTURER_PHASE_REPORTS, label: 'Phase Reports', icon: <PapersIcon size={20} /> },
-          { to: ROUTES.LECTURER_MATERIALS, label: 'Materials', icon: <Library size={20} /> },
+          { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: copy('Research Topics', 'Đề tài nghiên cứu'), icon: <GroupIcon size={20} /> },
+          { to: ROUTES.RESEARCH_GROUP, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} />, activeFor: ['/lecturer/groups'] },
+          { to: ROUTES.CONFIGURE_MILESTONES, label: copy('Milestones', 'Mốc tiến độ'), icon: <Settings size={20} /> },
+          { to: ROUTES.LECTURER_PHASE_REPORTS, label: copy('Phase Reports', 'Báo cáo giai đoạn'), icon: <PapersIcon size={20} /> },
+          { to: ROUTES.LECTURER_MATERIALS, label: copy('Materials', 'Tài liệu học tập'), icon: <Library size={20} /> },
         ];
       case 'Graduate Student':
         return [
-          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: 'Research Groups', icon: <GroupIcon size={20} /> },
-          { to: ROUTES.SUBMIT_REPORT, label: 'Submit Report', icon: <Upload size={20} /> },
+          { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} /> },
+          { to: ROUTES.SUBMIT_REPORT, label: copy('Submit Report', 'Nộp báo cáo'), icon: <Upload size={20} /> },
         ];
       case 'Researcher':
       default:
         return [
-          { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
-          { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
-          { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Research Papers', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
+          { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
+          { to: ROUTES.RESEARCHER_SUBMISSIONS, label: copy('My Research Papers', 'Bài báo của tôi'), icon: <PapersIcon size={20} /> },
         ];
     }
   };
@@ -652,8 +676,8 @@ export const MainLayout = () => {
         </div>
 
         <div className={styles.roleContext}>
-          <span className={styles.roleContextLabel}>Research workspace</span>
-          <strong>{displayedRole}</strong>
+          <span className={styles.roleContextLabel}>{copy('Research workspace', 'Không gian nghiên cứu')}</span>
+          <strong>{formatRole(displayedRole)}</strong>
         </div>
 
         <nav
@@ -716,8 +740,8 @@ export const MainLayout = () => {
             <NavLink
               to={ROUTES.SUBSCRIPTION}
               end={false}
-              aria-label="My Subscription"
-              title="My Subscription"
+              aria-label={copy('My Subscription', 'Gói đăng ký của tôi')}
+              title={copy('My Subscription', 'Gói đăng ký của tôi')}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
               }
@@ -725,7 +749,7 @@ export const MainLayout = () => {
               <span className={styles.navIcon}>
                 <PackagesIcon size={20} />
               </span>
-              <span className={styles.navLabel}>My Subscription</span>
+              <span className={styles.navLabel}>{copy('My Subscription', 'Gói đăng ký của tôi')}</span>
             </NavLink>
           </div>
         )}
@@ -740,8 +764,9 @@ export const MainLayout = () => {
             type="button"
             className={styles.sidebarCollapseBtn}
             onClick={handleToggleSidebar}
-            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            aria-expanded={!isSidebarCollapsed}
+            aria-label={isSidebarCollapsed ? copy('Expand navigation', 'Mở rộng thanh điều hướng') : copy('Collapse navigation', 'Thu gọn thanh điều hướng')}
+            title={isSidebarCollapsed ? copy('Expand navigation', 'Mở rộng thanh điều hướng') : copy('Collapse navigation', 'Thu gọn thanh điều hướng')}
             data-testid="sidebar-collapse-toggle"
           >
             {isSidebarCollapsed ? (
@@ -816,10 +841,10 @@ export const MainLayout = () => {
                 ref={searchRef}
                 type="search"
                 className={styles.searchInput}
-                placeholder="Search…"
+                placeholder={copy('Search…', 'Tìm kiếm…')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search the platform"
+                aria-label={copy('Search the platform', 'Tìm kiếm trên hệ thống')}
               />
             </div>
 
@@ -830,8 +855,8 @@ export const MainLayout = () => {
               type="button"
               className={styles.shortcutButton}
               onClick={() => setShortcutsOpen(true)}
-              aria-label="Show keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
+              aria-label={copy('Show keyboard shortcuts', 'Hiển thị phím tắt')}
+              title={copy('Keyboard shortcuts (?)', 'Phím tắt (?)')}
             >
               <span aria-hidden>?</span>
             </button>
@@ -854,9 +879,9 @@ export const MainLayout = () => {
               data-testid="theme-toggle"
             >
               {theme === 'archive-dusk' ? (
-                <SunIcon size={18} aria-label={tr('header.themeToLight')} />
+                <SunIcon size={18} aria-label={tr('header.themeToLight')} className={styles.sunIcon} />
               ) : (
-                <MoonIcon size={18} aria-label={tr('header.themeToDark')} />
+                <MoonIcon size={18} aria-label={tr('header.themeToDark')} className={styles.moonIcon} />
               )}
             </button>
 
@@ -879,13 +904,13 @@ export const MainLayout = () => {
                   className={`${styles.toggleSwitch} ${isReviewerAvailable ? styles.toggleSwitchOn : styles.toggleSwitchOff}`}
                   onClick={handleToggleAvailability}
                   disabled={isUpdatingAvailability || beAvailabilityLoading}
-                  aria-label={isReviewerAvailable ? 'Turn off availability' : 'Turn on availability'}
+                  aria-label={isReviewerAvailable ? copy('Turn off availability', 'Tắt nhận bài phản biện') : copy('Turn on availability', 'Bật nhận bài phản biện')}
                   aria-pressed={isReviewerAvailable}
                   aria-describedby="availability-help"
                   title={
                     isReviewerAvailable
-                      ? 'You are receiving review assignments. Click to pause new assignments.'
-                      : 'You are not receiving review assignments. Click to start receiving them.'
+                      ? copy('You are receiving review assignments. Click to pause new assignments.', 'Bạn đang nhận bài phản biện. Nhấn để tạm dừng.')
+                      : copy('You are not receiving review assignments. Click to start receiving them.', 'Bạn đang tạm dừng nhận bài. Nhấn để bật lại.')
                   }
                 >
                   <span
@@ -895,7 +920,7 @@ export const MainLayout = () => {
                 <span
                   className={`${styles.availabilityLabel} ${isReviewerAvailable ? styles.availabilityLabelAvailable : styles.availabilityLabelUnavailable}`}
                 >
-                  {isReviewerAvailable ? 'Available' : 'Unavailable'}
+                  {isReviewerAvailable ? copy('Available', 'Sẵn sàng nhận bài') : copy('Unavailable', 'Không nhận bài')}
                 </span>
                 <span id="availability-help" className={styles.srOnly}>
                   Controls whether the platform assigns new peer-review
@@ -914,7 +939,7 @@ export const MainLayout = () => {
             {/* Profile Dropdown */}
             <ProfileDropdown
               username={displayName}
-              activeRole={displayedRole}
+              activeRole={formatRole(displayedRole)}
               avatarInitials={avatarInitials}
               accountTier={accountTier}
               onLogout={handleLogout}

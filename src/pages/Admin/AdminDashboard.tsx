@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
 import type {
   AnalyticsMetric,
@@ -26,21 +27,21 @@ import type {
 import { MetricCard } from '../../components/workspace/MetricCard';
 import styles from './AdminDashboard.module.css';
 
-const DASHBOARD_UNAVAILABLE = 'Data unavailable. Please retry.';
+const DASHBOARD_UNAVAILABLE = 'admin.dashboard.dataUnavailable';
 const ROLE_ACCENT = 'var(--ars-admin)';
 
 const ANALYTICS_RANGES = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 
 const RANGE_LABELS: Record<AnalyticsRange, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  yearly: 'Yearly',
+  daily: 'admin.dashboard.range.daily',
+  weekly: 'admin.dashboard.range.weekly',
+  monthly: 'admin.dashboard.range.monthly',
+  yearly: 'admin.dashboard.range.yearly',
 };
 
 const METRIC_TITLES: Record<AnalyticsMetric, string> = {
-  user_registrations: 'Member growth',
-  revenue: 'Revenue',
+  user_registrations: 'admin.dashboard.metric.user_registrations',
+  revenue: 'admin.dashboard.metric.revenue',
 };
 
 const formatNumber = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -64,15 +65,16 @@ const logDiag = (label: string, error: unknown) => {
   }
 };
 
-const WidgetErrorState = ({ message, onRetry, testId }: {
+const WidgetErrorState = ({ message, onRetry, testId, t }: {
   message: string;
   onRetry: () => void;
   testId: string;
+  t: (k: string) => string;
 }) => (
   <div className={styles.widgetError} role="alert" data-testid={testId}>
     <AlertTriangle size={16} aria-hidden="true" />
-    <span>{message}</span>
-    <button type="button" onClick={onRetry}>Retry</button>
+    <span>{t(message)}</span>
+    <button type="button" onClick={onRetry}>{t('admin.dashboard.retry')}</button>
   </div>
 );
 
@@ -84,6 +86,7 @@ interface AnalyticsChartProps {
   error: string | null;
   onRangeChange: (range: AnalyticsRange) => void;
   onRetry: () => void;
+  t: (k: string) => string;
 }
 
 const AnalyticsChart = ({
@@ -94,8 +97,9 @@ const AnalyticsChart = ({
   error,
   onRangeChange,
   onRetry,
+  t,
 }: AnalyticsChartProps) => {
-  const title = `${METRIC_TITLES[metric]} - ${RANGE_LABELS[range].toLowerCase()}`;
+  const title = `${t(METRIC_TITLES[metric])} - ${t(RANGE_LABELS[range]).toLowerCase()}`;
   const points = series?.points ?? [];
   const valueFormatter = metric === 'revenue' ? formatRevenue : formatNumber;
 
@@ -103,10 +107,10 @@ const AnalyticsChart = ({
     <section className={styles.chartSection} aria-labelledby={`${metric}-chart-title`}>
       <div className={styles.chartHeader}>
         <div>
-          <p className={styles.chartEyebrow}>Live analytics</p>
+          <p className={styles.chartEyebrow}>{t('admin.dashboard.liveAnalytics')}</p>
           <h2 id={`${metric}-chart-title`}>{title}</h2>
         </div>
-        <div className={styles.rangeSelector} aria-label={`${METRIC_TITLES[metric]} time range`}>
+        <div className={styles.rangeSelector} aria-label={`${t(METRIC_TITLES[metric])} time range`}>
           {ANALYTICS_RANGES.map((option) => (
             <button
               key={option}
@@ -115,18 +119,18 @@ const AnalyticsChart = ({
               aria-pressed={range === option}
               onClick={() => onRangeChange(option)}
             >
-              {RANGE_LABELS[option]}
+              {t(RANGE_LABELS[option])}
             </button>
           ))}
         </div>
       </div>
 
       {error ? (
-        <WidgetErrorState message={error} onRetry={onRetry} testId={`${metric}-chart-error`} />
+        <WidgetErrorState message={error} onRetry={onRetry} testId={`${metric}-chart-error`} t={t} />
       ) : loading ? (
-        <div className={styles.chartLoading} role="status">Loading {METRIC_TITLES[metric].toLowerCase()} data...</div>
+        <div className={styles.chartLoading} role="status">{t('admin.dashboard.loadingPrefix')} {t(METRIC_TITLES[metric]).toLowerCase()}...</div>
       ) : points.length === 0 ? (
-        <div className={styles.chartEmpty}>No analytics data available yet.</div>
+        <div className={styles.chartEmpty}>{t('admin.dashboard.emptyData')}</div>
       ) : (
         <div className={styles.chartFrame}>
           <ResponsiveContainer width="100%" height="100%">
@@ -163,7 +167,7 @@ const AnalyticsChart = ({
               />
               <Bar
                 dataKey="value"
-                name={METRIC_TITLES[metric]}
+                name={t(METRIC_TITLES[metric])}
                 fill={metric === 'revenue' ? 'var(--ars-admin)' : 'var(--ars-blue-action)'}
                 radius={[2, 2, 0, 0]}
               />
@@ -176,6 +180,7 @@ const AnalyticsChart = ({
 };
 
 export const AdminDashboard = () => {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -279,25 +284,25 @@ export const AdminDashboard = () => {
         <section className={styles.snapshotSection} aria-labelledby="platform-snapshot-title">
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.sectionEyebrow}>Live snapshot</p>
-              <h2 id="platform-snapshot-title">Platform records</h2>
+              <p className={styles.sectionEyebrow}>{t('admin.dashboard.snapshotEyebrow')}</p>
+              <h2 id="platform-snapshot-title">{t('admin.dashboard.snapshotTitle')}</h2>
             </div>
           </div>
           {summaryError ? (
-            <WidgetErrorState message={summaryError} onRetry={() => void loadAll()} testId="summary-error" />
+            <WidgetErrorState message={summaryError} onRetry={() => void loadAll()} testId="summary-error" t={t} />
           ) : (
             <div className={styles.metricGrid}>
-              <MetricCard label="Registered members" value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)} annotation="Current total from analytics" icon={<UsersIcon size={16} />} accent={ROLE_ACCENT} />
+              <MetricCard label={t('admin.dashboard.registeredMembers')} value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)} annotation={t('admin.dashboard.registeredMembersAnnotation')} icon={<UsersIcon size={16} />} accent={ROLE_ACCENT} />
               {publishedError ? (
-                <WidgetErrorState message={publishedError} onRetry={() => void loadAll()} testId="published-count-error" />
+                <WidgetErrorState message={publishedError} onRetry={() => void loadAll()} testId="published-count-error" t={t} />
               ) : (
-                <MetricCard label="Published papers" value={loadingPublished || publishedCount === null ? '—' : formatNumber(publishedCount)} annotation="Live count from /api/Paper?status=Published" icon={<PapersIcon size={16} />} accent={ROLE_ACCENT} />
+                <MetricCard label={t('admin.dashboard.publishedPapers')} value={loadingPublished || publishedCount === null ? '—' : formatNumber(publishedCount)} annotation={t('admin.dashboard.publishedPapersAnnotation')} icon={<PapersIcon size={16} />} accent={ROLE_ACCENT} />
               )}
             </div>
           )}
         </section>
 
-        <section className={styles.analyticsSection} aria-label="Platform analytics">
+        <section className={styles.analyticsSection} aria-label={t('admin.dashboard.platformAnalytics')}>
           <AnalyticsChart
             metric="user_registrations"
             range={analyticsRange}
@@ -306,6 +311,7 @@ export const AdminDashboard = () => {
             error={analyticsError}
             onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
+            t={t}
           />
           <AnalyticsChart
             metric="revenue"
@@ -315,6 +321,7 @@ export const AdminDashboard = () => {
             error={analyticsError}
             onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
+            t={t}
           />
         </section>
 

@@ -34,7 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -79,6 +79,7 @@ type ReportsSortColumn =
   | 'score'
   | 'status';
 export const StudentResearchGroups = (): JSX.Element => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const locale = useLocale();
   const copy = (english: string, vietnamese: string): string =>
@@ -375,12 +376,12 @@ export const StudentResearchGroups = (): JSX.Element => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="RESEARCH GROUPS"
-        title="My Research Groups"
+        eyebrow={copy('RESEARCH GROUPS', 'NHÓM NGHIÊN CỨU')}
+        title={copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
         description={
           guidanceProject
-            ? `Active guidance project: ${guidanceProject.title}`
-            : 'You have not yet started a guidance project.'
+            ? `${copy('Active guidance project', 'Dự án hướng dẫn đang thực hiện')}: ${guidanceProject.title}`
+            : copy('You have not yet started a guidance project.', 'Bạn chưa tham gia dự án hướng dẫn nào.')
         }
         accent={ROLE_ACCENT}
         actions={
@@ -397,7 +398,7 @@ export const StudentResearchGroups = (): JSX.Element => {
             onClick={handleRefresh}
             disabled={isLoading}
           >
-            Refresh
+            {copy('Refresh', 'Làm mới')}
           </Button>
         }
       />
@@ -420,7 +421,7 @@ export const StudentResearchGroups = (): JSX.Element => {
           onClick={() => setActiveTab('my-groups')}
         >
           <Users size={16} aria-hidden />
-          {copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
+          {t('student.researchGroups.myGroups', 'Nhóm nghiên cứu của tôi')}
           <span className={styles.tabBadge}>{joinedGroups.length}</span>
         </button>
         <button
@@ -429,7 +430,7 @@ export const StudentResearchGroups = (): JSX.Element => {
           onClick={() => setActiveTab('explore')}
         >
           <Compass size={16} aria-hidden />
-          {copy('Explore Research Groups', 'Khám phá nhóm nghiên cứu')}
+          {t('student.researchGroups.explore', 'Khám phá nhóm nghiên cứu')}
           <span className={styles.tabBadge}>{allGroups.length}</span>
         </button>
       </div>
@@ -438,7 +439,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              {copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
+              {t('student.researchGroups.myGroups', 'Nhóm nghiên cứu của tôi')}
             </h2>
             <p className={styles.sectionSubtitle}>
               {copy(
@@ -475,7 +476,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           {isPending ? (
                             <span className={styles.pendingBadge}>
                               <Clock3 size={13} aria-hidden />
-                              {copy('Pending approval', 'Chờ duyệt')}
+                              {t('student.researchGroups.pending', 'Chờ duyệt')}
                             </span>
                           ) : (
                             <span className={styles.activityPill}>
@@ -485,7 +486,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           {g.isLeader ? (
                             <span className={styles.leaderBadge}>
                               <Crown size={13} aria-hidden />
-                              {copy('Group leader', 'Trưởng nhóm')}
+                              {t('student.researchGroups.leader', 'Trưởng nhóm')}
                             </span>
                           ) : null}
                         </div>
@@ -517,11 +518,11 @@ export const StudentResearchGroups = (): JSX.Element => {
                     </div>
                     {isPending ? (
                       <Button variant="outline" size="sm" disabled leftIcon={<Clock3 size={13} />}>
-                        {copy('Pending approval', 'Đang chờ duyệt')}
+                        {t('student.researchGroups.pending', 'Đang chờ duyệt')}
                       </Button>
                     ) : (
                       <Button variant="primary" size="sm" onClick={() => handleSelectGroup(g.id)}>
-                        {copy('Open group workspace', 'Mở không gian nhóm')}
+                        {t('student.researchGroups.openWorkspace', 'Mở không gian nhóm')}
                       </Button>
                     )}
                   </li>
@@ -536,7 +537,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              {copy('Explore Research Groups', 'Khám phá nhóm nghiên cứu')}
+              {t('student.researchGroups.explore', 'Khám phá nhóm nghiên cứu')}
             </h2>
             <p className={styles.sectionSubtitle}>
               {copy(
@@ -647,11 +648,11 @@ export const StudentResearchGroups = (): JSX.Element => {
                       ) : isPendingJoin ? (
                         <span className={styles.pendingBadge}>
                           <Clock3 size={13} aria-hidden />
-                          {copy('Pending approval', 'Đang chờ duyệt')}
+                          {t('student.researchGroups.pending', 'Đang chờ duyệt')}
                         </span>
                       ) : isFull ? (
                         <span className={styles.fullButton}>
-                          {copy('This group is full', 'Nhóm này đã đủ thành viên')}
+                          {t('student.researchGroups.full', 'Nhóm này đã đủ thành viên')}
                         </span>
                       ) : (
                         <Button
@@ -661,7 +662,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           leftIcon={isApplying ? <Loader2 size={13} className={styles.spin} /> : undefined}
                           onClick={() => void handleApplyGroup(g)}
                         >
-                          {isApplying ? copy('Sending application', 'Đang gửi đơn') : copy('Apply to join', 'Xin gia nhập nhóm')}
+                          {isApplying ? copy('Sending application', 'Đang gửi đơn') : t('student.researchGroups.apply', 'Xin gia nhập nhóm')}
                         </Button>
                       )}
                     </div>
@@ -723,9 +724,9 @@ function WorkspaceView({
   phaseKey,
   phaseTitle,
 }: WorkspaceViewProps): JSX.Element {
+  const { t } = useI18n();
   const locale = useLocale();
-  const copy = (english: string, vietnamese: string): string =>
-    locale === 'en' ? english : vietnamese;
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
   const lecturerId = group.lecturerId;
 
   // Default sort by submitted (newest first) so recently submitted
@@ -737,11 +738,11 @@ function WorkspaceView({
   // pagination so the column sort and inline status dropdown affect
   // every page of the result set.
   const STATUS_FILTER_OPTIONS = [
-    { value: 'all' as const, label: 'All statuses' },
-    { value: 'WAITING' as const, label: 'Waiting' },
-    { value: 'SUBMITTED' as const, label: 'Submitted' },
-    { value: 'EVALUATED' as const, label: 'Evaluated' },
-    { value: 'REJECTED' as const, label: 'Rejected' },
+    { value: 'all' as const, label: copy('All statuses', 'Tất cả trạng thái') },
+    { value: 'WAITING' as const, label: copy('Waiting', 'Đang chờ') },
+    { value: 'SUBMITTED' as const, label: copy('Submitted', 'Đã nộp') },
+    { value: 'EVALUATED' as const, label: copy('Evaluated', 'Đã đánh giá') },
+    { value: 'REJECTED' as const, label: copy('Rejected', 'Đã từ chối') },
   ];
 
   const sortedFilteredReports = useMemo(() => {
@@ -868,13 +869,13 @@ function WorkspaceView({
         onClick={onBack}
         className={styles.backLinkBtn}
       >
-        Back to Research Groups
+        {copy('Back to Research Groups', 'Quay lại danh sách nhóm')}
       </Button>
 
       <PageHeader
-        eyebrow="GROUP WORKSPACE"
+        eyebrow={copy('GROUP WORKSPACE', 'KHÔNG GIAN NHÓM')}
         title={group.name}
-        description={`Supervised by ${lecturerName}${
+        description={`${copy('Supervised by', 'Giảng viên hướng dẫn')}: ${lecturerName}${
           group.description ? ` · ${group.description}` : ''
         }`}
         accent={ROLE_ACCENT}
@@ -886,11 +887,11 @@ function WorkspaceView({
               leftIcon={<FileText size={14} />}
               onClick={() => onOpenSubmit()}
             >
-              Submit milestone report
+              {copy('Submit milestone report', 'Nộp báo cáo giai đoạn')}
             </Button>
           ) : (
             <span className={styles.permissionNote} role="status">
-              Only your Group Leader can submit this phase report.
+              {copy('Only your Group Leader can submit this phase report.', 'Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo giai đoạn này.')}
             </span>
           )
         }
@@ -915,9 +916,9 @@ function WorkspaceView({
 
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Learning materials</h3>
+          <h3 className={styles.sectionTitle}>{copy('Learning materials', 'Tài liệu học tập')}</h3>
           <p className={styles.sectionSubtitle}>
-            Shared by your lecturer. Files appear here once published.
+            {copy('Shared by your lecturer. Files appear here once published.', 'Được chia sẻ bởi giảng viên. Tệp sẽ xuất hiện ở đây sau khi được tải lên.')}
           </p>
         </div>
         {materialsLoading ? (
@@ -925,15 +926,15 @@ function WorkspaceView({
         ) : visibleMaterials.length === 0 ? (
           <EmptyState
             icon={<BookOpen size={24} />}
-            title="No learning materials yet"
-            description="Lecturer materials will appear here once they publish them for this group."
+            title={copy('No learning materials yet', 'Chưa có tài liệu học tập nào')}
+            description={copy('Lecturer materials will appear here once they publish them for this group.', 'Tài liệu từ giảng viên sẽ hiển thị ở đây khi được chia sẻ cho nhóm này.')}
             compact
           />
         ) : (
           <ul className={styles.materialList}>
             {visibleMaterials.map((m) => (
               <li key={m.id ?? m.learningMaterialId ?? m.title} className={styles.materialItem}>
-                <span className={styles.materialTitle}>{m.title ?? 'Untitled material'}</span>
+                <span className={styles.materialTitle}>{m.title ?? copy('Untitled material', 'Tài liệu chưa đặt tên')}</span>
                 {m.fileUrl ? (
                   <a
                     href={m.fileUrl}
@@ -941,7 +942,7 @@ function WorkspaceView({
                     rel="noopener noreferrer"
                     className={styles.linkBtn}
                   >
-                    Open PDF
+                    {copy('Open PDF', 'Xem PDF')}
                   </a>
                 ) : null}
               </li>
@@ -952,10 +953,9 @@ function WorkspaceView({
 
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Group members</h3>
+          <h3 className={styles.sectionTitle}>{copy('Group members', 'Thành viên nhóm')}</h3>
           <p className={styles.sectionSubtitle}>
-            Other students assigned to this group. The list is filtered
-            client-side because BE does not expose `?researchGroupId=`.
+            {copy('Other students assigned to this group.', 'Các sinh viên khác tham gia vào nhóm nghiên cứu này.')}
           </p>
         </div>
         {membersLoading ? (
@@ -963,8 +963,8 @@ function WorkspaceView({
         ) : members.length === 0 ? (
           <EmptyState
             icon={<Users size={24} />}
-            title="No fellow members yet"
-            description="Other students in this group will appear here once they join."
+            title={copy('No fellow members yet', 'Chưa có thành viên nào khác')}
+            description={copy('Other students in this group will appear here once they join.', 'Các sinh viên khác trong nhóm sẽ xuất hiện ở đây khi tham gia.')}
             compact
           />
         ) : (
@@ -972,7 +972,7 @@ function WorkspaceView({
             {members.map((m) => (
               <li key={m.id ?? m.groupMemberId} className={styles.memberItem}>
                 <span className={styles.memberLabel}>
-                  Student #{m.studentId ?? '?'}
+                  {copy('Student', 'Sinh viên')} #{m.studentId ?? '?'}
                 </span>
                 <span className={styles.activityPill}>
                   {m.activityStatus ?? 'ACTIVE'}
@@ -985,10 +985,10 @@ function WorkspaceView({
 
       <section className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h3 className={styles.tableTitle}>Milestone Reports (Phase Reports)</h3>
+          <h3 className={styles.tableTitle}>{copy('Milestone Reports (Phase Reports)', 'Báo cáo giai đoạn (Phase Reports)')}</h3>
           {!isCurrentUserLeader && (
             <p className={styles.permissionNote} role="status">
-              Bạn là thành viên nhóm. Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo tiến độ.
+              {copy('You are a group member. Only the Group Leader can submit progress reports.', 'Bạn là thành viên nhóm. Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo tiến độ.')}
             </p>
           )}
         </div>
@@ -998,8 +998,8 @@ function WorkspaceView({
           onSearchChange={onSearchChange}
           onRefresh={onRefresh}
           isRefreshing={reportsLoading}
-          searchPlaceholder="Search by phase, status, or feedback…"
-          refreshLabel="Refresh"
+          searchPlaceholder={copy('Search by phase, status, or feedback…', 'Tìm kiếm theo giai đoạn, trạng thái, hoặc nhận xét…')}
+          refreshLabel={copy('Refresh', 'Làm mới')}
           filters={
             <label className={styles.filterField}>
               <select
@@ -1007,13 +1007,13 @@ function WorkspaceView({
                 onChange={(e) =>
                   onStatusFilterChange(e.target.value as StatusFilter)
                 }
-                aria-label="Filter reports by status"
+                aria-label={copy('Filter reports by status', 'Lọc báo cáo theo trạng thái')}
               >
-                <option value="all">All statuses</option>
-                <option value="WAITING">Waiting</option>
-                <option value="SUBMITTED">Submitted</option>
-                <option value="EVALUATED">Evaluated</option>
-                <option value="REJECTED">Rejected</option>
+                <option value="all">{copy('All statuses', 'Tất cả trạng thái')}</option>
+                <option value="WAITING">{copy('Waiting', 'Đang chờ')}</option>
+                <option value="SUBMITTED">{copy('Submitted', 'Đã nộp')}</option>
+                <option value="EVALUATED">{copy('Evaluated', 'Đã đánh giá')}</option>
+                <option value="REJECTED">{copy('Rejected', 'Đã từ chối')}</option>
               </select>
             </label>
           }
@@ -1024,15 +1024,15 @@ function WorkspaceView({
         ) : reports.length === 0 ? (
           <EmptyState
             icon={<Inbox size={24} />}
-            title="No reports yet"
-            description={isCurrentUserLeader ? "Use the Submit button on each Phase row below to upload a report." : "The group leader has not submitted any phase reports yet."}
+            title={copy('No reports yet', 'Chưa có báo cáo nào')}
+            description={isCurrentUserLeader ? copy('Use the Submit button on each Phase row below to upload a report.', 'Nhấn nút Nộp tại từng giai đoạn bên dưới để tải lên báo cáo.') : copy('The group leader has not submitted any phase reports yet.', 'Trưởng nhóm chưa nộp báo cáo giai đoạn nào.')}
             compact
           />
         ) : reportsTotalItems === 0 ? (
           <EmptyState
             icon={<Inbox size={24} />}
-            title="No matching reports"
-            description="No reports match the current filters."
+            title={copy('No matching reports', 'Không tìm thấy báo cáo phù hợp')}
+            description={copy('No reports match the current filters.', 'Không có báo cáo nào khớp với bộ lọc hiện tại.')}
             compact
           />
         ) : (
@@ -1044,7 +1044,7 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="phase"
-                        label="Phase"
+                        label={copy('Phase', 'Giai đoạn')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                       />
@@ -1052,7 +1052,7 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="milestone"
-                        label="Milestone"
+                        label={copy('Milestone', 'Cột mốc')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                       />
@@ -1060,7 +1060,7 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="submitted"
-                        label="Submitted"
+                        label={copy('Submitted', 'Ngày nộp')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                       />
@@ -1068,7 +1068,7 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="deadline"
-                        label="Deadline"
+                        label={copy('Deadline', 'Hạn nộp')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                       />
@@ -1076,7 +1076,7 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="status"
-                        label="Status"
+                        label={copy('Status', 'Trạng thái')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                         filterOptions={STATUS_FILTER_OPTIONS}
@@ -1089,13 +1089,13 @@ function WorkspaceView({
                     <th>
                       <SortableHeader
                         column="score"
-                        label="Score"
+                        label={copy('Score', 'Điểm')}
                         cycleSort={reportsSort.cycleSort}
                         ariaSortFor={reportsSort.ariaSortFor}
                         align="right"
                       />
                     </th>
-                    <th>Action</th>
+                    <th>{copy('Action', 'Thao tác')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1134,7 +1134,7 @@ function WorkspaceView({
                             </span>
                           ) : (
                             <span className={styles.mutedText}>
-                              {copy('Not submitted', 'Chưa nộp')}
+                              {t('student.phaseReport.notSubmitted', 'Chưa nộp')}
                             </span>
                           )}
                         </td>
@@ -1148,7 +1148,7 @@ function WorkspaceView({
                               )}
                               {report.isOverdue ? (
                                 <span className={styles.overdueLabel}>
-                                  {copy('Overdue', 'Quá hạn')}
+                                  {t('student.phaseReport.overdue', 'Quá hạn')}
                                 </span>
                               ) : null}
                             </span>
@@ -1178,7 +1178,7 @@ function WorkspaceView({
                                 onClick={() => setViewDetailReport(report)}
                               >
                                 <FileText size={12} aria-hidden />
-                                {copy('View details', 'Xem chi tiết')}
+                                {t('student.phaseReport.viewDetail', 'Xem chi tiết')}
                               </button>
                             ) : null}
                             {report.reportFileUrl ? (
@@ -1188,7 +1188,7 @@ function WorkspaceView({
                                 rel="noopener noreferrer"
                                 className={styles.linkBtn}
                               >
-                                Open PDF
+                                {copy('Open PDF', 'Xem PDF')}
                               </a>
                             ) : null}
                             {/* Leader only: Submit or Resubmit */}
@@ -1201,8 +1201,8 @@ function WorkspaceView({
                                 }}
                               >
                                 {report.status === 'REJECTED'
-                                  ? copy('Resubmit', 'Nộp lại')
-                                  : `${copy('Submit phase', 'Nộp Phase')} ${report.phaseNumber ?? ''}`}
+                                  ? t('student.phaseReport.resubmit', 'Nộp lại')
+                                  : `${t('student.phaseReport.submit', 'Nộp Phase')} ${report.phaseNumber ?? ''}`}
                               </button>
                             ) : null}
                           </div>
@@ -1222,7 +1222,7 @@ function WorkspaceView({
               onPrev={prevReportsPage}
               onNext={nextReportsPage}
               onPage={setReportsPage}
-              itemLabel="reports"
+              itemLabel={copy('reports', 'báo cáo')}
             />
           </>
         )}

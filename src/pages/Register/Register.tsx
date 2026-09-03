@@ -4,6 +4,7 @@ import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
 import { roleService } from '../../services/role.service';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../i18n/I18nContext';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { ROUTES } from '../../routes/paths';
@@ -71,6 +72,7 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
 };
 
 export const Register = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
@@ -447,14 +449,13 @@ export const Register = () => {
     <div className={styles.registerPage}>
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research Sharing</span>
+        <span className={styles.brandText}>{t('app.brandName', 'Academic Research Sharing')}</span>
       </header>
 
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Create your Account</h1>
+        <h1 className={styles.pageTitle}>{t('register.pageTitle', 'Create your Account')}</h1>
         <p className={styles.pageSubtitle}>
-          Join the ARS community to publish, review, and collaborate on academic
-          research.
+          {t('register.pageSubtitle', 'Join the ARS community to publish, review, and collaborate on academic research.')}
         </p>
       </header>
 
@@ -470,14 +471,14 @@ export const Register = () => {
             htmlFor="fullName"
             className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
           >
-            Full Name
+            {t('register.fullName', 'Full Name')}
           </label>
           <input
             id="fullName"
             name="fullName"
             type="text"
             className={`${styles.nativeInput} ${errors.fullName ? styles['nativeInput--error'] : ''}`}
-            placeholder="e.g., Dr. Nguyen Van A"
+            placeholder={t('register.fullNamePlaceholder', 'e.g., Dr. Nguyen Van A')}
             value={form.fullName}
             onChange={handleChange}
             onBlur={() => handleBlur('fullName')}
@@ -498,14 +499,14 @@ export const Register = () => {
             htmlFor="email"
             className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
           >
-            Email Address
+            {t('auth.email', 'Email Address')}
           </label>
           <input
             id="email"
             name="email"
             type="email"
             className={`${styles.nativeInput} ${errors.email ? styles['nativeInput--error'] : ''}`}
-            placeholder="email@example.com"
+            placeholder={t('register.emailPlaceholder', 'email@example.com')}
             value={form.email}
             onChange={handleChange}
             onBlur={() => handleBlur('email')}
@@ -526,14 +527,14 @@ export const Register = () => {
             htmlFor="phoneNumber"
             className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
           >
-            Phone Number
+            {t('register.phoneNumber', 'Phone Number')}
           </label>
           <input
             id="phoneNumber"
             name="phoneNumber"
             type="tel"
             className={`${styles.nativeInput} ${errors.phoneNumber ? styles['nativeInput--error'] : ''}`}
-            placeholder="0901234567"
+            placeholder={t('register.phonePlaceholder', '0901234567')}
             value={form.phoneNumber}
             onChange={handleChange}
             onBlur={() => handleBlur('phoneNumber')}
@@ -555,14 +556,14 @@ export const Register = () => {
               htmlFor="password"
               className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
             >
-              Password
+              {t('auth.password', 'Password')}
             </label>
             <input
               id="password"
               name="password"
               type="password"
               className={`${styles.nativeInput} ${errors.password ? styles['nativeInput--error'] : ''}`}
-              placeholder="Create a password"
+              placeholder={t('register.passwordPlaceholder', 'Create a password')}
               value={form.password}
               onChange={handleChange}
               onBlur={() => handleBlur('password')}
@@ -583,14 +584,14 @@ export const Register = () => {
               htmlFor="retypePassword"
               className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
             >
-              Retype Password
+              {t('register.retypePassword', 'Retype Password')}
             </label>
             <input
               id="retypePassword"
               name="retypePassword"
               type="password"
               className={`${styles.nativeInput} ${errors.retypePassword ? styles['nativeInput--error'] : ''}`}
-              placeholder="Retype your password"
+              placeholder={t('register.retypePasswordPlaceholder', 'Retype your password')}
               value={form.retypePassword}
               onChange={handleChange}
               onBlur={() => handleBlur('retypePassword')}
@@ -607,7 +608,7 @@ export const Register = () => {
           </div>
         </div>
         <p className={styles.passwordHelper}>
-          Must be at least 8 characters with 1 uppercase letter and 1 number.
+          {t('register.passwordHelper', 'Must be at least 8 characters with 1 uppercase letter and 1 number.')}
         </p>
 
         <div className={styles.fieldGroup}>
@@ -615,7 +616,7 @@ export const Register = () => {
             htmlFor="role"
             className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
           >
-            Select Your Platform Role
+            {t('register.selectRole', 'Select Your Platform Role')}
           </label>
           <select
             id="role"
@@ -629,7 +630,7 @@ export const Register = () => {
           >
             {availableRoles.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {t(`role.${role}`, role)}
               </option>
             ))}
           </select>
@@ -643,21 +644,21 @@ export const Register = () => {
               <OrcidBrandLogo
                 variant="wordmark"
                 size={22}
-                ariaLabel="ORCID iD"
+                ariaLabel={t('orcid.brandAria', 'ORCID iD')}
                 className={styles.orcidHeaderLogo}
               />
             </div>
 
             <div className={styles.orcidBody}>
               <h2 id="registration-orcid-title" className={styles.orcidTitle}>
-                Connect your ORCID iD
+                {t('orcid.connectTitle', 'Connect your ORCID iD')}
               </h2>
               <p className={styles.orcidDescription}>
                 {form.role === 'Reviewer'
                   ? reviewerOrcidBypassAllowed()
-                    ? 'Reviewer requests normally require a verified ORCID iD, but the development-only bypass is active. You can submit without ORCID; production will require it.'
-                    : 'Reviewer requests require a verified ORCID iD. You will authenticate on ORCID, never in ARS.'
-                  : 'Optional for Researcher and Lecturer. You can also connect ORCID later from your Profile.'}
+                    ? t('orcid.reviewerDevNotice', 'Reviewer requests normally require a verified ORCID iD, but the development-only bypass is active. You can submit without ORCID; production will require it.')
+                    : t('orcid.reviewerNotice', 'Reviewer requests require a verified ORCID iD. You will authenticate on ORCID, never in ARS.')
+                  : t('orcid.optionalNotice', 'Optional for Researcher and Lecturer. You can also connect ORCID later from your Profile.')}
               </p>
             </div>
 
@@ -672,7 +673,7 @@ export const Register = () => {
                     <circle cx="7" cy="7" r="7" fill="#A6CE39" />
                     <path d="M4 7.5L6 9.5L10 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  ORCID verified
+                  {t('orcid.verified', 'ORCID verified')}
                 </span>
               ) : (
                 <button
@@ -686,13 +687,13 @@ export const Register = () => {
                   {isStartingOrcid ? (
                     <>
                       <span className={styles.orcidBtnSpinner} aria-hidden="true" />
-                      Connecting…
+                      {t('orcid.connecting', 'Connecting…')}
                     </>
                   ) : (
                     <OrcidBrandLogo
                       variant="wordmark"
                       size={22}
-                      ariaLabel="Connect with ORCID iD"
+                      ariaLabel={t('orcid.connectAria', 'Connect with ORCID iD')}
                       className={styles.orcidBtnLogo}
                     />
                   )}
@@ -702,7 +703,7 @@ export const Register = () => {
 
             {!orcidTicket && (
               <p className={styles.orcidNotice}>
-                We will open the official ORCID authorization page. ARS never asks for your ORCID password — authentication happens entirely on orcid.org.
+                {t('orcid.privacyNotice', 'We will open the official ORCID authorization page. ARS never asks for your ORCID password — authentication happens entirely on orcid.org.')}
               </p>
             )}
             {reviewerOrcidBypassAllowed() && form.role === 'Reviewer' ? (
@@ -711,7 +712,7 @@ export const Register = () => {
                 data-testid="register-orcid-dev-bypass-notice"
                 role="status"
               >
-                Development-only ORCID bypass active — Reviewer role can be requested without connecting ORCID. Production deployment will require ORCID.
+                {t('orcid.bypassWarning', 'Development-only ORCID bypass active — Reviewer role can be requested without connecting ORCID. Production deployment will require ORCID.')}
               </p>
             ) : null}
             {orcidStartError ? <FieldError id="orcid-start-error" message={orcidStartError} /> : null}
@@ -724,9 +725,9 @@ export const Register = () => {
           </span>
           <div className={styles.roleBannerContent}>
             <p className={styles.roleBannerTitle}>
-              {form.role} Verification Required
+              {`${t(`role.${form.role}`, form.role)} ${t('register.roleVerificationRequired', 'Verification Required')}`}
             </p>
-            <p className={styles.roleBannerText}>{ROLE_REQUIREMENTS[form.role]}</p>
+            <p className={styles.roleBannerText}>{t(`register.roleRequirement.${form.role}`, ROLE_REQUIREMENTS[form.role])}</p>
             <div className={styles.roleBannerAction}>
               <Button
                 type="button"
@@ -736,7 +737,7 @@ export const Register = () => {
                 className={styles.sampleBtn}
                 disabled={isUploadingPdf}
               >
-                View Sample PDF Format
+                {t('register.viewSampleFormat', 'View Sample PDF Format')}
               </Button>
             </div>
           </div>
@@ -746,7 +747,7 @@ export const Register = () => {
           <label
             className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
           >
-            Verification Document (PDF)
+            {t('register.verificationDocument', 'Verification Document (PDF)')}
           </label>
           <PdfDropzone
             onUploadComplete={handleUploadComplete}
@@ -769,7 +770,7 @@ export const Register = () => {
               aria-describedby="consent-description"
             />
             <span className={styles.consentText} id="consent-description">
-              I have read and agree to the{' '}
+              {t('register.consent.readAndAgree', 'I have read and agree to the')}{' '}
               <button
                 type="button"
                 className={styles.consentLink}
@@ -779,9 +780,9 @@ export const Register = () => {
                   setPolicyTab('privacy');
                 }}
               >
-                Privacy Policy
+                {t('legal.privacy', 'Privacy Policy')}
               </button>{' '}
-              and{' '}
+              {t('register.consent.and', 'and')}{' '}
               <button
                 type="button"
                 className={styles.consentLink}
@@ -791,7 +792,7 @@ export const Register = () => {
                   setPolicyTab('terms');
                 }}
               >
-                Terms of Service
+                {t('legal.terms', 'Terms of Service')}
               </button>
             </span>
           </label>
@@ -811,14 +812,14 @@ export const Register = () => {
           disabled={!isFormValid || isSubmitting}
           className={styles.submitButton}
         >
-          Create Account
+          {t('register.submitBtn', 'Create Account')}
         </Button>
 
-        <div className={styles.divider}>or</div>
+        <div className={styles.divider}>{t('common.or', 'or')}</div>
 
         <div className={styles.googleButtonWrapper}>
           <GoogleSignInButton
-            label="Sign up with Google"
+            label={t('auth.signUpWithGoogle', 'Sign up with Google')}
             onCredential={handleGoogleCredential}
             disabled={isSubmitting || isUploadingPdf || googlePending}
             pending={googlePending}
@@ -835,9 +836,9 @@ export const Register = () => {
 
         <div className={styles.footer}>
           <p className={styles.footerText}>
-            Already have an account?{' '}
+            {t('register.alreadyHaveAccount', 'Already have an account?')}{' '}
             <Link to={ROUTES.LOGIN} className={styles.loginLink}>
-              Sign in instead
+              {t('register.signInInstead', 'Sign in instead')}
             </Link>
           </p>
         </div>

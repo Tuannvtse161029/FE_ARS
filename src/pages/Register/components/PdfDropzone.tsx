@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
+import { useI18n } from '../../../i18n/I18nContext';
 import styles from './PdfDropzone.module.css';
 import { FileText, CloudUpload, Check, X } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const PdfDropzone = ({
   uploadedFile,
   onUploadStateChange,
 }: PdfDropzoneProps) => {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const pendingFileRef = useRef<File | null>(null);
@@ -112,14 +114,14 @@ export const PdfDropzone = ({
           <p className={styles.previewName}>{uploadedFile.name}</p>
           <p className={styles.previewSize}>{formatFileSize(uploadedFile.size)}</p>
           <span className={styles.previewBadge}>
-            <Check size={14} /> Uploaded
+            <Check size={14} /> {t('register.dropzone.uploaded')}
           </span>
         </div>
         <button
           type="button"
           className={styles.previewRemove}
           onClick={handleRemove}
-          aria-label="Remove uploaded PDF"
+          aria-label={t('register.dropzone.removeLabel')}
         >
           <X size={18} />
         </button>
@@ -146,16 +148,16 @@ export const PdfDropzone = ({
         onDrop={onDrop}
         role="button"
         tabIndex={0}
-        aria-label="Upload verification PDF"
+        aria-label={t('register.dropzone.uploadLabel')}
         aria-disabled={isUploading}
         aria-busy={isUploading}
       >
         <CloudUpload size={24} className={styles.dropzoneIcon} />
         <p className={styles.dropzoneText}>
-          Drag &amp; drop verification document here, or{' '}
-          <span className={styles.dropzoneBrowse}>browse files</span>
+          {t('register.dropzone.text')}{' '}
+          <span className={styles.dropzoneBrowse}>{t('register.dropzone.browse')}</span>
         </p>
-        <p className={styles.dropzoneHint}>PDF only, max 10MB</p>
+        <p className={styles.dropzoneHint}>{t('register.dropzone.hint')}</p>
         <input
           ref={inputRef}
           type="file"
@@ -175,7 +177,7 @@ export const PdfDropzone = ({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className={styles.progressLabel}>Uploading... {progress}%</p>
+          <p className={styles.progressLabel}>{t('register.dropzone.uploading')} {progress}%</p>
         </div>
       )}
 

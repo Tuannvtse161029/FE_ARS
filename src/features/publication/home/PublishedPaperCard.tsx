@@ -9,6 +9,7 @@ import {
   resolveAuthorLinks,
 } from './publicationLinks';
 import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
+import { useLocale } from '../../../i18n/I18nContext';
 import card from './PublishedPaperCard.module.css';
 
 export interface PublishedPaperCardProps {
@@ -53,8 +54,9 @@ const AuthorChip = ({ author }: { readonly author: PublicationAuthor }) => {
  * with graceful fallback when classification is missing.
  */
 const FieldPath = ({ paper }: { readonly paper: PublicationPaper }) => {
+  const locale = useLocale();
   const path = [paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ');
-  if (!path) return <span className={card.muted}>Not classified</span>;
+  if (!path) return <span className={card.muted}>{locale === 'en' ? 'Not classified' : 'Chưa phân loại'}</span>;
   return <span className={card.fieldPath}>{path}</span>;
 };
 
@@ -74,6 +76,8 @@ export const PublishedPaperCard = ({
   publicReviewerName,
   accent,
 }: PublishedPaperCardProps) => {
+  const locale = useLocale();
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const orderedAuthors = [...paper.authors].sort((left, right) => left.order - right.order);
   const paperExternalLinks = collectPaperExternalLinks(paper);
@@ -95,7 +99,7 @@ export const PublishedPaperCard = ({
           <span className={card.paperType}>{paper.paperType}</span>
           {paper.publishedAt && (
             <time className={card.publishedAt} dateTime={paper.publishedAt}>
-              Published {paper.publishedAt.slice(0, 10)}
+              {copy('Published', 'Xuất bản')} {paper.publishedAt.slice(0, 10)}
             </time>
           )}
           {typeof paper.version === 'number' && (
@@ -134,7 +138,7 @@ export const PublishedPaperCard = ({
         aria-expanded={detailsOpen}
         onClick={() => setDetailsOpen((open) => !open)}
       >
-        <span>{detailsOpen ? 'Hide publication details' : 'Show publication details'}</span>
+        <span>{detailsOpen ? copy('Hide publication details', 'Thu gọn chi tiết ấn phẩm') : copy('Show publication details', 'Xem chi tiết ấn phẩm')}</span>
         {detailsOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
       </button>
 
@@ -169,7 +173,7 @@ export const PublishedPaperCard = ({
                   <span>{paper.doi}</span>
                 </a>
               ) : (
-                <span className={card.identifierPlain}>Not supplied</span>
+                <span className={card.identifierPlain}>{copy('Not supplied', 'Chưa cung cấp')}</span>
               )}
             </div>
                         {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
@@ -194,7 +198,7 @@ export const PublishedPaperCard = ({
               </div>
             )}
             <div className={card.detailRow}>
-              <span className={card.detailLabel}>Field</span>
+              <span className={card.detailLabel}>{copy('Field', 'Ngành')}</span>
               <FieldPath paper={paper} />
             </div>
           </section>
@@ -203,12 +207,12 @@ export const PublishedPaperCard = ({
             {publicReviewerName ? (
               <div className={card.reviewerPublic}>
                 <UserCheck size={14} aria-hidden="true" />
-                <span>Reviewed by <strong>{publicReviewerName}</strong> (publicly disclosed)</span>
+                <span>{copy('Reviewed by', 'Phản biện bởi')} <strong>{publicReviewerName}</strong> {copy('(publicly disclosed)', '(công khai danh tính)')}</span>
               </div>
             ) : (
               <div className={card.reviewerPrivate}>
                 <ShieldCheck size={14} aria-hidden="true" />
-                <span>Reviewer identity withheld per policy.</span>
+                <span>{copy('Reviewer identity withheld per policy.', 'Danh tính người phản biện được bảo mật theo chính sách.')}</span>
               </div>
             )}
           </section>
@@ -225,7 +229,7 @@ export const PublishedPaperCard = ({
             rel="noopener noreferrer"
           >
             <FileText size={12} aria-hidden="true" />
-            Read PDF
+            {copy('Read PDF', 'Đọc PDF')}
           </a>
         )}
       </footer>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
 import type { RoleRequest } from '../../types/admin';
 import styles from './AdminDialog.module.css';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Props) => {
+  const { t } = useI18n();
   const [reason, setReason] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
     event.preventDefault();
     const normalized = reason.trim();
     if (normalized.length < 10) {
-      setValidationError('Denial reason must be at least 10 characters.');
+      setValidationError(t('admin.roleRequests.deny.validationError'));
       return;
     }
     setValidationError(null);
@@ -53,7 +55,7 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
       onActioned(updated);
       onClose();
     } catch (submissionError) {
-      setApiError(submissionError instanceof Error ? submissionError.message : 'Failed to deny request.');
+      setApiError(submissionError instanceof Error ? submissionError.message : t('admin.roleRequests.deny.apiError'));
     } finally {
       setSubmitting(false);
     }
@@ -67,19 +69,19 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
     }}>
       <form className={styles.modal} onSubmit={handleSubmit}>
         <header className={styles.header}>
-          <div><h2 id="deny-role-title" className={styles.title}>Deny Role Request</h2><p className={styles.subtitle}>Request #{request.id} · {request.userName}</p></div>
-          <button className={styles.iconButton} onClick={onClose} disabled={submitting} type="button" aria-label="Close denial dialog"><X size={18} /></button>
+          <div><h2 id="deny-role-title" className={styles.title}>{t('admin.roleRequests.deny.title')}</h2><p className={styles.subtitle}>{t('admin.roleRequests.deny.subtitle').replace('{id}', String(request.id)).replace('{name}', request.userName)}</p></div>
+          <button className={styles.iconButton} onClick={onClose} disabled={submitting} type="button" aria-label={t('admin.roleRequests.deny.closeLabel')}><X size={18} /></button>
         </header>
         <div className={styles.content}>
-          <label className={styles.fieldLabel} htmlFor="role-denial-reason">Reason for denial</label>
+          <label className={styles.fieldLabel} htmlFor="role-denial-reason">{t('admin.roleRequests.deny.reasonLabel')}</label>
           <textarea ref={reasonRef} id="role-denial-reason" className={styles.textarea} rows={6} minLength={10} maxLength={1000} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} aria-invalid={Boolean(validationError)} aria-describedby={errorId} disabled={submitting} />
           <div className={styles.counter}>{reason.length} / 1,000</div>
           {validationError ? <p id={errorId} className={styles.error} role="alert"><AlertTriangle size={15} />{validationError}</p> : null}
           {apiError ? <p className={styles.error} role="alert"><AlertTriangle size={15} />{apiError}</p> : null}
         </div>
         <footer className={styles.footer}>
-          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} disabled={submitting} type="button">Cancel</button>
-          <button className={`${styles.button} ${styles.dangerButton}`} disabled={submitting} type="submit"><X size={16} />{submitting ? 'Denying…' : 'Confirm Denial'}</button>
+          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} disabled={submitting} type="button">{t('common.cancel')}</button>
+          <button className={`${styles.button} ${styles.dangerButton}`} disabled={submitting} type="submit"><X size={16} />{submitting ? t('admin.roleRequests.deny.denying') : t('admin.roleRequests.deny.confirm')}</button>
         </footer>
       </form>
     </div>

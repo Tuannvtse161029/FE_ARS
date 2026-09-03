@@ -7,6 +7,7 @@ import { ROUTES } from '../../routes/paths';
 import { validateOtp } from '../../utils/validationRules';
 import authService from '../../services/auth.service';
 import { extractServerMessage } from '../../utils/validationRules';
+import { useI18n } from '../../i18n/I18nContext';
 import styles from './VerifyOtp.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 
@@ -31,6 +32,7 @@ function authFlowError(err: unknown, fallback: string): string {
 }
 
 const VerifyOtp = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
@@ -120,7 +122,7 @@ const VerifyOtp = () => {
       sessionStorage.setItem('ars_forgot_email', email);
       navigate(ROUTES.RESET_PASSWORD, { state: { email, otpCode: code } });
     } catch (err: unknown) {
-      const msg = authFlowError(err, 'Invalid code. Please try again.');
+      const msg = authFlowError(err, t('reset.errorInvalidCode', 'Invalid code. Please try again.'));
       setError(msg);
       setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();
@@ -142,7 +144,7 @@ const VerifyOtp = () => {
       setOtp(Array(OTP_CELL_COUNT).fill(''));
       inputRefs.current[0]?.focus();
     } catch (err: unknown) {
-      const msg = authFlowError(err, 'Unable to resend code. Please try again.');
+      const msg = authFlowError(err, t('reset.errorResendCode', 'Unable to resend code. Please try again.'));
       setError(msg);
     } finally {
       resendInFlightRef.current = false;
@@ -157,15 +159,15 @@ const VerifyOtp = () => {
         <div className={styles.logoWrapper}>
           <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         </div>
-        <span className={styles.brandText}>ARS - Academic Research Sharing</span>
+        <span className={styles.brandText}>{t('app.brandName', 'ARS - Academic Research Sharing')}</span>
       </div>
 
       <StepIndicator currentStep={2} />
 
       <div className={styles.header}>
-        <h1 className={styles.title}>Check your email</h1>
+        <h1 className={styles.title}>{t('reset.checkEmail', 'Check your email')}</h1>
         <p className={styles.subtitle}>
-          We sent a 6-digit verification code to <strong>{email}</strong>. Enter the code below to continue.
+          {t('reset.sentCodeTo', 'We sent a 6-digit verification code to')} <strong>{email}</strong>. {t('reset.enterCodeBelow', 'Enter the code below to continue.')}
         </p>
       </div>
 
@@ -176,7 +178,7 @@ const VerifyOtp = () => {
           </div>
         )}
 
-        <div className={styles.otpRow} role="group" aria-label="Verification code">
+        <div className={styles.otpRow} role="group" aria-label={t('reset.verificationCodeLabel', 'Verification code')}>
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -195,7 +197,7 @@ const VerifyOtp = () => {
               onPaste={handlePaste}
               disabled={isLoading}
               className={`${styles.otpBox} ${digit ? styles.otpBoxFilled : ''} ${otpError ? styles.otpBoxError : ''}`}
-              aria-label={`Digit ${index + 1}`}
+              aria-label={`${t('reset.digitLabel', 'Digit')} ${index + 1}`}
               aria-invalid={Boolean(otpError)}
               aria-describedby={otpError ? 'otp-error' : undefined}
             />
@@ -212,24 +214,24 @@ const VerifyOtp = () => {
           disabled={!isComplete}
           className={styles.submitButton}
         >
-          Verify
+          {t('reset.verifyButton', 'Verify')}
         </Button>
 
         <div className={styles.resendRow}>
-          <span className={styles.resendLabel}>Didn't receive the code?</span>
+          <span className={styles.resendLabel}>{t('reset.didNotReceive', "Didn't receive the code?")}</span>
           <button
             type="button"
             onClick={handleResend}
             disabled={resendCooldown > 0}
             className={styles.resendButton}
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+            {resendCooldown > 0 ? `${t('reset.resendIn', 'Resend in')} ${resendCooldown}s` : t('reset.resendCodeButton', 'Resend code')}
           </button>
         </div>
 
         <div className={styles.footer}>
           <Link to={ROUTES.FORGOT_PASSWORD} className={styles.backLink}>
-            Back
+            {t('common.back', 'Back')}
           </Link>
         </div>
       </form>

@@ -24,6 +24,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../i18n/I18nContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
@@ -92,6 +93,7 @@ const deadlineTone = (
 
 export const ResearchGroup = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const lecturerId = user?.userId ?? null;
 
   const {
@@ -132,7 +134,7 @@ export const ResearchGroup = () => {
       setMembers(list);
     } catch (err) {
       setMembersError(
-        err instanceof Error ? err.message : 'Failed to load group members.',
+        err instanceof Error ? err.message : t('lecturer.researchGroups.failedToLoad'),
       );
       setMembers([]);
     } finally {
@@ -217,7 +219,7 @@ export const ResearchGroup = () => {
     }
   };
 
-  const showBanner = (
+  const showBannerMessage = (
     text: string,
     variant: 'success' | 'error' = 'success',
   ) => {
@@ -229,31 +231,31 @@ export const ResearchGroup = () => {
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
-    const ok = window.confirm(`Delete "${name}"? This action cannot be undone.`);
+    const ok = window.confirm(t('lecturer.researchGroups.deleteConfirm'));
     if (!ok) return;
     try {
       await researchGroupService.delete(groupId);
-      showBanner(`Research Group "${name}" deleted.`);
+      showBannerMessage(`"${name}" ${t('lecturer.researchGroups.deleteSuccess')}`);
       await refetchGroups();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to delete the group.';
-      showBanner(`Delete failed: ${message}`, 'error');
+        err instanceof Error ? err.message : t('lecturer.researchGroups.deleteFailed');
+      showBannerMessage(`${t('lecturer.researchGroups.deleteFailed')} ${message}`, 'error');
     }
   };
 
   const handleCreateGroupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lecturerId) {
-      setCreateGroupError('No lecturer session — please sign in again.');
+      setCreateGroupError(t('lecturer.researchGroups.noLecturerSession'));
       return;
     }
     const trimmedName = groupName.trim();
-    const nameErr = trimmedName ? null : 'Group name is required.';
+    const nameErr = trimmedName ? null : t('lecturer.researchGroups.groupNameRequired');
     let deadlineErr: string | null = null;
     if (groupDeadline) {
       const ms = new Date(groupDeadline).getTime();
-      if (Number.isNaN(ms)) deadlineErr = 'Deadline is not a valid date.';
+      if (Number.isNaN(ms)) deadlineErr = t('lecturer.researchGroups.deadlineInvalid');
     }
     setGroupNameError(nameErr);
     setGroupDeadlineError(deadlineErr);
@@ -277,13 +279,13 @@ export const ResearchGroup = () => {
       setGroupDeadlineError(null);
       const idLabel =
         typeof created.id === 'number' ? formatGroupId(created.id) : '';
-      showBanner(
-        `Research Group ${idLabel} ("${created.name ?? groupName}") created successfully.`,
+      showBannerMessage(
+        `${idLabel} ("${created.name ?? groupName}") ${t('lecturer.researchGroups.createdSuccess')}`,
       );
       await refetchGroups();
     } catch (err) {
       setCreateGroupError(
-        err instanceof Error ? err.message : 'Failed to create the group.',
+        err instanceof Error ? err.message : t('lecturer.researchGroups.createFailed'),
       );
     } finally {
       setIsCreatingGroup(false);
@@ -321,7 +323,7 @@ export const ResearchGroup = () => {
         onClick={() => void refreshAll()}
         disabled={isLoadingGroups || isLoadingTopics || isLoadingMembers}
       >
-        Refresh
+        {t('common.search')}
       </Button>
       <Button
         variant="primary"
@@ -330,7 +332,7 @@ export const ResearchGroup = () => {
         leftIcon={<Plus size={16} aria-hidden />}
         onClick={() => setShowCreateGroupModal(true)}
       >
-        Create Research Group
+        {t('lecturer.researchGroups.createBtn')}
       </Button>
     </>
   );
@@ -338,26 +340,25 @@ export const ResearchGroup = () => {
   return (
     <div className={styles.page} data-testid="lecturer-research-groups">
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
-        title="Research Groups"
+        eyebrow={t('lecturer.researchGroups.eyebrow')}
+        title={t('lecturer.researchGroups.title')}
         description={
           <>
-            Manage active research groups and the topics assigned to them.
-            Topics themselves live on the{' '}
+            {t('lecturer.researchGroups.descriptionStart')}
             <Link
               to={ROUTES.LECTURER_RESEARCH_TOPICS}
               className={styles.inlineLink}
             >
-              Research Topics
-            </Link>{' '}
-            page.
+              {t('lecturer.researchGroups.topicsLink')}
+            </Link>
+            {t('lecturer.researchGroups.descriptionEnd')}
           </>
         }
         actions={headerActions}
         accent="var(--ars-lecturer)"
         titleAccessory={
           <span className={styles.headerMetaCount}>
-            {groups.length} {groups.length === 1 ? 'group' : 'groups'}
+            {groups.length} {groups.length === 1 ? t('lecturer.researchGroups.groupCount_one') : t('lecturer.researchGroups.groupCount_other')}
           </span>
         }
       />
@@ -380,8 +381,8 @@ export const ResearchGroup = () => {
             <div>
               <span className={styles.bannerTitle}>
                 {banner.variant === 'success'
-                  ? 'Action Successful'
-                  : 'Action Failed'}
+                  ? t('lecturer.researchGroups.actionSuccessful')
+                  : t('lecturer.researchGroups.actionFailed')}
               </span>
               <p className={styles.bannerSub}>{banner.text}</p>
             </div>
@@ -392,7 +393,7 @@ export const ResearchGroup = () => {
             onClick={() =>
               setBanner({ visible: false, text: '', variant: 'success' })
             }
-            aria-label="Dismiss"
+            aria-label={t('common.cancel')}
           >
             <X size={14} aria-hidden />
           </button>
@@ -402,11 +403,11 @@ export const ResearchGroup = () => {
       {errorBannerList.length > 0 && (
         <ErrorBanner
           tone="error"
-          title="Failed to load data"
+          title={t('lecturer.researchGroups.failedToLoad')}
           message={
             errorBannerList
               .map((e) => ('message' in e ? e.message : String(e)))
-              .join(' · ') || 'Please retry.'
+              .join(' · ') || t('lecturer.researchGroups.pleaseRetry')
           }
           retry={
             <Button
@@ -414,7 +415,7 @@ export const ResearchGroup = () => {
               size="sm"
               onClick={() => void refreshAll()}
             >
-              Retry
+              {t('common.retry')}
             </Button>
           }
         />
@@ -423,35 +424,32 @@ export const ResearchGroup = () => {
       <div className={styles.sectionHeader}>
         <div className={styles.sectionHeaderLeft}>
           <Users size={18} className={styles.sectionIcon} aria-hidden />
-          <h3 className={styles.sectionTitle}>Active Research Groups</h3>
+          <h3 className={styles.sectionTitle}>{t('lecturer.researchGroups.activeGroups')}</h3>
           <span className={styles.countBadge}>
             {groupSearch.trim()
-              ? `${groupTotalItems} / ${groups.length} Groups`
-              : `${groups.length} Groups`}
+              ? `${groupTotalItems} / ${groups.length} ${t('lecturer.researchGroups.statGroups')}`
+              : `${groups.length} ${t('lecturer.researchGroups.statGroups')}`}
           </span>
         </div>
       </div>
 
-      {/* Compact hero strip — at-a-glance group counts so the lecturer
-          doesn't have to scan every card to know how many groups they own,
-          which have no topic assigned, and which are due soon. */}
       <div className={styles.statStrip} aria-label="Research groups summary">
         <div className={styles.statCell}>
-          <span className={styles.statLabel}>Groups</span>
+          <span className={styles.statLabel}>{t('lecturer.researchGroups.statGroups')}</span>
           <span className={styles.statValue}>{groups.length}</span>
           <span className={styles.statHint}>
             {groupSearch.trim() && groupTotalItems !== groups.length
-              ? `${groupTotalItems} match "${groupSearch.trim()}"`
-              : 'owned by you'}
+              ? `${groupTotalItems} ${t('lecturer.researchGroups.statMatch')} "${groupSearch.trim()}"`
+              : t('lecturer.researchGroups.statOwnedByYou')}
           </span>
         </div>
         <div className={styles.statCell}>
-          <span className={styles.statLabel}>Total Members</span>
+          <span className={styles.statLabel}>{t('lecturer.researchGroups.statTotalMembers')}</span>
           <span className={styles.statValue}>{members.length}</span>
-          <span className={styles.statHint}>across all groups</span>
+          <span className={styles.statHint}>{t('lecturer.researchGroups.statAcrossGroups')}</span>
         </div>
         <div className={styles.statCell}>
-          <span className={styles.statLabel}>Due in 7 days</span>
+          <span className={styles.statLabel}>{t('lecturer.researchGroups.statDue7Days')}</span>
           <span className={styles.statValue}>
             {groups.filter((g) => {
               if (!g.deadline) return false;
@@ -460,7 +458,7 @@ export const ResearchGroup = () => {
               return ms - Date.now() <= 7 * dayMs && ms >= Date.now();
             }).length}
           </span>
-          <span className={styles.statHint}>deadlines approaching</span>
+          <span className={styles.statHint}>{t('lecturer.researchGroups.statApproaching')}</span>
         </div>
       </div>
 
@@ -469,7 +467,7 @@ export const ResearchGroup = () => {
         onSearchChange={setGroupSearch}
         onRefresh={handleRefreshGroups}
         isRefreshing={isRefreshingGroups}
-        searchPlaceholder="Search groups by name, description, or assigned topic"
+        searchPlaceholder={t('lecturer.researchGroups.searchPlaceholder')}
         refreshLabel="Refresh"
       />
 
@@ -478,14 +476,14 @@ export const ResearchGroup = () => {
       ) : groups.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
-          title="No research groups yet"
-          description='Click "Create Research Group" to start a new one.'
+          title={t('lecturer.researchGroups.emptyTitle')}
+          description={t('lecturer.researchGroups.emptyDesc')}
         />
       ) : groupTotalItems === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
-          title="No matches"
-          description={`No groups match "${groupSearch.trim()}".`}
+          title={t('lecturer.researchGroups.noMatchTitle')}
+          description={`${t('lecturer.researchGroups.noMatchDesc')} "${groupSearch.trim()}".`}
         />
       ) : (
         <div className={styles.grid}>
@@ -508,12 +506,12 @@ export const ResearchGroup = () => {
                 </div>
 
                 <h4 className={styles.groupTitle}>
-                  {grp.name ?? '(untitled group)'}
+                  {grp.name ?? t('lecturer.researchGroups.untitledGroup')}
                 </h4>
 
                 <div className={styles.topicRow}>
                   <Lightbulb size={12} aria-hidden />
-                  <span>Topic:</span>
+                  <span>{t('lecturer.researchGroups.topicLabel')}</span>
                   {topic ? (
                     <Link
                       to={ROUTES.LECTURER_RESEARCH_TOPICS}
@@ -524,23 +522,20 @@ export const ResearchGroup = () => {
                       <ArrowRight size={10} aria-hidden />
                     </Link>
                   ) : (
-                    <span className={styles.topicUnassigned}>Unassigned</span>
+                    <span className={styles.topicUnassigned}>{t('lecturer.researchGroups.unassigned')}</span>
                   )}
                 </div>
                 <p className={styles.desc}>
-                  {grp.description?.trim() ||
-                    'No description provided for this group yet.'}
+                  {grp.description?.trim() || t('lecturer.researchGroups.noDescription')}
                 </p>
 
-                {/* Compact meta strip — single row with the most important
-                    signals. Replaces scattered meta pills. */}
                 <div
                   className={styles.cardMetaStrip}
                   aria-label="Group quick facts"
                 >
-                  <span title="Member count">
+                  <span title={t('lecturer.researchGroups.membersLabel')}>
                     <Users size={12} aria-hidden />
-                    {roster.length} member{roster.length === 1 ? '' : 's'}
+                    {roster.length} {roster.length === 1 ? t('lecturer.researchGroups.memberCount_one') : t('lecturer.researchGroups.memberCount_other')}
                   </span>
                   <span
                     data-tone={deadlineTone(deadlineLabel)}
@@ -548,29 +543,29 @@ export const ResearchGroup = () => {
                   >
                     <Calendar size={12} aria-hidden />
                     {deadlineLabel
-                      ? `Due ${deadlineLabel}`
-                      : 'No deadline'}
+                      ? `${t('lecturer.researchGroups.due')} ${deadlineLabel}`
+                      : t('lecturer.researchGroups.noDeadline')}
                   </span>
                   <span title="Topic assignment">
                     <Lightbulb size={12} aria-hidden />
-                    {topic ? 'Assigned topic' : 'No topic yet'}
+                    {topic ? t('lecturer.researchGroups.assignedTopic') : t('lecturer.researchGroups.noTopicYet')}
                   </span>
                 </div>
 
                 <div className={styles.membersSection}>
                   <span className={styles.membersLabel}>
-                    Members ({roster.length})
+                    {t('lecturer.researchGroups.membersLabel')} ({roster.length})
                   </span>
                   <div className={styles.memberPills}>
                     {isLoadingMembers && roster.length === 0 ? (
-                      <span className={styles.memberPill}>Loading…</span>
+                      <span className={styles.memberPill}>{t('common.loading')}</span>
                     ) : roster.length === 0 ? (
-                      <span className={styles.memberPill}>No members yet</span>
+                      <span className={styles.memberPill}>{t('lecturer.researchGroups.noMembersYet')}</span>
                     ) : (
                       roster.map((m, idx) => {
                         const label = m.studentId
-                          ? `student #${m.studentId}`
-                          : `member #${m.id ?? idx}`;
+                          ? `${t('lecturer.researchGroups.studentId')}${m.studentId}`
+                          : `${t('lecturer.researchGroups.memberId')}${m.id ?? idx}`;
                         const isLeader = Boolean(m.isLeader);
                         return (
                           <span
@@ -581,8 +576,8 @@ export const ResearchGroup = () => {
                             {isLeader && (
                               <span
                                 className={styles.leaderGlyph}
-                                aria-label="Selected group leader"
-                                title="Selected group leader"
+                                aria-label={t('lecturer.researchGroups.selectedLeader')}
+                                title={t('lecturer.researchGroups.selectedLeader')}
                               >
                                 <Crown size={10} aria-hidden />
                               </span>
@@ -611,8 +606,8 @@ export const ResearchGroup = () => {
                     <button
                       type="button"
                       className={styles.iconBtn}
-                      title="Delete group"
-                      aria-label="Delete group"
+                      title={t('lecturer.researchGroups.deleteGroup')}
+                      aria-label={t('lecturer.researchGroups.deleteGroup')}
                       onClick={() =>
                         handleDeleteGroup(gid, grp.name ?? idLabel)
                       }
@@ -633,7 +628,7 @@ export const ResearchGroup = () => {
                     title="Open this group's detail page"
                   >
                     <Users size={14} aria-hidden />
-                    View Group
+                    {t('lecturer.researchGroups.viewGroup')}
                   </Link>
                 </div>
               </article>
@@ -644,10 +639,10 @@ export const ResearchGroup = () => {
             type="button"
             className={styles.dashedCreateCard}
             onClick={() => setShowCreateGroupModal(true)}
-            aria-label="Create new group"
+            aria-label={t('lecturer.researchGroups.createNewGroup')}
           >
             <Plus size={32} className={styles.plusIconLarge} aria-hidden />
-            <span className={styles.dashedCreateText}>Create New Group</span>
+            <span className={styles.dashedCreateText}>{t('lecturer.researchGroups.createNewGroup')}</span>
           </button>
         </div>
       )}
@@ -676,9 +671,9 @@ export const ResearchGroup = () => {
                   <Users size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Create New Research Group</h3>
+                  <h3 className={styles.modalTitle}>{t('lecturer.researchGroups.createModalTitle')}</h3>
                   <span className={styles.modalSubtitle}>
-                    Fill in the details below to create a new group.
+                    {t('lecturer.researchGroups.createModalSub')}
                   </span>
                 </div>
               </div>
@@ -686,7 +681,7 @@ export const ResearchGroup = () => {
                 type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCreateGroupModal(false)}
-                aria-label="Close"
+                aria-label={t('common.cancel')}
               >
                 <X size={18} aria-hidden />
               </button>
@@ -698,7 +693,7 @@ export const ResearchGroup = () => {
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupName">
-                  Research Group Name
+                  {t('lecturer.researchGroups.groupNameLabel')}
                 </label>
                 <input
                   id="groupName"
@@ -711,7 +706,7 @@ export const ResearchGroup = () => {
                     setGroupName(e.target.value);
                     if (groupNameError) setGroupNameError(null);
                   }}
-                  placeholder="AI Speech-to-Text Research Team"
+                  placeholder={t('lecturer.researchGroups.groupNamePlaceholder')}
                   aria-invalid={Boolean(groupNameError)}
                   aria-describedby={
                     groupNameError ? 'group-name-error' : undefined
@@ -727,21 +722,21 @@ export const ResearchGroup = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupDesc">
-                  Description
+                  {t('lecturer.researchGroups.descLabel')}
                 </label>
                 <textarea
                   id="groupDesc"
                   className={styles.formTextarea}
                   value={groupDesc}
                   onChange={(e) => setGroupDesc(e.target.value)}
-                  placeholder="Investigating Whisper AI model accuracy across regional dialects."
+                  placeholder={t('lecturer.researchGroups.descPlaceholder')}
                   rows={3}
                 />
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupDeadline">
-                  Deadline (optional)
+                  {t('lecturer.researchGroups.deadlineLabel')}
                 </label>
                 <input
                   id="groupDeadline"
@@ -762,8 +757,7 @@ export const ResearchGroup = () => {
                   }
                 />
                 <span className={styles.helperText} id="group-deadline-helper">
-                  ISO timestamp is sent to the BE. Leave blank if not yet
-                  decided.
+                  {t('lecturer.researchGroups.deadlineHelper')}
                 </span>
                 <FieldError
                   id="group-deadline-error"
@@ -786,7 +780,7 @@ export const ResearchGroup = () => {
                   onClick={() => setShowCreateGroupModal(false)}
                   disabled={isCreatingGroup}
                 >
-                  Cancel
+                  {t('lecturer.researchGroups.cancel')}
                 </Button>
                 <Button
                   variant="primary"
@@ -802,7 +796,7 @@ export const ResearchGroup = () => {
                   }
                   disabled={isCreatingGroup}
                 >
-                  {isCreatingGroup ? 'Creating…' : 'Create Research Group'}
+                  {isCreatingGroup ? t('lecturer.researchGroups.creatingBtn') : t('lecturer.researchGroups.createBtn')}
                 </Button>
               </div>
             </form>
