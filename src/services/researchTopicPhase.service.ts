@@ -16,6 +16,7 @@
 // is the sole consumer and reads/writes exclusively through this service.
 
 import { phasedReportService, type PhasedReport } from './phasedReport.service';
+import { toLocalDatetimeInput, toApiIsoString } from '../utils/datetime';
 
 // Soft sanity cap — prevents accidental runaway input. Not a backend contract.
 export const MAX_PHASES_PER_TOPIC = 99;
@@ -33,7 +34,8 @@ export interface ResearchTopicPhase {
   order: number;
   locked: boolean;
   source: 'api';
-  report?: PhasedReport;
+  learningMaterialId?: number | null;
+  report?: PhasedReport | null;
 }
 
 export interface PhaseDraft {
@@ -46,10 +48,10 @@ export interface PhaseDraft {
   learningMaterialId: number | null;
 }
 
+export type ResearchTopicPhaseDraft = PhaseDraft;
+
 const toInputDate = (value: string | null | undefined): string => {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 16);
+  return toLocalDatetimeInput(value);
 };
 
 const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
@@ -153,14 +155,14 @@ export const researchTopicPhaseService = {
       phases: drafts.map((draft, index) => ({
         phaseNumber: index + 1,
         milestoneTitle: draft.title.trim() || null,
-        deadlineAt: new Date(
-          draft.endAt || draft.startAt,
-        ).toISOString(),
+        deadlineAt:
+          toApiIsoString(draft.endAt || draft.startAt) ||
+          new Date().toISOString(),
         // BE Swagger now accepts these fields on TopicPhaseItem.
         requirements: draft.requirements || null,
         assessmentCriteria: draft.assessmentCriteria || null,
         startDate: draft.startAt
-          ? new Date(draft.startAt).toISOString()
+          ? toApiIsoString(draft.startAt)
           : null,
       })),
     });

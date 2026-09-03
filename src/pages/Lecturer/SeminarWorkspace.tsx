@@ -23,6 +23,12 @@ import { fieldService } from '../../services/field.service';
 import type { MajorField } from '../../types/domain';
 import { useLocale } from '../../i18n/I18nContext';
 import {
+  toLocalDatetimeInput,
+  toApiIsoString,
+  formatDisplayDate,
+  formatDisplayTime,
+} from '../../utils/datetime';
+import {
   deriveEffectiveStatus,
   isValidMeetLink,
   ownsSeminar,
@@ -55,8 +61,7 @@ const formatSeminarId = (id: number): string =>
 const formatBytesTitle = (raw: string): string => raw;
 
 const toLocalDateTimeInputValue = (date: Date): string => {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localDate.toISOString().slice(0, 16);
+  return toLocalDatetimeInput(date);
 };
 
 interface InviteeCandidate {
@@ -449,10 +454,10 @@ export const SeminarWorkspace = () => {
       );
       return;
     }
-    const startTime = new Date(dateTime).toISOString();
-    const endTime = new Date(
-      new Date(dateTime).getTime() + 60 * 60 * 1000,
-    ).toISOString();
+    const startTime = toApiIsoString(dateTime) || new Date(dateTime).toISOString();
+    const endTime =
+      toApiIsoString(new Date(new Date(dateTime).getTime() + 60 * 60 * 1000)) ||
+      new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
     const fullContent = seminarName.trim()
       ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
       : seminarDetails.trim();
@@ -717,14 +722,12 @@ export const SeminarWorkspace = () => {
               : null;
             const seminarEndDate = sem.endTime ? new Date(sem.endTime) : null;
             const dateLabel = seminarStartDate
-              ? seminarStartDate.toISOString().split('T')[0]
+              ? formatDisplayDate(seminarStartDate, locale)
               : '';
             const timeLabel =
               seminarStartDate && seminarEndDate &&
               !Number.isNaN(seminarStartDate.getTime())
-                ? `${seminarStartDate.toISOString().slice(11, 16)} – ${seminarEndDate
-                    .toISOString()
-                    .slice(11, 16)} (UTC)`
+                ? `${formatDisplayTime(seminarStartDate, locale)} – ${formatDisplayTime(seminarEndDate, locale)}`
                 : '';
             const isCompleted =
               sem.effectiveStatus === 'COMPLETED' ||
@@ -1351,9 +1354,7 @@ export const SeminarWorkspace = () => {
                   <span className={styles.modalSubtitle}>
                     {selectedSeminarForFeedback.title}
                     {selectedSeminarForFeedback.startTime
-                      ? ` · ${new Date(selectedSeminarForFeedback.startTime)
-                          .toISOString()
-                          .split('T')[0]}`
+                      ? ` · ${formatDisplayDate(selectedSeminarForFeedback.startTime, locale)}`
                       : ''}
                   </span>
                 </div>

@@ -23,6 +23,7 @@ import { EvaluateReportModal, type EvaluationAction } from '../../components/lec
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
+import { formatDisplayDateTime } from '../../utils/datetime';
 import { EmptyState } from '../../components/EmptyState';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './EvaluateReports.module.css';
@@ -34,10 +35,7 @@ interface BannerState {
 }
 
 const formatDate = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toISOString().slice(0, 16).replace('T', ' ');
+  return formatDisplayDateTime(iso);
 };
 
 export const EvaluateReports = () => {

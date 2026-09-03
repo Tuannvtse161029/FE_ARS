@@ -42,14 +42,14 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { parseIdFromSearch } from '../../utils/topicRouting';
+import { formatDisplayDate, formatDisplayDateTime } from '../../utils/datetime';
 import styles from './PhaseReports.module.css';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const dateLabel = (value?: string | null): string => {
-  if (!value) return 'Not submitted';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString();
+const dateLabel = (value?: string | null, withTime = false): string => {
+  if (!value) return '—';
+  return withTime ? formatDisplayDateTime(value) : formatDisplayDate(value);
 };
 
 const displayStatus = (report: PhasedReport): string => {

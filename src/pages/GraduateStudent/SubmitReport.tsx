@@ -26,19 +26,13 @@ import {
   type SubmittedPhasedReport,
 } from '../../services/phasedReport.service';
 import type { GroupMember } from '../../services/groupMember.service';
+import { formatDisplayDateTime } from '../../utils/datetime';
 import styles from './SubmitReport.module.css';
 
 const DEFAULT_FOLDER_KEY = 'milestone';
 
 const formatDate = (iso: string | null | undefined, locale: string): string => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDisplayDateTime(iso, locale);
 };
 
 const normalizeWorkspaceLabel = (raw: string): string => {

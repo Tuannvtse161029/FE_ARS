@@ -18,6 +18,7 @@ import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
+import { formatDisplayDate } from '../../../utils/datetime';
 
 /** Sortable column ids for the Reviewer Assignments table. */
 type SortColumn = 'title' | 'status' | 'actionability' | 'assigned' | 'deadline';
@@ -40,9 +41,8 @@ const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
-  return parsed.toISOString().slice(0, 10);
+  const formatted = formatDisplayDate(iso);
+  return formatted === '—' ? 'Not supplied' : formatted;
 };
 
 const REVIEWER_VISIBLE_STATUSES: ReadonlySet<PublicationStatus> = new Set([

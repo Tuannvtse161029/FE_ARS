@@ -11,6 +11,7 @@ import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { SortableHeader } from '../../../components/table/SortableHeader';
 import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { formatDisplayDate } from '../../../utils/datetime';
 import styles from './researcher.module.css';
 
 /** Sortable column ids for the Researcher Submissions table. */
@@ -53,9 +54,8 @@ const STATUS_FILTER_OPTIONS: ReadonlyArray<PublicationStatus | 'ALL'> = [
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
-  return parsed.toISOString().slice(0, 10);
+  const formatted = formatDisplayDate(iso);
+  return formatted === '—' ? 'Not supplied' : formatted;
 };
 
 export const ResearcherSubmissions = () => {

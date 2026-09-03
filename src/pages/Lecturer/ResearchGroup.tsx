@@ -24,7 +24,8 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
+import { toApiIsoString, formatDisplayDate } from '../../utils/datetime';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
@@ -94,6 +95,7 @@ const deadlineTone = (
 export const ResearchGroup = () => {
   const { user } = useAuth();
   const { t } = useI18n();
+  const locale = useLocale();
   const lecturerId = user?.userId ?? null;
 
   const {
@@ -268,7 +270,7 @@ export const ResearchGroup = () => {
         topicId: null,
         name: trimmedName,
         description: groupDesc.trim() || null,
-        deadline: groupDeadline ? new Date(groupDeadline).toISOString() : null,
+        deadline: groupDeadline ? toApiIsoString(groupDeadline) : null,
         assignedAt: null,
       });
       setShowCreateGroupModal(false);
@@ -493,7 +495,7 @@ export const ResearchGroup = () => {
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
             const status = deriveGroupStatus(grp, topic?.status ?? null);
             const deadlineLabel = grp.deadline
-              ? new Date(grp.deadline).toISOString().split('T')[0]
+              ? formatDisplayDate(grp.deadline, locale)
               : '';
             const roster = gid >= 0 ? memberIndex[gid] ?? [] : [];
             return (

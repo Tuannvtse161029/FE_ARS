@@ -28,6 +28,8 @@ import {
   type ResearchGroup,
 } from '../../services/researchGroup.service';
 import type { ResearchTopic } from '../../services/researchTopic.service';
+import { useLocale } from '../../i18n/I18nContext';
+import { formatDisplayDate } from '../../utils/datetime';
 import styles from './AssignTopicModal.module.css';
 
 export interface AssignTopicModalProps {
@@ -49,6 +51,7 @@ export const AssignTopicModal = ({
   onClose,
   onSuccess,
 }: AssignTopicModalProps) => {
+  const locale = useLocale();
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -224,7 +227,7 @@ export const AssignTopicModal = ({
                     <span className={styles.checkboxMembersCount}>
                       <Users size={12} aria-hidden />
                       {group.deadline
-                        ? `Due ${new Date(group.deadline).toISOString().slice(0, 10)}`
+                        ? `Due ${formatDisplayDate(group.deadline, locale)}`
                         : 'No deadline'}
                     </span>
                   </div>

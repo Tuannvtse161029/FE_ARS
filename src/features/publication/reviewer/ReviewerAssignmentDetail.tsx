@@ -31,14 +31,15 @@ import {
   hasAcceptedPolicySession,
   ReviewerPolicyModal,
 } from '../../../components/reviewer/ReviewerPolicyModal';
+import { formatDisplayDate } from '../../../utils/datetime';
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 const POLICY_VERSION = 'v1.0.0';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
-  const parsed = new Date(iso);
-  return Number.isNaN(parsed.getTime()) ? 'Not supplied' : parsed.toISOString().slice(0, 10);
+  const formatted = formatDisplayDate(iso);
+  return formatted === '—' ? 'Not supplied' : formatted;
 };
 
 const statusTone = (

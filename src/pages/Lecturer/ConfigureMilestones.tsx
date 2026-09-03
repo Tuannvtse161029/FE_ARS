@@ -60,6 +60,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { ROUTES } from '../../routes/paths';
 import { parseTopicIdFromSearch } from '../../utils/topicRouting';
+import { formatDisplayDate } from '../../utils/datetime';
 import styles from './ConfigureMilestones.module.css';
 
 /** Build a fresh empty phase draft. */
@@ -97,9 +98,7 @@ type PageState =
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const formatDate = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
+  return formatDisplayDate(iso, 'vi');
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -971,7 +970,7 @@ export const ConfigureMilestones = () => {
                         .sort()
                         .pop();
                       if (!lastEnd) return 'not set';
-                      return new Date(lastEnd).toLocaleDateString();
+                      return formatDisplayDate(lastEnd, 'vi');
                     })()}
                   </strong>
                 </div>

@@ -33,6 +33,7 @@ import { useParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
+import { toLocalDateInput, formatDisplayDate } from '../../utils/datetime';
 import {
   PROFILE_VALIDATION,
   resolveRoleProfileMeta,
@@ -242,7 +243,7 @@ function draftFromProfile(p: {
     bio: p.bio ?? '',
     keywords: Array.isArray(p.keywords) ? [...p.keywords] : [],
     avatarInitials: p.avatarInitials ?? '',
-    dateOfBirth: p.dateOfBirth ?? '',
+    dateOfBirth: toLocalDateInput(p.dateOfBirth),
     gender: p.gender ?? '',
     address: p.address ?? '',
   };
@@ -776,7 +777,7 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
             <div className={styles.viewItem}>
               <span className={styles.viewLabel}>Date of birth</span>
               <p className={styles.viewValue} data-testid="view-date-of-birth">
-                {showValue(draft.dateOfBirth)}
+                {draft.dateOfBirth ? formatDisplayDate(draft.dateOfBirth) : '—'}
               </p>
             </div>
             <div className={styles.viewItem}>

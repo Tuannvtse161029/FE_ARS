@@ -5,6 +5,11 @@ import {
   type PhasedReport,
 } from '../../services/phasedReport.service';
 import { useLocale } from '../../i18n/I18nContext';
+import {
+  toLocalDatetimeInput,
+  toApiIsoString,
+  formatDisplayDateTime,
+} from '../../utils/datetime';
 import styles from './ExtendDeadlineModal.module.css';
 
 export interface ExtendDeadlineModalProps {
@@ -36,14 +41,7 @@ export const ExtendDeadlineModal: React.FC<ExtendDeadlineModalProps> = ({
       // Default new deadline: 7 days from current deadline (or 7 days from now)
       const base = report.deadlineAt ? new Date(report.deadlineAt) : new Date();
       const defaultDate = new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
-      
-      // Format as YYYY-MM-DDTHH:mm for datetime-local input
-      const year = defaultDate.getFullYear();
-      const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
-      const day = String(defaultDate.getDate()).padStart(2, '0');
-      const hours = String(defaultDate.getHours()).padStart(2, '0');
-      const minutes = String(defaultDate.getMinutes()).padStart(2, '0');
-      setDeadlineInput(`${year}-${month}-${day}T${hours}:${minutes}`);
+      setDeadlineInput(toLocalDatetimeInput(defaultDate));
     }
   }, [isOpen, report]);
 
@@ -53,20 +51,6 @@ export const ExtendDeadlineModal: React.FC<ExtendDeadlineModalProps> = ({
   const phaseNum = report.phaseNumber ?? 1;
   const phaseTitle = report.milestoneTitle || `${copy('Phase', 'Giai đoạn')} ${phaseNum}`;
   const displayGroup = groupName || report.groupName || copy('Research Group', 'Nhóm nghiên cứu');
-
-  const formatDisplayDate = (iso?: string | null) => {
-    if (!iso) return copy('No deadline set', 'Chưa đặt hạn chót');
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime())
-      ? iso
-      : d.toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +63,8 @@ export const ExtendDeadlineModal: React.FC<ExtendDeadlineModalProps> = ({
       return;
     }
 
-    const newDate = new Date(deadlineInput);
-    if (Number.isNaN(newDate.getTime())) {
+    const iso = toApiIsoString(deadlineInput);
+    if (!iso) {
       setError(copy('Invalid date format.', 'Định dạng ngày giờ không hợp lệ.'));
       return;
     }
@@ -90,7 +74,7 @@ export const ExtendDeadlineModal: React.FC<ExtendDeadlineModalProps> = ({
 
     try {
       const updated = await phasedReportService.extendDeadline(reportId, {
-        deadlineAt: newDate.toISOString(),
+        deadlineAt: iso,
       });
       onSuccess(updated);
       onClose();
@@ -140,7 +124,7 @@ export const ExtendDeadlineModal: React.FC<ExtendDeadlineModalProps> = ({
             <span className={styles.infoLabel}>
               <Clock size={13} aria-hidden /> {copy('Current Deadline', 'Hạn chót hiện tại')}:
             </span>
-            <span className={styles.infoValue}>{formatDisplayDate(report.deadlineAt)}</span>
+            <span className={styles.infoValue}>{formatDisplayDateTime(report.deadlineAt, locale)}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>

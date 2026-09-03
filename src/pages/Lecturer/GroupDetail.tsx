@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
+import { toLocalDateInput, toApiIsoString } from '../../utils/datetime';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -93,10 +94,7 @@ const formatDateTime = (iso: string | null | undefined): string => {
 };
 
 const formatDeadlineForInput = (iso: string | null | undefined): string => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
+  return toLocalDateInput(iso);
 };
 
 export const LecturerGroupDetail = (): JSX.Element => {
@@ -297,7 +295,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
         topicId: group.topicId ?? null,
         name: trimmedName,
         description: editDesc.trim() || null,
-        deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+        deadline: editDeadline ? toApiIsoString(editDeadline) : null,
         assignedAt: group.assignedAt ?? null,
       });
       setShowEditModal(false);

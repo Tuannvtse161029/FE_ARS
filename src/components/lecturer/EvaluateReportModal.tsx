@@ -12,6 +12,7 @@ import LazyPdfViewer from '../PdfViewer/LazyPdfViewer';
 import { StatusBadge } from './StatusBadge';
 import { useEvaluatePhasedReport } from '../../hooks/useEvaluatePhasedReport';
 import type { PhasedReport } from '../../services/phasedReport.service';
+import { formatDisplayDateTime } from '../../utils/datetime';
 import styles from './EvaluateReportModal.module.css';
 
 export type EvaluationAction = 'approve' | 'reject';
@@ -79,10 +80,7 @@ const readPreviousReportId = (
 };
 
 const formatDateTime = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toISOString().slice(0, 16).replace('T', ' ');
+  return formatDisplayDateTime(iso);
 };
 
 export const EvaluateReportModal = ({

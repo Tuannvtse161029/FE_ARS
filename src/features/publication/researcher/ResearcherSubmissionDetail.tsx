@@ -15,6 +15,7 @@ import { SkeletonRow } from '../../../components/SkeletonRow';
 import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { buildSafeResourceLink } from '../home/publicationLinks';
+import { formatDisplayDate } from '../../../utils/datetime';
 import styles from './researcher.module.css';
 
 // ResearcherSubmissionDetail — Researcher-only view of one manuscript
@@ -35,9 +36,8 @@ const RESEARCHER_ACCENT = 'var(--ars-researcher)';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
-  return parsed.toISOString().slice(0, 10);
+  const formatted = formatDisplayDate(iso);
+  return formatted === '—' ? 'Not supplied' : formatted;
 };
 
 export const ResearcherSubmissionDetail = () => {
