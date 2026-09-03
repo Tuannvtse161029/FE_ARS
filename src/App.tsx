@@ -223,8 +223,8 @@ const App = () => {
                   </Route>
                 </Route>
 
-                {/* Graduate Student-only routes */}
-                <Route element={<RoleRouteGuard allow={['Graduate Student']} />}>
+                {/* Graduate Student & Lecturer routes */}
+                <Route element={<RoleRouteGuard allow={['Graduate Student', 'Lecturer']} />}>
                   <Route path={ROUTES.STUDENT_RESEARCH_GROUPS} element={<StudentResearchGroups />} />
                   <Route path={ROUTES.SUBMIT_REPORT} element={<SubmitReport />} />
                   <Route path={ROUTES.GRADUATE_STUDENT_DASHBOARD} element={<GraduateStudentDashboard />} />

@@ -20,6 +20,7 @@ const PHASED_REPORT_ENDPOINTS = {
   MEMBERS_BY_TOPIC: (topicId: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.MEMBERS_BY_TOPIC(topicId),
   SUBMIT: API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.SUBMIT,
   EVALUATE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.EVALUATE(id),
+  EXTEND_DEADLINE: (id: number) => API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.EXTEND_DEADLINE(id),
 } as const;
 
 // Status enums per contract §3 — the BE stores these as a free-form string,
@@ -247,6 +248,18 @@ export const phasedReportService = {
   ): Promise<PhasedReport> => {
     const response = await api.put<PhasedReport | { message?: string; data?: PhasedReport }>(
       PHASED_REPORT_ENDPOINTS.EVALUATE(phasedReportId),
+      payload,
+    );
+    const resData = (response.data as { data?: PhasedReport }).data ?? response.data;
+    return normalizePhasedReport(resData as PhasedReport);
+  },
+
+  extendDeadline: async (
+    phasedReportId: number,
+    payload: { deadlineAt: string },
+  ): Promise<PhasedReport> => {
+    const response = await api.put<PhasedReport | { message?: string; data?: PhasedReport }>(
+      PHASED_REPORT_ENDPOINTS.EXTEND_DEADLINE(phasedReportId),
       payload,
     );
     const resData = (response.data as { data?: PhasedReport }).data ?? response.data;

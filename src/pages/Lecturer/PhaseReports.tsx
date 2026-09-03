@@ -35,6 +35,7 @@ import {
   type PhasedReport,
 } from '../../services/phasedReport.service';
 import { EvaluateReportModal } from '../../components/lecturer/EvaluateReportModal';
+import { ExtendDeadlineModal } from '../../components/lecturer/ExtendDeadlineModal';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { PageHeader } from '../../components/PageHeader';
@@ -100,6 +101,7 @@ export const PhaseReports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PhasedReport | null>(null);
+  const [deadlineModalReport, setDeadlineModalReport] = useState<PhasedReport | null>(null);
 
   // Determine page mode
   const isScoped = urlTopicId !== null;
@@ -487,6 +489,16 @@ export const PhaseReports = () => {
                                 )}
                                 <Button
                                   size="sm"
+                                  variant="outline"
+                                  onClick={() => setDeadlineModalReport(report)}
+                                  disabled={id == null}
+                                  leftIcon={<Clock size={13} />}
+                                  title="Extend deadline for this phase report"
+                                >
+                                  Update Deadline
+                                </Button>
+                                <Button
+                                  size="sm"
                                   variant="primary"
                                   onClick={() => setSelected(report)}
                                   disabled={id == null || !report.reportFileUrl}
@@ -518,6 +530,24 @@ export const PhaseReports = () => {
         onClose={() => setSelected(null)}
         onSubmitted={() => {
           setSelected(null);
+          void load();
+        }}
+      />
+
+      {/* ── Extend deadline modal ───────────────────────────── */}
+      <ExtendDeadlineModal
+        isOpen={deadlineModalReport !== null}
+        report={deadlineModalReport}
+        groupName={
+          deadlineModalReport
+            ? (groupNames.get(deadlineModalReport.researchGroupId ?? -1) ??
+               deadlineModalReport.groupName ??
+               undefined)
+            : undefined
+        }
+        onClose={() => setDeadlineModalReport(null)}
+        onSuccess={() => {
+          setDeadlineModalReport(null);
           void load();
         }}
       />

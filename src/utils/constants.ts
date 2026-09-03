@@ -282,6 +282,7 @@ export const API_ENDPOINTS = {
       MEMBERS_BY_TOPIC: (topicId: number) => `/api/PhasedReport/topic/${topicId}/members`,
       SUBMIT: '/api/PhasedReport/submit',
       EVALUATE: (id: number) => `/api/PhasedReport/${id}/evaluate`,
+      EXTEND_DEADLINE: (id: number) => `/api/PhasedReport/${id}/extend-deadline`,
     },
     LEARNING_MATERIAL: {
       GET_ALL: '/api/LearningMaterial',

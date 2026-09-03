@@ -17,6 +17,7 @@ import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
+import ExtendDeadlineModal from '../../components/lecturer/ExtendDeadlineModal';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
 import {
@@ -79,6 +80,9 @@ export const SubmitReport = (): JSX.Element => {
 
   const primaryGroupId = primaryGroup?.id ?? null;
   const topicId = primaryTopic?.id ?? primaryGroup?.topicId ?? null;
+
+  const isLecturer = user?.role === 'Lecturer' || (user as { roleName?: string })?.roleName === 'Lecturer';
+  const [deadlineModalReport, setDeadlineModalReport] = useState<PhasedReport | null>(null);
 
   const { refetch: refetchReports } = usePhasedReports(primaryGroupId);
 
@@ -409,6 +413,17 @@ export const SubmitReport = (): JSX.Element => {
                       </div>
                     )}
 
+                    {phase.status === 'Overdue' && (
+                      <div className={styles.overdueNotice}>
+                        <AlertCircle size={14} aria-hidden />
+                        <span>
+                          {locale === 'en'
+                            ? 'This phase report is overdue. If you need to submit late, ask your lecturer to extend the deadline.'
+                            : 'Báo cáo này đã quá hạn. Nếu cần nộp trễ, sinh viên có thể nhờ giảng viên gia hạn deadline để mở lại quyền nộp bài.'}
+                        </span>
+                      </div>
+                    )}
+
                     <div className={styles.phaseActionRow}>
                       {isPassed ? (
                         <span className={styles.completedState}>
@@ -420,7 +435,7 @@ export const SubmitReport = (): JSX.Element => {
                             type="button"
                             className={styles.submitPhaseButton}
                             onClick={() => handleOpenPhaseSubmit(pNum, phase.phasedReportId, phase.milestoneTitle || undefined)}
-                            disabled={!isCurrentUserLeader}
+                            disabled={!isCurrentUserLeader && !isLecturer}
                             aria-describedby={
                               isCurrentUserLeader ? undefined : `phase-${pNum}-permission`
                             }
@@ -428,12 +443,25 @@ export const SubmitReport = (): JSX.Element => {
                             <Upload size={14} aria-hidden />
                             {hasFile ? t('student.phaseReport.resubmit', 'Resubmit report') : t('student.phaseReport.submit', 'Submit report')}
                           </button>
-                          {!isCurrentUserLeader ? (
+                          {!isCurrentUserLeader && !isLecturer ? (
                             <p id={`phase-${pNum}-permission`} className={styles.actionExplanation}>
                               {t('student.phaseReport.onlyLeaderCanSubmit', 'Only your Group Leader can submit this phase report. Contact your lecturer to update the group leader.')}
                             </p>
                           ) : null}
                         </>
+                      )}
+
+                      {/* Lecturer action: Update Deadline */}
+                      {isLecturer && (
+                        <button
+                          type="button"
+                          className={styles.extendDeadlineButton}
+                          onClick={() => setDeadlineModalReport(phase)}
+                          title={locale === 'en' ? 'Extend deadline for this phase' : 'Gia hạn deadline cho giai đoạn này'}
+                        >
+                          <Clock size={14} aria-hidden />
+                          {locale === 'en' ? 'Update Deadline' : 'Gia hạn deadline'}
+                        </button>
                       )}
                     </div>
                   </article>
@@ -469,6 +497,20 @@ export const SubmitReport = (): JSX.Element => {
           onSubmitted={handleSubmitted}
         />
       ) : null}
+
+      {deadlineModalReport && (
+        <ExtendDeadlineModal
+          isOpen={deadlineModalReport !== null}
+          report={deadlineModalReport}
+          groupName={primaryGroup?.name}
+          onClose={() => setDeadlineModalReport(null)}
+          onSuccess={async () => {
+            setDeadlineModalReport(null);
+            if (topicId) await loadTopicDetails(topicId);
+            await refetchReports();
+          }}
+        />
+      )}
     </div>
   );
 };
