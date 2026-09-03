@@ -12,6 +12,7 @@ export const PUBLICATION_STATUSES = [
   'REVIEWER_RECOMMENDED_REJECT',
   'ADMIN_APPROVED',
   'PUBLISHED',
+  'INACTIVE',
   'ADMIN_REJECTED',
   'WITHDRAWN',
 ] as const;
@@ -150,7 +151,7 @@ export const normalizePublicationStatus = (status: string): PublicationStatus | 
 };
 
 export const isTerminalPublicationStatus = (status: PublicationStatus): boolean =>
-  status === 'PUBLISHED' || status === 'ADMIN_REJECTED' || status === 'WITHDRAWN';
+  status === 'PUBLISHED' || status === 'INACTIVE' || status === 'ADMIN_REJECTED' || status === 'WITHDRAWN';
 
 export const canAppearInPublicCatalog = (paper: PublicationPaper): boolean =>
   normalizePublicationStatus(paper.status) === 'PUBLISHED' && paper.visibility === 'PUBLIC';
@@ -162,5 +163,6 @@ export const statusLabel = (status: PublicationStatus): string => {
   if (status === 'REVIEWER_RECOMMENDED_REJECT') return 'Reviewer recommended rejection';
   if (status === 'REVIEWER_RECOMMENDED_ACCEPT') return 'Reviewer recommended acceptance';
   if (status === 'ADMIN_REJECTED') return 'Rejected';
+  if (status === 'INACTIVE') return 'Inactive';
   return status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 };

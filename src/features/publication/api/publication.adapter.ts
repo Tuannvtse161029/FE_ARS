@@ -64,6 +64,8 @@ const paperStatus = (value: string | null | undefined): PublicationStatus => {
     case 'ACCEPTED':
     case 'APPROVED':
       return 'ADMIN_APPROVED';
+    case 'INACTIVE':
+      return 'INACTIVE';
     case 'REJECTED':
       return 'ADMIN_REJECTED';
     default:
@@ -111,7 +113,7 @@ const toPublicationPaper = (
   // so reviewer assignment status must never overwrite a persisted paper
   // status such as Published or Rejected during a later reload.
   const persistedStatus = paperStatus(paper.status);
-  const status = ['PUBLISHED', 'ADMIN_REJECTED', 'WITHDRAWN'].includes(persistedStatus)
+  const status = ['PUBLISHED', 'INACTIVE', 'ADMIN_REJECTED', 'WITHDRAWN'].includes(persistedStatus)
     ? persistedStatus
     : assignmentStatus(request, evaluation) ?? persistedStatus;
   const authorId = paper.authorId ?? (paper as unknown as { userId?: number }).userId;
@@ -298,6 +300,21 @@ const currentUserId = (): number | null => {
   return id && id > 0 ? Number(id) : null;
 };
 
+/**
+ * Reviewer workspaces only expose active assignments and their immediately
+ * post-submission state. Terminal editorial records may retain a historical
+ * review request, but they are never work for a reviewer to reopen.
+ */
+const isVisibleReviewerAssignment = (paper: PublicationPaper): boolean =>
+  [
+    'REVIEWER_ASSIGNED',
+    'UNDER_REVIEW',
+    'REVISION_REQUIRED',
+    'RESUBMITTED',
+    'REVIEWER_RECOMMENDED_ACCEPT',
+    'REVIEWER_RECOMMENDED_REJECT',
+  ].includes(paper.status);
+
 const latestRequestByPaper = (requests: ReviewRequest[]): Map<string, ReviewRequest> => {
   const result = new Map<string, ReviewRequest>();
   for (const request of requests) {
@@ -362,15 +379,16 @@ class ApiPublicationAdapter implements PublicationAdapter {
 
     const allRequests = await reviewRequestService.getAll();
     const myRequests = allRequests.filter(
-      (r) =>
-        (userId && Number(r.reviewerId) === userId) ||
-        (userEmail && r.reviewerEmail && r.reviewerEmail.toLowerCase() === userEmail) ||
-        (userId === 152 && Number(r.reviewerId) === 151) ||
-        (userId === 151 && Number(r.reviewerId) === 152) ||
-        (r.reviewerName?.toLowerCase().includes('nguyen tri tue') && userEmail.includes('reviewer.ai')),
+      (request) =>
+        (userId > 0 && Number(request.reviewerId) === userId) ||
+        Boolean(
+          userEmail &&
+            request.reviewerEmail &&
+            request.reviewerEmail.toLowerCase() === userEmail,
+        ),
     );
 
-    return Promise.all(
+    const assignments = await Promise.all(
       myRequests.map(async (request) => {
         try {
           const [paper, evaluation] = await Promise.all([
@@ -382,7 +400,12 @@ class ApiPublicationAdapter implements PublicationAdapter {
           return null;
         }
       }),
-    ).then((papers) => papers.filter((p): p is PublicationPaper => p !== null));
+    );
+
+    return assignments.filter(
+      (paper): paper is PublicationPaper =>
+        paper !== null && isVisibleReviewerAssignment(paper),
+    );
   }
 
   async getAdminSubmissions(): Promise<PublicationPaper[]> {
@@ -640,41 +663,17 @@ class ApiPublicationAdapter implements PublicationAdapter {
     const userEmail = (user?.email ?? '').trim().toLowerCase();
     const allRequests = await reviewRequestService.getAll();
 
-    // 1. Direct match on paperId and (reviewerId OR reviewerEmail)
-    let request = allRequests.find(
+    const request = allRequests.find(
       (item) =>
         String(item.paperId) === String(paperId) &&
-        (
-          (userId && Number(item.reviewerId) === userId) ||
-          (userEmail && item.reviewerEmail && item.reviewerEmail.toLowerCase() === userEmail) ||
-          (userId === 152 && Number(item.reviewerId) === 151) ||
-          (userId === 151 && Number(item.reviewerId) === 152) ||
-          (item.reviewerName?.toLowerCase().includes('nguyen tri tue') && userEmail.includes('reviewer.ai'))
-        ) &&
-        item.id != null,
+        item.id != null &&
+        ((userId > 0 && Number(item.reviewerId) === userId) ||
+          Boolean(
+            userEmail &&
+              item.reviewerEmail &&
+              item.reviewerEmail.toLowerCase() === userEmail,
+          )),
     );
-
-    // 2. Fallback: match any request for this paper
-    if (!request) {
-      request = allRequests.find(
-        (item) => String(item.paperId) === String(paperId) && item.id != null,
-      );
-    }
-
-    // 3. Fallback: auto-create request on the fly if paper has no request
-    if (!request) {
-      try {
-        request = await reviewRequestService.create({
-          paperId: Number(paperId),
-          reviewerId: userId || 152,
-          status: 'In Progress',
-          deadline: new Date(Date.now() + 14 * 86_400_000).toISOString(),
-          type: 'AutoAssigned',
-        });
-      } catch (err) {
-        console.warn('Could not auto-create review request on the fly:', err);
-      }
-    }
 
     if (!request) {
       throw new PublicationBackendContractError(

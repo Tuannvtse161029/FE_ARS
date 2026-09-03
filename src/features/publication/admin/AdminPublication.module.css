@@ -177,6 +177,7 @@
 .statusRecommendReject { background: var(--status-danger-surface); color: var(--status-danger-text); }
 .statusApproved       { background: var(--status-success-surface); color: var(--status-success-text); }
 .statusPublished      { background: var(--status-success-surface); color: var(--status-success-text); }
+.statusInactive       { background: var(--status-danger-surface); color: var(--status-danger-text); }
 .statusRejected       { background: var(--status-danger-surface); color: var(--status-danger-text); }
 .statusWithdrawn      { background: var(--status-neutral-surface); color: var(--status-neutral-text); }
 
@@ -227,14 +228,15 @@
 }
 
 .verifyActionButton {
-  border: 1px solid var(--accent-primary);
-  background: var(--accent-primary);
-  color: var(--ink-primary);
+  border: 1px solid var(--status-success-text);
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
 }
 
 .verifyActionButton:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--status-success-text);
+  border-color: var(--status-success-text);
+  color: var(--ink-on-dark);
 }
 
 .verifyActionButton:focus-visible,

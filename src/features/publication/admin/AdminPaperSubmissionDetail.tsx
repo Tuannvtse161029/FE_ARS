@@ -63,6 +63,7 @@ const STATUS_LABEL: Record<PublicationStatus, string> = {
   REVIEWER_RECOMMENDED_REJECT: 'Recommend reject',
   ADMIN_APPROVED: 'Admin approved',
   PUBLISHED: 'Published',
+  INACTIVE: 'Inactive',
   ADMIN_REJECTED: 'Admin rejected',
   WITHDRAWN: 'Withdrawn',
 };
