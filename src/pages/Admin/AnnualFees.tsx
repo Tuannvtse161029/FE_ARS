@@ -237,7 +237,6 @@ const AnnualFees = (): JSX.Element => {
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th>Features</th>
                   <th>
                     <SortableHeader
                       column="status"
@@ -276,7 +275,6 @@ const AnnualFees = (): JSX.Element => {
                         {formatCycle(fee.billingCycle)}
                       </span>
                     </td>
-                    <td>{fee.features?.join(', ') || 'Not supplied'}</td>
                     <td>
                       <span
                         className={`${styles.statusPill} ${

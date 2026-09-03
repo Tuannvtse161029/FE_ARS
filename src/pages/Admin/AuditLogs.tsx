@@ -30,6 +30,20 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
+/**
+ * Renders an audit log timestamp defensively. The BE occasionally returns
+ * an empty/null `timestamp` (e.g. legacy rows or interim payloads before
+ * the contract was finalized). Without this guard the table previously
+ * rendered "Invalid Date" because `new Date('').toLocaleString(...)`
+ * throws. Showing a clear placeholder keeps the row trustworthy.
+ */
+const formatAuditTimestamp = (value: string | null | undefined): string => {
+  if (!value || typeof value !== 'string') return 'Not supplied';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
+  return parsed.toLocaleString('vi-VN');
+};
+
 /** Sortable column ids for the Audit Logs table. */
 type SortColumn = 'logId' | 'admin' | 'action' | 'target' | 'timestamp';
 
@@ -384,7 +398,7 @@ export default function AuditLogs(): JSX.Element {
                       </span>
                     </td>
                     <td>{entry.target}</td>
-                    <td>{new Date(entry.timestamp).toLocaleString('vi-VN')}</td>
+                    <td>{formatAuditTimestamp(entry.timestamp)}</td>
                     <td className={styles.detailsCell}>{entry.details}</td>
                   </tr>
                 ))}

@@ -155,7 +155,7 @@ describe('MainLayout — Graduate Student sidebar (AGENT_12_GS_NAV_READY)', () =
     renderMainLayout(ROUTES.FORUM);
 
     expect(findSidebarLinkByHref(ROUTES.RESEARCHER_SUBMISSIONS)).not.toBeNull();
-    expect(findSidebarLinkByText('My Submissions')).not.toBeNull();
+    expect(findSidebarLinkByText('My Research Papers')).not.toBeNull();
   });
 
   it('Lecturer sidebar is unchanged — does not expose /papers or /reviewers', () => {

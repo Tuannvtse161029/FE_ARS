@@ -123,3 +123,13 @@ export interface AuditLogQuery {
   adminId?: number | 'ALL';
   range?: AuditLogRange;
 }
+
+// The live BE accepts the same labels the FE uses
+// (`past_24h | past_7d | past_30d | all_time`). Earlier we had a
+// `toApiRange` helper that translated these into Swagger-style
+// `today | 7_days | 30_days` values, but the running service rejects them
+// with: "range must be one of: past_24h, past_7d, past_30d, all_time." The
+// Swagger contract and the live BE disagree, and the BE is the source of
+// truth — so we now forward the FE value unchanged. The helper is kept as a
+// no-op identity function for callers that still import it; it stays a
+// single seam if the BE contract moves again.

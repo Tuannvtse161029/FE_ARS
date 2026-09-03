@@ -37,6 +37,7 @@ import {
 } from './adminPublicationHelpers';
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
+import { RejectPaperModal } from './RejectPaperModal';
 
 interface AdminListConfig {
   eyebrow: string;
@@ -66,7 +67,9 @@ const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
     'REVIEWER_RECOMMENDED_ACCEPT',
     'REVIEWER_RECOMMENDED_REJECT',
     'ADMIN_APPROVED',
-    'PUBLISHED',
+    // PUBLISHED is intentionally excluded — once Admin publishes a paper it
+    // moves to the Published Papers tab. The Publish button no longer renders
+    // for published rows in that tab, so the lifecycle stays predictable.
   ],
   defaultStatus: 'ALL',
   itemLabel: 'assignments',
@@ -98,6 +101,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectingPaper, setRejectingPaper] = useState<PublicationPaper | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -116,9 +120,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     setActionFeedback(null);
     try {
       await publicationAdapter.publishPaper(paper.id);
-      setPapers((prev) =>
-        prev.map((p) => (p.id === paper.id ? { ...p, status: 'PUBLISHED' } : p)),
-      );
+      await load();
       setActionFeedback({
         type: 'success',
         message: `The paper "${paper.title}" was published successfully and its author was notified.`,
@@ -150,10 +152,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
   };
 
 
-  const handleReject = async (paper: PublicationPaper) => {
+  const handleReject = async (paper: PublicationPaper, reason: string) => {
     if (publishingId || rejectingId) return;
-    const reason = window.prompt(`Provide a rejection reason for "${paper.title}".`)?.trim();
-    if (!reason) return;
+    setRejectingPaper(null);
     setRejectingId(paper.id);
     setActionFeedback(null);
     try {
@@ -575,7 +576,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                               type="button"
                               className={adminStyles.rejectActionButton}
                               disabled={rejectingId === paper.id}
-                              onClick={() => void handleReject(paper)}
+                              onClick={() => setRejectingPaper(paper)}
                               title="Reject this paper"
                             >
                               Reject
@@ -619,6 +620,14 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
         <AdminPaperPreviewModal
           paper={previewing}
           onClose={() => setPreviewing(null)}
+        />
+      ) : null}
+      {rejectingPaper ? (
+        <RejectPaperModal
+          paperTitle={rejectingPaper.title}
+          isSubmitting={rejectingId === rejectingPaper.id}
+          onClose={() => setRejectingPaper(null)}
+          onConfirm={(reason) => void handleReject(rejectingPaper, reason)}
         />
       ) : null}
     </section>

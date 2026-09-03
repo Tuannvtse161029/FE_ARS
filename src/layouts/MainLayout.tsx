@@ -168,6 +168,7 @@ const ProfileDropdown = ({
   accountTier,
   onLogout,
   onProfileClick,
+  showProfileAction,
 }: {
   username: string;
   activeRole: string;
@@ -175,6 +176,7 @@ const ProfileDropdown = ({
   accountTier?: string;
   onLogout: () => void;
   onProfileClick: () => void;
+  showProfileAction: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -230,11 +232,15 @@ const ProfileDropdown = ({
 
       {isOpen && (
         <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label="Account menu">
-          <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
-            <User size={16} />
-            <span>My Profile & Role Upgrades</span>
-          </button>
-          <div className={styles.dropdownDivider}></div>
+          {showProfileAction ? (
+            <>
+              <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
+                <User size={16} />
+                <span>My Profile & Role Upgrades</span>
+              </button>
+              <div className={styles.dropdownDivider}></div>
+            </>
+          ) : null}
           <button type="button" role="menuitem" className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`} onClick={() => { onLogout(); setIsOpen(false); }}>
             <LogOut size={16} />
             <span>Log out</span>
@@ -592,7 +598,7 @@ export const MainLayout = () => {
           { to: ROUTES.HOME, label: 'Discover Research', icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: 'Forums', icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: 'Seminar', icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Submissions', icon: <PapersIcon size={20} /> },
+          { to: ROUTES.RESEARCHER_SUBMISSIONS, label: 'My Research Papers', icon: <PapersIcon size={20} /> },
         ];
     }
   };
@@ -912,6 +918,7 @@ export const MainLayout = () => {
               avatarInitials={avatarInitials}
               accountTier={accountTier}
               onLogout={handleLogout}
+              showProfileAction={activeRole !== 'Admin'}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
             />
           </div>

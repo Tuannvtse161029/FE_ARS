@@ -51,6 +51,37 @@ describe('useNotifications', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('sorts notifications newest first by createdAt', async () => {
+    // BE returns rows in an arbitrary order; the FE must always surface
+    // the most recent `createdAt` first so the dropdown shows fresh
+    // notifications at the top.
+    mocked.getAll.mockResolvedValueOnce([
+      { id: 1, userId: 7, message: 'oldest', isRead: false, createdAt: '2026-01-01T10:00:00Z' },
+      { id: 2, userId: 7, message: 'newest', isRead: false, createdAt: '2026-03-01T10:00:00Z' },
+      { id: 3, userId: 7, message: 'middle', isRead: false, createdAt: '2026-02-01T10:00:00Z' },
+    ]);
+
+    const { result } = renderHook(() => useNotifications(7));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.notifications.map((n) => n.id)).toEqual([2, 3, 1]);
+  });
+
+  it('keeps notifications without a createdAt at the end after sorting', async () => {
+    // Older BE rows (or rows where the BE omitted the field) must still
+    // be returned to the UI, but they should sort after every row that
+    // carries a valid timestamp.
+    mocked.getAll.mockResolvedValueOnce([
+      { id: 1, userId: 7, message: 'no date', isRead: false },
+      { id: 2, userId: 7, message: 'dated', isRead: false, createdAt: '2026-02-01T10:00:00Z' },
+    ]);
+
+    const { result } = renderHook(() => useNotifications(7));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.notifications.map((n) => n.id)).toEqual([2, 1]);
+  });
+
   it('surfaces API errors as Error objects', async () => {
     mocked.getAll.mockRejectedValueOnce(new Error('500'));
     const { result } = renderHook(() => useNotifications(7));

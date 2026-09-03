@@ -41,7 +41,7 @@ test('Researcher login lands on /home', async ({ page }) => {
 /**
  * @annotation role: Researcher
  * @annotation feature: Researcher navigation
- * @annotation expected: Sidebar shows Researcher-specific items including My Submissions
+ * @annotation expected: Sidebar shows Researcher-specific items including My Research Papers
  * @annotation owner: Frontend
  * @annotation confidence: High
  */
@@ -52,7 +52,7 @@ test('Researcher sidebar shows submission nav', async ({ page }) => {
     await page.goto(ROUTES.HOME);
   });
 
-  await test.step('Verify sidebar includes My Submissions', async () => {
+  await test.step('Verify sidebar includes My Research Papers', async () => {
     const nav = page.locator('nav[aria-label]');
     await expect(nav).toBeVisible({ timeout: 10_000 });
     const submissionsLink = page.locator(`a[href="${ROUTES.RESEARCHER_SUBMISSIONS}"]`);
