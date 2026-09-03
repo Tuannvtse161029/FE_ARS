@@ -11,16 +11,11 @@ import { Button } from '../../../components/Button/Button';
 import { publicReviewerName } from '../types/publication';
 import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
+import { useLocale } from '../../../i18n/I18nContext';
 import styles from './HomeResearchCatalog.module.css';
 
 const PAGE_SIZE = 8;
 const HOMEPAGE_ACCENT = 'var(--ars-blue)';
-
-const SORT_OPTIONS: Array<{ value: NonNullable<CatalogQuery['sort']>; label: string }> = [
-  { value: 'PUBLISHED_DESC', label: 'Newest published' },
-  { value: 'PUBLISHED_ASC', label: 'Oldest published' },
-  { value: 'TITLE_ASC', label: 'Title A-Z' },
-];
 
 /**
  * Authenticated research catalog.
@@ -39,6 +34,15 @@ const SORT_OPTIONS: Array<{ value: NonNullable<CatalogQuery['sort']>; label: str
  *     reads as a real catalog, not just a list.
  */
 export const HomeResearchCatalog = () => {
+  const locale = useLocale();
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
+
+  const sortOptions: Array<{ value: NonNullable<CatalogQuery['sort']>; label: string }> = [
+    { value: 'PUBLISHED_DESC', label: copy('Newest published', 'Mới xuất bản nhất') },
+    { value: 'PUBLISHED_ASC', label: copy('Oldest published', 'Xuất bản cũ nhất') },
+    { value: 'TITLE_ASC', label: copy('Title A-Z', 'Tiêu đề A-Z') },
+  ];
+
   const [query, setQuery] = useState<CatalogQuery>({
     page: 1,
     pageSize: PAGE_SIZE,
@@ -107,10 +111,10 @@ export const HomeResearchCatalog = () => {
   return (
     <section className={styles.catalog}>
       <WorkspaceHeader
-        marker="01 / PUBLIC CATALOG"
-        title="Research catalog"
-        subtitle="Discover ARS publications across authors, institutions, topics, and research domains."
-        annotation="An OpenAlex-style research discovery surface. Every paper has passed editorial review and is publicly visible."
+        marker={copy('01 / PUBLIC CATALOG', '01 / DANH MỤC CÔNG KHAI')}
+        title={copy('Research catalog', 'Danh mục nghiên cứu')}
+        subtitle={copy('Discover ARS publications across authors, institutions, topics, and research domains.', 'Khám phá các công trình nghiên cứu ARS theo tác giả, viện nghiên cứu, chủ đề và lĩnh vực.')}
+        annotation={copy('An OpenAlex-style research discovery surface. Every paper has passed editorial review and is publicly visible.', 'Không gian khám phá nghiên cứu. Mọi bài báo đều đã qua xét duyệt biên tập và hiển thị công khai.')}
         accent={HOMEPAGE_ACCENT}
       />
 
@@ -121,60 +125,60 @@ export const HomeResearchCatalog = () => {
           <Search size={18} aria-hidden="true" />
           <input
             id="public-catalog-search-input"
-            aria-label="Search published research"
+            aria-label={copy('Search published research', 'Tìm kiếm nghiên cứu đã xuất bản')}
             value={query.query ?? ''}
             onChange={(event) => updateQuery({ query: event.target.value })}
-            placeholder="Search title, author, DOI, institution, topic, or keyword"
+            placeholder={copy('Search title, author, DOI, institution, topic, or keyword', 'Tìm kiếm tiêu đề, tác giả, DOI, viện nghiên cứu, chủ đề hoặc từ khóa')}
           />
         </label>
         <label className={styles.filter}>
           <SlidersHorizontal size={14} aria-hidden="true" />
-          <span>Topic</span>
+          <span>{copy('Topic', 'Chủ đề')}</span>
           <select
-            aria-label="Filter by topic"
+            aria-label={copy('Filter by topic', 'Lọc theo chủ đề')}
             value={query.topic ?? ''}
             onChange={(event) => updateQuery({ topic: event.target.value || undefined })}
           >
-            <option value="">All topics</option>
+            <option value="">{copy('All topics', 'Tất cả chủ đề')}</option>
             {topicOptions.map((topic) => (
               <option key={topic} value={topic}>{topic}</option>
             ))}
           </select>
         </label>
         <label className={styles.filter}>
-          <span>Domain</span>
+          <span>{copy('Domain', 'Lĩnh vực')}</span>
           <select
-            aria-label="Filter by domain"
+            aria-label={copy('Filter by domain', 'Lọc theo lĩnh vực')}
             value={query.domain ?? ''}
             onChange={(event) => updateQuery({ domain: event.target.value || undefined })}
           >
-            <option value="">All domains</option>
+            <option value="">{copy('All domains', 'Tất cả lĩnh vực')}</option>
             {domainOptions.map((domain) => (
               <option key={domain} value={domain}>{domain}</option>
             ))}
           </select>
         </label>
         <label className={styles.filter}>
-          <span>Field</span>
+          <span>{copy('Field', 'Ngành')}</span>
           <select
-            aria-label="Filter by field"
+            aria-label={copy('Filter by field', 'Lọc theo ngành')}
             value={query.field ?? ''}
             onChange={(event) => updateQuery({ field: event.target.value || undefined })}
           >
-            <option value="">All fields</option>
+            <option value="">{copy('All fields', 'Tất cả ngành')}</option>
             {fieldOptions.map((field) => (
               <option key={field} value={field}>{field}</option>
             ))}
           </select>
         </label>
         <label className={styles.filter}>
-          <span>Sort</span>
+          <span>{copy('Sort', 'Sắp xếp')}</span>
           <select
-            aria-label="Catalog sort"
+            aria-label={copy('Catalog sort', 'Sắp xếp danh mục')}
             value={query.sort}
             onChange={(event) => updateQuery({ sort: event.target.value as CatalogQuery['sort'] })}
           >
-            {SORT_OPTIONS.map((option) => (
+            {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
@@ -184,8 +188,8 @@ export const HomeResearchCatalog = () => {
       <div className={styles.resultContext} aria-live="polite">
         <span>
           {loading
-            ? 'Loading published research…'
-            : `${total.toLocaleString('en-US')} published paper${total === 1 ? '' : 's'}`}
+            ? copy('Loading published research…', 'Đang tải danh mục nghiên cứu…')
+            : `${total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} ${copy(total === 1 ? 'published paper' : 'published papers', 'bài báo đã xuất bản')}`}
         </span>
         {!loading && (query.query || query.topic || query.domain || query.field) ? (
           <Button
@@ -193,7 +197,7 @@ export const HomeResearchCatalog = () => {
             size="sm"
             onClick={() => updateQuery({ query: undefined, topic: undefined, domain: undefined, field: undefined })}
           >
-            Clear filters
+            {copy('Clear filters', 'Xóa bộ lọc')}
           </Button>
         ) : null}
       </div>
@@ -203,19 +207,19 @@ export const HomeResearchCatalog = () => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title="Could not load catalog"
+          title={copy('Could not load catalog', 'Không thể tải danh mục')}
           message={error}
         />
       ) : papers.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
           title={query.query || query.topic || query.domain || query.field
-            ? 'No published papers match the current catalog filters'
-            : 'The public catalog is empty'}
+            ? copy('No published papers match the current catalog filters', 'Không có bài báo nào khớp với bộ lọc hiện tại')
+            : copy('The public catalog is empty', 'Danh mục công khai đang trống')}
           description={
             query.query || query.topic || query.domain || query.field
-              ? 'Adjust your filters, clear the search, or change the sort to see every published paper.'
-              : 'Published papers will appear here once Admin completes the editorial workflow.'
+              ? copy('Adjust your filters, clear the search, or change the sort to see every published paper.', 'Hãy điều chỉnh bộ lọc, xóa tìm kiếm hoặc thay đổi thứ tự sắp xếp.')
+              : copy('Published papers will appear here once Admin completes the editorial workflow.', 'Bài báo xuất bản sẽ xuất hiện tại đây sau khi hoàn tất quy trình biên tập.')
           }
           action={
             (query.query || query.topic || query.domain || query.field) ? (
@@ -224,7 +228,7 @@ export const HomeResearchCatalog = () => {
                 size="md"
                 onClick={() => updateQuery({ query: undefined, topic: undefined, domain: undefined, field: undefined })}
               >
-                Clear filters
+                {copy('Clear filters', 'Xóa bộ lọc')}
               </Button>
             ) : undefined
           }
@@ -247,7 +251,7 @@ export const HomeResearchCatalog = () => {
 
       <footer className={styles.pagination}>
         <span className={styles.paginationCount}>
-          <strong>{total.toLocaleString('en-US')}</strong> published paper{total === 1 ? '' : 's'}
+          <strong>{total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')}</strong> {copy(total === 1 ? 'published paper' : 'published papers', 'bài báo đã xuất bản')}
         </span>
         <div className={styles.paginationControls}>
           <Button
@@ -255,22 +259,22 @@ export const HomeResearchCatalog = () => {
             size="sm"
             disabled={query.page <= 1}
             onClick={() => updateQuery({ page: query.page - 1 })}
-            aria-label="Previous catalog page"
+            aria-label={copy('Previous catalog page', 'Trang trước')}
           >
             <ChevronLeft size={14} aria-hidden />
-            Previous
+            {copy('Previous', 'Trước')}
           </Button>
           <span className={styles.paginationMeta} aria-live="polite">
-            Page {query.page} of {totalPages}
+            {`${copy('Page', 'Trang')} ${query.page} / ${totalPages}`}
           </span>
           <Button
             variant="outline"
             size="sm"
             disabled={query.page >= totalPages}
             onClick={() => updateQuery({ page: query.page + 1 })}
-            aria-label="Next catalog page"
+            aria-label={copy('Next catalog page', 'Trang sau')}
           >
-            Next
+            {copy('Next', 'Sau')}
             <ChevronRight size={14} aria-hidden />
           </Button>
         </div>
