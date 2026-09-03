@@ -155,6 +155,8 @@ export interface Seminar {
   invitationStatus?: string | null;
   participantEvaluation?: string | null;
   rating?: number | null;
+  subFieldId?: number | null;
+  subFieldName?: string | null;
 }
 
 /** Response returned by the participant-scoped seminar endpoints. */
@@ -169,6 +171,22 @@ export interface SeminarInvitationResponse {
   invitationStatus?: string | null;
   participantEvaluation?: string | null;
   rating?: number | null;
+  subFieldId?: number | null;
+  subFieldName?: string | null;
+}
+
+/** Mirror of `GET /api/Seminar/suggested-invitees` item */
+export interface SuggestedInviteeDto {
+  userId: number;
+  fullName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  role?: string | null;
+  subFieldId?: number | null;
+  subFieldName?: string | null;
+  orcidId?: string | null;
+  hindex?: number | null;
+  publicationCount?: number | null;
 }
 
 /** Mirror of `POST /api/Seminar` / `PUT /api/Seminar/{id}` request body.
@@ -185,6 +203,7 @@ export interface SeminarCreateRequest {
   status?: string | null;
   guestEmails?: string[] | null;
   reminderEnabled?: boolean | null;
+  subFieldId?: number | null;
 }
 
 export type SeminarUpdateRequest = Partial<SeminarCreateRequest>;
@@ -304,6 +323,13 @@ export const seminarService = {
       rating: row.rating ?? null,
       status: row.endTime && new Date(row.endTime).getTime() < Date.now() ? 'Completed' : 'Upcoming',
     }));
+  },
+
+  getSuggestedInvitees: async (subFieldId?: number | null): Promise<SuggestedInviteeDto[]> => {
+    const response = await api.get<SuggestedInviteeDto[]>(API_ENDPOINTS.SEMINAR.SUGGESTED_INVITEES, {
+      params: subFieldId ? { subFieldId } : undefined,
+    });
+    return Array.isArray(response.data) ? response.data : [];
   },
 };
 

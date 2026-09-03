@@ -26,6 +26,7 @@ import {
   deriveEffectiveStatus,
   isValidMeetLink,
   ownsSeminar,
+  seminarService,
   type SeminarCard,
 } from '../../services/seminar.service';
 import {
@@ -112,6 +113,7 @@ export const SeminarWorkspace = () => {
   const [allInvitees, setAllInvitees] = useState<InviteeCandidate[]>([]);
   const [isLoadingInvitees, setIsLoadingInvitees] = useState(false);
   const [inviteeSearch, setInviteeSearch] = useState('');
+  const [createModalError, setCreateModalError] = useState<string | null>(null);
 
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
@@ -307,6 +309,47 @@ export const SeminarWorkspace = () => {
     };
   }, [showCreateModal, currentUserId]);
 
+  // Whenever selectedSubId changes, also attempt to load suggested invitees from the dedicated BE endpoint:
+  useEffect(() => {
+    if (!showCreateModal || !selectedSubId) return;
+    let cancelled = false;
+
+    async function fetchSuggestedFromBackend() {
+      try {
+        const beInvitees = await seminarService.getSuggestedInvitees(selectedSubId);
+        if (cancelled) return;
+        if (Array.isArray(beInvitees) && beInvitees.length > 0) {
+          setAllInvitees((prev) => {
+            const map = new Map<number, InviteeCandidate>();
+            for (const p of prev) map.set(p.userId, p);
+            for (const b of beInvitees) {
+              if (b.userId && b.email) {
+                map.set(b.userId, {
+                  userId: b.userId,
+                  fullName: b.fullName || `User #${b.userId}`,
+                  email: b.email.trim(),
+                  avatarUrl: b.avatarUrl,
+                  role: b.role || 'Colleague',
+                  subFieldId: b.subFieldId ?? selectedSubId,
+                  subFieldName: b.subFieldName,
+                });
+              }
+            }
+            return Array.from(map.values());
+          });
+        }
+      } catch {
+        // Fallback already in place
+      }
+    }
+
+    void fetchSuggestedFromBackend();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showCreateModal, selectedSubId]);
+
   const availableSubFields = useMemo(() => {
     if (!selectedMajorId) {
       return majorFields.flatMap((m) => m.subFields || []);
@@ -415,6 +458,7 @@ export const SeminarWorkspace = () => {
       : seminarDetails.trim();
 
     try {
+      setCreateModalError(null);
       await createSeminar({
         startTime,
         endTime,
@@ -422,6 +466,7 @@ export const SeminarWorkspace = () => {
         guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
         isReminderSent: sendReminder,
         status: 'Upcoming',
+        subFieldId: selectedSubId ?? undefined,
       });
       // Reset form for next create.
       setSeminarName('');
@@ -430,8 +475,24 @@ export const SeminarWorkspace = () => {
       setGuestEmails([]);
       setEmailInputText('');
       setSendReminder(true);
-    } catch {
-      // Error already announced by hook via the banner mechanism on parent.
+      setInviteeSearch('');
+      setCreateModalError(null);
+    } catch (err: unknown) {
+      const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
+      const status = resp?.status;
+      let msg =
+        resp?.data?.message ||
+        resp?.data?.title ||
+        (err instanceof Error ? err.message : '') ||
+        'Failed to create seminar.';
+      if (status === 403) {
+        msg = copy(
+          'Your account (Researcher) is not authorized by the Backend to create Seminars (403 Forbidden). Backend endpoint POST /api/Seminar currently requires Lecturer ([Authorize(Roles = "Lecturer")]). Please ask Backend to add Researcher ([Authorize(Roles = "Lecturer,Researcher")]) or sign in with a Lecturer account.',
+          'Tài khoản của bạn (Researcher) chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Endpoint POST /api/Seminar hiện chỉ cấp quyền cho Giảng viên ([Authorize(Roles = "Lecturer")]). Vui lòng nhờ Backend mở thêm quyền cho Researcher ([Authorize(Roles = "Lecturer,Researcher")]) hoặc đăng nhập bằng tài khoản Giảng viên.'
+        );
+      }
+      setCreateModalError(msg);
+      announce(msg, 'error');
     }
   };
 
@@ -871,7 +932,10 @@ export const SeminarWorkspace = () => {
               <button
                 type="button"
                 className={styles.closeBtn}
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateModalError(null);
+                }}
                 aria-label="Close"
               >
                 <X size={18} aria-hidden />
@@ -882,6 +946,13 @@ export const SeminarWorkspace = () => {
               onSubmit={handleCreateSeminarSubmit}
               className={styles.modalBody}
             >
+              {createModalError && (
+                <div className={styles.modalErrorBanner}>
+                  <AlertTriangle size={16} aria-hidden />
+                  <span>{createModalError}</span>
+                </div>
+              )}
+
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-name">
                   {copy('Seminar Name', 'Tên buổi hội thảo')}

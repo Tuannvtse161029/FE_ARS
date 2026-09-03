@@ -100,6 +100,7 @@ export const API_ENDPOINTS = {
     STATS: (id: number) => `/api/Seminar/${id}/stats`,
     SEND_REMINDERS: (id: number) => `/api/Seminar/${id}/reminders/send`,
     SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
+    SUGGESTED_INVITEES: '/api/Seminar/suggested-invitees',
   },
   SEMINAR_PARTICIPANT: {
     BASE: '/api/SeminarParticipant',
