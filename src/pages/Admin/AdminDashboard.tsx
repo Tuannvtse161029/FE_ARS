@@ -179,6 +179,9 @@ export const AdminDashboard = () => {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
+  const [publishedCount, setPublishedCount] = useState<number | null>(null);
+  const [publishedError, setPublishedError] = useState<string | null>(null);
+  const [loadingPublished, setLoadingPublished] = useState(true);
   const [registrations, setRegistrations] = useState<AnalyticsTimeSeries | null>(null);
   const [revenue, setRevenue] = useState<AnalyticsTimeSeries | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<AnalyticsRange>('monthly');
@@ -200,6 +203,29 @@ export const AdminDashboard = () => {
       setSummaryError(DASHBOARD_UNAVAILABLE);
     } finally {
       if (!signal.aborted) setLoadingSummary(false);
+    }
+  }, []);
+
+  /**
+   * Loads the live number of papers with `status === 'Published'` from the
+   * documented `/api/Paper?status=Published` filter. The dashboard used to
+   * surface `AnalyticsSummary.totalPapers`, which is the system-wide paper
+   * count and does not match the Published Papers tab (BE returned 31 vs the
+   * tab showing 4). Pulling from the same source as the tab eliminates the
+   * mismatch.
+   */
+  const loadPublishedCount = useCallback(async (signal: AbortSignal) => {
+    setLoadingPublished(true);
+    setPublishedError(null);
+    try {
+      const total = await adminService.getPapersCountByStatus('Published', signal);
+      if (!signal.aborted) setPublishedCount(total);
+    } catch (error) {
+      if (signal.aborted || isRequestCancelled(error)) return;
+      logDiag('published count failed', error);
+      setPublishedError(DASHBOARD_UNAVAILABLE);
+    } finally {
+      if (!signal.aborted) setLoadingPublished(false);
     }
   }, []);
 
@@ -231,10 +257,11 @@ export const AdminDashboard = () => {
     const requestId = ++requestIdRef.current;
     await Promise.allSettled([
       loadSummary(controller.signal),
+      loadPublishedCount(controller.signal),
       loadAnalytics(range, controller.signal),
     ]);
     if (requestId !== requestIdRef.current) return;
-  }, [analyticsRange, loadAnalytics, loadSummary]);
+  }, [analyticsRange, loadAnalytics, loadPublishedCount, loadSummary]);
 
   const handleAnalyticsRangeChange = (range: AnalyticsRange) => {
     if (range === analyticsRange) return;
@@ -261,7 +288,11 @@ export const AdminDashboard = () => {
           ) : (
             <div className={styles.metricGrid}>
               <MetricCard label="Registered members" value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalMembers)} annotation="Current total from analytics" icon={<UsersIcon size={16} />} accent={ROLE_ACCENT} />
-              <MetricCard label="Published papers" value={loadingSummary || summary === null ? '—' : formatNumber(summary.totalPapers)} annotation="Current published-paper total" icon={<PapersIcon size={16} />} accent={ROLE_ACCENT} />
+              {publishedError ? (
+                <WidgetErrorState message={publishedError} onRetry={() => void loadAll()} testId="published-count-error" />
+              ) : (
+                <MetricCard label="Published papers" value={loadingPublished || publishedCount === null ? '—' : formatNumber(publishedCount)} annotation="Live count from /api/Paper?status=Published" icon={<PapersIcon size={16} />} accent={ROLE_ACCENT} />
+              )}
             </div>
           )}
         </section>

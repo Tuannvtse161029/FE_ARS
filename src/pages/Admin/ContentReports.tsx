@@ -175,7 +175,7 @@ export default function ContentReports(): JSX.Element {
       <PageHeader
         eyebrow="ADMIN · VIOLATIONS"
         title="Content & Forum Violations"
-        description={`Review pending reports and resolve them with the appropriate action.${
+        description={`Live moderation queue backed by GET /api/Report. Review pending reports and resolve them with the appropriate action.${
           pendingCount > 0 ? ` ${pendingCount} pending.` : ''
         }`}
         accent={ROLE_ACCENT}

@@ -1,0 +1,750 @@
+/* ReviewerCardGrid — Admin reviewer directory (3×3 cards).
+   Token-driven; reads from src/styles/ars-tokens.css (--surface-*, --ink-*,
+   --accent-*, --status-*, --ars-reviewer-*). Uses serif for the reviewer
+   name so the directory feels like a journal staff page, not a settings
+   table. */
+
+.shell {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* ── Toolbar (label + search) ──────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.toolbarLabel {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  flex: 0 1 auto;
+}
+
+.toolbarCount {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.search {
+  flex: 1 1 260px;
+  min-width: 200px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 9px 12px;
+  min-height: 36px;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.search::placeholder {
+  color: var(--ink-muted);
+}
+
+.search:hover {
+  border-color: var(--border-strong);
+}
+
+.search:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--accent-primary);
+}
+
+/* ── Grid ─────────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+.card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  transition:
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Best-match card (subfield matches paper). Reviewer-green tint makes the
+   match instantly readable. */
+.cardMatch {
+  border-color: var(--ars-reviewer-mid);
+  background: var(--ars-reviewer-light);
+}
+
+.cardMatch:hover {
+  border-color: var(--ars-reviewer);
+}
+
+/* Currently-assigned card uses the admin accent so reassignment is
+   unambiguous. */
+.cardCurrent {
+  border-color: var(--accent-primary);
+  background: var(--status-info-surface);
+}
+
+.cardCurrent:hover {
+  border-color: var(--accent-hover);
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-sunken);
+}
+
+.avatarFallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.identityText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matchBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-reviewer-mid);
+  color: var(--ink-on-dark);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Professional profile stat row ────────────────────────────────── */
+.section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
+.cardMatch .section {
+  border-top-color: var(--ars-reviewer-mid);
+}
+
+.sectionLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-2);
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.stat {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  padding: 7px 4px;
+  background: var(--surface-subtle);
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-items: center;
+}
+
+.cardMatch .stat {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* Interface data — UI font (Roboto) has uniform digit metrics so the
+   H-INDEX / CITATIONS / PUBLICATIONS numbers line up across the row even
+   when the digits themselves differ. Serif here would have made "1" / "8"
+   / "9" read at different visual baselines. */
+.statValue {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.statLabel {
+  font-family: var(--font-family-ui);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+/* ── Field list (major / sub field) ──────────────────────────────── */
+.fields {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.fields > div {
+  display: grid;
+  grid-template-columns: minmax(86px, max-content) 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.fields dt {
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.fields dd {
+  margin: 0;
+  color: var(--ink-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.subFieldMatch {
+  color: var(--ars-reviewer-mid);
+  font-weight: var(--font-weight-semibold);
+}
+
+.matchCheck {
+  color: var(--ars-reviewer-mid);
+  flex-shrink: 0;
+}
+
+/* ── Workload pill ────────────────────────────────────────────────── */
+.workload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
+.cardMatch .workload {
+  border-top-color: var(--ars-reviewer-mid);
+}
+
+.workloadLabel {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: var(--font-weight-semibold);
+}
+
+.workloadPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid transparent;
+}
+
+.workload_low {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+
+.workload_med {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+}
+
+.workload_high {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+
+.workloadDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.workloadCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.workloadHint {
+  text-transform: capitalize;
+}
+
+/* ── Assign button + current badge ────────────────────────────────── */
+.assignButton {
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  font: var(--font-weight-semibold) var(--font-size-sm) var(--font-family-ui);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: 36px;
+  width: 100%;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.assignButton:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.assignButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.assignButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.currentNote {
+  color: var(--accent-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  display: block;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  padding-top: var(--space-2);
+}
+
+.paginationInfo {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ink-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.paginationControls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pageButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font: var(--font-weight-semibold) var(--font-size-xs) var(--font-family-ui);
+  cursor: pointer;
+  min-height: 32px;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pageButton:hover:not(:disabled) {
+  background: var(--ars-reviewer-light);
+  border-color: var(--ars-reviewer-mid);
+  color: var(--ars-reviewer);
+}
+
+.pageButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pageButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Skeleton ─────────────────────────────────────────────────────── */
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) {
+  .skeletonGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .skeletonGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skeletonCard {
+  height: 280px;
+  background: linear-gradient(
+    110deg,
+    var(--surface-subtle) 30%,
+    var(--surface-raised) 50%,
+    var(--surface-subtle) 70%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonCard {
+    animation: none;
+  }
+}
+
+/* ── Empty / error states ─────────────────────────────────────────── */
+.emptyState,
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--ink-secondary);
+  text-align: center;
+}
+
+.emptyState p,
+.errorState p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.emptyState small,
+.errorState small {
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+}
+
+.errorState {
+  border-color: var(--status-danger-text);
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+}
+
+/* ── Modal shell (shared by confirm + feedback) ───────────────────── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 0.5);
+}
+
+.modal {
+  width: min(100%, 480px);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.modalHeader,
+.modalHeading,
+.modalFooter {
+  display: flex;
+  align-items: center;
+}
+
+.modalHeader {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.modalHeading {
+  gap: var(--space-2);
+  color: var(--ink-primary);
+}
+
+.modalHeading h2 {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+}
+
+.headingSuccess {
+  color: var(--ars-success);
+}
+
+.headingError {
+  color: var(--ars-error);
+}
+
+.closeButton {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: var(--space-1);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.closeButton:hover:not(:disabled) {
+  color: var(--ink-primary);
+  background: var(--surface-selected);
+}
+
+.closeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.modalBody {
+  margin: 0;
+  color: var(--ink-secondary);
+  font: var(--font-size-sm) / var(--line-height-normal) var(--font-family-ui);
+}
+
+.modalBody strong {
+  color: var(--ink-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.modalFooter {
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.cancelButton,
+.confirmButton {
+  min-height: 38px;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+  font: var(--font-weight-semibold) var(--font-size-sm) var(--font-family-ui);
+  cursor: pointer;
+}
+
+.cancelButton {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+}
+
+.cancelButton:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-selected);
+}
+
+.confirmButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.cancelButton:focus-visible,
+.confirmButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .modal {
+    padding: var(--space-4);
+  }
+}

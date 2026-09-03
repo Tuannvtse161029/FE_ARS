@@ -35,6 +35,7 @@ import {
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
+import { RejectPaperModal } from './RejectPaperModal';
 
 /** Sortable column ids for the Admin Paper Submissions table. */
 type SortColumn = 'title' | 'status' | 'verification' | 'reviewer' | 'submittedAt';
@@ -73,6 +74,8 @@ export const AdminPaperSubmissions = () => {
     useState<AdminPaperFilters['verification']>('ALL');
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
+  const [rejectingPaper, setRejectingPaper] = useState<PublicationPaper | null>(null);
+  const [rejecting, setRejecting] = useState(false);
 
   // Default sort by submittedAt (newest first) so recently submitted papers
   // surface at the top. The user can override per column header click.
@@ -368,12 +371,9 @@ export const AdminPaperSubmissions = () => {
                               <button
                                 type="button"
                                 className={adminStyles.rejectActionButton}
-                                onClick={async (event) => {
+                                onClick={(event) => {
                                   event.stopPropagation();
-                                  const reason = window.prompt(`Provide a rejection reason for "${paper.title}".`)?.trim();
-                                  if (!reason) return;
-                                  await publicationAdapter.rejectPaper(paper.id, reason);
-                                  void load();
+                                  setRejectingPaper(paper);
                                 }}
                               >
                                 <CircleX size={13} aria-hidden="true" /> Reject
@@ -496,6 +496,22 @@ export const AdminPaperSubmissions = () => {
         <AdminPaperPreviewModal
           paper={previewing}
           onClose={() => setPreviewing(null)}
+        />
+      ) : null}
+      {rejectingPaper ? (
+        <RejectPaperModal
+          paperTitle={rejectingPaper.title}
+          isSubmitting={rejecting}
+          onClose={() => setRejectingPaper(null)}
+          onConfirm={(reason) => {
+            setRejecting(true);
+            void publicationAdapter.rejectPaper(rejectingPaper.id, reason)
+              .then(() => {
+                setRejectingPaper(null);
+                return load();
+              })
+              .finally(() => setRejecting(false));
+          }}
         />
       ) : null}
     </section>

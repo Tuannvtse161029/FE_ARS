@@ -1,5 +1,5 @@
 /**
- * AdminPaperSubmissionDetail — Admin editorial record.
+ * AdminPaperSubmissionDetail — Admin review record.
  *
  * The ONE Admin-only surface that may render private review content
  * (reviewer private comments, criterion scores). Every other admin surface
@@ -8,7 +8,17 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, FileText, Inbox, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  FileText,
+  Inbox,
+  Lock,
+  RefreshCw,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
@@ -34,6 +44,8 @@ import {
   verificationBadgeClass,
 } from './adminPublicationHelpers';
 import adminStyles from './AdminPublication.module.css';
+import { RejectPaperModal } from './RejectPaperModal';
+import { ReviewerCardGrid } from './ReviewerCardGrid';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
@@ -61,12 +73,18 @@ export const AdminPaperSubmissionDetail = () => {
   const { id } = useParams();
   const [paper, setPaper] = useState<PublicationPaper | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [reviewerId, setReviewerId] = useState('');
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [autoAssignFeedback, setAutoAssignFeedback] = useState<
+    | { kind: 'success' }
+    | { kind: 'error'; message: string }
+    | null
+  >(null);
 
   useEffect(() => {
     let active = true;
@@ -84,12 +102,11 @@ export const AdminPaperSubmissionDetail = () => {
           return;
         }
         setPaper(match);
-        setReviewerId(match.reviewerId ? String(match.reviewerId) : '');
         setLoading(false);
       })
       .catch(() => {
         if (!active) return;
-        setError('The editorial record could not be loaded.');
+        setError('The paper review record could not be loaded.');
         setLoading(false);
       });
     return () => {
@@ -99,17 +116,15 @@ export const AdminPaperSubmissionDetail = () => {
 
   const actions = paper ? adminActionsForStatus(paper) : [];
 
-  const assign = async () => {
-    const parsedReviewerId = Number(reviewerId);
-    if (!paper || !Number.isInteger(parsedReviewerId) || parsedReviewerId <= 0) return;
+  const handleAssignReviewer = async (reviewerId: number): Promise<void> => {
+    if (!paper) return;
     setSaving(true);
     setError(null);
     try {
-      const updated = await publicationAdapter.assignReviewer(paper.id, parsedReviewerId);
+      const updated = await publicationAdapter.assignReviewer(paper.id, reviewerId);
       setPaper(updated);
-      setReviewerId(updated.reviewerId ? String(updated.reviewerId) : '');
-    } catch {
-      setError('The reviewer assignment could not be saved.');
+    } catch (e) {
+      throw e instanceof Error ? e : new Error('The reviewer assignment could not be saved.');
     } finally {
       setSaving(false);
     }
@@ -117,20 +132,26 @@ export const AdminPaperSubmissionDetail = () => {
 
   const assignAuto = async () => {
     if (!paper) return;
-    setSaving(true);
-    setError(null);
+    setAutoAssigning(true);
+    setAutoAssignFeedback(null);
     try {
       await publicationAdapter.assignReviewersAuto(paper.id, 3);
       const items = await publicationAdapter.getAdminSubmissions();
       const match = items.find((item) => item.id === id) ?? null;
       if (match) {
         setPaper(match);
-        setReviewerId(match.reviewerId ? String(match.reviewerId) : '');
       }
+      setAutoAssignFeedback({ kind: 'success' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The auto-assignment could not be completed.');
+      setAutoAssignFeedback({
+        kind: 'error',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'The auto-assignment could not be completed.',
+      });
     } finally {
-      setSaving(false);
+      setAutoAssigning(false);
     }
   };
 
@@ -182,9 +203,9 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · EDITORIAL RECORD"
-          title="Editorial record not found"
-          description="The Admin submission record you requested is unavailable."
+          eyebrow="ADMIN · PAPER REVIEW RECORD"
+          title="Paper review record not found"
+          description="The admin submission record you requested is unavailable."
           accent={ROLE_ACCENT}
         />
         <div className={shared.empty}>
@@ -204,13 +225,13 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · EDITORIAL RECORD"
-          title="Loading editorial record…"
+          eyebrow="ADMIN · PAPER REVIEW RECORD"
+          title="Loading paper review record…"
           description="Fetching the selected paper from the backend."
           accent={ROLE_ACCENT}
         />
         <div className={shared.loading} role="status">
-          <RefreshCw size={14} aria-hidden="true" /> Loading editorial record…
+          <RefreshCw size={14} aria-hidden="true" /> Loading paper review record…
         </div>
       </section>
     );
@@ -220,8 +241,8 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · EDITORIAL RECORD"
-          title="Editorial record"
+          eyebrow="ADMIN · PAPER REVIEW RECORD"
+          title="Paper review record"
           accent={ROLE_ACCENT}
         />
         <ErrorBanner tone="error" title="Could not load record" message={error} />
@@ -248,9 +269,9 @@ export const AdminPaperSubmissionDetail = () => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow="ADMIN · EDITORIAL RECORD"
+        eyebrow="ADMIN · PAPER REVIEW RECORD"
         title={paper.title}
-        description="Admin editorial record. Private review material is only rendered here."
+        description="Admin paper review record. Private review material is only rendered here."
         accent={ROLE_ACCENT}
         actions={
           <Link className={shared.buttonGhost} to="/admin/paper-submissions">
@@ -510,7 +531,7 @@ export const AdminPaperSubmissionDetail = () => {
 
       {hasActions ? (
         <div className={shared.panel}>
-          <h2 className={shared.panelTitle}>Editorial actions</h2>
+          <h2 className={shared.panelTitle}>Publication actions</h2>
           <p className={shared.panelSubtitle}>
             Each action is gated by the current status and persisted through a
             documented backend operation.
@@ -591,42 +612,24 @@ export const AdminPaperSubmissionDetail = () => {
                       type="button"
                       className={shared.button}
                       style={{ background: '#0284c7' }}
-                      disabled={saving}
+                      disabled={autoAssigning || saving}
                       onClick={() => void assignAuto()}
                     >
-                      {saving ? 'Assigning…' : 'Automatically assign 3 reviewers'}
+                      {autoAssigning ? 'Assigning…' : 'Automatically assign 3 reviewers'}
                     </button>
                     <p className={shared.fieldHint} style={{ marginTop: 4 }}>
-                      The API automatically matches subject expertise and workload.
+                      The system matches reviewer subfield to the paper and balances workload.
+                      You will see a confirmation pop-up with the outcome.
                     </p>
                   </div>
 
-                  <div className={adminStyles.assignForm}>
-                    <label className={shared.field}>
-                      <span>Or enter a reviewer ID manually</span>
-                      <input
-                        aria-label="Reviewer account ID"
-                        inputMode="numeric"
-                        placeholder="Reviewer ID"
-                        value={reviewerId}
-                        onChange={(event) =>
-                          setReviewerId(event.target.value.replace(/\D/g, ''))
-                        }
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className={shared.buttonSecondary}
-                      disabled={
-                        saving ||
-                        !Number.isInteger(Number(reviewerId)) ||
-                        Number(reviewerId) <= 0
-                      }
-                      onClick={() => void assign()}
-                    >
-                      {saving ? 'Saving…' : 'Assign reviewer manually'}
-                    </button>
-                  </div>
+                  <ReviewerCardGrid
+                    paperSubFieldId={paper.subFieldId ?? null}
+                    paperSubFieldName={paper.subfield ?? null}
+                    currentReviewerId={paper.reviewerId ?? null}
+                    isAssigning={saving || autoAssigning}
+                    onAssign={handleAssignReviewer}
+                  />
                 </div>
               )
             ) : null}
@@ -668,7 +671,7 @@ export const AdminPaperSubmissionDetail = () => {
                     className={shared.buttonSecondary}
                     style={{ color: '#dc2626', borderColor: '#fca5a5', fontWeight: 600 }}
                     disabled={saving}
-                    onClick={() => void reject('The submission does not meet the editorial review standard.')}
+                    onClick={() => setRejectDialogOpen(true)}
                   >
                     {saving ? 'Processing…' : 'Confirm rejection and notify author'}
                   </button>
@@ -694,7 +697,7 @@ export const AdminPaperSubmissionDetail = () => {
       ) : (
         <div className={shared.empty}>
           <p>
-            No editorial actions are valid for the current status (
+            No actions are available for the current status (
             {statusLabel(paper.status)}).
           </p>
           <p className={shared.fieldHint}>
@@ -702,8 +705,98 @@ export const AdminPaperSubmissionDetail = () => {
           </p>
         </div>
       )}
+  {rejectDialogOpen ? (
+    <RejectPaperModal
+      paperTitle={paper.title}
+      isSubmitting={saving}
+      onClose={() => setRejectDialogOpen(false)}
+      onConfirm={(reason) => {
+        setRejectDialogOpen(false);
+        void reject(reason);
+      }}
+    />
+  ) : null}
+      {autoAssignFeedback ? (
+        <AutoAssignFeedbackModal
+          feedback={autoAssignFeedback}
+          onClose={() => setAutoAssignFeedback(null)}
+        />
+      ) : null}
     </section>
   );
 };
 
 export default AdminPaperSubmissionDetail;
+
+/**
+ * Auto-assign feedback modal. Shows a success summary or surfaces the BE
+ * error verbatim. Mirrors the visual language of RejectPaperModal so admins
+ * see one consistent dialog family across this page.
+ */
+const AutoAssignFeedbackModal = ({
+  feedback,
+  onClose,
+}: {
+  feedback:
+    | { kind: 'success' }
+    | { kind: 'error'; message: string };
+  onClose: () => void;
+}): JSX.Element => {
+  const isSuccess = feedback.kind === 'success';
+  const backdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) onClose();
+  };
+  return (
+    <div className={adminStyles.previewModalBackdrop} role="presentation" onMouseDown={backdropMouseDown}>
+      <div
+        className={adminStyles.previewModal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auto-assign-feedback-title"
+        style={{ maxWidth: 480 }}
+      >
+        <header>
+          <h2 id="auto-assign-feedback-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isSuccess ? (
+              <>
+                <CheckCircle2 size={18} aria-hidden="true" color="#047857" />
+                Reviewers assigned
+              </>
+            ) : (
+              <>
+                <AlertCircle size={18} aria-hidden="true" color="#991b1b" />
+                Auto-assign could not complete
+              </>
+            )}
+          </h2>
+          <button
+            type="button"
+            className={adminStyles.feedbackCloseButton}
+            onClick={onClose}
+            aria-label="Close feedback"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+        <div className={adminStyles.previewBody}>
+          <p>
+            {isSuccess
+              ? 'The system has matched and notified 3 reviewers based on subfield and workload. You will see their assignments on the paper shortly.'
+              : feedback.message}
+          </p>
+          {!isSuccess ? (
+            <p className={shared.fieldHint}>
+              Try picking reviewers manually from the directory below, or contact
+              support if this keeps failing.
+            </p>
+          ) : null}
+        </div>
+        <div className={shared.actions} style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className={shared.button} onClick={onClose}>
+            {isSuccess ? 'Got it' : 'Try again'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

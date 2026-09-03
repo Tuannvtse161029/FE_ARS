@@ -1,0 +1,42 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 0.5);
+}
+
+.modal {
+  width: min(100%, 520px);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+}
+
+.header, .heading, .footer {
+  display: flex;
+  align-items: center;
+}
+
+.header { justify-content: space-between; gap: var(--space-3); }
+.heading { gap: var(--space-2); color: var(--status-danger-text); }
+.heading h2 { margin: 0; color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }
+.closeButton { display: inline-grid; place-items: center; border: 0; background: transparent; color: var(--ink-muted); padding: var(--space-1); cursor: pointer; }
+.closeButton:hover:not(:disabled) { color: var(--ink-primary); background: var(--surface-selected); }
+.closeButton:focus-visible, .cancelButton:focus-visible, .confirmButton:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.closeButton:disabled, .cancelButton:disabled, .confirmButton:disabled { cursor: not-allowed; opacity: 0.6; }
+.description { margin: var(--space-3) 0 var(--space-4); color: var(--ink-secondary); font: var(--font-size-sm) / var(--line-height-normal) var(--font-family-ui); }
+.field { display: grid; gap: var(--space-2); color: var(--ink-primary); font: var(--font-weight-semibold) var(--font-size-sm) / var(--line-height-normal) var(--font-family-ui); }
+.field textarea { width: 100%; resize: vertical; box-sizing: border-box; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-paper); color: var(--ink-primary); padding: var(--space-3); font: inherit; font-weight: 400; }
+.field textarea:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; border-color: var(--accent-primary); }
+.footer { justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+.cancelButton, .confirmButton { min-height: 38px; border-radius: var(--radius-sm); padding: 0 var(--space-4); font: var(--font-weight-semibold) var(--font-size-sm) var(--font-family-ui); cursor: pointer; }
+.cancelButton { border: 1px solid var(--border-subtle); background: var(--surface-paper); color: var(--ink-primary); }
+.cancelButton:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface-selected); }
+.confirmButton { border: 1px solid var(--status-danger-text); background: var(--status-danger-text); color: var(--ink-on-dark); }
+.confirmButton:hover:not(:disabled) { filter: brightness(0.92); }
+@media (prefers-reduced-motion: reduce) { .modal { transition: none; } }

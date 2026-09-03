@@ -102,9 +102,9 @@ export default function PremiumPackages(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · SUBSCRIPTIONS"
-        title="Packages"
-        description="Create, toggle, and edit subscription packages offered to each role."
+        eyebrow="ADMIN · ANNUAL FEES"
+        title="Annual Fees"
+        description="Create and manage annual fees offered to each eligible role."
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -114,7 +114,7 @@ export default function PremiumPackages(): JSX.Element {
             onClick={() => setCreateOpen(true)}
             data-testid="open-create-package"
           >
-            Create New Package
+            Create new Annual Fees
           </Button>
         }
       />
@@ -142,8 +142,8 @@ export default function PremiumPackages(): JSX.Element {
       ) : packages.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} />}
-          title="No packages yet"
-          description="Create your first subscription package to start offering subscriptions to researchers, reviewers, or lecturers."
+          title="No annual fees yet"
+          description="Create an annual fee to begin offering annual access to eligible roles."
           action={
             <Button
               variant="primary"
@@ -151,7 +151,7 @@ export default function PremiumPackages(): JSX.Element {
               leftIcon={<Plus size={14} />}
               onClick={() => setCreateOpen(true)}
             >
-              Create a Package
+              Create new Annual Fees
             </Button>
           }
         />
@@ -189,17 +189,6 @@ export default function PremiumPackages(): JSX.Element {
                     /{pkg.billingCycle.toLowerCase()}
                   </span>
                 </p>
-
-                <ul className={styles.features}>
-                  {pkg.features.map((feature, idx) => (
-                    <li key={idx} className={styles.featureItem}>
-                      <span aria-hidden className={styles.featureBullet}>
-                        ✓
-                      </span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
 
                 <footer className={styles.cardFooter}>
                   <span className={styles.subscriberCount}>

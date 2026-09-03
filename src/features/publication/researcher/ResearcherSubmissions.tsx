@@ -147,8 +147,8 @@ export const ResearcherSubmissions = () => {
     <section className={styles.page}>
       <PageHeader
         eyebrow="RESEARCHER WORKSPACE"
-        title="My Submissions"
-        description="Create drafts, submit metadata and manuscripts to Admin, and follow the editorial decision for every submission you own."
+        title="My Research Papers"
+        description="Create drafts, submit metadata and manuscripts to Admin, and follow the editorial decision for every research paper you own."
         accent={RESEARCHER_ACCENT}
         actions={
           <Button
@@ -157,7 +157,7 @@ export const ResearcherSubmissions = () => {
             leftIcon={<Plus size={14} aria-hidden />}
             onClick={() => navigate('/researcher/submissions/new')}
           >
-            New submission
+            New research paper
           </Button>
         }
       />
@@ -167,13 +167,13 @@ export const ResearcherSubmissions = () => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title="Could not load submissions"
+          title="Could not load research papers"
           message={error}
         />
       ) : papers.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
-          title="No submissions yet"
+          title="No research papers yet"
           description="Start your first manuscript submission. You can save a draft and submit it to Admin only when the required metadata and PDF are in place."
           action={
             <Button
@@ -182,7 +182,7 @@ export const ResearcherSubmissions = () => {
               leftIcon={<Plus size={14} aria-hidden />}
               onClick={() => navigate('/researcher/submissions/new')}
             >
-              Create your first submission
+              Create your first research paper
             </Button>
           }
         />
@@ -193,7 +193,7 @@ export const ResearcherSubmissions = () => {
               <div>
                 <h2 id="submission-attention-title">Needs your attention</h2>
                 <p>
-                  {attentionPapers.length} submission{attentionPapers.length === 1 ? '' : 's'} need a researcher action before the editorial workflow can continue.
+                  {attentionPapers.length} research paper{attentionPapers.length === 1 ? '' : 's'} need{attentionPapers.length === 1 ? 's' : ''} a researcher action before the editorial workflow can continue.
                 </p>
               </div>
               <div className={styles.attentionActions}>
@@ -214,7 +214,7 @@ export const ResearcherSubmissions = () => {
           <div className={styles.toolbar} role="search">
             <label className={styles.searchField}>
               <span className={styles.searchLabel} id="researcher-search-label">
-                Search submissions
+                Search research papers
               </span>
               <input
                 type="search"
@@ -245,15 +245,15 @@ export const ResearcherSubmissions = () => {
               </select>
             </label>
             <span className={styles.count} aria-live="polite">
-              {visiblePapers.length} of {papers.length} submission{papers.length === 1 ? '' : 's'}
+              {visiblePapers.length} of {papers.length} research paper{papers.length === 1 ? '' : 's'}
             </span>
           </div>
 
           {visiblePapers.length === 0 ? (
             <EmptyState
               icon={<Inbox size={20} aria-hidden />}
-              title="No submissions match your filters"
-              description="Try a different keyword, clear the search, or change the status filter to see every submission."
+              title="No research papers match your filters"
+              description="Try a different keyword, clear the search, or change the status filter to see every research paper."
             />
           ) : (
             <div className={styles.tableWrap}>

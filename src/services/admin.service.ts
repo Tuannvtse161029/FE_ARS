@@ -277,6 +277,37 @@ async function getAnalyticsTimeseries(
   }
 }
 
+/**
+ * Counts papers in a given status by paging the live `/api/Paper` endpoint
+ * with a status filter. The Admin dashboard's "Published papers" metric
+ * was previously sourced from `AnalyticsSummary.totalPapers`, which the
+ * BE documents as the system-wide paper total — not the published subset.
+ * Using this helper keeps the dashboard tile in lockstep with the
+ * Published Papers admin tab, so the two surfaces cannot drift apart
+ * (e.g. dashboard: 31, tab: 4).
+ */
+async function getPapersCountByStatus(
+  status: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  try {
+    const response = await api.get<{ totalCount?: number; items?: unknown[] }>(
+      API_ENDPOINTS.PAPER.GET_ALL,
+      {
+        signal,
+        params: { status, PageNumber: 1, PageSize: 1 },
+      },
+    );
+    const total = response.data?.totalCount;
+    if (typeof total === 'number' && Number.isFinite(total)) return total;
+    return Array.isArray(response.data?.items) ? response.data.items.length : 0;
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'CanceledError') throw err;
+    logDiag(`getPapersCountByStatus(${status}) failed`, err);
+    throw sanitize('Data unavailable. Please retry.', err);
+  }
+}
+
 export const adminService = {
   getRoleRequests,
   getRoleRequest,
@@ -286,6 +317,7 @@ export const adminService = {
   unsuspendAccount,
   getAnalyticsSummary,
   getAnalyticsTimeseries,
+  getPapersCountByStatus,
   // Kept as a no-op compatibility hook for legacy test doubles. Runtime data
   // no longer uses an in-memory Admin store.
   __resetAdminMockStores: (): void => undefined,

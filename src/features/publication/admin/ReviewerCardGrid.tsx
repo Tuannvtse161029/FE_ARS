@@ -1,0 +1,601 @@
+/**
+ * ReviewerCardGrid — Admin reviewer directory for the Assign Reviewer action.
+ *
+ * Replaces the legacy "enter a Reviewer ID manually" input. The grid surfaces
+ * the data admins actually need to pick well: avatar, full name, professional
+ * profile (H-index, citations, publications), major + sub field, and pending
+ * review load. Sorts so the best matches surface first.
+ *
+ * Sort (3-tier):
+ *   1. Reviewers whose `subFieldId` matches the paper's `subFieldId` → "Best match"
+ *   2. Then ascending pending-review count (workload-balanced)
+ *   3. Then alphabetical by full name
+ *
+ * 9 cards per page (3×3). Two confirm/feedback modals own the mutation:
+ * a confirmation modal before sending, and a success/failure modal after.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Sparkles,
+  Users,
+  X,
+} from 'lucide-react';
+import { reviewerService, type ReviewerProfile } from '../../../services/reviewer.service';
+import { reviewRequestService } from '../../../services/reviewRequest.service';
+import { userService } from '../../../services/user.service';
+import type { User } from '../../../types/auth';
+import styles from './ReviewerCardGrid.module.css';
+
+interface ReviewerCardGridProps {
+  paperSubFieldId: number | null | undefined;
+  paperSubFieldName?: string | null;
+  currentReviewerId?: number | null;
+  /** True while the parent is dispatching the assign request. */
+  isAssigning: boolean;
+  /** Receives the chosen reviewer ID; resolves when the assign succeeds and
+   *  rejects when it fails. The grid maps those outcomes to its own feedback
+   *  modal, so the caller does not need to render any extra UI. */
+  onAssign: (reviewerId: number) => Promise<void>;
+}
+
+interface ReviewerRow {
+  user: User;
+  profile: ReviewerProfile | null;
+  pendingCount: number;
+}
+
+type ConfirmState = { reviewer: ReviewerRow } | null;
+
+type FeedbackState =
+  | { kind: 'success'; reviewerName: string }
+  | { kind: 'error'; message: string }
+  | null;
+
+const PAGE_SIZE = 9;
+
+const initials = (name: string): string => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const formatNumber = (n: number | null | undefined): string => {
+  if (n == null) return '—';
+  return n.toLocaleString();
+};
+
+// Map a raw review-request status string to the two values that count as
+// "pending work" for workload balancing. Anything terminal or cancelled is
+// excluded — we only want outstanding assignments on the count.
+const isPendingReview = (status: string | null | undefined): boolean => {
+  const normalized = (status ?? '').trim().toUpperCase();
+  return normalized === 'PENDING' || normalized === 'IN_PROGRESS';
+};
+
+export const ReviewerCardGrid = ({
+  paperSubFieldId,
+  paperSubFieldName,
+  currentReviewerId,
+  isAssigning,
+  onAssign,
+}: ReviewerCardGridProps): JSX.Element => {
+  const [reviewers, setReviewers] = useState<ReviewerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    Promise.all([
+      userService.getAllUsers().then((res) => res.items),
+      reviewerService.getAll().catch(() => [] as ReviewerProfile[]),
+      reviewRequestService.getAll().catch(() => []),
+    ])
+      .then(([users, profiles, requests]) => {
+        if (!active) return;
+
+        const profileMap = new Map<number, ReviewerProfile>();
+        profiles.forEach((p) => profileMap.set(p.userId, p));
+
+        const pendingMap = new Map<number, number>();
+        for (const r of requests) {
+          if (!isPendingReview(r.status)) continue;
+          const reviewerId = Number(r.reviewerId);
+          if (!Number.isInteger(reviewerId) || reviewerId <= 0) continue;
+          pendingMap.set(reviewerId, (pendingMap.get(reviewerId) ?? 0) + 1);
+        }
+
+        const rows: ReviewerRow[] = users
+          .filter((u) => (u.roleName ?? '').trim().toLowerCase() === 'reviewer')
+          .map((user) => ({
+            user,
+            profile: profileMap.get(user.id) ?? null,
+            pendingCount: pendingMap.get(user.id) ?? 0,
+          }));
+
+        setReviewers(rows);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Could not load reviewers.');
+        setReviewers([]);
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const sorted = useMemo(() => {
+    const trimmed = search.trim();
+    const filtered = trimmed
+      ? reviewers.filter((r) => {
+          const hay = [
+            r.user.fullName ?? '',
+            r.user.email,
+            r.profile?.subFieldName ?? '',
+            r.profile?.majorFieldName ?? '',
+          ]
+            .join(' ')
+            .toLowerCase();
+          return hay.includes(trimmed.toLowerCase());
+        })
+      : reviewers;
+
+    return [...filtered].sort((a, b) => {
+      const aMatch =
+        paperSubFieldId != null && a.profile?.subFieldId === paperSubFieldId ? 0 : 1;
+      const bMatch =
+        paperSubFieldId != null && b.profile?.subFieldId === paperSubFieldId ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+      if (a.pendingCount !== b.pendingCount) return a.pendingCount - b.pendingCount;
+      return (a.user.fullName ?? '').localeCompare(b.user.fullName ?? '');
+    });
+  }, [reviewers, search, paperSubFieldId]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const pageItems = sorted.slice(start, start + PAGE_SIZE);
+
+  // Reset to page 1 whenever the search filter changes so the user never
+  // lands on an empty page after narrowing the results.
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const handleConfirm = async (row: ReviewerRow) => {
+    const reviewerName = row.user.fullName?.trim() || `Reviewer #${row.user.id}`;
+    setConfirm(null);
+    try {
+      await onAssign(row.user.id);
+      setFeedback({ kind: 'success', reviewerName });
+    } catch (e) {
+      setFeedback({
+        kind: 'error',
+        message:
+          e instanceof Error ? e.message : 'The reviewer could not be assigned.',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.shell} aria-busy="true" aria-live="polite">
+        <div className={styles.skeletonGrid}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={styles.skeletonCard} aria-hidden="true" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.shell}>
+        <div className={styles.errorState} role="alert">
+          <AlertCircle size={20} aria-hidden="true" />
+          <p>Could not load the reviewer directory.</p>
+          <small>{error}</small>
+        </div>
+      </div>
+    );
+  }
+
+  if (sorted.length === 0) {
+    return (
+      <div className={styles.shell}>
+        <div className={styles.emptyState} role="status">
+          <Users size={20} aria-hidden="true" />
+          <p>
+            {reviewers.length === 0
+              ? 'No reviewers are registered in the system yet.'
+              : 'No reviewers match your search.'}
+          </p>
+          <small>
+            {reviewers.length === 0
+              ? 'Ask Admin to invite reviewers, or use Auto-assign once a profile exists.'
+              : 'Try a different name, email, or field keyword.'}
+          </small>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.shell}>
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarLabel}>
+          Choose a reviewer
+          <span className={styles.toolbarCount}>
+            {sorted.length} reviewer{sorted.length === 1 ? '' : 's'}
+            {paperSubFieldId != null && paperSubFieldName
+              ? ` · subfield: ${paperSubFieldName}`
+              : ''}
+          </span>
+        </div>
+        <input
+          className={styles.search}
+          type="text"
+          placeholder="Search by name, email, or field"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label="Search reviewers"
+        />
+      </div>
+
+      <div className={styles.grid}>
+        {pageItems.map((row) => {
+          const isMatch =
+            paperSubFieldId != null && row.profile?.subFieldId === paperSubFieldId;
+          const isCurrent = currentReviewerId != null && row.user.id === currentReviewerId;
+          return (
+            <article
+              key={row.user.id}
+              className={[
+                styles.card,
+                isMatch ? styles.cardMatch : '',
+                isCurrent ? styles.cardCurrent : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-label={`Reviewer ${row.user.fullName ?? row.user.id}`}
+            >
+              <div className={styles.cardTopRow}>
+                <div className={styles.identity}>
+                  {row.user.avatarUrl ? (
+                    <img
+                      className={styles.avatar}
+                      src={row.user.avatarUrl}
+                      alt=""
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={styles.avatarFallback} aria-hidden="true">
+                      {initials(row.user.fullName ?? row.user.email)}
+                    </div>
+                  )}
+                  <div className={styles.identityText}>
+                    <h4 className={styles.name}>
+                      {row.user.fullName?.trim() || `Reviewer #${row.user.id}`}
+                    </h4>
+                    <p className={styles.email} title={row.user.email}>
+                      {row.user.email}
+                    </p>
+                  </div>
+                </div>
+                {isMatch ? (
+                  <span
+                    className={styles.matchBadge}
+                    title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
+                  >
+                    <Sparkles size={11} aria-hidden="true" /> Best match
+                  </span>
+                ) : null}
+              </div>
+
+              <div className={styles.section}>
+                <div className={styles.sectionLabel}>Professional profile</div>
+                <div className={styles.statRow}>
+                  <div className={styles.stat}>
+                    <span className={styles.statValue}>
+                      {formatNumber(row.profile?.hindex)}
+                    </span>
+                    <span className={styles.statLabel}>H-Index</span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statValue}>
+                      {formatNumber(row.profile?.totalCitations)}
+                    </span>
+                    <span className={styles.statLabel}>Citations</span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statValue}>
+                      {formatNumber(row.profile?.publicationCount)}
+                    </span>
+                    <span className={styles.statLabel}>Publications</span>
+                  </div>
+                </div>
+              </div>
+
+              <dl className={styles.fields}>
+                <div>
+                  <dt>Major field</dt>
+                  <dd>{row.profile?.majorFieldName?.trim() || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Sub field</dt>
+                  <dd>
+                    <span className={isMatch ? styles.subFieldMatch : ''}>
+                      {row.profile?.subFieldName?.trim() || '—'}
+                    </span>
+                    {isMatch ? (
+                      <CheckCircle2
+                        size={12}
+                        aria-hidden="true"
+                        className={styles.matchCheck}
+                      />
+                    ) : null}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className={styles.workload}>
+                <span className={styles.workloadLabel}>Pending reviews</span>
+                <WorkloadPill count={row.pendingCount} />
+              </div>
+
+              <button
+                type="button"
+                className={styles.assignButton}
+                disabled={isAssigning}
+                onClick={() => setConfirm({ reviewer: row })}
+                aria-label={`Assign ${row.user.fullName ?? 'this reviewer'} to this paper`}
+              >
+                {isCurrent ? 'Reassign Reviewer' : 'Assign Reviewer'}
+              </button>
+              {isCurrent ? <small className={styles.currentNote}>Currently assigned</small> : null}
+            </article>
+          );
+        })}
+      </div>
+
+      <nav className={styles.pagination} aria-label="Reviewer pages">
+        <span className={styles.paginationInfo}>
+          Page {safePage} of {totalPages} · Showing {pageItems.length} of {sorted.length}
+        </span>
+        <div className={styles.paginationControls}>
+          <button
+            type="button"
+            className={styles.pageButton}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage <= 1}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={14} aria-hidden="true" /> Prev
+          </button>
+          <button
+            type="button"
+            className={styles.pageButton}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage >= totalPages}
+            aria-label="Next page"
+          >
+            Next <ChevronRight size={14} aria-hidden="true" />
+          </button>
+        </div>
+      </nav>
+
+      {confirm ? (
+        <ReviewerAssignConfirmModal
+          reviewerName={
+            confirm.reviewer.user.fullName?.trim() ||
+            `Reviewer #${confirm.reviewer.user.id}`
+          }
+          isMatch={
+            paperSubFieldId != null &&
+            confirm.reviewer.profile?.subFieldId === paperSubFieldId
+          }
+          isSubmitting={isAssigning}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            void handleConfirm(confirm.reviewer);
+          }}
+        />
+      ) : null}
+
+      {feedback ? (
+        <ReviewerAssignFeedbackModal
+          feedback={feedback}
+          onClose={() => setFeedback(null)}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+const workloadTone = (count: number): 'low' | 'med' | 'high' => {
+  if (count <= 2) return 'low';
+  if (count <= 5) return 'med';
+  return 'high';
+};
+
+const workloadHint = (count: number): string => {
+  if (count === 0) return 'available';
+  if (count <= 2) return 'light load';
+  if (count <= 5) return 'busy';
+  return 'overloaded';
+};
+
+const WorkloadPill = ({ count }: { count: number }): JSX.Element => {
+  const tone = workloadTone(count);
+  return (
+    <span className={`${styles.workloadPill} ${styles[`workload_${tone}`]}`}>
+      <span className={styles.workloadDot} aria-hidden="true" />
+      <span className={styles.workloadCount}>{count}</span>
+      <span className={styles.workloadHint}>{workloadHint(count)}</span>
+    </span>
+  );
+};
+
+// ── Modals ────────────────────────────────────────────────────────────
+
+interface ConfirmModalProps {
+  reviewerName: string;
+  isMatch: boolean;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+const ReviewerAssignConfirmModal = ({
+  reviewerName,
+  isMatch,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: ConfirmModalProps): JSX.Element => {
+  const backdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget && !isSubmitting) onCancel();
+  };
+  return (
+    <div className={styles.backdrop} role="presentation" onMouseDown={backdropMouseDown}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reviewer-confirm-title"
+      >
+        <header className={styles.modalHeader}>
+          <div className={styles.modalHeading}>
+            <Sparkles size={18} aria-hidden="true" />
+            <h2 id="reviewer-confirm-title">Assign this reviewer?</h2>
+          </div>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onCancel}
+            disabled={isSubmitting}
+            aria-label="Close confirmation"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+        <p className={styles.modalBody}>
+          <strong>{reviewerName}</strong> will be asked to review this paper
+          {isMatch ? ' (their subfield matches the paper)' : ''}. They will
+          receive a notification and have 14 days to accept or decline.
+        </p>
+        <footer className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={onConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2
+                  size={14}
+                  aria-hidden="true"
+                  className={styles.spinning}
+                />{' '}
+                Assigning…
+              </>
+            ) : (
+              'Assign reviewer'
+            )}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+interface FeedbackModalProps {
+  feedback: NonNullable<FeedbackState>;
+  onClose: () => void;
+}
+
+const ReviewerAssignFeedbackModal = ({ feedback, onClose }: FeedbackModalProps): JSX.Element => {
+  const backdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) onClose();
+  };
+  const isSuccess = feedback.kind === 'success';
+  return (
+    <div className={styles.backdrop} role="presentation" onMouseDown={backdropMouseDown}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reviewer-feedback-title"
+      >
+        <header className={styles.modalHeader}>
+          <div
+            className={`${styles.modalHeading} ${
+              isSuccess ? styles.headingSuccess : styles.headingError
+            }`}
+          >
+            {isSuccess ? (
+              <CheckCircle2 size={18} aria-hidden="true" />
+            ) : (
+              <AlertCircle size={18} aria-hidden="true" />
+            )}
+            <h2 id="reviewer-feedback-title">
+              {isSuccess ? 'Reviewer assigned' : 'Could not assign reviewer'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onClose}
+            aria-label="Close feedback"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+        <p className={styles.modalBody}>
+          {isSuccess ? (
+            <>
+              “{feedback.reviewerName}” has been notified. The paper is now
+              in <strong>Reviewer Assigned</strong> status and waits for their
+              response.
+            </>
+          ) : (
+            feedback.message
+          )}
+        </p>
+        <footer className={styles.modalFooter}>
+          <button type="button" className={styles.confirmButton} onClick={onClose}>
+            {isSuccess ? 'Got it' : 'Try again'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+export default ReviewerCardGrid;

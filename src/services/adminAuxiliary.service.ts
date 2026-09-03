@@ -44,13 +44,16 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
   type: row.targetType?.toUpperCase().includes('PAPER')
     ? 'RESEARCH_PAPER'
     : 'FORUM_COMMENT',
+  // The `/api/Report` contract does not expose target-author or reporter
+  // display names; the placeholder text below keeps the row honest so admins
+  // can tell at a glance which columns the BE hasn't populated yet.
   targetAuthorId: 0,
-  targetAuthorName: 'Author details unavailable',
+  targetAuthorName: '—',
   targetContentId: row.targetId ?? 0,
-  reportedContent: row.violationNotes?.trim() || 'Content preview unavailable',
-  reason: row.reason?.trim() || 'No reason supplied',
+  reportedContent: row.violationNotes?.trim() || '—',
+  reason: row.reason?.trim() || '—',
   reportedById: row.reporterId ?? 0,
-  reportedByName: row.reporterId ? `User #${row.reporterId}` : 'Reporter unavailable',
+  reportedByName: row.reporterId ? `User #${row.reporterId}` : '—',
   date: row.createdAt ?? '',
   status:
     row.status?.toUpperCase() === 'RESOLVED'
@@ -178,7 +181,8 @@ async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogEntry[]>
       target: string;
       targetId: number | string;
       details: string;
-      createdAt: string;
+      timestamp?: string | null;
+      createdAt?: string | null;
     }>;
     totalCount: number;
     pageNumber: number;
@@ -187,7 +191,11 @@ async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogEntry[]>
     params: {
       search: query.search || undefined,
       adminId: query.adminId !== undefined && query.adminId !== 'ALL' ? query.adminId : undefined,
-      range: query.range ?? undefined,
+      // The FE-facing range label matches the live BE contract one-for-one
+      // (`past_24h | past_7d | past_30d | all_time`). Pass it through
+      // unchanged; Swagger's `today | 7_days | 30_days` aliases are
+      // rejected by the running service.
+      range: query.range,
       PageNumber: 1,
       PageSize: 1000,
     },
@@ -200,7 +208,11 @@ async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogEntry[]>
     action: item.action as AuditLogEntry['action'],
     target: item.target ?? '',
     targetId: typeof item.targetId === 'string' ? parseInt(item.targetId, 10) : item.targetId,
-    timestamp: item.createdAt ?? '',
+    // The live Swagger contract exposes `timestamp` as the AuditLogResponse
+    // timestamp field. Older payloads (and a few interim BE snapshots) returned
+    // it as `createdAt`. Read whichever is populated so the FE never falls back
+    // to an empty string and renders "Invalid Date".
+    timestamp: item.timestamp ?? item.createdAt ?? '',
     details: item.details ?? '',
   }));
 }
@@ -216,7 +228,7 @@ async function exportAuditLogsCsv(query: AuditLogQuery = {}): Promise<string> {
     params: {
       search: query.search || undefined,
       adminId: query.adminId && query.adminId !== 'ALL' ? query.adminId : undefined,
-      range: query.range ?? undefined,
+      range: query.range,
     },
     responseType: 'text',
   });

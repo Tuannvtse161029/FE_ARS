@@ -76,7 +76,23 @@ export function useNotifications(
       // Defense in depth: the BE filters by JWT subject, but the
       // notification list should NEVER contain rows for another user.
       const safeList = list.filter((n) => n.userId === userId);
-      setNotifications(safeList);
+      // Sort newest-first by `createdAt`. The BE contract does not
+      // guarantee any particular ordering, so the FE is responsible for
+      // surfacing the most recent notification at the top of the dropdown.
+      // Notifications without a `createdAt` (older BE rows, or rows where
+      // the field was omitted) sink to the bottom; we never throw them
+      // away because they still carry unread/important state.
+      const sortedList = [...safeList].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : NaN;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : NaN;
+        const aValid = Number.isFinite(aTime);
+        const bValid = Number.isFinite(bTime);
+        if (aValid && bValid) return bTime - aTime;
+        if (aValid) return -1;
+        if (bValid) return 1;
+        return 0;
+      });
+      setNotifications(sortedList);
     } catch (err) {
       const wrapped = err instanceof Error ? err : new Error('Failed to load notifications');
       setError(wrapped);

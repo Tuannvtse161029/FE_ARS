@@ -142,7 +142,7 @@ export const ResearcherSubmissionDetail = () => {
           description="This submission could not be found in your Researcher workspace. It may have been withdrawn, reassigned to another author, or the link is incorrect."
           action={
             <Link to="/researcher/submissions">
-              <Button variant="outline" size="md">Back to my submissions</Button>
+              <Button variant="outline" size="md">Back to my research papers</Button>
             </Link>
           }
         />
