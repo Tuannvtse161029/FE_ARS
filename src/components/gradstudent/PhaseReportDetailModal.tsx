@@ -12,6 +12,7 @@ import {
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import { StatusBadge } from '../lecturer/StatusBadge';
 import { Button } from '../Button/Button';
+import { useLocale } from '../../i18n/I18nContext';
 import styles from './PhaseReportDetailModal.module.css';
 
 export interface PhaseReportDetailModalProps {
@@ -31,6 +32,8 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
   lecturerName,
   onClose,
 }) => {
+  const locale = useLocale();
+  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -68,16 +71,16 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
               {report.milestoneTitle || `Phase ${report.phaseNumber ?? ''} Report`}
             </h2>
             <span className={styles.subtitle}>
-              {groupName ? `Nhóm: ${groupName}` : ''}
-              {topicTitle ? ` · Đề tài: ${topicTitle}` : ''}
-              {lecturerName ? ` · Giảng viên: ${lecturerName}` : ''}
+              {groupName ? `${copy('Group', 'Nhóm')}: ${groupName}` : ''}
+              {topicTitle ? ` · ${copy('Topic', 'Đề tài')}: ${topicTitle}` : ''}
+              {lecturerName ? ` · ${copy('Lecturer', 'Giảng viên')}: ${lecturerName}` : ''}
             </span>
           </div>
           <button
             type="button"
             className={styles.closeBtn}
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={copy('Close', 'Đóng')}
           >
             <X size={18} />
           </button>
@@ -87,49 +90,49 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
           {/* Metadata Grid */}
           <div className={styles.metaGrid}>
             <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Giai đoạn</span>
+              <span className={styles.metaLabel}>{copy('Phase', 'Giai đoạn')}</span>
               <span className={styles.metaValue}>
                 Phase {report.phaseNumber ?? report.id}
               </span>
             </div>
             <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Trạng thái</span>
+              <span className={styles.metaLabel}>{copy('Status', 'Trạng thái')}</span>
               <div className={styles.metaValue}>
                 <StatusBadge status={report.status} size="sm" />
                 {report.isOverdue ? (
-                  <span className={styles.overdueBadge}>Quá hạn</span>
+                  <span className={styles.overdueBadge}>{copy('Overdue', 'Quá hạn')}</span>
                 ) : report.submittedAt && report.deadlineAt ? (
-                  <span className={styles.onTimeBadge}>Đúng hạn</span>
+                  <span className={styles.onTimeBadge}>{copy('On time', 'Đúng hạn')}</span>
                 ) : null}
               </div>
             </div>
             <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Hạn nộp (Deadline)</span>
+              <span className={styles.metaLabel}>{copy('Deadline', 'Hạn nộp (Deadline)')}</span>
               <span className={styles.metaValue}>
                 <Clock size={14} color="#64748b" />
                 {report.deadlineAt
-                  ? new Date(report.deadlineAt).toLocaleDateString('vi-VN', {
+                  ? new Date(report.deadlineAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                     })
-                  : 'Không có hạn chót'}
+                  : copy('No deadline', 'Không có hạn chót')}
               </span>
             </div>
             <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Ngày nộp bài</span>
+              <span className={styles.metaLabel}>{copy('Submitted Date', 'Ngày nộp bài')}</span>
               <span className={styles.metaValue}>
                 <Calendar size={14} color="#64748b" />
                 {report.submittedAt
-                  ? new Date(report.submittedAt).toLocaleDateString('vi-VN', {
+                  ? new Date(report.submittedAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                     })
-                  : 'Chưa nộp bài'}
+                  : copy('Not submitted', 'Chưa nộp bài')}
               </span>
             </div>
             {report.studentName && (
               <div className={styles.metaItem} style={{ gridColumn: 'span 2' }}>
-                <span className={styles.metaLabel}>Người nộp báo cáo</span>
+                <span className={styles.metaLabel}>{copy('Submitted by', 'Người nộp báo cáo')}</span>
                 <span className={styles.metaValue}>
                   <User size={14} color="#64748b" />
                   {report.studentName}
@@ -142,14 +145,14 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
               <FileText size={16} color="#0284c7" />
-              Tài liệu báo cáo đã nộp
+              {copy('Submitted Report Document', 'Tài liệu báo cáo đã nộp')}
             </h3>
             {report.reportFileUrl ? (
               <div className={styles.fileCard}>
                 <div className={styles.fileInfo}>
                   <FileText size={24} className={styles.fileIcon} />
                   <div className={styles.fileName}>
-                    {report.milestoneTitle || `Báo cáo giai đoạn ${report.phaseNumber ?? ''}`}.pdf
+                    {report.milestoneTitle || `${copy('Phase Report', 'Báo cáo giai đoạn')} ${report.phaseNumber ?? ''}`}.pdf
                   </div>
                 </div>
                 <a
@@ -158,12 +161,12 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
                   rel="noopener noreferrer"
                   className={styles.openFileBtn}
                 >
-                  <ExternalLink size={14} /> Xem PDF
+                  <ExternalLink size={14} /> {copy('View PDF', 'Xem PDF')}
                 </a>
               </div>
             ) : (
               <div className={styles.noEval}>
-                Chưa có tệp tài liệu PDF nào được đính kèm cho giai đoạn này.
+                {copy('No PDF report attached for this phase.', 'Chưa có tệp tài liệu PDF nào được đính kèm cho giai đoạn này.')}
               </div>
             )}
           </div>
@@ -172,13 +175,13 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
               <MessageSquare size={16} color="#16a34a" />
-              Đánh giá & Nhận xét của Giảng viên
+              {copy('Lecturer Evaluation & Feedback', 'Đánh giá & Nhận xét của Giảng viên')}
             </h3>
             {hasEvaluation ? (
               <div className={styles.evalCard}>
                 {typeof report.lectureFeedback === 'number' && (
                   <div className={styles.scoreRow}>
-                    <span className={styles.evalLabel}>Điểm đánh giá:</span>
+                    <span className={styles.evalLabel}>{copy('Evaluation Score:', 'Điểm đánh giá:')}</span>
                     <span className={styles.scorePill}>
                       <Star size={14} fill="#ffffff" />
                       {report.lectureFeedback} / 10
@@ -187,26 +190,26 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
                 )}
                 {report.lecturerDescription && (
                   <div className={styles.evalItem}>
-                    <span className={styles.evalLabel}>Nhận xét của Giảng viên:</span>
+                    <span className={styles.evalLabel}>{copy('Lecturer Feedback:', 'Nhận xét của Giảng viên:')}</span>
                     <p className={styles.evalText}>{report.lecturerDescription}</p>
                   </div>
                 )}
                 {report.finalOutcomeEvaluation && (
                   <div className={styles.evalItem}>
-                    <span className={styles.evalLabel}>Kết luận nghiệm thu:</span>
+                    <span className={styles.evalLabel}>{copy('Outcome Evaluation:', 'Kết luận nghiệm thu:')}</span>
                     <p className={styles.evalText}>{report.finalOutcomeEvaluation}</p>
                   </div>
                 )}
                 {report.capacityEvaluation && (
                   <div className={styles.evalItem}>
-                    <span className={styles.evalLabel}>Đánh giá năng lực:</span>
+                    <span className={styles.evalLabel}>{copy('Capacity Evaluation:', 'Đánh giá năng lực:')}</span>
                     <p className={styles.evalText}>{report.capacityEvaluation}</p>
                   </div>
                 )}
               </div>
             ) : (
               <div className={styles.noEval}>
-                Báo cáo đang chờ Giảng viên phụ trách xem xét và cho điểm đánh giá.
+                {copy('This report is awaiting lecturer review and evaluation.', 'Báo cáo đang chờ Giảng viên phụ trách xem xét và cho điểm đánh giá.')}
               </div>
             )}
           </div>
@@ -214,7 +217,7 @@ export const PhaseReportDetailModal: React.FC<PhaseReportDetailModalProps> = ({
 
         <footer className={styles.footer}>
           <Button variant="secondary" size="md" onClick={onClose}>
-            Đóng
+            {copy('Close', 'Đóng')}
           </Button>
         </footer>
       </div>
