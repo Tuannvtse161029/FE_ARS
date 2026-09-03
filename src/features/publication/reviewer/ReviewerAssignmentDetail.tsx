@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Download, ExternalLink, FileText, ShieldCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { statusLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
-import shared from '../components/PublicationShared.module.css';
 import {
   REVIEWER_CRITERIA,
   REVIEWER_RECOMMENDATIONS,
@@ -12,7 +11,6 @@ import {
   isReviewerActionable,
   isReviewerSubmitted,
   isAwaitingReviewerResponse,
-  shouldRenderPrivatePriorReview,
   type ReviewerEvaluationDraft,
   type ReviewerRecommendationValue,
 } from './reviewerCriteria';
@@ -29,58 +27,19 @@ import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { useShortcuts } from '../../../hooks/useShortcuts';
 import { storage } from '../../../utils/storage';
-
-// ReviewerAssignmentDetail — the Reviewer-only paper view.
-//
-// Coordinator authority:
-//   - `docs/UI_PUBLICATION_FLOW_DECISIONS.md` §1, §3 (status semantics),
-//     §7 (ownership — only this directory is mutable).
-//   - `docs/PUBLICATION_FLOW_ARCHITECTURE_REVIEW.md` §3, §10 (reviewer
-//     must not see publication actions; private review content stays
-//     Admin + submitting researcher only).
-//   - `docs/PUBLICATION_FLOW_API_BLOCKERS.md` §3.4 (backend gaps).
-//
-// The page:
-//   1. Resolves the assignment via `publicationAdapter.getReviewerAssignments()`.
-//      Anything not in that list is unauthorised (renders a notice,
-//      never the paper body).
-//   2. Renders required paper/assignment metadata (title, abstract,
-//      authors, institutions, identifiers, version, verification
-//      status, deadline chip, etc.) WITHOUT leaking any prior reviewer's
-//      private review content. `shouldRenderPrivatePriorReview` is the
-//      single source of truth for that gate.
-//   3. Renders a PDF iframe + a download anchor when `fileUrl` is
-//      present; otherwise renders an explicit "no file URL is
-//      available" notice (no fake download).
-//   4. Shows Accept / Decline ONLY for REVIEWER_ASSIGNED.
-//   5. Shows the full Evaluate Paper form ONLY for UNDER_REVIEW
-//      (actionable) — every REVIEWER_CRITERIA criterion (5), the
-//      per-criterion note, the private comments textarea, and the
-//      three recommendation options (Accept / Revision Required /
-//      Reject).
-//   6. After submit, transitions to "Review submitted / Awaiting Admin
-//      decision" copy and hides the form. The form never reappears
-//      for the same assignment.
+import {
+  hasAcceptedPolicySession,
+  ReviewerPolicyModal,
+} from '../../../components/reviewer/ReviewerPolicyModal';
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
+const POLICY_VERSION = 'v1.0.0';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return 'Not supplied';
   const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
-  return parsed.toISOString().slice(0, 10);
+  return Number.isNaN(parsed.getTime()) ? 'Not supplied' : parsed.toISOString().slice(0, 10);
 };
-
-const renderInlineStatus = (status: string): string =>
-  statusLabel(status as never);
-
-interface ResolvedAssignment {
-  status: 'authorised' | 'unauthorised' | 'missing';
-  paper?: PublicationPaper;
-}
-
-const DOCUMENT_ACCESS_MESSAGE =
-  'Manuscript access is unavailable until the editorial service confirms this assignment\'s policy acceptance and returns a protected document link.';
 
 const statusTone = (
   paper: PublicationPaper | undefined,
@@ -92,153 +51,128 @@ const statusTone = (
   return 'unknown';
 };
 
+interface ResolvedAssignment {
+  status: 'authorised' | 'unauthorised' | 'missing';
+  paper?: PublicationPaper;
+}
+
+const DOCUMENT_ACCESS_MESSAGE =
+  'The manuscript cannot be opened until you accept the reviewer responsibilities for this assignment.';
+
 export const ReviewerAssignmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [resolved, setResolved] = useState<ResolvedAssignment>({
-    status: 'missing',
-  });
+  const [resolved, setResolved] = useState<ResolvedAssignment>({ status: 'missing' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<ReviewerEvaluationDraft>(() =>
-    buildEmptyEvaluationDraft(),
-  );
+  const [draft, setDraft] = useState<ReviewerEvaluationDraft>(buildEmptyEvaluationDraft);
   const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>({
-    criteria1: '',
-    expandedCriteria1: '',
-    evaluationCriteria1: '',
-    criteria2: '',
-    expandedCriteria2: '',
-    evaluationCriteria2: '',
-    criteria3: '',
-    expandedCriteria3: '',
-    evaluationCriteria3: '',
+    criteria1: '', expandedCriteria1: '', evaluationCriteria1: '',
+    criteria2: '', expandedCriteria2: '', evaluationCriteria2: '',
+    criteria3: '', expandedCriteria3: '', evaluationCriteria3: '',
   });
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setResolved({ status: 'missing' });
-    (async () => {
-      try {
-        // Use the reviewer-scoped list as the authorisation source. If
-        // the requested id is not in the list, we render an
-        // unauthorised notice instead of the paper body.
-        const assignments = await publicationAdapter.getReviewerAssignments();
+    setError(null);
+    publicationAdapter.getReviewerAssignments()
+      .then((assignments) => {
         if (cancelled) return;
-        let found = assignments.find((paper) => paper.id === id);
-        if (!found && id) {
-          try {
-            found = await publicationAdapter.getPaperById(id);
-          } catch {
-            // ignore
-          }
-        }
-        if (found) {
-          setResolved({ status: 'authorised', paper: found });
-        } else {
-          setResolved({ status: 'unauthorised' });
-        }
-      } catch (caught) {
+        const found = assignments.find((paper) => paper.id === id);
+        setResolved(found ? { status: 'authorised', paper: found } : { status: 'unauthorised' });
+      })
+      .catch((caught) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : 'The review assignment could not be loaded.',
-          );
+          setError(caught instanceof Error ? caught.message : 'The review assignment could not be loaded.');
         }
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      });
+    return () => { cancelled = true; };
   }, [id]);
 
-  // Reset the form draft and load specialized criteria whenever we transition to a different paper
-  const assignedPaperId =
-    resolved.status === 'authorised' ? resolved.paper?.id : null;
+  const paper = resolved.status === 'authorised' ? resolved.paper : undefined;
+  const assignedPaperId = paper?.id ?? null;
+  const reviewRequestId = paper?.reviewRequestId;
+  const awaitingResponse = Boolean(paper && isAwaitingReviewerResponse(paper.status));
+  const canReview = Boolean(paper && isReviewerActionable(paper.status));
+  const submitted = Boolean(paper && isReviewerSubmitted(paper.status));
+  const policyRequired = reviewRequestId != null;
+  const hasPolicyAcceptance = !policyRequired || Boolean(
+    policyAccepted || hasAcceptedPolicySession(reviewRequestId, POLICY_VERSION),
+  );
+
   useEffect(() => {
     setDraft(buildEmptyEvaluationDraft());
     setError(null);
-    if (!resolved.paper) return;
-    const currentPaper = resolved.paper;
-    (async () => {
+    setPolicyAccepted(false);
+    if (!paper) return;
+
+    let cancelled = false;
+    const loadCriteria = async () => {
       let subFieldData = null;
-      if (currentPaper.subFieldId) {
+      if (paper.subFieldId) {
         try {
-          subFieldData = await fieldService.getSubFieldById(currentPaper.subFieldId);
+          subFieldData = await fieldService.getSubFieldById(paper.subFieldId);
         } catch {
-          // ignore, preset will be used
+          // The domain-specific preset is used when no persisted rubric is available.
         }
       }
-      const bundle = resolveCriteriaForPaper(currentPaper, subFieldData);
-      setSpecializedCriteria(bundle);
-    })();
+      if (!cancelled) setSpecializedCriteria(resolveCriteriaForPaper(paper, subFieldData));
+    };
+    void loadCriteria();
+    return () => { cancelled = true; };
   }, [assignedPaperId]);
 
-  const paper = resolved.status === 'authorised' ? resolved.paper : undefined;
-  const awaitingResponse = paper ? isAwaitingReviewerResponse(paper.status) : false;
-  const canReview = paper ? isReviewerActionable(paper.status) : false;
-  const submitted = paper ? isReviewerSubmitted(paper.status) : false;
+  useEffect(() => {
+    if (canReview && reviewRequestId != null && !hasAcceptedPolicySession(reviewRequestId, POLICY_VERSION)) {
+      setPolicyOpen(true);
+    }
+  }, [canReview, reviewRequestId]);
 
-  const handleAccept = async (accepted: boolean) => {
+  const handleAssignmentResponse = async (accepted: boolean) => {
     if (!paper) return;
     setSaving(true);
     setError(null);
     try {
-      const updated = await publicationAdapter.respondToAssignment(
-        paper.id,
-        accepted,
-      );
+      const updated = await publicationAdapter.respondToAssignment(paper.id, accepted);
       setResolved({ status: 'authorised', paper: updated });
       if (!accepted) navigate('/reviewer/assignments');
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Could not respond to assignment.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Could not respond to assignment.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleScoreChange = (
-    key: keyof ReviewerEvaluationDraft['scores'],
-    value: number,
-  ) => {
-    setDraft((current) => ({
-      ...current,
-      scores: { ...current.scores, [key]: value },
-    }));
+  const handlePolicyAccept = () => {
+    setPolicyOpen(false);
+    setPolicyAccepted(true);
+    if (awaitingResponse) void handleAssignmentResponse(true);
   };
 
-  const handleNoteChange = (
-    key: keyof ReviewerEvaluationDraft['perCriterionNotes'],
-    value: string,
-  ) => {
+  const handleScoreChange = (key: keyof ReviewerEvaluationDraft['scores'], value: number) => {
+    setDraft((current) => ({ ...current, scores: { ...current.scores, [key]: value } }));
+  };
+
+  const handleNoteChange = (key: keyof ReviewerEvaluationDraft['perCriterionNotes'], value: string) => {
     setDraft((current) => ({
       ...current,
       perCriterionNotes: { ...current.perCriterionNotes, [key]: value },
     }));
   };
 
-  const handleRecommendationChange = (value: ReviewerRecommendationValue) => {
-    setDraft((current) => ({ ...current, recommendation: value }));
-  };
-
-  const handlePrivateCommentsChange = (value: string) => {
-    setDraft((current) => ({ ...current, privateComments: value }));
-  };
-
   const submitEvaluation = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!paper) return;
     if (!draft.privateComments.trim()) {
-      setError('Private comments for Admin are required before submitting a review.');
+      setError('Private review feedback for Admin is required before submitting a review.');
       return;
     }
     setSaving(true);
@@ -254,669 +188,136 @@ export const ReviewerAssignmentDetail = () => {
       );
       setResolved({ status: 'authorised', paper: updated });
       const user = storage.getUser();
-      const isAdmin = user?.roleName === 'Admin' || user?.roles?.includes('Admin');
-      if (isAdmin) {
-        navigate('/admin/reviewer-assignments');
-      }
+      if (user?.roleName === 'Admin' || user?.roles?.includes('Admin')) navigate('/admin/reviewer-assignments');
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : 'Could not submit review.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Could not submit review.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Part 5 — keyboard shortcuts for the reviewer detail page.
-  // `a` accepts the focused assignment, `d` declines it, Ctrl/Cmd+Enter
-  // submits the evaluation form. Shortcuts are only registered when the
-  // paper is in the appropriate status (REVIEWER_ASSIGNED for a/d,
-  // UNDER_REVIEW for submit).
   const handleAcceptRef = useRef<() => void>(() => undefined);
-  handleAcceptRef.current = () => void handleAccept(true);
+  handleAcceptRef.current = () => setPolicyOpen(true);
   const handleDeclineRef = useRef<() => void>(() => undefined);
-  handleDeclineRef.current = () => void handleAccept(false);
+  handleDeclineRef.current = () => void handleAssignmentResponse(false);
   const submitRef = useRef<() => void>(() => undefined);
   submitRef.current = () => {
-    if (!canReview || submitted) return;
-    void submitEvaluation({
-      preventDefault: () => undefined,
-    } as unknown as React.FormEvent<HTMLFormElement>);
+    if (canReview && !submitted && hasPolicyAcceptance) {
+      void submitEvaluation({ preventDefault: () => undefined } as unknown as React.FormEvent<HTMLFormElement>);
+    }
   };
+
   useShortcuts([
-    ...(awaitingResponse
-      ? [
-          {
-            key: 'a',
-            label: 'Accept assignment',
-            description: 'Accept the review assignment (a).',
-            group: 'reviewer' as const,
-            handler: () => handleAcceptRef.current(),
-          },
-          {
-            key: 'd',
-            label: 'Decline assignment',
-            description: 'Decline the review assignment (d).',
-            group: 'reviewer' as const,
-            handler: () => handleDeclineRef.current(),
-          },
-        ]
-      : []),
-    {
-      key: 'Enter',
-      modifier: 'mod' as const,
-      label: 'Submit evaluation',
-      description: 'Submit the review evaluation (Ctrl/Cmd + Enter).',
-      group: 'reviewer',
-      allowInInputs: true,
-      handler: () => submitRef.current(),
-    },
+    ...(awaitingResponse ? [
+      { key: 'a', label: 'Open reviewer responsibilities', description: 'Read and accept reviewer responsibilities (a).', group: 'reviewer' as const, handler: () => handleAcceptRef.current() },
+      { key: 'd', label: 'Decline assignment', description: 'Decline the review assignment (d).', group: 'reviewer' as const, handler: () => handleDeclineRef.current() },
+    ] : []),
+    { key: 'Enter', modifier: 'mod' as const, label: 'Submit evaluation', description: 'Submit the review evaluation (Ctrl/Cmd + Enter).', group: 'reviewer', allowInInputs: true, handler: () => submitRef.current() },
   ]);
 
   const renderMetadata = (paperToRender: PublicationPaper) => {
     const items: Array<{ label: string; value: string }> = [
-      { label: 'Status', value: renderInlineStatus(paperToRender.status) },
       { label: 'Paper type', value: paperToRender.paperType || 'Not supplied' },
-      { label: 'Version', value: String(paperToRender.version) },
-      {
-        label: 'Researcher verification',
-        value: paperToRender.researcherVerificationStatus,
-      },
-      { label: 'Visibility', value: paperToRender.visibility },
+      { label: 'Version', value: paperToRender.version == null ? 'Not supplied' : `v${paperToRender.version}` },
       { label: 'Submitted', value: formatDate(paperToRender.submittedAt) },
-      { label: 'Published', value: formatDate(paperToRender.publishedAt) },
+      { label: 'Review deadline', value: formatDate(paperToRender.reviewDeadline) },
+      { label: 'Research area', value: [paperToRender.domain, paperToRender.field, paperToRender.subfield].filter(Boolean).join(' / ') || 'Not supplied' },
       { label: 'DOI', value: paperToRender.doi ?? 'Not supplied' },
-      {
-        label: 'OpenAlex ID',
-        value: paperToRender.openAlexId ?? 'Not supplied',
-      },
-      {
-        label: 'External identifier',
-        value: paperToRender.externalIdentifier ?? 'Not supplied',
-      },
-      { label: 'Domain', value: paperToRender.domain ?? 'Not supplied' },
-      { label: 'Field', value: paperToRender.field ?? 'Not supplied' },
-      { label: 'Subfield', value: paperToRender.subfield ?? 'Not supplied' },
     ];
+    return <dl className={reviewer.metadataGrid}>{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+  };
+
+  const renderPdf = () => {
+    const fileUrl = paper?.fileUrl?.trim();
+    if (!hasPolicyAcceptance) return <p className={reviewer.pdfUnavailable} role="status">{DOCUMENT_ACCESS_MESSAGE}</p>;
+    if (!fileUrl) return <p className={reviewer.pdfUnavailable} role="status">No manuscript file is attached to this assignment. Contact the editorial Admin.</p>;
     return (
-      <dl className={reviewer.metadataGrid}>
-        {items.map((item) => (
-          <div key={item.label}>
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
+      <div className={reviewer.pdfFrame} data-testid="pdf-frame">
+        <div className={reviewer.pdfActions}>
+          <span><FileText size={17} aria-hidden="true" /> Protected manuscript</span>
+          <div>
+            <a href={fileUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} aria-hidden="true" /> Open</a>
+            <a href={fileUrl} download><Download size={15} aria-hidden="true" /> Download</a>
           </div>
-        ))}
-      </dl>
+        </div>
+        <iframe src={fileUrl} title={`PDF preview: ${paper?.title ?? 'manuscript'}`} />
+      </div>
     );
   };
 
-  const renderPdf = () => (
-    <p className={reviewer.pdfUnavailable} role="status">
-      {DOCUMENT_ACCESS_MESSAGE}
-    </p>
-  );
-
   const renderEvaluationForm = () => {
-    if (!canReview) return null;
+    if (!canReview || !hasPolicyAcceptance) return null;
     return (
-      <form
-        onSubmit={submitEvaluation}
-        className={reviewer.formCard}
-        aria-label="Evaluate Paper"
-        data-testid="evaluate-form"
-      >
-        <div className={`${shared.field} ${shared.full}`}>
-          <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
-            1. Bảng chấm điểm 5 tiêu chí cốt lõi (Core Rubric Evaluation)
-          </h3>
-          <p style={{ margin: '0 0 10px', color: '#4a5568', fontSize: 13 }}>
-            Đánh giá điểm số (1 đến 10) và cung cấp nhận xét/chứng minh tương ứng cho từng tiêu chí chuẩn.
-          </p>
-          <div style={{ overflowX: 'auto' }}>
-            <table className={reviewer.rubricTable}>
-              <thead>
-                <tr>
-                  <th style={{ width: '22%' }}>Tiêu chí đánh giá</th>
-                  <th style={{ width: '36%' }}>Mô tả chuẩn học thuật</th>
-                  <th style={{ width: '16%' }}>Điểm (1 - 10)</th>
-                  <th style={{ width: '26%' }}>Nhận xét / Ghi chú (Note)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {REVIEWER_CRITERIA.map((criterion) => {
-                  const score = draft.scores[criterion.key];
-                  const note = draft.perCriterionNotes[criterion.key];
-                  const optionValues = Array.from(
-                    { length: criterion.max - criterion.min + 1 },
-                    (_, index) => criterion.min + index,
-                  );
-                  return (
-                    <tr key={criterion.key}>
-                      <td>
-                        <strong style={{ color: '#1e293b' }}>{criterion.label}</strong>
-                      </td>
-                      <td style={{ color: '#475569', fontSize: 12 }}>
-                        {criterion.description}
-                      </td>
-                      <td>
-                        <select
-                          id={`score-${criterion.key}`}
-                          value={score}
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            borderRadius: 4,
-                            border: '1px solid #cbd5e1',
-                            fontSize: 13,
-                          }}
-                          onChange={(event) =>
-                            handleScoreChange(criterion.key, Number(event.target.value))
-                          }
-                        >
-                          {optionValues.map((value) => (
-                            <option key={value} value={value}>
-                              {value} / 10
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <textarea
-                          id={`note-${criterion.key}`}
-                          className={reviewer.criterionNote}
-                          style={{
-                            width: '100%',
-                            minHeight: 46,
-                            fontSize: 12,
-                            padding: '6px 8px',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: 4,
-                          }}
-                          value={note}
-                          onChange={(event) =>
-                            handleNoteChange(criterion.key, event.target.value)
-                          }
-                          placeholder={`Ghi chú cho ${criterion.label}...`}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      <form onSubmit={submitEvaluation} className={reviewer.formCard} aria-label="Evaluate Paper" data-testid="evaluate-form">
+        <header className={reviewer.formHeader}>
+          <div><h2>Editorial evaluation</h2><p>Score each publication criterion and record concise evidence for the editorial decision.</p></div>
+          <span className={reviewer.requiredLegend}>All criterion notes are visible only to Admin.</span>
+        </header>
+        <div className={reviewer.criteriaList}>
+          {REVIEWER_CRITERIA.map((criterion) => {
+            const values = Array.from({ length: criterion.max - criterion.min + 1 }, (_, index) => criterion.min + index);
+            return (
+              <fieldset key={criterion.key} className={reviewer.criterion}>
+                <legend>{criterion.label}</legend>
+                <p>{criterion.description}</p>
+                <div className={reviewer.criterionInputs}>
+                  <label htmlFor={`score-${criterion.key}`}>Score <select id={`score-${criterion.key}`} value={draft.scores[criterion.key]} onChange={(event) => handleScoreChange(criterion.key, Number(event.target.value))}>{values.map((value) => <option key={value} value={value}>{value} / 10</option>)}</select></label>
+                  <label htmlFor={`note-${criterion.key}`}>Evidence and notes<textarea id={`note-${criterion.key}`} value={draft.perCriterionNotes[criterion.key]} onChange={(event) => handleNoteChange(criterion.key, event.target.value)} placeholder={`Explain the ${criterion.label.toLowerCase()} score.`} /></label>
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+        <section className={reviewer.specializedSection} aria-labelledby="specialized-criteria-title">
+          <div><h2 id="specialized-criteria-title">Discipline-specific review guide</h2><p>Use these standards to assess the manuscript in its research context. They are provided by the subject taxonomy and are not editable in a review.</p></div>
+          <div className={reviewer.specializedList}>
+            {[1, 2, 3].map((index) => {
+              const item = specializedCriteria[`criteria${index}` as keyof SpecializedCriteriaBundle] as string;
+              const guidance = specializedCriteria[`expandedCriteria${index}` as keyof SpecializedCriteriaBundle] as string;
+              const standard = specializedCriteria[`evaluationCriteria${index}` as keyof SpecializedCriteriaBundle] as string;
+              return <article key={index} className={reviewer.specializedCard}><h3>{item}</h3><p>{guidance}</p><small>{standard}</small></article>;
+            })}
           </div>
+        </section>
+        <div className={reviewer.finalReviewGrid}>
+          <label className={reviewer.reviewField} htmlFor="private-comments">Private review feedback for Admin<textarea id="private-comments" rows={7} value={draft.privateComments} onChange={(event) => setDraft((current) => ({ ...current, privateComments: event.target.value }))} placeholder="Summarize the manuscript's contribution, material concerns, required revisions, and evidence supporting your recommendation." required /></label>
+          <label className={reviewer.reviewField} htmlFor="recommendation">Editorial recommendation<select id="recommendation" value={draft.recommendation} onChange={(event) => setDraft((current) => ({ ...current, recommendation: event.target.value as ReviewerRecommendationValue }))}>{REVIEWER_RECOMMENDATIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><span>Admin makes the final publication decision.</span></label>
         </div>
-
-        <div className={`${shared.field} ${shared.full}`} style={{ marginTop: 8 }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
-            2. Tiêu chí chuyên môn & Mở rộng theo chuyên ngành (Subfield Specialized & Expanded Criteria)
-          </h3>
-          <p style={{ margin: '0 0 12px', color: '#4a5568', fontSize: 13 }}>
-            Các tiêu chí được đọc từ cơ sở dữ liệu chuyên ngành hoặc hệ thống tự động sinh tiêu chí học thuật quốc tế phù hợp với bài báo. Bạn có thể xem và điều chỉnh nội dung:
-          </p>
-
-          <div className={reviewer.specializedCard}>
-            <div className={reviewer.specializedCardHeader}>
-              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 1</span>
-              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 1 & Expanded Criteria 1</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Tên tiêu chí (Criteria 1):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.criteria1}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria1: e.target.value })}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Quy chuẩn đánh giá (Evaluation Criteria 1):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.evaluationCriteria1}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria1: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 1):
-              </label>
-              <textarea
-                rows={2}
-                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                value={specializedCriteria.expandedCriteria1}
-                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria1: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className={reviewer.specializedCard}>
-            <div className={reviewer.specializedCardHeader}>
-              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 2</span>
-              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 2 & Expanded Criteria 2</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Tên tiêu chí (Criteria 2):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.criteria2}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria2: e.target.value })}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Quy chuẩn đánh giá (Evaluation Criteria 2):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.evaluationCriteria2}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria2: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 2):
-              </label>
-              <textarea
-                rows={2}
-                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                value={specializedCriteria.expandedCriteria2}
-                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria2: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className={reviewer.specializedCard}>
-            <div className={reviewer.specializedCardHeader}>
-              <span className={reviewer.specializedBadge}>Tiêu chí chuyên ngành 3</span>
-              <span style={{ fontSize: 11, color: '#64748b' }}>Criteria 3 & Expanded Criteria 3</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 8 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Tên tiêu chí (Criteria 3):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.criteria3}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, criteria3: e.target.value })}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  Quy chuẩn đánh giá (Evaluation Criteria 3):
-                </label>
-                <input
-                  type="text"
-                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                  value={specializedCriteria.evaluationCriteria3}
-                  onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, evaluationCriteria3: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                Tiêu chí mở rộng & Hướng dẫn (Expanded Criteria 3):
-              </label>
-              <textarea
-                rows={2}
-                style={{ width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 4, border: '1px solid #cbd5e1' }}
-                value={specializedCriteria.expandedCriteria3}
-                onChange={(e) => setSpecializedCriteria({ ...specializedCriteria, expandedCriteria3: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className={`${shared.field} ${shared.full}`}>
-          <label htmlFor="private-comments">
-            Nhận xét phản biện tổng quát cho Ban biên tập (Private review feedback for Admin)
-          </label>
-          <textarea
-            id="private-comments"
-            rows={5}
-            value={draft.privateComments}
-            onChange={(event) =>
-              handlePrivateCommentsChange(event.target.value)
-            }
-            placeholder="Tóm tắt nội dung, ưu điểm nổi bật, các điểm hạn chế cần bổ sung. Ban biên tập sẽ đọc nhận xét này để ra quyết định xuất bản."
-          />
-        </div>
-        <div className={`${shared.field} ${shared.full}`}>
-          <label htmlFor="recommendation">Quyết định đề xuất (Final Recommendation)</label>
-          <select
-            id="recommendation"
-            value={draft.recommendation}
-            onChange={(event) =>
-              handleRecommendationChange(
-                event.target.value as ReviewerRecommendationValue,
-              )
-            }
-          >
-            {REVIEWER_RECOMMENDATIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label === 'Accept'
-                  ? 'Chấp thuận (Accept for Publication)'
-                  : option.label === 'Reject'
-                    ? 'Từ chối (Reject / Deny Publication)'
-                    : 'Yêu cầu sửa đổi (Revision Required)'}
-              </option>
-            ))}
-          </select>
-        </div>
-        {error && (
-          <ErrorBanner
-            tone="error"
-            title="Could not submit review"
-            message={error}
-          />
-        )}
-        <div className={`${reviewer.evaluationActions} ${shared.full}`}>
-          <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
-            Sau khi nộp, phiếu đánh giá sẽ được chuyển lên Ban biên tập Admin để xem xét xuất bản.
-          </p>
-          <Button
-            variant="primary"
-            size="md"
-            disabled={saving}
-            type="submit"
-          >
-            {saving ? 'Đang gửi...' : 'Nộp phiếu đánh giá cho Admin'}
-          </Button>
-        </div>
+        {error && <ErrorBanner tone="error" title="Could not submit review" message={error} />}
+        <footer className={reviewer.evaluationActions}><p>Your scores, notes, and recommendation remain private to the editorial team.</p><Button variant="primary" size="md" disabled={saving} type="submit">{saving ? 'Submitting review…' : 'Submit private review to Admin'}</Button></footer>
       </form>
     );
   };
 
-  const renderSubmitted = (paperToRender: PublicationPaper) => {
-    const user = storage.getUser();
-    const isAdmin = user?.roleName === 'Admin' || user?.roles?.includes('Admin');
-    return (
-      <section
-        className={reviewer.submittedBanner}
-        aria-live="polite"
-        data-testid="submitted-banner"
-      >
-        <h2>✓ Đã nộp phiếu đánh giá thành công!</h2>
-        <p>
-          Phiếu đánh giá đã được chuyển tới Ban biên tập để xem xét xuất bản (Awaiting Admin decision on{' '}
-          <strong>{renderInlineStatus(paperToRender.status)}</strong>). Form đánh giá đã được đóng cho bài báo này.
-        </p>
-        <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/reviewer/assignments')}
-          >
-            Quay lại danh sách phân công
-          </Button>
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/admin/reviewer-assignments')}
-            >
-              Chuyển đến Admin Reviewer Assignments
-            </Button>
-          )}
-        </div>
-      </section>
-    );
-  };
+  if (loading || resolved.status === 'missing') return <section className={reviewer.page}><PageHeader title="Review assignment" accent={REVIEWER_ACCENT} /><SkeletonRow count={6} withHeader /></section>;
+  if (error && !paper) return <section className={reviewer.page}><PageHeader title="Review assignment" accent={REVIEWER_ACCENT} actions={<Button variant="outline" size="md" onClick={() => navigate('/reviewer/assignments')}>Back to assignments</Button>} /><ErrorBanner tone="error" title="Could not load assignment" message={error} /></section>;
+  if (resolved.status === 'unauthorised') return <section className={reviewer.page}><PageHeader title="Review assignment" accent={REVIEWER_ACCENT} /><section className={reviewer.unauthorizedNotice} data-testid="unauthorized-notice"><h2>This assignment is not available to you</h2><p>The reviewer workspace only opens assignments made to your account. Contact the editorial Admin if this appears to be incorrect.</p><Button variant="outline" size="md" onClick={() => navigate('/reviewer/assignments')}>Back to my assignments</Button></section></section>;
+  if (!paper) return <section className={reviewer.page}><EmptyState icon={<AlertTriangle size={20} aria-hidden />} title="Assignment could not be loaded" description="Return to your assignments and try again." /></section>;
 
-  const renderResponseActions = () => (
-    <div className={reviewer.evaluationActions}>
-      <p className={reviewer.evaluationHint}>
-        Accept to begin evaluation, or decline and the assignment returns to
-        Admin's queue.
-      </p>
-      <div className={reviewer.respondButtons}>
-        <Button
-          variant="secondary"
-          size="md"
-          disabled={saving}
-          onClick={() => void handleAccept(true)}
-        >
-          Accept assignment
-        </Button>
-        <Button
-          variant="outline"
-          size="md"
-          disabled={saving}
-          onClick={() => void handleAccept(false)}
-        >
-          Decline assignment
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderUnauthorized = () => (
-    <section
-      className={reviewer.unauthorizedNotice}
-      data-testid="unauthorized-notice"
-    >
-      <h2>This assignment is not available to you</h2>
-      <p>
-        The reviewer workspace only lists assignments Admin assigned to your
-        account. If you believe this is a mistake, contact the editorial
-        Admin.
-      </p>
-      <div>
-        <Button
-          variant="outline"
-          size="md"
-          onClick={() => navigate('/reviewer/assignments')}
-        >
-          Back to my assignments
-        </Button>
-      </div>
-    </section>
-  );
-
-  if (loading || resolved.status === 'missing') {
-    return (
-      <section className={reviewer.page}>
-        <PageHeader
-          eyebrow="REVIEWER WORKSPACE"
-          title="Review Assignment"
-          accent={REVIEWER_ACCENT}
-        />
-        <SkeletonRow count={6} withHeader />
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className={reviewer.page}>
-        <PageHeader
-          eyebrow="REVIEWER WORKSPACE"
-          title="Review Assignment"
-          accent={REVIEWER_ACCENT}
-          actions={
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/reviewer/assignments')}
-            >
-              Back to assignments
-            </Button>
-          }
-        />
-        <ErrorBanner
-          tone="error"
-          title="Could not load assignment"
-          message={error}
-          retry={
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          }
-        />
-      </section>
-    );
-  }
-
-  if (resolved.status === 'unauthorised') {
-    return (
-      <section className={reviewer.page}>
-        <PageHeader
-          eyebrow="REVIEWER WORKSPACE"
-          title="Review Assignment"
-          accent={REVIEWER_ACCENT}
-          actions={
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/reviewer/assignments')}
-            >
-              ← All assignments
-            </Button>
-          }
-        />
-        {renderUnauthorized()}
-      </section>
-    );
-  }
-
-  const paperToRender = resolved.paper;
-  if (!paperToRender) {
-    return (
-      <section className={reviewer.page}>
-        <PageHeader
-          eyebrow="REVIEWER WORKSPACE"
-          title="Review Assignment"
-          accent={REVIEWER_ACCENT}
-        />
-        <EmptyState
-          icon={<AlertTriangle size={20} aria-hidden />}
-          title="Assignment could not be loaded"
-          description="The paper for this assignment is unavailable. Try refreshing from the assignments list."
-          action={
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/reviewer/assignments')}
-            >
-              Back to my assignments
-            </Button>
-          }
-        />
-      </section>
-    );
-  }
-
-  const tone = statusTone(paperToRender);
-
+  const tone = statusTone(paper);
   return (
     <section className={reviewer.page}>
-      <PageHeader
-        eyebrow="REVIEWER WORKSPACE"
-        title={paperToRender.title}
-        description="Assigned by Admin. Your recommendation is private to Admin and does not publish this paper."
-        accent={REVIEWER_ACCENT}
-        actions={
-          <>
-            <StatusBadge status={tone} label={renderInlineStatus(paperToRender.status)} size="sm" />
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/reviewer/assignments')}
-            >
-              ← All assignments
-            </Button>
-          </>
-        }
-      />
-
+      <PageHeader title={paper.title} description="Your assessment is private to the editorial team and does not publish this manuscript." accent={REVIEWER_ACCENT} actions={<><StatusBadge status={tone} label={statusLabel(paper.status)} size="sm" /><Button variant="outline" size="md" onClick={() => navigate('/reviewer/assignments')}>All assignments</Button></>} />
+      {error && !canReview && <ErrorBanner tone="error" title="Assignment action failed" message={error} />}
+      <section className={reviewer.reviewGate} aria-label="Reviewer responsibilities and manuscript access">
+        <div className={reviewer.gateIcon}><ShieldCheck size={22} aria-hidden="true" /></div>
+        <div><h2>{hasPolicyAcceptance ? 'Reviewer responsibilities accepted' : 'Read responsibilities before opening the manuscript'}</h2><p>{hasPolicyAcceptance ? 'You may review the protected manuscript and submit your private editorial assessment.' : 'Confidential handling, conflict disclosure, and evidence-based feedback are required for every assignment.'}</p></div>
+        {!hasPolicyAcceptance && <Button variant="primary" size="md" disabled={saving} onClick={() => setPolicyOpen(true)}>{awaitingResponse ? 'Read and accept responsibilities' : 'Read responsibilities'}</Button>}
+      </section>
       <div className={reviewer.detailLayout}>
         <div className={reviewer.detailSide}>
-          <section className={reviewer.detailContext} aria-labelledby="paper-metadata-title">
-            <h2 className={reviewer.detailHeading} id="paper-metadata-title">
-              Paper metadata
-            </h2>
-            {renderMetadata(paperToRender)}
-          </section>
-
-          <section className={reviewer.detailContext} aria-labelledby="paper-abstract-title">
-            <h2 className={reviewer.detailHeading} id="paper-abstract-title">
-              Abstract
-            </h2>
-            <p className={reviewer.contextParagraph}>{paperToRender.abstract}</p>
-          </section>
-
-          <section className={reviewer.detailContext} aria-labelledby="paper-authors-title">
-            <h2 className={reviewer.detailHeading} id="paper-authors-title">
-              Authors &amp; institutions
-            </h2>
-            <p className={reviewer.contextParagraph}>
-              <span className={reviewer.contextLabel}>Authors</span>
-              <span className={reviewer.contextValue}>
-                {paperToRender.authors.map((author) => author.name).join(', ') ||
-                  'Not supplied'}
-              </span>
-            </p>
-            <p className={reviewer.contextParagraph}>
-              <span className={reviewer.contextLabel}>Institutions</span>
-              <span className={reviewer.contextValue}>
-                {paperToRender.institutions
-                  .map((institution) => institution.name)
-                  .join(', ') || 'Not supplied'}
-              </span>
-            </p>
-          </section>
-
-          <section className={reviewer.detailContext} aria-labelledby="paper-pdf-title">
-            <h2 className={reviewer.detailHeading} id="paper-pdf-title">
-              Manuscript PDF
-            </h2>
-            {renderPdf()}
-          </section>
+          <section className={reviewer.detailContext}><h2 className={reviewer.detailHeading}>Manuscript</h2>{renderPdf()}</section>
+          <section className={reviewer.detailContext}><h2 className={reviewer.detailHeading}>Abstract</h2><p className={reviewer.contextParagraph}>{paper.abstract}</p></section>
+          <section className={reviewer.detailContext}><h2 className={reviewer.detailHeading}>Authors and institutions</h2><p className={reviewer.contextParagraph}><strong>Authors</strong><br />{paper.authors.map((author) => author.name).join(', ') || 'Not supplied'}</p><p className={reviewer.contextParagraph}><strong>Institutions</strong><br />{paper.institutions.map((institution) => institution.name).join(', ') || 'Not supplied'}</p></section>
         </div>
-
-        <div className={reviewer.detailSide}>
-          {awaitingResponse && (
-            <section className={reviewer.detailContext} aria-labelledby="respond-title">
-              <h2 className={reviewer.detailHeading} id="respond-title">
-                Respond to assignment
-              </h2>
-              {renderResponseActions()}
-            </section>
-          )}
-          {canReview && (
-            <>
-              <h2 className={reviewer.detailHeading}>Evaluate Paper</h2>
-              {renderEvaluationForm()}
-            </>
-          )}
-          {submitted && renderSubmitted(paperToRender)}
-          {!shouldRenderPrivatePriorReview(paperToRender.status) &&
-            !canReview &&
-            !submitted &&
-            !awaitingResponse && (
-              <EmptyState
-                icon={<AlertTriangle size={20} aria-hidden />}
-                title="Assignment is not actionable"
-                description="This assignment is not actionable for review. Awaiting Admin or researcher activity."
-              />
-            )}
-        </div>
+        <aside className={reviewer.detailSide}>
+          <section className={reviewer.detailContext}><h2 className={reviewer.detailHeading}>Assignment details</h2>{renderMetadata(paper)}</section>
+          {awaitingResponse && <section className={reviewer.detailContext}><h2 className={reviewer.detailHeading}>Assignment response</h2><p className={reviewer.evaluationHint}>Read and accept reviewer responsibilities to begin. Declining returns this assignment to the editorial queue.</p><div className={reviewer.respondButtons}><Button variant="primary" size="md" disabled={saving} onClick={() => setPolicyOpen(true)}>Accept assignment</Button><Button variant="outline" size="md" disabled={saving} onClick={() => void handleAssignmentResponse(false)}>Decline assignment</Button></div></section>}
+          {submitted && <section className={reviewer.submittedBanner} data-testid="submitted-banner"><h2>Review submitted</h2><p>Your private recommendation is awaiting an editorial decision. This assignment is now read-only.</p><Button variant="outline" size="sm" onClick={() => navigate('/reviewer/assignments')}>Back to assignments</Button></section>}
+        </aside>
       </div>
+      {renderEvaluationForm()}
+      <ReviewerPolicyModal isOpen={policyOpen} reviewRequestId={reviewRequestId ?? 0} policyVersion={POLICY_VERSION} paperTitle={paper.title} onCancel={() => setPolicyOpen(false)} onAccept={handlePolicyAccept} />
     </section>
   );
 };

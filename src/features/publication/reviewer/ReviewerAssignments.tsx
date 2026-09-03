@@ -45,6 +45,18 @@ const formatDate = (iso: string | undefined): string => {
   return parsed.toISOString().slice(0, 10);
 };
 
+const REVIEWER_VISIBLE_STATUSES: ReadonlySet<PublicationStatus> = new Set([
+  'REVIEWER_ASSIGNED',
+  'UNDER_REVIEW',
+  'REVISION_REQUIRED',
+  'RESUBMITTED',
+  'REVIEWER_RECOMMENDED_ACCEPT',
+  'REVIEWER_RECOMMENDED_REJECT',
+]);
+
+const isVisibleReviewerAssignment = (paper: PublicationPaper): boolean =>
+  REVIEWER_VISIBLE_STATUSES.has(paper.status);
+
 const actionableLabel = (paper: PublicationPaper): string => {
   if (isReviewerSubmitted(paper.status)) return 'Review submitted · awaiting Admin';
   if (isReviewerActionable(paper.status)) return 'Ready for evaluation';
@@ -88,7 +100,7 @@ export const ReviewerAssignments = () => {
       .getReviewerAssignments()
       .then((items) => {
         if (cancelled) return;
-        setPapers(items);
+        setPapers(items.filter(isVisibleReviewerAssignment));
       })
       .catch(() => {
         if (!cancelled) setError('Review assignments could not be loaded.');

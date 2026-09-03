@@ -78,6 +78,17 @@ describe('ReviewerAssignments list', () => {
     );
   });
 
+  it('does not render published records returned by an outdated assignment response', async () => {
+    (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+      buildAssignedPaper({ id: 'published-paper', title: 'Published record', status: 'PUBLISHED' }),
+      buildAssignedPaper({ id: 'active-paper' }),
+    ]);
+
+    renderList();
+
+    expect(await screen.findByTestId('assignment-row')).toHaveAttribute('data-paper-id', 'active-paper');
+    expect(screen.queryByText('Published record')).toBeNull();
+  });
   it('renders an empty-state when no assignments exist', async () => {
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [],

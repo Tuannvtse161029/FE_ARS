@@ -366,7 +366,7 @@ export const AdminPaperSubmissions = () => {
                                   void load();
                                 }}
                               >
-                                <CircleCheck size={13} aria-hidden="true" /> Verify
+                                <CircleCheck size={13} aria-hidden="true" /> Accept
                               </button>
                               <button
                                 type="button"
