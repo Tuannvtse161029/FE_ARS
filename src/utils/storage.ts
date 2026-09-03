@@ -62,6 +62,22 @@ export const storage = {
     }
   },
 
+  getSavedEmail: (): string => {
+    return localStorage.getItem(STORAGE_KEYS.SAVED_EMAIL) || '';
+  },
+
+  setSavedEmail: (email: string): void => {
+    if (email && email.trim()) {
+      localStorage.setItem(STORAGE_KEYS.SAVED_EMAIL, email.trim());
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.SAVED_EMAIL);
+    }
+  },
+
+  removeSavedEmail: (): void => {
+    localStorage.removeItem(STORAGE_KEYS.SAVED_EMAIL);
+  },
+
   // Clear auth data from BOTH storages to guarantee complete logout.
   clearAuth: (): void => {
     storage.removeToken();

@@ -18,6 +18,7 @@ import { authService } from '../../services/auth.service';
 import { roleService, type RoleItem } from '../../services/role.service';
 import { useT } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
+import { storage } from '../../utils/storage';
 
 const Login = () => {
   const t = useT();
@@ -60,20 +61,29 @@ const Login = () => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: storage.getSavedEmail() || '',
       password: '',
       selectedRole: '',
-      // rememberMe is now managed by react-hook-form (and forwarded to
-      // AuthContext.login()). Storage bucket selection happens in
-      // persistAuthAndNavigate, which calls storage.setRememberMe() BEFORE
-      // storage.setToken()/setUser() so the token lands in the correct store.
-      rememberMe: false,
+      rememberMe: storage.getRememberMe() || Boolean(storage.getSavedEmail()),
     },
   });
+
+  // Pre-fill remembered email and checkbox state on load
+  useEffect(() => {
+    const saved = storage.getSavedEmail();
+    const remember = storage.getRememberMe();
+    if (saved) {
+      setValue('email', saved);
+    }
+    if (remember || Boolean(saved)) {
+      setValue('rememberMe', true);
+    }
+  }, [setValue]);
 
   // Part 2 — keyboard shortcuts for the login form:
   //   Ctrl+Enter  → submit the form
@@ -99,7 +109,13 @@ const Login = () => {
   ]);
 
   const onSubmit = async (data: LoginFormData) => {
-    // Pass the full form payload (now including rememberMe and selectedRole) through to the AuthContext.
+    if (data.rememberMe) {
+      storage.setRememberMe(true);
+      storage.setSavedEmail(data.email);
+    } else {
+      storage.setRememberMe(false);
+      storage.removeSavedEmail();
+    }
     await login(data);
   };
 
@@ -137,7 +153,7 @@ const Login = () => {
     try {
       // Null-safe guest logout so a guest leaves anonymous state behind.
       authService.logout();
-      await loginWithGoogle(response);
+      await loginWithGoogle(response, { rememberMe: storage.getRememberMe() });
     } catch (err: unknown) {
       const fallback = t(
         'login.googleError',

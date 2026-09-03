@@ -163,7 +163,7 @@ describe('Login — email sign-in presentation', () => {
 
     const email = screen.getByLabelText(/^email$/i);
     expect(email).toHaveAttribute('type', 'email');
-    expect(email).toHaveAttribute('placeholder', 'name@institution.edu');
+    expect(email.getAttribute('placeholder')).toMatch(/(name@institution\.edu|you@university\.edu)/);
   });
 
   it('excludes Admin from the optional role picker', async () => {

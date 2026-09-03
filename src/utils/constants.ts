@@ -311,6 +311,7 @@ export const STORAGE_KEYS = {
   TOKEN: 'ars_token',
   USER: 'ars_user',
   REMEMBER_ME: 'ars_remember',
+  SAVED_EMAIL: 'ars_saved_email',
 } as const;
 
 export const ROLES = {

@@ -30,22 +30,49 @@ type PersistedAuth = Pick<
   'user' | 'token' | 'isAuthenticated' | 'effectiveRole'
 >;
 
-const sessionStorageAdapter = {
+/**
+ * Smart storage adapter that respects "Remember Me":
+ * - When Remember Me is ON (`ars_remember === 'true'`): reads/writes `localStorage` so the
+ *   authenticated session survives browser and tab restarts.
+ * - When Remember Me is OFF: reads/writes `sessionStorage` so the session expires upon tab close.
+ */
+const smartAuthStorageAdapter = {
   getItem: (name: string) => {
-    const raw = sessionStorage.getItem(name);
+    if (typeof window === 'undefined') return null;
+    const isRemember =
+      localStorage.getItem('ars_remember') === 'true' ||
+      localStorage.getItem('ars_remember_me') === 'true';
+
+    const raw = isRemember
+      ? (localStorage.getItem(name) || sessionStorage.getItem(name))
+      : (sessionStorage.getItem(name) || localStorage.getItem(name));
+
     if (raw === null) return null;
     try {
-      // Zustand persist expects PersistState<Pick<AuthState,...>> shape.
       return { state: JSON.parse(raw) as PersistedAuth, version: 0 };
     } catch {
       return null;
     }
   },
   setItem: (name: string, value: { state: PersistedAuth; version?: number }) => {
-    sessionStorage.setItem(name, JSON.stringify(value.state));
+    if (typeof window === 'undefined') return;
+    const isRemember =
+      localStorage.getItem('ars_remember') === 'true' ||
+      localStorage.getItem('ars_remember_me') === 'true';
+
+    const payload = JSON.stringify(value.state);
+    if (isRemember) {
+      localStorage.setItem(name, payload);
+      sessionStorage.removeItem(name);
+    } else {
+      sessionStorage.setItem(name, payload);
+      localStorage.removeItem(name);
+    }
   },
   removeItem: (name: string) => {
+    if (typeof window === 'undefined') return;
     sessionStorage.removeItem(name);
+    localStorage.removeItem(name);
   },
 };
 
@@ -76,20 +103,35 @@ const useAuthStore = create<AuthStore>()(
       effectiveRole: null,
 
       login: (user: User, token: string, effectiveRole?: EffectiveRole) => {
-        set({
+        const isRemember =
+          typeof window !== 'undefined' &&
+          (localStorage.getItem('ars_remember') === 'true' ||
+            localStorage.getItem('ars_remember_me') === 'true');
+
+        const resolvedEffectiveRole =
+          effectiveRole ??
+          (user.isActive
+            ? (user.effectiveRole ?? (user.roleName as EffectiveRole))
+            : 'Guest');
+
+        const nextState = {
           user,
           token,
           isAuthenticated: true,
           isLoading: false,
-          // Replace completely — never merge an old business role into a
-          // new Guest response, or vice versa. If the caller didn't supply
-          // an explicit value, derive from the user shape (lockout-safe).
-          effectiveRole:
-            effectiveRole ??
-            (user.isActive
-              ? (user.effectiveRole ?? (user.roleName as EffectiveRole))
-              : 'Guest'),
-        });
+          effectiveRole: resolvedEffectiveRole,
+        };
+
+        set(nextState);
+
+        if (typeof window !== 'undefined') {
+          const payload = JSON.stringify({ state: nextState, version: 0 });
+          if (isRemember) {
+            localStorage.setItem('ars-auth-storage', payload);
+          } else {
+            sessionStorage.setItem('ars-auth-storage', payload);
+          }
+        }
       },
 
       logout: () => {
@@ -100,6 +142,10 @@ const useAuthStore = create<AuthStore>()(
           isLoading: false,
           effectiveRole: null,
         });
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('ars-auth-storage');
+          localStorage.removeItem('ars-auth-storage');
+        }
       },
 
       setLoading: (loading: boolean) => {
@@ -118,7 +164,7 @@ const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'ars-auth-storage',
-      storage: sessionStorageAdapter,
+      storage: smartAuthStorageAdapter,
       partialize: (state) => ({
         user: state.user,
         token: state.token,
