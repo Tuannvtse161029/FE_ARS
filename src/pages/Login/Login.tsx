@@ -246,7 +246,7 @@ const Login = () => {
                   .filter((role) => role.name !== 'Admin')
                   .map((role) => (
                     <option key={role.roleId ?? role.name} value={role.name}>
-                      {role.name}
+                      {t(`role.${role.name}`, role.name)}
                     </option>
                   ))}
               </select>

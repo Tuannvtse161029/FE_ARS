@@ -36,6 +36,7 @@ import {
   Library,
   Lightbulb,
 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useTableSort } from '../../hooks/useTableSort';
 import { researchTopicService } from '../../services/researchTopic.service';
@@ -67,12 +68,6 @@ const STATUS_OPTIONS: ReadonlyArray<ResearchTopicStatus> = [
   'COMPLETED',
   'CLOSED',
 ];
-const STATUS_FILTER_LABELS: Record<ResearchTopicStatus, string> = {
-  OPEN: 'Open',
-  ASSIGNED: 'Assigned',
-  COMPLETED: 'Completed',
-  CLOSED: 'Closed',
-};
 
 /** Sortable column ids for the Research Topics table. */
 type SortColumn = 'title' | 'description' | 'status' | 'groups' | 'createdAt';
@@ -89,6 +84,15 @@ const formatTopicId = (id: number): string =>
 export const ResearchTopicsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useI18n();
+  
+  const STATUS_FILTER_LABELS: Record<ResearchTopicStatus, string> = {
+    OPEN: t('lecturer.topics.statusOpen'),
+    ASSIGNED: t('lecturer.topics.statusAssigned'),
+    COMPLETED: t('lecturer.topics.statusCompleted'),
+    CLOSED: t('lecturer.topics.statusClosed'),
+  };
+
   const currentLecturerId =
     typeof user?.userId === 'number' ? user.userId : null;
   const {
@@ -264,7 +268,7 @@ export const ResearchTopicsPage = () => {
   const handleCreateTopicSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = topicName.trim();
-    const nameErr = trimmedName ? null : 'Topic name is required.';
+    const nameErr = trimmedName ? null : t('lecturer.topics.errNameReq');
     const url = topicMaterialsUrl.trim();
     const urlErr = url ? validateHttpsUrl(url) : null;
     setTopicNameError(nameErr);
@@ -286,11 +290,11 @@ export const ResearchTopicsPage = () => {
       setTopicNameError(null);
       setTopicMaterialsUrlError(null);
       const idLabel = typeof created.id === 'number' ? formatTopicId(created.id) : '';
-      showBanner(`Research Topic ${idLabel} ("${created.title ?? topicName}") created successfully.`);
+      showBanner(t('lecturer.topics.createSuccess').replace('{id}', idLabel).replace('{name}', created.title ?? topicName));
       await refetchTopics();
     } catch (err) {
       setCreateError(
-        err instanceof Error ? err.message : 'Failed to create the topic.',
+        err instanceof Error ? err.message : t('lecturer.topics.errCreateFail'),
       );
     } finally {
       setIsCreating(false);
@@ -317,11 +321,11 @@ export const ResearchTopicsPage = () => {
   const handleEditTopicSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topicForEdit || typeof topicForEdit.id !== 'number') {
-      setEditTopicError('Topic has no id; cannot be saved.');
+      setEditTopicError(t('lecturer.topics.errEditId'));
       return;
     }
     const title = editTopicTitle.trim();
-    const titleErr = title ? null : 'Title is required.';
+    const titleErr = title ? null : t('lecturer.topics.errEditTitleReq');
     const url = editTopicMaterialsUrl.trim();
     const urlErr = url ? validateHttpsUrl(url) : null;
     setEditTopicTitleError(titleErr);
@@ -338,13 +342,13 @@ export const ResearchTopicsPage = () => {
           typeof topicForEdit.status === 'string' ? topicForEdit.status : null,
       });
       setTopicForEdit(null);
-      showBanner(`Research Topic RT-${formatTopicId(topicForEdit.id).slice(3)} ("${title}") updated successfully.`);
+      showBanner(t('lecturer.topics.editSuccess').replace('{id}', formatTopicId(topicForEdit.id).slice(3)).replace('{title}', title));
       await refetchTopics();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : 'Server rejected the topic update.';
+          : t('lecturer.topics.errEditFail');
       setEditTopicError(message);
     } finally {
       setIsEditingTopic(false);
@@ -359,7 +363,7 @@ export const ResearchTopicsPage = () => {
     const fromStatus = (topic.status ?? 'OPEN') as ResearchTopicStatus;
     if (!canTransitionResearchTopic(fromStatus, to)) {
       showBanner(
-        `Cannot transition this topic from ${fromStatus} to ${to} — not allowed by the workflow contract.`,
+        t('lecturer.topics.errTransNotAllowed').replace('{from}', fromStatus).replace('{to}', to),
         'error',
       );
       return;
@@ -372,14 +376,14 @@ export const ResearchTopicsPage = () => {
         materialsUrl: topic.materialsUrl ?? null,
         status: to,
       });
-      showBanner(`Topic "${topic.title ?? `RT-${topic.id}`}" marked as ${to}.`);
+      showBanner(t('lecturer.topics.transSuccess').replace('{title}', topic.title ?? `RT-${topic.id}`).replace('{to}', to));
       await refetchTopics();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : 'The transition was rejected by the server.';
-      showBanner(`Transition failed: ${message}`, 'error');
+          : 'Failed';
+      showBanner(t('lecturer.topics.errTransFail').replace('{msg}', message), 'error');
     } finally {
       setTopicTransition(null);
     }
@@ -396,9 +400,9 @@ export const ResearchTopicsPage = () => {
   return (
     <div className={styles.researchGroupPage} data-testid="lecturer-research-topics">
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
-        title="Research Topics"
-        description="Create, edit and assign research topics. Topics are the canonical source of truth — research groups reference them."
+        eyebrow={t('lecturer.topics.pageEyebrow')}
+        title={t('lecturer.topics.pageTitle')}
+        description={t('lecturer.topics.pageDesc')}
         actions={
           <>
             <Button
@@ -413,9 +417,9 @@ export const ResearchTopicsPage = () => {
               }
               onClick={() => void handleRefresh()}
               disabled={isLoading}
-              aria-label="Refresh"
+              aria-label={t('lecturer.topics.refresh')}
             >
-              Refresh
+              {t('lecturer.topics.refresh')}
             </Button>
             <Button
               variant="primary"
@@ -423,7 +427,7 @@ export const ResearchTopicsPage = () => {
               leftIcon={<Plus size={16} aria-hidden />}
               onClick={() => setShowCreateModal(true)}
             >
-              Create Research Topic
+              {t('lecturer.topics.createTopic')}
             </Button>
           </>
         }
@@ -432,8 +436,8 @@ export const ResearchTopicsPage = () => {
 
       {/* Breadcrumbs */}
       <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Research Topics</span>
+        Home &gt; <Link to={ROUTES.FORUM}>{t('lecturer.topics.breadcrumbParent')}</Link> &gt;{' '}
+        <span className={styles.activeBreadcrumb}>{t('lecturer.topics.breadcrumbCurrent')}</span>
       </div>
 
       {/* BANNER */}
@@ -454,7 +458,7 @@ export const ResearchTopicsPage = () => {
             </span>
             <div>
               <span className={styles.toastTitle}>
-                {banner.variant === 'success' ? 'Action Successful' : 'Action Failed'}
+                {banner.variant === 'success' ? t('lecturer.topics.actionSuccess') : t('lecturer.topics.actionFailed')}
               </span>
               <p className={styles.toastSub}>{banner.text}</p>
             </div>
@@ -479,14 +483,14 @@ export const ResearchTopicsPage = () => {
         <div className={styles.errorBanner} role="alert">
           <span className={styles.errorBannerIcon}>
             <AlertTriangle size={14} aria-hidden />
-            <span>{topicsError.message ?? 'Failed to load topics. Please retry.'}</span>
+            <span>{topicsError.message ?? t('lecturer.topics.errLoadTopics')}</span>
           </span>
           <button
             type="button"
             className={styles.errorRetryBtn}
             onClick={() => void handleRefresh()}
           >
-            Retry
+            {t('lecturer.topics.retry')}
           </button>
         </div>
       )}
@@ -495,11 +499,11 @@ export const ResearchTopicsPage = () => {
       <div className={styles.sectionHeaderRow}>
         <div className={styles.sectionTitleBlock}>
           <BookOpen size={18} className={styles.sectionIcon} aria-hidden />
-          <h3 className={styles.sectionTitle}>Research Topics Library</h3>
+          <h3 className={styles.sectionTitle}>{t('lecturer.topics.libraryTitle')}</h3>
           <span className={styles.countBadge}>
             {topicSearch.trim()
-              ? `${totalItems} / ${topics.length} Topics`
-              : `${topics.length} Topics`}
+              ? t('lecturer.topics.topicCountTotal').replace('{count}', String(totalItems)).replace('{total}', String(topics.length))
+              : t('lecturer.topics.topicCount').replace('{count}', String(topics.length))}
           </span>
         </div>
       </div>
@@ -509,22 +513,22 @@ export const ResearchTopicsPage = () => {
         onSearchChange={setTopicSearch}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
-        searchPlaceholder="Search topics by title, description, or status"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('lecturer.topics.searchPlaceholder')}
+        refreshLabel={t('lecturer.topics.refresh')}
       />
       <div className={styles.tableCard}>
         {isLoading ? (
           <div className={styles.tableEmpty} role="status" data-testid="topics-loading">
             <Loader size={16} className={styles.spinningIcon} aria-hidden />
-            Loading topics…
+            {t('lecturer.topics.loading')}
           </div>
         ) : topics.length === 0 ? (
           <div className={styles.tableEmpty} data-testid="topics-empty">
-            No topics yet. Click "Create Research Topic" to add one.
+            {t('lecturer.topics.empty')}
           </div>
         ) : totalItems === 0 ? (
           <div className={styles.tableEmpty} data-testid="topics-empty-search">
-            No topics match "{topicSearch.trim()}".
+            {t('lecturer.topics.emptySearch').replace('{query}', topicSearch.trim())}
           </div>
         ) : (
           <>
@@ -535,7 +539,7 @@ export const ResearchTopicsPage = () => {
                     <th>
                       <SortableHeader
                         column="title"
-                        label="TOPIC ID &amp; NAME"
+                        label={t('lecturer.topics.colTitle')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -543,7 +547,7 @@ export const ResearchTopicsPage = () => {
                     <th>
                       <SortableHeader
                         column="description"
-                        label="DESCRIPTION"
+                        label={t('lecturer.topics.colDesc')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -551,11 +555,11 @@ export const ResearchTopicsPage = () => {
                     <th>
                       <SortableHeader
                         column="status"
-                        label="STATUS"
+                        label={t('lecturer.topics.colStatus')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         filterOptions={[
-                          { value: 'ALL', label: 'All statuses' },
+                          { value: 'ALL', label: t('lecturer.topics.filterAll') },
                           ...STATUS_OPTIONS.map((status) => ({
                             value: status,
                             label: STATUS_FILTER_LABELS[status],
@@ -572,13 +576,13 @@ export const ResearchTopicsPage = () => {
                     <th>
                       <SortableHeader
                         column="groups"
-                        label="GROUPS"
+                        label={t('lecturer.topics.colGroups')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         align="right"
                       />
                     </th>
-                    <th>ACTION</th>
+                    <th>{t('lecturer.topics.colAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -613,7 +617,7 @@ export const ResearchTopicsPage = () => {
                           <div className={styles.topicTitleCell}>
                             <span className={styles.topicIdBadge}>{idLabel}</span>
                             <span className={styles.topicNameText}>
-                              {topic.title ?? '(untitled topic)'}
+                              {topic.title ?? t('lecturer.topics.untitled')}
                             </span>
                           </div>
                         </td>
@@ -634,9 +638,9 @@ export const ResearchTopicsPage = () => {
                             type="button"
                             className={styles.assignGroupBtn}
                             onClick={() => setAssignModalTopic(topic)}
-                            title="Assign this topic to a research group"
+                            title={t('lecturer.topics.assignHint')}
                           >
-                            Assign
+                            {t('lecturer.topics.assign')}
                           </button>
                         </td>
                         <td data-label="Actions">
@@ -650,16 +654,16 @@ export const ResearchTopicsPage = () => {
                                 type="button"
                                 className={styles.managePhasesDisabledBtn}
                                 disabled
-                                title="Assign at least one research group to this topic before configuring phases."
+                                title={t('lecturer.topics.managePhasesHintDisabled')}
                                 data-testid="topic-manage-phases-disabled"
                                 data-topic-id={topic.id ?? ''}
                                 aria-disabled
                               >
                                 <BookOpen size={14} aria-hidden />
-                                Manage Phases
+                                {t('lecturer.topics.managePhases')}
                                 <span className={styles.managePhasesHint}>
-                                  Assign a group first
-                                </span>
+                                  {t('lecturer.topics.assignGroupFirst')}
+                               </span>
                               </button>
                             ) : (
                               <Link
@@ -669,14 +673,14 @@ export const ResearchTopicsPage = () => {
                                     : ROUTES.CONFIGURE_MILESTONES
                                 }
                                 className={styles.managePhasesBtn}
-                                title="Configure reporting phases for this topic"
+                                title={t('lecturer.topics.managePhasesHint')}
                                 data-testid="topic-manage-phases"
                                 data-topic-id={topic.id ?? ''}
                               >
                                 <BookOpen size={14} aria-hidden />
-                                Manage Phases
+                                {t('lecturer.topics.managePhases')}
                                 <span className={styles.managePhasesCount}>
-                                  {groupCount} group{groupCount === 1 ? '' : 's'}
+                                  {t('lecturer.topics.groupCount').replace('{count}', String(groupCount))}
                                 </span>
                               </Link>
                             )}
@@ -686,10 +690,10 @@ export const ResearchTopicsPage = () => {
                                 className={styles.topicActionSecondary}
                                 onClick={() => openEditModal(topic)}
                                 disabled={!topic.id}
-                                title="Edit title / description / materials URL"
+                                title={t('lecturer.topics.editHint')}
                               >
                                 <Pencil size={14} aria-hidden />
-                                Edit
+                                {t('lecturer.topics.edit')}
                               </button>
                             {topicStatus === 'OPEN' ? (
                               <button
@@ -703,8 +707,8 @@ export const ResearchTopicsPage = () => {
                                 }
                                 title={
                                   canClose
-                                    ? 'Close this topic — students will no longer be able to join.'
-                                    : 'Closing is not allowed in the current status.'
+                                    ? t('lecturer.topics.closeHint')
+                                    : t('lecturer.topics.closeDisHint')
                                 }
                               >
                                 {inflight === 'CLOSED' ? (
@@ -716,7 +720,7 @@ export const ResearchTopicsPage = () => {
                                 ) : (
                                   <ToggleRight size={14} aria-hidden />
                                 )}
-                                Close
+                                {t('lecturer.topics.close')}
                               </button>
                             ) : (
                               <button
@@ -730,8 +734,8 @@ export const ResearchTopicsPage = () => {
                                 }
                                 title={
                                   canOpen
-                                    ? 'Re-open this topic.'
-                                    : 'Re-opening is not allowed in the current status.'
+                                    ? t('lecturer.topics.reopenHint')
+                                    : t('lecturer.topics.reopenDisHint')
                                 }
                               >
                                 {inflight === 'OPEN' ? (
@@ -743,7 +747,7 @@ export const ResearchTopicsPage = () => {
                                 ) : (
                                   <ToggleLeft size={14} aria-hidden />
                                 )}
-                                Reopen
+                                {t('lecturer.topics.reopen')}
                               </button>
                             )}
                             <button
@@ -757,8 +761,8 @@ export const ResearchTopicsPage = () => {
                               }
                               title={
                                 canComplete
-                                  ? 'Mark this topic as completed — archival step.'
-                                  : 'Topic must be in ASSIGNED status to be marked as completed.'
+                                  ? t('lecturer.topics.completeHint')
+                                  : t('lecturer.topics.completeDisHint')
                               }
                             >
                               {inflight === 'COMPLETED' ? (
@@ -770,17 +774,17 @@ export const ResearchTopicsPage = () => {
                               ) : (
                                 <CheckCircle2 size={14} aria-hidden />
                               )}
-                              Mark Completed
+                              {t('lecturer.topics.markCompleted')}
                             </button>
                             <button
                               type="button"
                               className={styles.materialsTopicBtn}
                               onClick={() => handleOpenMaterials(topic)}
                               disabled={!topic.id}
-                              title="Manage the learning materials scoped to this topic"
+                              title={t('lecturer.topics.materialsHint')}
                             >
                               <Library size={14} aria-hidden />
-                              Manage Materials
+                              {t('lecturer.topics.manageMaterials')}
                             </button>
                             </div>
                           </div>
@@ -818,9 +822,9 @@ export const ResearchTopicsPage = () => {
                   <Lightbulb size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Create New Research Topic</h3>
+                  <h3 className={styles.modalTitle}>{t('lecturer.topics.createTitle')}</h3>
                   <span className={styles.modalSubtitle}>
-                    Define a topic to be assigned to research groups
+                    {t('lecturer.topics.createSubtitle')}
                   </span>
                 </div>
               </div>
@@ -828,7 +832,7 @@ export const ResearchTopicsPage = () => {
                 type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCreateModal(false)}
-                aria-label="Close"
+                aria-label={t('lecturer.topics.cancel')}
               >
                 <X size={18} aria-hidden />
               </button>
@@ -837,7 +841,7 @@ export const ResearchTopicsPage = () => {
             <form onSubmit={handleCreateTopicSubmit} className={styles.modalForm}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="topicName">
-                  * Topic Name
+                  * {t('lecturer.topics.topicNameLabel')}
                 </label>
                 <input
                   id="topicName"
@@ -848,7 +852,7 @@ export const ResearchTopicsPage = () => {
                     setTopicName(e.target.value);
                     if (topicNameError) setTopicNameError(null);
                   }}
-                  placeholder="High-Concurrency Load Balancing in Microservices"
+                  placeholder={t('lecturer.topics.topicNamePlace')}
                   aria-invalid={Boolean(topicNameError)}
                   aria-describedby={topicNameError ? 'topic-name-error' : undefined}
                   required
@@ -858,21 +862,21 @@ export const ResearchTopicsPage = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="topicDesc">
-                  Description
+                  {t('lecturer.topics.descLabel')}
                 </label>
                 <textarea
                   id="topicDesc"
                   className={styles.formTextarea}
                   value={topicDesc}
                   onChange={(e) => setTopicDesc(e.target.value)}
-                  placeholder="Architectural strategies for decoupling routing logic from orchestration layers."
+                  placeholder={t('lecturer.topics.descPlace')}
                   rows={3}
                 />
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="topicMaterialsUrl">
-                  Reference Materials URL
+                  {t('lecturer.topics.urlLabel')}
                 </label>
                 <div className={styles.materialsBox}>
 <input
@@ -884,15 +888,13 @@ export const ResearchTopicsPage = () => {
                     setTopicMaterialsUrl(e.target.value);
                     if (topicMaterialsUrlError) setTopicMaterialsUrlError(null);
                   }}
-                  placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
+                  placeholder={t('lecturer.topics.urlPlace')}
                   aria-invalid={Boolean(topicMaterialsUrlError)}
                   aria-describedby={topicMaterialsUrlError ? 'topic-materials-url-error' : 'topic-materials-url-hint'}
                 />
                 <FieldError id="topic-materials-url-error" message={topicMaterialsUrlError} testId="topic-materials-url-error" />
                 <div className={styles.materialsHint} id="topic-materials-url-hint">
-                  Paste a single Firebase Storage URL. Multiple-file uploads
-                  land in a future sprint — for now, link to a single
-                  canonical PDF.
+                  {t('lecturer.topics.urlHint')}
                 </div>
                 </div>
               </div>
@@ -911,7 +913,7 @@ export const ResearchTopicsPage = () => {
                   onClick={() => setShowCreateModal(false)}
                   disabled={isCreating}
                 >
-                  Cancel
+                  {t('lecturer.topics.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -923,7 +925,7 @@ export const ResearchTopicsPage = () => {
                   ) : (
                     <Check size={14} aria-hidden />
                   )}
-                  {isCreating ? 'Creating…' : 'Create Research Topic'}
+                  {isCreating ? t('lecturer.topics.creating') : t('lecturer.topics.createTopic')}
                 </button>
               </div>
             </form>
@@ -941,9 +943,9 @@ export const ResearchTopicsPage = () => {
                   <Lightbulb size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Edit Research Topic</h3>
+                  <h3 className={styles.modalTitle}>{t('lecturer.topics.editTitle')}</h3>
                   <span className={styles.modalSubtitle}>
-                    Topic #{topicForEdit.id ?? '—'} — title, description and reference URL
+                    {t('lecturer.topics.editSubtitle').replace('{id}', String(topicForEdit.id ?? '—'))}
                   </span>
                 </div>
               </div>
@@ -951,7 +953,7 @@ export const ResearchTopicsPage = () => {
                 type="button"
                 className={styles.closeBtn}
                 onClick={closeEditModal}
-                aria-label="Close edit topic modal"
+                aria-label={t('lecturer.topics.cancel')}
                 disabled={isEditingTopic}
               >
                 <X size={18} aria-hidden />
@@ -961,7 +963,7 @@ export const ResearchTopicsPage = () => {
             <form onSubmit={handleEditTopicSubmit} className={styles.modalForm}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="editTopicTitle">
-                  * Topic Name
+                  * {t('lecturer.topics.topicNameLabel')}
                 </label>
                 <input
                   id="editTopicTitle"
@@ -972,7 +974,7 @@ export const ResearchTopicsPage = () => {
                     setEditTopicTitle(e.target.value);
                     if (editTopicTitleError) setEditTopicTitleError(null);
                   }}
-                  placeholder="Topic title"
+                  placeholder={t('lecturer.topics.editNamePlace')}
                   aria-invalid={Boolean(editTopicTitleError)}
                   aria-describedby={editTopicTitleError ? 'edit-topic-title-error' : undefined}
                   required
@@ -982,7 +984,7 @@ export const ResearchTopicsPage = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="editTopicDesc">
-                  Description
+                  {t('lecturer.topics.descLabel')}
                 </label>
                 <textarea
                   id="editTopicDesc"
@@ -995,7 +997,7 @@ export const ResearchTopicsPage = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="editTopicMaterialsUrl">
-                  Reference Materials URL
+                  {t('lecturer.topics.urlLabel')}
                 </label>
                 <div className={styles.materialsBox}>
 <input
@@ -1007,7 +1009,7 @@ export const ResearchTopicsPage = () => {
                     setEditTopicMaterialsUrl(e.target.value);
                     if (editTopicMaterialsUrlError) setEditTopicMaterialsUrlError(null);
                   }}
-                  placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
+                  placeholder={t('lecturer.topics.urlPlace')}
                   aria-invalid={Boolean(editTopicMaterialsUrlError)}
                   aria-describedby={editTopicMaterialsUrlError ? 'edit-topic-materials-url-error' : undefined}
                 />
@@ -1029,7 +1031,7 @@ export const ResearchTopicsPage = () => {
                   onClick={closeEditModal}
                   disabled={isEditingTopic}
                 >
-                  Cancel
+                  {t('lecturer.topics.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -1045,7 +1047,7 @@ export const ResearchTopicsPage = () => {
                   ) : (
                     <Check size={14} aria-hidden />
                   )}
-                  {isEditingTopic ? 'Saving…' : 'Save Topic'}
+                  {isEditingTopic ? t('lecturer.topics.saving') : t('lecturer.topics.saveTopic')}
                 </button>
               </div>
             </form>
@@ -1072,8 +1074,8 @@ export const ResearchTopicsPage = () => {
           const succeeded = outcomes.filter((o) => o.ok).length;
           showBanner(
             succeeded > 0
-              ? `Topic assigned to ${succeeded} group${succeeded === 1 ? '' : 's'} successfully.`
-              : 'No groups were assigned.',
+              ? t('lecturer.topics.assignSuccess').replace('{count}', String(succeeded))
+              : t('lecturer.topics.assignNone'),
           );
           void refetchTopics();
         }}

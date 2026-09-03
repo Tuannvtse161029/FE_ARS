@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Shield } from 'lucide-react';
 import type { UserRole } from '../../../types/auth';
+import { useI18n } from '../../../i18n/I18nContext';
 import styles from './RoleSelectionModal.module.css';
 
 interface RoleSelectionModalProps {
@@ -41,6 +42,7 @@ const RoleSelectionModal = ({
   onConfirm,
   onCancel,
 }: RoleSelectionModalProps) => {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<UserRole | null>(roles[0] ?? null);
 
   // Reset the highlighted role whenever a new BE response arrives.
@@ -71,14 +73,14 @@ const RoleSelectionModal = ({
               <Shield size={20} />
             </span>
             <h2 id="role-selection-title" className={styles.title}>
-              Choose your active role
+              {t('login.roleSelection.title')}
             </h2>
           </div>
           <button
             type="button"
             className={styles.closeBtn}
             onClick={onCancel}
-            aria-label="Cancel and sign out"
+            aria-label={t('common.cancel')}
           >
             <X size={20} />
           </button>
@@ -86,9 +88,8 @@ const RoleSelectionModal = ({
 
         <div className={styles.body}>
           <p className={styles.description}>
-            {username ? <>Welcome back, <b>{username}</b>. </> : null}
-            Your account has multiple platform roles assigned. Pick the role you want to use for this session —
-            you can switch by logging out and choosing a different role on the next sign-in.
+            {username ? <>{t('login.roleSelection.welcome')} <b>{username}</b>. </> : null}
+            {t('login.roleSelection.description')}
           </p>
 
           <div className={styles.roleList} role="radiogroup" aria-label="Assigned roles">
@@ -107,7 +108,7 @@ const RoleSelectionModal = ({
                     onChange={() => setSelected(role)}
                     className={styles.roleOptionRadio}
                   />
-                  <span className={styles.roleOptionLabel}>{ROLE_LABELS[role]}</span>
+                  <span className={styles.roleOptionLabel}>{t(`role.${role}`, ROLE_LABELS[role])}</span>
                   <span className={styles.roleOptionDesc}>{ROLE_DESCRIPTIONS[role]}</span>
                   {isSelected && (
                     <span className={styles.roleOptionCheck} aria-hidden="true">
@@ -122,7 +123,7 @@ const RoleSelectionModal = ({
 
         <div className={styles.footer}>
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -130,7 +131,7 @@ const RoleSelectionModal = ({
             onClick={handleConfirm}
             disabled={!selected}
           >
-            Continue as {selected ? ROLE_LABELS[selected] : '...'}
+            {t('login.roleSelection.continueAs')} {selected ? t(`role.${selected}`) : '...'}
           </button>
         </div>
       </div>

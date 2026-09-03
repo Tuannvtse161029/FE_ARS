@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Users,
 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
@@ -63,6 +64,7 @@ const GUIDANCE_STATUS_PALETTE: Record<GuidanceProjectStatus, string> = {
 };
 
 export const GraduateStudentDashboard = (): JSX.Element => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const studentId = user?.userId ?? null;
 
@@ -261,9 +263,9 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     <div className={styles.page}>
       {/* ── Page Header ─────────────────────────────────── */}
       <PageHeader
-        eyebrow="RESEARCH JOURNEY"
-        title={`${user.username}'s Research Journey`}
-        description="Track your guidance project, milestones, and lecturer feedback."
+        eyebrow={t('student.dashboard.eyebrow', 'RESEARCH JOURNEY')}
+        title={`${user.username}'s ${t('student.dashboard.journey', 'Research Journey')}`}
+        description={t('student.dashboard.description', 'Track your guidance project, milestones, and lecturer feedback.')}
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -280,7 +282,7 @@ export const GraduateStudentDashboard = (): JSX.Element => {
             disabled={isLoading || reportsLoading}
             aria-label="Refresh dashboard"
           >
-            Refresh
+            {t('common.refresh', 'Refresh')}
           </Button>
         }
       />

@@ -42,6 +42,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../i18n/I18nContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -102,6 +103,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const { groupId: rawGroupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useI18n();
   const parsedGroupId = useMemo<number | null>(() => {
     if (!rawGroupId) return null;
     const n = Number(rawGroupId);
@@ -141,12 +143,12 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const rows = await groupMemberService.getMembersForGroup(parsedGroupId);
       setMembers(rows);
     } catch (err) {
-      setMembersError(err instanceof Error ? err.message : 'Failed to load group members.');
+      setMembersError(err instanceof Error ? err.message : t('lecturer.groupDetail.errMembersLoad'));
       setMembers([]);
     } finally {
       setIsMembersLoading(false);
     }
-  }, [parsedGroupId]);
+  }, [parsedGroupId, t]);
 
   useEffect(() => { void loadMembers(); }, [loadMembers]);
 
@@ -274,15 +276,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
   const handleEditGroupSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!group || typeof group.id !== 'number') {
-      setEditGroupError('This group is missing an id and cannot be saved.');
+      setEditGroupError(t('lecturer.groupDetail.errMissingId'));
       return;
     }
     const trimmedName = editName.trim();
-    const nameErr = trimmedName ? null : 'Group name is required.';
+    const nameErr = trimmedName ? null : t('lecturer.groupDetail.errNameReq');
     let deadlineErr: string | null = null;
     if (editDeadline) {
       const ms = new Date(editDeadline).getTime();
-      if (Number.isNaN(ms)) deadlineErr = 'Deadline is not a valid date.';
+      if (Number.isNaN(ms)) deadlineErr = t('lecturer.groupDetail.errDeadlineInvalid');
     }
     setEditNameError(nameErr);
     setEditDeadlineError(deadlineErr);
@@ -301,7 +303,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
       setShowEditModal(false);
       setBanner({
         visible: true,
-        text: `Group "${trimmedName}" saved successfully.`,
+        text: t('lecturer.groupDetail.savedSuccess').replace('{name}', trimmedName),
         variant: 'success',
       });
       await refetchGroups();
@@ -309,7 +311,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
       setEditGroupError(
         err instanceof Error
           ? err.message
-          : 'The server rejected the group update.',
+          : t('lecturer.groupDetail.errSaveUpdate'),
       );
     } finally {
       setIsSavingGroup(false);
@@ -324,7 +326,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   const openInviteModal = () => {
     if (members.length >= 4) {
-      setInviteError('This group already has the maximum of 4 members. Remove a member before inviting another.');
+      setInviteError(t('lecturer.groupDetail.errMaxMembers'));
       return;
     }
     setInviteEmailsInput('');
@@ -345,11 +347,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     if (members.length + emails.length > 4) {
-      setInviteError(`A group can have at most 4 members. You can invite ${Math.max(0, 4 - members.length)} more student(s).`);
+      setInviteError(t('lecturer.groupDetail.errInviteMax').replace('{count}', String(Math.max(0, 4 - members.length))));
       return;
     }
     if (emails.length === 0) {
-      setInviteError('Please enter at least one valid email address.');
+      setInviteError(t('lecturer.groupDetail.errNoEmail'));
       return;
     }
     setIsInviting(true);
@@ -360,9 +362,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
       setInviteEmailsInput('');
       const successCount = res.successEmails?.length ?? res.totalInvited ?? 0;
       const notFoundCount = res.notFoundEmails?.length ?? 0;
-      let msg = `Successfully invited ${successCount} student(s) to the group.`;
+      let msg = t('lecturer.groupDetail.inviteSuccess').replace('{count}', String(successCount));
       if (notFoundCount > 0) {
-        msg += ` (${notFoundCount} email(s) not found in system: ${res.notFoundEmails?.join(', ')})`;
+        msg += t('lecturer.groupDetail.inviteNotFound')
+          .replace('{count}', String(notFoundCount))
+          .replace('{emails}', res.notFoundEmails?.join(', ') ?? '');
       }
       setBanner({ visible: true, text: msg, variant: 'success' });
       await loadMembers();
@@ -371,10 +375,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const status = e?.response?.status;
       setInviteError(
         status === 401
-          ? 'Your session has expired. Please sign in again.'
+          ? t('lecturer.groupDetail.errSessionExpired')
           : status === 403
-            ? 'You are not allowed to invite students to this group.'
-            : e?.response?.data?.message || e?.message || 'Failed to send invitations.',
+            ? t('lecturer.groupDetail.errInviteDeny')
+            : e?.response?.data?.message || e?.message || t('lecturer.groupDetail.errInviteFail'),
       );
     } finally {
       setIsInviting(false);
@@ -388,16 +392,16 @@ export const LecturerGroupDetail = (): JSX.Element => {
     if (!memberId) return;
     const currentLeader = members.find((candidate) => candidate.isLeader);
     if (currentLeader && currentLeader.id !== memberId) {
-      const currentName = currentLeader.studentName || `Student #${currentLeader.studentId ?? currentLeader.id}`;
-      const nextName = member.studentName || `Student #${member.studentId ?? member.id}`;
-      if (!window.confirm(`Replace ${currentName} as group leader with ${nextName}?`)) return;
+      const currentName = currentLeader.studentName || `${t('lecturer.groupDetail.studentPrefix')}${currentLeader.studentId ?? currentLeader.id}`;
+      const nextName = member.studentName || `${t('lecturer.groupDetail.studentPrefix')}${member.studentId ?? member.id}`;
+      if (!window.confirm(t('lecturer.groupDetail.confirmReplaceLeader').replace('{current}', currentName).replace('{next}', nextName))) return;
     }
     setLeaderActionLoading(memberId);
     try {
       await groupMemberService.setLeader(memberId, member.studentId ?? undefined);
       setBanner({
         visible: true,
-        text: `Đã gán vai trò Trưởng nhóm (Leader) cho ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        text: t('lecturer.groupDetail.setLeaderSuccess').replace('{name}', member.studentName || `${t('lecturer.groupDetail.studentPrefix')}${member.studentId}`),
         variant: 'success',
       });
       await loadMembers();
@@ -405,10 +409,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
       const status = e?.response?.status;
       const msg = status === 401
-        ? 'Your session has expired. Please sign in again.'
+        ? t('lecturer.groupDetail.errSessionExpired')
         : status === 403
-          ? 'You are not allowed to change the group leader.'
-          : e?.response?.data?.message || e?.message || 'Unable to assign group leader.';
+          ? t('lecturer.groupDetail.errLeaderDeny')
+          : e?.response?.data?.message || e?.message || t('lecturer.groupDetail.errLeaderFail');
       setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setLeaderActionLoading(null);
@@ -423,7 +427,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
       await groupMemberService.removeLeader(memberId);
       setBanner({
         visible: true,
-        text: `Đã hủy vai trò Trưởng nhóm của ${member.studentName || `Sinh viên #${member.studentId}`}.`,
+        text: t('lecturer.groupDetail.removeLeaderSuccess').replace('{name}', member.studentName || `${t('lecturer.groupDetail.studentPrefix')}${member.studentId}`),
         variant: 'success',
       });
       await loadMembers();
@@ -431,10 +435,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
       const status = e?.response?.status;
       const msg = status === 401
-        ? 'Your session has expired. Please sign in again.'
+        ? t('lecturer.groupDetail.errSessionExpired')
         : status === 403
-          ? 'You are not allowed to change the group leader.'
-          : e?.response?.data?.message || e?.message || 'Unable to remove group leader.';
+          ? t('lecturer.groupDetail.errLeaderDeny')
+          : e?.response?.data?.message || e?.message || t('lecturer.groupDetail.errRemoveLeaderFail');
       setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setLeaderActionLoading(null);
@@ -454,8 +458,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
         <div className={styles.errorPanel}>
           <AlertTriangle size={18} aria-hidden />
           <span>
-            The URL is missing a numeric <code>:groupId</code> route param.
-            Go back to <Link to={ROUTES.RESEARCH_GROUP}>Research Groups</Link>.
+            {t('lecturer.groupDetail.missingParam')}
+            <Link to={ROUTES.RESEARCH_GROUP}>{t('lecturer.groupDetail.breadcrumbParent')}</Link>.
           </span>
         </div>
       </div>
@@ -467,7 +471,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
       <div className={styles.root} data-testid="lecturer-group-detail">
         <div className={styles.loadingPanel}>
           <Loader size={18} className={styles.spinningIcon} aria-hidden />
-          Loading group…
+          {t('lecturer.groupDetail.loadingGroup')}
         </div>
       </div>
     );
@@ -479,14 +483,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
         <div className={styles.errorPanel}>
           <AlertTriangle size={18} aria-hidden />
           <span>
-            No research group with id <code>#{parsedGroupId}</code> was found.
+            {t('lecturer.groupDetail.noGroupFound').replace('{id}', String(parsedGroupId))}
           </span>
         </div>
         <button type="button" className={styles.refreshBtn} onClick={() => void refetchGroups()}>
-          <RefreshCw size={14} aria-hidden /> Retry
+          <RefreshCw size={14} aria-hidden /> {t('lecturer.groupDetail.retry')}
         </button>
         <button type="button" className={styles.backBtn} onClick={() => navigate(ROUTES.RESEARCH_GROUP)}>
-          <ArrowLeft size={14} aria-hidden /> Back to Research Groups
+          <ArrowLeft size={14} aria-hidden /> {t('lecturer.groupDetail.backToGroups')}
         </button>
       </div>
     );
@@ -499,7 +503,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {/* Breadcrumb — "Research Groups > [Group Name]" so the lecturer
           always knows their location in the hierarchy. */}
       <div className={styles.breadcrumb}>
-        <Link to={ROUTES.RESEARCH_GROUP}>Research Groups</Link>
+        <Link to={ROUTES.RESEARCH_GROUP}>{t('lecturer.groupDetail.breadcrumbParent')}</Link>
         <span className={styles.breadcrumbSep} aria-hidden>/</span>
         <span className={styles.breadcrumbCurrent} title={groupName}>
           {groupName}
@@ -512,7 +516,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <div className={styles.headerTitleBlock}>
             <h1 className={styles.pageTitle}>{groupName}</h1>
             <span className={styles.pageSubtitle}>
-              Research Group #{group.id ?? '—'} · Owner {ownerName}
+              Research Group #{group.id ?? '—'} · {t('lecturer.groupDetail.owner')} {ownerName}
             </span>
           </div>
         </div>
@@ -520,11 +524,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <StatusBadge status={derivedStatus} />
           <button type="button" className={styles.editGroupBtn} onClick={openEditModal}>
             <Pencil size={14} aria-hidden />
-            Edit group
+            {t('lecturer.groupDetail.editGroup')}
           </button>
           <button type="button" className={styles.refreshBtn} onClick={() => void handleRefreshAll()}>
             <RefreshCw size={14} aria-hidden />
-            Refresh
+            {t('lecturer.groupDetail.refresh')}
           </button>
         </div>
       </header>
@@ -555,9 +559,9 @@ export const LecturerGroupDetail = (): JSX.Element => {
       {groupsError && (
         <div className={styles.errorPanel} role="alert">
           <AlertTriangle size={14} aria-hidden />
-          <span>Could not load group metadata: {groupsError.message}</span>
+          <span>{t('lecturer.groupDetail.metadataError')} {groupsError.message}</span>
           <button type="button" className={styles.retryBtn} onClick={() => void refetchGroups()}>
-            Retry
+            {t('lecturer.groupDetail.retry')}
           </button>
         </div>
       )}
@@ -566,30 +570,30 @@ export const LecturerGroupDetail = (): JSX.Element => {
       <section className={styles.metaStrip}>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
-            <Calendar size={12} aria-hidden /> Deadline
+            <Calendar size={12} aria-hidden /> {t('lecturer.groupDetail.deadline')}
           </span>
           <span className={styles.metaValue}>{formatDateOnly(group.deadline ?? null)}</span>
         </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
-            <Clock size={12} aria-hidden /> Assigned at
+            <Clock size={12} aria-hidden /> {t('lecturer.groupDetail.assignedAt')}
           </span>
           <span className={styles.metaValue}>{formatDateTime(group.assignedAt ?? null)}</span>
         </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
-            <Users size={12} aria-hidden /> Members
+            <Users size={12} aria-hidden /> {t('lecturer.groupDetail.members')}
           </span>
           <span className={styles.metaValue}>
-            {members.length}{isMembersLoading ? ' (loading\u2026)' : ''}
+            {members.length}{isMembersLoading ? ` (${t('common.loading')})` : ''}
           </span>
         </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
-            <FileText size={12} aria-hidden /> Phased reports
+            <FileText size={12} aria-hidden /> {t('lecturer.groupDetail.phasedReports')}
           </span>
           <span className={styles.metaValue}>
-            {reports.length}{isReportsLoading ? ' (loading\u2026)' : ''}
+            {reports.length}{isReportsLoading ? ` (${t('common.loading')})` : ''}
           </span>
         </div>
       </section>
@@ -603,10 +607,9 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {/* Assigned topic */}
         <section className={styles.card}>
           <header className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Assigned topic</h2>
+            <h2 className={styles.cardTitle}>{t('lecturer.groupDetail.assignedTopic')}</h2>
             <span className={styles.cardHint}>
-              The Research Topic this group is working on.{' '}
-              <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Manage on Research Topics page.</Link>
+              {t('lecturer.groupDetail.topicHint')}
             </span>
           </header>
           {relatedTopic ? (
@@ -624,15 +627,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   )}
                 </div>
                 <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.openLink}>
-                  <ExternalLink size={14} aria-hidden /> Open topic
+                  <ExternalLink size={14} aria-hidden /> {t('lecturer.groupDetail.openTopic')}
                 </Link>
               </div>
             </div>
           ) : (
             <div className={styles.cardBody}>
               <div className={styles.emptyState}>
-                No research topic assigned yet.{' '}
-                <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>Assign one from Research Topics.</Link>
+                {t('lecturer.groupDetail.noTopic')}{' '}
+                <Link to={ROUTES.LECTURER_RESEARCH_TOPICS}>{t('lecturer.groupDetail.assignOne')}</Link>
               </div>
             </div>
           )}
@@ -643,25 +646,25 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <header className={styles.cardHeader}>
             <div className={styles.cardHeaderRow}>
               <h2 className={styles.cardTitle}>
-                <Users size={16} aria-hidden /> Group members ({members.length})
+                <Users size={16} aria-hidden /> {t('lecturer.groupDetail.groupMembersTitle')} ({members.length})
               </h2>
               <button
                 type="button"
                 className={styles.inviteStudentsBtn}
                 onClick={openInviteModal}
                 disabled={members.length >= 4 || isMembersLoading}
-                title={members.length >= 4 ? 'Maximum of 4 members reached' : 'Invite students'}
+                title={members.length >= 4 ? t('lecturer.groupDetail.maxMembersReached') : t('lecturer.groupDetail.inviteStudents')}
               >
-                <UserPlus size={14} aria-hidden /> Invite students
+                <UserPlus size={14} aria-hidden /> {t('lecturer.groupDetail.inviteStudents')}
               </button>
             </div>
             <InlineNotice
               tone="info"
-              title="Maximum 4 members per group"
-              description="The four-member limit is enforced in this interface; the BE contract does not document the constraint."
+              title={t('lecturer.groupDetail.maxMembersNotice')}
+              description={t('lecturer.groupDetail.maxMembersNoticeDesc')}
             />
             <span className={styles.cardHint}>
-              Manage student members in this group.
+              {t('lecturer.groupDetail.membersHint')}
             </span>
           </header>
           {membersError && (
@@ -669,19 +672,19 @@ export const LecturerGroupDetail = (): JSX.Element => {
               <AlertTriangle size={14} aria-hidden />
               <span>{membersError}</span>
               <button type="button" className={styles.retryBtn} onClick={() => void loadMembers()}>
-                Retry
+                {t('lecturer.groupDetail.retry')}
               </button>
             </div>
           )}
           {isMembersLoading ? (
             <div className={styles.loadingPanel}>
               <Loader size={14} className={styles.spinningIcon} aria-hidden />
-              Loading members\u2026
+              {t('lecturer.groupDetail.loadingMembers')}
             </div>
           ) : members.length === 0 ? (
             <div className={styles.emptyState}>
               <Users size={18} aria-hidden />
-              No students have joined this group yet.
+              {t('lecturer.groupDetail.noStudents')}
             </div>
           ) : (
             <ul className={styles.memberList}>
@@ -701,21 +704,21 @@ export const LecturerGroupDetail = (): JSX.Element => {
                       <div className={styles.memberBody}>
                         <div className={styles.memberNameRow}>
                           <span className={styles.memberStudent}>
-                            {m.studentName || `Student #${m.studentId ?? mid}`}
+                            {m.studentName || `${t('lecturer.groupDetail.studentPrefix')}${m.studentId ?? mid}`}
                           </span>
                           {m.isLeader && (
                             <span className={styles.leaderBadge}>
                               <Crown size={12} aria-hidden />
-                              Trưởng nhóm (Leader)
+                              {t('lecturer.groupDetail.leaderRole')}
                             </span>
                           )}
                         </div>
                         <div className={styles.memberMeta}>
                           {m.studentEmail && <span>{m.studentEmail}</span>}
                           <span>
-                            Status: <strong>{m.activityStatus ?? 'Joined'}</strong>
+                            {t('lecturer.groupDetail.status')} <strong>{m.activityStatus ?? t('lecturer.groupDetail.joined')}</strong>
                           </span>
-                          <span>Joined {formatDateOnly(m.joinedAt ?? null)}</span>
+                          <span>{t('lecturer.groupDetail.joined')} {formatDateOnly(m.joinedAt ?? null)}</span>
                         </div>
                       </div>
                     </div>
@@ -730,7 +733,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                           {isBusy
                             ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
                             : <X size={14} aria-hidden />}
-                          Hủy Trưởng nhóm
+                          {t('lecturer.groupDetail.removeLeader')}
                         </button>
                       ) : (
                         <button
@@ -742,7 +745,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                           {isBusy
                             ? <Loader size={12} className={styles.spinningIcon} aria-hidden />
                             : <Crown size={14} className={styles.leaderCrown} aria-hidden />}
-                          Gán Trưởng nhóm
+                          {t('lecturer.groupDetail.assignLeader')}
                         </button>
                       )}
                     </div>
@@ -758,10 +761,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
           <section className={styles.card} aria-labelledby="phaseProgressTitle">
             <header className={styles.cardHeader}>
               <h2 id="phaseProgressTitle" className={styles.cardTitle}>
-                Phase progress
+                {t('lecturer.groupDetail.phaseProgressTitle')}
               </h2>
               <span className={styles.cardHint}>
-                Where this group is in the reporting journey.
+                {t('lecturer.groupDetail.phaseProgressHint')}
               </span>
             </header>
             <div className={styles.cardBody}>
@@ -773,17 +776,17 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {/* Milestone summary */}
         <section className={styles.card}>
           <header className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Milestone summary</h2>
+            <h2 className={styles.cardTitle}>{t('lecturer.groupDetail.milestoneSummaryTitle')}</h2>
             <span className={styles.cardHint}>
-              Phased Report counts as a milestone stand-in.
+              {t('lecturer.groupDetail.milestoneSummaryHint')}
             </span>
           </header>
           {reportsError && (
             <div className={styles.errorPanel} role="alert">
               <AlertTriangle size={14} aria-hidden />
-              <span>Could not load reports: {reportsError.message}</span>
+              <span>{t('lecturer.groupDetail.reportsError')} {reportsError.message}</span>
               <button type="button" className={styles.retryBtn} onClick={() => void refetchReports()}>
-                Retry
+                {t('lecturer.groupDetail.retry')}
               </button>
             </div>
           )}
@@ -791,7 +794,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <div className={styles.cardBody}>
               <div className={styles.emptyState}>
                 <FileText size={18} aria-hidden />
-                No phased reports submitted yet.
+                {t('lecturer.groupDetail.noReports')}
               </div>
             </div>
           )}
@@ -803,8 +806,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
               <div className={styles.gapNote}>
                 <InlineNotice
                   tone="info"
-                  title="Milestone API unavailable"
-                  description="A dedicated milestone endpoint is not exposed yet. This card counts Phased Reports as a stand-in."
+                  title={t('lecturer.groupDetail.milestoneApiNotice')}
+                  description={t('lecturer.groupDetail.milestoneApiNoticeDesc')}
                 />
               </div>
             </>
@@ -815,10 +818,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
         <section className={`${styles.card} ${styles.cardFull}`}>
           <header className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>
-              <Library size={16} aria-hidden /> Learning materials
+              <Library size={16} aria-hidden /> {t('lecturer.groupDetail.learningMaterialsTitle')}
             </h2>
             <span className={styles.cardHint}>
-              Scoped to your lecturer library.
+              {t('lecturer.groupDetail.learningMaterialsHint')}
             </span>
           </header>
           {materialsError && (
@@ -826,25 +829,25 @@ export const LecturerGroupDetail = (): JSX.Element => {
               <AlertTriangle size={14} aria-hidden />
               <span>{materialsError.message}</span>
               <button type="button" className={styles.retryBtn} onClick={() => void refetchMaterials()}>
-                Retry
+                {t('lecturer.groupDetail.retry')}
               </button>
             </div>
           )}
           {isMaterialsLoading ? (
             <div className={styles.loadingPanel}>
               <Loader size={14} className={styles.spinningIcon} aria-hidden />
-              Loading materials\u2026
+              {t('lecturer.groupDetail.loadingMaterials')}
             </div>
           ) : materials.length === 0 ? (
             <div className={styles.emptyState}>
               <Library size={18} aria-hidden />
-              No learning materials attached yet.
+              {t('lecturer.groupDetail.noMaterials')}
             </div>
           ) : (
             <ul className={styles.materialList}>
               {materials.map((m) => {
                 const id = typeof m.id === 'number' ? m.id : -1;
-                const title = (m.title ?? '').trim() || `Material #${id}`;
+                const title = (m.title ?? '').trim() || `${t('lecturer.groupDetail.materialPrefix')}${id}`;
                 return (
                   <li key={`mat-${id}`} className={styles.materialRow}>
                     <div className={styles.materialMeta}>
@@ -861,7 +864,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                         rel="noopener noreferrer"
                       >
                         <ExternalLink size={14} aria-hidden />
-                        Open
+                        {t('lecturer.groupDetail.open')}
                       </a>
                     )}
                   </li>
@@ -883,7 +886,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   <Pencil size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 className={styles.modalTitle}>Edit group metadata</h3>
+                  <h3 className={styles.modalTitle}>{t('lecturer.groupDetail.editModalTitle')}</h3>
                   <span className={styles.modalSubtitle}>{groupName}</span>
                 </div>
               </div>
@@ -892,7 +895,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 className={styles.closeBtn}
                 onClick={closeEditModal}
                 disabled={isSavingGroup}
-                aria-label="Close edit group modal"
+                aria-label={t('common.cancel')}
               >
                 <X size={18} aria-hidden />
               </button>
@@ -905,7 +908,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupName">
-                  * Group name
+                  * {t('lecturer.groupDetail.groupNameLabel')}
                 </label>
                 <input
                   id="groupName"
@@ -925,7 +928,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupDesc">
-                  Description
+                  {t('lecturer.groupDetail.descriptionLabel')}
                 </label>
                 <textarea
                   id="groupDesc"
@@ -938,7 +941,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupDeadline">
-                  Deadline
+                  {t('lecturer.groupDetail.deadlineLabel')}
                 </label>
                 <input
                   id="groupDeadline"
@@ -970,7 +973,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 onClick={closeEditModal}
                 disabled={isSavingGroup}
               >
-                Cancel
+                {t('lecturer.groupDetail.cancel')}
               </button>
               <button
                 type="submit"
@@ -981,7 +984,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 {isSavingGroup
                   ? <Loader size={14} className={styles.spinningIcon} aria-hidden />
                   : <Check size={14} aria-hidden />}
-                {isSavingGroup ? 'Saving\u2026' : 'Save group'}
+                {isSavingGroup ? t('lecturer.groupDetail.saving') : t('lecturer.groupDetail.saveGroup')}
               </button>
             </div>
           </div>
@@ -995,14 +998,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
             <header className={styles.modalHeader}>
               <h2 id="inviteStudentsTitle" className={styles.modalTitle}>
                 <UserPlus size={18} aria-hidden />
-                Invite Students to Research Group
+                {t('lecturer.groupDetail.inviteModalTitle')}
               </h2>
               <button
                 type="button"
                 className={styles.modalCloseBtn}
                 onClick={closeInviteModal}
                 disabled={isInviting}
-                aria-label="Close modal"
+                aria-label={t('common.cancel')}
               >
                 <X size={16} aria-hidden />
               </button>
@@ -1016,13 +1019,13 @@ export const LecturerGroupDetail = (): JSX.Element => {
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="inviteEmails">
-                  Student email addresses (separated by commas or new lines)
+                  {t('lecturer.groupDetail.emailsLabel')}
                 </label>
                 <textarea
                   id="inviteEmails"
                   className={styles.formTextarea}
                   rows={4}
-                  placeholder={'student1@gmail.com\nstudent2@fpt.edu.vn'}
+                  placeholder={t('lecturer.groupDetail.emailsPlaceholder')}
                   value={inviteEmailsInput}
                   onChange={(e) => {
                     setInviteEmailsInput(e.target.value);
@@ -1031,7 +1034,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   disabled={isInviting}
                 />
                 <span className={styles.cardHint}>
-                  The system will automatically find student accounts and add them as group members.
+                  {t('lecturer.groupDetail.inviteHint')}
                 </span>
               </div>
 
@@ -1050,7 +1053,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 onClick={closeInviteModal}
                 disabled={isInviting}
               >
-                Cancel
+                {t('lecturer.groupDetail.cancel')}
               </button>
               <button
                 type="submit"
@@ -1061,7 +1064,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 {isInviting
                   ? <Loader size={14} className={styles.spinningIcon} aria-hidden />
                   : <Check size={14} aria-hidden />}
-                {isInviting ? 'Sending Invites\u2026' : 'Send Invitations'}
+                {isInviting ? t('lecturer.groupDetail.sendingInvites') : t('lecturer.groupDetail.sendInvitations')}
               </button>
             </div>
           </div>

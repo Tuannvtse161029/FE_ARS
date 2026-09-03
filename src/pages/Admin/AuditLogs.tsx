@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, Inbox } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import styles from './AuditLogs.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
@@ -30,29 +31,8 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
-/**
- * Renders an audit log timestamp defensively. The BE occasionally returns
- * an empty/null `timestamp` (e.g. legacy rows or interim payloads before
- * the contract was finalized). Without this guard the table previously
- * rendered "Invalid Date" because `new Date('').toLocaleString(...)`
- * throws. Showing a clear placeholder keeps the row trustworthy.
- */
-const formatAuditTimestamp = (value: string | null | undefined): string => {
-  if (!value || typeof value !== 'string') return 'Not supplied';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Not supplied';
-  return parsed.toLocaleString('vi-VN');
-};
-
 /** Sortable column ids for the Audit Logs table. */
 type SortColumn = 'logId' | 'admin' | 'action' | 'target' | 'timestamp';
-
-const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
-  { value: 'past_24h', label: 'Past 24 hours' },
-  { value: 'past_7d', label: 'Past 7 days' },
-  { value: 'past_30d', label: 'Past 30 days' },
-  { value: 'all_time', label: 'All time' },
-];
 
 // Color tag mapping per the Figma screen (green / red / blue / gray).
 const ACTION_COLOR: Record<
@@ -75,25 +55,40 @@ const ACTION_COLOR: Record<
   DELETED_PACKAGE: 'red',
 };
 
-const ACTION_LABEL: Record<AuditLogAction, string> = {
-  APPROVED_ROLE_REQUEST: 'Approved Role Request',
-  DENIED_ROLE_REQUEST: 'Denied Role Request',
-  APPROVED_WITHDRAWAL: 'Approved Withdrawal',
-  DENIED_WITHDRAWAL: 'Denied Withdrawal',
-  COMPLETED_WITHDRAWAL: 'Completed Withdrawal',
-  SUSPENDED_ACCOUNT: 'Suspended Account',
-  UNSUSPENDED_ACCOUNT: 'Unsuspended Account',
-  CREATED_PACKAGE: 'Created Package',
-  UPDATED_PACKAGE: 'Updated Package',
-  DELETED_PACKAGE: 'Deleted Package',
-  TOGGLED_PACKAGE: 'Toggled Package',
-  DISMISSED_REPORT: 'Dismissed Report',
-  DELETED_CONTENT_WARNED: 'Deleted Content + Warned',
-  DELETED_CONTENT_SUSPENDED_14D: 'Deleted Content + 14d Suspend',
-};
-
 export default function AuditLogs(): JSX.Element {
+  const { t } = useI18n();
   useAdminGuard();
+
+  const ACTION_LABEL: Record<AuditLogAction, string> = {
+    APPROVED_ROLE_REQUEST: t('admin.auditLogs.action.approvedRoleRequest'),
+    DENIED_ROLE_REQUEST: t('admin.auditLogs.action.deniedRoleRequest'),
+    APPROVED_WITHDRAWAL: t('admin.auditLogs.action.approvedWithdrawal'),
+    DENIED_WITHDRAWAL: t('admin.auditLogs.action.deniedWithdrawal'),
+    COMPLETED_WITHDRAWAL: t('admin.auditLogs.action.completedWithdrawal'),
+    SUSPENDED_ACCOUNT: t('admin.auditLogs.action.suspendedAccount'),
+    UNSUSPENDED_ACCOUNT: t('admin.auditLogs.action.unsuspendedAccount'),
+    CREATED_PACKAGE: t('admin.auditLogs.action.createdPackage'),
+    UPDATED_PACKAGE: t('admin.auditLogs.action.updatedPackage'),
+    DELETED_PACKAGE: t('admin.auditLogs.action.deletedPackage'),
+    TOGGLED_PACKAGE: t('admin.auditLogs.action.toggledPackage'),
+    DISMISSED_REPORT: t('admin.auditLogs.action.dismissedReport'),
+    DELETED_CONTENT_WARNED: t('admin.auditLogs.action.deletedContentWarned'),
+    DELETED_CONTENT_SUSPENDED_14D: t('admin.auditLogs.action.deletedContentSuspended14d'),
+  };
+
+  const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
+    { value: 'past_24h', label: t('admin.auditLogs.range.past_24h') },
+    { value: 'past_7d', label: t('admin.auditLogs.range.past_7d') },
+    { value: 'past_30d', label: t('admin.auditLogs.range.past_30d') },
+    { value: 'all_time', label: t('admin.auditLogs.range.all_time') },
+  ];
+
+  const formatAuditTimestamp = (value: string | null | undefined): string => {
+    if (!value || typeof value !== 'string') return t('admin.auditLogs.notSupplied');
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return t('admin.auditLogs.notSupplied');
+    return parsed.toLocaleString('vi-VN');
+  };
 
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,12 +112,12 @@ export default function AuditLogs(): JSX.Element {
       });
       setEntries(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load audit logs.');
+      setError(e instanceof Error ? e.message : t('admin.auditLogs.error.tryAgain'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, range, adminId]);
+  }, [search, range, adminId, t]);
 
   useEffect(() => {
     void load();
@@ -201,7 +196,7 @@ export default function AuditLogs(): JSX.Element {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to export CSV.');
+      setError(e instanceof Error ? e.message : t('admin.auditLogs.error.exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -210,9 +205,9 @@ export default function AuditLogs(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · AUDIT TRAIL"
-        title="System Audit Logs"
-        description="Chronological record of every privileged admin action. Export the current filter as a CSV for compliance reviews."
+        eyebrow={t('admin.auditLogs.eyebrow')}
+        title={t('admin.auditLogs.title')}
+        description={t('admin.auditLogs.description')}
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -223,7 +218,7 @@ export default function AuditLogs(): JSX.Element {
             disabled={exporting || loading || totalItems === 0}
             data-testid="audit-export-csv"
           >
-            {exporting ? 'Exporting…' : 'Export Logs (.CSV)'}
+            {exporting ? t('admin.auditLogs.exporting') : t('admin.auditLogs.exportCsv')}
           </Button>
         }
       />
@@ -236,8 +231,8 @@ export default function AuditLogs(): JSX.Element {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search by Log ID, Admin ID, Target or details…"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.auditLogs.searchPlaceholder')}
+        refreshLabel={t('admin.auditLogs.refresh')}
         filters={
           <>
             <select
@@ -265,7 +260,7 @@ export default function AuditLogs(): JSX.Element {
               data-testid="audit-admin-filter"
               disabled={Boolean(error)}
             >
-              <option value="ALL">All Admins</option>
+              <option value="ALL">{t('admin.auditLogs.filter.allAdmins')}</option>
               {adminOptions.map((opt) => (
                 <option key={opt.id} value={String(opt.id)}>
                   {opt.name} (#{opt.id})
@@ -293,7 +288,7 @@ export default function AuditLogs(): JSX.Element {
         >
           <ErrorBanner
             tone="error"
-            title="Could not load audit logs"
+            title={t('admin.auditLogs.error.loadFailed')}
             message={error}
             retry={
               <Button
@@ -302,7 +297,7 @@ export default function AuditLogs(): JSX.Element {
                 onClick={() => void load()}
                 disabled={loading || refreshing}
               >
-                {loading || refreshing ? 'Retrying…' : 'Retry'}
+                {loading || refreshing ? t('admin.auditLogs.retrying') : t('admin.auditLogs.retry')}
               </Button>
             }
           />
@@ -315,8 +310,8 @@ export default function AuditLogs(): JSX.Element {
           >
             <EmptyState
               icon={<Inbox size={20} />}
-              title="No audit entries match these filters"
-              description="Try widening the date range or clearing the search box. Every privileged admin action should land here."
+              title={t('admin.auditLogs.empty.title')}
+              description={t('admin.auditLogs.empty.description')}
             />
           </div>
         </div>
@@ -329,7 +324,7 @@ export default function AuditLogs(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="logId"
-                      label="Log ID"
+                      label={t('admin.auditLogs.table.logId')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -337,7 +332,7 @@ export default function AuditLogs(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="admin"
-                      label="Admin"
+                      label={t('admin.auditLogs.table.admin')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -345,11 +340,11 @@ export default function AuditLogs(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="action"
-                      label="Action"
+                      label={t('admin.auditLogs.table.action')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                       filterOptions={[
-                        { value: 'ALL', label: 'All actions' },
+                        { value: 'ALL', label: t('admin.auditLogs.filter.allActions') },
                         ...Object.entries(ACTION_LABEL).map(([value, label]) => ({
                           value,
                           label,
@@ -364,7 +359,7 @@ export default function AuditLogs(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="target"
-                      label="Target"
+                      label={t('admin.auditLogs.table.target')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -372,12 +367,12 @@ export default function AuditLogs(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="timestamp"
-                      label="Timestamp"
+                      label={t('admin.auditLogs.table.timestamp')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th>Details</th>
+                  <th>{t('admin.auditLogs.table.details')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,7 +409,7 @@ export default function AuditLogs(): JSX.Element {
             onPrev={prev}
             onNext={next}
             onPage={setPage}
-            itemLabel="audit entries"
+            itemLabel={t('admin.auditLogs.itemLabel')}
           />
         </div>
       )}

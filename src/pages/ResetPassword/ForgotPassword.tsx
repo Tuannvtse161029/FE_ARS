@@ -6,6 +6,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
 import { ROUTES } from '../../routes/paths';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   forgotPasswordSchema,
   type ForgotPasswordFormData,
@@ -27,6 +28,7 @@ function forgotPasswordError(err: unknown, fallback: string): string {
 }
 
 const ForgotPassword = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ const ForgotPassword = () => {
     } catch (err: unknown) {
       const msg = forgotPasswordError(
         err,
-        'Unable to send reset code. Please try again.',
+        t('reset.errorSend', 'Unable to send reset code. Please try again.')
       );
       setError(msg);
     } finally {
@@ -73,15 +75,15 @@ const ForgotPassword = () => {
         <div className={styles.logoWrapper}>
           <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
         </div>
-        <span className={styles.brandText}>ARS - Academic Research Sharing</span>
+        <span className={styles.brandText}>{t('app.brandName', 'ARS - Academic Research Sharing')}</span>
       </div>
 
       <StepIndicator currentStep={1} />
 
       <div className={styles.header}>
-        <h1 className={styles.title}>Forgot your password?</h1>
+        <h1 className={styles.title}>{t('reset.title', 'Forgot your password?')}</h1>
         <p className={styles.subtitle}>
-          Enter the email associated with your account and we'll send you a verification code to reset your password.
+          {t('reset.subtitle', 'Enter the email associated with your account and we\'ll send you a verification code to reset your password.')}
         </p>
       </div>
 
@@ -99,8 +101,8 @@ const ForgotPassword = () => {
             <Input
               {...field}
               type="email"
-              label="Email"
-              placeholder="Enter your email"
+              label={t('auth.email', 'Email')}
+              placeholder={t('reset.stepEmail', 'Enter your email')}
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading}
@@ -111,7 +113,7 @@ const ForgotPassword = () => {
 
         {submittedEmail && (
           <p className={styles.helperText}>
-            We sent a code to <strong>{submittedEmail}</strong>.
+            {t('reset.sentCode', 'We sent a code to')} <strong>{submittedEmail}</strong>.
           </p>
         )}
 
@@ -123,12 +125,12 @@ const ForgotPassword = () => {
           isLoading={isLoading}
           className={styles.submitButton}
         >
-          Send reset code
+          {t('reset.sendButton', 'Send reset code')}
         </Button>
 
         <div className={styles.footer}>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
-            Back to sign in
+            {t('reset.backToLogin', 'Back to sign in')}
           </Link>
         </div>
       </form>

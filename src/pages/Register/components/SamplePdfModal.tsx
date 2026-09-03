@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../../components/Button';
+import { useI18n } from '../../../i18n/I18nContext';
 import styles from './SamplePdfModal.module.css';
 import { X } from '../../../assets/icons/XIcon';
 import {
@@ -128,6 +129,7 @@ export const SamplePdfModal = ({
   onClose,
   initialRole = 'Researcher',
 }: SamplePdfModalProps) => {
+  const { t } = useI18n();
   const [activeRole, setActiveRole] = useState<RequestableRole>(initialRole);
 
   useEffect(() => {
@@ -166,13 +168,13 @@ export const SamplePdfModal = ({
       <div className={styles.modal}>
         <div className={styles.header}>
           <h2 id="sample-pdf-title" className={styles.title}>
-            Sample PDF Verification Document
+            {t('register.samplePdf.title', 'Sample PDF Verification Document')}
           </h2>
           <button
             type="button"
             className={styles.closeBtn}
             onClick={onClose}
-            aria-label="Close modal"
+            aria-label={t('common.close', 'Close')}
           >
             <X size={20} />
           </button>
@@ -188,7 +190,7 @@ export const SamplePdfModal = ({
               className={`${styles.tab} ${activeRole === role ? styles['tab--active'] : ''}`}
               onClick={() => setActiveRole(role)}
             >
-              {role}
+              {t(`role.${role}`, role)}
             </button>
           ))}
         </div>
@@ -197,38 +199,38 @@ export const SamplePdfModal = ({
           <div className={styles.documentWrapper}>
             <div className={styles.watermark} aria-hidden="true">
               <span className={styles.watermarkText}>
-                SAMPLE VERIFICATION DOCUMENT
+                {t('register.samplePdf.watermark', 'SAMPLE VERIFICATION DOCUMENT')}
               </span>
             </div>
 
             <div className={styles.docHeader}>
-              <h3 className={styles.docTitle}>Academic Profile Summary</h3>
-              <span className={styles.docBadge}>{activeRole}</span>
+              <h3 className={styles.docTitle}>{t('register.samplePdf.summaryTitle', 'Academic Profile Summary')}</h3>
+              <span className={styles.docBadge}>{t(`role.${activeRole}`, activeRole)}</span>
             </div>
 
             <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>Profile</h4>
+              <h4 className={styles.sectionTitle}>{t('register.samplePdf.profile', 'Profile')}</h4>
               <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>Full Name</span>
+                <span className={styles.fieldLabel}>{t('register.samplePdf.fullName', 'Full Name')}</span>
                 <span className={styles.fieldValue}>{profile.fullName}</span>
               </div>
               <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>Affiliation</span>
+                <span className={styles.fieldLabel}>{t('register.samplePdf.affiliation', 'Affiliation')}</span>
                 <span className={styles.fieldValue}>{profile.affiliation}</span>
               </div>
               <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>ORCID iD</span>
+                <span className={styles.fieldLabel}>{t('register.samplePdf.orcidId', 'ORCID iD')}</span>
                 <span className={styles.fieldValue}>{profile.orcidId}</span>
               </div>
             </div>
 
             <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>Academic Metrics</h4>
+              <h4 className={styles.sectionTitle}>{t('register.samplePdf.metrics', 'Academic Metrics')}</h4>
               <div className={styles.metricsGrid}>
                 {profile.metrics.map((m) => (
                   <div key={m.label} className={styles.metricCard}>
                     <p className={styles.metricValue}>{m.value}</p>
-                    <p className={styles.metricLabel}>{m.label}</p>
+                    <p className={styles.metricLabel}>{t(`register.samplePdf.metric.${m.label.replace(/ /g, '')}`, m.label)}</p>
                   </div>
                 ))}
               </div>
@@ -237,12 +239,12 @@ export const SamplePdfModal = ({
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>
                 {activeRole === 'Reviewer'
-                  ? 'Review Service Record'
+                  ? t('register.samplePdf.recordReviewer', 'Review Service Record')
                   : activeRole === 'Lecturer'
-                  ? 'Teaching & Curriculum Record'
+                  ? t('register.samplePdf.recordLecturer', 'Teaching & Curriculum Record')
                   : activeRole === 'Graduate Student'
-                  ? 'Academic & Research Record'
-                  : 'Publication Record'}
+                  ? t('register.samplePdf.recordGraduate', 'Academic & Research Record')
+                  : t('register.samplePdf.recordResearcher', 'Publication Record')}
               </h4>
               <ul className={styles.recordList}>
                 {profile.records.map((r, idx) => (
@@ -263,7 +265,7 @@ export const SamplePdfModal = ({
             onClick={onClose}
             className={styles.footerBtn}
           >
-            Got It, Back to Registration
+            {t('register.samplePdf.backBtn', 'Got It, Back to Registration')}
           </Button>
         </div>
       </div>

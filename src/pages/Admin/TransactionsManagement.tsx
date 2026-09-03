@@ -6,24 +6,23 @@
  * the change. See docs/WALLET_SCOPE_CHANGE.md for context.
  */
 import { Banknote } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { PageHeader } from '../../components/PageHeader';
 import styles from './TransactionsManagement.module.css';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
-const PLACEHOLDER_MESSAGE =
-  'ARS credits and annual-fee support are planned for a future release. Top-up and withdrawal are not available on ARS.';
-
 export const TransactionsManagement = () => {
+  const { t } = useI18n();
   useAdminGuard();
 
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · TRANSACTIONS"
-        title="Transactions"
-        description="Read-only placeholder for the future ARS-credits area."
+        eyebrow={t('admin.transactions.eyebrow')}
+        title={t('admin.transactions.title')}
+        description={t('admin.transactions.description')}
         accent={ROLE_ACCENT}
       />
       <div className={styles.tableCard}>
@@ -33,8 +32,8 @@ export const TransactionsManagement = () => {
           role="status"
         >
           <Banknote size={28} />
-          <strong>Planned for a future release</strong>
-          <span>{PLACEHOLDER_MESSAGE}</span>
+          <strong>{t('admin.transactions.plannedTitle')}</strong>
+          <span>{t('admin.transactions.plannedMessage')}</span>
         </div>
       </div>
     </div>

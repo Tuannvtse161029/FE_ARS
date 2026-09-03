@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Button } from '../../../components/Button';
 import type { UserRole } from '../../../types/auth';
+import { useI18n } from '../../../i18n/I18nContext';
 import styles from './RegisterSuccessModal.module.css';
 import { Check } from '../../../assets/icons/CheckIcon';
 import { ROUTES } from '../../../routes/paths';
@@ -15,9 +16,11 @@ interface RegisterSuccessModalProps {
 export const RegisterSuccessModal = ({
   isOpen,
   email,
-  role,
+  role: _role,
   onClose,
 }: RegisterSuccessModalProps) => {
+  const { t } = useI18n();
+  
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -34,10 +37,6 @@ export const RegisterSuccessModal = ({
   if (!isOpen) return null;
 
   const handleExploreForum = () => {
-    // The actual navigation is now handled by the parent (Register.tsx)
-    // via the `onClose` callback, which knows about the auth-state changes
-    // that just happened (the user is now authenticated but pending).
-    // Keep the button here for UX clarity — it just closes the modal.
     onClose();
   };
 
@@ -56,27 +55,25 @@ export const RegisterSuccessModal = ({
           <Check className={styles.checkmarkIcon} size={24} />
         </div>
         <h2 id="register-success-title" className={styles.title}>
-          Registration Submitted Successfully!
+          {t('register.success.title', 'Registration Submitted Successfully!')}
         </h2>
         <p className={styles.message}>
-          Your account has been created and your role request for{' '}
-          <strong>{role}</strong> is now under Administrator review.
+          {t('register.success.roleReview', 'Your account has been created and your role request is now under Administrator review.')}
         </p>
         <div className={styles.highlightBox}>
-          We have sent a verification email to <strong>{email}</strong>
+          {t('register.success.verificationSent', 'We have sent a verification email to')} <strong>{email}</strong>
         </div>
         <p className={styles.helperText}>
-          Open the link in that email to confirm your address. After verification
-          an administrator will review your role request.
+          {t('register.success.helper', 'Open the link in that email to confirm your address. After verification an administrator will review your role request.')}
         </p>
         <p className={styles.learnMore}>
-          Already verified?{' '}
+          {t('register.success.alreadyVerified', 'Already verified?')} {' '}
           <a
             href={ROUTES.LOGIN}
             className={styles.learnMoreLink}
             onClick={(e) => e.stopPropagation()}
           >
-            Sign in instead
+            {t('register.success.signInInstead', 'Sign in instead')}
           </a>
           .
         </p>
@@ -86,7 +83,7 @@ export const RegisterSuccessModal = ({
           onClick={handleExploreForum}
           className={styles.actionBtn}
         >
-          Explore Community Forums
+          {t('register.success.explore', 'Explore Community Forums')}
         </Button>
       </div>
     </div>

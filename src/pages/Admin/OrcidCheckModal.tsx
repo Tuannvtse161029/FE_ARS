@@ -10,6 +10,7 @@ import {
   Server,
   X,
 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { OpenAlexBrandLogo } from '../../components/openalex/OpenAlexBrandLogo';
 import {
   lookupOrcid,
@@ -52,70 +53,77 @@ const ORCID_LOGO_SVG = (
 interface LoadingViewProps {
   orcidId: string;
 }
-const LoadingView = ({ orcidId }: LoadingViewProps) => (
-  <div className={styles.loadingState} role="status" aria-live="polite">
-    <Loader2 size={32} className={styles.spinner} aria-hidden="true" />
-    <span>Looking up ORCID iD <strong>{orcidId}</strong>…</span>
-  </div>
-);
+const LoadingView = ({ orcidId }: LoadingViewProps) => {
+  const { t } = useI18n();
+  return (
+    <div className={styles.loadingState} role="status" aria-live="polite">
+      <Loader2 size={32} className={styles.spinner} aria-hidden="true" />
+      <span>{t('admin.orcid.loading').replace('{id}', orcidId)}</span>
+    </div>
+  );
+};
 
 interface NotFoundViewProps {
   orcidId: string;
   onRetry: () => void;
   disabled: boolean;
 }
-const NotFoundView = ({ orcidId, onRetry, disabled }: NotFoundViewProps) => (
-  <div className={styles.errorState} role="alert">
-    <AlertCircle size={36} className={styles.errorIcon} aria-hidden="true" />
-    <p className={styles.errorTitle}>No record found</p>
-    <p className={styles.errorMessage}>
-      No public ORCID record was found for <strong>{orcidId}</strong>.
-      The iD may be incorrect, or the record may be set to private.
-    </p>
-    <div className={styles.errorAction}>
-      <button
-        className={styles.btnRetry}
-        onClick={onRetry}
-        type="button"
-        disabled={disabled}
-        data-testid="orcid-check-retry"
-      >
-        <RefreshCw size={14} aria-hidden="true" />
-        Try again
-      </button>
+const NotFoundView = ({ orcidId, onRetry, disabled }: NotFoundViewProps) => {
+  const { t } = useI18n();
+  return (
+    <div className={styles.errorState} role="alert">
+      <AlertCircle size={36} className={styles.errorIcon} aria-hidden="true" />
+      <p className={styles.errorTitle}>{t('admin.orcid.notFoundTitle')}</p>
+      <p className={styles.errorMessage}>
+        {t('admin.orcid.notFoundMessage').replace('{id}', orcidId)}
+      </p>
+      <div className={styles.errorAction}>
+        <button
+          className={styles.btnRetry}
+          onClick={onRetry}
+          type="button"
+          disabled={disabled}
+          data-testid="orcid-check-retry"
+        >
+          <RefreshCw size={14} aria-hidden="true" />
+          {t('admin.orcid.tryAgain')}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface RateLimitViewProps {
   retryAfterSeconds?: number;
   onRetry: () => void;
   disabled: boolean;
 }
-const RateLimitView = ({ retryAfterSeconds, onRetry, disabled }: RateLimitViewProps) => (
-  <div className={styles.errorState} role="alert">
-    <Clock size={36} className={styles.warningIcon} aria-hidden="true" />
-    <p className={styles.errorTitle}>Rate limit reached</p>
-    <p className={styles.errorMessage}>
-      The ORCID API rate limit has been reached.
-      {retryAfterSeconds
-        ? ` Please wait about ${retryAfterSeconds} seconds before trying again.`
-        : ' Please wait a moment before trying again.'}
-    </p>
-    <div className={styles.errorAction}>
-      <button
-        className={styles.btnRetry}
-        onClick={onRetry}
-        type="button"
-        disabled={disabled}
-        data-testid="orcid-check-retry"
-      >
-        <RefreshCw size={14} aria-hidden="true" />
-        Retry
-      </button>
+const RateLimitView = ({ retryAfterSeconds, onRetry, disabled }: RateLimitViewProps) => {
+  const { t } = useI18n();
+  return (
+    <div className={styles.errorState} role="alert">
+      <Clock size={36} className={styles.warningIcon} aria-hidden="true" />
+      <p className={styles.errorTitle}>{t('admin.orcid.rateLimitTitle')}</p>
+      <p className={styles.errorMessage}>
+        {retryAfterSeconds
+          ? t('admin.orcid.rateLimitMessage').replace('{seconds}', String(retryAfterSeconds))
+          : t('admin.orcid.rateLimitMessageFallback')}
+      </p>
+      <div className={styles.errorAction}>
+        <button
+          className={styles.btnRetry}
+          onClick={onRetry}
+          type="button"
+          disabled={disabled}
+          data-testid="orcid-check-retry"
+        >
+          <RefreshCw size={14} aria-hidden="true" />
+          {t('admin.orcid.retry')}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface ApiErrorViewProps {
   statusCode: number;
@@ -123,75 +131,81 @@ interface ApiErrorViewProps {
   onRetry: () => void;
   disabled: boolean;
 }
-const ApiErrorView = ({ statusCode, orcidId, onRetry, disabled }: ApiErrorViewProps) => (
-  <div className={styles.errorState} role="alert">
-    <Server size={36} className={styles.errorIcon} aria-hidden="true" />
-    <p className={styles.errorTitle}>Lookup failed</p>
-    <p className={styles.errorMessage}>
-      The ORCID lookup service returned an unexpected error ({statusCode}) for iD{' '}
-      <strong>{orcidId}</strong>. This may be a temporary service issue.
-    </p>
-    <div className={styles.errorAction}>
-      <button
-        className={styles.btnRetry}
-        onClick={onRetry}
-        type="button"
-        disabled={disabled}
-        data-testid="orcid-check-retry"
-      >
-        <RefreshCw size={14} aria-hidden="true" />
-        Try again
-      </button>
+const ApiErrorView = ({ statusCode, orcidId, onRetry, disabled }: ApiErrorViewProps) => {
+  const { t } = useI18n();
+  return (
+    <div className={styles.errorState} role="alert">
+      <Server size={36} className={styles.errorIcon} aria-hidden="true" />
+      <p className={styles.errorTitle}>{t('admin.orcid.lookupFailedTitle')}</p>
+      <p className={styles.errorMessage}>
+        {t('admin.orcid.lookupFailedMessage').replace('{code}', String(statusCode)).replace('{id}', orcidId)}
+      </p>
+      <div className={styles.errorAction}>
+        <button
+          className={styles.btnRetry}
+          onClick={onRetry}
+          type="button"
+          disabled={disabled}
+          data-testid="orcid-check-retry"
+        >
+          <RefreshCw size={14} aria-hidden="true" />
+          {t('admin.orcid.tryAgain')}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface WorkItemProps {
   work: { title: string; year?: number; type?: string; doi?: string; openalexUrl?: string };
   index: number;
 }
-const WorkItem = ({ work, index }: WorkItemProps) => (
-  <li className={styles.workItem} data-testid={`orcid-work-item-${index}`}>
-    <p className={styles.workItemTitle}>{work.title}</p>
-    <div className={styles.workItemMeta}>
-      {work.year && (
-        <span className={styles.workMetaChip}>{work.year}</span>
-      )}
-      {work.type && (
-        <span className={styles.workMetaChip}>{work.type}</span>
-      )}
-      {work.doi && (
-        <a
-          href={`https://doi.org/${work.doi}`}
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.workLink}
-          data-testid={`orcid-work-doi-${index}`}
-        >
-          DOI
-        </a>
-      )}
-      {work.openalexUrl && (
-        <a
-          href={work.openalexUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.workLinkOpenAlex}
-          data-testid={`orcid-work-openalex-${index}`}
-        >
-          <OpenAlexBrandLogo variant="mark" ariaLabel="OpenAlex" />
-          <span>OpenAlex</span>
-        </a>
-      )}
-    </div>
-  </li>
-);
+const WorkItem = ({ work, index }: WorkItemProps) => {
+  const { t } = useI18n();
+  return (
+    <li className={styles.workItem} data-testid={`orcid-work-item-${index}`}>
+      <p className={styles.workItemTitle}>{work.title}</p>
+      <div className={styles.workItemMeta}>
+        {work.year && (
+          <span className={styles.workMetaChip}>{work.year}</span>
+        )}
+        {work.type && (
+          <span className={styles.workMetaChip}>{work.type}</span>
+        )}
+        {work.doi && (
+          <a
+            href={`https://doi.org/${work.doi}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={styles.workLink}
+            data-testid={`orcid-work-doi-${index}`}
+          >
+            DOI
+          </a>
+        )}
+        {work.openalexUrl && (
+          <a
+            href={work.openalexUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={styles.workLinkOpenAlex}
+            data-testid={`orcid-work-openalex-${index}`}
+          >
+            <OpenAlexBrandLogo variant="mark" ariaLabel="OpenAlex" />
+            <span>{t('admin.orcid.openAlex')}</span>
+          </a>
+        )}
+      </div>
+    </li>
+  );
+};
 
 interface SuccessViewProps {
   meta: OrcidPersonMetadata;
   orcidId: string;
 }
 const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
+  const { t } = useI18n();
   const displayName =
     meta.displayName ??
     ([meta.givenNames, meta.familyName].filter(Boolean).join(' ') || orcidId);
@@ -202,20 +216,20 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
       <div className={styles.personCard}>
         {/* Full name */}
         <div className={styles.personCardFull}>
-          <span className={styles.personCardLabel}>Name</span>
+          <span className={styles.personCardLabel}>{t('admin.orcid.person.name')}</span>
           <span className={styles.personCardValue}>{displayName}</span>
         </div>
 
         {/* ORCID iD */}
         <div className={styles.personCardFull}>
-          <span className={styles.personCardLabel}>ORCID iD</span>
+          <span className={styles.personCardLabel}>{t('admin.orcid.person.id')}</span>
           <span className={styles.personCardValueMono}>{meta.orcid}</span>
         </div>
 
         {/* Country */}
         {meta.country && (
           <div className={styles.personCardItem}>
-            <span className={styles.personCardLabel}>Country</span>
+            <span className={styles.personCardLabel}>{t('admin.orcid.person.country')}</span>
             <span className={styles.personCardValue}>{meta.country}</span>
           </div>
         )}
@@ -223,7 +237,7 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
         {/* Affiliations */}
         {meta.affiliations.length > 0 && (
           <div className={styles.personCardItem}>
-            <span className={styles.personCardLabel}>Affiliation</span>
+            <span className={styles.personCardLabel}>{t('admin.orcid.person.affiliation')}</span>
             <span className={styles.personCardValue}>
               {meta.affiliations.join(', ')}
             </span>
@@ -240,7 +254,7 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
             data-testid="orcid-profile-link"
           >
             <ExternalLink size={13} aria-hidden="true" />
-            View on ORCID.org
+            {t('admin.orcid.person.viewOnOrcid')}
           </a>
         </div>
       </div>
@@ -254,9 +268,7 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
         >
           <Info size={16} className={styles.disclosureIcon} aria-hidden="true" />
           <p className={styles.disclosureText}>
-            This ORCID record appears incomplete (name, affiliation, or email is
-            not publicly visible). Public metadata does not verify ownership of
-            the account on this platform.
+            {t('admin.orcid.notice.incomplete')}
           </p>
         </div>
       )}
@@ -264,7 +276,7 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
       {/* Works */}
       <section className={styles.worksSection} aria-labelledby="orcid-works-heading">
         <h3 id="orcid-works-heading" className={styles.worksSectionTitle}>
-          Recent Works
+          {t('admin.orcid.works.title')}
         </h3>
         {meta.works.length > 0 ? (
           <ul className={styles.worksList} data-testid="orcid-works-list">
@@ -274,7 +286,7 @@ const SuccessView = ({ meta, orcidId }: SuccessViewProps) => {
           </ul>
         ) : (
           <p className={styles.noWorks} data-testid="orcid-no-works">
-            No public works found for this record.
+            {t('admin.orcid.works.noWorks')}
           </p>
         )}
       </section>
@@ -286,6 +298,7 @@ interface DisclosureProps {
   visible: boolean;
 }
 const DisclosureBlock = ({ visible }: DisclosureProps) => {
+  const { t } = useI18n();
   if (!visible) return null;
   return (
     <div
@@ -296,12 +309,7 @@ const DisclosureBlock = ({ visible }: DisclosureProps) => {
     >
       <Info size={16} className={styles.disclosureIcon} aria-hidden="true" />
       <p className={styles.disclosureText}>
-        <strong>Important:</strong> Public ORCID metadata is informational only.
-        Matching the name on this record to the applicant does not prove they own
-        the ORCID iD. A determined bad actor can create an ORCID record with any
-        name. ORCID data must be considered alongside other verification evidence
-        (PDF proof document, institutional affiliation, etc.) when making
-        approval decisions.
+        <strong>{t('admin.orcid.disclosure.important')}</strong> {t('admin.orcid.disclosure.text')}
       </p>
     </div>
   );
@@ -310,55 +318,57 @@ const DisclosureBlock = ({ visible }: DisclosureProps) => {
 interface UnavailableViewProps {
   onClose: () => void;
 }
-const UnavailableView = ({ onClose }: UnavailableViewProps) => (
-  <div
-    className={styles.unavailableState}
-    role="status"
-    aria-live="polite"
-    data-testid="orcid-check-unavailable"
-  >
-    <ArrowRightLeft size={40} className={styles.unavailableIcon} aria-hidden="true" />
-    <p className={styles.unavailableTitle}>
-      ORCID Check needs a role request ID
-    </p>
-    <p className={styles.unavailableMessage}>
-      The backend lookup is available, but this record does not include the
-      role-request identifier required to correlate the verified ORCID.
-    </p>
-    <aside
-      className={styles.backendRequest}
-      aria-label="Backend team request"
-      data-testid="orcid-backend-request"
+const UnavailableView = ({ onClose }: UnavailableViewProps) => {
+  const { t } = useI18n();
+  return (
+    <div
+      className={styles.unavailableState}
+      role="status"
+      aria-live="polite"
+      data-testid="orcid-check-unavailable"
     >
-      <p className={styles.backendRequestTitle}>Backend Team Request</p>
-      <ol className={styles.backendRequestList}>
-        <li>
-          Expose <code>roleRequestId</code> on the Admin role-request response,
-          or allow the lookup endpoint to resolve it from a user ID.
-        </li>
-        <li>
-          Keep provider calls server-side and use the documented
-          <code>POST /api/Admin/orcid-lookup</code> contract.
-        </li>
-        <li>
-          Return the documented <code>OrcidLookupResponse</code> payload.
-        </li>
-        <li>
-          Track the remaining frontend/BE correlation work in{' '}
-          <code>tickets/backend/BE_ADMIN_ORCID_ROLE_REQUEST_ID_TICKET.md</code>.
-        </li>
-      </ol>
-    </aside>
-    <button
-      className={`${styles.button} ${styles.secondaryButton}`}
-      onClick={onClose}
-      type="button"
-      data-testid="orcid-check-unavailable-close"
-    >
-      Close
-    </button>
-  </div>
-);
+      <ArrowRightLeft size={40} className={styles.unavailableIcon} aria-hidden="true" />
+      <p className={styles.unavailableTitle}>
+        {t('admin.orcid.unavailable.title')}
+      </p>
+      <p className={styles.unavailableMessage}>
+        {t('admin.orcid.unavailable.message')}
+      </p>
+      <aside
+        className={styles.backendRequest}
+        aria-label="Backend team request"
+        data-testid="orcid-backend-request"
+      >
+        <p className={styles.backendRequestTitle}>{t('admin.orcid.unavailable.backendTitle')}</p>
+        <ol className={styles.backendRequestList}>
+          <li>
+            Expose <code>roleRequestId</code> on the Admin role-request response,
+            or allow the lookup endpoint to resolve it from a user ID.
+          </li>
+          <li>
+            Keep provider calls server-side and use the documented
+            <code>POST /api/Admin/orcid-lookup</code> contract.
+          </li>
+          <li>
+            Return the documented <code>OrcidLookupResponse</code> payload.
+          </li>
+          <li>
+            Track the remaining frontend/BE correlation work in{' '}
+            <code>tickets/backend/BE_ADMIN_ORCID_ROLE_REQUEST_ID_TICKET.md</code>.
+          </li>
+        </ol>
+      </aside>
+      <button
+        className={`${styles.button} ${styles.secondaryButton}`}
+        onClick={onClose}
+        type="button"
+        data-testid="orcid-check-unavailable-close"
+      >
+        {t('common.close')}
+      </button>
+    </div>
+  );
+};
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
@@ -381,6 +391,7 @@ type ModalState =
   | 'unavailable';
 
 export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) => {
+  const { t } = useI18n();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [state, setState] = useState<ModalState>('idle');
@@ -454,7 +465,7 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
         }
       }
     },
-    [],
+    [user.roleRequestId],
   );
 
   const handleRetry = useCallback(() => {
@@ -481,10 +492,10 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
             {ORCID_LOGO_SVG}
             <div>
               <h2 id="orcid-check-title" className={styles.title}>
-                ORCID Check
+                {t('admin.orcid.title')}
               </h2>
               <p className={styles.subtitle}>
-                {user.fullName ?? user.email} &mdash; User #{user.id}
+                {t('admin.orcid.subtitle').replace('{name}', user.fullName ?? user.email).replace('{id}', String(user.id))}
               </p>
             </div>
           </div>
@@ -493,7 +504,7 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
             className={styles.iconButton}
             onClick={onClose}
             type="button"
-            aria-label="Close ORCID check"
+            aria-label={t('admin.orcid.close')}
             data-testid="orcid-check-close"
           >
             <X size={18} />
@@ -505,7 +516,7 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
           {/* ORCID ID display (shown when we have a valid ID) */}
           {lookupId && (
             <div className={styles.orcidIdRow}>
-              <span className={styles.orcidIdLabel}>ORCID iD</span>
+              <span className={styles.orcidIdLabel}>{t('admin.orcid.person.id')}</span>
               <span className={styles.orcidIdValue}>{lookupId}</span>
             </div>
           )}
@@ -564,7 +575,7 @@ export const OrcidCheckModal = ({ user, open, onClose }: OrcidCheckModalProps) =
               disabled={state === 'loading'}
               data-testid="orcid-check-close-footer"
             >
-              Close
+              {t('common.close')}
             </button>
           </footer>
         )}

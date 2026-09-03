@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { annualFeeService } from '../../services/annualFee.service';
 import type { AnnualFeeDto } from '../../types/annualFee';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
@@ -30,23 +31,23 @@ const ROLE_ACCENT = 'var(--ars-admin)';
 /** Sortable column ids for the Annual Fees table. */
 type SortColumn = 'role' | 'title' | 'price' | 'billingCycle' | 'status';
 
-const BACKEND_UNAVAILABLE_MESSAGE =
-  'Annual fee tiers are unavailable until the backend exposes the annual-fee contract. The table below will populate automatically once the API is live.';
-
-const formatCycle = (cycle: string | null | undefined): string => {
-  if (cycle === 'Quarterly') return 'Quarterly (3 months)';
-  if (cycle === 'Annual') return 'Annual (12 months)';
-  if (cycle === 'SixMonth') return 'Six-month (6 months)';
-  return cycle ?? 'Not supplied';
-};
-
-const formatPrice = (priceVnd: number | null | undefined): string =>
-  typeof priceVnd === 'number'
-    ? `${priceVnd.toLocaleString('vi-VN')} VND`
-    : 'Not supplied';
-
 const AnnualFees = (): JSX.Element => {
+  const { t } = useI18n();
   useAdminGuard();
+
+  const BACKEND_UNAVAILABLE_MESSAGE = t('admin.annualFees.unavailableMessage');
+
+  const formatCycle = (cycle: string | null | undefined): string => {
+    if (cycle === 'Quarterly') return t('admin.annualFees.cycle.quarterly');
+    if (cycle === 'Annual') return t('admin.annualFees.cycle.annual');
+    if (cycle === 'SixMonth') return t('admin.annualFees.cycle.sixMonth');
+    return cycle ?? t('admin.annualFees.notSupplied');
+  };
+
+  const formatPrice = (priceVnd: number | null | undefined): string =>
+    typeof priceVnd === 'number'
+      ? `${priceVnd.toLocaleString('vi-VN')} ${t('admin.annualFees.vnd')}`
+      : t('admin.annualFees.notSupplied');
 
   const [fees, setFees] = useState<AnnualFeeDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,13 +69,13 @@ const AnnualFees = (): JSX.Element => {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Annual fees could not be loaded.',
+          : t('admin.annualFees.error.loadFailed'),
       );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -129,9 +130,9 @@ const AnnualFees = (): JSX.Element => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · ANNUAL FEES"
-        title="Annual Fees & Subscriptions"
-        description="Manage annual subscription fees offered to Researchers and Lecturers."
+        eyebrow={t('admin.annualFees.eyebrow')}
+        title={t('admin.annualFees.title')}
+        description={t('admin.annualFees.description')}
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -144,7 +145,7 @@ const AnnualFees = (): JSX.Element => {
             disabled={loading}
             data-testid="annual-fees-refresh"
           >
-            {loading || refreshing ? 'Refreshing…' : 'Refresh'}
+            {loading || refreshing ? t('admin.annualFees.refreshing') : t('admin.annualFees.refresh')}
           </Button>
         }
       />
@@ -157,8 +158,8 @@ const AnnualFees = (): JSX.Element => {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search by role, plan title, or features…"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.annualFees.searchPlaceholder')}
+        refreshLabel={t('admin.annualFees.refresh')}
       />
 
       {loading ? (
@@ -175,9 +176,9 @@ const AnnualFees = (): JSX.Element => {
             data-testid="annual-fees-unavailable"
           >
             <AlertTriangle size={26} aria-hidden />
-            <strong>Backend contract unavailable</strong>
+            <strong>{t('admin.annualFees.unavailableTitle')}</strong>
             <span>{BACKEND_UNAVAILABLE_MESSAGE}</span>
-            {error ? <span>Reason: {error}</span> : null}
+            {error ? <span>{t('admin.annualFees.reason')}: {error}</span> : null}
           </div>
         </div>
       ) : sorted.length === 0 ? (
@@ -189,12 +190,12 @@ const AnnualFees = (): JSX.Element => {
           >
             <AlertTriangle size={26} aria-hidden />
             <strong>
-              {search ? 'No matching fee plans' : 'No fee plans available'}
+              {search ? t('admin.annualFees.empty.noMatchTitle') : t('admin.annualFees.empty.noDataTitle')}
             </strong>
             <span>
               {search
-                ? `No plans match "${search}". Try a different search term.`
-                : 'Fee plans will appear here once the backend contract is live.'}
+                ? t('admin.annualFees.empty.noMatchDesc').replace('{search}', search)
+                : t('admin.annualFees.empty.noDataDesc')}
             </span>
           </div>
         </div>
@@ -207,7 +208,7 @@ const AnnualFees = (): JSX.Element => {
                   <th>
                     <SortableHeader
                       column="role"
-                      label="Role"
+                      label={t('admin.annualFees.table.role')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -215,7 +216,7 @@ const AnnualFees = (): JSX.Element => {
                   <th>
                     <SortableHeader
                       column="title"
-                      label="Plan Title"
+                      label={t('admin.annualFees.table.title')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -223,7 +224,7 @@ const AnnualFees = (): JSX.Element => {
                   <th>
                     <SortableHeader
                       column="price"
-                      label="Price"
+                      label={t('admin.annualFees.table.price')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                       align="right"
@@ -232,7 +233,7 @@ const AnnualFees = (): JSX.Element => {
                   <th>
                     <SortableHeader
                       column="billingCycle"
-                      label="Billing Cycle"
+                      label={t('admin.annualFees.table.billingCycle')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -240,13 +241,13 @@ const AnnualFees = (): JSX.Element => {
                   <th>
                     <SortableHeader
                       column="status"
-                      label="Status"
+                      label={t('admin.annualFees.table.status')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                       filterOptions={[
-                        { value: 'ALL', label: 'All statuses' },
-                        { value: 'ACTIVE', label: 'Active' },
-                        { value: 'INACTIVE', label: 'Inactive' },
+                        { value: 'ALL', label: t('admin.annualFees.status.allStatuses') },
+                        { value: 'ACTIVE', label: t('admin.annualFees.status.active') },
+                        { value: 'INACTIVE', label: t('admin.annualFees.status.inactive') },
                       ]}
                       activeFilter={statusFilter}
                       onFilterChange={(next) =>
@@ -283,7 +284,7 @@ const AnnualFees = (): JSX.Element => {
                             : styles.statusInactive
                         }`}
                       >
-                        {fee.isActive ? 'Active' : 'Inactive'}
+                        {fee.isActive ? t('admin.annualFees.status.active') : t('admin.annualFees.status.inactive')}
                       </span>
                     </td>
                   </tr>

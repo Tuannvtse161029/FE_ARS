@@ -34,7 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -79,6 +79,7 @@ type ReportsSortColumn =
   | 'score'
   | 'status';
 export const StudentResearchGroups = (): JSX.Element => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const locale = useLocale();
   const copy = (english: string, vietnamese: string): string =>
@@ -420,7 +421,7 @@ export const StudentResearchGroups = (): JSX.Element => {
           onClick={() => setActiveTab('my-groups')}
         >
           <Users size={16} aria-hidden />
-          {copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
+          {t('student.researchGroups.myGroups', 'Nhóm nghiên cứu của tôi')}
           <span className={styles.tabBadge}>{joinedGroups.length}</span>
         </button>
         <button
@@ -429,7 +430,7 @@ export const StudentResearchGroups = (): JSX.Element => {
           onClick={() => setActiveTab('explore')}
         >
           <Compass size={16} aria-hidden />
-          {copy('Explore Research Groups', 'Khám phá nhóm nghiên cứu')}
+          {t('student.researchGroups.explore', 'Khám phá nhóm nghiên cứu')}
           <span className={styles.tabBadge}>{allGroups.length}</span>
         </button>
       </div>
@@ -438,7 +439,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              {copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
+              {t('student.researchGroups.myGroups', 'Nhóm nghiên cứu của tôi')}
             </h2>
             <p className={styles.sectionSubtitle}>
               {copy(
@@ -475,7 +476,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           {isPending ? (
                             <span className={styles.pendingBadge}>
                               <Clock3 size={13} aria-hidden />
-                              {copy('Pending approval', 'Chờ duyệt')}
+                              {t('student.researchGroups.pending', 'Chờ duyệt')}
                             </span>
                           ) : (
                             <span className={styles.activityPill}>
@@ -485,7 +486,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           {g.isLeader ? (
                             <span className={styles.leaderBadge}>
                               <Crown size={13} aria-hidden />
-                              {copy('Group leader', 'Trưởng nhóm')}
+                              {t('student.researchGroups.leader', 'Trưởng nhóm')}
                             </span>
                           ) : null}
                         </div>
@@ -517,11 +518,11 @@ export const StudentResearchGroups = (): JSX.Element => {
                     </div>
                     {isPending ? (
                       <Button variant="outline" size="sm" disabled leftIcon={<Clock3 size={13} />}>
-                        {copy('Pending approval', 'Đang chờ duyệt')}
+                        {t('student.researchGroups.pending', 'Đang chờ duyệt')}
                       </Button>
                     ) : (
                       <Button variant="primary" size="sm" onClick={() => handleSelectGroup(g.id)}>
-                        {copy('Open group workspace', 'Mở không gian nhóm')}
+                        {t('student.researchGroups.openWorkspace', 'Mở không gian nhóm')}
                       </Button>
                     )}
                   </li>
@@ -536,7 +537,7 @@ export const StudentResearchGroups = (): JSX.Element => {
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              {copy('Explore Research Groups', 'Khám phá nhóm nghiên cứu')}
+              {t('student.researchGroups.explore', 'Khám phá nhóm nghiên cứu')}
             </h2>
             <p className={styles.sectionSubtitle}>
               {copy(
@@ -647,11 +648,11 @@ export const StudentResearchGroups = (): JSX.Element => {
                       ) : isPendingJoin ? (
                         <span className={styles.pendingBadge}>
                           <Clock3 size={13} aria-hidden />
-                          {copy('Pending approval', 'Đang chờ duyệt')}
+                          {t('student.researchGroups.pending', 'Đang chờ duyệt')}
                         </span>
                       ) : isFull ? (
                         <span className={styles.fullButton}>
-                          {copy('This group is full', 'Nhóm này đã đủ thành viên')}
+                          {t('student.researchGroups.full', 'Nhóm này đã đủ thành viên')}
                         </span>
                       ) : (
                         <Button
@@ -661,7 +662,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           leftIcon={isApplying ? <Loader2 size={13} className={styles.spin} /> : undefined}
                           onClick={() => void handleApplyGroup(g)}
                         >
-                          {isApplying ? copy('Sending application', 'Đang gửi đơn') : copy('Apply to join', 'Xin gia nhập nhóm')}
+                          {isApplying ? copy('Sending application', 'Đang gửi đơn') : t('student.researchGroups.apply', 'Xin gia nhập nhóm')}
                         </Button>
                       )}
                     </div>
@@ -723,9 +724,8 @@ function WorkspaceView({
   phaseKey,
   phaseTitle,
 }: WorkspaceViewProps): JSX.Element {
+  const { t } = useI18n();
   const locale = useLocale();
-  const copy = (english: string, vietnamese: string): string =>
-    locale === 'en' ? english : vietnamese;
   const lecturerId = group.lecturerId;
 
   // Default sort by submitted (newest first) so recently submitted
@@ -1134,7 +1134,7 @@ function WorkspaceView({
                             </span>
                           ) : (
                             <span className={styles.mutedText}>
-                              {copy('Not submitted', 'Chưa nộp')}
+                              {t('student.phaseReport.notSubmitted', 'Chưa nộp')}
                             </span>
                           )}
                         </td>
@@ -1148,7 +1148,7 @@ function WorkspaceView({
                               )}
                               {report.isOverdue ? (
                                 <span className={styles.overdueLabel}>
-                                  {copy('Overdue', 'Quá hạn')}
+                                  {t('student.phaseReport.overdue', 'Quá hạn')}
                                 </span>
                               ) : null}
                             </span>
@@ -1178,7 +1178,7 @@ function WorkspaceView({
                                 onClick={() => setViewDetailReport(report)}
                               >
                                 <FileText size={12} aria-hidden />
-                                {copy('View details', 'Xem chi tiết')}
+                                {t('student.phaseReport.viewDetail', 'Xem chi tiết')}
                               </button>
                             ) : null}
                             {report.reportFileUrl ? (
@@ -1201,8 +1201,8 @@ function WorkspaceView({
                                 }}
                               >
                                 {report.status === 'REJECTED'
-                                  ? copy('Resubmit', 'Nộp lại')
-                                  : `${copy('Submit phase', 'Nộp Phase')} ${report.phaseNumber ?? ''}`}
+                                  ? t('student.phaseReport.resubmit', 'Nộp lại')
+                                  : `${t('student.phaseReport.submit', 'Nộp Phase')} ${report.phaseNumber ?? ''}`}
                               </button>
                             ) : null}
                           </div>

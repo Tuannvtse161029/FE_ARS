@@ -6,6 +6,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { StepIndicator } from './components/StepIndicator';
 import { ROUTES } from '../../routes/paths';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   resetPasswordSchema,
   type ResetPasswordFormData,
@@ -26,6 +27,7 @@ function resetPasswordError(err: unknown, fallback: string): string {
 }
 
 const ResetPassword = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
@@ -69,14 +71,14 @@ const ResetPassword = () => {
       });
       sessionStorage.removeItem('ars_forgot_email');
       sessionStorage.removeItem('ars_forgot_otp');
-      setSuccessMessage('Password reset successfully! Redirecting to login...');
+      setSuccessMessage(t('reset.successMessage', 'Password reset successfully! Redirecting to login...'));
       setTimeout(() => {
         navigate(ROUTES.LOGIN, { replace: true });
       }, 1500);
     } catch (err: unknown) {
       const msg = resetPasswordError(
         err,
-        'Unable to reset password. Please try again.',
+        t('reset.errorReset', 'Unable to reset password. Please try again.')
       );
       setError(msg);
     } finally {
@@ -89,15 +91,15 @@ const ResetPassword = () => {
     <div className={styles.page}>
       <header className={styles.logoSection}>
         <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>Academic Research Sharing</span>
+        <span className={styles.brandText}>{t('app.brandName', 'ARS - Academic Research Sharing')}</span>
       </header>
 
       <StepIndicator currentStep={3} />
 
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Reset Password</h1>
+        <h1 className={styles.pageTitle}>{t('reset.title', 'Reset Password')}</h1>
         <p className={styles.pageSubtitle}>
-          Set a new password for your account. Make sure it&apos;s strong and easy to remember.
+          {t('reset.subtitleNewPassword', 'Set a new password for your account. Make sure it\'s strong and easy to remember.')}
         </p>
       </header>
 
@@ -122,8 +124,8 @@ const ResetPassword = () => {
               <Input
                 {...field}
                 type={showNewPassword ? 'text' : 'password'}
-                label="New Password"
-                placeholder="Enter new password"
+                label={t('reset.newPassword', 'New Password')}
+                placeholder={t('reset.newPasswordPlaceholder', 'Enter new password')}
                 error={errors.newPassword?.message}
                 autoComplete="new-password"
                 disabled={isLoading}
@@ -133,7 +135,7 @@ const ResetPassword = () => {
                     type="button"
                     className={styles.passwordToggle}
                     onClick={() => setShowNewPassword((s) => !s)}
-                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showNewPassword ? t('login.hidePassword', 'Hide password') : t('login.showPassword', 'Show password')}
                   >
                     {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -142,7 +144,7 @@ const ResetPassword = () => {
             )}
           />
           <p className={styles.passwordHint}>
-            Password must contain at least 8 characters, including one uppercase letter and one number.
+            {t('reset.passwordHint', 'Password must contain at least 8 characters, including one uppercase letter and one number.')}
           </p>
         </div>
 
@@ -153,8 +155,8 @@ const ResetPassword = () => {
             <Input
               {...field}
               type={showConfirmPassword ? 'text' : 'password'}
-              label="Confirm New Password"
-              placeholder="Re-enter new password"
+              label={t('reset.confirmPassword', 'Confirm New Password')}
+              placeholder={t('reset.confirmPasswordPlaceholder', 'Re-enter new password')}
               error={errors.confirmPassword?.message}
               autoComplete="new-password"
               disabled={isLoading}
@@ -164,7 +166,7 @@ const ResetPassword = () => {
                   type="button"
                   className={styles.passwordToggle}
                   onClick={() => setShowConfirmPassword((s) => !s)}
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showConfirmPassword ? t('login.hidePassword', 'Hide password') : t('login.showPassword', 'Show password')}
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -181,16 +183,16 @@ const ResetPassword = () => {
           isLoading={isLoading}
           className={styles.submitButton}
         >
-          Reset Password
+          {t('reset.resetButton', 'Reset Password')}
         </Button>
 
         <div className={styles.footer}>
           <Link to={ROUTES.VERIFY_OTP} className={styles.backLink}>
-            Re-enter code
+            {t('reset.reenterCode', 'Re-enter code')}
           </Link>
           <span className={styles.footerDivider} aria-hidden="true">/</span>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
-            Back to login
+            {t('reset.backToLogin', 'Back to login')}
           </Link>
         </div>
       </form>

@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nContext';
 import styles from './StepIndicator.module.css';
 
 interface StepIndicatorProps {
@@ -6,12 +7,14 @@ interface StepIndicatorProps {
 }
 
 const STEPS = [
-  { id: 1, label: 'Email' },
-  { id: 2, label: 'Verify' },
-  { id: 3, label: 'Reset' },
+  { id: 1, key: 'reset.stepEmail', defaultLabel: 'Email' },
+  { id: 2, key: 'reset.stepVerify', defaultLabel: 'Verify' },
+  { id: 3, key: 'reset.stepReset', defaultLabel: 'Reset' },
 ] as const;
 
 export const StepIndicator = ({ currentStep }: StepIndicatorProps) => {
+  const { t } = useI18n();
+
   return (
     <div className={styles.container} role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={3}>
       {STEPS.map((step, index) => {
@@ -30,7 +33,7 @@ export const StepIndicator = ({ currentStep }: StepIndicatorProps) => {
                   <span>{step.id}</span>
                 )}
               </div>
-              <span className={`${styles.label} ${isActive ? styles.labelActive : ''}`}>{step.label}</span>
+              <span className={`${styles.label} ${isActive ? styles.labelActive : ''}`}>{t(step.key, step.defaultLabel)}</span>
             </div>
             {index < STEPS.length - 1 && (
               <div className={`${styles.connector} ${isCompleted ? styles.connectorCompleted : ''}`} />

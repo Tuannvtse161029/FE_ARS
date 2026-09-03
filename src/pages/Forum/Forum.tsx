@@ -17,6 +17,7 @@ import {
   BarChart3,
   Users as UsersIcon,
 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
@@ -58,6 +59,7 @@ const SORT_QUERY_VALUE: Record<SortBy, string> = {
 };
 
 export const Forum = () => {
+  const { t } = useI18n();
   const { isVerified, canCreatePost } = usePermissions();
   const { canInteract, reason: interactDisabledReason } =
     useCanInteractInForum();
@@ -221,17 +223,17 @@ export const Forum = () => {
   return (
     <div className={styles.forumPage}>
       <PageHeader
-        eyebrow="Community"
-        title="Forum"
+        eyebrow={t('forum.community', 'Community')}
+        title={t('forum.title', 'Forum')}
         description={
           isVerified
-            ? 'Browse research conversations, follow colleagues, and contribute through the verified community workflow.'
-            : 'Browse public discussions while your account is pending administrator verification.'
+            ? t('forum.descriptionVerified', 'Browse research conversations, follow colleagues, and contribute through the verified community workflow.')
+            : t('forum.descriptionPending', 'Browse public discussions while your account is pending administrator verification.')
         }
         breadcrumbs={
           <>
-            Home <span aria-hidden>/</span>{' '}
-            <span className={styles.breadcrumbsActive}>Forum</span>
+            {t('nav.home', 'Home')} <span aria-hidden>/</span>{' '}
+            <span className={styles.breadcrumbsActive}>{t('forum.title', 'Forum')}</span>
           </>
         }
         actions={
@@ -248,11 +250,11 @@ export const Forum = () => {
               canInteract
                 ? undefined
                 : interactDisabledReason ??
-                  'Posting is disabled until your account is approved by an Administrator.'
+                  t('forum.postingDisabled', 'Posting is disabled until your account is approved by an Administrator.')
             }
             data-testid="forum-create-post"
           >
-            Create post
+            {t('forum.newPost', 'Create post')}
           </Button>
         }
       />

@@ -3,6 +3,7 @@ import { Bell, BellOff, CheckCheck, Inbox, AlertTriangle } from 'lucide-react';
 import type { NotificationItem } from '../../types/domain';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   inferNotificationKind,
   resolveNotificationRoute,
@@ -25,6 +26,7 @@ interface NotificationCenterProps {
 // `useNotifications`. The component is intentionally header-local — it
 // owns no global state, no localStorage, and no fabricated rows.
 export function NotificationCenter({ userId, onNavigate }: NotificationCenterProps): JSX.Element {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isGuest = user?.role === 'Guest' || !user?.isActive;
   const resolvedUserId = isGuest ? null : (typeof userId === 'number' ? userId : user?.userId ?? null);
@@ -122,8 +124,8 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
 
   // Build an a11y-friendly label that includes the unread count.
   const bellLabel = useMemo(
-    () => `Notifications, ${unreadCount} unread`,
-    [unreadCount],
+    () => `${t('notif.title', 'Notifications')}, ${unreadCount} ${t('notif.unreadCount', 'unread')}`,
+    [unreadCount, t],
   );
 
   // Hide the bell entirely for users who are not authenticated. MainLayout
@@ -162,16 +164,16 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
         <div
           id={menuId}
           role="dialog"
-          aria-label="Notifications"
+          aria-label={t('notif.title', 'Notifications')}
           className={styles.dropdown}
           data-testid="notification-dropdown"
         >
           <div className={styles.header}>
             <div className={styles.headerTitle}>
-              <span>Notifications</span>
+              <span>{t('notif.title', 'Notifications')}</span>
               {unreadCount > 0 && (
                 <span className={styles.headerCount} data-testid="notification-unread-count">
-                  {unreadCount} unread
+                  {unreadCount} {t('notif.unreadCount', 'unread')}
                 </span>
               )}
             </div>
@@ -183,7 +185,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
               data-testid="notification-mark-all"
             >
               <CheckCheck size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-              Mark all as read
+              {t('notif.markAllRead', 'Mark all as read')}
             </button>
           </div>
 
@@ -191,12 +193,12 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
             {isLoading && notifications.length === 0 ? (
               <div className={styles.loadingState} data-testid="notification-loading">
                 <div className={styles.spinner} />
-                <span>Loading notifications…</span>
+                <span>{t('notif.loading', 'Loading notifications…')}</span>
               </div>
             ) : error ? (
               <div className={styles.errorState} data-testid="notification-error">
                 <AlertTriangle size={22} />
-                <span className={styles.errorTitle}>Couldn't load notifications</span>
+                <span className={styles.errorTitle}>{t('notif.errorLoad', "Couldn't load notifications")}</span>
                 <span>{error.message}</span>
                 <button
                   type="button"
@@ -204,13 +206,13 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
                   onClick={() => void refetch()}
                   data-testid="notification-retry"
                 >
-                  Retry
+                  {t('common.retry', 'Retry')}
                 </button>
               </div>
             ) : notifications.length === 0 ? (
               <div className={styles.emptyState} data-testid="notification-empty">
                 <BellOff size={22} />
-                <span>You're all caught up</span>
+                <span>{t('notif.caughtUp', "You're all caught up")}</span>
               </div>
             ) : (
               <ul className={styles.itemList} data-testid="notification-list">
@@ -237,7 +239,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
                             {!n.isRead && (
                               <span className={styles.unreadDot} aria-hidden="true" />
                             )}
-                            {titleForKind(kind)}
+                            {titleForKind(kind, t)}
                           </span>
                           <span className={styles.itemMessage}>{n.message}</span>
                           {n.createdAt && (
@@ -264,7 +266,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
                 onNavigate('/forum');
               }}
             >
-              View all notifications
+              {t('notif.viewAll', 'View all notifications')}
             </button>
           </div>
         </div>
@@ -275,95 +277,95 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
 
 // Local title helper — pure UI sugar that turns a kind code into a
 // human-readable heading. Centralized so test snapshots stay stable.
-function titleForKind(kind: ReturnType<typeof inferNotificationKind>): string {
+function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: string, fallback?: string) => string): string {
   switch (kind) {
     // Researcher
     case 'review-request-accepted':
-      return 'Review request accepted';
+      return t('notif.reviewRequestAccepted', 'Review request accepted');
     case 'review-request-rejected':
-      return 'Review request rejected';
+      return t('notif.reviewRequestRejected', 'Review request rejected');
     case 'review-request-started':
-      return 'Review started';
+      return t('notif.reviewStarted', 'Review started');
     case 'review-request-completed':
-      return 'Review completed';
+      return t('notif.reviewCompleted', 'Review completed');
     case 'paper-status-changed':
-      return 'Paper status updated';
+      return t('notif.paperStatusUpdated', 'Paper status updated');
     case 'paper-needs-revision':
-      return 'Paper needs revision';
+      return t('notif.paperNeedsRevision', 'Paper needs revision');
     case 'review-result-available':
-      return 'Review result available';
+      return t('notif.reviewResultAvailable', 'Review result available');
     case 'membership-result':
-      return 'Membership update';
+      return t('notif.membershipUpdate', 'Membership update');
 
     // Reviewer
     case 'new-review-request':
-      return 'New review request';
+      return t('notif.newReviewRequest', 'New review request');
     case 'review-request-cancelled':
-      return 'Review request cancelled';
+      return t('notif.reviewRequestCancelled', 'Review request cancelled');
     case 'review-deadline-reminder':
-      return 'Review deadline reminder';
+      return t('notif.reviewDeadlineReminder', 'Review deadline reminder');
 
     // Lecturer
     case 'student-report-submitted':
-      return 'Report submitted';
+      return t('notif.reportSubmitted', 'Report submitted');
     case 'student-report-resubmitted':
-      return 'Report resubmitted';
+      return t('notif.reportResubmitted', 'Report resubmitted');
     case 'student-topic-requested':
-      return 'New topic request';
+      return t('notif.newTopicRequest', 'New topic request');
     case 'seminar-participant-response':
-      return 'Seminar participant update';
+      return t('notif.seminarParticipantUpdate', 'Seminar participant update');
     case 'seminar-feedback-available':
-      return 'Seminar feedback available';
+      return t('notif.seminarFeedbackAvailable', 'Seminar feedback available');
     case 'group-membership-response':
-      return 'Group membership update';
+      return t('notif.groupMembershipUpdate', 'Group membership update');
 
     // Graduate Student
     case 'seminar-invitation':
-      return 'Seminar invitation';
+      return t('notif.seminarInvitation', 'Seminar invitation');
     case 'seminar-schedule-update':
-      return 'Seminar schedule update';
+      return t('notif.seminarScheduleUpdate', 'Seminar schedule update');
     case 'added-to-research-group':
-      return 'Added to research group';
+      return t('notif.addedToResearchGroup', 'Added to research group');
     case 'topic-assigned':
-      return 'Topic assigned';
+      return t('notif.topicAssigned', 'Topic assigned');
     case 'group-invitation':
-      return 'Group invitation';
+      return t('notif.groupInvitation', 'Group invitation');
     case 'milestone-opened':
-      return 'Milestone opened';
+      return t('notif.milestoneOpened', 'Milestone opened');
     case 'learning-material-available':
-      return 'New learning material';
+      return t('notif.newLearningMaterial', 'New learning material');
     case 'report-evaluated':
-      return 'Report evaluated';
+      return t('notif.reportEvaluated', 'Report evaluated');
     case 'report-rejected':
-      return 'Report rejected';
+      return t('notif.reportRejected', 'Report rejected');
 
     // Admin
     case 'role-request-submitted':
-      return 'New role request';
+      return t('notif.newRoleRequest', 'New role request');
     case 'violation-report-submitted':
-      return 'New violation report';
+      return t('notif.newViolationReport', 'New violation report');
     case 'account-management-event':
-      return 'Account management update';
+      return t('notif.accountManagementUpdate', 'Account management update');
 
     // Platform
     case 'role-request-accepted':
-      return 'Role request accepted';
+      return t('notif.roleRequestAccepted', 'Role request accepted');
     case 'role-request-rejected':
-      return 'Role request rejected';
+      return t('notif.roleRequestRejected', 'Role request rejected');
     case 'account-status-changed':
-      return 'Account status changed';
+      return t('notif.accountStatusChanged', 'Account status changed');
     case 'account-platform-update':
-      return 'Account update';
+      return t('notif.accountUpdate', 'Account update');
     case 'system-update':
-      return 'System update';
+      return t('notif.systemUpdate', 'System update');
 
     // Cross-role
     case 'forum-reply':
-      return 'Forum reply';
+      return t('notif.forumReply', 'Forum reply');
 
     case 'unknown':
     default:
-      return 'Notification';
+      return t('notif.notification', 'Notification');
   }
 }
 

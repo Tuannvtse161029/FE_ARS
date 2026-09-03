@@ -13,7 +13,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
@@ -52,6 +52,7 @@ const normalizeWorkspaceLabel = (raw: string): string => {
 };
 
 export const SubmitReport = (): JSX.Element => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const locale = useLocale();
   const studentId = user?.userId ?? null;
@@ -166,7 +167,7 @@ export const SubmitReport = (): JSX.Element => {
     setTargetPhase({
       phaseNumber,
       phasedReportId,
-      title: title || `Phase ${phaseNumber}`,
+      title: title || `${t('student.phaseReport.phasePrefix', 'Phase')} ${phaseNumber}`,
     });
     setSubmitting(true);
   };
@@ -180,7 +181,7 @@ export const SubmitReport = (): JSX.Element => {
       <div className={styles.page}>
         <div className={styles.errorBanner}>
           <AlertCircle size={16} />
-          <span>Please sign in to view and submit research reports.</span>
+          <span>{t('student.phaseReport.signInPrompt', 'Please sign in to view and submit research reports.')}</span>
         </div>
       </div>
     );
@@ -196,31 +197,31 @@ export const SubmitReport = (): JSX.Element => {
   const getStatusBadge = (status?: string | null) => {
     switch (status) {
       case 'Passed':
-        return { className: styles.statusPassed, label: 'Passed' };
+        return { className: styles.statusPassed, label: t('student.phaseReport.statusPassed', 'Passed') };
       case 'OnTime':
-        return { className: styles.statusOnTime, label: 'On time' };
+        return { className: styles.statusOnTime, label: t('student.phaseReport.statusOnTime', 'On time') };
       case 'Overdue':
-        return { className: styles.statusOverdue, label: 'Overdue' };
+        return { className: styles.statusOverdue, label: t('student.phaseReport.statusOverdue', 'Overdue') };
       case 'Rejected':
-        return { className: styles.statusRejected, label: 'Rejected' };
+        return { className: styles.statusRejected, label: t('student.phaseReport.statusRejected', 'Rejected') };
       default:
-        return { className: styles.statusPending, label: 'Pending' };
+        return { className: styles.statusPending, label: t('student.phaseReport.statusPending', 'Pending') };
     }
   };
 
   return (
     <div className={styles.page}>
       <nav className={styles.breadcrumbs}>
-        Home &gt; Collaborative Workspace &gt;{' '}
-        {primaryGroup?.name ?? 'Research Group'} &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Submit Progress Report</span>
+        {t('student.phaseReport.breadcrumbHome', 'Home')} &gt; {t('student.phaseReport.breadcrumbWorkspace', 'Collaborative Workspace')} &gt;{' '}
+        {primaryGroup?.name ?? t('student.phaseReport.breadcrumbResearchGroup', 'Research Group')} &gt;{' '}
+        <span className={styles.activeBreadcrumb}>{t('student.phaseReport.breadcrumbSubmit', 'Submit Progress Report')}</span>
       </nav>
 
       <header className={styles.headerRow}>
         <div>
-          <h1 className={styles.pageTitle}>Submit Research Report by Phase</h1>
+          <h1 className={styles.pageTitle}>{t('student.phaseReport.title', 'Submit Research Report by Phase')}</h1>
           <p className={styles.pageSubtitle}>
-            Track 5 progress milestones for your topic and submit reports on schedule. Your supervisor will review and respond directly.
+            {t('student.phaseReport.subtitle', 'Track 5 progress milestones for your topic and submit reports on schedule. Your supervisor will review and respond directly.')}
           </p>
         </div>
       </header>
@@ -243,15 +244,15 @@ export const SubmitReport = (): JSX.Element => {
           <div>
             <h2 id="leader-permission-title" className={styles.leaderNoticeTitle}>
               {isCurrentUserLeader
-                ? 'You are the group leader'
-                : 'Report submission is limited to the group leader'}
+                ? t('student.phaseReport.leaderTitleIsLeader', 'You are the group leader')
+                : t('student.phaseReport.leaderTitleNotLeader', 'Report submission is limited to the group leader')}
             </h2>
             <p className={styles.leaderNoticeText}>
               {isCurrentUserLeader
-                ? 'You can submit reports for phases 1 through 5. Each submission is sent to your lecturer for review.'
+                ? t('student.phaseReport.leaderTextIsLeader', 'You can submit reports for phases 1 through 5. Each submission is sent to your lecturer for review.')
                 : leaderMember
-                  ? `${leaderMember.studentName || `Student #${leaderMember.studentId}`} is responsible for uploads. Contact them or your lecturer if the group leader needs to change.`
-                  : 'Ask your lecturer to assign a group leader before your group can submit a milestone report.'}
+                  ? t('student.phaseReport.leaderTextNotLeaderWithMember', '{name} is responsible for uploads. Contact them or your lecturer if the group leader needs to change.').replace('{name}', leaderMember.studentName || `Student #${leaderMember.studentId}`)
+                  : t('student.phaseReport.leaderTextNotLeaderNoMember', 'Ask your lecturer to assign a group leader before your group can submit a milestone report.')}
             </p>
           </div>
         </section>
@@ -260,52 +261,52 @@ export const SubmitReport = (): JSX.Element => {
       <div className={styles.grid}>
         {/* Topic & Group Info */}
         <section className={styles.card}>
-          <h3 className={styles.cardTitle}>Topic &amp; group information</h3>
+          <h3 className={styles.cardTitle}>{t('student.phaseReport.infoTitle', 'Topic & group information')}</h3>
 
           {isLoading ? (
             <div className={styles.detailRow}>
               <Loader2 size={14} className={styles.spin} />
-              <span>Loading group information…</span>
+              <span>{t('student.phaseReport.infoLoading', 'Loading group information…')}</span>
             </div>
           ) : !primaryGroup ? (
             <div className={styles.emptyState}>
               <Inbox size={18} />
               <span>
-                You haven't joined a research group yet. When a lecturer assigns you to a group, you'll be able to submit reports here.
+                {t('student.phaseReport.infoNoGroup', "You haven't joined a research group yet. When a lecturer assigns you to a group, you'll be able to submit reports here.")}
               </span>
             </div>
           ) : (
             <>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Supervisor</span>
+                <span className={styles.detailLabel}>{t('student.phaseReport.infoSupervisor', 'Supervisor')}</span>
                 <span className={styles.detailVal}>
                   <Users size={12} />
                   {typeof lecturerId === 'number'
-                    ? `Lecturer #`
-                    : 'Not assigned yet'}
+                    ? `${t('student.phaseReport.lecturerPrefix', 'Lecturer')} #${lecturerId}`
+                    : t('student.phaseReport.notAssigned', 'Not assigned yet')}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Topic</span>
+                <span className={styles.detailLabel}>{t('student.phaseReport.infoTopic', 'Topic')}</span>
                 <span className={styles.detailVal}>
                   <FileText size={12} />
-                  {primaryTopic?.title ?? `Unassigned topic`}
+                  {primaryTopic?.title ?? t('student.phaseReport.unassignedTopic', 'Unassigned topic')}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Research group</span>
+                <span className={styles.detailLabel}>{t('student.phaseReport.infoGroup', 'Research group')}</span>
                 <span className={styles.detailVal}>
                   <Users size={12} />
                   {primaryGroup.name}
                 </span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Project deadline</span>
+                <span className={styles.detailLabel}>{t('student.phaseReport.infoDeadline', 'Project deadline')}</span>
                 <span className={styles.detailVal}>
                   <Calendar size={12} />
                   {primaryGroup.deadline
                     ? formatDate(primaryGroup.deadline, locale)
-                    : 'No deadline set'}
+                    : t('student.phaseReport.noDeadline', 'No deadline set')}
                 </span>
               </div>
             </>
@@ -314,7 +315,7 @@ export const SubmitReport = (): JSX.Element => {
 
         {/* Phase Report List */}
         <section className={`${styles.card} ${styles.milestonesCard}`}>
-          <h2 className={styles.cardTitle}>Phase report milestones</h2>
+          <h2 className={styles.cardTitle}>{t('student.phaseReport.milestonesTitle', 'Phase report milestones')}</h2>
 
           {rejection ? (
             <RejectionFeedbackBanner
@@ -329,13 +330,13 @@ export const SubmitReport = (): JSX.Element => {
           {isLoadingTopicDetails ? (
             <div className={styles.detailRow}>
               <Loader2 size={14} className={styles.spin} />
-              <span>Loading phase milestones…</span>
+              <span>{t('student.phaseReport.milestonesLoading', 'Loading phase milestones…')}</span>
             </div>
           ) : topicPhases.length === 0 ? (
             <div className={styles.emptyState}>
               <Clock size={18} />
               <span>
-                Your supervisor has not configured any phase milestones for this topic yet. Ask them to set up milestones so your group can begin submitting reports.
+                {t('student.phaseReport.milestonesEmpty', 'Your supervisor has not configured any phase milestones for this topic yet. Ask them to set up milestones so your group can begin submitting reports.')}
               </span>
             </div>
           ) : (
@@ -359,12 +360,12 @@ export const SubmitReport = (): JSX.Element => {
                           className={`${styles.phaseNumber} ${
                             isPassed ? styles.phaseNumberPassed : ''
                           }`}
-                          aria-label={`Phase ${pNum}`}
+                          aria-label={`${t('student.phaseReport.phasePrefix', 'Phase')} ${pNum}`}
                         >
                           {pNum}
                         </span>
                         <h3 className={styles.phaseTitle}>
-                          {phase.milestoneTitle || `Phase ${pNum}`}
+                          {phase.milestoneTitle || `${t('student.phaseReport.phasePrefix', 'Phase')} ${pNum}`}
                         </h3>
                       </div>
 
@@ -374,44 +375,44 @@ export const SubmitReport = (): JSX.Element => {
                         </span>
                         {phase.lectureFeedback != null && (
                           <span className={styles.gradeText}>
-                            Grade: {phase.lectureFeedback}/10
+                            {t('student.phaseReport.grade', 'Grade')}: {phase.lectureFeedback}/10
                           </span>
                         )}
                       </div>
                     </div>
 
                     <div className={styles.phaseMetadata}>
-                      <p><strong>Deadline:</strong> {formatDate(phase.deadlineAt, locale)}</p>
+                      <p><strong>{t('student.phaseReport.deadline', 'Deadline')}:</strong> {formatDate(phase.deadlineAt, locale)}</p>
                       {phase.submittedAt && (
-                        <p><strong>Submitted at:</strong> {formatDate(phase.submittedAt, locale)}</p>
+                        <p><strong>{t('student.phaseReport.submittedAt', 'Submitted at')}:</strong> {formatDate(phase.submittedAt, locale)}</p>
                       )}
                     </div>
 
                     {hasFile && (
                       <div className={styles.submittedFile}>
                         <FileText size={14} aria-hidden />
-                        <span>Submitted report file:</span>
+                        <span>{t('student.phaseReport.submittedFile', 'Submitted report file:')}</span>
                         <a
                           href={phase.reportFileUrl!}
                           target="_blank"
                           rel="noreferrer"
                           className={styles.fileLink}
                         >
-                          View PDF <ExternalLink size={12} aria-hidden />
+                          {t('student.phaseReport.viewPdf', 'View PDF')} <ExternalLink size={12} aria-hidden />
                         </a>
                       </div>
                     )}
 
                     {phase.lecturerDescription && (
                       <div className={styles.feedbackNote}>
-                        <strong>Lecturer feedback:</strong> {phase.lecturerDescription}
+                        <strong>{t('student.phaseReport.lecturerFeedback', 'Lecturer feedback')}:</strong> {phase.lecturerDescription}
                       </div>
                     )}
 
                     <div className={styles.phaseActionRow}>
                       {isPassed ? (
                         <span className={styles.completedState}>
-                          <CheckCircle2 size={16} aria-hidden /> Phase complete
+                          <CheckCircle2 size={16} aria-hidden /> {t('student.phaseReport.phaseComplete', 'Phase complete')}
                         </span>
                       ) : (
                         <>
@@ -425,11 +426,11 @@ export const SubmitReport = (): JSX.Element => {
                             }
                           >
                             <Upload size={14} aria-hidden />
-                            {hasFile ? 'Resubmit report' : 'Submit report'}
+                            {hasFile ? t('student.phaseReport.resubmit', 'Resubmit report') : t('student.phaseReport.submit', 'Submit report')}
                           </button>
                           {!isCurrentUserLeader ? (
                             <p id={`phase-${pNum}-permission`} className={styles.actionExplanation}>
-                              Only your Group Leader can submit this phase report. Contact your lecturer to update the group leader.
+                              {t('student.phaseReport.onlyLeaderCanSubmit', 'Only your Group Leader can submit this phase report. Contact your lecturer to update the group leader.')}
                             </p>
                           ) : null}
                         </>

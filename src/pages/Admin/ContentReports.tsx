@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Inbox } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import styles from './ContentReports.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { ResolveReportModal } from '../../components/admin/ResolveReportModal';
@@ -34,18 +35,19 @@ const ROLE_ACCENT = 'var(--ars-admin)';
 /** Sortable column ids for the Content Reports table. */
 type SortColumn = 'reason' | 'type' | 'reporter' | 'reported' | 'status' | 'createdAt';
 
-const STATUS_OPTIONS: Array<{
-  value: ViolationReportStatus | 'ALL';
-  label: string;
-}> = [
-  { value: 'ALL', label: 'All Statuses' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'RESOLVED', label: 'Resolved' },
-  { value: 'DISMISSED', label: 'Dismissed' },
-];
-
 export default function ContentReports(): JSX.Element {
+  const { t } = useI18n();
   useAdminGuard();
+
+  const STATUS_OPTIONS: Array<{
+    value: ViolationReportStatus | 'ALL';
+    label: string;
+  }> = [
+    { value: 'ALL', label: t('admin.contentReports.status.allStatuses') },
+    { value: 'PENDING', label: t('common.status.pending') },
+    { value: 'RESOLVED', label: t('admin.contentReports.status.resolved') },
+    { value: 'DISMISSED', label: t('admin.contentReports.status.dismissed') },
+  ];
 
   const [reports, setReports] = useState<ViolationReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,13 +75,13 @@ export default function ContentReports(): JSX.Element {
       setReports(data);
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : 'Failed to load violation reports.',
+        e instanceof Error ? e.message : t('admin.contentReports.error.tryAgain'),
       );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, statusFilter]);
+  }, [search, statusFilter, t]);
 
   useEffect(() => {
     void loadReports();
@@ -163,7 +165,7 @@ export default function ContentReports(): JSX.Element {
       await loadReports();
     } catch (e) {
       setSubmitError(
-        e instanceof Error ? e.message : 'Failed to resolve report.',
+        e instanceof Error ? e.message : t('admin.contentReports.error.resolveFailed'),
       );
     } finally {
       setSubmitting(false);
@@ -173,11 +175,9 @@ export default function ContentReports(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="ADMIN · VIOLATIONS"
-        title="Content & Forum Violations"
-        description={`Live moderation queue backed by GET /api/Report. Review pending reports and resolve them with the appropriate action.${
-          pendingCount > 0 ? ` ${pendingCount} pending.` : ''
-        }`}
+        eyebrow={t('admin.contentReports.eyebrow')}
+        title={t('admin.contentReports.title')}
+        description={t('admin.contentReports.description').replace('{count}', pendingCount > 0 ? t('admin.contentReports.pendingCount').replace('{count}', String(pendingCount)) : '')}
         accent={ROLE_ACCENT}
       />
 
@@ -189,8 +189,8 @@ export default function ContentReports(): JSX.Element {
           void loadReports();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search by reason, author or reporter…"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.contentReports.searchPlaceholder')}
+        refreshLabel={t('admin.contentReports.refresh')}
         filters={
           <select
             className={styles.filterSelect}
@@ -228,7 +228,7 @@ export default function ContentReports(): JSX.Element {
         >
           <ErrorBanner
             tone="error"
-            title="Could not load violation reports"
+            title={t('admin.contentReports.error.loadFailed')}
             message={error}
             retry={
               <Button
@@ -237,7 +237,7 @@ export default function ContentReports(): JSX.Element {
                 onClick={() => void loadReports()}
                 disabled={loading || refreshing}
               >
-                {loading || refreshing ? 'Retrying…' : 'Retry'}
+                {loading || refreshing ? t('admin.contentReports.retrying') : t('admin.contentReports.retry')}
               </Button>
             }
           />
@@ -252,10 +252,10 @@ export default function ContentReports(): JSX.Element {
               icon={<Inbox size={20} />}
               title={
                 search.trim().length > 0
-                  ? `No violation reports match "${search.trim()}".`
-                  : 'No violation reports match these filters.'
+                  ? t('admin.contentReports.empty.noMatchTitle').replace('{search}', search.trim())
+                  : t('admin.contentReports.empty.noDataTitle')
               }
-              description="Reports filed against forum comments or papers will appear here for resolution."
+              description={t('admin.contentReports.empty.description')}
             />
           </div>
         </div>
@@ -265,11 +265,11 @@ export default function ContentReports(): JSX.Element {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Report ID</th>
+                  <th>{t('admin.contentReports.table.reportId')}</th>
                   <th>
                     <SortableHeader
                       column="type"
-                      label="Type"
+                      label={t('admin.contentReports.table.type')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -277,7 +277,7 @@ export default function ContentReports(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="reported"
-                      label="Target Author"
+                      label={t('admin.contentReports.table.targetAuthor')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -285,7 +285,7 @@ export default function ContentReports(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="reason"
-                      label="Reason"
+                      label={t('admin.contentReports.table.reason')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -293,7 +293,7 @@ export default function ContentReports(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="reporter"
-                      label="Reported By"
+                      label={t('admin.contentReports.table.reportedBy')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -301,7 +301,7 @@ export default function ContentReports(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="createdAt"
-                      label="Date"
+                      label={t('admin.contentReports.table.date')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -309,7 +309,7 @@ export default function ContentReports(): JSX.Element {
                   <th>
                     <SortableHeader
                       column="status"
-                      label="Status"
+                      label={t('admin.contentReports.table.status')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                       filterOptions={STATUS_OPTIONS.map((opt) => ({
@@ -324,7 +324,7 @@ export default function ContentReports(): JSX.Element {
                       }
                     />
                   </th>
-                  <th className={styles.actionCell}>Action</th>
+                  <th className={styles.actionCell}>{t('admin.contentReports.table.action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,8 +340,8 @@ export default function ContentReports(): JSX.Element {
                         }`}
                       >
                         {r.type === 'FORUM_COMMENT'
-                          ? 'Forum Comment'
-                          : 'Research Paper'}
+                          ? t('admin.contentReports.table.typeForumComment')
+                          : t('admin.contentReports.table.typeResearchPaper')}
                       </span>
                     </td>
                     <td>{r.targetAuthorName}</td>
@@ -356,7 +356,7 @@ export default function ContentReports(): JSX.Element {
                           styles[`status_${r.status}`] ?? ''
                         }`}
                       >
-                        {r.status}
+                        {t(`common.status.${r.status.toLowerCase()}`)}
                       </span>
                     </td>
                     <td className={styles.actionCell}>
@@ -367,8 +367,8 @@ export default function ContentReports(): JSX.Element {
                         disabled={r.status !== 'PENDING'}
                       >
                         {r.status === 'PENDING'
-                          ? 'Review Violation'
-                          : 'View Details'}
+                          ? t('admin.contentReports.action.reviewViolation')
+                          : t('admin.contentReports.action.viewDetails')}
                       </button>
                     </td>
                   </tr>
@@ -385,7 +385,7 @@ export default function ContentReports(): JSX.Element {
             onPrev={prev}
             onNext={next}
             onPage={setPage}
-            itemLabel="violation reports"
+            itemLabel={t('admin.contentReports.itemLabel')}
           />
         </div>
       )}

@@ -55,6 +55,7 @@ import { ROUTES } from '../../routes/paths';
 import { useEmailVerification } from '../../hooks/useEmailVerification';
 import { isVerifyEmailToken } from '../../services/emailVerification.service';
 import authService from '../../services/auth.service';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   registrationOtpBypassAllowed,
 } from '../../config/featureFlags';
@@ -87,6 +88,7 @@ interface OtpSuccessState {
 }
 
 export const EmailVerificationLanding = (): JSX.Element => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -288,11 +290,11 @@ export const EmailVerificationLanding = (): JSX.Element => {
       >
         <p className={styles.sectionMarker}>
           <span className={styles.markerNum}>01</span>
-          <span className={styles.markerLabel}>/ Verification</span>
+          <span className={styles.markerLabel}>/ {t('verify.verification', 'Verification')}</span>
         </p>
-        <h1 className={styles.heading}>Confirming your registration…</h1>
+        <h1 className={styles.heading}>{t('verify.verifying.title', 'Confirming your registration…')}</h1>
         <p className={styles.lede}>
-          Hang tight while we confirm the verification link with the ARS backend.
+          {t('verify.verifying.lede', 'Hang tight while we confirm the verification link with the ARS backend.')}
         </p>
         <div className={styles.progressRail} aria-hidden="true">
           <span className={styles.progressDot} />
@@ -313,16 +315,15 @@ export const EmailVerificationLanding = (): JSX.Element => {
       >
         <p className={styles.sectionMarker}>
           <span className={styles.markerNum}>01</span>
-          <span className={styles.markerLabel}>/ Verification</span>
+          <span className={styles.markerLabel}>/ {t('verify.verification', 'Verification')}</span>
         </p>
         <div className={styles.statusBadge} data-tone="success">
           <Check size={18} aria-hidden="true" />
-          <span>Verified</span>
+          <span>{t('verify.verifiedBadge', 'Verified')}</span>
         </div>
-        <h1 className={styles.heading}>Email verified successfully.</h1>
+        <h1 className={styles.heading}>{t('verify.successTitle', 'Email verified successfully.')}</h1>
         <p className={styles.lede}>
-          Your account is confirmed. An administrator will review your registration
-          before role-restricted areas unlock.
+          {t('verify.successBody', 'Your account is confirmed. An administrator will review your registration before role-restricted areas unlock.')}
         </p>
         <div className={styles.actions}>
           <Button
@@ -332,7 +333,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
             onClick={() => navigate(ROUTES.FORUM, { replace: true })}
             data-testid="verify-email-go-forum"
           >
-            Continue to Forum
+            {t('verify.goForum', 'Continue to Forum')}
           </Button>
           <Button
             variant="ghost"
@@ -341,7 +342,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
             onClick={() => navigate(ROUTES.LOGIN, { replace: true })}
             data-testid="verify-email-go-login"
           >
-            Sign in instead
+            {t('verify.signInInstead', 'Sign in instead')}
           </Button>
         </div>
       </section>
@@ -356,12 +357,12 @@ export const EmailVerificationLanding = (): JSX.Element => {
         : 'warning';
     const headline =
       linkState.status === 'expired'
-        ? 'This verification link has expired.'
+        ? t('verify.failed.expired', 'This verification link has expired.')
         : linkState.status === 'invalid_token'
-          ? 'This verification link is not authorised.'
+          ? t('verify.failed.invalid', 'This verification link is not authorised.')
           : linkState.status === 'network_error'
-            ? 'Network error — please reconnect.'
-            : 'We could not verify your email.';
+            ? t('verify.failed.network', 'Network error — please reconnect.')
+            : t('verify.failed.generic', 'We could not verify your email.');
     return (
       <section
         className={styles.shell}
@@ -370,7 +371,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
       >
         <p className={styles.sectionMarker}>
           <span className={styles.markerNum}>01</span>
-          <span className={styles.markerLabel}>/ Verification</span>
+          <span className={styles.markerLabel}>/ {t('verify.verification', 'Verification')}</span>
         </p>
         <div className={styles.statusBadge} data-tone={tone}>
           <CircleAlert size={18} aria-hidden="true" />
@@ -378,7 +379,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
         </div>
         <h1 className={styles.heading}>{headline}</h1>
         <p className={styles.lede}>
-          {linkState.errorMessage ?? 'The verification link in your email did not work.'}
+          {linkState.errorMessage ?? t('verify.failed.defaultMsg', 'The verification link in your email did not work.')}
         </p>
         <div className={styles.actions}>
           <Button
@@ -388,7 +389,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
             onClick={() => navigate(ROUTES.LOGIN, { replace: true })}
             data-testid="verify-email-go-login"
           >
-            Back to Sign In
+            {t('verify.failed.goLogin', 'Back to Sign In')}
           </Button>
         </div>
       </section>
@@ -401,18 +402,16 @@ export const EmailVerificationLanding = (): JSX.Element => {
       <section className={styles.shell} aria-live="polite" data-testid="verify-email-otp-success">
         <p className={styles.sectionMarker}>
           <span className={styles.markerNum}>02</span>
-          <span className={styles.markerLabel}>/ Verified</span>
+          <span className={styles.markerLabel}>/ {t('verify.otpSuccess.stageLabel', 'Verified')}</span>
         </p>
         <div className={styles.statusBadge} data-tone="success">
           <Check size={18} aria-hidden="true" />
-          <span>Verified</span>
+          <span>{t('verify.verifiedBadge', 'Verified')}</span>
         </div>
-        <h1 className={styles.heading}>Email verified.</h1>
+        <h1 className={styles.heading}>{t('verify.otpSuccess.title', 'Email verified.')}</h1>
         <p className={styles.lede}>
-          Your email{' '}
-          <span className={styles.emailCite}>{otpSuccess.email || 'on file'}</span> has
-          been verified. Returning you to sign in so you can access your account after
-          administrator review.
+          {t('verify.otpSuccess.lede1', 'Your email')}{' '}
+          <span className={styles.emailCite}>{otpSuccess.email || t('verify.otpSuccess.onFile', 'on file')}</span> {t('verify.otpSuccess.lede2', 'has been verified. Returning you to sign in so you can access your account after administrator review.')}
         </p>
         <div className={styles.actions}>
           <Button
@@ -422,7 +421,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
             onClick={() => navigate(ROUTES.FORUM, { replace: true })}
             data-testid="verify-email-go-forum"
           >
-            Continue to Forum
+            {t('verify.goForum', 'Continue to Forum')}
           </Button>
         </div>
       </section>
@@ -436,13 +435,13 @@ export const EmailVerificationLanding = (): JSX.Element => {
     <section className={styles.shell} data-testid="verify-email-otp-form">
       <p className={styles.sectionMarker}>
         <span className={styles.markerNum}>02</span>
-        <span className={styles.markerLabel}>/ Verification</span>
+        <span className={styles.markerLabel}>/ {t('verify.verification', 'Verification')}</span>
       </p>
-      <h1 className={styles.heading}>Confirm your registration.</h1>
+      <h1 className={styles.heading}>{t('verify.otp.title', 'Confirm your registration.')}</h1>
       <p className={styles.lede}>
-        We sent a 6-digit code to{' '}
-        <span className={styles.emailCite}>{email || 'your email address'}</span>.
-        Enter it below to complete your registration.
+        {t('verify.otp.lede1', 'We sent a 6-digit code to')}{' '}
+        <span className={styles.emailCite}>{email || t('verify.otp.yourEmail', 'your email address')}</span>.
+        {t('verify.otp.lede2', 'Enter it below to complete your registration.')}
       </p>
 
       <form className={styles.form} onSubmit={handleVerifyOtp} noValidate>
@@ -455,7 +454,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
         {resendSuccess && (
           <div className={styles.successBox} role="status">
-            A new 6-digit code has been sent to your email.
+            {t('verify.otp.resendSuccess', 'A new 6-digit code has been sent to your email.')}
           </div>
         )}
 
@@ -463,7 +462,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
         {!email && (
           <div className={styles.emailField}>
             <label className={styles.emailLabel} htmlFor="verification-email">
-              Registered email
+              {t('verify.otp.emailLabel', 'Registered email')}
             </label>
             <input
               id="verification-email"
@@ -478,7 +477,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
 
         {/* 6 OTP Cells */}
         <fieldset className={styles.otpFieldset}>
-          <legend className={styles.otpLegend}>Six-digit code</legend>
+          <legend className={styles.otpLegend}>{t('verify.otp.legend', 'Six-digit code')}</legend>
           <div className={styles.otpRow}>
             {otp.map((digit, idx) => (
               <input
@@ -498,7 +497,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
                   errorMessage ? styles.otpBoxError : ''
                 }`}
                 disabled={isVerifyingOtp}
-                aria-label={`Digit ${idx + 1} of ${OTP_CELL_COUNT}`}
+                aria-label={`${t('verify.otp.digitAria', 'Digit')} ${idx + 1} / ${OTP_CELL_COUNT}`}
                 autoComplete="one-time-code"
               />
             ))}
@@ -515,7 +514,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
           className={styles.submitButton}
           data-testid="verify-email-submit"
         >
-          {isVerifyingOtp ? 'Verifying…' : 'Verify & continue'}
+          {isVerifyingOtp ? t('verify.otp.verifyingBtn', 'Verifying…') : t('verify.otp.verifyBtn', 'Verify & continue')}
         </Button>
 
         {/* Dev-only bypass. Visible when the env var disables OTP for
@@ -525,17 +524,16 @@ export const EmailVerificationLanding = (): JSX.Element => {
             className={styles.devSkipBlock}
             data-testid="verify-email-dev-skip"
             role="region"
-            aria-label="Development-only OTP bypass"
+            aria-label={t('verify.otp.devSkipAria', 'Development-only OTP bypass')}
           >
             <div className={styles.devSkipNotice}>
               <span className={styles.devSkipBadge}>
                 <ShieldOff size={12} aria-hidden="true" />
-                <span>Development bypass</span>
+                <span>{t('verify.otp.devSkipBadge', 'Development bypass')}</span>
               </span>
               <p className={styles.devSkipCopy}>
-                The <code className={styles.codeChip}>VITE_REQUIRE_REGISTRATION_OTP</code>{' '}
-                flag is <strong>off</strong> in this build. You can complete the
-                registration without entering an OTP. Production will require a code.
+                {t('verify.otp.devSkipCopy1', 'The')} <code className={styles.codeChip}>VITE_REQUIRE_REGISTRATION_OTP</code>{' '}
+                {t('verify.otp.devSkipCopy2', 'flag is')} <strong>off</strong> {t('verify.otp.devSkipCopy3', 'in this build. You can complete the registration without entering an OTP. Production will require a code.')}
               </p>
             </div>
             <Button
@@ -548,16 +546,16 @@ export const EmailVerificationLanding = (): JSX.Element => {
               disabled={isVerifyingOtp}
               data-testid="verify-email-skip-for-dev"
             >
-              Skip for development
+              {t('verify.otp.skipDevBtn', 'Skip for development')}
             </Button>
           </div>
         ) : null}
 
         <div className={styles.resendRow}>
-          <span className={styles.resendLabel}>Didn’t receive the code?</span>
+          <span className={styles.resendLabel}>{t('verify.otp.didNotReceive', 'Didn’t receive the code?')}</span>
           {resendCooldown > 0 ? (
             <span className={styles.resendTimer} data-testid="verify-email-resend-timer">
-              Resend in {resendCooldown}s
+              {`${t('verify.otp.resendIn', 'Resend in')} ${resendCooldown}s`}
             </span>
           ) : (
             <button
@@ -572,7 +570,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
               ) : (
                 <RefreshCcw size={14} aria-hidden="true" />
               )}
-              <span>{isResending ? 'Sending…' : 'Resend code'}</span>
+              <span>{isResending ? t('verify.otp.sendingBtn', 'Sending…') : t('verify.otp.resendBtn', 'Resend code')}</span>
             </button>
           )}
         </div>
@@ -580,7 +578,7 @@ export const EmailVerificationLanding = (): JSX.Element => {
         <div className={styles.footer}>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
             <ArrowLeft size={16} className={styles.backIcon} aria-hidden="true" />
-            Back to Sign In
+            {t('verify.failed.goLogin', 'Back to Sign In')}
           </Link>
         </div>
       </form>
