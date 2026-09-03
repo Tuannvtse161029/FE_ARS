@@ -58,12 +58,17 @@ const renderAt = (route: string) =>
     </MemoryRouter>,
   );
 
+const acceptReviewerPolicyIfOpen = async () => {
+  const acceptButton = screen.queryByRole('button', { name: /Accept & Continue/i });
+  if (acceptButton) await userEvent.setup().click(acceptButton);
+};
+
 describe('ReviewerAssignmentDetail — privacy & metadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('shows an explicit protected-document unavailable state even when the assignment carries a raw file URL', async () => {
+  it('shows the responsibility gate before exposing a raw manuscript URL', async () => {
     const paper = buildUnderReviewPaper({});
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [paper],
@@ -71,15 +76,15 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
 
     renderAt('/reviewer/assignments/under-review-1');
 
-    expect(
-      await screen.findByText(/policy acceptance and returns a protected document link/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/read responsibilities before opening the manuscript/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /read responsibilities/i })).toBeInTheDocument();
+    expect(screen.getByText(/cannot be opened until you accept/i)).toBeInTheDocument();
     expect(screen.queryByTestId('pdf-frame')).toBeNull();
     expect(screen.queryByTitle(/PDF preview/i)).toBeNull();
-    expect(screen.queryByRole('link', { name: /Download manuscript/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Download/i })).toBeNull();
   });
 
-  it('shows the same protected-document unavailable state when no document link is present', async () => {
+  it('keeps the manuscript unavailable until the reviewer accepts the policy', async () => {
     const paper = buildUnderReviewPaper({ fileUrl: undefined });
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [paper],
@@ -87,9 +92,7 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
 
     renderAt('/reviewer/assignments/under-review-1');
 
-    expect(
-      await screen.findByText(/policy acceptance and returns a protected document link/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/cannot be opened until you accept/i)).toBeInTheDocument();
     expect(screen.queryByTestId('pdf-frame')).toBeNull();
   });
 

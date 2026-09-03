@@ -30,9 +30,7 @@ import {
   resolveIdentifiers,
   matchesSearch,
   matchesStatus,
-  matchesVerification,
   statusBadgeClass,
-  verificationBadgeClass,
   type AdminPaperFilters,
 } from './adminPublicationHelpers';
 import adminStyles from './AdminPublication.module.css';
@@ -52,7 +50,6 @@ interface AdminListConfig {
 type AdminListSortColumn =
   | 'title'
   | 'status'
-  | 'verification'
   | 'reviewer'
   | 'submittedAt';
 
@@ -80,8 +77,8 @@ const PUBLISHED_PAPERS_CONFIG: AdminListConfig = {
   title: 'Published Papers',
   subtitle:
     'Admin-only view of the published catalog. The Home catalog enforces the same visibility predicate.',
-  statusOptions: ['PUBLISHED'],
-  defaultStatus: 'PUBLISHED',
+  statusOptions: ['PUBLISHED', 'INACTIVE'],
+  defaultStatus: 'ALL',
   itemLabel: 'published papers',
 };
 
@@ -94,8 +91,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
   const [statusFilter, setStatusFilter] = useState<AdminPaperFilters['status']>(
     config.defaultStatus,
   );
-  const [verificationFilter, setVerificationFilter] =
-    useState<AdminPaperFilters['verification']>('ALL');
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
@@ -142,7 +137,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     setActionFeedback(null);
     try {
       await publicationAdapter.deactivatePublishedPaper(paper.id);
-      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)));
+      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'INACTIVE' } : p)));
       setActionFeedback({ type: 'success', message: `The paper "${paper.title}" is now inactive.` });
     } catch (e) {
       setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : 'The paper could not be deactivated.' });
@@ -189,31 +184,24 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The published list is restricted to PUBLISHED; reviewer assignments
-  // to REVIEWER_ASSIGNED + UNDER_REVIEW. The filter dropdown only
-  // surfaces the statuses this view owns.
+  // The published-list view includes both active and deactivated published records.
   const scoped = useMemo(
     () => papers.filter((paper) => config.statusOptions.includes(paper.status)),
     [papers, config.statusOptions],
   );
 
-  const filters = useMemo<AdminPaperFilters>(
+  const filters = useMemo(
     () => ({
       search,
       status: statusFilter,
-      verification: verificationFilter,
     }),
-    [search, statusFilter, verificationFilter],
+    [search, statusFilter],
   );
 
-  // Apply the search/status/verification filter and sort in two passes so
-  // the column sort affects the full filtered set (not just the visible
-  // page of rows). The published-list view pre-narrows `scoped` so a
-  // paper outside its owned statuses never enters the result set.
+  // Apply the search and status filters before sorting the full result set.
   const sortedFiltered = useMemo(() => {
     const filtered = scoped.filter((paper) => {
       if (!matchesStatus(paper, statusFilter)) return false;
-      if (!matchesVerification(paper, verificationFilter)) return false;
       if (search.trim() && !matchesSearch(paper, search.trim().toLowerCase())) {
         return false;
       }
@@ -225,8 +213,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           return paper.title ?? '';
         case 'status':
           return paper.status;
-        case 'verification':
-          return paper.researcherVerificationStatus ?? '';
         case 'reviewer':
           return paper.reviewer?.reviewerName ?? '';
         case 'submittedAt':
@@ -234,7 +220,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           return paper.submittedAt ?? paper.createdAt ?? null;
       }
     });
-  }, [scoped, sort, statusFilter, verificationFilter, search]);
+  }, [scoped, sort, statusFilter, search]);
 
   const totalCount = sortedFiltered.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / DEFAULT_PAGE_SIZE));
@@ -293,23 +279,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                 </option>
               ))}
             </select>
-            <select
-              className={adminStyles.filterSelect}
-              aria-label={`Filter ${config.title} by researcher verification`}
-              value={verificationFilter}
-              onChange={(event) =>
-                setVerificationFilter(
-                  event.target.value as AdminPaperFilters['verification'],
-                )
-              }
-              disabled={Boolean(error)}
-            >
-              <option value="ALL">All verifications</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="ALLOW">Allow</option>
-              <option value="PENDING">Pending</option>
-              <option value="UNVERIFIED">Unverified</option>
-            </select>
           </>
         }
       />
@@ -364,7 +333,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
         <EmptyState
           icon={<Inbox size={20} />}
           title={`No ${config.itemLabel} match the current filters.`}
-          description="Adjust the search query or clear one of the status / verification filters."
+          description="Adjust the search query or clear the status filter."
         />
       ) : (
         <>
@@ -397,27 +366,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                       onFilterChange={(next) =>
                         setStatusFilter(
                           next as AdminPaperFilters['status'],
-                        )
-                      }
-                    />
-                  </th>
-                  <th scope="col">
-                    <SortableHeader
-                      column="verification"
-                      label="Verification"
-                      cycleSort={sort.cycleSort}
-                      ariaSortFor={sort.ariaSortFor}
-                      filterOptions={[
-                        { value: 'ALL', label: 'All verifications' },
-                        { value: 'VERIFIED', label: 'Verified' },
-                        { value: 'ALLOW', label: 'Allow' },
-                        { value: 'PENDING', label: 'Pending' },
-                        { value: 'UNVERIFIED', label: 'Unverified' },
-                      ]}
-                      activeFilter={verificationFilter}
-                      onFilterChange={(next) =>
-                        setVerificationFilter(
-                          next as AdminPaperFilters['verification'],
                         )
                       }
                     />
@@ -462,16 +410,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                           }`}
                         >
                           {statusLabel(paper.status)}
-                        </span>
-                      </td>
-                      <td data-label="Verification">
-                        <span
-                          className={`${adminStyles.verificationBadge} ${
-                            adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
-                            ''
-                          }`}
-                        >
-                          {paper.researcherVerificationStatus}
                         </span>
                       </td>
                       <td data-label="Identifiers">
@@ -551,7 +489,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                             to={`/admin/paper-submissions/${paper.id}`}
                             title="Open the editorial and reviewer record"
                           >
-                            <FileText size={13} aria-hidden="true" /> Review
+                            <FileText size={13} aria-hidden="true" /> View evaluation
                           </Link>
 
                           {/* Publication action */}

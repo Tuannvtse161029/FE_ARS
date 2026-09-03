@@ -160,6 +160,7 @@ export const statusBadgeClass = (status: PublicationStatus): string => {
     case 'REVIEWER_RECOMMENDED_REJECT': return 'statusRecommendReject';
     case 'ADMIN_APPROVED': return 'statusApproved';
     case 'PUBLISHED': return 'statusPublished';
+    case 'INACTIVE': return 'statusInactive';
     case 'ADMIN_REJECTED': return 'statusRejected';
     case 'WITHDRAWN': return 'statusWithdrawn';
     default: return '';
@@ -296,6 +297,7 @@ export const adminActionsForStatus = (paper: PublicationPaper): AdminActionDescr
         hint: 'Take the paper off the public catalog. Withdrawal semantics are still BE-policy.',
       });
       break;
+    case 'INACTIVE':
     case 'ADMIN_REJECTED':
     case 'WITHDRAWN':
     default:
