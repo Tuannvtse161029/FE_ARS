@@ -301,53 +301,150 @@
 }
 
 /* ── Intentional theme variants ─────────────────────────── */
-:root[data-theme='archive-dusk'] {
+/* ARS Academic Midnight / Deep Research Constellation (Dark Mode)
+   Designed specifically for Academic Research Sharing Platform (ARS):
+   - Eye-comfortable deep slate/obsidian canvas (#090d16) for sustained reading
+   - Crisp, high-contrast typography (WCAG AAA readability on long research abstracts)
+   - Professional academic blue (#3b82f6) and amber gold (#f59e0b) for scholarly metrics
+   - Layered surface hierarchy: deep obsidian canvas -> slate paper cards -> raised modals
+   - Full compatibility tokens: seamlessly recolors tables, cards, toolbars, badges, and text
+*/
+:root[data-theme='archive-dusk'],
+[data-theme='archive-dusk'],
+:root[data-theme='night'],
+[data-theme='night'] {
   color-scheme: dark;
-  --app-canvas: #2a2518;
-  --app-canvas-subtle: #332c1c;
-  --surface-base: #352e1e;
-  --surface-raised: #423820;
-  --surface-sunken: #211d13;
-  --surface-paper: #f2e6bd;
-  --surface-paper-muted: #d8c58b;
-  --surface-selected: #55451f;
-  --post-surface: #3c331f;
-  --comment-surface: #302a1c;
-  --reply-surface: #292419;
-  --composer-surface: #473b21;
-  --table-header: #171510;
-  --table-row: #37301f;
-  --table-row-alt: #312a1b;
-  --sidebar-bg: #181610;
-  --sidebar-raised: #30291a;
-  --header-bg: #282216;
-  --control-bg: #3a321f;
-  --control-bg-hover: #463b22;
-  --control-text: #f4e9c9;
-  --ink-primary: #f4e9c9;
-  --ink-secondary: #d2c391;
-  --ink-muted: #ae9d6d;
-  --ink-on-paper: #2a2416;
-  --ink-on-dark: #f4e9c9;
-  --border-subtle: rgba(232, 217, 164, 0.16);
-  --border-strong: rgba(232, 217, 164, 0.32);
-  --accent-primary: #d6a841;
-  --accent-hover: #e2b956;
-  --accent-ochre: #b9782a;
-  --accent-sage: #88a175;
-  --accent-teal: #72aaa2;
-  --accent-indigo: #91a6d1;
-  --accent-coral: #d88974;
-  --focus-ring: #e2b956;
-  --shadow-color: rgba(15, 12, 7, 0.36);
-  --status-success-text: #c7d8b3;
-  --status-success-surface: #34402a;
-  --status-warning-text: #f0cf83;
-  --status-warning-surface: #4a371c;
-  --status-danger-text: #efb09d;
-  --status-danger-surface: #4b2922;
-  --status-info-text: #c5d8ee;
-  --status-info-surface: #293c50;
+
+  /* App Canvas & Surfaces */
+  --app-canvas: #090d16;
+  --app-canvas-subtle: #0d1320;
+  --surface-canvas: #090d16;
+  --surface-subtle: #0d1320;
+  --surface-base: #101726;
+  --surface-raised: #162035;
+  --surface-card: #162035;
+  --surface-sunken: #060910;
+  --surface-inset: #060910;
+  --surface-paper: #121a2d;
+  --surface-paper-muted: #18233c;
+  --surface-selected: rgba(59, 130, 246, 0.18);
+  --surface-inverse: #f8fafc;
+
+  /* Discussion & Forum Surfaces */
+  --post-surface: #121a2c;
+  --comment-surface: #152037;
+  --reply-surface: #0f1626;
+  --composer-surface: #141f35;
+
+  /* Tables & Lists */
+  --table-header: #080d17;
+  --table-row: #101726;
+  --table-row-alt: #0c121e;
+
+  /* Chrome: Sidebar & Header */
+  --sidebar-bg: #06090f;
+  --sidebar-raised: #0f1728;
+  --header-bg: rgba(9, 13, 22, 0.88);
+
+  /* Form Controls & Inputs */
+  --control-bg: #141d30;
+  --control-bg-hover: #1b2742;
+  --control-text: #f8fafc;
+
+  /* Scholarly Typography & Ink */
+  --ink-primary: #f8fafc;
+  --text-primary: #f8fafc;
+  --ink-secondary: #cbd5e1;
+  --text-secondary: #cbd5e1;
+  --ink-muted: #94a3b8;
+  --text-muted: #94a3b8;
+  --text-metadata: #94a3b8;
+  --ink-on-paper: #ffffff;
+  --ink-on-dark: #ffffff;
+  --text-inverse: #090d16;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Accents & Focus Rings */
+  --accent-primary: #3b82f6;
+  --action-primary: #3b82f6;
+  --accent-hover: #60a5fa;
+  --action-primary-hover: #60a5fa;
+  --accent-ochre: #f59e0b;
+  --accent-sage: #10b981;
+  --accent-teal: #06b6d4;
+  --accent-indigo: #818cf8;
+  --accent-coral: #f43f5e;
+  --focus-ring: #3b82f6;
+  --shadow-color: rgba(0, 0, 0, 0.65);
+
+  /* Feedback & Status */
+  --status-success-text: #34d399;
+  --status-success-surface: rgba(16, 185, 129, 0.18);
+  --status-positive: #34d399;
+  --status-warning-text: #fbbf24;
+  --status-warning-surface: rgba(245, 158, 11, 0.18);
+  --status-attention: #fbbf24;
+  --status-danger-text: #f87171;
+  --status-danger-surface: rgba(239, 68, 68, 0.18);
+  --status-critical: #f87171;
+  --status-info-text: #60a5fa;
+  --status-info-surface: rgba(59, 130, 246, 0.18);
+  --status-neutral-text: var(--ink-secondary);
+  --status-neutral-surface: var(--surface-sunken);
+
+  /* Full ARS Compatibility Tokens (overrides for dark mode) */
+  --ars-paper: #121a2d;
+  --ars-paper-alt: #0e1525;
+  --ars-paper-inset: #070b13;
+  --ars-paper-card: #162035;
+  --ars-paper-rule: rgba(255, 255, 255, 0.09);
+  --ars-surface-toolbar: linear-gradient(180deg, #151e31 0%, #101728 100%);
+  --ars-surface-toolbar-border: rgba(255, 255, 255, 0.12);
+  --ars-ink: #f8fafc;
+  --ars-ink-soft: #cbd5e1;
+  --ars-ink-muted: #94a3b8;
+  --ars-network: rgba(255, 255, 255, 0.08);
+  --ars-node: rgba(255, 255, 255, 0.14);
+  --ars-blue: #3b82f6;
+  --ars-blue-action: #2563eb;
+  --ars-blue-mid: #1d4ed8;
+  --ars-blue-light: rgba(59, 130, 246, 0.18);
+  --ars-yellow: #f59e0b;
+  --ars-yellow-hover: #d97706;
+  --ars-yellow-soft: rgba(245, 158, 11, 0.18);
+
+  /* Role-specific Accents for Dark Mode */
+  --ars-researcher: #f59e0b;
+  --ars-researcher-light: rgba(245, 158, 11, 0.18);
+  --ars-researcher-mid: #d97706;
+
+  --ars-reviewer: #10b981;
+  --ars-reviewer-light: rgba(16, 185, 129, 0.18);
+  --ars-reviewer-mid: #059669;
+
+  --ars-lecturer: #f43f5e;
+  --ars-lecturer-light: rgba(244, 63, 94, 0.18);
+  --ars-lecturer-mid: #e11d48;
+
+  --ars-gradstudent: #60a5fa;
+  --ars-gradstudent-light: rgba(96, 165, 250, 0.18);
+  --ars-gradstudent-mid: #3b82f6;
+
+  --ars-admin: #818cf8;
+  --ars-admin-light: rgba(129, 140, 248, 0.18);
+  --ars-admin-mid: #6366f1;
+
+  --ars-success: #34d399;
+  --ars-success-bg: rgba(16, 185, 129, 0.18);
+  --ars-warning: #fbbf24;
+  --ars-warning-bg: rgba(245, 158, 11, 0.18);
+  --ars-error: #f87171;
+  --ars-error-bg: rgba(239, 68, 68, 0.18);
+  --ars-info: #60a5fa;
+  --ars-info-bg: rgba(59, 130, 246, 0.18);
 }
 
 :root[data-theme='paper-day'] {

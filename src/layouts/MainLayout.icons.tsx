@@ -25,11 +25,14 @@ export interface MainLayoutIconProps {
   size?: number;
   /** Accessible label for assistive tech. Defaults to `''` (decorative). */
   'aria-label'?: string;
+  /** Optional custom CSS class name. */
+  className?: string;
 }
 
 const baseProps = (
   size: number,
   label: string | undefined,
+  className?: string,
 ): React.SVGAttributes<SVGSVGElement> & { width: number; height: number } => ({
   width: size,
   height: size,
@@ -42,6 +45,7 @@ const baseProps = (
   'aria-hidden': label ? undefined : true,
   'aria-label': label,
   focusable: 'false',
+  className,
 });
 
 /**
@@ -50,8 +54,9 @@ const baseProps = (
 export const ChevronLeftIcon: React.FC<MainLayoutIconProps> = ({
   size = 18,
   'aria-label': ariaLabel,
+  className,
 }) => (
-  <svg {...baseProps(size, ariaLabel)} data-testid="icon-chevron-left">
+  <svg {...baseProps(size, ariaLabel, className)} data-testid="icon-chevron-left">
     <polyline points="15 18 9 12 15 6" />
   </svg>
 );
@@ -62,8 +67,9 @@ export const ChevronLeftIcon: React.FC<MainLayoutIconProps> = ({
 export const ChevronRightIcon: React.FC<MainLayoutIconProps> = ({
   size = 18,
   'aria-label': ariaLabel,
+  className,
 }) => (
-  <svg {...baseProps(size, ariaLabel)} data-testid="icon-chevron-right">
+  <svg {...baseProps(size, ariaLabel, className)} data-testid="icon-chevron-right">
     <polyline points="9 18 15 12 9 6" />
   </svg>
 );
@@ -75,8 +81,9 @@ export const ChevronRightIcon: React.FC<MainLayoutIconProps> = ({
 export const SunIcon: React.FC<MainLayoutIconProps> = ({
   size = 18,
   'aria-label': ariaLabel,
+  className,
 }) => (
-  <svg {...baseProps(size, ariaLabel)} data-testid="icon-sun">
+  <svg {...baseProps(size, ariaLabel, className)} data-testid="icon-sun">
     <circle cx="12" cy="12" r="4" />
     <line x1="12" y1="2" x2="12" y2="4" />
     <line x1="12" y1="20" x2="12" y2="22" />
@@ -96,8 +103,9 @@ export const SunIcon: React.FC<MainLayoutIconProps> = ({
 export const MoonIcon: React.FC<MainLayoutIconProps> = ({
   size = 18,
   'aria-label': ariaLabel,
+  className,
 }) => (
-  <svg {...baseProps(size, ariaLabel)} data-testid="icon-moon">
+  <svg {...baseProps(size, ariaLabel, className)} data-testid="icon-moon">
     <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
   </svg>
 );

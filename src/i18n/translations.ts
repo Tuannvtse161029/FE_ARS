@@ -1,6 +1,6 @@
 export type Locale = 'vi' | 'en';
 
-export const DEFAULT_LOCALE: Locale = 'vi';
+export const DEFAULT_LOCALE: Locale = 'en';
 export const SUPPORTED_LOCALES: readonly Locale[] = ['vi', 'en'] as const;
 
 export const LOCALE_LABELS: Record<Locale, string> = {
@@ -2367,8 +2367,8 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'nav.collapseNav': 'Collapse navigation',
 
     // ── Theme & language toggles
-    'header.themeToLight': 'Switch to light mode',
-    'header.themeToDark': 'Switch to dark mode',
+    'header.themeToLight': 'Switch to Paper Day theme',
+    'header.themeToDark': 'Switch to Archive Dusk theme',
     'header.themeLightTitle': 'Switch to Light',
     'header.themeDarkTitle': 'Switch to Dark',
     'header.language': 'Language',

@@ -26,8 +26,8 @@
      content area can adapt without a parallel layout reflow. */
   --sidebar-current-size: var(--sidebar-width);
   width: var(--sidebar-current-size);
-  background-color: var(--ars-ink);
-  color: var(--ars-paper);
+  background-color: var(--sidebar-bg, #1a2035);
+  color: var(--ink-on-dark, #ffffff);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -92,7 +92,7 @@
   display: none;
   background: transparent;
   border: none;
-  color: var(--ars-paper);
+  color: var(--ink-on-dark, #ffffff);
   cursor: pointer;
   padding: 4px;
   border-radius: var(--radius-sm);
@@ -252,7 +252,7 @@
    table-of-contents rather than a neon tab. */
 .navItemActive {
   background-color: color-mix(in srgb, var(--ars-blue) 8%, transparent);
-  color: var(--ars-paper) !important;
+  color: var(--ink-on-dark, #ffffff) !important;
   font-weight: var(--font-weight-semibold);
 }
 
@@ -299,7 +299,7 @@
 
 .navBadge {
   background-color: rgba(180, 83, 9, 0.95);
-  color: var(--ars-paper);
+  color: var(--ink-on-dark, #ffffff);
   font-size: 0.6rem;
   font-weight: 700;
   border-radius: var(--radius-sm);
@@ -1018,28 +1018,47 @@
   height: 36px;
   padding: 0;
   border-radius: var(--radius-md);
-  border: 1px solid var(--ars-node);
-  background-color: var(--surface-canvas);
-  color: var(--ars-ink);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--control-bg);
+  color: var(--control-text);
   cursor: pointer;
   transition: background-color var(--transition-fast),
     border-color var(--transition-fast),
-    color var(--transition-fast);
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
   flex-shrink: 0;
 }
 
 .themeToggle:hover {
-  border-color: var(--ars-ink-muted);
-  background-color: var(--ars-paper-alt);
+  border-color: var(--border-strong);
+  background-color: var(--control-bg-hover);
+  transform: translateY(-1px);
 }
 
 .themeToggle:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 .themeToggle:active {
   transform: translateY(0.5px);
+}
+
+.themeToggle svg {
+  transition: transform var(--transition-fast);
+}
+
+.themeToggle:hover svg {
+  transform: rotate(18deg) scale(1.08);
+}
+
+.sunIcon {
+  color: #f59e0b;
+}
+
+.moonIcon {
+  color: #3b82f6;
 }
 
 /* ── Sidebar collapse button (already-present from prior work) ──

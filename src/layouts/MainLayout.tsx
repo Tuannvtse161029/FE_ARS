@@ -764,6 +764,7 @@ export const MainLayout = () => {
             type="button"
             className={styles.sidebarCollapseBtn}
             onClick={handleToggleSidebar}
+            aria-expanded={!isSidebarCollapsed}
             aria-label={isSidebarCollapsed ? copy('Expand navigation', 'Mở rộng thanh điều hướng') : copy('Collapse navigation', 'Thu gọn thanh điều hướng')}
             title={isSidebarCollapsed ? copy('Expand navigation', 'Mở rộng thanh điều hướng') : copy('Collapse navigation', 'Thu gọn thanh điều hướng')}
             data-testid="sidebar-collapse-toggle"
@@ -878,9 +879,9 @@ export const MainLayout = () => {
               data-testid="theme-toggle"
             >
               {theme === 'archive-dusk' ? (
-                <SunIcon size={18} aria-label={tr('header.themeToLight')} />
+                <SunIcon size={18} aria-label={tr('header.themeToLight')} className={styles.sunIcon} />
               ) : (
-                <MoonIcon size={18} aria-label={tr('header.themeToDark')} />
+                <MoonIcon size={18} aria-label={tr('header.themeToDark')} className={styles.moonIcon} />
               )}
             </button>
 
