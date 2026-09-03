@@ -1135,3 +1135,263 @@
   color: var(--ars-ink-muted);
   font-weight: var(--font-weight-semibold);
 }
+
+/* ── Suggested Invitees by Subfield ── */
+.subfieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .subfieldRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subfieldSelectGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.subfieldSelectGroup label {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subfieldSelect {
+  height: 38px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-base);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  transition: border-color var(--transition-fast);
+}
+
+.subfieldSelect:focus {
+  outline: none;
+  border-color: var(--ars-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.suggestedInviteesCard {
+  margin-top: var(--space-3);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.suggestedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.suggestedTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.suggestedCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--ars-blue);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.suggestedActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.suggestedToggleAllBtn {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--ars-blue);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.suggestedToggleAllBtn:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  text-decoration: underline;
+}
+
+.suggestedSearchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-3);
+  background-color: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--ink-primary);
+  transition: border-color var(--transition-fast);
+}
+
+.suggestedSearchInput:focus {
+  outline: none;
+  border-color: var(--ars-blue);
+}
+
+.suggestedList {
+  max-height: 190px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.suggestedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast);
+}
+
+.suggestedItem:hover {
+  background-color: var(--surface-raised);
+}
+
+.suggestedItemActive {
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.suggestedCheckbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  accent-color: var(--ars-blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.suggestedAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--ars-paper-alt);
+  color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.suggestedAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.suggestedUserInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.suggestedNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.suggestedName {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inviteeRoleBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.roleLecturer {
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+
+.roleResearcher {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.roleReviewer {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+}
+
+.roleDefault {
+  background-color: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+.suggestedEmail {
+  font-family: var(--font-family-mono);
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestedEmptyState {
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  font-style: italic;
+}

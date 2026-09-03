@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -16,7 +16,12 @@ import {
   AlertTriangle,
   Lock,
   Inbox as InboxIcon,
+  Users,
 } from 'lucide-react';
+import api from '../../services/axios';
+import { fieldService } from '../../services/field.service';
+import type { MajorField } from '../../types/domain';
+import { useLocale } from '../../i18n/I18nContext';
 import {
   deriveEffectiveStatus,
   isValidMeetLink,
@@ -53,7 +58,22 @@ const toLocalDateTimeInputValue = (date: Date): string => {
   return localDate.toISOString().slice(0, 16);
 };
 
+interface InviteeCandidate {
+  userId: number;
+  fullName: string;
+  email: string;
+  avatarUrl?: string | null;
+  role?: string;
+  subFieldId?: number | null;
+  subFieldName?: string | null;
+  majorFieldId?: number | null;
+}
+
 export const SeminarWorkspace = () => {
+  const locale = useLocale();
+  const isVi = locale === 'vi';
+  const copy = (en: string, vi: string) => (isVi ? vi : en);
+
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [currentSeminarPage, setCurrentSeminarPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -84,6 +104,14 @@ export const SeminarWorkspace = () => {
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const [emailInputText, setEmailInputText] = useState('');
   const [sendReminder, setSendReminder] = useState(true);
+
+  // Subfield & Suggested Invitees state
+  const [majorFields, setMajorFields] = useState<MajorField[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
+  const [allInvitees, setAllInvitees] = useState<InviteeCandidate[]>([]);
+  const [isLoadingInvitees, setIsLoadingInvitees] = useState(false);
+  const [inviteeSearch, setInviteeSearch] = useState('');
 
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
@@ -200,6 +228,156 @@ export const SeminarWorkspace = () => {
 
   const handleRemoveEmail = (email: string) => {
     setGuestEmails(guestEmails.filter((x) => x !== email));
+  };
+
+  // ── Load Major Fields, Subfields, and Professional Profiles for Invitations ──
+  useEffect(() => {
+    if (!showCreateModal) return;
+    let cancelled = false;
+
+    async function loadData() {
+      setIsLoadingInvitees(true);
+      try {
+        const [majors, profRes, usersRes] = await Promise.allSettled([
+          fieldService.getAllMajor(),
+          api.get('/api/ProfessionalProfile'),
+          api.get('/api/User'),
+        ]);
+
+        if (cancelled) return;
+
+        // 1. Process Major & Sub fields
+        let loadedMajors: MajorField[] = [];
+        if (majors.status === 'fulfilled' && Array.isArray(majors.value)) {
+          loadedMajors = majors.value;
+          setMajorFields(loadedMajors);
+        }
+
+        // 2. Process Users map for role names
+        const userRoleMap = new Map<number, string>();
+        if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
+          const uData = usersRes.value.data;
+          const uList = Array.isArray(uData) ? uData : (uData.items || []);
+          for (const u of uList) {
+            if (u.id) userRoleMap.set(u.id, u.roleName || u.role || '');
+          }
+        }
+
+        // 3. Process ProfessionalProfiles
+        if (profRes.status === 'fulfilled' && Array.isArray(profRes.value?.data)) {
+          const profiles = profRes.value.data;
+          const candidates: InviteeCandidate[] = profiles
+            .filter((p: any) => p && p.userId && p.email)
+            .map((p: any) => ({
+              userId: p.userId,
+              fullName: p.fullName || `User #${p.userId}`,
+              email: p.email.trim(),
+              avatarUrl: p.avatarUrl,
+              role: userRoleMap.get(p.userId) || (p.reviewFee ? 'Reviewer' : 'Scholar'),
+              subFieldId: p.subFieldId,
+              subFieldName: p.subFieldName,
+              majorFieldId: p.majorFieldId,
+            }));
+
+          setAllInvitees(candidates);
+
+          // 4. Auto-detect host's subfield if not set
+          const myProf = profiles.find((p: any) => p.userId === currentUserId);
+          if (myProf?.subFieldId) {
+            setSelectedSubId((prev) => prev ?? myProf.subFieldId);
+            if (myProf.majorFieldId) {
+              setSelectedMajorId((prev) => prev ?? myProf.majorFieldId);
+            }
+          } else if (loadedMajors.length > 0 && loadedMajors[0].subFields?.length) {
+            setSelectedMajorId((prev) => prev ?? loadedMajors[0].id);
+            setSelectedSubId((prev) => prev ?? loadedMajors[0].subFields![0].id);
+          }
+        }
+      } catch {
+        // Tolerant on background network error
+      } finally {
+        if (!cancelled) setIsLoadingInvitees(false);
+      }
+    }
+
+    void loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showCreateModal, currentUserId]);
+
+  const availableSubFields = useMemo(() => {
+    if (!selectedMajorId) {
+      return majorFields.flatMap((m) => m.subFields || []);
+    }
+    const major = majorFields.find((m) => m.id === selectedMajorId);
+    return major?.subFields || [];
+  }, [majorFields, selectedMajorId]);
+
+  const handleMajorChange = (newMajorId: number | null) => {
+    setSelectedMajorId(newMajorId);
+    if (!newMajorId) {
+      setSelectedSubId(null);
+    } else {
+      const major = majorFields.find((m) => m.id === newMajorId);
+      if (major?.subFields?.length) {
+        setSelectedSubId(major.subFields[0].id);
+      } else {
+        setSelectedSubId(null);
+      }
+    }
+  };
+
+  const filteredInvitees = useMemo(() => {
+    if (!selectedSubId) return [];
+    return allInvitees.filter((inv) => {
+      if (inv.subFieldId !== selectedSubId) return false;
+      if (currentUserId && inv.userId === currentUserId) return false;
+      if (!inv.email || !inv.email.trim()) return false;
+      if (inviteeSearch.trim()) {
+        const q = inviteeSearch.toLowerCase();
+        const matchName = (inv.fullName || '').toLowerCase().includes(q);
+        const matchEmail = (inv.email || '').toLowerCase().includes(q);
+        if (!matchName && !matchEmail) return false;
+      }
+      return true;
+    });
+  }, [allInvitees, selectedSubId, currentUserId, inviteeSearch]);
+
+  const allFilteredSelected =
+    filteredInvitees.length > 0 &&
+    filteredInvitees.every((inv) => guestEmails.includes(inv.email));
+
+  const handleToggleSelectAll = () => {
+    if (allFilteredSelected) {
+      const emailsToRemove = new Set(filteredInvitees.map((inv) => inv.email));
+      setGuestEmails(guestEmails.filter((e) => !emailsToRemove.has(e)));
+    } else {
+      const newEmails = [...guestEmails];
+      for (const inv of filteredInvitees) {
+        if (!newEmails.includes(inv.email)) {
+          newEmails.push(inv.email);
+        }
+      }
+      setGuestEmails(newEmails);
+    }
+  };
+
+  const handleToggleInvitee = (email: string) => {
+    if (guestEmails.includes(email)) {
+      setGuestEmails(guestEmails.filter((e) => e !== email));
+    } else {
+      setGuestEmails([...guestEmails, email]);
+    }
+  };
+
+  const getRoleClass = (role?: string) => {
+    const r = (role || '').toLowerCase();
+    if (r.includes('lecturer') || r.includes('giảng viên')) return styles.roleLecturer;
+    if (r.includes('researcher') || r.includes('nghiên cứu')) return styles.roleResearcher;
+    if (r.includes('reviewer') || r.includes('phản biện')) return styles.roleReviewer;
+    return styles.roleDefault;
   };
 
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
@@ -675,7 +853,7 @@ export const SeminarWorkspace = () => {
       {/* CREATE SEMINAR MODAL */}
       {showCreateModal && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modalCard}>
+          <div className={`${styles.modalCard} ${styles.modalCardLarge}`}>
             <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
                 <span className={styles.modalIconCircle}>
@@ -683,10 +861,10 @@ export const SeminarWorkspace = () => {
                 </span>
                 <div>
                   <h3 className={styles.modalTitle}>
-                    Create New Academic Seminar
+                    {copy('Create New Academic Seminar', 'Tạo Buổi Hội Thảo Mới')}
                   </h3>
                   <span className={styles.modalSubtitle}>
-                    A Google Meet link will be auto-generated.
+                    {copy('A Google Meet link will be auto-generated.', 'Đường dẫn Google Meet sẽ được tạo tự động.')}
                   </span>
                 </div>
               </div>
@@ -706,7 +884,7 @@ export const SeminarWorkspace = () => {
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-name">
-                  Seminar Name
+                  {copy('Seminar Name', 'Tên buổi hội thảo')}
                 </label>
                 <input
                   id="seminar-name"
@@ -719,9 +897,62 @@ export const SeminarWorkspace = () => {
                 />
               </div>
 
+              {/* Seminar Domain & Subfield */}
+              <div className={styles.subfieldRow}>
+                <div className={styles.subfieldSelectGroup}>
+                  <label htmlFor="seminar-major-field">
+                    {copy('Major Field', 'Lĩnh vực')}
+                  </label>
+                  <select
+                    id="seminar-major-field"
+                    className={styles.subfieldSelect}
+                    value={selectedMajorId ?? ''}
+                    onChange={(e) =>
+                      handleMajorChange(
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">
+                      {copy('-- Select Major Field --', '-- Chọn lĩnh vực --')}
+                    </option>
+                    {majorFields.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className={styles.subfieldSelectGroup}>
+                  <label htmlFor="seminar-sub-field">
+                    {copy('Subfield', 'Chuyên ngành')}
+                  </label>
+                  <select
+                    id="seminar-sub-field"
+                    className={styles.subfieldSelect}
+                    value={selectedSubId ?? ''}
+                    onChange={(e) =>
+                      setSelectedSubId(
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">
+                      {copy('-- Select Subfield --', '-- Chọn chuyên ngành --')}
+                    </option>
+                    {availableSubFields.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-date">
-                  Date &amp; Time
+                  {copy('Date & Time', 'Ngày & Giờ')}
                 </label>
                 <input
                   id="seminar-date"
@@ -736,7 +967,7 @@ export const SeminarWorkspace = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-details">
-                  Seminar Details
+                  {copy('Seminar Details', 'Nội dung chi tiết')}
                 </label>
                 <textarea
                   id="seminar-details"
@@ -750,7 +981,7 @@ export const SeminarWorkspace = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
-                  Guest Email Invitations
+                  {copy('Guest Email Invitations', 'Mời người tham dự qua Email')}
                 </label>
                 <input
                   type="text"
@@ -758,10 +989,10 @@ export const SeminarWorkspace = () => {
                   value={emailInputText}
                   onChange={(e) => setEmailInputText(e.target.value)}
                   onKeyDown={handleAddEmail}
-                  placeholder="Type email and press Enter…"
+                  placeholder={copy('Type email and press Enter…', 'Nhập email và nhấn Enter…')}
                 />
                 <span className={styles.helperText}>
-                  Press Enter to add each address.
+                  {copy('Press Enter to add each address.', 'Nhấn Enter để thêm từng địa chỉ email.')}
                 </span>
                 {guestEmails.length > 0 && (
                   <div className={styles.emailPills}>
@@ -781,6 +1012,118 @@ export const SeminarWorkspace = () => {
                     ))}
                   </div>
                 )}
+
+                {/* Suggested Invitees in Subfield with Checkboxes */}
+                {selectedSubId ? (
+                  <div className={styles.suggestedInviteesCard}>
+                    <div className={styles.suggestedHeader}>
+                      <div className={styles.suggestedTitle}>
+                        <Users size={14} aria-hidden />
+                        <span>
+                          {copy(
+                            'Colleagues in Subfield',
+                            'Gợi ý người tham gia cùng chuyên ngành',
+                          )}
+                        </span>
+                        <span className={styles.suggestedCountBadge}>
+                          {filteredInvitees.length}
+                        </span>
+                      </div>
+                      {filteredInvitees.length > 0 && (
+                        <div className={styles.suggestedActions}>
+                          <button
+                            type="button"
+                            className={styles.suggestedToggleAllBtn}
+                            onClick={handleToggleSelectAll}
+                          >
+                            {allFilteredSelected
+                              ? copy('Deselect All', 'Bỏ chọn tất cả')
+                              : copy('Select All', 'Chọn tất cả')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {filteredInvitees.length > 3 && (
+                      <input
+                        type="text"
+                        className={styles.suggestedSearchInput}
+                        placeholder={copy(
+                          'Search colleague by name or email…',
+                          'Tìm kiếm theo tên hoặc email…',
+                        )}
+                        value={inviteeSearch}
+                        onChange={(e) => setInviteeSearch(e.target.value)}
+                      />
+                    )}
+
+                    <div className={styles.suggestedList}>
+                      {isLoadingInvitees ? (
+                        <div className={styles.suggestedEmptyState}>
+                          <Loader size={14} className={styles.spinning} />{' '}
+                          {copy('Loading colleagues…', 'Đang tải danh sách…')}
+                        </div>
+                      ) : filteredInvitees.length === 0 ? (
+                        <div className={styles.suggestedEmptyState}>
+                          {copy(
+                            'No other colleagues found in this subfield.',
+                            'Chưa tìm thấy người dùng nào khác trong chuyên ngành này.',
+                          )}
+                        </div>
+                      ) : (
+                        filteredInvitees.map((inv) => {
+                          const isChecked = guestEmails.includes(inv.email);
+                          return (
+                            <div
+                              key={inv.userId}
+                              className={`${styles.suggestedItem} ${
+                                isChecked ? styles.suggestedItemActive : ''
+                              }`}
+                              onClick={() => handleToggleInvitee(inv.email)}
+                            >
+                              <input
+                                type="checkbox"
+                                className={styles.suggestedCheckbox}
+                                checked={isChecked}
+                                onChange={() => {}}
+                                aria-label={`Select ${inv.fullName}`}
+                              />
+                              <div className={styles.suggestedAvatar}>
+                                {inv.avatarUrl ? (
+                                  <img
+                                    src={inv.avatarUrl}
+                                    alt={inv.fullName}
+                                  />
+                                ) : (
+                                  inv.fullName.slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div className={styles.suggestedUserInfo}>
+                                <div className={styles.suggestedNameRow}>
+                                  <span className={styles.suggestedName}>
+                                    {inv.fullName}
+                                  </span>
+                                  {inv.role && (
+                                    <span
+                                      className={`${styles.inviteeRoleBadge} ${getRoleClass(
+                                        inv.role,
+                                      )}`}
+                                    >
+                                      {inv.role}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={styles.suggestedEmail}>
+                                  {inv.email}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <label className={styles.checkboxRow}>
