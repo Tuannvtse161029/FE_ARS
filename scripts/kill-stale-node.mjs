@@ -210,20 +210,42 @@ const buckets = {
   other: [], // node processes that are not ours
 };
 
-const looksLikeRepo = (cmd) =>
-  cmd && /(CAPSTONE_PROJECT[/\\]ARS_FE|node_modules[\\/].*?(vite|vitest|playwright)[\\/])/.test(cmd);
+/**
+ * Does this command line look like it belongs to THIS repo's Vite /
+ * Vitest / Playwright / Node-script tooling?
+ *
+ * `wmic` returns CommandLine with **every backslash doubled** (literal
+ * `\\`), so we first collapse `\\` to `\` before matching.
+ */
+const looksLikeRepo = (cmd) => {
+  if (!cmd) return false;
+  const norm = cmd.replace(/\\\\/g, '\\');
+  return /(?:CAPSTONE_PROJECT[/\\]ARS_FE|node_modules[/\\].+?[/\\](?:vite|vitest|playwright)[/\\])/.test(
+    norm,
+  );
+};
 
 function classify(p) {
   if (!p.cmd) return;
   if (!looksLikeRepo(p.cmd)) return;
   const cmd = p.cmd;
-  if (cmd.includes('vite.config') || /[\\/]vite(\.cmd)?['"]?\s/i.test(cmd)) {
+  // Normalize wmic's double-backslash escaping to single backslashes
+  // before doing any further pattern matching. `wmic` returns
+  // `F:\\CAPSTONE_PROJECT\\ARS_FE\\...` for every path separator.
+  const normCmd = cmd.replace(/\\\\/g, '\\');
+  if (
+    /[\\/]vite(?:[\\/][^\\/]*|\.js\b|\.cmd)/i.test(normCmd) ||
+    normCmd.includes('vite.config')
+  ) {
     buckets.vite.push(p);
-  } else if (cmd.includes('vitest')) {
+  } else if (/[\\/]vitest(?:[\\/][^\\/]*|\.mjs\b|\.cmd)/i.test(normCmd)) {
     buckets.vitest.push(p);
-  } else if (cmd.includes('playwright')) {
+  } else if (
+    /[\\/]playwright[\\/]/i.test(normCmd) ||
+    /playwright\.config/.test(normCmd)
+  ) {
     buckets.playwright.push(p);
-  } else if (/[\\/]scripts[\\/].+\.m?js/.test(cmd)) {
+  } else if (/[\\/]scripts[\\/].+\.m?js/.test(normCmd)) {
     buckets.script.push(p);
   } else {
     buckets.other.push(p);
