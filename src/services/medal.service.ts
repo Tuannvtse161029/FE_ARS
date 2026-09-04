@@ -42,6 +42,14 @@ export interface MedalUpdateInput extends Partial<MedalCreateInput> {
   id: string;
 }
 
+export interface UserMedal {
+  medal: Medal;
+  currentProgress: number;
+  isUnlocked: boolean;
+  progressPercentage: number;
+  unlockedAt: string | null;
+}
+
 const STORAGE_KEY = 'ars_platform_medals_v1';
 
 export const INITIAL_MEDALS: Medal[] = [
@@ -497,19 +505,31 @@ function saveLocalMedals(medals: Medal[]): void {
 }
 
 export const medalService = {
-  async getAll(): Promise<Medal[]> {
+  async getAll(params?: {
+    role?: string;
+    tier?: string;
+    isActive?: boolean;
+    search?: string;
+  }): Promise<Medal[]> {
     try {
-      const res = await api.get('/api/Medal');
+      const res = await api.get('/api/Medal', { params });
       if (Array.isArray(res.data) && res.data.length > 0) {
+        saveLocalMedals(res.data);
         return res.data;
       }
     } catch {
-      // Backend endpoint not ready yet; fallback to local persistence
+      // Backend endpoint fallback
     }
     return loadLocalMedals();
   },
 
   async getById(id: string): Promise<Medal | null> {
+    try {
+      const res = await api.get('/api/Medal/' + id);
+      if (res.data) return res.data;
+    } catch {
+      // fallback
+    }
     const list = await this.getAll();
     return list.find((m) => m.id === id) ?? null;
   },
@@ -536,7 +556,11 @@ export const medalService = {
 
     try {
       const res = await api.post('/api/Medal', newMedal);
-      if (res.data) return res.data;
+      if (res.data) {
+        const current = loadLocalMedals();
+        saveLocalMedals([res.data, ...current.filter((m) => m.id !== res.data.id)]);
+        return res.data;
+      }
     } catch {
       // Local fallback
     }
@@ -550,7 +574,15 @@ export const medalService = {
   async update(id: string, input: Partial<MedalCreateInput>): Promise<Medal> {
     try {
       const res = await api.put('/api/Medal/' + id, input);
-      if (res.data) return res.data;
+      if (res.data) {
+        const current = loadLocalMedals();
+        const idx = current.findIndex((m) => m.id === id);
+        if (idx !== -1) {
+          current[idx] = res.data;
+          saveLocalMedals(current);
+        }
+        return res.data;
+      }
     } catch {
       // Local fallback
     }
@@ -585,7 +617,40 @@ export const medalService = {
   },
 
   async resetToDefaults(): Promise<Medal[]> {
+    try {
+      const res = await api.post('/api/Medal/reset-defaults');
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        saveLocalMedals(res.data);
+        return res.data;
+      }
+    } catch {
+      // Local fallback
+    }
     saveLocalMedals(INITIAL_MEDALS);
     return INITIAL_MEDALS;
+  },
+
+  async getMyMedals(): Promise<UserMedal[]> {
+    try {
+      const res = await api.get('/api/Medal/my-medals');
+      if (Array.isArray(res.data)) {
+        return res.data;
+      }
+    } catch {
+      // fallback
+    }
+    return [];
+  },
+
+  async getUserMedals(userId: string | number): Promise<UserMedal[]> {
+    try {
+      const res = await api.get('/api/Medal/user/' + userId);
+      if (Array.isArray(res.data)) {
+        return res.data;
+      }
+    } catch {
+      // fallback
+    }
+    return [];
   },
 };
