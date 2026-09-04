@@ -22,7 +22,11 @@ type I18nContextValue = {
   locale: Locale;
   setLocale: (next: Locale) => void;
   toggleLocale: () => void;
-  t: (key: string, fallback?: string) => string;
+  t: (
+    key: string,
+    fallback?: string,
+    params?: Record<string, string | number>,
+  ) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -74,7 +78,11 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const t = useCallback(
-    (key: string, fallback?: string) => translate(locale, key, fallback),
+    (
+      key: string,
+      fallback?: string,
+      params?: Record<string, string | number>,
+    ) => translate(locale, key, fallback, params),
     [locale],
   );
 
@@ -93,7 +101,11 @@ export const useI18n = (): I18nContextValue => {
       locale: DEFAULT_LOCALE,
       setLocale: () => {},
       toggleLocale: () => {},
-      t: (key: string, fallback?: string) => translate(DEFAULT_LOCALE, key, fallback),
+      t: (
+        key: string,
+        fallback?: string,
+        params?: Record<string, string | number>,
+      ) => translate(DEFAULT_LOCALE, key, fallback, params),
     };
   }
   return ctx;

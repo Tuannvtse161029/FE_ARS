@@ -150,21 +150,24 @@ describe('<ResearchTopicsPage> — real API integration', () => {
     });
   });
 
-  it('Close button calls researchTopicService.update — no optimistic fake update', async () => {
+  it('Mark Completed button calls researchTopicService.update — no optimistic fake update', async () => {
+    // CLOSED was removed from the research-topic status lifecycle
+    // (see utils/researchStatus.ts). The remaining transition is OPEN/ASSIGNED
+    // → COMPLETED, exercised here through the "Mark Completed" affordance.
     getAllTopicsMock.mockResolvedValueOnce([
-      { id: 77, title: 'Old title', description: '', status: 'OPEN' },
+      { id: 77, title: 'Old title', description: '', status: 'ASSIGNED' },
     ]);
     getMyTopicsMock.mockResolvedValueOnce([]);
     updateTopicMock.mockResolvedValueOnce({
       id: 77,
       title: 'Old title',
-      status: 'CLOSED',
+      status: 'COMPLETED',
     });
     renderPage();
     await waitFor(() => expect(screen.getByText('Old title')).toBeInTheDocument());
-    await userEvent.click(screen.getByRole('button', { name: /^Close$/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Mark Completed/i }));
     await waitFor(() => expect(updateTopicMock).toHaveBeenCalledTimes(1));
     const payload = updateTopicMock.mock.calls[0][1];
-    expect(payload.status).toBe('CLOSED');
+    expect(payload.status).toBe('COMPLETED');
   });
 });

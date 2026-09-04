@@ -1,23 +1,26 @@
 /**
  * Page-level tests for src/pages/Lecturer/ConfigureMilestones.tsx.
  *
- * These tests confirm:
- *   - Phase list is rendered from real PhasedReport milestone data
- *   - Saving calls the backend milestone endpoint, NOT a local demo store
- *   - Over-limit draft counts are rejected by the page (no >5 phase save)
- *   - API failure surfaces a recoverable error banner (no fake success)
+ * The page now renders a card list of research topics (when no `topicId`
+ * is supplied) instead of a topic selector dropdown. These tests confirm:
+ *
+ *   - Card list shows topics fetched via the live research-topic service.
+ *   - Save calls the backend milestone endpoint, NOT a local demo store.
+ *   - API failure surfaces a recoverable error banner (no fake success).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ConfigureMilestones } from '../../../../src/pages/Lecturer/ConfigureMilestones';
 
-const { getByTopicMock, setTopicMilestonesMock } = vi.hoisted(() => ({
-  getByTopicMock: vi.fn(),
-  setTopicMilestonesMock: vi.fn(),
-}));
+const { getAllTopicsMock, getByTopicMock, setTopicMilestonesMock } = vi.hoisted(
+  () => ({
+    getAllTopicsMock: vi.fn(),
+    getByTopicMock: vi.fn(),
+    setTopicMilestonesMock: vi.fn(),
+  }),
+);
 
 vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -34,26 +37,23 @@ vi.mock('../../../../src/context/AuthContext', () => ({
   default: {},
 }));
 
-vi.mock('../../../../src/hooks/useResearchTopics', () => ({
-  useResearchTopics: () => ({
-    topics: [
-      { id: 1, title: 'Distributed Systems', status: 'OPEN' },
-      { id: 2, title: 'Quantum Compilers', status: 'OPEN' },
-    ],
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-}));
-
-vi.mock('../../../../src/hooks/useResearchGroups', () => ({
-  useResearchGroups: () => ({
-    groups: [{ id: 11, name: 'Group Alpha', topicId: 1 }],
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-}));
+// The page calls `researchTopicService.getAll()` directly to render the
+// card list (and to fan out `getByTopic` per topic for phase counts).
+// Mock the service module instead of the hook.
+vi.mock('../../../../src/services/researchTopic.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../../src/services/researchTopic.service')
+  >('../../../../src/services/researchTopic.service');
+  return {
+    ...actual,
+    researchTopicService: {
+      ...actual.researchTopicService,
+      getAll: getAllTopicsMock,
+      getMyTopics: getAllTopicsMock,
+      getById: getByTopicMock,
+    },
+  };
+});
 
 vi.mock('../../../../src/services/researchTopicPhase.service', async () => {
   const actual = await vi.importActual<
@@ -62,8 +62,23 @@ vi.mock('../../../../src/services/researchTopicPhase.service', async () => {
   return {
     ...actual,
     researchTopicPhaseService: {
+      ...actual.researchTopicPhaseService,
       getByTopic: getByTopicMock,
       save: setTopicMilestonesMock,
+    },
+  };
+});
+
+vi.mock('../../../../src/services/researchGroup.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../../src/services/researchGroup.service')
+  >('../../../../src/services/researchGroup.service');
+  return {
+    ...actual,
+    researchGroupService: {
+      ...actual.researchGroupService,
+      getAll: vi.fn().mockResolvedValue([]),
+      getMyGroups: vi.fn().mockResolvedValue([]),
     },
   };
 });
@@ -77,21 +92,34 @@ const renderPage = () =>
 
 describe('ConfigureMilestones — backend-only contract', () => {
   beforeEach(() => {
+    getAllTopicsMock.mockReset();
     getByTopicMock.mockReset();
     setTopicMilestonesMock.mockReset();
   });
 
-  it('renders the topic selector from real useResearchTopics data (no hardcoded options)', async () => {
-    getByTopicMock.mockResolvedValueOnce([]);
+  it('renders the card-list view with topics fetched from the live service', async () => {
+    getAllTopicsMock.mockResolvedValue([
+      { id: 1, title: 'Distributed Systems', status: 'OPEN' },
+      { id: 2, title: 'Quantum Compilers', status: 'OPEN' },
+    ]);
+    getByTopicMock.mockResolvedValue([]); // no phases yet
     renderPage();
-    await waitFor(() => expect(getByTopicMock).toHaveBeenCalled());
-    // Two real topics from the mocked hook must be in the dropdown.
-    expect(screen.getByRole('option', { name: 'Distributed Systems' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Quantum Compilers' })).toBeInTheDocument();
+    // Wait for the topics to render before asserting on headings.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { level: 2, name: /Distributed Systems/ }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Distributed Systems/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Quantum Compilers/ }),
+    ).toBeInTheDocument();
   });
 
   it('shows a recoverable error banner when the BE call fails — no fake success', async () => {
-    getByTopicMock.mockRejectedValueOnce(new Error('Server is unavailable'));
+    getAllTopicsMock.mockRejectedValueOnce(new Error('Server is unavailable'));
     renderPage();
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/Server is unavailable/),
@@ -126,10 +154,24 @@ describe('ConfigureMilestones — backend-only contract', () => {
           assessmentCriteria: '',
           startAt: '',
           endAt: '2026-09-30T00:00:00Z',
+          learningMaterialId: null,
         },
       ],
-      null,
+      11,
     );
     expect(setTopicMilestonesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes a "Go to Research Topics" CTA when the lecturer has no topics', async () => {
+    getAllTopicsMock.mockResolvedValue([]);
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Go to Research Topics/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: /Go to Research Topics/i }),
+    ).toBeInTheDocument();
   });
 });

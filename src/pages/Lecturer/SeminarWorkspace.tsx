@@ -104,6 +104,8 @@ export const SeminarWorkspace = () => {
   const [showAiModal, setShowAiModal] = useState(false);
   const [selectedSeminarForAi, setSelectedSeminarForAi] =
     useState<SeminarCard | null>(null);
+  const [isAttendeeFeedbackPreview, setIsAttendeeFeedbackPreview] =
+    useState(false);
 
   // Create modal form state
   const [seminarName, setSeminarName] = useState('');
@@ -754,9 +756,29 @@ export const SeminarWorkspace = () => {
                       </div>
                     </div>
 
-                    <h3 className={styles.cardTitle}>
-                      {formatBytesTitle(sem.title)}
-                    </h3>
+                    <div className={styles.cardTitleRow}>
+                      <h3 className={styles.cardTitle}>
+                        {formatBytesTitle(sem.title)}
+                      </h3>
+                      <span
+                        className={`${styles.statusBadge} ${
+                          styles[
+                            `statusBadge_${sem.effectiveStatus.replace(
+                              /\s+/g,
+                              '_',
+                            )}`
+                          ] ?? ''
+                        }`}
+                      >
+                        {sem.effectiveStatus === 'IN PROGRESS' && (
+                          <span
+                            className={styles.statusPulse}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span>{sem.effectiveStatus}</span>
+                      </span>
+                    </div>
                     <p className={styles.cardDescription}>
                       {sem.content || 'No description provided.'}
                     </p>
@@ -845,6 +867,7 @@ export const SeminarWorkspace = () => {
                               className={styles.actionBtnPrimary}
                               onClick={() => {
                                 setSelectedSeminarForAttendeeFeedback(sem);
+                                setIsAttendeeFeedbackPreview(false);
                                 setShowAttendeeFeedbackModal(true);
                               }}
                             >
@@ -884,10 +907,18 @@ export const SeminarWorkspace = () => {
                           )}
                           <button
                             type="button"
-                            className={styles.actionBtnGhost}
-                            disabled
+                            className={styles.actionBtnOutline}
+                            onClick={() => {
+                              setSelectedSeminarForAttendeeFeedback(sem);
+                              setIsAttendeeFeedbackPreview(true);
+                              setShowAttendeeFeedbackModal(true);
+                            }}
+                            aria-label={`Preview feedback form for ${formatBytesTitle(
+                              sem.title,
+                            )}`}
                           >
-                            Feedback (available after completion)
+                            <ClipboardList size={14} aria-hidden />
+                            Preview feedback form
                           </button>
                         </>
                       )}
@@ -1396,13 +1427,18 @@ export const SeminarWorkspace = () => {
         />
       )}
 
-      {/* ATTENDEE FEEDBACK MODAL — participant submits structured feedback */}
+      {/* ATTENDEE FEEDBACK MODAL — participant submits structured feedback
+          (previewMode=true when the organizer opens it before completion) */}
       {showAttendeeFeedbackModal && selectedSeminarForAttendeeFeedback && (
         <SeminarFeedbackModal
           isOpen={showAttendeeFeedbackModal}
-          onClose={() => setShowAttendeeFeedbackModal(false)}
+          onClose={() => {
+            setShowAttendeeFeedbackModal(false);
+            setIsAttendeeFeedbackPreview(false);
+          }}
           seminarId={selectedSeminarForAttendeeFeedback.seminarId}
           seminarTitle={selectedSeminarForAttendeeFeedback.title}
+          previewMode={isAttendeeFeedbackPreview}
           onSuccess={() => {
             void refetch();
           }}

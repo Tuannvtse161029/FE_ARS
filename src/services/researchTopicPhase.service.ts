@@ -16,7 +16,7 @@
 // is the sole consumer and reads/writes exclusively through this service.
 
 import { phasedReportService, type PhasedReport } from './phasedReport.service';
-import { toLocalDatetimeInput, toApiIsoString } from '../utils/datetime';
+import { toLocalDatetimeInput, toApiIsoString, parseApiDate } from '../utils/datetime';
 
 // Soft sanity cap — prevents accidental runaway input. Not a backend contract.
 export const MAX_PHASES_PER_TOPIC = 99;
@@ -39,6 +39,13 @@ export interface ResearchTopicPhase {
 }
 
 export interface PhaseDraft {
+  /**
+   * The 1-based phase number used in the BE contract. Always present so
+   * the editor can compare against a deep-link `?phase=N` highlight
+   * without relying on array index — add / remove reorderings must not
+   * cause the highlight to drift to a different phase row.
+   */
+  phaseNumber: number;
   title: string;
   requirements: string;
   assessmentCriteria: string;
@@ -51,7 +58,47 @@ export interface PhaseDraft {
 export type ResearchTopicPhaseDraft = PhaseDraft;
 
 const toInputDate = (value: string | null | undefined): string => {
-  return toLocalDatetimeInput(value);
+  if (value === null || value === undefined) return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  // Defensive validity probe — guard against legacy BE shapes
+  // (`"2026-09-15 00:00:00"`, `"2026-09-15T00:00:00"`, etc.) that some
+  // engines accept as local time and some reject. Bail with empty string
+  // rather than producing a garbage date.
+  const probe = new Date(trimmed);
+  if (!Number.isFinite(probe.getTime())) {
+    return '';
+  }
+  return toLocalDatetimeInput(trimmed);
+};
+
+// Local-only helper used inside `fromReport`. Centralises the legacy BE
+// shape normalisation so a row with `"2026-09-15 00:00:00"` or
+// `"2026-09-15T00:00:00"` round-trips into the same `<input
+// type="datetime-local">` value the lecturer originally picked. Without
+// this helper, the page silently lost the deadline after reload because
+// some engines treat the bare strings as local time and others reject
+// them outright, returning `''` from `toInputDate`.
+const normaliseEndAt = (raw: string | null | undefined): string => {
+  if (raw === null || raw === undefined) return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  // Replace the legacy BE space separator (`2026-09-15 00:00:00`) with
+  // the canonical ISO 'T' so `new Date()` interprets it consistently
+  // across browsers.
+  const normalised = trimmed.replace(
+    /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/,
+    '$1T$2',
+  );
+  const probe = new Date(normalised);
+  if (!Number.isFinite(probe.getTime())) {
+    // Final fallback: try `toInputDate` (which has its own defensive probe).
+    return toInputDate(trimmed);
+  }
+  // Delegate the formatting to `toLocalDatetimeInput` so we share its
+  // date-only / locale-aware padding logic.
+  const date = parseApiDate(normalised);
+  return date ? toLocalDatetimeInput(date) : '';
 };
 
 const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
@@ -65,6 +112,10 @@ const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
   // Prefer camelCase (assessmentCriteria) over criteria alias.
   const criteria =
     report.assessmentCriteria ?? report.criteria ?? '';
+  // Use `normaliseEndAt` / `normaliseStartAt` so legacy BE date shapes
+  // (`"2026-09-15 00:00:00"`, `"2026-09-15T00:00:00"`) survive the
+  // round-trip into the `<input type="datetime-local">` without losing
+  // the picked day.
   return {
     id: `api-${report.topicId}-${report.phaseNumber}`,
     topicId: report.topicId,
@@ -74,8 +125,8 @@ const fromReport = (report: PhasedReport): ResearchTopicPhase | null => {
     // requirements and assessmentCriteria are now persisted by the BE Swagger.
     requirements: report.requirements ?? '',
     assessmentCriteria: criteria,
-    startAt: start ? toInputDate(start) : '',
-    endAt: end ? toInputDate(end) : '',
+    startAt: start ? normaliseEndAt(start) : '',
+    endAt: end ? normaliseEndAt(end) : '',
     deadlineAt: end,
     order: report.phaseNumber,
     locked: Boolean(report.submittedAt),

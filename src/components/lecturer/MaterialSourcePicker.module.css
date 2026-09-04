@@ -1,0 +1,488 @@
+/**
+ * MaterialSourcePicker — three-source material picker.
+ *
+ * Design direction:
+ * - Role accent: --ars-lecturer (#7c2d12)
+ * - Tab strip uses the same hairline-tab pattern as Materials.tsx so the
+ *   picker feels native to the lecturer workspace
+ * - Library grid: 3 columns on desktop, responsive collapse below
+ * - Tokens only — no hardcoded hex values
+ */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinningIcon {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinningIcon { animation-duration: 1s; }
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+/* ── Tab strip ─────────────────────────────────────────────── */
+.tabStrip {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 2px solid var(--ars-network);
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast);
+  min-height: 32px;
+}
+
+.tabBtn:hover {
+  color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+.tabBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.tabBtnActive {
+  color: var(--ars-lecturer);
+  border-bottom-color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+/* ── Panels ────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.panelHidden {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fieldLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.urlInput {
+  width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.urlInput:focus {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+.inputError {
+  border-color: var(--ars-error);
+  background-color: var(--ars-error-bg);
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Upload dropzone ──────────────────────────────────────── */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  background: var(--ars-paper);
+  border: 2px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: center;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+  outline: none;
+}
+
+.dropzoneText {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.dropzoneHint {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.filePreview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md);
+}
+
+.filePreviewIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  flex-shrink: 0;
+}
+
+.filePreviewInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filePreviewName {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filePreviewSize {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.filePreviewRemove {
+  background: transparent;
+  border: none;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.filePreviewRemove:hover {
+  color: var(--ars-error);
+}
+
+.filePreviewRemove:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+.uploadProgress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.uploadProgressBarOuter {
+  width: 100%;
+  height: 6px;
+  background: var(--ars-paper-inset);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.uploadProgressBarInner {
+  height: 100%;
+  background: var(--ars-lecturer);
+  border-radius: 999px;
+  transition: width var(--transition-fast);
+}
+
+.uploadProgressLabel {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.uploadErrorText {
+  font-size: var(--font-size-xs);
+  color: var(--ars-error);
+  margin: 0;
+}
+
+/* ── Library grid ──────────────────────────────────────────── */
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.libraryCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.libraryCard:hover {
+  border-color: var(--ars-lecturer);
+}
+
+.libraryCardSelected {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.libraryCardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  flex-shrink: 0;
+}
+
+.libraryCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.libraryCardTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+  /* Truncate to two lines so the grid stays consistent */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libraryCardDesc {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  /* Two-line ellipsis for description */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libraryCardDescMuted {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.libraryCardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--ars-info);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+.libraryCardLink:hover {
+  text-decoration: underline;
+}
+
+.useBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: var(--ars-paper);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+  color: var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 28px;
+}
+
+.useBtn:hover {
+  background: var(--ars-lecturer-light);
+}
+
+.useBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.useBtnSelected {
+  background: var(--ars-lecturer);
+  color: #ffffff;
+  border-color: var(--ars-lecturer);
+}
+
+/* ── States ────────────────────────────────────────────────── */
+.loadingPanel,
+.emptyPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  background: var(--ars-paper);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+}
+
+.emptyPanel {
+  flex-direction: column;
+  text-align: center;
+  font-style: italic;
+  gap: var(--space-2);
+}
+
+.emptyPanel svg {
+  color: var(--ars-node);
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  color: var(--ars-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.retryBtn {
+  background: var(--ars-paper);
+  border: 1px solid color-mix(in srgb, var(--ars-error) 40%, transparent);
+  color: var(--ars-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  min-height: 24px;
+  margin-left: auto;
+}
+
+.retryBtn:hover {
+  background: var(--ars-paper-alt);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .libraryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .libraryGrid {
+    grid-template-columns: 1fr;
+    max-height: 380px;
+  }
+
+  .tabStrip {
+    overflow-x: auto;
+  }
+}

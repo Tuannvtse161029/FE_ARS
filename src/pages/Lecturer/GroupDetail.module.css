@@ -1080,6 +1080,424 @@
   animation: spin 0.9s linear infinite;
 }
 
+/* ── Invite Students — 3x3 card grid ────────────────────────── */
+.inviteModal {
+  max-width: 880px;
+  width: 100%;
+}
+
+.inviteCardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.inviteGridState {
+  grid-column: 1 / -1;
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+}
+
+.inviteGridStateWide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.inviteCard {
+  background: var(--surface-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  position: relative;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.inviteCard:hover:not(.inviteCardDisabled) {
+  border-color: var(--ars-lecturer-mid);
+  box-shadow: 0 2px 8px rgba(124, 45, 18, 0.08);
+}
+
+.inviteCardSelected {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+  box-shadow: 0 2px 12px rgba(124, 45, 18, 0.18);
+}
+
+.inviteCardDisabled {
+  opacity: 0.55;
+  background: var(--surface-sunken);
+}
+
+.inviteCardIdentity {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.inviteCardAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.inviteCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inviteCardName,
+.inviteCardEmail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inviteCardNameValue {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.inviteCardEmailValue {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.inviteCardGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-1);
+}
+
+.inviteCardGroupsValue {
+  font-size: var(--font-size-xs);
+  color: var(--ars-info);
+  font-family: var(--font-family-mono);
+  line-height: 1.4;
+}
+
+.inviteCardLabel {
+  font-size: 10px;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+}
+
+.inviteCardBtn {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ars-lecturer);
+  background: var(--ars-lecturer);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  min-height: 32px;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.inviteCardBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+  border-color: var(--ars-lecturer-mid);
+}
+
+.inviteCardBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.inviteCardSelected .inviteCardBtn {
+  background: var(--surface-raised);
+  color: var(--ars-ink);
+  border-color: var(--border-strong);
+}
+
+.inviteCardSelected .inviteCardBtn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.inviteCardDisabled .inviteCardBtn,
+.inviteCardBtn:disabled {
+  background: var(--surface-sunken);
+  border-color: var(--border-subtle);
+  color: var(--ars-ink-muted);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Pending invite summary */
+.invitePendingList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.invitePendingTitle {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-lecturer);
+}
+
+.invitePendingChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.invitePendingChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--space-2);
+  border-radius: 999px;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer-mid);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 30%, transparent);
+}
+
+.invitePendingRemove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  padding: 2px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.invitePendingRemove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ars-lecturer) 22%, transparent);
+}
+
+.invitePendingRemove:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.invitePendingRemove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pagination */
+.invitePagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.invitePageBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-family-ui);
+}
+
+.invitePageBtn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--ars-ink-muted);
+}
+
+.invitePageBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.invitePageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invitePageIndicator {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+}
+
+/* ── Open Topic modal ──────────────────────────────────────── */
+.openTopicModalCard {
+  max-width: 640px;
+}
+
+.openTopicModalBody {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.openTopicSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.openTopicHeading {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.openTopicSectionLabel {
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ars-ink-muted);
+  margin: 0;
+}
+
+.openTopicDescription {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--ars-ink);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.openTopicEmpty {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.openTopicMaterialList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.openTopicMaterialRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.openTopicMaterialMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.openTopicMaterialTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  word-break: break-word;
+  min-width: 0;
+}
+
+.openTopicMaterialChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  font-family: var(--font-family-mono);
+}
+
+.openTopicMaterialChipLink {
+  background: var(--status-info-surface, var(--ars-info-bg));
+  color: var(--status-info-text, var(--ars-info));
+  border: 1px solid color-mix(in srgb, var(--ars-info) 35%, transparent);
+}
+
+.openTopicMaterialChipFile {
+  background: var(--surface-paper);
+  color: var(--ars-lecturer);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .root {
@@ -1141,5 +1559,17 @@
 
   .errorPanel {
     margin: var(--space-3) var(--space-4);
+  }
+
+  .inviteCardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .invitePendingChips {
+    gap: 4px;
+  }
+
+  .openTopicHeading {
+    font-size: var(--font-size-lg);
   }
 }

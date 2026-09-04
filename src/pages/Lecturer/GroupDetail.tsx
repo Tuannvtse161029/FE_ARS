@@ -4,21 +4,31 @@
 // group detail surface. The page renders:
 //
 //   1. Header (group name + back navigation).
-//   2. Metadata strip (Deadline, AssignedAt, derived status).
+//   2. Metadata strip (AssignedAt, members count, phased report count).
+//      NOTE: the group-level `deadline` is intentionally absent — see
+//      the inline comment on the metaStrip JSX below; per-phase
+//      deadlines are owned by `ConfigureMilestones`.
 //   3. Members list (`groupMemberService.getMembersForGroup`).
 //   4. Phased Report status counts (via the shared `countPhasedReportsByStatus`).
-//   5. Milestone summary card using the shared `<MilestoneProgress />`.
-//   6. Learning Materials list (filtered client-side — no BE group FK).
-//   7. "Edit group" affordance (PUT /api/ResearchGroup/{id}).
+//   5. Assigned Topic card (opens the shared `OpenTopicModal` from
+//      `src/components/lecturer/OpenTopicModal.tsx`).
+//   6. Invite-students modal: 3x3 card grid of graduate-student users.
+//   7. Learning Materials list (filtered client-side — no BE group FK).
+//   8. "Edit group" affordance (PUT /api/ResearchGroup/{id}); the
+//      group-level deadline input has been removed alongside the
+//      metaStrip cell — deadlines live on individual phases now.
 //
 // All modals/affordances live inline for this small page; the
 // contract-§15.1 split-out rule applies to pages with multi-step forms,
-// not the light "Edit Group" pattern here.
+// not the light "Edit Group" pattern here. The shared `OpenTopicModal`
+// is imported from its canonical component, so no local placeholder is
+// shipped here.
 
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from 'react';
@@ -29,7 +39,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Users,
-  Calendar,
   Clock,
   Pencil,
   Check,
@@ -40,10 +49,14 @@ import {
   CheckCircle2,
   UserPlus,
   Crown,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
-import { toLocalDateInput, toApiIsoString } from '../../utils/datetime';
+import api from '../../services/axios';
+import type { User } from '../../types/auth';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -55,10 +68,10 @@ import {
   type GroupMember,
 } from '../../services/groupMember.service';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
-import { MilestoneProgress } from '../../components/research/MilestoneProgress';
 import { PhaseTimeline, type PhaseTimelineItem } from '../../components/research/PhaseTimeline';
 import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { OpenTopicModal } from '../../components/lecturer/OpenTopicModal';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
 import styles from './GroupDetail.module.css';
@@ -91,10 +104,6 @@ const formatDateTime = (iso: string | null | undefined): string => {
     hour: '2-digit',
     minute: '2-digit',
   });
-};
-
-const formatDeadlineForInput = (iso: string | null | undefined): string => {
-  return toLocalDateInput(iso);
 };
 
 export const LecturerGroupDetail = (): JSX.Element => {
@@ -150,10 +159,12 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   useEffect(() => { void loadMembers(); }, [loadMembers]);
 
+  // `error` from the hook is intentionally ignored after the milestone
+  // summary card was removed (Phase C); Phase progress surfaces its own
+  // empty state via `reports.length === 0`.
   const {
     reports,
     isLoading: isReportsLoading,
-    error: reportsError,
     refetch: refetchReports,
   } = usePhasedReports(parsedGroupId);
 
@@ -245,24 +256,30 @@ export const LecturerGroupDetail = (): JSX.Element => {
     variant: 'success',
   });
 
-  // Edit Group modal
+  // Edit Group modal — the deadline input was removed because
+  // per-phase deadlines (ConfigureMilestones / PhasedReport.deadlineAt)
+  // are now the single source of truth. We stop sending `deadline`
+  // entirely; the BE may still echo it back on the wire and we
+  // deliberately ignore that value.
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
-  const [editDeadline, setEditDeadline] = useState('');
   const [editNameError, setEditNameError] = useState<string | null>(null);
-  const [editDeadlineError, setEditDeadlineError] = useState<string | null>(null);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [editGroupError, setEditGroupError] = useState<string | null>(null);
+
+  // Open Topic modal — opens the shared `OpenTopicModal` component
+  // (imported from `src/components/lecturer/OpenTopicModal.tsx`) which
+  // shows an inline summary of the assigned topic: title, description,
+  // and any reference material attached to it.
+  const [openTopicModalOpen, setOpenTopicModalOpen] = useState<boolean>(false);
 
   const openEditModal = () => {
     if (!group) return;
     setEditName(typeof group.name === 'string' ? group.name : '');
     setEditDesc(typeof group.description === 'string' ? group.description : '');
-    setEditDeadline(formatDeadlineForInput(group.deadline ?? null));
     setEditGroupError(null);
     setEditNameError(null);
-    setEditDeadlineError(null);
     setShowEditModal(true);
   };
 
@@ -279,14 +296,8 @@ export const LecturerGroupDetail = (): JSX.Element => {
     }
     const trimmedName = editName.trim();
     const nameErr = trimmedName ? null : t('lecturer.groupDetail.errNameReq');
-    let deadlineErr: string | null = null;
-    if (editDeadline) {
-      const ms = new Date(editDeadline).getTime();
-      if (Number.isNaN(ms)) deadlineErr = t('lecturer.groupDetail.errDeadlineInvalid');
-    }
     setEditNameError(nameErr);
-    setEditDeadlineError(deadlineErr);
-    if (nameErr || deadlineErr) return;
+    if (nameErr) return;
     setIsSavingGroup(true);
     setEditGroupError(null);
     try {
@@ -295,7 +306,13 @@ export const LecturerGroupDetail = (): JSX.Element => {
         topicId: group.topicId ?? null,
         name: trimmedName,
         description: editDesc.trim() || null,
-        deadline: editDeadline ? toApiIsoString(editDeadline) : null,
+        // The FE no longer collects or edits the group-level
+        // `deadline` — per-phase deadlines own scheduling from
+        // ConfigureMilestones. We still send the field because
+        // `ResearchGroupUpdateRequest` keeps `deadline` required on
+        // the wire; passing `null` here signals "no group-level
+        // deadline" to the BE without us having to echo stale data.
+        deadline: null,
         assignedAt: group.assignedAt ?? null,
       });
       setShowEditModal(false);
@@ -316,18 +333,154 @@ export const LecturerGroupDetail = (): JSX.Element => {
     }
   };
 
-  // Invite students modal
+  // Invite students modal — 3x3 card grid with search + pagination
+  // (Phase C). The current invite flow uses a textarea for raw
+  // emails; we now fetch a roster of Graduate-Student users from
+  // /api/User and let the lecturer tick the cards they want to add.
+  // The selected students are flattened to their emails right before
+  // calling `researchGroupService.invite(...)`, which keeps the wire
+  // contract untouched.
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
-  const [inviteEmailsInput, setInviteEmailsInput] = useState<string>('');
   const [isInviting, setIsInviting] = useState<boolean>(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSearch, setInviteSearch] = useState<string>('');
+  const [invitePage, setInvitePage] = useState<number>(1);
+  const [studentRoster, setStudentRoster] = useState<User[]>([]);
+  const [isLoadingRoster, setIsLoadingRoster] = useState<boolean>(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  // `allMemberships` is filled while the modal is open and used to
+  // derive "X other groups" counts per student. The lecturer's owned
+  // groups come from `useResearchGroups()` so the intersection logic
+  // matches the spec's "intersect client-side" requirement.
+  const [allMemberships, setAllMemberships] = useState<GroupMember[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
+
+  const INVITE_PAGE_SIZE = 9;
+
+  const studentOtherGroupCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    if (allMemberships.length === 0) return counts;
+    const lecturerGroupIds = new Set<number>();
+    for (const g of groups) {
+      if (typeof g.id === 'number') lecturerGroupIds.add(g.id);
+    }
+    const currentGroupId = parsedGroupId;
+    for (const m of allMemberships) {
+      if (typeof m.studentId !== 'number' || typeof m.researchGroupId !== 'number') continue;
+      if (!lecturerGroupIds.has(m.researchGroupId)) continue;
+      if (currentGroupId !== null && m.researchGroupId === currentGroupId) continue;
+      counts.set(m.studentId, (counts.get(m.studentId) ?? 0) + 1);
+    }
+    return counts;
+  }, [allMemberships, groups, parsedGroupId]);
+
+  const memberStudentIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const m of members) {
+      if (typeof m.studentId === 'number') ids.add(m.studentId);
+    }
+    return ids;
+  }, [members]);
+
+  const filteredStudents = useMemo(() => {
+    const needle = inviteSearch.trim().toLowerCase();
+    if (!needle) return studentRoster;
+    return studentRoster.filter((s) => {
+      const name = (s.fullName ?? '').toLowerCase();
+      const email = (s.email ?? '').toLowerCase();
+      return name.includes(needle) || email.includes(needle);
+    });
+  }, [studentRoster, inviteSearch]);
+
+  const totalInvitePages = Math.max(
+    1,
+    Math.ceil(filteredStudents.length / INVITE_PAGE_SIZE),
+  );
+
+  // Keep `invitePage` inside the valid window whenever the filtered
+  // list shrinks (e.g. after a search). Without this guard the
+  // pagination controls would render an empty page.
+  useEffect(() => {
+    if (invitePage > totalInvitePages) setInvitePage(totalInvitePages);
+  }, [invitePage, totalInvitePages]);
+
+  const paginatedStudents = useMemo(() => {
+    const start = (invitePage - 1) * INVITE_PAGE_SIZE;
+    return filteredStudents.slice(start, start + INVITE_PAGE_SIZE);
+  }, [filteredStudents, invitePage]);
+
+  const selectedStudents = useMemo<User[]>(() => {
+    return studentRoster.filter((s) => selectedStudentIds.has(s.id));
+  }, [studentRoster, selectedStudentIds]);
+
+  const loadRosterAndMemberships = useCallback(async () => {
+    setIsLoadingRoster(true);
+    setRosterError(null);
+    try {
+      const [usersRes, membershipsRes] = await Promise.allSettled([
+        // BE filter — the lecturer console treats role=GraduateStudent
+        // as the canonical roster key. If the BE ignores the query
+        // param, we still narrow to GraduateStudent on the FE because
+        // the page must never show admin / lecturer profiles.
+        api.get('/api/User', { params: { role: 'GraduateStudent' } }),
+        groupMemberService.getAll(),
+      ]);
+
+      const userPayload = usersRes.status === 'fulfilled' ? usersRes.value?.data : null;
+      const userList: User[] = Array.isArray(userPayload)
+        ? (userPayload as User[])
+        : Array.isArray(userPayload?.items)
+          ? (userPayload.items as User[])
+          : [];
+      const graduateStudents = userList.filter((u) => {
+        const roleName = (u.roleName ?? '').toLowerCase();
+        const roleId = typeof u.roleId === 'number' ? u.roleId : -1;
+        return (
+          roleName === 'graduate student' ||
+          roleName === 'graduatestudent' ||
+          roleId === 5 /* ROLE_IDS.GraduateStudent */
+        );
+      });
+      setStudentRoster(graduateStudents);
+
+      setAllMemberships(
+        membershipsRes.status === 'fulfilled'
+          ? (membershipsRes.value as GroupMember[])
+          : [],
+      );
+    } catch (err) {
+      setRosterError(
+        err instanceof Error ? err.message : t('lecturer.groupDetail.errInviteFail'),
+      );
+      setStudentRoster([]);
+      setAllMemberships([]);
+    } finally {
+      setIsLoadingRoster(false);
+    }
+  }, [t]);
+
+  // Re-load every time the modal becomes visible. The hook below also
+  // fires on initial mount (modal closed), but the data already in
+  // state stays usable so we don't refetch on every prop change.
+  // `loadRosterAndMemberships` is intentionally NOT in the deps array
+  // because it would be re-created whenever `t` changes (the function
+  // is rebuilt on every i18n refresh). We only want to re-fire when
+  // the modal toggles open/closed.
+  const loadRosterRef = useRef(loadRosterAndMemberships);
+  loadRosterRef.current = loadRosterAndMemberships;
+  useEffect(() => {
+    if (!showInviteModal) return;
+    void loadRosterRef.current();
+  }, [showInviteModal]);
 
   const openInviteModal = () => {
     if (members.length >= 4) {
       setInviteError(t('lecturer.groupDetail.errMaxMembers'));
       return;
     }
-    setInviteEmailsInput('');
+    setSelectedStudentIds(new Set());
+    setInviteSearch('');
+    setInvitePage(1);
     setInviteError(null);
     setShowInviteModal(true);
   };
@@ -337,19 +490,30 @@ export const LecturerGroupDetail = (): JSX.Element => {
     setShowInviteModal(false);
   };
 
+  const toggleStudentInvite = (student: User) => {
+    if (memberStudentIds.has(student.id)) return;
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(student.id)) next.delete(student.id);
+      else next.add(student.id);
+      return next;
+    });
+  };
+
   const handleInviteStudents = async (e: FormEvent) => {
     e.preventDefault();
     if (parsedGroupId === null) return;
-    const emails = inviteEmailsInput
-      .split(/[\n,;]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-    if (members.length + emails.length > 4) {
-      setInviteError(t('lecturer.groupDetail.errInviteMax').replace('{count}', String(Math.max(0, 4 - members.length))));
-      return;
-    }
+    const selected = studentRoster.filter((s) => selectedStudentIds.has(s.id));
+    const emails = selected
+      .map((s) => (typeof s.email === 'string' ? s.email.trim() : ''))
+      .filter((mail) => mail.length > 0);
+    const slotsLeft = Math.max(0, 4 - members.length);
     if (emails.length === 0) {
       setInviteError(t('lecturer.groupDetail.errNoEmail'));
+      return;
+    }
+    if (emails.length > slotsLeft) {
+      setInviteError(t('lecturer.groupDetail.errInviteMax').replace('{count}', String(slotsLeft)));
       return;
     }
     setIsInviting(true);
@@ -357,7 +521,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
     try {
       const res = await researchGroupService.invite(parsedGroupId, emails);
       setShowInviteModal(false);
-      setInviteEmailsInput('');
+      setSelectedStudentIds(new Set());
       const successCount = res.successEmails?.length ?? res.totalInvited ?? 0;
       const notFoundCount = res.notFoundEmails?.length ?? 0;
       let msg = t('lecturer.groupDetail.inviteSuccess').replace('{count}', String(successCount));
@@ -564,14 +728,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
         </div>
       )}
 
-      {/* Metadata strip */}
+      {/* Metadata strip — note that the group-level `deadline` is no
+          longer surfaced here or in the Edit Group modal. Per-phase
+          deadlines now live exclusively inside `ConfigureMilestones`
+          (see PageTimelineItem.deadline derived from the live PhasedReport
+          API and configured by PhasedReportUpdateRequest.deadlineAt). The
+          BE still returns `group.deadline` on the wire for backwards
+          compatibility, but the FE has stopped rendering and persisting it
+          so we can phase the column out cleanly. */}
       <section className={styles.metaStrip}>
-        <div className={styles.metaCell}>
-          <span className={styles.metaLabel}>
-            <Calendar size={12} aria-hidden /> {t('lecturer.groupDetail.deadline')}
-          </span>
-          <span className={styles.metaValue}>{formatDateOnly(group.deadline ?? null)}</span>
-        </div>
         <div className={styles.metaCell}>
           <span className={styles.metaLabel}>
             <Clock size={12} aria-hidden /> {t('lecturer.groupDetail.assignedAt')}
@@ -598,7 +763,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
       {/* Section cards — 2-column grid on desktop, 1-column on mobile.
           Row 1: Assigned topic + Group members
-          Row 2: Phase progress + Milestone summary
+          Row 2: Phase progress (alone — Milestone summary was removed)
           Row 3: Learning materials (full width) */}
       <div className={styles.cardsGrid}>
 
@@ -624,9 +789,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
                     </span>
                   )}
                 </div>
-                <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.openLink}>
+                <button
+                  type="button"
+                  className={styles.openLink}
+                  onClick={() => setOpenTopicModalOpen(true)}
+                  data-testid="open-topic-button"
+                >
                   <ExternalLink size={14} aria-hidden /> {t('lecturer.groupDetail.openTopic')}
-                </Link>
+                </button>
               </div>
             </div>
           ) : (
@@ -771,46 +941,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
           </section>
         )}
 
-        {/* Milestone summary */}
-        <section className={styles.card}>
-          <header className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>{t('lecturer.groupDetail.milestoneSummaryTitle')}</h2>
-            <span className={styles.cardHint}>
-              {t('lecturer.groupDetail.milestoneSummaryHint')}
-            </span>
-          </header>
-          {reportsError && (
-            <div className={styles.errorPanel} role="alert">
-              <AlertTriangle size={14} aria-hidden />
-              <span>{t('lecturer.groupDetail.reportsError')} {reportsError.message}</span>
-              <button type="button" className={styles.retryBtn} onClick={() => void refetchReports()}>
-                {t('lecturer.groupDetail.retry')}
-              </button>
-            </div>
-          )}
-          {reports.length === 0 && !isReportsLoading && !reportsError && (
-            <div className={styles.cardBody}>
-              <div className={styles.emptyState}>
-                <FileText size={18} aria-hidden />
-                {t('lecturer.groupDetail.noReports')}
-              </div>
-            </div>
-          )}
-          {reports.length > 0 && (
-            <>
-              <div className={styles.cardBody}>
-                <MilestoneProgress reports={reports} className={styles.cardInner} />
-              </div>
-              <div className={styles.gapNote}>
-                <InlineNotice
-                  tone="info"
-                  title={t('lecturer.groupDetail.milestoneApiNotice')}
-                  description={t('lecturer.groupDetail.milestoneApiNoticeDesc')}
-                />
-              </div>
-            </>
-          )}
-        </section>
+        {/* Milestone summary card was intentionally removed in Phase C — the
+            deadline / milestone ownership moved into per-phase deadlines on
+            `ConfigureMilestones`. Phase progress continues to surface via
+            the `<PhaseTimeline />` card above. */}
 
         {/* Learning materials — full width */}
         <section className={`${styles.card} ${styles.cardFull}`}>
@@ -935,25 +1069,9 @@ export const LecturerGroupDetail = (): JSX.Element => {
                   onChange={(e) => setEditDesc(e.target.value)}
                   rows={3}
                 />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="groupDeadline">
-                  {t('lecturer.groupDetail.deadlineLabel')}
-                </label>
-                <input
-                  id="groupDeadline"
-                  type="date"
-                  className={`${styles.formInput} ${editDeadlineError ? styles.formInputError : ''}`}
-                  value={editDeadline}
-                  onChange={(e) => {
-                    setEditDeadline(e.target.value);
-                    if (editDeadlineError) setEditDeadlineError(null);
-                  }}
-                  aria-invalid={Boolean(editDeadlineError)}
-                  aria-describedby={editDeadlineError ? 'gd-deadline-error' : undefined}
-                />
-                <FieldError id="gd-deadline-error" message={editDeadlineError} testId="gd-deadline-error" />
+                <span className={styles.cardHint}>
+                  {t('lecturer.groupDetail.deadlineRemovedHint')}
+                </span>
               </div>
 
               {editGroupError && (
@@ -989,10 +1107,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
         </div>
       )}
 
-      {/* ── Invite Students modal ──────────────────────────────── */}
+      {/* ── Invite Students modal (3x3 card grid) ─────────────── */}
       {showInviteModal && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="inviteStudentsTitle">
-          <div className={styles.modal}>
+          <div className={`${styles.modal} ${styles.inviteModal}`}>
             <header className={styles.modalHeader}>
               <h2 id="inviteStudentsTitle" className={styles.modalTitle}>
                 <UserPlus size={18} aria-hidden />
@@ -1015,26 +1133,180 @@ export const LecturerGroupDetail = (): JSX.Element => {
               className={styles.modalForm}
               noValidate
             >
+              {/* Search bar */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="inviteEmails">
-                  {t('lecturer.groupDetail.emailsLabel')}
+                <label className={styles.formLabel} htmlFor="inviteSearch">
+                  <Search size={12} aria-hidden /> {t('lecturer.groupDetail.inviteSearchLabel')}
                 </label>
-                <textarea
-                  id="inviteEmails"
-                  className={styles.formTextarea}
-                  rows={4}
-                  placeholder={t('lecturer.groupDetail.emailsPlaceholder')}
-                  value={inviteEmailsInput}
+                <input
+                  id="inviteSearch"
+                  type="search"
+                  className={styles.formInput}
+                  value={inviteSearch}
                   onChange={(e) => {
-                    setInviteEmailsInput(e.target.value);
-                    if (inviteError) setInviteError(null);
+                    setInviteSearch(e.target.value);
+                    setInvitePage(1);
                   }}
+                  placeholder={t('lecturer.groupDetail.inviteSearchPlaceholder')}
                   disabled={isInviting}
                 />
-                <span className={styles.cardHint}>
-                  {t('lecturer.groupDetail.inviteHint')}
-                </span>
               </div>
+
+              {/* Card grid: 3 columns on desktop, 1 on mobile.
+                  Each card lists the student plus the count of OTHER
+                  groups they already belong to (intersected with this
+                  lecturer's groups via useResearchGroups). */}
+              <div className={styles.inviteCardGrid}>
+                {isLoadingRoster && (
+                  <div className={`${styles.inviteGridState} ${styles.inviteGridStateWide}`}>
+                    <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                    {t('lecturer.groupDetail.inviteLoadingStudents')}
+                  </div>
+                )}
+                {!isLoadingRoster && rosterError && (
+                  <div className={`${styles.errorPanel} ${styles.inviteGridStateWide}`} role="alert">
+                    <AlertTriangle size={14} aria-hidden />
+                    <span>{rosterError}</span>
+                    <button
+                      type="button"
+                      className={styles.retryBtn}
+                      onClick={() => void loadRosterAndMemberships()}
+                    >
+                      {t('lecturer.groupDetail.retry')}
+                    </button>
+                  </div>
+                )}
+                {!isLoadingRoster && !rosterError && filteredStudents.length === 0 && (
+                  <div className={styles.inviteGridState}>
+                    {inviteSearch.trim()
+                      ? t('lecturer.groupDetail.inviteNoStudentsFound')
+                      : t('lecturer.groupDetail.inviteEmptyState')}
+                  </div>
+                )}
+                {!isLoadingRoster && !rosterError && paginatedStudents.map((student) => {
+                  const alreadyInGroup = memberStudentIds.has(student.id);
+                  const otherCount = studentOtherGroupCounts.get(student.id) ?? 0;
+                  const isSelected = selectedStudentIds.has(student.id);
+                  return (
+                    <article
+                      key={`invite-${student.id}`}
+                      className={`${styles.inviteCard} ${isSelected ? styles.inviteCardSelected : ''} ${alreadyInGroup ? styles.inviteCardDisabled : ''}`}
+                      aria-disabled={alreadyInGroup}
+                    >
+                      <div className={styles.inviteCardIdentity}>
+                        <div className={styles.inviteCardAvatar} aria-hidden>
+                          {student.fullName?.slice(0, 2).toUpperCase() ?? 'ST'}
+                        </div>
+                        <div className={styles.inviteCardBody}>
+                          <div className={styles.inviteCardName}>
+                            <span className={styles.inviteCardLabel}>
+                              {t('lecturer.groupDetail.inviteCardFullName')}
+                            </span>
+                            <span className={styles.inviteCardNameValue}>
+                              {student.fullName ?? `Student #${student.id}`}
+                            </span>
+                          </div>
+                          <div className={styles.inviteCardEmail}>
+                            <span className={styles.inviteCardLabel}>
+                              {t('lecturer.groupDetail.inviteCardEmail')}
+                            </span>
+                            <span className={styles.inviteCardEmailValue}>
+                              {student.email ?? '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={styles.inviteCardGroups}>
+                        <span className={styles.inviteCardLabel}>
+                          {t('lecturer.groupDetail.inviteCardExistingGroups')}
+                        </span>
+                        <span className={styles.inviteCardGroupsValue}>
+                          {alreadyInGroup
+                            ? t('lecturer.groupDetail.inviteCardAlreadyInGroup')
+                            : otherCount > 0
+                              ? t('lecturer.groupDetail.inviteCardOtherGroups').replace('{count}', String(otherCount))
+                              : t('lecturer.groupDetail.inviteCardNoOtherGroups')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.inviteCardBtn}
+                        onClick={() => toggleStudentInvite(student)}
+                        disabled={alreadyInGroup || isInviting}
+                        aria-pressed={isSelected}
+                      >
+                        {isSelected ? <X size={14} aria-hidden /> : <UserPlus size={14} aria-hidden />}
+                        {alreadyInGroup
+                          ? t('lecturer.groupDetail.inviteCardAlreadyInGroup')
+                          : isSelected
+                            ? t('lecturer.groupDetail.inviteRemoveFromPending')
+                            : t('lecturer.groupDetail.inviteAction')}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              {filteredStudents.length > INVITE_PAGE_SIZE && (
+                <nav className={styles.invitePagination} aria-label="invite pagination">
+                  <button
+                    type="button"
+                    className={styles.invitePageBtn}
+                    onClick={() => setInvitePage((p) => Math.max(1, p - 1))}
+                    disabled={invitePage === 1 || isInviting}
+                    aria-label={t('lecturer.groupDetail.invitePrevPage')}
+                  >
+                    <ChevronLeft size={14} aria-hidden /> {t('lecturer.groupDetail.invitePrevPage')}
+                  </button>
+                  <span className={styles.invitePageIndicator}>
+                    {t('lecturer.groupDetail.invitePageIndicator')
+                      .replace('{page}', String(invitePage))
+                      .replace('{total}', String(totalInvitePages))}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.invitePageBtn}
+                    onClick={() => setInvitePage((p) => Math.min(totalInvitePages, p + 1))}
+                    disabled={invitePage === totalInvitePages || isInviting}
+                    aria-label={t('lecturer.groupDetail.inviteNextPage')}
+                  >
+                    {t('lecturer.groupDetail.inviteNextPage')} <ChevronRight size={14} aria-hidden />
+                  </button>
+                </nav>
+              )}
+
+              {/* Pending invite summary at the bottom of the form */}
+              {selectedStudents.length > 0 && (
+                <div className={styles.invitePendingList}>
+                  <span className={styles.invitePendingTitle}>
+                    {t('lecturer.groupDetail.invitePendingTitle')
+                      .replace('{count}', String(selectedStudents.length))}
+                  </span>
+                  <ul className={styles.invitePendingChips}>
+                    {selectedStudents.map((s) => (
+                      <li key={`pending-${s.id}`} className={styles.invitePendingChip}>
+                        <span>{s.fullName ?? `Student #${s.id}`}</span>
+                        <button
+                          type="button"
+                          className={styles.invitePendingRemove}
+                          onClick={() => toggleStudentInvite(s)}
+                          disabled={isInviting}
+                          aria-label={t('lecturer.groupDetail.inviteRemoveFromPending')}
+                        >
+                          <X size={12} aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {selectedStudents.length === 0 && (
+                <span className={styles.cardHint}>
+                  {t('lecturer.groupDetail.invitePendingEmpty')}
+                </span>
+              )}
 
               {inviteError && (
                 <div className={styles.errorPanel} role="alert">
@@ -1057,17 +1329,40 @@ export const LecturerGroupDetail = (): JSX.Element => {
                 type="submit"
                 form="invite-students-form"
                 className={styles.primaryBtn}
-                disabled={isInviting || !inviteEmailsInput.trim() || members.length >= 4}
+                disabled={isInviting || selectedStudentIds.size === 0 || members.length >= 4}
+                data-testid="send-invites-btn"
               >
                 {isInviting
                   ? <Loader size={14} className={styles.spinningIcon} aria-hidden />
                   : <Check size={14} aria-hidden />}
-                {isInviting ? t('lecturer.groupDetail.sendingInvites') : t('lecturer.groupDetail.sendInvitations')}
+                {isInviting
+                  ? t('lecturer.groupDetail.sendingInvites')
+                  : `${t('lecturer.groupDetail.sendInvitations')} (${selectedStudentIds.size})`}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Open Topic modal ─────────────────────────────────── */}
+      <OpenTopicModal
+        isOpen={openTopicModalOpen}
+        topic={
+          relatedTopic
+            ? {
+                title: relatedTopic.title ?? `Topic #${relatedTopic.id}`,
+                description: relatedTopic.description,
+                material: relatedTopic.materialsUrl
+                  ? relatedTopic.materialsUrl.startsWith('http')
+                    ? { kind: 'url', url: relatedTopic.materialsUrl }
+                    : { kind: 'url', url: relatedTopic.materialsUrl }
+                  : null,
+              }
+            : null
+        }
+        currentLecturerId={lecturerId}
+        onClose={() => setOpenTopicModalOpen(false)}
+      />
     </div>
   );
 };

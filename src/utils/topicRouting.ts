@@ -22,6 +22,8 @@ export interface TopicSelection {
 
 const POSITIVE_INTEGER = /^\d+$/;
 
+import { ROUTES } from '../routes/paths';
+
 /**
  * Parse the topic id from a query-string-style search params object.
  *
@@ -81,13 +83,62 @@ export const parseIdFromSearch = (
 export const buildConfigureMilestonesUrl = (
   topicId: number,
   groupId?: number | null,
+  options?: { highlightPhaseNumber?: number | null },
 ): string => {
   const search = new URLSearchParams();
   search.set('topicId', String(topicId));
   if (typeof groupId === 'number' && Number.isFinite(groupId) && groupId > 0) {
     search.set('groupId', String(groupId));
   }
+  if (
+    options?.highlightPhaseNumber !== null &&
+    options?.highlightPhaseNumber !== undefined &&
+    Number.isFinite(options.highlightPhaseNumber) &&
+    options.highlightPhaseNumber > 0
+  ) {
+    search.set('phase', String(options.highlightPhaseNumber));
+    search.set('highlight', 'true');
+  }
   return `/configure-milestones?${search.toString()}`;
+};
+
+/**
+ * Build the canonical Research Topics list URL with an optional highlight
+ * flag, used when deep-linking from the Materials "Used by" modal back to
+ * a specific topic row.
+ */
+export const buildResearchTopicsUrl = (options?: {
+  highlightTopicId?: number | null;
+}): string => {
+  const search = new URLSearchParams();
+  if (
+    options?.highlightTopicId !== null &&
+    options?.highlightTopicId !== undefined &&
+    Number.isFinite(options.highlightTopicId) &&
+    options.highlightTopicId > 0
+  ) {
+    search.set('topicId', String(options.highlightTopicId));
+    search.set('highlight', 'true');
+  }
+  const qs = search.toString();
+  return qs.length > 0
+    ? `${ROUTES.LECTURER_RESEARCH_TOPICS}?${qs}`
+    : ROUTES.LECTURER_RESEARCH_TOPICS;
+};
+
+/**
+ * Read the boolean `highlight` flag from the search params. Returns true
+ * only when the param is explicitly set to `true` / `1` / `yes` — any
+ * other value (including absent) is treated as false so a stale URL never
+ * surprises the user with an unsolicited animation.
+ */
+export const parseHighlightFlag = (
+  params: URLSearchParams | ReadonlyURLSearchParamsLike | null | undefined,
+): boolean => {
+  if (!params) return false;
+  const raw = params.get('highlight');
+  if (raw === null) return false;
+  return raw === 'true' || raw === '1' || raw === 'yes';
 };
 
 /**

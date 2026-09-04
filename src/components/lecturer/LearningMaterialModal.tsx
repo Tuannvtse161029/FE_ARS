@@ -25,6 +25,10 @@ import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { learningMaterialService } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import type { ResearchTopic } from '../../services/researchTopic.service';
+import {
+  MaterialSourcePicker,
+  type MaterialSourceValue,
+} from './MaterialSourcePicker';
 import styles from './LearningMaterialModal.module.css';
 
 export interface LearningMaterialModalProps {
@@ -62,10 +66,11 @@ export const LearningMaterialModal = ({
   } = useLearningMaterials({ lecturerId });
 
   const [newTitle, setNewTitle] = useState('');
-  const [newFileUrl, setNewFileUrl] = useState('');
+  const [newSource, setNewSource] = useState<MaterialSourceValue | null>(null);
   const [newSubFieldId, setNewSubFieldId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   const [banner, setBanner] = useState<BannerState>({
     visible: false,
@@ -76,9 +81,10 @@ export const LearningMaterialModal = ({
   useEffect(() => {
     if (!isOpen) {
       setNewTitle('');
-      setNewFileUrl('');
+      setNewSource(null);
       setNewSubFieldId('');
       setFormError(null);
+      setPickerError(null);
       setBanner({ visible: false, text: '', variant: 'success' });
     }
   }, [isOpen]);
@@ -97,15 +103,35 @@ export const LearningMaterialModal = ({
       return;
     }
     const title = newTitle.trim();
-    const fileUrl = newFileUrl.trim();
     if (!title) {
       setFormError('Title is required.');
       return;
     }
-    if (!fileUrl) {
-      setFormError('File URL is required. Paste a Firebase Storage URL.');
+    // The picker emits a single value whose kind determines how we
+    // resolve the fileUrl we POST to the BE. URL + File kinds both
+    // produce a direct URL; the Library kind is a no-op for this
+    // modal because we're already creating a new material — we still
+    // require the user to attach a concrete file/URL.
+    let resolvedUrl: string | null = null;
+    if (newSource) {
+      if (newSource.kind === 'url') {
+        resolvedUrl = newSource.url.trim();
+      } else if (newSource.kind === 'file') {
+        resolvedUrl = newSource.fileUrl;
+      } else {
+        setPickerError(
+          'Pick a Link or Upload source for a new material. To reuse an existing one, close this modal and select it from your library.',
+        );
+        return;
+      }
+    }
+    if (!resolvedUrl) {
+      setPickerError(
+        'File URL is required. Paste a URL or upload a file before adding.',
+      );
       return;
     }
+    setPickerError(null);
     const subFieldIdNum = newSubFieldId.trim().length
       ? Number(newSubFieldId.trim())
       : undefined;
@@ -115,7 +141,7 @@ export const LearningMaterialModal = ({
       await learningMaterialService.create({
         lecturerId,
         title,
-        fileUrl,
+        fileUrl: resolvedUrl,
         description: null,
         subFieldId:
           typeof subFieldIdNum === 'number' && Number.isFinite(subFieldIdNum)
@@ -127,7 +153,7 @@ export const LearningMaterialModal = ({
       // client-side only — the modal lists every material the lecturer
       // owns. The header note documents the limit.
       setNewTitle('');
-      setNewFileUrl('');
+      setNewSource(null);
       setNewSubFieldId('');
       setBanner({
         visible: true,
@@ -327,20 +353,21 @@ export const LearningMaterialModal = ({
             />
           </div>
           <div className={styles.formRow}>
-            <label className={styles.formLabel} htmlFor="mat-url">
+            <label className={styles.formLabel}>
               * File URL
             </label>
-            <input
-              id="mat-url"
-              type="url"
-              className={styles.formInput}
-              value={newFileUrl}
-              onChange={(e) => setNewFileUrl(e.target.value)}
-              placeholder="https://firebasestorage.googleapis.com/.../syllabus.pdf"
-              required
+            <MaterialSourcePicker
+              value={newSource}
+              onChange={(v) => {
+                setNewSource(v);
+                if (pickerError) setPickerError(null);
+              }}
+              errorMessage={pickerError}
+              inputId="lmMaterialSourceUrl"
             />
             <span className={styles.helperText}>
-              Upload the PDF via the lecturer's Firebase bucket, then paste the URL.
+              Link to an existing URL, upload a new PDF, or pick from your
+              library — the file URL is what students will open.
             </span>
           </div>
           <div className={styles.formRow}>

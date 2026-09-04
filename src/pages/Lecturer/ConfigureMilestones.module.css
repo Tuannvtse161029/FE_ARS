@@ -1305,3 +1305,279 @@
 .successHint svg:first-child {
   flex-shrink: 0;
 }
+
+/* ── Card-list view (ConfigureMilestones index) ──────────────── */
+.cardListGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+.topicCard {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  position: relative;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.topicCard:hover {
+  border-color: var(--ars-lecturer-mid);
+  box-shadow: var(--shadow-sm);
+}
+
+.topicCard::before {
+  content: '';
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
+}
+
+.topicCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+}
+
+.topicCardTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.topicCardDesc {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+  font-style: italic;
+  padding-left: var(--space-4);
+}
+
+.topicCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+}
+
+.topicCardMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.topicCardEmpty {
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  text-align: center;
+}
+
+.emptyCta {
+  margin-top: var(--space-3);
+  display: flex;
+  justify-content: center;
+}
+
+.groupChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+}
+
+.groupChipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+  max-width: 100%;
+}
+
+.groupChipBtn:hover {
+  border-color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+}
+
+.groupChipBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.groupChipName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.groupChipBadge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  font-family: var(--font-family-mono);
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-bold);
+  border-radius: 999px;
+  padding: 0 var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 30%, transparent);
+}
+
+.groupChipArrow {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.groupChipBtn:hover .groupChipArrow {
+  color: var(--ars-lecturer);
+}
+
+/* ── Modal (phase editor) ──────────────────────────────────── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay { animation: none; }
+}
+
+.modalCard {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 880px;
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  text-align: left;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ars-network);
+  padding-bottom: var(--space-3);
+  gap: var(--space-3);
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.modalSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--ars-ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .cardListGrid {
+    grid-template-columns: 1fr;
+  }
+  .modalCard {
+    padding: var(--space-4);
+    max-height: 100vh;
+  }
+}

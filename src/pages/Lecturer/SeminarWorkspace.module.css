@@ -327,6 +327,106 @@
   line-height: 1.3;
 }
 
+/* Title + status badge row.
+   Keeps the badge visually anchored to the title on every breakpoint;
+   `flex-wrap` lets the badge drop below on very narrow cards. */
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cardTitleRow .cardTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Status pill rendered next to every seminar title. Tones borrow from the
+   existing --ars-* status family so they sit comfortably with the rest of
+   the page chrome (banners, progress bars, role badges). */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+  flex-shrink: 0;
+  /* Status text adopts the parent's `currentColor` so each variant only
+     needs to set one token — keeps the badge readable across light/dark. */
+  background: transparent;
+}
+
+.statusBadge > span:last-child {
+  /* Inner label sits flush with the optional pulsing dot. */
+  display: inline-flex;
+  align-items: center;
+}
+
+.statusBadge_DRAFT {
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-node);
+}
+
+.statusBadge_UPCOMING {
+  color: var(--ars-info);
+  background: var(--ars-info-bg);
+  border-color: rgba(30, 64, 175, 0.25);
+}
+
+.statusBadge_IN_PROGRESS {
+  color: var(--ars-warning);
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+}
+
+.statusBadge_COMPLETED {
+  color: var(--ars-success);
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
+}
+
+/* Pulsing dot shown only on the IN PROGRESS badge. `currentColor` keeps the
+   dot in sync with the badge text tone. */
+.statusPulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  /* Two-axis animation gives a clear "alive" cue while staying under
+     200ms per cycle — long enough to read, short enough to not nag. */
+  animation: statusPulseAnim 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes statusPulseAnim {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statusPulse {
+    animation: none;
+  }
+}
+
 .cardDescription {
   font-size: var(--font-size-sm);
   color: var(--ars-ink-muted);
