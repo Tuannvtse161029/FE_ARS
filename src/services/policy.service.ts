@@ -43,7 +43,7 @@ import {
   Timestamp,
   type FirestoreError,
 } from 'firebase/firestore';
-import { firestore, isFirebaseConfigured } from '../firebase';
+import { firestore, isFirebaseConfigured, firebaseInitializationError, getFirebaseConfigStatus } from '../firebase';
 import {
   POLICY_META,
   POLICY_SEED_CONTENT,
@@ -67,12 +67,55 @@ const describeError = (error: unknown): string => {
     case 'permission-denied':
       return 'Firestore denied the request. Update the policies collection security rules to allow admin writes (and reads).';
     case 'unavailable':
-      return 'Firestore is unreachable. Check your network connection and try again.';
+      return 'Firestore is unreachable. The Firebase backend may be down — check https://status.firebase.google.com and retry shortly.';
     case 'failed-precondition':
       return 'Firestore rejected the write — the policies collection may not exist yet. Create it in the Firebase Console.';
     default:
       return (error as Error)?.message ?? String(error);
   }
+};
+
+/**
+ * Build an error message that matches the ACTUAL failure mode.
+ *
+ * Previously we lumped every "no Firestore handle" case into
+ * `"Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to your .env file."`
+ * — which lied to the user whenever the .env was fine but Firebase was
+ * unreachable / the client had crashed during init / the Firestore call
+ * itself had errored. We now branch on the real state:
+ *
+ *   1. Env vars truly missing → list exactly which keys are empty so the
+ *      user can fix `.env` without guessing.
+ *   2. Env vars present but `initializeApp` threw → surface the SDK's
+ *      own message (the user can paste it into a bug report).
+ *   3. Everything looks fine but `firestore` is null → fall through to a
+ *      generic "client unavailable" message; we don't claim the .env is
+ *      broken anymore.
+ *   4. `getDocs` / `setDoc` call failed → `describeError()` handles the
+ *      SDK codes (network down, permission, etc.).
+ */
+const buildUnavailableError = (): Error => {
+  const status = getFirebaseConfigStatus();
+  if (!status.configured) {
+    const missing = status.missingKeys.length > 0
+      ? ` Missing or placeholder: ${status.missingKeys.join(', ')}.`
+      : '';
+    return new Error(
+      `Firebase is not configured. Add ${status.missingKeys[0] ?? 'VITE_FIREBASE_API_KEY'} ` +
+        `and ${status.missingKeys.find((k) => k === 'VITE_FIREBASE_PROJECT_ID') ?? 'VITE_FIREBASE_PROJECT_ID'} ` +
+        `to your .env file.${missing}`,
+    );
+  }
+  if (firebaseInitializationError) {
+    return new Error(
+      `Firebase credentials are present but the client failed to initialize: ` +
+        `${firebaseInitializationError.message}`,
+    );
+  }
+  return new Error(
+    'Firebase is configured but the Firestore client is unavailable right now. ' +
+      'The Firebase backend may be down — please retry shortly.',
+  );
 };
 
 const slugDoc = (slug: PolicySlug) => doc(firestore!, POLICIES_COLLECTION, slug);
@@ -108,9 +151,7 @@ const fromSnapshot = (
 
 export const listAll = async (): Promise<Record<PolicySlug, PolicySnapshot>> => {
   if (!isFirebaseConfigured() || !firestore) {
-    throw new Error(
-      'Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to your .env file.',
-    );
+    throw buildUnavailableError();
   }
 
   let snap;
@@ -144,9 +185,7 @@ export const listAll = async (): Promise<Record<PolicySlug, PolicySnapshot>> => 
  */
 export const getOne = async (slug: PolicySlug): Promise<PolicySnapshot> => {
   if (!isFirebaseConfigured() || !firestore) {
-    throw new Error(
-      'Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to your .env file.',
-    );
+    throw buildUnavailableError();
   }
 
   // Reuse listAll for one doc — cheap because Firestore caches the
@@ -168,9 +207,7 @@ export const save = async (
   currentVersion: number,
 ): Promise<PolicyDocument> => {
   if (!isFirebaseConfigured() || !firestore) {
-    throw new Error(
-      'Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to your .env file.',
-    );
+    throw buildUnavailableError();
   }
 
   const nextVersion = Math.max(1, currentVersion + 1);
