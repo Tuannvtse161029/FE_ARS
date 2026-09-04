@@ -14,7 +14,7 @@ export interface Medal {
   roles: RoleTarget[];
   tier: MedalTier;
   stageLevel: number;
-  imageUrl: string; // Dynamic URL for image, can be replaced anytime
+  imageUrl: string; // Supports 'lucide:IconName' or standard http/https/data image URL
   criteriaMetric: string;
   criteriaThreshold: number;
   criteriaUnit: string;
@@ -64,7 +64,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_connected',
     criteriaThreshold: 1,
     criteriaUnit: 'tài khoản',
@@ -82,7 +82,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 1,
     criteriaUnit: 'bài báo',
@@ -100,7 +100,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 3,
     criteriaUnit: 'công trình',
@@ -120,7 +120,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 1,
     criteriaUnit: 'bài báo',
@@ -138,7 +138,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1532012164546-f432f2e37b73?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 5,
     criteriaUnit: 'bài báo',
@@ -156,7 +156,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 10,
     criteriaUnit: 'bài báo',
@@ -174,7 +174,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher'],
     tier: 'Platinum',
     stageLevel: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1507842229451-7f01be7f7396?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 20,
     criteriaUnit: 'bài báo',
@@ -188,13 +188,13 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-host-1',
     code: 'ACADEMIC_HOST_BRONZE',
     title: 'Academic Host (Bronze)',
-    titleVi: 'Chủ trì Hội thảo (Cấp 1 - Khởi đầu)',
-    description: 'Successfully hosted 1 academic seminar on the platform.',
+    titleVi: 'Chủ trì Hội thảo (Cấp 1 - Đồng)',
+    description: 'Successfully organized and hosted 1 academic seminar on the platform.',
     descriptionVi: 'Tổ chức thành công 1 buổi Seminar học thuật trên hệ thống.',
     roles: ['Researcher', 'Lecturer'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 1,
     criteriaUnit: 'buổi seminar',
@@ -207,12 +207,12 @@ export const INITIAL_MEDALS: Medal[] = [
     code: 'ACADEMIC_HOST_SILVER',
     title: 'Academic Host (Silver)',
     titleVi: 'Chủ trì Hội thảo (Cấp 2 - Bạc)',
-    description: 'Successfully hosted 3 or more academic seminars on the platform.',
+    description: 'Successfully organized and hosted 3 or more academic seminars on the platform.',
     descriptionVi: 'Tổ chức thành công từ 3 buổi Seminar học thuật trở lên trên hệ thống.',
     roles: ['Researcher', 'Lecturer'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 3,
     criteriaUnit: 'buổi seminar',
@@ -230,9 +230,27 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Researcher', 'Lecturer'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 5,
+    criteriaUnit: 'buổi seminar',
+    isActive: true,
+    createdAt: '2026-09-01T00:00:00Z',
+    updatedAt: '2026-09-01T00:00:00Z',
+  },
+  {
+    id: 'medal-host-4',
+    code: 'ACADEMIC_HOST_PLATINUM',
+    title: 'Academic Host (Platinum)',
+    titleVi: 'Chủ trì Hội thảo (Cấp 4 - Bạch Kim)',
+    description: 'Successfully hosted 10 or more academic seminars on the platform.',
+    descriptionVi: 'Tổ chức thành công từ 10 buổi Seminar học thuật uy tín trên hệ thống.',
+    roles: ['Researcher', 'Lecturer'],
+    tier: 'Platinum',
+    stageLevel: 4,
+    imageUrl: 'lucide:Mic',
+    criteriaMetric: 'hosted_seminars',
+    criteriaThreshold: 10,
     criteriaUnit: 'buổi seminar',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
@@ -244,16 +262,16 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-mentor-1',
     code: 'MASTER_MENTOR_BRONZE',
     title: 'Master Mentor (Bronze)',
-    titleVi: 'Người hướng dẫn tận tâm (Cấp 1 - Khởi đầu)',
-    description: 'Guided 1 student research group through 100% of their milestone phases.',
+    titleVi: 'Người hướng dẫn tận tâm (Cấp 1 - Đồng)',
+    description: 'Mentored 1 student research group completing 100% of topic phases.',
     descriptionVi: 'Hướng dẫn 1 nhóm sinh viên hoàn thành 100% các Phase báo cáo tiến độ.',
     roles: ['Lecturer'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 1,
-    criteriaUnit: 'nhóm nghiên cứu',
+    criteriaUnit: 'nhóm sinh viên',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -263,15 +281,15 @@ export const INITIAL_MEDALS: Medal[] = [
     code: 'MASTER_MENTOR_SILVER',
     title: 'Master Mentor (Silver)',
     titleVi: 'Người hướng dẫn tận tâm (Cấp 2 - Bạc)',
-    description: 'Guided at least 3 student research groups through 100% of milestone phases.',
+    description: 'Mentored at least 3 student groups completing 100% of progress report phases.',
     descriptionVi: 'Hướng dẫn ít nhất 3 nhóm sinh viên hoàn thành 100% các Phase báo cáo tiến độ.',
     roles: ['Lecturer'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 3,
-    criteriaUnit: 'nhóm nghiên cứu',
+    criteriaUnit: 'nhóm sinh viên',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -281,15 +299,33 @@ export const INITIAL_MEDALS: Medal[] = [
     code: 'MASTER_MENTOR_GOLD',
     title: 'Master Mentor (Gold)',
     titleVi: 'Người hướng dẫn tận tâm (Cấp 3 - Vàng)',
-    description: 'Guided at least 5 student research groups successfully to defense.',
-    descriptionVi: 'Hướng dẫn từ 5 nhóm sinh viên hoàn thành 100% các giai đoạn đạt chuẩn.',
+    description: 'Mentored 5 student groups successfully reaching defense and final review.',
+    descriptionVi: 'Hướng dẫn 5 nhóm sinh viên hoàn thành xuất sắc toàn bộ giai đoạn đề tài.',
     roles: ['Lecturer'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 5,
-    criteriaUnit: 'nhóm nghiên cứu',
+    criteriaUnit: 'nhóm sinh viên',
+    isActive: true,
+    createdAt: '2026-09-01T00:00:00Z',
+    updatedAt: '2026-09-01T00:00:00Z',
+  },
+  {
+    id: 'medal-mentor-4',
+    code: 'MASTER_MENTOR_PLATINUM',
+    title: 'Master Mentor (Platinum)',
+    titleVi: 'Người hướng dẫn tận tâm (Cấp 4 - Bạch Kim)',
+    description: 'Mentored 10 or more student groups successfully completing research topics.',
+    descriptionVi: 'Hướng dẫn thành công từ 10 nhóm sinh viên bảo vệ thành công đề tài.',
+    roles: ['Lecturer'],
+    tier: 'Platinum',
+    stageLevel: 4,
+    imageUrl: 'lucide:GraduationCap',
+    criteriaMetric: 'guided_groups_completed',
+    criteriaThreshold: 10,
+    criteriaUnit: 'nhóm sinh viên',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -306,7 +342,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Reviewer'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 5,
     criteriaUnit: 'bài báo',
@@ -324,7 +360,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Reviewer'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 10,
     criteriaUnit: 'bài báo',
@@ -342,7 +378,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Reviewer'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 25,
     criteriaUnit: 'bài báo',
@@ -360,7 +396,7 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Reviewer'],
     tier: 'Platinum',
     stageLevel: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 50,
     criteriaUnit: 'bài báo',
@@ -374,13 +410,13 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-student-seminar-1',
     code: 'SEMINAR_PARTICIPANT_BRONZE',
     title: 'Seminar Participant (Bronze)',
-    titleVi: 'Người tham dự tích cực (Cấp 1 - Khởi đầu)',
+    titleVi: 'Học viên hội thảo (Cấp 1 - Đồng)',
     description: 'Actively participated in 1 academic seminar and submitted feedback.',
-    descriptionVi: 'Tham gia và gửi phản hồi đóng góp ý kiến cho 1 buổi seminar học thuật.',
+    descriptionVi: 'Tham gia đầy đủ 1 buổi Seminar học thuật và nộp đánh giá phản hồi.',
     roles: ['Graduate Student'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Award',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 1,
     criteriaUnit: 'buổi seminar',
@@ -392,13 +428,13 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-student-seminar-2',
     code: 'SEMINAR_PARTICIPANT_SILVER',
     title: 'Seminar Participant (Silver)',
-    titleVi: 'Người tham dự tích cực (Cấp 2 - Bạc)',
-    description: 'Actively participated in 3 academic seminars and submitted quality feedback.',
-    descriptionVi: 'Tích cực tham gia các buổi seminar học thuật và gửi phản hồi đóng góp ý kiến (3 buổi).',
+    titleVi: 'Học viên hội thảo (Cấp 2 - Bạc)',
+    description: 'Actively participated in 3 academic seminars and submitted feedback.',
+    descriptionVi: 'Tham gia đầy đủ 3 buổi Seminar học thuật và nộp phản hồi chất lượng.',
     roles: ['Graduate Student'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Award',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 3,
     criteriaUnit: 'buổi seminar',
@@ -410,15 +446,33 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-student-seminar-3',
     code: 'SEMINAR_PARTICIPANT_GOLD',
     title: 'Seminar Participant (Gold)',
-    titleVi: 'Người tham dự tích cực (Cấp 3 - Vàng)',
-    description: 'Actively participated in 5 academic seminars across research domains.',
-    descriptionVi: 'Tham gia và gửi phản hồi tích cực cho 5 buổi seminar khoa học.',
+    titleVi: 'Học viên hội thảo (Cấp 3 - Vàng)',
+    description: 'Actively participated in 5 academic seminars.',
+    descriptionVi: 'Tham gia đầy đủ từ 5 buổi Seminar học thuật trên hệ thống.',
     roles: ['Graduate Student'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Award',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 5,
+    criteriaUnit: 'buổi seminar',
+    isActive: true,
+    createdAt: '2026-09-01T00:00:00Z',
+    updatedAt: '2026-09-01T00:00:00Z',
+  },
+  {
+    id: 'medal-student-seminar-4',
+    code: 'SEMINAR_PARTICIPANT_PLATINUM',
+    title: 'Seminar Participant (Platinum)',
+    titleVi: 'Học viên hội thảo (Cấp 4 - Bạch Kim)',
+    description: 'Actively participated in 10 academic seminars.',
+    descriptionVi: 'Tham gia đầy đủ từ 10 buổi Seminar học thuật trên hệ thống.',
+    roles: ['Graduate Student'],
+    tier: 'Platinum',
+    stageLevel: 4,
+    imageUrl: 'lucide:Award',
+    criteriaMetric: 'attended_seminars',
+    criteriaThreshold: 10,
     criteriaUnit: 'buổi seminar',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
@@ -430,16 +484,16 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-flawless-1',
     code: 'FLAWLESS_PROGRESS_BRONZE',
     title: 'Flawless Progress (Bronze)',
-    titleVi: 'Tiến độ hoàn hảo (Cấp 1 - Khởi đầu)',
-    description: 'Completed Phase 1 on time without any report rejection.',
-    descriptionVi: 'Nhóm hoàn thành Phase 1 đúng thời hạn và đạt chuẩn không bị từ chối.',
+    titleVi: 'Tiến độ hoàn hảo (Cấp 1 - Đồng)',
+    description: 'Submitted Phase 1 on time without any rejection or revision required.',
+    descriptionVi: 'Hoàn thành nộp Phase 1 đúng thời hạn, không bị từ chối/yêu cầu sửa.',
     roles: ['Graduate Student'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 1,
-    criteriaUnit: 'phase',
+    criteriaUnit: 'giai đoạn',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -448,16 +502,16 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-flawless-2',
     code: 'FLAWLESS_PROGRESS_SILVER',
     title: 'Flawless Progress (Silver)',
-    titleVi: 'Tiến độ hoàn hảo (Cấp 2 - Nửa chặng đường)',
-    description: 'Completed 3 consecutive phases on time without extension or rejection.',
-    descriptionVi: 'Nhóm hoàn thành từ 3 Phase liên tiếp đúng hạn và đạt Pass ngay lần đầu.',
+    titleVi: 'Tiến độ hoàn hảo (Cấp 2 - Bạc)',
+    description: 'Completed 3 consecutive phases on time without extensions or rejections.',
+    descriptionVi: 'Hoàn thành 3 giai đoạn liên tiếp đúng hạn, không cần gia hạn hay bị từ chối.',
     roles: ['Graduate Student'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 3,
-    criteriaUnit: 'phase',
+    criteriaUnit: 'giai đoạn',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -466,16 +520,16 @@ export const INITIAL_MEDALS: Medal[] = [
     id: 'medal-flawless-3',
     code: 'FLAWLESS_PROGRESS_GOLD',
     title: 'Flawless Progress (Gold)',
-    titleVi: 'Tiến độ hoàn hảo (Cấp 3 - Vàng Toàn diện)',
-    description: 'Group completed all research milestone phases without delays or rejections.',
-    descriptionVi: 'Nhóm hoàn thành toàn bộ các giai đoạn mà không lần nào bị trễ hạn hoặc bị từ chối.',
+    titleVi: 'Tiến độ hoàn hảo (Cấp 3 - Vàng)',
+    description: 'Completed 100% of all topic phases on time with zero rejections.',
+    descriptionVi: 'Hoàn thành 100% các phase đề tài đúng hạn, bảo vệ thành công tuyệt đối.',
     roles: ['Graduate Student'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&auto=format&fit=crop&q=80',
+    imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
-    criteriaThreshold: 100, // 100% of topic phases
-    criteriaUnit: '% giai đoạn',
+    criteriaThreshold: 5,
+    criteriaUnit: 'giai đoạn',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -483,20 +537,23 @@ export const INITIAL_MEDALS: Medal[] = [
 ];
 
 function loadLocalMedals(): Medal[] {
+  if (typeof window === 'undefined') return INITIAL_MEDALS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MEDALS));
-      return INITIAL_MEDALS;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
     }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_MEDALS;
   } catch {
-    return INITIAL_MEDALS;
+    // ignore
   }
+  return INITIAL_MEDALS;
 }
 
 function saveLocalMedals(medals: Medal[]): void {
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(medals));
   } catch {
@@ -517,8 +574,8 @@ export const medalService = {
         saveLocalMedals(res.data);
         return res.data;
       }
-    } catch {
-      // Backend endpoint fallback
+    } catch (err) {
+      console.warn('Live /api/Medal fetch error, falling back:', err);
     }
     return loadLocalMedals();
   },
@@ -535,96 +592,78 @@ export const medalService = {
   },
 
   async create(input: MedalCreateInput): Promise<Medal> {
-    const newMedal: Medal = {
-      id: 'medal-' + Date.now(),
-      code: input.title.toUpperCase().replace(/\s+/g, '_') + '_' + input.tier.toUpperCase(),
+    const payload = {
       title: input.title.trim(),
       titleVi: input.titleVi.trim() || input.title.trim(),
       description: input.description.trim(),
       descriptionVi: input.descriptionVi.trim() || input.description.trim(),
       roles: input.roles.length > 0 ? input.roles : ['All'],
       tier: input.tier,
-      stageLevel: input.stageLevel || 1,
-      imageUrl: input.imageUrl.trim(),
+      stageLevel: Number(input.stageLevel) || 1,
+      imageUrl: input.imageUrl?.trim() || 'lucide:Medal',
       criteriaMetric: input.criteriaMetric.trim(),
       criteriaThreshold: Number(input.criteriaThreshold) || 1,
       criteriaUnit: input.criteriaUnit.trim() || 'lần',
       isActive: input.isActive ?? true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
-    try {
-      const res = await api.post('/api/Medal', newMedal);
-      if (res.data) {
-        const current = loadLocalMedals();
-        saveLocalMedals([res.data, ...current.filter((m) => m.id !== res.data.id)]);
-        return res.data;
-      }
-    } catch {
-      // Local fallback
+    const res = await api.post('/api/Medal', payload);
+    if (res.data) {
+      const current = loadLocalMedals();
+      saveLocalMedals([res.data, ...current.filter((m) => m.id !== res.data.id)]);
+      return res.data;
     }
 
-    const current = loadLocalMedals();
-    const updated = [newMedal, ...current];
-    saveLocalMedals(updated);
-    return newMedal;
+    throw new Error('Failed to create medal: no data returned');
   },
 
   async update(id: string, input: Partial<MedalCreateInput>): Promise<Medal> {
-    try {
-      const res = await api.put('/api/Medal/' + id, input);
-      if (res.data) {
-        const current = loadLocalMedals();
-        const idx = current.findIndex((m) => m.id === id);
-        if (idx !== -1) {
-          current[idx] = res.data;
-          saveLocalMedals(current);
-        }
-        return res.data;
-      }
-    } catch {
-      // Local fallback
-    }
+    const existing = await this.getById(id);
 
-    const current = loadLocalMedals();
-    const index = current.findIndex((m) => m.id === id);
-    if (index === -1) {
-      throw new Error('Medal not found');
-    }
+    const merged = {
+      title: input.title !== undefined ? input.title.trim() : (existing?.title ?? ''),
+      titleVi: input.titleVi !== undefined ? input.titleVi.trim() : (existing?.titleVi ?? ''),
+      description: input.description !== undefined ? input.description.trim() : (existing?.description ?? ''),
+      descriptionVi: input.descriptionVi !== undefined ? input.descriptionVi.trim() : (existing?.descriptionVi ?? ''),
+      roles: input.roles ?? existing?.roles ?? ['All'],
+      tier: input.tier ?? existing?.tier ?? 'Bronze',
+      stageLevel: input.stageLevel ?? existing?.stageLevel ?? 1,
+      imageUrl: input.imageUrl !== undefined ? input.imageUrl.trim() : (existing?.imageUrl ?? 'lucide:Medal'),
+      criteriaMetric: input.criteriaMetric !== undefined ? input.criteriaMetric.trim() : (existing?.criteriaMetric ?? 'default_metric'),
+      criteriaThreshold: input.criteriaThreshold !== undefined ? Number(input.criteriaThreshold) : (existing?.criteriaThreshold ?? 1),
+      criteriaUnit: input.criteriaUnit !== undefined ? input.criteriaUnit.trim() : (existing?.criteriaUnit ?? 'lần'),
+      isActive: input.isActive !== undefined ? input.isActive : (existing?.isActive ?? true),
+    };
 
-    const updatedMedal: Medal = {
-      ...current[index],
-      ...input,
+    const res = await api.put('/api/Medal/' + id, merged);
+    const updated: Medal = res.data || {
+      id,
+      code: existing?.code || '',
+      ...merged,
+      createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    current[index] = updatedMedal;
-    saveLocalMedals(current);
-    return updatedMedal;
+    const current = loadLocalMedals();
+    const idx = current.findIndex((m) => m.id === id);
+    if (idx !== -1) {
+      current[idx] = updated;
+      saveLocalMedals(current);
+    }
+    return updated;
   },
 
   async delete(id: string): Promise<void> {
-    try {
-      await api.delete('/api/Medal/' + id);
-    } catch {
-      // Local fallback
-    }
-
+    await api.delete('/api/Medal/' + id);
     const current = loadLocalMedals();
-    const filtered = current.filter((m) => m.id !== id);
-    saveLocalMedals(filtered);
+    saveLocalMedals(current.filter((m) => m.id !== id));
   },
 
   async resetToDefaults(): Promise<Medal[]> {
-    try {
-      const res = await api.post('/api/Medal/reset-defaults');
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        saveLocalMedals(res.data);
-        return res.data;
-      }
-    } catch {
-      // Local fallback
+    const res = await api.post('/api/Medal/reset-defaults');
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      saveLocalMedals(res.data);
+      return res.data;
     }
     saveLocalMedals(INITIAL_MEDALS);
     return INITIAL_MEDALS;
@@ -636,8 +675,8 @@ export const medalService = {
       if (Array.isArray(res.data)) {
         return res.data;
       }
-    } catch {
-      // fallback
+    } catch (err) {
+      console.warn('Failed to fetch user medals:', err);
     }
     return [];
   },
@@ -648,8 +687,8 @@ export const medalService = {
       if (Array.isArray(res.data)) {
         return res.data;
       }
-    } catch {
-      // fallback
+    } catch (err) {
+      console.warn(`Failed to fetch medals for user ${userId}:`, err);
     }
     return [];
   },
