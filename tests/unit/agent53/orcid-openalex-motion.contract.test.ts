@@ -136,15 +136,40 @@ describe('Agent 53 - OpenAlex preview recovery', () => {
     }
   });
 
-  it('keeps a valid work ID recoverable while the import contract is unpublished', async () => {
+  it('calls the backend OpenAlex work preview endpoint and returns preview metadata', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    getMock.mockResolvedValueOnce({
+      data: {
+        openAlexWorkId: 'W2741809807',
+        title: 'Deep Residual Learning for Image Recognition',
+        abstract: 'Deeper neural networks are more difficult to train.',
+        authors: [
+          {
+            authorDisplayName: 'Kaiming He',
+            institutions: [{ displayName: 'Microsoft Research' }],
+          },
+        ],
+        concepts: [{ conceptName: 'Computer vision' }],
+        topics: [{ topicName: 'Deep learning' }],
+        publicationYear: 2016,
+        doi: 'https://doi.org/10.1109/cvpr.2016.90',
+      },
+    });
 
     try {
-      await expect(lookupOpenAlexPreview('W2741809807')).resolves.toEqual({
-        status: 'unavailable',
-        message: expect.stringMatching(/valid.*metadata scanning is unavailable.*backend publishes/i),
+      const outcome = await lookupOpenAlexPreview('W2741809807');
+      expect(outcome).toMatchObject({
+        status: 'preview',
+        metadata: {
+          id: 'W2741809807',
+          title: 'Deep Residual Learning for Image Recognition',
+          authors: ['Kaiming He'],
+          institutions: ['Microsoft Research'],
+          keywords: ['Computer vision'],
+          topics: ['Deep learning'],
+        },
       });
-      expect(getMock).not.toHaveBeenCalled();
+      expect(getMock).toHaveBeenCalledWith(API_ENDPOINTS.OPEN_ALEX.GET_WORK('W2741809807'));
       expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       fetchSpy.mockRestore();

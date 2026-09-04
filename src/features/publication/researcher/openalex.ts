@@ -28,7 +28,7 @@
 
 export const OPENALEX_ID_REGEX = /^W\d{1,10}$/;
 
-export const OPENALEX_URL_REGEX = /^https?:\/\/(?:api\.)?openalex\.org\/works\/(W\d{1,10})\/?$/i;
+export const OPENALEX_URL_REGEX = /^https?:\/\/(?:api\.)?openalex\.org\/(?:works\/)?(W\d{1,10})\/?$/i;
 
 export const OPENALEX_DOI_REGEX = /^doi:.{3,}$/i;
 
