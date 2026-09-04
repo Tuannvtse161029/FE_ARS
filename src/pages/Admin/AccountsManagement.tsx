@@ -150,6 +150,8 @@ export const AccountsManagement = () => {
         return styles.statusSuspended ?? '';
       case 'EXPIRED':
         return styles.statusExpired ?? '';
+      case 'TRIAL':
+        return styles.statusTrial ?? '';
       default:
         return styles.statusActive ?? '';
     }
@@ -164,6 +166,8 @@ export const AccountsManagement = () => {
         return t('admin.accounts.filter.status.suspended');
       case 'EXPIRED':
         return t('admin.accounts.filter.status.expired');
+      case 'TRIAL':
+        return t('admin.accounts.filter.status.trial');
       default:
         return s;
     }
@@ -266,6 +270,7 @@ export const AccountsManagement = () => {
             >
               <option value="ALL">{t('admin.accounts.filter.allStatuses')}</option>
               <option value="ACTIVE">{t('admin.accounts.filter.status.active')}</option>
+              <option value="TRIAL">{t('admin.accounts.filter.status.trial')}</option>
               <option value="SUSPENDED">{t('admin.accounts.filter.status.suspended')}</option>
               <option value="EXPIRED">{t('admin.accounts.filter.status.expired')}</option>
             </select>
@@ -355,6 +360,7 @@ export const AccountsManagement = () => {
                         filterOptions={[
                           { value: 'ALL', label: t('admin.accounts.filter.allStatuses') },
                           { value: 'ACTIVE', label: t('admin.accounts.filter.status.active') },
+                          { value: 'TRIAL', label: t('admin.accounts.filter.status.trial') },
                           { value: 'SUSPENDED', label: t('admin.accounts.filter.status.suspended') },
                           { value: 'EXPIRED', label: t('admin.accounts.filter.status.expired') },
                         ]}
@@ -417,6 +423,17 @@ export const AccountsManagement = () => {
                               {t('admin.accounts.status.until')} {formatSuspendedUntil(a.suspendedUntil)}
                             </span>
                           ) : null}
+                          {a.status === 'TRIAL' && a.trialExpiryAt ? (
+                            <span
+                              className={styles.trialUntilPill}
+                              data-testid="accounts-trial-until-pill"
+                              title={`${t('admin.accounts.status.trialEndsOn')} ${formatSuspendedUntil(
+                                a.trialExpiryAt,
+                              )}`}
+                            >
+                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.trialExpiryAt)}
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td>
@@ -432,7 +449,7 @@ export const AccountsManagement = () => {
                             <Eye size={13} />
                             {t('admin.accounts.action.viewProfile')}
                           </button>
-                          {a.status === 'ACTIVE' ? (
+                          {a.status === 'ACTIVE' || a.status === 'TRIAL' ? (
                             <button
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                               onClick={() =>

@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,6 +27,7 @@ const isFirebaseConfigured = (): boolean => {
 // Lazy initialization - only initialize if properly configured
 let app: ReturnType<typeof initializeApp> | null = null;
 let storageInstance: FirebaseStorage | null = null;
+let firestoreInstance: Firestore | null = null;
 
 if (isFirebaseConfigured()) {
   try {
@@ -35,6 +37,7 @@ if (isFirebaseConfigured()) {
       getAnalytics(app);
     }
     storageInstance = getStorage(app);
+    firestoreInstance = getFirestore(app);
   } catch (error) {
     console.error('Firebase initialization error:', error);
   }
@@ -46,4 +49,5 @@ if (isFirebaseConfigured()) {
 }
 
 export const storage = storageInstance;
+export const firestore = firestoreInstance;
 export { app, isFirebaseConfigured };

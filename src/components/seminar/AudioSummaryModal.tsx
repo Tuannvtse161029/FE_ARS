@@ -1,11 +1,15 @@
 // AudioSummaryModal — upload MP4, trigger AI summarization, display result.
 //
 // Props:
-//   seminarId  — the seminar to attach the summary to
-//   seminarTitle — display name for the seminar
-//   isOpen     — controls modal visibility
-//   onClose    — called when the modal should close
-//   onSuccess  — called with the response after a successful upload
+//   seminarId          — the seminar to attach the summary to
+//   seminarTitle       — display name for the seminar
+//   isOpen             — controls modal visibility
+//   onClose            — called when the modal should close
+//   onSuccess          — called with the response after a successful upload
+//   initialAiSummary   — the summary already stored on the BE (from
+//                        GET /api/Seminar). When non-empty, the modal opens
+//                        directly in summary view so the user does not need
+//                        to re-upload their video just to view it.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -17,8 +21,11 @@ import {
   Film,
   Upload,
   RotateCcw,
+  Save,
+  CheckCircle2,
 } from 'lucide-react';
 import { useSeminarAudio } from '../../hooks/useSeminarAudio';
+import { seminarService } from '../../services/seminar.service';
 import styles from './AudioSummaryModal.module.css';
 
 interface AudioSummaryModalProps {
@@ -27,6 +34,8 @@ interface AudioSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (seminarId: number) => void;
+  /** Pre-existing AI summary text returned by GET /api/Seminar. */
+  initialAiSummary?: string | null;
 }
 
 const MAX_SIZE_MB = 500;
@@ -37,21 +46,48 @@ export const AudioSummaryModal = ({
   isOpen,
   onClose,
   onSuccess,
+  initialAiSummary = null,
 }: AudioSummaryModalProps) => {
   const { summarize, status, progress, result, error, reset } = useSeminarAudio();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  /**
+   * Local view mode. The hook tracks upload progress; this flag decides what
+   * the modal renders when `status === 'idle'`:
+   *   • 'summary' → display the AI summary (existing or just-generated)
+   *   • 'upload'  → display the dropzone for a new recording
+   */
+  const [viewMode, setViewMode] = useState<'summary' | 'upload'>(
+    initialAiSummary ? 'summary' : 'upload',
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset state when modal opens
+  // Tracks whether the seminar already had an AI summary when the modal
+  // opened. Used to:
+  //   1. Render a "Saved on seminar record" pill instead of "Save Summary"
+  //   2. Auto-send `ReplaceExisting=true` on subsequent uploads (so the BE
+  //      does not reject the upload with HTTP 409 Conflict)
+  const hadInitialSummary = Boolean(initialAiSummary);
+
+  // ── Reset state when modal opens ──────────────────────────────────────────
+
   useEffect(() => {
     if (isOpen) {
       reset();
       setSelectedFile(null);
       setCopied(false);
+      setIsSaving(false);
+      setSaveError(null);
+      setSavedAt(null);
+      // Open in summary view if the seminar already has an AI summary;
+      // otherwise go straight to the upload dropzone.
+      setViewMode(initialAiSummary ? 'summary' : 'upload');
     }
-  }, [isOpen, reset]);
+  }, [isOpen, initialAiSummary, reset]);
 
   // Close on Escape
   useEffect(() => {
@@ -103,7 +139,14 @@ export const AudioSummaryModal = ({
   const handleUpload = async () => {
     if (!selectedFile) return;
     try {
-      const response = await summarize(seminarId, selectedFile);
+      // If the seminar already has a stored summary (either from the GET
+      // payload that opened this modal, or because the host just generated
+      // one earlier in this session), pass `ReplaceExisting=true` so the BE
+      // does not reject the upload with 409 Conflict.
+      const replaceExisting = hadInitialSummary;
+      const response = await summarize(seminarId, selectedFile, { replaceExisting });
+      // Show the freshly generated summary in the same summary view.
+      setViewMode('summary');
       onSuccess?.(seminarId);
       void response; // unused — result is in state
     } catch {
@@ -114,11 +157,71 @@ export const AudioSummaryModal = ({
   // ── Copy summary ────────────────────────────────────────────────────────────
 
   const handleCopy = () => {
-    if (!result?.aiSummary) return;
-    void navigator.clipboard.writeText(result.aiSummary);
+    const text = result?.aiSummary ?? initialAiSummary;
+    if (!text) return;
+    void navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // ── Save summary ───────────────────────────────────────────────────────────
+  // Persists the AI-generated text via PUT /api/Seminar/{id}/ai-summary.
+  // Until the host clicks Save, the summary is only kept in the local modal
+  // state — the BE is not authoritative yet. Re-running the upload will
+  // overwrite the unsaved text on the next `summarize-audio` call.
+  //
+  // NOTE: When the modal opened with a pre-existing summary from GET
+  // /api/Seminar, the BE already considers it saved — we hide this button
+  // entirely and surface an "Already saved" pill instead.
+
+  const handleSaveSummary = async () => {
+    const text = result?.aiSummary;
+    if (!text || isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await seminarService.saveAiSummary(seminarId, text);
+      setSavedAt(updated.updatedAt ?? new Date().toISOString());
+      onSuccess?.(seminarId);
+    } catch (err: unknown) {
+      const responseData = (
+        err as {
+          response?: { data?: { message?: string } | string; status?: number };
+        }
+      )?.response?.data;
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const rawMsg =
+        typeof responseData === 'string'
+          ? responseData
+          : responseData?.message ??
+            (err instanceof Error ? err.message : '') ??
+            '';
+      let friendly =
+        'Could not save the summary. Please try again in a moment.';
+      if (status === 404 || status === 405) {
+        friendly =
+          'The backend does not yet support saving the AI summary. Please ask the BE team to expose PUT /api/Seminar/{id}/ai-summary.';
+      } else if (status === 401 || status === 403) {
+        friendly =
+          'You are not authorized to save this summary. Only the seminar organizer can.';
+      } else if (rawMsg) {
+        friendly = rawMsg;
+      }
+      setSaveError(friendly);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── View-mode toggles ──────────────────────────────────────────────────────
+
+  const switchToUpload = useCallback(() => {
+    reset();
+    setSelectedFile(null);
+    setSaveError(null);
+    setSavedAt(null);
+    setViewMode('upload');
+  }, [reset]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -128,6 +231,19 @@ export const AudioSummaryModal = ({
   const isCompleted = status === 'completed';
   const isFailed = status === 'failed';
   const hasFile = selectedFile != null;
+
+  // Summary text priority: freshly generated result > pre-existing summary.
+  const displayedSummary = result?.aiSummary ?? initialAiSummary ?? null;
+  // Show the summary view when:
+  //   • the hook just completed a fresh upload, OR
+  //   • we're idle but already chose the summary view AND we have text
+  //     (this is the new "show existing summary" path — avoids forcing the
+  //     user to re-upload just to see what the BE already stored).
+  const showSummaryView =
+    (isCompleted && displayedSummary) ||
+    (status === 'idle' && viewMode === 'summary' && displayedSummary);
+  const showUploadView =
+    status === 'idle' && viewMode === 'upload';
 
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
@@ -150,8 +266,37 @@ export const AudioSummaryModal = ({
 
         {/* Content */}
         <div className={styles.contentArea}>
+          {/* ── Uploading / Processing ────────────────────────────────────────── */}
+          {isUploading && (
+            <div className={styles.progressArea}>
+              <div className={styles.progressHeader}>
+                <Loader size={20} className={styles.spinningIcon} aria-hidden />
+                <span className={styles.progressLabel}>
+                  {status === 'validating' && 'Validating file…'}
+                  {status === 'uploading' && `Uploading… ${progress}%`}
+                  {status === 'processing' && 'Processing audio with AI…'}
+                </span>
+              </div>
+              <div className={styles.progressBarBg}>
+                <div
+                  className={styles.progressBarFill}
+                  style={{ width: `${status === 'validating' ? 0 : progress}%` }}
+                  role="progressbar"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              <p className={styles.progressSub}>
+                {status === 'validating' && 'Checking file type, size, and duration…'}
+                {status === 'uploading' && 'Please keep this tab open.'}
+                {status === 'processing' && 'Extracting audio, generating summary…'}
+              </p>
+            </div>
+          )}
+
           {/* ── Idle / File selection ───────────────────────────────────────── */}
-          {status === 'idle' && (
+          {showUploadView && (
             <>
               <div
                 className={`${styles.dropzone} ${dragOver ? styles.dropzoneDragOver : ''}`}
@@ -200,52 +345,94 @@ export const AudioSummaryModal = ({
                   </button>
                 </div>
               )}
+
+              {/* Replacement warning — only when the BE already has a summary. */}
+              {hadInitialSummary && (
+                <div className={styles.replaceWarning} role="note">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>
+                    This seminar already has an AI summary. Uploading a new
+                    recording will <strong>replace</strong> the current
+                    summary on the seminar record.
+                  </span>
+                </div>
+              )}
             </>
           )}
 
-          {/* ── Uploading / Processing ────────────────────────────────────────── */}
-          {isUploading && (
-            <div className={styles.progressArea}>
-              <div className={styles.progressHeader}>
-                <Loader size={20} className={styles.spinningIcon} aria-hidden />
-                <span className={styles.progressLabel}>
-                  {status === 'validating' && 'Validating file…'}
-                  {status === 'uploading' && `Uploading… ${progress}%`}
-                  {status === 'processing' && 'Processing audio with AI…'}
-                </span>
-              </div>
-              <div className={styles.progressBarBg}>
-                <div
-                  className={styles.progressBarFill}
-                  style={{ width: `${status === 'validating' ? 0 : progress}%` }}
-                  role="progressbar"
-                  aria-valuenow={progress}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
-              </div>
-              <p className={styles.progressSub}>
-                {status === 'validating' && 'Checking file type, size, and duration…'}
-                {status === 'uploading' && 'Please keep this tab open.'}
-                {status === 'processing' && 'Extracting audio, generating summary…'}
-              </p>
-            </div>
-          )}
-
-          {/* ── Completed ────────────────────────────────────────────────────── */}
-          {isCompleted && result?.aiSummary && (
+          {/* ── Summary view (existing or freshly generated) ─────────────────── */}
+          {showSummaryView && displayedSummary && (
             <div className={styles.resultArea}>
               <div className={styles.resultHeader}>
                 <span className={styles.aiResultBadge}>
                   <Sparkles size={12} aria-hidden />
                   AI Generated
                 </span>
-                <button className={styles.copyBtn} onClick={handleCopy} aria-label="Copy summary">
-                  <Copy size={14} aria-hidden />
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
+                <div className={styles.resultHeaderActions}>
+                  <button
+                    className={styles.copyBtn}
+                    onClick={handleCopy}
+                    aria-label="Copy summary"
+                  >
+                    <Copy size={14} aria-hidden />
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                  {/* Save control — only meaningful for freshly generated
+                      results, NOT when the modal opened with a pre-existing
+                      summary (the BE already considers that one saved). */}
+                  {isCompleted && !hadInitialSummary && (
+                    <button
+                      className={styles.saveBtn}
+                      onClick={() => void handleSaveSummary()}
+                      disabled={isSaving}
+                      data-testid="save-ai-summary"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                          Saving…
+                        </>
+                      ) : savedAt ? (
+                        <>
+                          <CheckCircle2 size={14} aria-hidden />
+                          Saved
+                        </>
+                      ) : (
+                        <>
+                          <Save size={14} aria-hidden />
+                          Save Summary
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
-              <pre className={styles.summaryText}>{result.aiSummary}</pre>
+
+              <pre className={styles.summaryText}>{displayedSummary}</pre>
+
+              {hadInitialSummary && !isCompleted && (
+                <div className={styles.savedBanner} role="status">
+                  <CheckCircle2 size={14} aria-hidden />
+                  <span>
+                    Saved on the seminar record — opening an existing summary
+                    never overwrites it.
+                  </span>
+                </div>
+              )}
+              {savedAt && (
+                <div className={styles.savedBanner} role="status">
+                  <CheckCircle2 size={14} aria-hidden />
+                  <span>
+                    Saved to seminar record · {new Date(savedAt).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {saveError && (
+                <div className={styles.saveErrorBanner} role="alert">
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{saveError}</span>
+                </div>
+              )}
               <div className={styles.disclaimer}>
                 <AlertTriangle size={12} aria-hidden />
                 AI-generated content — review for accuracy before sharing.
@@ -253,7 +440,7 @@ export const AudioSummaryModal = ({
             </div>
           )}
 
-          {isCompleted && !result?.aiSummary && (
+          {showSummaryView && !displayedSummary && (
             <div className={styles.emptyResult}>
               <AlertTriangle size={20} aria-hidden />
               <p>No summary was generated. Please try uploading again or contact support.</p>
@@ -270,6 +457,7 @@ export const AudioSummaryModal = ({
                 onClick={() => {
                   reset();
                   setSelectedFile(null);
+                  setViewMode(initialAiSummary ? 'summary' : 'upload');
                 }}
               >
                 <RotateCcw size={14} aria-hidden />
@@ -281,7 +469,7 @@ export const AudioSummaryModal = ({
 
         {/* Footer */}
         <div className={styles.footer}>
-          {status === 'idle' && (
+          {showUploadView && (
             <>
               <button className={styles.cancelBtn} onClick={onClose}>
                 Cancel
@@ -292,29 +480,33 @@ export const AudioSummaryModal = ({
                 disabled={!hasFile || isUploading}
               >
                 <Upload size={14} aria-hidden />
-                Upload &amp; Summarize
+                {hadInitialSummary ? 'Upload & Replace' : 'Upload & Summarize'}
               </button>
             </>
           )}
 
-          {(isUploading || isCompleted || isFailed) && (
+          {showSummaryView && (
             <>
-              {isCompleted && (
-                <button
-                  className={styles.submitBtn}
-                  onClick={() => {
-                    reset();
-                    setSelectedFile(null);
-                  }}
-                >
-                  <Upload size={14} aria-hidden />
-                  Upload Another
-                </button>
-              )}
               <button className={styles.cancelBtn} onClick={onClose}>
-                {isUploading ? 'Cancel' : 'Close'}
+                Close
+              </button>
+              <button
+                className={styles.submitBtn}
+                onClick={switchToUpload}
+                data-testid="replace-ai-summary"
+              >
+                <Upload size={14} aria-hidden />
+                {hadInitialSummary
+                  ? 'Replace with new recording'
+                  : 'Upload Another'}
               </button>
             </>
+          )}
+
+          {(isUploading || isFailed) && !showUploadView && !showSummaryView && (
+            <button className={styles.cancelBtn} onClick={onClose}>
+              {isUploading ? 'Cancel' : 'Close'}
+            </button>
           )}
         </div>
       </div>

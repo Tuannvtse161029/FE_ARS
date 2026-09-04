@@ -211,6 +211,15 @@
   color: var(--ars-warning);
 }
 
+/* FE_TRIAL_FLOW — TRIAL status pill for first-time Researcher / Lecturer
+   accounts in their 7-day window. Uses the accent primary so it sits next
+   to the suspended-until pill without using yellow text on yellow. */
+.statusTrial {
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border-color: var(--accent-primary);
+}
+
 /* ── Status cell (status pill + suspended-until pill) ───── */
 .statusCell {
   display: flex;
@@ -228,6 +237,23 @@
   background: var(--ars-warning-bg);
   color: var(--ars-warning);
   border: 1px solid var(--ars-warning);
+  letter-spacing: 0.02em;
+  font-family: var(--font-family-mono);
+}
+
+/* FE_TRIAL_FLOW — pill under the TRIAL status pill that surfaces the
+   exact trial deadline. Same shape as the suspended-until pill so the
+   two visual treatments read as a family, but the trial pill uses the
+   accent primary so admins can scan for active trials at a glance. */
+.trialUntilPill {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border: 1px solid var(--accent-primary);
   letter-spacing: 0.02em;
   font-family: var(--font-family-mono);
 }

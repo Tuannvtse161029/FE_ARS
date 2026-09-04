@@ -83,6 +83,10 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 // Admin Annual Fees tab. It renders an honest backend-unavailable state
 // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
+// Agent admin-policies — Admin tab for managing the four platform
+// policy documents. Loads Firestore directly through `policyService`;
+// there is no BE endpoint.
+const AdminPolicies = lazy(() => import('./pages/Admin/Policies').then((m) => ({ default: m.default })));
 // Researcher / Lecturer subscription page. Renders the current status,
 // plans, and `Proceed to Pay` button. Lives behind the existing role
 // guards so only Researcher / Lecturer reach it.
@@ -289,6 +293,7 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
+                  <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />
                 </Route>
               </Route>
             </Route>

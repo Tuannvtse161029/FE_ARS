@@ -212,7 +212,7 @@ export const SeminarWorkspace = () => {
   );
 
   const minDateTime = useMemo(
-    () => toLocalDateTimeInputValue(new Date(Date.now() + 60 * 60 * 1000)),
+    () => toLocalDateTimeInputValue(new Date(Date.now() + 5 * 60 * 1000)),
     [],
   );
 
@@ -450,10 +450,12 @@ export const SeminarWorkspace = () => {
       announce('Please enter seminar details.', 'error');
       return;
     }
-    const minTime = new Date(Date.now() + 60 * 60 * 1000);
+    // Seminars must be scheduled at least 5 minutes ahead of "now" to
+    // account for invite propagation + Google Meet link generation.
+    const minTime = new Date(Date.now() + 5 * 60 * 1000);
     if (new Date(dateTime) < minTime) {
       announce(
-        'Seminars must be scheduled at least 1 hour in advance.',
+        'Seminars must be scheduled at least 5 minutes in advance.',
         'error',
       );
       return;
@@ -1382,6 +1384,10 @@ export const SeminarWorkspace = () => {
           seminarId={selectedSeminarForAi.seminarId}
           seminarTitle={selectedSeminarForAi.title}
           isOpen={showAiModal}
+          // Pass the summary that GET /api/Seminar already returned so the
+          // modal opens in "view existing" mode instead of forcing a re-upload
+          // (which the BE rejects with HTTP 409 Conflict).
+          initialAiSummary={selectedSeminarForAi.aiSummary ?? null}
           onClose={() => setShowAiModal(false)}
           onSuccess={(id) => {
             void refetch();

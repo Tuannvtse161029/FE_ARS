@@ -36,6 +36,19 @@ npm run dev
 # Run lint checks
 npm run lint
 
+# Diagnose Node processes / memory usage (per-PID + total working set)
+npm run node:check
+
+# Dry-run cleanup of stale dev servers / orphan test runners
+npm run node:clean
+
+# Apply the cleanup (kills stale vite / vitest / playwright processes)
+npm run node:clean:apply
+
+# Bypass the safe-dev wrapper (cleanup + memory cap) and run vite raw.
+# Only use this when you have a specific reason to skip the cap.
+npm run dev:raw
+
 # Run unit tests
 npm test
 
@@ -90,6 +103,54 @@ set `VITE_APP_URL` to the exact frontend origin registered with the backend and
 Google OAuth configuration. Never put Google client secrets, refresh tokens, API
 keys, or real user credentials in frontend environment files that are committed to
 the repository.
+
+## Node Memory Management
+
+This project uses **Vite 6** with several heavy dependencies (`firebase`,
+`pdfjs-dist`, `recharts`, `lucide-react`, `axios`). Vite's dep optimizer
+pre-bundles `node_modules` into esbuild's module graph; a single dev server
+typically holds ~700 MB of working set, and **two accidentally-stacked dev
+servers routinely total 2–3 GB** before any tests run.
+
+### Why you may see "Node is using 6 GB of RAM"
+
+1. **Multiple `vite` instances** started without killing the previous one
+   (port 3000 was in use → silent shift to 3001, see `dev-server.log`).
+2. Orphan **Vitest / Playwright workers** left alive after a Ctrl+C in a
+   separate terminal.
+3. Cold-start pre-bundling of `firebase` / `pdfjs-dist` / `recharts` is
+   expensive and takes a few seconds of peak CPU.
+
+### The fix (already wired into `npm run dev`)
+
+| Concern | Mitigation |
+|---|---|
+| Stack of duplicate Vite servers | `strictPort: true` + `node:clean` script |
+| Pre-bundling heavy deps twice | `optimizeDeps.exclude` for `firebase`, `pdfjs-dist`, `lucide-react` |
+| Unbounded heap growth | `--max-old-space-size=1536` for dev, `2048` for build/test |
+| Unattended orphans | `scripts/kill-stale-node.mjs` invoked automatically by `run-dev.mjs` |
+
+### Quick commands
+
+```bash
+# List every Node process + memory/CPU/start time
+npm run node:check
+
+# Show what stale-node cleanup WOULD kill (no side effects)
+npm run node:clean
+
+# Actually kill them
+npm run node:clean:apply
+
+# Start dev server (auto-cleans stale Node + applies 1.5 GB heap cap)
+npm run dev
+```
+
+### Rule of thumb
+
+If `npm run node:check` shows more than one `vite` row, run
+`npm run node:clean:apply` before continuing. Single `vite` + (optionally)
+a single `vitest` worker is the expected steady state.
 
 ## Project Structure
 

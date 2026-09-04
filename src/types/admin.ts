@@ -38,7 +38,12 @@ export interface RoleRequestDecision {
 }
 
 // ── Accounts (Figma screen 3) ──────────────────────────────────────────────
-export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+// TRIAL — the BE surfaces this state for first-time Researcher / Lecturer
+// accounts whose 7-day trial is still running. The FE renders a status pill
+// (and the row's `trialExpiryAt` shows the deadline) so admins can monitor
+// upcoming trial expirations alongside the existing ACTIVE / SUSPENDED /
+// EXPIRED set.
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'TRIAL';
 export type AccountPlan = 'FREE_TIER' | 'PREMIUM';
 export type AccountRoleName =
   | 'LECTURER'
@@ -59,6 +64,14 @@ export interface AccountItem {
   // can see when the lock lifts. Set by the violation-resolution modal's
   // 14-day-suspend action; null/undefined means "indefinite / manually revoked".
   suspendedUntil?: string | null;
+  /**
+   * Optional ISO timestamp. When present and `status` is `TRIAL`, the
+   * AccountsManagement page surfaces a "Trial until ..." pill so the
+   * admin can see when the user's 7-day Researcher / Lecturer trial
+   * ends. The BE assigns this only to first-time role-holders; absent
+   * for non-trial accounts.
+   */
+  trialExpiryAt?: string | null;
   // Mirrors `dbo.Users.isActive`. Defaults to true for accounts already
   // provisioned in the seed data (they were created by an Admin, not via
   // self-registration). Flipped to true by `decideRoleRequest` when a

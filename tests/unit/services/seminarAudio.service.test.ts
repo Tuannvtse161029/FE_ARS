@@ -4,6 +4,7 @@
  * Covers:
  *   T4: File validation (type/size — duration requires real video element)
  *   T5: Upload flow with progress tracking
+ *   T6: ReplaceExisting flag (avoids BE 409 when summary already exists)
  *
  * The service is tested directly — no DOM required.
  */
@@ -66,6 +67,49 @@ describe('seminarAudioService', () => {
 
       const file = new File(['fake'], 'meeting.mp4', { type: 'video/mp4' });
       await expect(seminarAudioService.summarizeAudio(5, file)).rejects.toThrow('Request failed');
+    });
+
+    it('omits ReplaceExisting from FormData by default', async () => {
+      mockedApi.post.mockResolvedValueOnce({ data: mockResponse });
+
+      const file = new File(['fake'], 'meeting.mp4', { type: 'video/mp4' });
+      await seminarAudioService.summarizeAudio(5, file);
+
+      const formData = mockedApi.post.mock.calls[0][1] as FormData;
+      expect(formData.has('ReplaceExisting')).toBe(false);
+      expect(formData.has('AudioFile')).toBe(true);
+    });
+
+    it('appends ReplaceExisting=true to FormData when replaceExisting option is set', async () => {
+      mockedApi.post.mockResolvedValueOnce({ data: mockResponse });
+
+      const file = new File(['fake'], 'meeting.mp4', { type: 'video/mp4' });
+      await seminarAudioService.summarizeAudio(5, file, { replaceExisting: true });
+
+      const formData = mockedApi.post.mock.calls[0][1] as FormData;
+      expect(formData.has('ReplaceExisting')).toBe(true);
+      expect(formData.get('ReplaceExisting')).toBe('true');
+      expect(formData.has('AudioFile')).toBe(true);
+    });
+
+    it('accepts the legacy positional onProgress callback alongside replaceExisting via options bag', async () => {
+      mockedApi.post.mockImplementationOnce(
+        (_url: string, _data: FormData, config?: { onUploadProgress?: (e: { loaded: number; total: number }) => void }) => {
+          config?.onUploadProgress?.({ loaded: 25, total: 100 });
+          return Promise.resolve({ data: mockResponse });
+        }
+      );
+
+      const file = new File(['fake'], 'meeting.mp4', { type: 'video/mp4' });
+      const captured: number[] = [];
+      await seminarAudioService.summarizeAudio(5, file, {
+        replaceExisting: true,
+        onProgress: (p) => captured.push(p),
+      });
+
+      expect(captured).toEqual([25]);
+      const formData = mockedApi.post.mock.calls[0][1] as FormData;
+      expect(formData.get('ReplaceExisting')).toBe('true');
     });
   });
 });

@@ -83,6 +83,23 @@ describe('Research-workflow strict DTO contract integration', () => {
     });
 
     it('assignTopicToGroups fires one PUT per group with the same assignedAt timestamp', async () => {
+      // Mock getById for all groups
+      getMock.mockImplementation(async (url: string) => {
+        if (url.includes('/api/ResearchGroup/')) {
+          const id = Number(url.split('/').pop());
+          return {
+            data: {
+              id,
+              name: `Group ${id}`,
+              lecturerId: 7,
+              description: null,
+              deadline: null,
+              materialsUrl: null,
+            },
+          };
+        }
+        return { data: [] };
+      });
       putMock.mockImplementation(async (url: string, payload: object) => ({
         data: { id: Number(url.split('/').pop()), ...payload },
       }));

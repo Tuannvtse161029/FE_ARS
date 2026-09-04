@@ -20,7 +20,8 @@ describe('Reviewer criteria module', () => {
       'significance',
       'references',
     ]);
-    expect(REVIEWER_CRITERIA.every((c) => c.min >= 1 && c.max <= 5)).toBe(true);
+    // Note: max was updated from 5 to 10 per the reviewer form design requirements
+    expect(REVIEWER_CRITERIA.every((c) => c.min >= 1 && c.max <= 10)).toBe(true);
   });
 
   it('builds an empty score record with all criteria defaulted to min', () => {

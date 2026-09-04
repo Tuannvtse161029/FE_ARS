@@ -73,9 +73,11 @@ const SMOKE_LIST = Object.freeze([
   'tests/unit/services/phasedReport.service.sentinel.test.ts',
   'tests/unit/services/researchWorkflowDtos.test.ts',
 
-  // Payment/withdrawal safety; no live payment is performed
-  'tests/unit/pages/withdrawalGate.test.tsx',
-  'tests/unit/hooks/useConfirmPayment.test.ts',
+  // Subscription return page — query params never unlock access
+  // NOTE: withdrawalGate.test.tsx and useConfirmPayment.test.ts removed
+  // — the corresponding source files (withdrawalGate, useConfirmPayment) do
+  // not exist in the codebase. If these are added in the future, re-add.
+  'tests/unit/pages/SubscriptionReturn.test.tsx',
 ]);
 
 const missing = SMOKE_LIST.filter((rel) => {

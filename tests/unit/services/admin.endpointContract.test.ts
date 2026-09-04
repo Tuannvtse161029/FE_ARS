@@ -32,10 +32,8 @@ function pathTemplates(): string[] {
     e.ACCOUNTS.GET_BY_ID(1),
     e.ACCOUNTS.SUSPEND(1),
     e.ACCOUNTS.UNSUSPEND(1),
-    e.WITHDRAWALS.GET_ALL,
-    e.WITHDRAWALS.ACCEPT(1),
-    e.WITHDRAWALS.COMPLETE(1),
-    e.WITHDRAWALS.DENY(1),
+    // WITHDRAWALS endpoints removed when wallet was retired per BE_FE_TAKEOVER_AUDIT.md
+    // Previously: e.WITHDRAWALS.GET_ALL, ACCEPT, COMPLETE, DENY
     e.REPORTS.GET_ALL,
     e.REPORTS.GET_BY_ID(1),
     e.REPORTS.RESOLVE(1),

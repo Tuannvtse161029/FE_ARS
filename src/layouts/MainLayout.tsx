@@ -36,6 +36,7 @@ import {
   Flag as ReportsIcon,
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
+  ShieldCheck as PoliciesIcon,
   Upload,
   BriefcaseBusiness,
   Home as HomeIcon,
@@ -583,6 +584,7 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_PACKAGES, label: copy('Annual Fees', 'Phí thường niên'), icon: <PackagesIcon size={20} /> },
 
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký hệ thống'), icon: <AuditLogsIcon size={20} /> },
+          { to: ROUTES.ADMIN_POLICIES, label: copy('Policies', 'Chính sách'), icon: <PoliciesIcon size={20} /> },
         ];
       case 'Reviewer':
         return [
