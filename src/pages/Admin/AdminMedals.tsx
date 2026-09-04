@@ -73,6 +73,68 @@ const PRESET_SAMPLE_IMAGES = [
   },
 ];
 
+const TIER_GRADIENTS: Record<MedalTier, { bg: string; border: string; iconColor: string }> = {
+  Bronze: { bg: 'linear-gradient(135deg, #fef3c7, #fed7aa)', border: '#d97706', iconColor: '#b45309' },
+  Silver: { bg: 'linear-gradient(135deg, #f1f5f9, #cbd5e1)', border: '#94a3b8', iconColor: '#475569' },
+  Gold: { bg: 'linear-gradient(135deg, #fef9c3, #fde047)', border: '#eab308', iconColor: '#a16207' },
+  Platinum: { bg: 'linear-gradient(135deg, #e0f2fe, #7dd3fc)', border: '#38bdf8', iconColor: '#0284c7' },
+};
+
+/**
+ * Robust image component that prevents any infinite onError retry loop.
+ * If image fails to load (or is blocked by CORB/ad-blocker), it cleanly renders a vector medal badge.
+ */
+const SafeMedalImage: React.FC<{
+  src?: string;
+  alt: string;
+  tier: MedalTier;
+  className?: string;
+  size?: number;
+}> = ({ src, alt, tier, className, size }) => {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  const style = TIER_GRADIENTS[tier] || TIER_GRADIENTS.Bronze;
+
+  if (!src || failed) {
+    return (
+      <div
+        className={className}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: style.bg,
+          borderRadius: '50%',
+          width: size ? `${size}px` : '100%',
+          height: size ? `${size}px` : '100%',
+          userSelect: 'none',
+        }}
+        title={alt}
+      >
+        <MedalIcon size={size ? size * 0.5 : 26} color={style.iconColor} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={(e) => {
+        // Stop infinite retry loops immediately
+        e.currentTarget.onerror = null;
+        setFailed(true);
+      }}
+    />
+  );
+};
+
 export const AdminMedals: React.FC = () => {
   const { locale } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
@@ -137,7 +199,7 @@ export const AdminMedals: React.FC = () => {
   // Format criteria unit based on locale
   const formatCriteriaUnit = (unit: string): string => {
     if (locale !== 'en') return unit;
-    switch (unit.toLowerCase()) {
+    switch (unit?.toLowerCase()) {
       case 'bài báo':
         return 'papers';
       case 'hội thảo':
@@ -158,7 +220,7 @@ export const AdminMedals: React.FC = () => {
       case 'lần':
         return 'times';
       default:
-        return unit;
+        return unit || 'times';
     }
   };
 
@@ -290,9 +352,7 @@ export const AdminMedals: React.FC = () => {
     setFormRoles(['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student']);
     setFormTier('Bronze');
     setFormStageLevel(1);
-    setFormImageUrl(
-      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80'
-    );
+    setFormImageUrl('');
     setFormCriteriaMetric('');
     setFormCriteriaThreshold(1);
     setFormCriteriaUnit(copy('times', 'lần'));
@@ -609,6 +669,8 @@ export const AdminMedals: React.FC = () => {
             <Search size={16} className={styles.searchIcon} />
             <input
               type="text"
+              id="searchMedalsInput"
+              name="searchMedalsInput"
               placeholder={copy('Search by title, code or metric...', 'Tìm theo tên, mã hoặc chỉ số...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -618,6 +680,8 @@ export const AdminMedals: React.FC = () => {
 
           {/* Role Filter */}
           <select
+            id="roleFilterSelect"
+            name="roleFilterSelect"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
             className={styles.filterSelect}
@@ -631,6 +695,8 @@ export const AdminMedals: React.FC = () => {
 
           {/* Tier Filter */}
           <select
+            id="tierFilterSelect"
+            name="tierFilterSelect"
             value={selectedTier}
             onChange={(e) => setSelectedTier(e.target.value)}
             className={styles.filterSelect}
@@ -644,6 +710,8 @@ export const AdminMedals: React.FC = () => {
 
           {/* Status Filter */}
           <select
+            id="statusFilterSelect"
+            name="statusFilterSelect"
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             className={styles.filterSelect}
@@ -747,19 +815,12 @@ export const AdminMedals: React.FC = () => {
                       onClick={() => handleOpenQuickImage(medal)}
                       title={copy('Click to replace artwork for this badge', 'Bấm để thay đổi hình ảnh huy hiệu này')}
                     >
-                      {medal.imageUrl ? (
-                        <img
-                          src={medal.imageUrl}
-                          alt={primaryTitle}
-                          className={styles.cardImage}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80';
-                          }}
-                        />
-                      ) : (
-                        <span className={styles.medalThumbFallback}>🏅</span>
-                      )}
+                      <SafeMedalImage
+                        src={medal.imageUrl}
+                        alt={primaryTitle}
+                        tier={medal.tier}
+                        className={styles.cardImage}
+                      />
                       <div className={styles.quickOverlay}>
                         <ImageIcon size={16} />
                       </div>
@@ -872,21 +933,12 @@ export const AdminMedals: React.FC = () => {
                               medal.tier
                             )}`}
                           >
-                            {medal.imageUrl ? (
-                              <img
-                                src={medal.imageUrl}
-                                alt={primaryTitle}
-                                className={styles.medalThumb}
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80';
-                                }}
-                              />
-                            ) : (
-                              <span className={styles.medalThumbFallback}>
-                                🏅
-                              </span>
-                            )}
+                            <SafeMedalImage
+                              src={medal.imageUrl}
+                              alt={primaryTitle}
+                              tier={medal.tier}
+                              className={styles.medalThumb}
+                            />
                           </div>
                           <button
                             type="button"
@@ -999,17 +1051,12 @@ export const AdminMedals: React.FC = () => {
                     targetMedal.tier
                   )}`}
                 >
-                  <img
-                    src={
-                      quickImageUrl ||
-                      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80'
-                    }
+                  <SafeMedalImage
+                    src={quickImageUrl}
                     alt="Preview"
+                    tier={targetMedal.tier}
                     className={styles.imageHeroImg}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80';
-                    }}
+                    size={100}
                   />
                 </div>
                 <span
@@ -1056,6 +1103,8 @@ export const AdminMedals: React.FC = () => {
                 <div>
                   <input
                     type="file"
+                    id="quickUploadFileInput"
+                    name="quickUploadFileInput"
                     ref={fileInputRef}
                     onChange={handlePickFileQuick}
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -1091,11 +1140,13 @@ export const AdminMedals: React.FC = () => {
                 </div>
               ) : (
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>
+                  <label htmlFor="quickImageUrlInput" className={styles.formLabel}>
                     {copy('Online Image URL:', 'Đường dẫn ảnh trực tuyến (Image URL):')}
                   </label>
                   <input
                     type="url"
+                    id="quickImageUrlInput"
+                    name="quickImageUrlInput"
                     placeholder="https://example.com/medal-badge.png"
                     value={quickImageUrl}
                     onChange={(e) => setQuickImageUrl(e.target.value)}
@@ -1184,26 +1235,23 @@ export const AdminMedals: React.FC = () => {
                       formTier
                     )}`}
                   >
-                    <img
-                      src={
-                        formImageUrl ||
-                        'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80'
-                      }
+                    <SafeMedalImage
+                      src={formImageUrl}
                       alt="Preview"
+                      tier={formTier}
                       className={styles.imagePreviewLarge}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80';
-                      }}
+                      size={74}
                     />
                   </div>
                   <div className={styles.imageUploadControls}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formImageUrlInput" className={styles.formLabel}>
                       {copy('Badge artwork (URL or upload file):', 'Hình ảnh huy hiệu (URL hoặc tải file lên):')}
                     </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
                         type="url"
+                        id="formImageUrlInput"
+                        name="formImageUrlInput"
                         placeholder="https://... URL"
                         value={formImageUrl}
                         onChange={(e) => setFormImageUrl(e.target.value)}
@@ -1212,6 +1260,8 @@ export const AdminMedals: React.FC = () => {
                       />
                       <input
                         type="file"
+                        id="formImageFileInput"
+                        name="formImageFileInput"
                         ref={modalFileInputRef}
                         accept="image/png,image/jpeg,image/webp,image/svg+xml"
                         style={{ display: 'none' }}
@@ -1244,11 +1294,13 @@ export const AdminMedals: React.FC = () => {
                 {/* Title VI & EN */}
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formTitleViInput" className={styles.formLabel}>
                       {copy('Medal Title (Vietnamese) *', 'Tên Huy hiệu (Tiếng Việt) *')}
                     </label>
                     <input
                       type="text"
+                      id="formTitleViInput"
+                      name="formTitleViInput"
                       required
                       placeholder="vd: Học giả xác thực ORCID (Cấp 1 - Đồng)"
                       value={formTitleVi}
@@ -1257,11 +1309,13 @@ export const AdminMedals: React.FC = () => {
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formTitleEnInput" className={styles.formLabel}>
                       {copy('Medal Title (English)', 'Tên Huy hiệu (English)')}
                     </label>
                     <input
                       type="text"
+                      id="formTitleEnInput"
+                      name="formTitleEnInput"
                       placeholder="e.g.: ORCID Verified Scholar (Bronze)"
                       value={formTitle}
                       onChange={(e) => setFormTitle(e.target.value)}
@@ -1273,10 +1327,12 @@ export const AdminMedals: React.FC = () => {
                 {/* Description VI & EN */}
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formDescViInput" className={styles.formLabel}>
                       {copy('Criteria Description (Vietnamese)', 'Mô tả điều kiện (Tiếng Việt)')}
                     </label>
                     <textarea
+                      id="formDescViInput"
+                      name="formDescViInput"
                       rows={2}
                       placeholder="vd: Đã liên kết và xác minh định danh khoa học quốc tế ORCID iD thành công."
                       value={formDescriptionVi}
@@ -1285,10 +1341,12 @@ export const AdminMedals: React.FC = () => {
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formDescEnInput" className={styles.formLabel}>
                       {copy('Criteria Description (English)', 'Mô tả điều kiện (English)')}
                     </label>
                     <textarea
+                      id="formDescEnInput"
+                      name="formDescEnInput"
                       rows={2}
                       placeholder="e.g.: Successfully connected and verified an international ORCID iD."
                       value={formDescription}
@@ -1301,10 +1359,12 @@ export const AdminMedals: React.FC = () => {
                 {/* Tier & Stage Level */}
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formTierSelect" className={styles.formLabel}>
                       {copy('Tier *', 'Cấp bậc xếp hạng (Tier) *')}
                     </label>
                     <select
+                      id="formTierSelect"
+                      name="formTierSelect"
                       value={formTier}
                       onChange={(e) =>
                         setFormTier(e.target.value as MedalTier)
@@ -1325,11 +1385,13 @@ export const AdminMedals: React.FC = () => {
                     </select>
                   </div>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formStageLevelInput" className={styles.formLabel}>
                       {copy('Stage Level', 'Cấp độ tiến trình (Stage Level)')}
                     </label>
                     <input
                       type="number"
+                      id="formStageLevelInput"
+                      name="formStageLevelInput"
                       min={1}
                       max={10}
                       value={formStageLevel}
@@ -1356,10 +1418,13 @@ export const AdminMedals: React.FC = () => {
                         else if (role === 'Reviewer') label = 'Người phản biện (Reviewer)';
                         else if (role === 'Graduate Student') label = 'Học viên (Graduate Student)';
                       }
+                      const inputId = `roleCheck_${role.replace(/\s+/g, '_')}`;
                       return (
-                        <label key={role} className={styles.checkboxRoleItem}>
+                        <label key={role} htmlFor={inputId} className={styles.checkboxRoleItem}>
                           <input
                             type="checkbox"
+                            id={inputId}
+                            name={inputId}
                             checked={isChecked}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -1381,11 +1446,13 @@ export const AdminMedals: React.FC = () => {
                 {/* Metric, Threshold, Unit */}
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>
+                    <label htmlFor="formCriteriaMetricInput" className={styles.formLabel}>
                       {copy('Metric Code *', 'Mã chỉ số tự động (Metric Code) *')}
                     </label>
                     <input
                       type="text"
+                      id="formCriteriaMetricInput"
+                      name="formCriteriaMetricInput"
                       required
                       placeholder="e.g.: orcid_connected, published_papers, hosted_seminars..."
                       value={formCriteriaMetric}
@@ -1401,9 +1468,13 @@ export const AdminMedals: React.FC = () => {
                     }}
                   >
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>{copy('Threshold >=', 'Ngưỡng đạt >=')}</label>
+                      <label htmlFor="formCriteriaThresholdInput" className={styles.formLabel}>
+                        {copy('Threshold >=', 'Ngưỡng đạt >=')}
+                      </label>
                       <input
                         type="number"
+                        id="formCriteriaThresholdInput"
+                        name="formCriteriaThresholdInput"
                         min={1}
                         value={formCriteriaThreshold}
                         onChange={(e) =>
@@ -1415,9 +1486,13 @@ export const AdminMedals: React.FC = () => {
                       />
                     </div>
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>{copy('Unit', 'Đơn vị tính')}</label>
+                      <label htmlFor="formCriteriaUnitInput" className={styles.formLabel}>
+                        {copy('Unit', 'Đơn vị tính')}
+                      </label>
                       <input
                         type="text"
+                        id="formCriteriaUnitInput"
+                        name="formCriteriaUnitInput"
                         placeholder="e.g.: papers, seminars..."
                         value={formCriteriaUnit}
                         onChange={(e) => setFormCriteriaUnit(e.target.value)}
@@ -1439,6 +1514,7 @@ export const AdminMedals: React.FC = () => {
                   <input
                     type="checkbox"
                     id="isActiveSwitch"
+                    name="isActiveSwitch"
                     checked={formIsActive}
                     onChange={(e) => setFormIsActive(e.target.checked)}
                     style={{ width: '18px', height: '18px', cursor: 'pointer' }}
