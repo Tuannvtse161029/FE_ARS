@@ -342,6 +342,21 @@ export const authService = {
         effectiveRole = isActive ? (role as EffectiveRole) : 'Guest';
       }
 
+      // 7-day trial expiry — the BE echoes this after the Admin role
+      // verification succeeds and the trial has started. Accept the
+      // common shapes (top-level or `user`); tolerate non-string values
+      // so a malformed BE response never reaches the UI.
+      const trialExpiryAtRaw =
+        typeof data?.trialExpiryAt === 'string'
+          ? data.trialExpiryAt
+          : typeof data?.user?.trialExpiryAt === 'string'
+            ? data.user.trialExpiryAt
+            : null;
+      const trialExpiryAt =
+        trialExpiryAtRaw && trialExpiryAtRaw.trim() !== ''
+          ? trialExpiryAtRaw
+          : null;
+
       return {
         token,
         username,
@@ -354,6 +369,7 @@ export const authService = {
         verificationStatus,
         accountTier,
         effectiveRole,
+        trialExpiryAt,
       };
     } catch (err: any) {
       console.warn('Backend login attempt failed:', err?.message || err);
@@ -377,6 +393,13 @@ export const authService = {
         role: data.role,
         pdfUrl: data.pdfUrl,
         ...(data.orcidTicket ? { orcidTicket: data.orcidTicket } : {}),
+        // First-time registration flag — the BE uses this to decide
+        // whether to start the 7-day Researcher / Lecturer trial after
+        // Admin role verification succeeds. Default to `true` (the
+        // self-registration flow is by definition first-time contact).
+        ...(typeof data.isFirstTime === 'boolean'
+          ? { isFirstTime: data.isFirstTime }
+          : { isFirstTime: true }),
       });
 
       const resData = response.data;
@@ -446,6 +469,13 @@ export const authService = {
         role: payload.role,
         pdfUrl: payload.pdfUrl,
         ...(payload.orcidTicket ? { orcidTicket: payload.orcidTicket } : {}),
+        // First-time registration flag — the BE uses this to decide
+        // whether to start the 7-day Researcher / Lecturer trial after
+        // Admin role verification succeeds. Default to `true` (the
+        // self-registration flow is by definition first-time contact).
+        ...(typeof payload.isFirstTime === 'boolean'
+          ? { isFirstTime: payload.isFirstTime }
+          : { isFirstTime: true }),
       });
       const resData = response.data;
       const isActive =
@@ -473,6 +503,20 @@ export const authService = {
           : isActive
             ? ((resData?.role || payload.role) as EffectiveRole)
             : 'Guest';
+      // 7-day trial expiry — the BE echoes this after the Admin role
+      // verification succeeds and the trial has started. Accept the
+      // common shapes (top-level or `user`); tolerate non-string values
+      // so a malformed BE response never reaches the UI.
+      const trialExpiryAtRaw =
+        typeof resData?.trialExpiryAt === 'string'
+          ? resData.trialExpiryAt
+          : typeof resData?.user?.trialExpiryAt === 'string'
+            ? resData.user.trialExpiryAt
+            : null;
+      const trialExpiryAt =
+        trialExpiryAtRaw && trialExpiryAtRaw.trim() !== ''
+          ? trialExpiryAtRaw
+          : null;
       const tokenCandidate = typeof (resData?.token || resData?.accessToken) === 'string'
         ? (resData.token || resData.accessToken)
         : '';
@@ -485,6 +529,7 @@ export const authService = {
         verificationStatus,
         accountTier,
         effectiveRole,
+        trialExpiryAt,
       };
     } catch (err: any) {
       console.warn('Backend registerUser attempt failed:', err?.message || err);
@@ -527,6 +572,10 @@ export const authService = {
           (isActive && user.roleName
             ? (user.roleName as EffectiveRole)
             : 'Guest'),
+        // 7-day trial expiry — the persisted `User` blob is the only
+        // source we have on a fresh page reload, so we surface it here
+        // without re-fetching /api/user/{id}. Absent ⇒ no active trial.
+        trialExpiryAt: user.trialExpiryAt ?? null,
       };
     }
     return null;
@@ -554,6 +603,9 @@ export const authService = {
             : 'Guest'),
       isNewUser: authResponse.isNewUser,
       requiresOnboarding: authResponse.requiresOnboarding,
+      // Persist trial expiry so the Profile page can render the countdown
+      // after a page reload without re-fetching /api/user/{id}.
+      trialExpiryAt: authResponse.trialExpiryAt ?? null,
     };
     storage.setUser(user);
   },

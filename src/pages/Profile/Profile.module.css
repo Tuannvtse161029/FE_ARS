@@ -568,3 +568,276 @@
     justify-content: stretch;
   }
 }
+
+/* ── Trial countdown card (FE_TRIAL_FLOW) ─────────────────── */
+.trialCard {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-5);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.trialCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent-primary);
+  z-index: 1;
+}
+
+.trialCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-primary);
+  opacity: 0.06;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.trialCard-calm::before,
+.trialCard-calm::after {
+  background-color: var(--accent-primary);
+}
+
+.trialCard-warn::before,
+.trialCard-warn::after {
+  background-color: var(--accent-primary);
+}
+
+.trialCard-urgent {
+  border-color: var(--accent-primary);
+}
+
+.trialCard-urgent::before,
+.trialCard-urgent::after {
+  background-color: var(--accent-primary);
+}
+
+.trialCard-urgent::after {
+  opacity: 0.12;
+}
+
+.trialCard-ended {
+  border-color: var(--ars-network);
+  background: var(--ars-paper);
+}
+
+.trialCard-ended::before,
+.trialCard-ended::after {
+  background-color: var(--ars-ink-muted);
+}
+
+.trialCard-ended::after {
+  opacity: 0.04;
+}
+
+.trialIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.trialCard-ended .trialIcon {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink-muted);
+  border: 1px solid var(--ars-network);
+}
+
+.trialBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.trialHeaderRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.trialEyebrow {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  color: var(--ink-primary);
+  margin: 0;
+  padding: 3px var(--space-2);
+  background: var(--accent-primary);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.trialCard-ended .trialEyebrow {
+  background: transparent;
+  border: 1px solid var(--ars-ink-muted);
+  color: var(--ars-ink-muted);
+}
+
+.trialRole {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.trialCountRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.trialCount {
+  font-family: var(--font-family-serif, 'Georgia', serif);
+  font-size: 2.5rem;
+  line-height: 1;
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.trialCount strong {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.trialCard-ended .trialCount {
+  color: var(--ars-ink-muted);
+}
+
+.trialCountUnit {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  letter-spacing: 0;
+}
+
+.trialCard-ended .trialCountUnit {
+  color: var(--ars-ink-soft);
+}
+
+.trialExpiry {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 4px var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.trialCard-ended .trialExpiry {
+  background: transparent;
+  border-color: var(--ars-network);
+  color: var(--ars-ink-soft);
+}
+
+.trialProgress {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.trialCard-ended .trialProgress {
+  background: var(--ars-paper-alt);
+  opacity: 0.85;
+}
+
+.trialProgressFill {
+  display: block;
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: inherit;
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.trialCard-ended .trialProgressFill {
+  background: var(--ars-ink-muted);
+}
+
+.trialProgressTick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ars-paper);
+  opacity: 0.55;
+  z-index: 2;
+}
+
+.trialHint {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.trialCard-ended .trialHint {
+  color: var(--ars-ink-soft);
+}
+
+@media (max-width: 720px) {
+  .trialCard {
+    padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5);
+    gap: var(--space-3);
+  }
+
+  .trialCount {
+    font-size: 2rem;
+  }
+
+  .trialIcon {
+    width: 36px;
+    height: 36px;
+  }
+}

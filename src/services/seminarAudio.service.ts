@@ -31,22 +31,52 @@ export interface SeminarAudioSummaryResponse {
 /** Upload progress callback type. */
 export type UploadProgressCallback = (percent: number) => void;
 
+/** Options bag for `summarizeAudio`. */
+export interface SummarizeAudioOptions {
+  /** Upload progress callback (0–100). */
+  onProgress?: UploadProgressCallback;
+  /**
+   * Set to `true` when the caller is intentionally replacing an AI summary
+   * that already exists for this seminar. Without this flag the BE rejects
+   * the upload with HTTP 409 (Conflict) per Swagger. The FE passes this when
+   * the user explicitly clicks "Replace with new recording" or when the
+   * modal opened with a pre-existing `aiSummary`.
+   */
+  replaceExisting?: boolean;
+}
+
 export const seminarAudioService = {
   /**
    * Upload an MP4 file and request AI summarization.
    *
+   * The third argument accepts either:
+   *   • the legacy `(percent) => void` progress callback (back-compat), OR
+   *   • a `SummarizeAudioOptions` object for richer control (e.g. replace flag).
+   *
    * @param seminarId  The target seminar ID.
    * @param file       The MP4 file (pre-validated by the caller).
-   * @param onProgress Optional progress callback (0–100).
+   * @param options    Optional progress callback or full options bag.
    */
   summarizeAudio: async (
     seminarId: number,
     file: File,
-    onProgress?: UploadProgressCallback
+    options?: SummarizeAudioOptions | UploadProgressCallback
   ): Promise<SeminarAudioSummaryResponse> => {
+    // Normalize legacy positional argument into the options bag so both
+    // calling shapes remain supported without a breaking change.
+    const opts: SummarizeAudioOptions =
+      typeof options === 'function'
+        ? { onProgress: options }
+        : options ?? {};
+
     const formData = new FormData();
     // The field name matches the Swagger parameter name: `AudioFile`
     formData.append('AudioFile', file);
+    // Only append the override when requested — the BE treats its absence
+    // as "fail with 409 if a summary already exists".
+    if (opts.replaceExisting) {
+      formData.append('ReplaceExisting', 'true');
+    }
 
     const response = await api.post<SeminarAudioSummaryResponse>(
       API_ENDPOINTS.SEMINAR.SUMMARIZE_AUDIO(seminarId),
@@ -59,9 +89,9 @@ export const seminarAudioService = {
         // for large recordings or busy AI provider response times.
         timeout: SUMMARIZE_AUDIO_TIMEOUT_MS,
         onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
-          if (onProgress && progressEvent.total) {
+          if (opts.onProgress && progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            onProgress(percent);
+            opts.onProgress(percent);
           }
         },
       }

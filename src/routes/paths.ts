@@ -71,6 +71,12 @@ export const ROUTES = {
   // tickets/backend/BE_ANNUAL_FEE_API_TICKET.md.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
+  // Agent admin-policies — Admin tab for editing platform policy
+  // documents (Privacy Policy, Terms of Service, Researcher & Reviewer
+  // responsibilities). Documents live in Firestore, not the BE — there
+  // is no `/api/Policy` endpoint by design. This route is mounted
+  // behind the existing Admin role guard and `useAdminGuard()`.
+  ADMIN_POLICIES: '/admin/policies',
   ADMIN_MEDALS: '/admin/medals',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or

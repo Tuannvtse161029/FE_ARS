@@ -280,6 +280,25 @@
 
 /* ── Result ────────────────────────────────────────────── */
 
+.replaceWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  background: var(--ars-warning-bg, var(--ars-paper-alt));
+  color: var(--ars-warning, var(--ars-ink-soft));
+  border: 1px solid var(--ars-warning-border, var(--ars-node));
+}
+
+.replaceWarning svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .resultArea {
   display: flex;
   flex-direction: column;
@@ -334,6 +353,76 @@
 .copyBtn:focus-visible {
   outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
+}
+
+.resultHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.saveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-lecturer);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-paper);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  min-height: 28px;
+  font-family: var(--font-family-ui);
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-dark, #5a1f0a);
+  border-color: var(--ars-lecturer-dark, #5a1f0a);
+}
+
+.saveBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.saveBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.savedBanner,
+.saveErrorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  border: 1px solid transparent;
+}
+
+.savedBanner {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: var(--ars-success);
+}
+
+.saveErrorBanner {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: var(--ars-error);
+}
+
+.savedBanner svg,
+.saveErrorBanner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .summaryText {

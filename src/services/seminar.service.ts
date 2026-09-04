@@ -451,6 +451,28 @@ export const seminarService = {
     return response.data;
   },
 
+  /**
+   * Owner-only — explicitly persist the AI audio-summary text for a seminar.
+   * Calls `PUT /api/Seminar/{id}/ai-summary` with `{ aiSummary }`. The BE
+   * overwrites the previously stored summary on every successful call.
+   *
+   * NOTE — the BE Swagger `SeminarUpdateRequest` schema does not currently
+   * expose `aiSummary` as an editable field, so this endpoint may not yet be
+   * implemented on the BE side. If the BE returns 404 / 405, the caller
+   * should surface the error and ask the host to re-run `summarize-audio`
+   * instead. See the schema-drift note in `docs/local-only/erd-schema-reference.md`.
+   */
+  saveAiSummary: async (
+    seminarId: number,
+    aiSummary: string,
+  ): Promise<SeminarAudioSummaryResponse> => {
+    const response = await api.put<SeminarAudioSummaryResponse>(
+      API_ENDPOINTS.SEMINAR.SAVE_AI_SUMMARY(seminarId),
+      { aiSummary },
+    );
+    return response.data;
+  },
+
   getMyInvitations: async (): Promise<Seminar[]> => {
     const response = await api.get<SeminarInvitationResponse[]>(
       API_ENDPOINTS.SEMINAR.MY_INVITATIONS

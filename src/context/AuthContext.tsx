@@ -235,6 +235,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userId = freshUser?.id ?? response.userId ?? 0;
       const persistedRoles: UserRole[] =
         freshUser?.roles ?? response.roles ?? (roleToUse ? [roleToUse as UserRole] : []);
+      // Trial expiry is sourced from the BE login response (the authoritative
+      // moment the Admin verification succeeded). Falls back to the freshly
+      // fetched user record when the BE didn't echo it on login (e.g. legacy
+      // BE shapes); persists as `null` when neither source has a value.
+      const persistedTrialExpiryAt =
+        response.trialExpiryAt ??
+        freshUser?.trialExpiryAt ??
+        null;
       const userToPersist = freshUser ?? {
         id: userId,
         username: response.username,
@@ -257,6 +265,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // BE omits it so the post-auth resolver doesn't mis-classify an
         // existing user as "first-time".
         roles: persistedRoles,
+        trialExpiryAt: persistedTrialExpiryAt,
       };
       storage.setUser(userToPersist);
 
@@ -297,6 +306,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // store so `PublicRoute` can enforce the exact approved-role
           // condition at runtime (see `utils/postAuthRoute.ts`).
           roles: persistedRoles,
+          // Mirror trial expiry onto the auth store so the verified-guard
+          // and MainLayout can branch on it without re-deriving.
+          trialExpiryAt: persistedTrialExpiryAt,
         },
         response.token,
         resolveEffectiveRole(freshUser, response, roleToUse) ?? undefined
@@ -337,9 +349,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (assignedRoles.length > 1) {
-        // Multi-role user — show picker. Don't persist auth yet; we wait for
-        // the user to pick a role. The picker modal calls confirmRoleSelection
-        // which calls persistAuthAndNavigate() with the chosen role.
+        // Bypass the role-picker modal for Admin accounts. An admin should
+        // land on /admin directly with their Admin session — never be asked
+        // to "choose" a role. The picker also rendered a broken translation
+        // for the Continue-as label, which surfaced as the visible error
+        // "Continue as {selected ? ROLE_LABELS[selected] : '...'}  Admin"
+        // on Admin sign-in.
+        //
+        // We honour three signals before falling through to the picker:
+        //   1. The BE-supplied `role` is explicitly 'Admin'
+        //   2. Any entry in `assignedRoles` is 'Admin'
+        //   3. The dual-signal `isAdminUser(roleName, roleId)` check matches
+        //      the Admin sentinel used elsewhere in the codebase (e.g. the
+        //      landing-route resolver and the verified-guard).
+        const adminMatch =
+          response.role === 'Admin' ||
+          assignedRoles.includes('Admin') ||
+          isAdminUser({
+            roleName: response.role,
+            roleId: response.roleId,
+          });
+
+        if (adminMatch) {
+          await persistAuthAndNavigate(
+            response,
+            'Admin',
+            credentials.rememberMe ?? false,
+          );
+          return;
+        }
+
+        // Multi-role non-admin user — show picker. Don't persist auth yet;
+        // we wait for the user to pick a role. The picker modal calls
+        // confirmRoleSelection which calls persistAuthAndNavigate() with
+        // the chosen role.
         setPendingRoleSelection({
           roles: assignedRoles,
           selectedRole: assignedRoles[0] ?? null,

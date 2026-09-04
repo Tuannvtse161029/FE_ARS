@@ -22,7 +22,11 @@ export type AudioUploadStatus =
 
 export interface UseSeminarAudioResult {
   /** Trigger the upload + summarize flow. */
-  summarize: (seminarId: number, file: File) => Promise<SeminarAudioSummaryResponse>;
+  summarize: (
+    seminarId: number,
+    file: File,
+    options?: { replaceExisting?: boolean },
+  ) => Promise<SeminarAudioSummaryResponse>;
   /** Current upload state machine status. */
   status: AudioUploadStatus;
   /** Upload progress 0–100. */
@@ -113,7 +117,11 @@ export function useSeminarAudio(): UseSeminarAudioResult {
   }, []);
 
   const summarize = useCallback(
-    async (seminarId: number, file: File): Promise<SeminarAudioSummaryResponse> => {
+    async (
+      seminarId: number,
+      file: File,
+      options?: { replaceExisting?: boolean },
+    ): Promise<SeminarAudioSummaryResponse> => {
       // ── 1. Validate ──────────────────────────────────────────────────────────
       setStatus('validating');
       setProgress(0);
@@ -135,12 +143,15 @@ export function useSeminarAudio(): UseSeminarAudioResult {
         const response = await seminarAudioService.summarizeAudio(
           seminarId,
           file,
-          (percent) => {
-            setProgress(percent);
-            if (percent === 100) {
-              setStatus('processing'); // BE is processing after upload completes
-            }
-          }
+          {
+            replaceExisting: options?.replaceExisting ?? false,
+            onProgress: (percent) => {
+              setProgress(percent);
+              if (percent === 100) {
+                setStatus('processing'); // BE is processing after upload completes
+              }
+            },
+          },
         );
 
         setResult(response);

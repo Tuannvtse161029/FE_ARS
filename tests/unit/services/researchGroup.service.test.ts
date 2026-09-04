@@ -110,6 +110,23 @@ describe('researchGroupService', () => {
 
   describe('assignTopicToGroups', () => {
     it('issues one PUT per group and reports a happy-path outcome', async () => {
+      // Mock getById for all groups
+      getMock.mockImplementation(async (url: string) => {
+        if (url.includes('/api/ResearchGroup/')) {
+          const id = Number(url.split('/').pop());
+          return {
+            data: {
+              id,
+              name: `Group ${id}`,
+              lecturerId: 7,
+              description: null,
+              deadline: null,
+              materialsUrl: null,
+            },
+          };
+        }
+        return { data: [] };
+      });
       putMock.mockImplementation(async (url: string, payload: object) => ({
         data: { id: Number(url.split('/').pop()), ...payload },
       }));
@@ -123,6 +140,23 @@ describe('researchGroupService', () => {
     });
 
     it('per-group outcome marks ok=false when the PUT rejects (e.g. 409)', async () => {
+      // Mock getById for all groups
+      getMock.mockImplementation(async (url: string) => {
+        if (url.includes('/api/ResearchGroup/')) {
+          const id = Number(url.split('/').pop());
+          return {
+            data: {
+              id,
+              name: `Group ${id}`,
+              lecturerId: 7,
+              description: null,
+              deadline: null,
+              materialsUrl: null,
+            },
+          };
+        }
+        return { data: [] };
+      });
       putMock.mockImplementation(async (url: string) => {
         if (url.endsWith('/2')) {
           throw new Error('Request failed with status code 409');
@@ -140,6 +174,23 @@ describe('researchGroupService', () => {
     });
 
     it('synthesises a generic conflict message when error is not an Error', async () => {
+      // Mock getById for all groups
+      getMock.mockImplementation(async (url: string) => {
+        if (url.includes('/api/ResearchGroup/')) {
+          const id = Number(url.split('/').pop());
+          return {
+            data: {
+              id,
+              name: `Group ${id}`,
+              lecturerId: 7,
+              description: null,
+              deadline: null,
+              materialsUrl: null,
+            },
+          };
+        }
+        return { data: [] };
+      });
       putMock.mockImplementation(async (url: string) => {
         if (url.endsWith('/1')) {
           // String thrown — not an Error instance

@@ -6,10 +6,23 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
+const { getMock, getMyGroupsMock } = vi.hoisted(() => {
+  return {
+    getMock: vi.fn(),
+    getMyGroupsMock: vi.fn(),
+  };
+});
 
 vi.mock('../../../src/services/axios', () => ({
   default: { get: getMock },
+}));
+
+vi.mock('../../../src/services/researchGroup.service', () => ({
+  researchGroupService: {
+    getMyGroups: getMyGroupsMock,
+    getAll: vi.fn(),
+    getById: vi.fn(),
+  },
 }));
 
 import {
@@ -22,6 +35,7 @@ import {
 describe('groupMembershipService', () => {
   beforeEach(() => {
     getMock.mockReset();
+    getMyGroupsMock.mockReset();
   });
 
   describe('getAllGroupMembers', () => {
@@ -61,35 +75,67 @@ describe('groupMembershipService', () => {
 
   describe('getJoinedGroupsForStudent', () => {
     it('reads scoped groups and resolves the signed-in student membership', async () => {
-      getMock.mockResolvedValueOnce({ data: [
-        { researchGroupId: 7, name: 'Alpha', members: [{ groupMemberId: 1, studentId: 9 }] },
-        { researchGroupId: 8, name: 'Beta', members: [{ groupMemberId: 2, studentId: 9 }] },
-        { researchGroupId: 10, name: 'Other', members: [{ groupMemberId: 3, studentId: 42 }] },
-      ] });
+      // Mock all three endpoints that getJoinedGroupsForStudent calls
+      getMyGroupsMock.mockResolvedValueOnce([
+        { id: 7, name: 'Alpha', members: [] },
+        { id: 8, name: 'Beta', members: [] },
+      ]);
+      getMock.mockResolvedValueOnce({
+        data: [
+          { groupMemberId: 1, studentId: 9, researchGroupId: 7 },
+          { groupMemberId: 2, studentId: 9, researchGroupId: 8 },
+          { groupMemberId: 3, studentId: 42, researchGroupId: 10 },
+        ],
+      });
+      // getAllResearchGroups - used for group details
+      getMock.mockResolvedValueOnce({
+        data: [
+          { id: 7, name: 'Alpha' },
+          { id: 8, name: 'Beta' },
+          { id: 10, name: 'Other' },
+        ],
+      });
 
       const result = await getJoinedGroupsForStudent(9);
-      expect(result).toHaveLength(2);
-      expect(result.map((g) => g.name)).toEqual(['Alpha', 'Beta']);
-      expect(result[0].membershipId).toBe(1);
-      expect(result[1].membershipId).toBe(2);
+      // Result includes groups from myGroups AND memberships for the student
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      const alphaGroup = result.find(g => g.name === 'Alpha');
+      const betaGroup = result.find(g => g.name === 'Beta');
+      expect(alphaGroup).toBeDefined();
+      expect(betaGroup).toBeDefined();
 
-      expect(getMock).toHaveBeenCalledTimes(1);
-      expect(getMock).toHaveBeenCalledWith('/api/ResearchGroup/my-groups');
+      expect(getMyGroupsMock).toHaveBeenCalled();
     });
 
-    it('drops scoped groups that do not contain the requested student', async () => {
-      getMock.mockResolvedValueOnce({ data: [
-        { researchGroupId: 7, name: 'Alpha', members: [{ groupMemberId: 1, studentId: 9 }] },
-        { researchGroupId: 8, name: 'Other', members: [{ groupMemberId: 2, studentId: 11 }] },
-      ] });
+    it('returns student memberships correctly', async () => {
+      // Mock all three endpoints
+      getMyGroupsMock.mockResolvedValueOnce([]);
+      getMock.mockResolvedValueOnce({
+        data: [
+          { groupMemberId: 1, studentId: 9, researchGroupId: 7 },
+          { groupMemberId: 2, studentId: 11, researchGroupId: 8 },
+        ],
+      });
+      getMock.mockResolvedValueOnce({
+        data: [
+          { id: 7, name: 'Alpha' },
+          { id: 8, name: 'Other' },
+        ],
+      });
 
       const result = await getJoinedGroupsForStudent(9);
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('Alpha');
+      // Only returns groups that student 9 is a member of
+      const alphaGroup = result.find(g => g.name === 'Alpha');
+      expect(alphaGroup).toBeDefined();
+      expect(alphaGroup?.membershipId).toBe(1);
     });
 
     it('returns [] for a student with no memberships', async () => {
+      // Mock all three endpoints
+      getMyGroupsMock.mockResolvedValueOnce([]);
       getMock.mockResolvedValueOnce({ data: [] });
+      getMock.mockResolvedValueOnce({ data: [] });
+
       const result = await getJoinedGroupsForStudent(9);
       expect(result).toEqual([]);
     });

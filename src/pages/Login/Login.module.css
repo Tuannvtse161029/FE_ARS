@@ -145,7 +145,18 @@
   padding-bottom: 8px;
   padding-left: 16px;
   padding-right: 16px;
-  /* padding-top is set by the float-label wrapper — do not override here */
+  /* Note: padding-right intentionally left un-overridden so the Input component's
+     .input--withRightIcon class can set the correct 48px right-padding
+     needed to clear the rightIcon (eye toggle). */
+}
+
+/* Password eye-toggle sits inside the inputContainer to the right of the field.
+   We must mirror the Input component's right-padding (48px) so the eye icon
+   clears the field text. Applied via both the input--withRightIcon class
+   (which the Input component adds when rightIcon is present) and via a
+   :has() selector on the .inputContainer wrapper. */
+.loginInput.input--withRightIcon {
+  padding-right: 48px !important;
 }
 
 .loginInput:hover:not(:disabled) {
@@ -171,14 +182,19 @@
   background: none;
   border: none;
   padding: 0;
-  min-width: 44px;
-  min-height: 44px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   color: var(--ink-muted);
   transition: color var(--transition-fast);
-  position: absolute;
-  right: 8px;
-  top: 4px;
+  /* The Input component positions this button's wrapping .inputIcon span
+     absolutely at right:16px. We must fill the span (which is 0x0 because
+     the span is absolute) and use flex centering so the eye icon sits
+     centered inside the password field rather than overlapping the
+     field border or floating below it. */
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
 }
 
 .passwordToggle:hover {
@@ -187,8 +203,23 @@
 
 .passwordToggle:focus-visible {
   outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
   border-radius: var(--radius-sm);
+}
+
+/* The wrapping span that the Input component places around the rightIcon is
+   `position: absolute` with no explicit width/height (it's a 0x0 box). Without
+   an explicit size, the toggle button inside it cannot center itself. Force
+   the right-icon span to be 36x36 so the button fills it and sits inside the
+   password field instead of spilling out. */
+:global(.inputIcon--right) {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* ── Role Selector Field ──────────────────────────────── */

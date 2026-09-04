@@ -58,13 +58,21 @@ const initialForm: FormState = {
 // included so the compiler can prove the record covers every
 // `UserRole` literal, but the form never lets the user pick Admin
 // (see `REGISTRATION_ROLES`).
+//
+// FE_TRIAL_FLOW — the Researcher and Lecturer copy explicitly tells the
+// registrant that an Admin-approved first-time account receives a
+// complimentary 7-day trial. Reviewer and Graduate Student paths do NOT
+// trigger a trial (Reviewers earn by accepted reviews; Graduate Students
+// are the base tier). The FE does NOT compute the trial expiry — the BE
+// runs the 7-day window and returns `trialExpiryAt` once the Admin
+// approves the role request.
 const ROLE_REQUIREMENTS: Record<UserRole, string> = {
   Researcher:
-    'Upload a PDF containing your academic profile, ORCID iD, publication record, and citation metrics. This document will be reviewed by an administrator before your Researcher role is granted.',
+    'Upload a PDF containing your academic profile, ORCID iD, publication record, and citation metrics. Once an administrator approves your role, your account is automatically granted a complimentary 7-day Researcher trial so you can start exploring the platform right away.',
   Reviewer:
     'Upload a PDF summarizing your academic background, areas of expertise, and prior peer review service record. Administrator review is required before Reviewer privileges are activated.',
   Lecturer:
-    'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. This supports verification of your Lecturer role.',
+    'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. Once an administrator approves your role, your account is automatically granted a complimentary 7-day Lecturer trial so you can start exploring the platform right away.',
   'Graduate Student':
     'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
   Admin:
@@ -343,6 +351,11 @@ export const Register = () => {
         // registrations will simply omit the field; the BE accepts an
         // absent `orcidTicket` for those roles.
         ...(orcidTicket ? { orcidTicket } : {}),
+        // FE_TRIAL_FLOW — flag every self-registration as `isFirstTime`
+        // so the BE can launch the 7-day Researcher / Lecturer trial
+        // the moment Admin role verification succeeds. Future role-
+        // upgrade paths (not yet shipped) will pass `false` here.
+        isFirstTime: true,
       };
 
       await authService.registerUser(payload);
@@ -740,6 +753,22 @@ export const Register = () => {
             <p className={styles.roleBannerTitle}>
               {`${t(`role.${form.role}`, form.role)} ${t('register.roleVerificationRequired', 'Verification Required')}`}
             </p>
+            {/* FE_TRIAL_FLOW — the badge appears for roles that get the
+                7-day trial once Admin verification succeeds, so registrants
+                know up-front that the BE will hand them trial access. */}
+            {(form.role === 'Researcher' || form.role === 'Lecturer') ? (
+              <span
+                className={styles.trialBadge}
+                data-testid="register-trial-badge"
+                role="status"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                  <circle cx="6" cy="6" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M6 3v3.2l2.1 1.2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+                {t('register.trialBadge', '7-day trial after admin approval')}
+              </span>
+            ) : null}
             <p className={styles.roleBannerText}>{t(`register.roleRequirement.${form.role}`, ROLE_REQUIREMENTS[form.role])}</p>
             <div className={styles.roleBannerAction}>
               <Button

@@ -1242,6 +1242,39 @@
         }
       }
     },
+    "/api/Auth/update-expires-at": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Cập nhật thời hạn trải nghiệm (ExpiresAt) cho tài khoản người dùng",
+        "requestBody": {
+          "description": "UserId và ExpiresAt mới",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpiresAtRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpiresAtRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpiresAtRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/CommentVote/my-votes": {
       "get": {
         "tags": [
@@ -5487,6 +5520,57 @@
         }
       }
     },
+    "/api/Paper/by-reviewer/{reviewerId}": {
+      "get": {
+        "tags": [
+          "Paper"
+        ],
+        "summary": "Lấy danh sách bài báo được phân công cho 1 phản biện viên (Reviewer).\r\nTruyền vào `reviewerId` sẽ list tất cả paper đã được phân công,\r\nresponse gồm `ReviewerId` và `ReviewerName` (= User.FullName).",
+        "parameters": [
+          {
+            "name": "reviewerId",
+            "in": "path",
+            "description": "ID của phản biện viên (User.UserId)",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaperWithReviewerResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaperWithReviewerResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaperWithReviewerResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Paper/{id}/assign-reviewers": {
       "post": {
         "tags": [
@@ -5532,6 +5616,68 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutoAssignReviewersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Paper/{id}/assign-reviewers-manual": {
+      "post": {
+        "tags": [
+          "Paper"
+        ],
+        "summary": "Gán thủ công danh sách phản biện viên cho bài báo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID bài báo",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Dữ liệu phân công phản biện viên",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
                 }
               }
             }
@@ -6351,6 +6497,68 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/PhasedReport/{id}/extend-deadline": {
+      "put": {
+        "tags": [
+          "PhasedReport"
+        ],
+        "summary": "Giảng viên (Lecture) gia hạn deadline để sinh viên nộp bài báo cáo tiến độ.\r\nHệ thống sẽ tự động set `Status = \"Pending\"` cho báo cáo tương ứng.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID báo cáo tiến độ cần gia hạn",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Deadline mới (UTC) và lý do gia hạn (tùy chọn)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportExtendDeadlineRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportExtendDeadlineRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhasedReportExtendDeadlineRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhasedReportResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -8404,6 +8612,56 @@
         }
       }
     },
+    "/api/ReviewRequest/manual-assign": {
+      "post": {
+        "tags": [
+          "ReviewRequest"
+        ],
+        "summary": "Gán thủ công danh sách phản biện viên (ví dụ: 3 Reviewer) cho một bài báo nghiên cứu khoa học",
+        "requestBody": {
+          "description": "Thông tin PaperId và danh sách ReviewerIds (hoặc reviewerId1, reviewerId2, reviewerId3)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualAssignReviewersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualAssignReviewersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ReviewRequest/{id}": {
       "get": {
         "tags": [
@@ -9014,7 +9272,7 @@
         "tags": [
           "Seminar"
         ],
-        "summary": "Lấy danh sách toàn bộ buổi Seminar (Nếu là Lecturer sẽ lấy theo Organizer, nếu là Researcher/Role khác sẽ lấy toàn bộ danh sách Seminar)",
+        "summary": "Lấy danh sách các buổi Seminar do Lecturer/Researcher hiện tại tổ chức",
         "responses": {
           "200": {
             "description": "OK",
@@ -9135,6 +9393,56 @@
         }
       }
     },
+    "/api/Seminar/suggested-invitees": {
+      "get": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Gợi ý danh sách người tham dự phù hợp theo chuyên ngành (SubFieldId) để mời tham gia Seminar",
+        "parameters": [
+          {
+            "name": "subFieldId",
+            "in": "query",
+            "description": "ID chuyên ngành phụ",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestedInviteeDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestedInviteeDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestedInviteeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Seminar/paged": {
       "get": {
         "tags": [
@@ -9228,12 +9536,10 @@
         "tags": [
           "Seminar"
         ],
-        "summary": "Cập nhật thông tin buổi Seminar",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "ID Seminar cần cập nhật",
             "required": true,
             "schema": {
               "type": "integer",
@@ -9242,7 +9548,6 @@
           }
         ],
         "requestBody": {
-          "description": "Dữ liệu cập nhật",
           "content": {
             "application/json": {
               "schema": {
@@ -9309,6 +9614,55 @@
       }
     },
     "/api/Seminar/{id}/feedback": {
+      "get": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Lấy danh sách feedback của người tham dự trong Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeminarParticipantResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeminarParticipantResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeminarParticipantResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Seminar"
@@ -9516,6 +9870,48 @@
         }
       }
     },
+    "/api/Seminar/{id}/summarize-feedback": {
+      "post": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Tổng hợp toàn bộ feedback của người tham dự bằng Gemini AI và lưu kết quả vào Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackAiSummaryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackAiSummaryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackAiSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Seminar/{id}/summarize-audio": {
       "post": {
         "tags": [
@@ -9546,11 +9942,17 @@
                   "AudioFile": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "ReplaceExisting": {
+                    "type": "boolean"
                   }
                 }
               },
               "encoding": {
                 "AudioFile": {
+                  "style": "form"
+                },
+                "ReplaceExisting": {
                   "style": "form"
                 }
               }
@@ -9577,6 +9979,26 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -9586,7 +10008,7 @@
         "tags": [
           "SeminarParticipant"
         ],
-        "summary": "Lấy toàn bộ danh sách người tham dự các buổi Seminar do Lecturer tổ chức",
+        "summary": "Lấy toàn bộ danh sách người tham dự các buổi Seminar do Lecturer/Researcher hiện tại tổ chức",
         "responses": {
           "200": {
             "description": "OK",
@@ -9933,7 +10355,7 @@
         "tags": [
           "SeminarParticipant"
         ],
-        "summary": "Cập nhật trạng thái mời / đánh giá người tham dự Seminar (dành cho Lecturer hoặc Người tham dự nộp Feedback)",
+        "summary": "Cập nhật trạng thái mời hoặc feedback của chính người tham dự; chủ Seminar không được tạo/sửa feedback thay participant",
         "parameters": [
           {
             "name": "id",
@@ -12644,6 +13066,42 @@
               "$ref": "#/components/schemas/SpecializedEvaluationItemRequest"
             },
             "nullable": true
+          },
+          "expandedCriteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "expandedCriteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "expandedCriteria3": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria3": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria3": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12729,6 +13187,48 @@
               "$ref": "#/components/schemas/SpecializedEvaluationItemResponse"
             },
             "nullable": true
+          },
+          "expandedCriteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria1": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "evaluationCriteria1": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "expandedCriteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria2": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "evaluationCriteria2": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "expandedCriteria3": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria3": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "evaluationCriteria3": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
           }
         },
         "additionalProperties": false
@@ -12842,6 +13342,42 @@
             "items": {
               "$ref": "#/components/schemas/SpecializedEvaluationItemRequest"
             },
+            "nullable": true
+          },
+          "expandedCriteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria1": {
+            "type": "string",
+            "nullable": true
+          },
+          "expandedCriteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria2": {
+            "type": "string",
+            "nullable": true
+          },
+          "expandedCriteria3": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria3": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria3": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -13945,6 +14481,96 @@
             "nullable": true
           },
           "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManualAssignReviewersRequest": {
+        "required": [
+          "paperId"
+        ],
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reviewerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "reviewerId1": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reviewerId2": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reviewerId3": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "fee": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManualAssignReviewersResponse": {
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paperTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignedReviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignedReviewerDto"
+            },
+            "nullable": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "message": {
             "type": "string",
             "nullable": true
           }
@@ -15138,6 +15764,7 @@
       "PaperCreateRequest": {
         "required": [
           "abstract",
+          "paperType",
           "title"
         ],
         "type": "object",
@@ -15174,6 +15801,12 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "paperType": {
+            "maxLength": 20,
+            "minLength": 1,
+            "pattern": "^(Journal|Conference)$",
+            "type": "string"
           },
           "openAlexWorkId": {
             "maxLength": 50,
@@ -15302,6 +15935,10 @@
             "type": "string",
             "nullable": true
           },
+          "paperType": {
+            "type": "string",
+            "nullable": true
+          },
           "authorshipVerificationStatus": {
             "type": "string",
             "nullable": true
@@ -15366,6 +16003,7 @@
       "PaperUpdateRequest": {
         "required": [
           "abstract",
+          "paperType",
           "title"
         ],
         "type": "object",
@@ -15408,6 +16046,12 @@
             "format": "int32",
             "nullable": true
           },
+          "paperType": {
+            "maxLength": 20,
+            "minLength": 1,
+            "pattern": "^(Journal|Conference)$",
+            "type": "string"
+          },
           "openAlexWorkId": {
             "maxLength": 50,
             "pattern": "^W[0-9]+$",
@@ -15440,6 +16084,93 @@
               "$ref": "#/components/schemas/PaperAuthorRequest"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaperWithReviewerResponse": {
+        "type": "object",
+        "properties": {
+          "paperId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "abstract": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "paperType": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "quartile": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "doi": {
+            "type": "string",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reviewerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewRequestStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewRequestId": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -15587,11 +16318,46 @@
             "type": "string",
             "nullable": true
           },
+          "phaseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "requirements": {
+            "type": "string",
+            "nullable": true
+          },
+          "assessmentCriteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "nullable": true
           },
+          "phasedMaterialsUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deadline": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -15627,6 +16393,19 @@
           "status": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PhasedReportExtendDeadlineRequest": {
+        "required": [
+          "deadlineAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -15687,7 +16466,40 @@
             "type": "string",
             "nullable": true
           },
+          "phaseTitle": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "requirements": {
+            "type": "string",
+            "nullable": true
+          },
+          "assessmentCriteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true
+          },
           "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "phasedMaterialsUrl": {
             "type": "string",
             "nullable": true
           },
@@ -15700,6 +16512,12 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true
           },
           "submittedAt": {
             "type": "string",
@@ -15847,11 +16665,46 @@
             "type": "string",
             "nullable": true
           },
+          "phaseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "requirements": {
+            "type": "string",
+            "nullable": true
+          },
+          "assessmentCriteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "nullable": true
           },
+          "phasedMaterialsUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deadline": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -16699,6 +17552,10 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "materialsUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -16791,6 +17648,10 @@
             "format": "date-time",
             "nullable": true
           },
+          "materialsUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "lecturerName": {
             "type": "string",
             "nullable": true
@@ -16881,6 +17742,10 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "materialsUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -16904,7 +17769,7 @@
             "type": "string",
             "nullable": true
           },
-          "materialsUrl": {
+          "guidanceProjectsUrl": {
             "type": "string",
             "nullable": true
           },
@@ -16945,7 +17810,7 @@
             "format": "date-time",
             "nullable": true
           },
-          "materialsUrl": {
+          "guidanceProjectsUrl": {
             "type": "string",
             "nullable": true
           },
@@ -16956,6 +17821,17 @@
           },
           "lecturerName": {
             "type": "string",
+            "nullable": true
+          },
+          "groupCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResearchGroupResponse"
+            },
             "nullable": true
           }
         },
@@ -17018,7 +17894,7 @@
             "type": "string",
             "nullable": true
           },
-          "materialsUrl": {
+          "guidanceProjectsUrl": {
             "type": "string",
             "nullable": true
           },
@@ -17499,6 +18375,139 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarFeedbackAiSummaryContentResponse": {
+        "type": "object",
+        "properties": {
+          "overallAssessment": {
+            "type": "string",
+            "nullable": true
+          },
+          "commonStrengths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "areasForImprovement": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "commonSuggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "conflictingFeedback": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "recommendedActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarFeedbackAiSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "seminarId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "feedbackCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackAiSummaryContentResponse"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarFeedbackContentRequest": {
+        "type": "object",
+        "properties": {
+          "overallComment": {
+            "type": "string",
+            "nullable": true
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "improvements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarFeedbackContentResponse": {
+        "type": "object",
+        "properties": {
+          "overallComment": {
+            "type": "string",
+            "nullable": true
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "improvements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17506,13 +18515,11 @@
       "SeminarFeedbackRequest": {
         "type": "object",
         "properties": {
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentRequest"
+          },
           "participantEvaluation": {
             "type": "string",
-            "nullable": true
-          },
-          "rating": {
-            "type": "integer",
-            "format": "int32",
             "nullable": true
           },
           "invitationStatus": {
@@ -17533,8 +18540,25 @@
             "type": "integer",
             "format": "int32"
           },
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentResponse"
+          },
           "participantEvaluation": {
             "type": "string",
+            "nullable": true
+          },
+          "feedbackSubmittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "feedbackUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "invitationStatus": {
@@ -17583,13 +18607,21 @@
             "type": "string",
             "nullable": true
           },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentResponse"
+          },
           "participantEvaluation": {
             "type": "string",
             "nullable": true
           },
-          "rating": {
-            "type": "integer",
-            "format": "int32",
+          "feedbackSubmittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "feedbackUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -17664,6 +18696,9 @@
             "type": "string",
             "nullable": true
           },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentRequest"
+          },
           "participantEvaluation": {
             "type": "string",
             "nullable": true
@@ -17704,8 +18739,21 @@
             "type": "string",
             "nullable": true
           },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentResponse"
+          },
           "participantEvaluation": {
             "type": "string",
+            "nullable": true
+          },
+          "feedbackSubmittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "feedbackUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "invitationSentAt": {
@@ -17770,6 +18818,9 @@
           "invitationStatus": {
             "type": "string",
             "nullable": true
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/SeminarFeedbackContentRequest"
           },
           "participantEvaluation": {
             "type": "string",
@@ -17864,6 +18915,20 @@
             "type": "string",
             "nullable": true
           },
+          "aiFeedbackGeneratedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "subFieldName": {
+            "type": "string",
+            "nullable": true
+          },
           "participants": {
             "type": "array",
             "items": {
@@ -17938,11 +19003,6 @@
           "completionPercentage": {
             "type": "number",
             "format": "double"
-          },
-          "averageScore": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17979,6 +19039,11 @@
           },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -18321,6 +19386,55 @@
         },
         "additionalProperties": false
       },
+      "SuggestedInviteeDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "subFieldId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "subFieldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "orcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hindex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "publicationCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TopicMilestonesCreateRequest": {
         "type": "object",
         "properties": {
@@ -18354,7 +19468,38 @@
             "type": "string",
             "nullable": true
           },
+          "phaseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "requirements": {
+            "type": "string",
+            "nullable": true
+          },
+          "assessmentCriteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "criteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "deadlineAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deadline": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -18499,6 +19644,20 @@
           "unreadCount": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateExpiresAtRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

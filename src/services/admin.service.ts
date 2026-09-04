@@ -154,24 +154,43 @@ async function decideRoleRequest(
 // columns verbatim; the two shapes differ in field names so a mapping is
 // unavoidable.  Role is stored as roleName on the row; plan maps
 // accountTier (null → FREE_TIER); status maps isActive (true → ACTIVE).
+//
+// FE_TRIAL_FLOW — when the BE surfaces a `trialExpiryAt` in the future,
+// the account is in its 7-day Researcher / Lecturer trial and the FE
+// renders a TRIAL status pill with the deadline. An absent or past
+// `trialExpiryAt` falls back to the legacy ACTIVE / SUSPENDED split.
 function userToAccountItem(user: User): AccountItem {
   const role = typeof user.roleName === 'string' ? user.roleName.toUpperCase().replace(/\s+/g, '_') : null;
   const roles = role && ['LECTURER', 'RESEARCHER', 'GRADUATE_STUDENT', 'REVIEWER'].includes(role)
     ? [role as AccountItem['roles'][number]]
     : [];
+  const trialExpiryAt = user.trialExpiryAt ?? null;
+  const trialMs = trialExpiryAt ? new Date(trialExpiryAt).getTime() : NaN;
+  const trialIsLive =
+    user.isActive === true &&
+    Number.isFinite(trialMs) &&
+    trialMs > Date.now();
+  const status: AccountItem['status'] = trialIsLive
+    ? 'TRIAL'
+    : user.isActive
+      ? 'ACTIVE'
+      : 'SUSPENDED';
   return {
     id: user.id,
     name: user.fullName ?? '',
     email: user.email,
     roles,
     plan: (user.accountTier ?? 'Free') === 'Free' ? 'FREE_TIER' : 'PREMIUM',
-    status: user.isActive ? 'ACTIVE' : 'SUSPENDED',
+    status,
     joinedDate: user.createdAt ?? '',
     isActive: user.isActive,
     // Carry through the BE-reported suspension deadline so the
     // AccountsManagement page can render the "Suspended until …" pill.
     // Live responses surface whatever `dbo.Users.suspendedUntil` holds.
     suspendedUntil: user.suspendedUntil ?? null,
+    // Carry the BE-supplied trial deadline so the row can render a
+    // "Trial until …" pill next to the TRIAL status pill.
+    trialExpiryAt,
   };
 }
 

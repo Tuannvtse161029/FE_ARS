@@ -62,6 +62,16 @@ export interface RegisterPayload {
   pdfUrl: string;
   /** Backend RegisterRequest field (the API currently names this ORCID ticket). */
   orcidTicket?: string;
+  /**
+   * First-time registration flag. True when this account has never held
+   * the requested role before — the BE uses this to decide whether to
+   * start the 7-day Researcher / Lecturer trial once Admin role
+   * verification succeeds. The FE always sends `true` from the
+   * self-registration flow (registration is by definition the user's
+   * first contact with the role); existing-account role upgrade paths
+   * (not yet shipped) will pass `false`.
+   */
+  isFirstTime?: boolean;
 }
 
 export interface RegisterRequest {
@@ -72,6 +82,8 @@ export interface RegisterRequest {
   role: UserRole;
   pdfUrl: string;
   orcidTicket?: string;
+  /** See {@link RegisterPayload.isFirstTime}. */
+  isFirstTime?: boolean;
 }
 
 export interface AuthResponse {
@@ -121,6 +133,13 @@ export interface AuthResponse {
    * establishes a Guest session.
    */
   effectiveRole?: EffectiveRole;
+  /**
+   * Trial expiry timestamp (ISO 8601). Set by the BE after Admin role
+   * verification when the user is in their first-time 7-day Researcher /
+   * Lecturer trial. `null` / absent ⇒ no active trial. Profile and Admin
+   * accounts surfaces render a countdown while this is in the future.
+   */
+  trialExpiryAt?: string | null;
   /**
    * Agent 30 — first-time Google-user routing signals. Surfaced by the BE
    * on `POST /api/Auth/google-login` (and the OAuth callback redirect).
@@ -201,6 +220,13 @@ export interface User {
    * `EffectiveRole` and BTR-AGENT39-01.
    */
   effectiveRole?: EffectiveRole;
+  /**
+   * Trial expiry timestamp (ISO 8601). Set by the BE after Admin role
+   * verification when the user is in their first-time 7-day Researcher /
+   * Lecturer trial. `null` / absent ⇒ no active trial. The Profile page
+   * renders a countdown while this is in the future.
+   */
+  trialExpiryAt?: string | null;
   /**
    * Agent 30 — explicit BE signals for first-time Google-user routing.
    *

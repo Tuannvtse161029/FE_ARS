@@ -1,0 +1,381 @@
+/* AdminPolicies — token-driven styling for the policy management tab.
+ *
+ * Tokens used:
+ *   --ars-paper-card / --ars-paper-alt for surfaces
+ *   --ars-ink / --ars-ink-muted / --ars-ink-soft for text
+ *   --ars-network / --ars-node for borders
+ *   --ars-admin (or --accent-primary) for admin accent
+ *   --space-* for spacing
+ *   --radius-* for radii
+ *   --font-family-mono for the policy preview block
+ */
+
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  color: var(--ars-ink);
+}
+
+.helperText {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.loadingState {
+  background: var(--ars-paper-card);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Grid of cards ────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card ──────────────────────────────────────────────────── */
+
+.card {
+  background: var(--ars-paper-card);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--ars-node);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cardTitleBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--ars-paper-alt);
+  color: var(--ars-admin, var(--accent-primary));
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+}
+
+.cardSummary {
+  margin: 4px 0 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}
+
+.cardBadgeBlock {
+  flex-shrink: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+
+.badgeSeed {
+  background: var(--ars-warning-bg, rgba(245, 158, 11, 0.1));
+  color: var(--ars-warning, #b45309);
+  border-color: var(--ars-warning, #b45309);
+}
+
+.badgeSaved {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: var(--ars-success);
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.cardMetaMuted {
+  color: var(--ars-ink-soft);
+  font-style: italic;
+}
+
+.cardCharCount {
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+}
+
+.preview {
+  margin: 0;
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  max-height: 180px;
+  overflow: auto;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+  color: var(--ars-ink-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Error banner ─────────────────────────────────────────── */
+
+.errorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  color: var(--ars-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.errorBanner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.errorBanner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.errorBanner strong {
+  font-weight: var(--font-weight-bold);
+}
+
+/* ── Modal ────────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1100;
+  padding: var(--space-6) var(--space-4);
+  overflow-y: auto;
+}
+
+.modalCard {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 760px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.modalTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modalEyebrow {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ars-ink-muted);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  font-family: var(--font-family-serif);
+}
+
+.modalSubtitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}
+
+.modalCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ars-ink-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.modalCloseBtn:hover:not(:disabled) {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+}
+
+.modalCloseBtn:focus-visible {
+  outline: 2px solid var(--accent-primary, #007aff);
+  outline-offset: 2px;
+}
+
+.modalCloseBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.modalMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  border-top: 1px solid var(--ars-network);
+  border-bottom: 1px solid var(--ars-network);
+  padding: var(--space-2) 0;
+}
+
+.editorLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  margin: 0;
+}
+
+.editor {
+  width: 100%;
+  min-height: 360px;
+  max-height: 60vh;
+  resize: vertical;
+  padding: var(--space-3);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--ars-ink);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.editor:focus-visible {
+  border-color: var(--accent-primary, #007aff);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(0, 122, 255, 0.2));
+}
+
+.editor:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.editorFooterRow {
+  display: flex;
+  justify-content: flex-end;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.editorCharCount {
+  font-family: var(--font-family-mono);
+}
+
+.dirtyDot {
+  color: var(--ars-warning, #b45309);
+  font-weight: var(--font-weight-bold);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ars-network);
+}
+
+.spinning {
+  animation: policiesSpin 0.8s linear infinite;
+}
+
+@keyframes policiesSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
