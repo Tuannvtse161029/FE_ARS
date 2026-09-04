@@ -83,6 +83,7 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 // Admin Annual Fees tab. It renders an honest backend-unavailable state
 // until the AnnualFee API ticket is implemented.
 const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
+const AdminMedals = lazy(() => import('./pages/Admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
 // Researcher / Lecturer subscription page. Renders the current status,
 // plans, and `Proceed to Pay` button. Lives behind the existing role
 // guards so only Researcher / Lecturer reach it.
@@ -288,6 +289,7 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
                   <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
+                  <Route path={ROUTES.ADMIN_MEDALS} element={<AdminMedals />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                 </Route>
               </Route>
