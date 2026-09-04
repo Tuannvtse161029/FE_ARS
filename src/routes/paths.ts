@@ -77,6 +77,7 @@ export const ROUTES = {
   // is no `/api/Policy` endpoint by design. This route is mounted
   // behind the existing Admin role guard and `useAdminGuard()`.
   ADMIN_POLICIES: '/admin/policies',
+  ADMIN_MEDALS: '/admin/medals',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or
   // `requiresOnboarding === true` (see src/services/googleAuth.service.ts).
