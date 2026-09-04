@@ -38,7 +38,7 @@ export interface RoleRequestDecision {
 }
 
 // ── Accounts (Figma screen 3) ──────────────────────────────────────────────
-export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
 export type AccountPlan = 'FREE_TIER' | 'PREMIUM';
 export type AccountRoleName =
   | 'LECTURER'

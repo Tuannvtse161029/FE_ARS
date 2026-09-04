@@ -71,23 +71,27 @@ const actionableTone = (paper: PublicationPaper): 'submitted' | 'evaluated' | 'w
   return 'unknown';
 };
 
+// Status options for tabs
+type StatusTab = PublicationStatus | 'ALL';
+
+const STATUS_TABS: Array<{ value: StatusTab; label: string }> = [
+  { value: 'ALL', label: 'All' },
+  { value: 'REVIEWER_ASSIGNED', label: statusLabel('REVIEWER_ASSIGNED') },
+  { value: 'UNDER_REVIEW', label: statusLabel('UNDER_REVIEW') },
+  { value: 'REVISION_REQUIRED', label: statusLabel('REVISION_REQUIRED') },
+  { value: 'RESUBMITTED', label: statusLabel('RESUBMITTED') },
+  { value: 'REVIEWER_RECOMMENDED_ACCEPT', label: statusLabel('REVIEWER_RECOMMENDED_ACCEPT') },
+  { value: 'REVIEWER_RECOMMENDED_REJECT', label: statusLabel('REVIEWER_RECOMMENDED_REJECT') },
+];
+
 export const ReviewerAssignments = () => {
   const navigate = useNavigate();
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PublicationStatus | 'ALL'>('ALL');
-
-  // Status values that a reviewer can see in their queue.
-  const REVIEWER_STATUS_OPTIONS: ReadonlyArray<PublicationStatus> = [
-    'REVIEWER_ASSIGNED',
-    'UNDER_REVIEW',
-    'REVISION_REQUIRED',
-    'RESUBMITTED',
-    'REVIEWER_RECOMMENDED_ACCEPT',
-    'REVIEWER_RECOMMENDED_REJECT',
-  ];
+  // Tab filter for status
+  const [statusTab, setStatusTab] = useState<StatusTab>('ALL');
 
   // Default sort by assigned (newest first) so recently assigned papers
   // surface at the top. The user can override per column header click.
@@ -113,10 +117,25 @@ export const ReviewerAssignments = () => {
     };
   }, []);
 
+  // Count papers per status tab
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: papers.length };
+    STATUS_TABS.forEach((tab) => {
+      if (tab.value !== 'ALL') counts[tab.value] = 0;
+    });
+    papers.forEach((paper) => {
+      if (counts[paper.status] !== undefined) {
+        counts[paper.status]++;
+      }
+    });
+    return counts;
+  }, [papers]);
+
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return papers.filter((paper) => {
-      if (statusFilter !== 'ALL' && paper.status !== statusFilter) {
+      // Apply status tab filter
+      if (statusTab !== 'ALL' && paper.status !== statusTab) {
         return false;
       }
       if (!term) return true;
@@ -135,7 +154,7 @@ export const ReviewerAssignments = () => {
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [papers, search, statusFilter]);
+  }, [papers, search, statusTab]);
 
   // Apply column sort on top of filtered list.
   const sortedPapers = useMemo(
@@ -203,35 +222,54 @@ export const ReviewerAssignments = () => {
         />
       ) : (
         <>
+          {/* Tab filter for status */}
           {papers.length > 0 && (
-            <div className={reviewer.toolbar} role="search">
-              <label className={reviewer.searchField}>
-                <span className={reviewer.searchLabel} id="reviewer-search-label">
-                  Search assignments
+            <>
+              <div className={reviewer.tabFilterBar} role="tablist" aria-label="Filter by status">
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.value}
+                    role="tab"
+                    aria-selected={statusTab === tab.value}
+                    className={`${reviewer.tabButton} ${statusTab === tab.value ? reviewer.tabButtonActive : ''}`}
+                    onClick={() => setStatusTab(tab.value)}
+                    type="button"
+                  >
+                    {tab.label}
+                    <span className={reviewer.tabCount}>{tabCounts[tab.value] ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className={reviewer.toolbar} role="search">
+                <label className={reviewer.searchField}>
+                  <span className={reviewer.searchLabel} id="reviewer-search-label">
+                    Search assignments
+                  </span>
+                  <input
+                    id="reviewer-assignments-search"
+                    type="search"
+                    className={reviewer.searchInput}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search title, author, or institution…"
+                    aria-labelledby="reviewer-search-label"
+                  />
+                </label>
+                <span className={reviewer.count} aria-live="polite">
+                  {visiblePapers.length} of {papers.length} assignment{papers.length === 1 ? '' : 's'}
                 </span>
-                <input
-                  id="reviewer-assignments-search"
-                  type="search"
-                  className={reviewer.searchInput}
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search title, author, or institution…"
-                  aria-labelledby="reviewer-search-label"
-                />
-              </label>
-              <span className={reviewer.count} aria-live="polite">
-                {visiblePapers.length} of {papers.length} assignment{papers.length === 1 ? '' : 's'}
-              </span>
-            </div>
+              </div>
+            </>
           )}
 
           {rows.length === 0 ? (
             <EmptyState
               icon={<Inbox size={20} aria-hidden />}
-              title={search ? 'No assignments match your search' : 'No reviewer assignments are ready'}
+              title={search || statusTab !== 'ALL' ? 'No assignments match your filters' : 'No reviewer assignments are ready'}
               description={
-                search
-                  ? 'Try a different keyword, or clear the search to see every assignment.'
+                search || statusTab !== 'ALL'
+                  ? 'Try a different keyword, or select a different status tab.'
                   : 'New Admin assignments appear here automatically. Accept or decline them from the row.'
               }
               data-testid="empty-assignments"
@@ -255,19 +293,6 @@ export const ReviewerAssignments = () => {
                         label="Status"
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
-                        filterOptions={[
-                          { value: 'ALL', label: 'All statuses' },
-                          ...REVIEWER_STATUS_OPTIONS.map((status) => ({
-                            value: status,
-                            label: statusLabel(status),
-                          })),
-                        ]}
-                        activeFilter={statusFilter}
-                        onFilterChange={(next) =>
-                          setStatusFilter(
-                            next as PublicationStatus | 'ALL',
-                          )
-                        }
                       />
                     </th>
                     <th scope="col">

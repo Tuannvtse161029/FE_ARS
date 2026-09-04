@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   FileText,
   GraduationCap,
-  ShieldCheck,
   UserCheck,
   Users,
   Send,
@@ -13,6 +12,10 @@ import {
   MessageSquare,
   Scale,
   Globe,
+  Search,
+  BookOpen,
+  Calendar,
+  Network,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
 import { useT } from '../../i18n/I18nContext';
@@ -21,16 +24,112 @@ import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Landing.module.css';
 
+// ── Hero social proof metrics ────────────────────────────────
+const HERO_METRICS = [
+  { value: '1,200+', key: 'landing.heroStat1Label', fallback: 'Papers published' },
+  { value: '340+',  key: 'landing.heroStat2Label', fallback: 'Active researchers' },
+  { value: '85+',   key: 'landing.heroStat3Label', fallback: 'Seminars held' },
+];
+
+// ── Feature cards (mirrors Vietnamese i18n) ─────────────────
+const FEATURES = [
+  {
+    icon: Search,
+    role: 'researcher',
+    titleKey: 'landing.feature1Title',
+    bodyKey: 'landing.feature1Body',
+    titleFallback: 'Structured Discovery',
+    bodyFallback: 'Browse papers by field, author group, and trends. Save to your watchlist to never miss an update.',
+  },
+  {
+    icon: BookOpen,
+    role: 'reviewer',
+    titleKey: 'landing.feature2Title',
+    bodyKey: 'landing.feature2Body',
+    titleFallback: 'Trusted Peer Review',
+    bodyFallback: 'Structured evaluation workflows enable clear feedback, transparent version history, and auditable publication decisions.',
+  },
+  {
+    icon: Calendar,
+    role: 'lecturer',
+    titleKey: 'landing.feature3Title',
+    bodyKey: 'landing.feature3Body',
+    titleFallback: 'Academic Seminars',
+    bodyFallback: 'Create and manage seminars, send Google Meet invitations, and track attendee responses — all in one place.',
+  },
+  {
+    icon: Network,
+    role: 'student',
+    titleKey: 'landing.feature4Title',
+    bodyKey: 'landing.feature4Body',
+    titleFallback: 'Role-based Collaboration',
+    bodyFallback: 'Dedicated workspaces for Lecturers, Researchers, Reviewers, and Admins with clear permissions.',
+  },
+];
+
+// ── Publication flow constellation nodes ─────────────────────
+const PUBLICATION_NODES = [
+  {
+    icon: Send,
+    role: 'researcher',
+    roleKey: 'landing.flowResearcher',
+    actionKey: 'landing.flowResearcherAction',
+    noteKey: 'landing.flowResearcherNote',
+    roleFallback: 'Researcher',
+    actionFallback: 'Uploads a paper to ARS for consideration.',
+    noteFallback: 'cannot choose the reviewer',
+  },
+  {
+    icon: ClipboardCheck,
+    role: 'admin',
+    roleKey: 'landing.flowAdmin',
+    actionKey: 'landing.flowAdminScreenAction',
+    noteKey: null,
+    roleFallback: 'Admin',
+    actionFallback: 'Screens the submission and assigns a suitable reviewer.',
+    noteFallback: null,
+  },
+  {
+    icon: MessageSquare,
+    role: 'reviewer',
+    roleKey: 'landing.flowReviewer',
+    actionKey: 'landing.flowReviewerAction',
+    noteKey: 'landing.flowReviewerNote',
+    roleFallback: 'Reviewer',
+    actionFallback: 'Evaluates the paper and returns a recommendation.',
+    noteFallback: 'recommends, does not publish',
+  },
+  {
+    icon: Scale,
+    role: 'admin',
+    roleKey: 'landing.flowAdmin',
+    actionKey: 'landing.flowAdminDecideAction',
+    noteKey: null,
+    roleFallback: 'Admin',
+    actionFallback: 'Makes the final publication decision.',
+    noteFallback: null,
+  },
+  {
+    icon: Globe,
+    role: 'catalog',
+    roleKey: 'landing.flowCatalog',
+    actionKey: 'landing.flowCatalogAction',
+    noteKey: null,
+    roleFallback: 'Catalog',
+    actionFallback: 'Only approved papers are published to the ARS public catalog.',
+    noteFallback: null,
+  },
+];
+
 export const Landing = () => {
   const t = useT();
   const workflowListRef = useRef<HTMLOListElement>(null);
   const flowSectionRef = useRef<HTMLElement>(null);
   const [workflowListVisible, setWorkflowListVisible] = useState(false);
-  const [flowPathsDrawn, setFlowPathsDrawn] = useState<string[]>([]);
+  const [flowConnectorsDrawn, setFlowConnectorsDrawn] = useState(false);
+  const [flowDotsAnimated, setFlowDotsAnimated] = useState(false);
 
-  // ── Scroll-driven observers ─────────────────────────────────
-  // Both observers fire once and disconnect — these are one-shot
-  // entrance animations, not continuous scroll handlers.
+  // ── Scroll-driven observers ───────────────────────────────
   useEffect(() => {
     const prefersReduced = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
@@ -48,24 +147,25 @@ export const Landing = () => {
     );
     if (workflowListRef.current) workflowObs.observe(workflowListRef.current);
 
-    // Trigger SVG connector drawing when the publication flow section
-    // enters the viewport. Each connector animates in sequence.
+    // Trigger flow constellation animation when the section enters the viewport.
     const flowObs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !prefersReduced) {
+        if (entry.isIntersecting) {
           flowObs.disconnect();
-          // Draw connectors one at a time — index 0..3 for 4 connectors.
-          [0, 1, 2, 3].forEach((i) => {
+          if (!prefersReduced) {
+            // Draw connector lines sequentially, then animate dots
+            [0, 1, 2, 3].forEach((i) => {
+              setTimeout(() => {
+                setFlowConnectorsDrawn(true);
+              }, 300 + i * 200);
+            });
             setTimeout(() => {
-              setFlowPathsDrawn((prev) =>
-                prev.includes(`p${i}`) ? prev : [...prev, `p${i}`],
-              );
-            }, 80 + i * 200);
-          });
-        } else if (entry.isIntersecting) {
-          // Instant reveal when reduced-motion is preferred.
-          flowObs.disconnect();
-          setFlowPathsDrawn(['p0', 'p1', 'p2', 'p3']);
+              setFlowDotsAnimated(true);
+            }, 1200);
+          } else {
+            setFlowConnectorsDrawn(true);
+            setFlowDotsAnimated(true);
+          }
         }
       },
       { threshold: 0.2 },
@@ -78,9 +178,6 @@ export const Landing = () => {
     };
   }, []);
 
-  // Scroll the in-page anchor target into view with an eased animation,
-  // matching the sticky header height. Sync the URL hash without triggering
-  // a second browser-side jump.
   const handleAnchorClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
       const target = document.getElementById(targetId);
@@ -92,9 +189,7 @@ export const Landing = () => {
     [],
   );
 
-  // Vietnamese is the default locale; every string below passes an English
-  // fallback so the page still reads correctly when the user switches to
-  // English. The English fallback doubles as a documentation hint.
+  // ── Static content data ───────────────────────────────────
   const workflow = [
     {
       title: t('landing.workflowStep1Title', 'Submit'),
@@ -136,6 +231,7 @@ export const Landing = () => {
   const workspaces = [
     {
       icon: FileText,
+      role: 'researcher',
       title: t('landing.workspaceResearcherTitle', 'Researcher workspace'),
       description: t(
         'landing.workspaceResearcherBody',
@@ -144,6 +240,7 @@ export const Landing = () => {
     },
     {
       icon: UserCheck,
+      role: 'reviewer',
       title: t('landing.workspaceReviewerTitle', 'Reviewer workspace'),
       description: t(
         'landing.workspaceReviewerBody',
@@ -152,6 +249,7 @@ export const Landing = () => {
     },
     {
       icon: GraduationCap,
+      role: 'lecturer',
       title: t('landing.workspaceLecturerTitle', 'Lecturer workspace'),
       description: t(
         'landing.workspaceLecturerBody',
@@ -160,6 +258,7 @@ export const Landing = () => {
     },
     {
       icon: Users,
+      role: 'student',
       title: t('landing.workspaceStudentTitle', 'Graduate student workspace'),
       description: t(
         'landing.workspaceStudentBody',
@@ -207,53 +306,18 @@ export const Landing = () => {
     },
   ];
 
-  const publicationFlowSteps = [
-    {
-      icon: Send,
-      role: t('landing.flowResearcher', 'Researcher'),
-      action: t(
-        'landing.flowResearcherAction',
-        'Uploads a paper to ARS for consideration.',
-      ),
-      note: t('landing.flowResearcherNote', 'cannot choose the reviewer'),
-    },
-    {
-      icon: ClipboardCheck,
-      role: t('landing.flowAdmin', 'Admin'),
-      action: t(
-        'landing.flowAdminScreenAction',
-        'Screens the submission and assigns a suitable reviewer.',
-      ),
-      note: null,
-    },
-    {
-      icon: MessageSquare,
-      role: t('landing.flowReviewer', 'Reviewer'),
-      action: t(
-        'landing.flowReviewerAction',
-        'Evaluates the paper and returns a recommendation.',
-      ),
-      note: t('landing.flowReviewerNote', 'recommends, does not publish'),
-    },
-    {
-      icon: Scale,
-      role: t('landing.flowAdmin', 'Admin'),
-      action: t(
-        'landing.flowAdminDecideAction',
-        'Makes the final publication decision.',
-      ),
-      note: null,
-    },
-    {
-      icon: Globe,
-      role: t('landing.flowCatalog', 'Catalog'),
-      action: t(
-        'landing.flowCatalogAction',
-        'Only Admin-approved papers are published to the ARS public catalog.',
-      ),
-      note: null,
-    },
+  // ── Hero constellation node positions (for SVG lines) ──────
+  // Positions are % within a 340×180 container, matching .heroConstellation
+  const constellationNodes = [
+    { cx: 42,  cy: 22  }, // cn0 — top-left
+    { cx: 188, cy: 9   }, // cn1 — top-center
+    { cx: 156, cy: 66  }, // cn2 — center (largest node)
+    { cx: 95,  cy: 126 }, // cn3 — bottom-left
+    { cx: 232, cy: 108 }, // cn4 — bottom-right
+    { cx: 168, cy: 156 }, // cn5 — bottom-center
   ];
+
+  const constellationIcons = [Users, BookOpen, GraduationCap, Network, FileText, MessageSquare];
 
   return (
     <div className={styles.page}>
@@ -261,15 +325,13 @@ export const Landing = () => {
         {t('landing.skipToContent', 'Skip to main content')}
       </a>
 
+      {/* ── Header ───────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link
             className={styles.brand}
             to={ROUTES.LANDING}
-            aria-label={t(
-              'landing.brandAria',
-              'Academic Research System home',
-            )}
+            aria-label={t('landing.brandAria', 'Academic Research System home')}
           >
             <img className={styles.brandLogo} src={arsLogo} alt="ARS" />
             <span>{t('landing.brandName', 'Academic Research System')}</span>
@@ -308,30 +370,48 @@ export const Landing = () => {
       </header>
 
       <main id="main-content">
+
+        {/* ── Hero ───────────────────────────────────────── */}
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroInner}>
-            <div
-              className={styles.heroCopy}
-              style={{ '--hero-stagger': '0ms' } as React.CSSProperties}
-            >
+            {/* Left: headline + metrics + CTAs */}
+            <div className={styles.heroCopy}>
               <p className={styles.issueLine}>
-                {t('landing.heroBadge', 'Public entry / Academic research')}
+                {t('landing.heroBadge', 'Trusted by Vietnamese researchers')}
               </p>
               <h1 id="landing-title">
                 {t(
                   'landing.heroTitle',
-                  'A responsible path for research to be read, reviewed, and shared.',
+                  'Where Vietnamese researchers share, review, and advance science together.',
                 )}
               </h1>
               <p className={styles.heroLead}>
                 {t(
                   'landing.heroSubtitle',
-                  'ARS is a role-based academic platform for research discovery, editorial workflows, seminars, and collaboration. It keeps each responsibility clear from submission to public discovery.',
+                  'Discover research, join structured peer review, organize academic seminars, and collaborate by role — all in one secure platform.',
                 )}
               </p>
+
+              {/* Social proof metrics */}
+              <div className={styles.heroMetrics}>
+                {HERO_METRICS.map((metric, i) => (
+                  <>
+                    {i > 0 && (
+                      <span key={`div-${i}`} className={styles.metricDivider} aria-hidden="true" />
+                    )}
+                    <div key={metric.key} className={styles.metricItem}>
+                      <span className={styles.metricValue}>{metric.value}</span>
+                      <span className={styles.metricLabel}>
+                        {t(metric.key, metric.fallback)}
+                      </span>
+                    </div>
+                  </>
+                ))}
+              </div>
+
               <div className={styles.heroActions}>
                 <Link className={styles.primaryButton} to={ROUTES.LOGIN}>
-                  {t('landing.ctaPrimary', 'Log in to ARS')}{' '}
+                  {t('landing.ctaPrimary', 'Get started free')}{' '}
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <a
@@ -339,69 +419,72 @@ export const Landing = () => {
                   href="#workflow"
                   onClick={(e) => handleAnchorClick(e, 'workflow')}
                 >
-                  {t('landing.ctaSecondary', 'Read the workflow')}{' '}
+                  {t('landing.ctaSecondary', 'View seminars')}{' '}
                   <ArrowRight size={16} aria-hidden="true" />
                 </a>
               </div>
             </div>
 
-            <aside
-              className={styles.dossier}
-              aria-labelledby="dossier-title"
-              style={{ '--hero-stagger': '80ms' } as React.CSSProperties}
-            >
-              <div className={styles.dossierHeader}>
-                <span>{t('landing.dossierTitle', 'ARS editorial dossier')}</span>
-                <ShieldCheck size={20} aria-hidden="true" />
+            {/* Right: constellation composition */}
+            <div className={styles.heroVisual} aria-hidden="true">
+              <div className={styles.heroAcrLabel}>ARS</div>
+              <div className={styles.heroConstellation}>
+                {/* SVG connecting lines */}
+                <svg
+                  className={styles.constellationCanvas}
+                  viewBox="0 0 340 180"
+                  preserveAspectRatio="xMidYMid meet"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line
+                    x1={constellationNodes[0].cx} y1={constellationNodes[0].cy}
+                    x2={constellationNodes[1].cx} y2={constellationNodes[1].cy}
+                  />
+                  <line
+                    x1={constellationNodes[1].cx} y1={constellationNodes[1].cy}
+                    x2={constellationNodes[2].cx} y2={constellationNodes[2].cy}
+                  />
+                  <line
+                    x1={constellationNodes[2].cx} y1={constellationNodes[2].cy}
+                    x2={constellationNodes[3].cx} y2={constellationNodes[3].cy}
+                  />
+                  <line
+                    x1={constellationNodes[3].cx} y1={constellationNodes[3].cy}
+                    x2={constellationNodes[4].cx} y2={constellationNodes[4].cy}
+                  />
+                  <line
+                    x1={constellationNodes[4].cx} y1={constellationNodes[4].cy}
+                    x2={constellationNodes[5].cx} y2={constellationNodes[5].cy}
+                  />
+                  <line
+                    x1={constellationNodes[2].cx} y1={constellationNodes[2].cy}
+                    x2={constellationNodes[4].cx} y2={constellationNodes[4].cy}
+                  />
+                </svg>
+
+                {/* Constellation nodes */}
+                {constellationNodes.map((_node, i) => {
+                  const Icon = constellationIcons[i];
+                  return (
+                    <div
+                      key={i}
+                      className={`${styles.constellationNode} ${styles[`cn${i}`]}`}
+                    >
+                      <Icon size={i === 2 ? 26 : i === 0 ? 22 : i === 4 ? 18 : 16} />
+                    </div>
+                  );
+                })}
               </div>
-              <h2 id="dossier-title">
-                {t(
-                  'landing.dossierHeading',
-                  'Publication is a governed process.',
-                )}
-              </h2>
-              <p>
-                {t(
-                  'landing.dossierBody',
-                  'ARS separates editorial responsibility from scholarly recommendation, so the path to public discovery remains accountable.',
-                )}
-              </p>
-              <dl className={styles.dossierList}>
-                <div>
-                  <dt>{t('landing.dossierResearcher', 'Researcher')}</dt>
-                  <dd>
-                    {t(
-                      'landing.dossierResearcherBody',
-                      'Submits and follows the work.',
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t('landing.dossierReviewer', 'Reviewer')}</dt>
-                  <dd>
-                    {t(
-                      'landing.dossierReviewerBody',
-                      'Evaluates and recommends.',
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t('landing.dossierAdmin', 'Administrator')}</dt>
-                  <dd>
-                    {t(
-                      'landing.dossierAdminBody',
-                      'Controls the final decision.',
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </aside>
+            </div>
           </div>
         </section>
 
+        {/* ── Statement ──────────────────────────────────── */}
         <section className={styles.statement} aria-label={t('landing.statementAria', 'ARS purpose')}>
           <div>
-            <p className={styles.issueLine}>{t('landing.statementKicker', 'The platform')}</p>
+            <p className={styles.issueLine}>
+              {t('landing.statementKicker', 'The platform')}
+            </p>
             <h2>
               {t(
                 'landing.statementTitle',
@@ -417,6 +500,42 @@ export const Landing = () => {
           </p>
         </section>
 
+        {/* ── Features ────────────────────────────────────── */}
+        <section className={styles.featuresSection} aria-label={t('landing.featuresTitle', 'Platform features')}>
+          <div className={styles.featuresInner}>
+            <div className={styles.featuresHeader}>
+              <p className={styles.issueLine}>
+                {t('landing.featuresSubtitle', 'Structured tools for research discovery, review, and collaboration — no stitching together multiple apps.')}
+              </p>
+              <h2>
+                {t(
+                  'landing.featuresTitle',
+                  'Everything your research team needs',
+                )}
+              </h2>
+            </div>
+            <div className={styles.featuresGrid}>
+              {FEATURES.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <article
+                    key={feature.titleKey}
+                    className={styles.featureItem}
+                    data-role={feature.role}
+                  >
+                    <div className={styles.featureIcon}>
+                      <Icon size={22} aria-hidden="true" />
+                    </div>
+                    <h3>{t(feature.titleKey, feature.titleFallback)}</h3>
+                    <p>{t(feature.bodyKey, feature.bodyFallback)}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Workflow ─────────────────────────────────────── */}
         <section
           className={styles.workflowSection}
           id="workflow"
@@ -433,22 +552,25 @@ export const Landing = () => {
               )}
             </h2>
           </div>
+
           <ol
             ref={workflowListRef}
             className={`${styles.workflowList}${workflowListVisible ? ` ${styles.revealed}` : ''}`}
           >
             {workflow.map((step, index) => (
-              <li key={step.title} className={styles.workflowStep}>
-                <span className={styles.workflowNumber} aria-hidden="true">
-                  0{index + 1}
-                </span>
-                <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.description}</p>
-                </div>
+              <li
+                key={step.title}
+                className={styles.workflowStep}
+                data-num={`0${index + 1}`}
+                aria-label={step.title}
+              >
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
               </li>
             ))}
           </ol>
+
+          {/* Publication decision flow — constellation diagram */}
           <aside
             ref={flowSectionRef}
             className={styles.publicationFlow}
@@ -457,38 +579,43 @@ export const Landing = () => {
             <p className={styles.publicationFlowHeading} aria-hidden="true">
               {t('landing.flowKicker', 'Decision authority')}
             </p>
-            <ol className={styles.flowList}>
-              {publicationFlowSteps.map((step, index) => (
-                <li key={`${step.role}-${index}`} className={styles.flowStep}>
-                  <div className={styles.flowNode}>
-                    <step.icon
-                      size={18}
-                      aria-hidden="true"
-                      className={styles.flowIcon}
-                    />
-                    <span className={styles.flowRole}>{step.role}</span>
-                  </div>
-                  <p className={styles.flowAction}>{step.action}</p>
-                  {step.note && (
-                    <p className={styles.flowNote} aria-label={`Note: ${step.note}`}>
-                      {step.note}
-                    </p>
-                  )}
-                  {index < publicationFlowSteps.length - 1 && (
-                    <div
-                      className={`${styles.flowConnector}${flowPathsDrawn.includes(`p${index}`) ? ` ${styles.drawn}` : ''}`}
-                      aria-hidden="true"
-                      data-step={index}
-                    >
-                      <ArrowRight size={14} />
+            <div className={styles.flowConstellation}>
+              {PUBLICATION_NODES.map((node, index) => {
+                const Icon = node.icon;
+                return (
+                  <div key={`${node.role}-${index}`} className={styles.flowNodeItem} data-role={node.role}>
+                    <div className={styles.flowNodeCircle}>
+                      <Icon size={18} aria-hidden="true" />
                     </div>
-                  )}
-                </li>
-              ))}
-            </ol>
+                    <span className={styles.flowNodeRole}>
+                      {t(node.roleKey, node.roleFallback)}
+                    </span>
+                    <span className={styles.flowNodeAction}>
+                      {t(node.actionKey, node.actionFallback)}
+                    </span>
+                    {node.noteKey && (
+                      <span className={styles.flowNodeNote}>
+                        {t(node.noteKey, node.noteFallback ?? '')}
+                      </span>
+                    )}
+                    {index < PUBLICATION_NODES.length - 1 && (
+                      <div
+                        className={`${styles.flowConnectorLine}${flowConnectorsDrawn ? ` ${styles.drawn}` : ''}`}
+                        aria-hidden="true"
+                      >
+                        <span
+                          className={`${styles.flowDot}${flowDotsAnimated ? ` ${styles.animated}` : ''}`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </aside>
         </section>
 
+        {/* ── Boundaries ───────────────────────────────────── */}
         <section
           className={styles.boundariesSection}
           id="boundaries"
@@ -517,6 +644,7 @@ export const Landing = () => {
           </div>
         </section>
 
+        {/* ── Workspaces ──────────────────────────────────── */}
         <section
           className={styles.workspacesSection}
           id="workspaces"
@@ -534,20 +662,46 @@ export const Landing = () => {
             </h2>
           </div>
           <div className={styles.workspaceGrid}>
-            {workspaces.map(({ icon: Icon, title, description }, index) => (
+            {workspaces.map(({ icon: Icon, title, description, role }, index) => (
               <article
                 className={styles.workspace}
                 key={title}
+                data-role={role}
                 style={{ '--workspace-stagger': `${index * 60}ms` } as React.CSSProperties}
               >
                 <Icon size={24} aria-hidden="true" />
                 <h3>{title}</h3>
                 <p>{description}</p>
+                <span className={styles.workspaceArrow}>
+                  Explore <ArrowRight size={14} aria-hidden="true" />
+                </span>
               </article>
             ))}
           </div>
         </section>
 
+        {/* ── Testimonial ─────────────────────────────────── */}
+        <section className={styles.testimonialSection} aria-label="Researcher testimonial">
+          <div className={styles.testimonialInner}>
+            <span className={styles.testimonialMark} aria-hidden="true">"</span>
+            <blockquote className={styles.testimonialQuote}>
+              {t(
+                'landing.testimonialQuote',
+                'ARS cut our team review time in half — clear feedback, no scattered emails.',
+              )}
+            </blockquote>
+            <div className={styles.testimonialAttribution}>
+              <span className={styles.testimonialName}>
+                {t('landing.testimonialName', 'Dr. Nguyen Minh Anh')}
+              </span>
+              <span className={styles.testimonialRole}>
+                {t('landing.testimonialRole', 'Research Lead, HCMUT')}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ─────────────────────────────────────────── */}
         <section className={styles.faqSection} aria-labelledby="faq-title">
           <div className={styles.faqIntro}>
             <p className={styles.issueLine}>
@@ -566,8 +720,37 @@ export const Landing = () => {
             ))}
           </div>
         </section>
+
+        {/* ── CTA ─────────────────────────────────────────── */}
+        <section className={styles.ctaSection} aria-labelledby="cta-title">
+          <div className={styles.sectionHeading}>
+            <p className={styles.issueLine}>
+              {t('landing.ctaBody', 'Join hundreds of Vietnamese researchers using ARS to collaborate, review, and publish.')}
+            </p>
+            <h2 id="cta-title">
+              {t(
+                'landing.ctaTitle',
+                'Ready to take your research to the next level?',
+              )}
+            </h2>
+          </div>
+          <Link className={styles.primaryButton} to={ROUTES.LOGIN}>
+            {t('landing.ctaButton', 'Create a free account')}{' '}
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+          <a
+            className={styles.textLink}
+            href="#workflow"
+            onClick={(e) => handleAnchorClick(e, 'workflow')}
+          >
+            {t('landing.ctaSecondary', 'View seminars')}{' '}
+            <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </section>
+
       </main>
 
+      {/* ── Footer ────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <Link
@@ -578,12 +761,17 @@ export const Landing = () => {
             <img src={arsLogo} alt="ARS" />
             <span>{t('landing.brandName', 'Academic Research System')}</span>
           </Link>
-          <nav aria-label={t('landing.footerNavAria', 'Footer navigation')}>
-            <Link to={ROUTES.PRIVACY_POLICY}>{t('legal.privacy', 'Privacy')}</Link>
-            <Link to={ROUTES.TERMS_OF_SERVICE}>{t('legal.terms', 'Terms')}</Link>
-            <Link to={ROUTES.LOGIN}>{t('auth.signInButton', 'Log in')}</Link>
-          </nav>
+          <div className={styles.footerNav}>
+            <nav aria-label={t('landing.footerNavAria', 'Footer navigation')}>
+              <Link to={ROUTES.PRIVACY_POLICY}>{t('legal.privacy', 'Privacy')}</Link>
+              <Link to={ROUTES.TERMS_OF_SERVICE}>{t('legal.terms', 'Terms')}</Link>
+              <Link to={ROUTES.LOGIN}>{t('auth.signInButton', 'Log in')}</Link>
+            </nav>
+          </div>
         </div>
+        <p className={styles.footerCopy}>
+          &copy; 2026 ARS — {t('landing.footerAboutBody', 'Trusted academic platform for research, peer review, and collaboration.')}
+        </p>
       </footer>
     </div>
   );

@@ -3,7 +3,7 @@
  *
  * Every record returned by the live API adapter is rendered (Admin can see
  * drafts / private / withdrawn records that the public catalog never sees).
- * PageHeader at the top, toolbar with search + status + verification filters,
+ * PageHeader at the top, toolbar with search + verification tab filters,
  * shared TablePagination, and AdminPaperPreviewModal for quick lookups.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -22,15 +22,11 @@ import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLog
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
-import { isAuthorshipAllowed, statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { isAuthorshipAllowed, type PublicationPaper } from '../types/publication';
 import {
   doiHref,
-  paginateAdminPapers,
   publicReviewerName,
   resolveIdentifiers,
-  statusBadgeClass,
-  verificationBadgeClass,
-  type AdminPaperFilters,
 } from './adminPublicationHelpers';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import adminStyles from './AdminPublication.module.css';
@@ -38,30 +34,40 @@ import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
 import { RejectPaperModal } from './RejectPaperModal';
 
 /** Sortable column ids for the Admin Paper Submissions table. */
-type SortColumn = 'title' | 'status' | 'verification' | 'reviewer' | 'submittedAt';
+type SortColumn = 'title' | 'verification' | 'reviewer' | 'submittedAt';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
 
-const STATUS_OPTIONS: Array<{
-  value: PublicationStatus | 'ALL';
+// Verification filter tabs - Primary filter for the table
+type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED' | 'UNVERIFIED';
+
+const VERIFICATION_TABS: Array<{
+  value: VerificationTab;
   label: string;
 }> = [
-  { value: 'ALL', label: 'All statuses' },
-  { value: 'SUBMITTED', label: statusLabel('SUBMITTED') },
-  { value: 'ADMIN_SCREENING', label: statusLabel('ADMIN_SCREENING') },
-  { value: 'RESEARCHER_VERIFICATION_REQUIRED', label: statusLabel('RESEARCHER_VERIFICATION_REQUIRED') },
-  { value: 'READY_FOR_REVIEWER', label: statusLabel('READY_FOR_REVIEWER') },
-  { value: 'REVIEWER_ASSIGNED', label: statusLabel('REVIEWER_ASSIGNED') },
-  { value: 'UNDER_REVIEW', label: statusLabel('UNDER_REVIEW') },
-  { value: 'REVISION_REQUIRED', label: statusLabel('REVISION_REQUIRED') },
-  { value: 'RESUBMITTED', label: statusLabel('RESUBMITTED') },
-  { value: 'REVIEWER_RECOMMENDED_ACCEPT', label: statusLabel('REVIEWER_RECOMMENDED_ACCEPT') },
-  { value: 'REVIEWER_RECOMMENDED_REJECT', label: statusLabel('REVIEWER_RECOMMENDED_REJECT') },
-  { value: 'ADMIN_APPROVED', label: statusLabel('ADMIN_APPROVED') },
-  { value: 'PUBLISHED', label: statusLabel('PUBLISHED') },
-  { value: 'ADMIN_REJECTED', label: statusLabel('ADMIN_REJECTED') },
-  { value: 'WITHDRAWN', label: statusLabel('WITHDRAWN') },
+  { value: 'ALL', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'UNVERIFIED', label: 'Unverified' },
 ];
+
+// Helper to get verification badge CSS class
+const getVerificationBadgeClass = (status: string | undefined): string => {
+  if (!status) return adminStyles.verificationUnverified;
+  switch (status.toUpperCase()) {
+    case 'VERIFIED':
+      return adminStyles.verificationVerified;
+    case 'PENDING':
+      return adminStyles.verificationPending;
+    default:
+      return adminStyles.verificationUnverified;
+  }
+};
+
+// Helper to format verification label
+const formatVerification = (status: string | undefined): string => {
+  return status ?? 'UNVERIFIED';
+};
 
 export const AdminPaperSubmissions = () => {
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
@@ -69,9 +75,8 @@ export const AdminPaperSubmissions = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<AdminPaperFilters['status']>('SUBMITTED');
-  const [verificationFilter, setVerificationFilter] =
-    useState<AdminPaperFilters['verification']>('ALL');
+  // Tab filter for verification - primary way to filter papers
+  const [verificationTab, setVerificationTab] = useState<VerificationTab>('ALL');
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
   const [rejectingPaper, setRejectingPaper] = useState<PublicationPaper | null>(null);
@@ -104,24 +109,66 @@ export const AdminPaperSubmissions = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filters = useMemo<AdminPaperFilters>(
-    () => ({
-      search,
-      status: statusFilter,
-      verification: verificationFilter,
-    }),
-    [search, statusFilter, verificationFilter],
-  );
+  // Filter papers based on search and verification tab
+  const filteredPapers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return papers.filter((paper) => {
+      // Apply verification tab filter
+      if (verificationTab !== 'ALL') {
+        const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'UNVERIFIED';
+        if (verificationTab === 'PENDING' && verification !== 'PENDING') return false;
+        if (verificationTab === 'VERIFIED' && verification !== 'VERIFIED') return false;
+        if (verificationTab === 'UNVERIFIED' && verification !== 'UNVERIFIED') return false;
+      }
 
-  // Apply column sort on top of the items that pass filters.
+      // Apply search filter
+      if (term) {
+        const haystack = [
+          paper.title ?? '',
+          paper.abstract ?? '',
+          paper.paperType ?? '',
+          paper.domain ?? '',
+          paper.field ?? '',
+          paper.subfield ?? '',
+          ...paper.authors.map((a) => a.name),
+          ...paper.institutions.map((i) => i.name),
+          paper.doi ?? '',
+          paper.openAlexId ?? '',
+          paper.reviewer?.reviewerName ?? '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(term);
+      }
+      return true;
+    });
+  }, [papers, search, verificationTab]);
+
+  // Count papers per verification tab for display
+  const tabCounts = useMemo(() => {
+    const counts: Record<VerificationTab, number> = {
+      ALL: papers.length,
+      PENDING: 0,
+      VERIFIED: 0,
+      UNVERIFIED: 0,
+    };
+    papers.forEach((paper) => {
+      const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'UNVERIFIED';
+      if (verification === 'PENDING') counts.PENDING++;
+      else if (verification === 'VERIFIED') counts.VERIFIED++;
+      else counts.UNVERIFIED++;
+    });
+    return counts;
+  }, [papers]);
+
+  // Apply column sort on top of the filtered papers.
   const sortedItems = useMemo(
     () =>
-      sort.sortedItemsBy(papers, (paper) => {
+      sort.sortedItemsBy(filteredPapers, (paper) => {
         switch (sort.sortState.column) {
           case 'title':
             return paper.title ?? '';
-          case 'status':
-            return paper.status;
           case 'verification':
             return paper.researcherVerificationStatus ?? '';
           case 'reviewer':
@@ -131,23 +178,23 @@ export const AdminPaperSubmissions = () => {
             return paper.submittedAt ?? paper.createdAt ?? null;
         }
       }),
-    [papers, sort],
+    [filteredPapers, sort],
   );
 
-  const paging = useMemo(
-    () => paginateAdminPapers(sortedItems, { page, pageSize: DEFAULT_PAGE_SIZE, filters }),
-    [sortedItems, page, filters],
-  );
+  // Pagination
+  const totalCount = sortedItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / DEFAULT_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * DEFAULT_PAGE_SIZE;
+  const pageItems = sortedItems.slice(start, start + DEFAULT_PAGE_SIZE);
 
   // Part 5 — keyboard shortcuts for the admin submissions table.
   // j/k navigate rows, Enter opens the editorial record for the focused
-  // row, f focuses the toolbar search input. The `a/d/r/x` approve-deny-
-  // reject-export shortcuts target the detail page (see
-  // AdminPaperSubmissionDetail), so this list stays scoped to navigation.
+  // row, f focuses the toolbar search input.
   const { selectedIndex } = useListShortcuts({
-    itemCount: paging.items.length,
+    itemCount: pageItems.length,
     onOpen: (index) => {
-      const paper = paging.items[index];
+      const paper = pageItems[index];
       if (!paper?.id) return;
       window.open(`/admin/paper-submissions/${paper.id}`, '_blank', 'noopener,noreferrer');
     },
@@ -156,7 +203,7 @@ export const AdminPaperSubmissions = () => {
   // Reset to page 1 whenever filters or sort change.
   useEffect(() => {
     setPage(1);
-  }, [filters, sort.sortState]);
+  }, [search, verificationTab, sort.sortState]);
 
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
@@ -166,6 +213,23 @@ export const AdminPaperSubmissions = () => {
         description="Screen submissions, verify researcher identity, and prepare reviewer assignments."
         accent={ROLE_ACCENT}
       />
+
+      {/* Tab filter for verification status */}
+      <div className={adminStyles.tabFilterBar} role="tablist" aria-label="Filter by verification status">
+        {VERIFICATION_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            role="tab"
+            aria-selected={verificationTab === tab.value}
+            className={`${adminStyles.tabButton} ${verificationTab === tab.value ? adminStyles.tabButtonActive : ''}`}
+            onClick={() => setVerificationTab(tab.value)}
+            type="button"
+          >
+            {tab.label}
+            <span className={adminStyles.tabCount}>{tabCounts[tab.value]}</span>
+          </button>
+        ))}
+      </div>
 
       <TableToolbar
         search={search}
@@ -177,42 +241,6 @@ export const AdminPaperSubmissions = () => {
         isRefreshing={refreshing}
         searchPlaceholder="Search title, author, DOI, reviewer, or topic"
         refreshLabel="Refresh"
-        filters={
-          <>
-            <select
-              className={adminStyles.filterSelect}
-              aria-label="Filter admin submissions by status"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as AdminPaperFilters['status'])
-              }
-              disabled={Boolean(error)}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className={adminStyles.filterSelect}
-              aria-label="Filter admin submissions by researcher verification"
-              value={verificationFilter}
-              onChange={(event) =>
-                setVerificationFilter(
-                  event.target.value as AdminPaperFilters['verification'],
-                )
-              }
-              disabled={Boolean(error)}
-            >
-              <option value="ALL">All verifications</option>
-              <option value="ALLOW">Allow</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="PENDING">Pending</option>
-              <option value="UNVERIFIED">Unverified</option>
-            </select>
-          </>
-        }
       />
 
       {loading ? (
@@ -240,11 +268,11 @@ export const AdminPaperSubmissions = () => {
             </Button>
           }
         />
-      ) : paging.items.length === 0 ? (
+      ) : pageItems.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} />}
           title="No admin submissions match the current filters."
-          description="Adjust the search query or clear one of the status / verification filters."
+          description="Adjust the search query or select a different verification tab."
         />
       ) : (
         <>
@@ -266,41 +294,10 @@ export const AdminPaperSubmissions = () => {
                   </th>
                   <th scope="col">
                     <SortableHeader
-                      column="status"
-                      label="Status"
-                      cycleSort={sort.cycleSort}
-                      ariaSortFor={sort.ariaSortFor}
-                      filterOptions={STATUS_OPTIONS.map((opt) => ({
-                        value: opt.value,
-                        label: opt.label,
-                      }))}
-                      activeFilter={statusFilter}
-                      onFilterChange={(next) =>
-                        setStatusFilter(
-                          next as AdminPaperFilters['status'],
-                        )
-                      }
-                    />
-                  </th>
-                  <th scope="col">
-                    <SortableHeader
                       column="verification"
                       label="Verification"
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
-                      filterOptions={[
-                        { value: 'ALL', label: 'All verifications' },
-                        { value: 'ALLOW', label: 'Allow' },
-                        { value: 'VERIFIED', label: 'Verified' },
-                        { value: 'PENDING', label: 'Pending' },
-                        { value: 'UNVERIFIED', label: 'Unverified' },
-                      ]}
-                      activeFilter={verificationFilter}
-                      onFilterChange={(next) =>
-                        setVerificationFilter(
-                          next as AdminPaperFilters['verification'],
-                        )
-                      }
                     />
                   </th>
                   <th scope="col">Identifiers</th>
@@ -319,7 +316,7 @@ export const AdminPaperSubmissions = () => {
                 </tr>
               </thead>
               <tbody>
-                {paging.items.map((paper, index) => {
+                {pageItems.map((paper, index) => {
                   const identifiers = resolveIdentifiers(paper);
                   const reviewer =
                     publicReviewerName(paper) ?? paper.reviewer?.reviewerName ?? null;
@@ -336,24 +333,14 @@ export const AdminPaperSubmissions = () => {
                           </small>
                         </div>
                       </td>
-                      <td data-label="Status">
-                        <span
-                          className={`${adminStyles.statusBadge} ${
-                            adminStyles[statusBadgeClass(paper.status)] ?? ''
-                          }`}
-                        >
-                          {statusLabel(paper.status)}
-                        </span>
-                      </td>
                       <td data-label="Verification">
                         <div className={adminStyles.verificationActions}>
                           <span
                             className={`${adminStyles.verificationBadge} ${
-                              adminStyles[verificationBadgeClass(paper.researcherVerificationStatus)] ??
-                              ''
+                              getVerificationBadgeClass(paper.researcherVerificationStatus)
                             }`}
                           >
-                            {paper.researcherVerificationStatus}
+                            {formatVerification(paper.researcherVerificationStatus)}
                           </span>
                           {!isAuthorshipAllowed(paper) && (
                             <div className={adminStyles.rowActionGroup}>
@@ -476,16 +463,13 @@ export const AdminPaperSubmissions = () => {
             </table>
           </div>
           <TablePagination
-            page={paging.page}
-            totalPages={paging.totalPages}
-            totalItems={paging.totalCount}
-            startIndex={(paging.page - 1) * paging.pageSize + 1}
-            endIndex={Math.min(
-              paging.totalCount,
-              paging.page * paging.pageSize,
-            )}
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            startIndex={start + 1}
+            endIndex={Math.min(totalCount, start + DEFAULT_PAGE_SIZE)}
             onPrev={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPage((p) => Math.min(paging.totalPages, p + 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
             onPage={setPage}
             itemLabel="submissions"
           />

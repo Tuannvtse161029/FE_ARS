@@ -29,13 +29,16 @@ import {
   publicReviewerName,
   resolveIdentifiers,
   matchesSearch,
-  matchesStatus,
   statusBadgeClass,
-  type AdminPaperFilters,
 } from './adminPublicationHelpers';
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
 import { RejectPaperModal } from './RejectPaperModal';
+
+interface StatusTabOption {
+  value: PublicationStatus | 'ALL';
+  label: string;
+}
 
 interface AdminListConfig {
   eyebrow: string;
@@ -82,13 +85,24 @@ const PUBLISHED_PAPERS_CONFIG: AdminListConfig = {
   itemLabel: 'published papers',
 };
 
+// Build tab options from status options
+const buildTabOptions = (config: AdminListConfig): StatusTabOption[] => {
+  return [
+    { value: 'ALL', label: 'All' },
+    ...config.statusOptions.map((status) => ({
+      value: status as PublicationStatus | 'ALL',
+      label: statusLabel(status),
+    })),
+  ];
+};
+
 const AdminList = ({ config }: { config: AdminListConfig }) => {
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<AdminPaperFilters['status']>(
+  const [statusTab, setStatusTab] = useState<PublicationStatus | 'ALL'>(
     config.defaultStatus,
   );
   const [page, setPage] = useState(1);
@@ -101,6 +115,25 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  // Build tab options for this config
+  const tabOptions = useMemo(() => buildTabOptions(config), [config]);
+
+  // Count papers per status tab
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: 0 };
+    tabOptions.forEach((tab) => {
+      if (tab.value !== 'ALL') counts[tab.value] = 0;
+    });
+
+    papers.forEach((paper) => {
+      counts.ALL++;
+      if (counts[paper.status] !== undefined) {
+        counts[paper.status]++;
+      }
+    });
+    return counts;
+  }, [papers, tabOptions]);
 
   // Default sort by submittedAt (newest first) so recently submitted papers
   // surface at the top. The user can override per column header click.
@@ -190,18 +223,12 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     [papers, config.statusOptions],
   );
 
-  const filters = useMemo(
-    () => ({
-      search,
-      status: statusFilter,
-    }),
-    [search, statusFilter],
-  );
-
   // Apply the search and status filters before sorting the full result set.
   const sortedFiltered = useMemo(() => {
     const filtered = scoped.filter((paper) => {
-      if (!matchesStatus(paper, statusFilter)) return false;
+      // Apply status tab filter
+      if (statusTab !== 'ALL' && paper.status !== statusTab) return false;
+      // Apply search filter
       if (search.trim() && !matchesSearch(paper, search.trim().toLowerCase())) {
         return false;
       }
@@ -220,7 +247,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           return paper.submittedAt ?? paper.createdAt ?? null;
       }
     });
-  }, [scoped, sort, statusFilter, search]);
+  }, [scoped, sort, statusTab, search]);
 
   const totalCount = sortedFiltered.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / DEFAULT_PAGE_SIZE));
@@ -240,7 +267,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [filters, sort.sortState]);
+  }, [statusTab, search, sort.sortState]);
 
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
@@ -250,6 +277,23 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
         description={config.subtitle}
         accent="var(--ars-admin)"
       />
+
+      {/* Tab filter for status */}
+      <div className={adminStyles.tabFilterBar} role="tablist" aria-label="Filter by status">
+        {tabOptions.map((tab) => (
+          <button
+            key={tab.value}
+            role="tab"
+            aria-selected={statusTab === tab.value}
+            className={`${adminStyles.tabButton} ${statusTab === tab.value ? adminStyles.tabButtonActive : ''}`}
+            onClick={() => setStatusTab(tab.value)}
+            type="button"
+          >
+            {tab.label}
+            <span className={adminStyles.tabCount}>{tabCounts[tab.value] ?? 0}</span>
+          </button>
+        ))}
+      </div>
 
       <TableToolbar
         search={search}
@@ -261,26 +305,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
         isRefreshing={refreshing}
         searchPlaceholder="Search title, author, DOI, reviewer, or topic"
         refreshLabel="Refresh"
-        filters={
-          <>
-            <select
-              className={adminStyles.filterSelect}
-              aria-label={`Filter ${config.title} by status`}
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as AdminPaperFilters['status'])
-              }
-              disabled={Boolean(error)}
-            >
-              <option value="ALL">All</option>
-              {config.statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
-          </>
-        }
       />
 
       {actionFeedback ? (
@@ -333,7 +357,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
         <EmptyState
           icon={<Inbox size={20} />}
           title={`No ${config.itemLabel} match the current filters.`}
-          description="Adjust the search query or clear the status filter."
+          description="Adjust the search query or select a different status tab."
         />
       ) : (
         <>
@@ -355,19 +379,6 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                       label="Status"
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
-                      filterOptions={[
-                        { value: 'ALL', label: 'All' },
-                        ...config.statusOptions.map((status) => ({
-                          value: status,
-                          label: statusLabel(status),
-                        })),
-                      ]}
-                      activeFilter={statusFilter}
-                      onFilterChange={(next) =>
-                        setStatusFilter(
-                          next as AdminPaperFilters['status'],
-                        )
-                      }
                     />
                   </th>
                   <th scope="col">Identifiers</th>

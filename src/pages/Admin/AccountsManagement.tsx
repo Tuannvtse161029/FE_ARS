@@ -1,7 +1,7 @@
 /**
  * AccountsManagement — Admin user moderation queue.
  *
- * Search + role/plan/status filters + suspend/unsuspend inline modal.
+ * Search + role/status filters + suspend/unsuspend inline modal.
  * Uses the shared PageHeader, TableToolbar, TablePagination, ErrorBanner,
  * and EmptyState primitives. All inline styles in the original file have
  * been moved to CSS Modules.
@@ -17,7 +17,6 @@ import { adminService } from '../../services/admin.service';
 import type {
   AccountItem,
   AccountStatus,
-  AccountPlan,
   AccountRoleName,
 } from '../../types/admin';
 import { TableToolbar } from '../../components/table/TableToolbar';
@@ -32,13 +31,28 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import styles from './AccountsManagement.module.css';
 
 type StatusFilter = 'ALL' | AccountStatus;
-type PlanFilter = 'ALL' | AccountPlan;
 type RoleFilter = 'ALL' | AccountRoleName;
 
 /** Sortable column ids for the Accounts table. */
-type SortColumn = 'name' | 'email' | 'roles' | 'plan' | 'joined' | 'status';
+type SortColumn = 'name' | 'email' | 'roles' | 'joined' | 'status';
 
 const ROLE_ACCENT = 'var(--ars-admin)';
+
+// Get a CSS module class for a role to give each role a distinct color
+const roleClass = (role: AccountRoleName): string => {
+  switch (role) {
+    case 'LECTURER':
+      return styles.roleLecturer ?? '';
+    case 'RESEARCHER':
+      return styles.roleResearcher ?? '';
+    case 'REVIEWER':
+      return styles.roleReviewer ?? '';
+    case 'GRADUATE_STUDENT':
+      return styles.roleGraduateStudent ?? '';
+    default:
+      return styles.roleTag ?? '';
+  }
+};
 
 const initialsOf = (name: string) =>
   name
@@ -72,7 +86,6 @@ export const AccountsManagement = () => {
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('ALL');
-  const [plan, setPlan] = useState<PlanFilter>('ALL');
   const [role, setRole] = useState<RoleFilter>('ALL');
 
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
@@ -88,7 +101,6 @@ export const AccountsManagement = () => {
       const data = await adminService.getAccounts({
         search,
         status,
-        plan,
         role,
       });
       setAccounts(data);
@@ -98,7 +110,7 @@ export const AccountsManagement = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, status, plan, role, t]);
+  }, [search, status, role, t]);
 
   useEffect(() => {
     void load();
@@ -129,10 +141,33 @@ export const AccountsManagement = () => {
     }
   };
 
-  const planClass = (p: AccountPlan) =>
-    p === 'PREMIUM' ? styles.planPremium : styles.planFreeTier;
-  const statusClass = (s: AccountStatus) =>
-    s === 'ACTIVE' ? styles.statusActive : styles.statusSuspended;
+  // Status class map for visual styling
+  const statusClass = (s: AccountStatus): string => {
+    switch (s) {
+      case 'ACTIVE':
+        return styles.statusActive ?? '';
+      case 'SUSPENDED':
+        return styles.statusSuspended ?? '';
+      case 'EXPIRED':
+        return styles.statusExpired ?? '';
+      default:
+        return styles.statusActive ?? '';
+    }
+  };
+
+  // Status label map
+  const statusLabel = (s: AccountStatus): string => {
+    switch (s) {
+      case 'ACTIVE':
+        return t('admin.accounts.filter.status.active');
+      case 'SUSPENDED':
+        return t('admin.accounts.filter.status.suspended');
+      case 'EXPIRED':
+        return t('admin.accounts.filter.status.expired');
+      default:
+        return s;
+    }
+  };
 
   // Default sort by joinedDate (newest first) so newly registered accounts
   // surface at the top. The user can override per column header click.
@@ -148,8 +183,6 @@ export const AccountsManagement = () => {
             return row.email ?? '';
           case 'roles':
             return row.roles.join(', ');
-          case 'plan':
-            return row.plan;
           case 'status':
             return row.status;
           case 'joined':
@@ -177,7 +210,7 @@ export const AccountsManagement = () => {
   // never hides rows that belong to the new filter.
   useEffect(() => {
     resetPage();
-  }, [search, status, plan, role, sort.sortState, resetPage]);
+  }, [search, status, role, sort.sortState, resetPage]);
 
   const hasNoMatch =
     !loading &&
@@ -185,7 +218,6 @@ export const AccountsManagement = () => {
     totalItems === 0 &&
     (search.trim().length > 0 ||
       status !== 'ALL' ||
-      plan !== 'ALL' ||
       role !== 'ALL');
 
   const isSelf = (id: number) =>
@@ -227,17 +259,6 @@ export const AccountsManagement = () => {
             </select>
             <select
               className={styles.select}
-              value={plan}
-              onChange={(e) => setPlan(e.target.value as PlanFilter)}
-              aria-label="Filter by plan"
-              data-testid="accounts-plan-filter"
-            >
-              <option value="ALL">{t('admin.accounts.filter.allPlans')}</option>
-              <option value="PREMIUM">{t('admin.accounts.filter.plan.premium')}</option>
-              <option value="FREE_TIER">{t('admin.accounts.filter.plan.freeTier')}</option>
-            </select>
-            <select
-              className={styles.select}
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
               aria-label="Filter by status"
@@ -246,6 +267,7 @@ export const AccountsManagement = () => {
               <option value="ALL">{t('admin.accounts.filter.allStatuses')}</option>
               <option value="ACTIVE">{t('admin.accounts.filter.status.active')}</option>
               <option value="SUSPENDED">{t('admin.accounts.filter.status.suspended')}</option>
+              <option value="EXPIRED">{t('admin.accounts.filter.status.expired')}</option>
             </select>
           </>
         }
@@ -318,21 +340,6 @@ export const AccountsManagement = () => {
                     </th>
                     <th>
                       <SortableHeader
-                        column="plan"
-                        label={t('admin.accounts.table.plan')}
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                        filterOptions={[
-                          { value: 'ALL', label: t('admin.accounts.filter.allPlans') },
-                          { value: 'PREMIUM', label: t('admin.accounts.filter.plan.premium') },
-                          { value: 'FREE_TIER', label: t('admin.accounts.filter.plan.freeTier') },
-                        ]}
-                        activeFilter={plan}
-                        onFilterChange={(next) => setPlan(next as PlanFilter)}
-                      />
-                    </th>
-                    <th>
-                      <SortableHeader
                         column="joined"
                         label={t('admin.accounts.table.joined')}
                         cycleSort={sort.cycleSort}
@@ -349,6 +356,7 @@ export const AccountsManagement = () => {
                           { value: 'ALL', label: t('admin.accounts.filter.allStatuses') },
                           { value: 'ACTIVE', label: t('admin.accounts.filter.status.active') },
                           { value: 'SUSPENDED', label: t('admin.accounts.filter.status.suspended') },
+                          { value: 'EXPIRED', label: t('admin.accounts.filter.status.expired') },
                         ]}
                         activeFilter={status}
                         onFilterChange={(next) => setStatus(next as StatusFilter)}
@@ -372,18 +380,22 @@ export const AccountsManagement = () => {
                         </div>
                       </td>
                       <td>
-                        {a.roles.map((r) => (
-                          <span key={r} className={styles.roleTag}>
-                            {r}
-                          </span>
-                        ))}
-                      </td>
-                      <td>
-                        <span
-                          className={`${styles.planTag} ${planClass(a.plan)}`}
-                        >
-                          {a.plan === 'PREMIUM' ? t('admin.accounts.filter.plan.premium') : t('admin.accounts.filter.plan.freeTier')}
-                        </span>
+                        <div className={styles.roleTags}>
+                          {a.roles.map((r) => (
+                            <span
+                              key={r}
+                              className={`${styles.roleTag} ${roleClass(r)}`}
+                            >
+                              {r === 'LECTURER'
+                                ? t('admin.accounts.filter.role.lecturer')
+                                : r === 'RESEARCHER'
+                                ? t('admin.accounts.filter.role.researcher')
+                                : r === 'REVIEWER'
+                                ? t('admin.accounts.filter.role.reviewer')
+                                : t('admin.accounts.filter.role.graduateStudent')}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td>
                         {new Date(a.joinedDate).toLocaleDateString('vi-VN')}
@@ -393,7 +405,7 @@ export const AccountsManagement = () => {
                           <span
                             className={`${styles.statusTag} ${statusClass(a.status)}`}
                           >
-                            {a.status === 'ACTIVE' ? t('admin.accounts.filter.status.active') : t('admin.accounts.filter.status.suspended')}
+                            {statusLabel(a.status)}
                           </span>
                           {a.status === 'SUSPENDED' && a.suspendedUntil ? (
                             <span
