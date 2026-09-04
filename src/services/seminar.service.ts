@@ -243,6 +243,100 @@ export interface SeminarParticipantCreateRequest {
 export type SeminarParticipantUpdateRequest = Partial<SeminarParticipantCreateRequest>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Structured feedback model — replaces the legacy star rating + free-text
+// `participantEvaluation` field. See tickets/frontend/ticket.md for the
+// full contract. The FE never sends `rating` or `averageScore`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Structured participant feedback. At least one of the four fields must be
+ * non-empty for the form to submit; an all-empty object is invalid.
+ */
+export interface SeminarFeedbackContent {
+  overallComment?: string;
+  strengths: string[];
+  improvements: string[];
+  suggestions: string[];
+}
+
+/** Body of POST /api/Seminar/{id}/feedback. */
+export interface SeminarFeedbackRequest {
+  feedback: SeminarFeedbackContent;
+}
+
+/** Response from POST /api/Seminar/{id}/feedback. */
+export interface SeminarFeedbackResponse {
+  seminarId: number;
+  seminarParticipantId: number;
+  userId?: number | null;
+  feedback: SeminarFeedbackContent;
+  feedbackSubmittedAt: string;
+  feedbackUpdatedAt?: string | null;
+  invitationStatus?: string;
+  message?: string;
+  // Legacy compatibility only — do not display in new UI.
+  participantEvaluation?: string | null;
+}
+
+/** Item in the owner-only raw feedback list (GET /api/Seminar/{id}/feedback). */
+export interface SeminarParticipantFeedback {
+  seminarParticipantId: number;
+  seminarId?: number | null;
+  userId?: number | null;
+  userFullName?: string | null;
+  userEmail?: string | null;
+  invitedEmail?: string | null;
+  invitationStatus?: string | null;
+  feedback?: SeminarFeedbackContent | null;
+  feedbackSubmittedAt?: string | null;
+  feedbackUpdatedAt?: string | null;
+  invitationSentAt?: string | null;
+  eventReminderSentAt?: string | null;
+  feedbackReminderSentAt?: string | null;
+  participantEvaluation?: string | null;
+}
+
+/** Response of GET /api/Seminar/{id}/feedback (owner only). */
+export type SeminarFeedbackListResponse = SeminarParticipantFeedback[];
+
+/** Owner-only completion metrics from GET /api/Seminar/{id}/stats. */
+export interface SeminarStats {
+  seminarId: number;
+  totalInvited: number;
+  submitted: number;
+  pending: number;
+  declined: number;
+  completionPercentage: number;
+}
+
+/** Response of POST /api/Seminar/{id}/reminders/send. */
+export interface SeminarReminderResponse {
+  seminarId: number;
+  eligible: number;
+  sent: number;
+  skipped: number;
+  failedEmails: string[];
+}
+
+/** Owner-only AI-aggregated feedback summary. */
+export interface SeminarFeedbackAiContent {
+  overallAssessment: string;
+  commonStrengths: string[];
+  areasForImprovement: string[];
+  commonSuggestions: string[];
+  conflictingFeedback: string[];
+  recommendedActions: string[];
+}
+
+/** Response of POST /api/Seminar/{id}/summarize-feedback. */
+export interface SeminarFeedbackAiSummary {
+  seminarId: number;
+  feedbackCount: number;
+  feedback: SeminarFeedbackAiContent;
+  generatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AI Audio Summary
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -292,15 +386,67 @@ export const seminarService = {
 
   submitFeedback: async (
     seminarId: number,
-    payload: {
-      rating?: number | null;
-      participantEvaluation?: string | null;
-      invitationStatus?: string | null;
-    }
-  ): Promise<unknown> => {
-    const response = await api.post(
+    payload: SeminarFeedbackRequest,
+  ): Promise<SeminarFeedbackResponse> => {
+    const response = await api.post<SeminarFeedbackResponse>(
       API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId),
-      payload
+      payload,
+    );
+    return response.data;
+  },
+
+  /**
+   * Owner-only — returns raw participant feedback for the seminar.
+   * Returns [] when BE responds 200 with an empty body or no items.
+   */
+  getFeedbackList: async (
+    seminarId: number,
+  ): Promise<SeminarFeedbackListResponse> => {
+    const response = await api.get<SeminarFeedbackListResponse | null>(
+      API_ENDPOINTS.SEMINAR.GET_FEEDBACK(seminarId),
+    );
+    if (!response.data) return [];
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  /**
+   * Owner-only — completion metrics (totalInvited / submitted / pending /
+   * declined / completionPercentage). Returns null on failure so callers can
+   * render an honest unavailable state.
+   */
+  getStats: async (seminarId: number): Promise<SeminarStats | null> => {
+    try {
+      const response = await api.get<SeminarStats>(
+        API_ENDPOINTS.SEMINAR.STATS(seminarId),
+      );
+      return response.data ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Owner-only — sends feedback reminder to participants who have not yet
+   * submitted and have not been reminded.
+   */
+  sendFeedbackReminders: async (
+    seminarId: number,
+  ): Promise<SeminarReminderResponse> => {
+    const response = await api.post<SeminarReminderResponse>(
+      API_ENDPOINTS.SEMINAR.SEND_REMINDERS(seminarId),
+    );
+    return response.data;
+  },
+
+  /**
+   * Owner-only — generate (or regenerate) AI feedback summary. The BE
+   * overwrites the previous summary on every call.
+   */
+  summarizeFeedback: async (
+    seminarId: number,
+  ): Promise<SeminarFeedbackAiSummary> => {
+    const response = await api.post<SeminarFeedbackAiSummary>(
+      API_ENDPOINTS.SEMINAR.SUMMARIZE_FEEDBACK(seminarId),
     );
     return response.data;
   },
@@ -471,6 +617,48 @@ export const mapParticipantStatus = (
 export const isValidMeetLink = (link: string | null | undefined): boolean => {
   if (!link) return false;
   return link.startsWith('https://meet.google.com/');
+};
+
+/**
+ * Google Meet (free account) hard cap on simultaneous participants.
+ * Used to render capacity indicators on the seminar list and create form.
+ */
+export const GOOGLE_MEET_FREE_PARTICIPANT_CAP = 100;
+
+/**
+ * Parse the `Seminar.feedback` JSON string (returned by GET /api/Seminar/{id})
+ * into a typed AI summary object. Returns null when the value is empty or
+ * unparseable — UI must never render raw JSON.
+ */
+export const parseAiFeedback = (
+  value?: string | null,
+): SeminarFeedbackAiContent | null => {
+  if (!value || typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<SeminarFeedbackAiContent>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.overallAssessment !== 'string') return null;
+    return {
+      overallAssessment: parsed.overallAssessment,
+      commonStrengths: Array.isArray(parsed.commonStrengths)
+        ? parsed.commonStrengths.filter((x): x is string => typeof x === 'string')
+        : [],
+      areasForImprovement: Array.isArray(parsed.areasForImprovement)
+        ? parsed.areasForImprovement.filter((x): x is string => typeof x === 'string')
+        : [],
+      commonSuggestions: Array.isArray(parsed.commonSuggestions)
+        ? parsed.commonSuggestions.filter((x): x is string => typeof x === 'string')
+        : [],
+      conflictingFeedback: Array.isArray(parsed.conflictingFeedback)
+        ? parsed.conflictingFeedback.filter((x): x is string => typeof x === 'string')
+        : [],
+      recommendedActions: Array.isArray(parsed.recommendedActions)
+        ? parsed.recommendedActions.filter((x): x is string => typeof x === 'string')
+        : [],
+    };
+  } catch {
+    return null;
+  }
 };
 
 /**

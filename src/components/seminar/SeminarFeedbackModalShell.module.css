@@ -1,0 +1,167 @@
+/**
+ * SeminarFeedbackModalShell — pop-up overlay for the owner feedback panel.
+ *
+ * Three-tier structure:
+ *   .modalOverlay  — full-screen scrim, blocks page scroll
+ *   .modalCard     — centered card, scrollable when content exceeds viewport
+ *   .modalBody     — padded inner region that hosts the feedback panel
+ */
+
+@keyframes modalCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalScrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-6) var(--space-4);
+  overflow-y: auto;
+  font-family: var(--font-family-ui);
+  animation: modalScrimIn 0.18s var(--motion-ease-out, ease-out);
+}
+
+.modalCard {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  width: min(960px, 100%);
+  max-height: calc(100vh - var(--space-12));
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  animation: modalCardIn 0.22s var(--motion-ease-out, ease-out);
+  overflow: hidden;
+  outline: none;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--ars-paper-rule);
+  background: var(--ars-paper-alt);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.headerTitleBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.headerIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modalEyebrow {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-lecturer);
+  margin: 0;
+}
+
+.modalTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 4px 0 0;
+  line-height: var(--line-height-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modalSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: 4px 0 0;
+  line-height: var(--line-height-normal);
+}
+
+.closeBtn {
+  background: transparent;
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ars-ink-muted);
+  transition: background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.modalBody {
+  padding: var(--space-5);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  background: var(--ars-canvas);
+}
+
+@media (max-width: 720px) {
+  .modalOverlay {
+    padding: var(--space-4) var(--space-3);
+  }
+  .modalCard {
+    max-height: calc(100vh - var(--space-8));
+  }
+  .modalBody {
+    padding: var(--space-4);
+  }
+  .modalHeader {
+    padding: var(--space-4);
+  }
+}

@@ -170,15 +170,15 @@
   line-height: 1.2;
 }
 
-/* Role-specific color tags */
+/* Role-specific color tags — each role has a distinct hue (no yellow) */
 .roleLecturer {
   background: #dbeafe;
   color: #1e40af;
 }
 
 .roleResearcher {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fce7f3;
+  color: #9d174d;
 }
 
 .roleReviewer {

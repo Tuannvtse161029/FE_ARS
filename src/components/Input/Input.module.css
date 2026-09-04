@@ -14,6 +14,64 @@
   width: 100%;
 }
 
+/* ── Float Label Variant ────────────────────────────────── */
+/* Used when `floatLabel={true}` is passed to the Input component.
+   The label becomes a floating pill that travels above the field
+   on focus/fill. The Input component applies the `--floatLabel`
+   class to the wrapper div when the prop is set. */
+.inputWrapper--floatLabel {
+  gap: 0;
+  position: relative;
+}
+
+.inputWrapper--floatLabel .label {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font-size: var(--font-size-base);
+  font-weight: 400;
+  color: var(--ink-muted);
+  pointer-events: none;
+  transform-origin: left top;
+  transition:
+    transform 180ms var(--motion-ease-standard),
+    color 180ms var(--motion-ease-standard),
+    font-size 180ms var(--motion-ease-standard),
+    font-weight 180ms var(--motion-ease-standard);
+  z-index: 1;
+  white-space: nowrap;
+  background: transparent;
+  line-height: 1;
+}
+
+.inputWrapper--floatLabel .inputContainer {
+  padding-top: 0;
+}
+
+/* Float label when input is focused */
+.inputWrapper--floatLabel:has(.input:focus) .label {
+  transform: translateY(-11px) scale(0.75);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Float label when input has a value (placeholder hidden) */
+.inputWrapper--floatLabel:has(.input:not(:placeholder-shown)) .label {
+  transform: translateY(-11px) scale(0.75);
+  color: var(--ink-secondary);
+}
+
+/* Error state — label turns red */
+.inputWrapper--floatLabel:has(.input--error) .label {
+  color: var(--status-danger-text);
+}
+
+/* Input gets extra top-padding when inside a float-label wrapper */
+.inputWrapper--floatLabel .input {
+  padding-top: 22px;
+  padding-bottom: 6px;
+}
+
 /* ── Label ─────────────────────────────────────────────── */
 .label {
   font-size: var(--font-size-sm);
