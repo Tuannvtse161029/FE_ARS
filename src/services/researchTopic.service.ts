@@ -18,13 +18,14 @@ export type ResearchTopicCreatePayload = ResearchTopicCreateRequest & TopicGuide
 export type ResearchTopicUpdatePayload = ResearchTopicUpdateRequest & TopicGuidelineFields;
 
 // Status enums per `docs/local-only/research-workflow-contract.md` §3.
-export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CLOSED';
+// CLOSED was removed: see utils/researchStatus.ts for the rationale and
+// the canonical transition table.
+export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED';
 
 export const RESEARCH_TOPIC_STATUSES: readonly ResearchTopicStatus[] = [
   'OPEN',
   'ASSIGNED',
   'COMPLETED',
-  'CLOSED',
 ] as const;
 
 const RESEARCH_TOPIC_ENDPOINTS = {

@@ -1293,6 +1293,39 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.groupDetail.errLeaderFail': 'Không thể gán trưởng nhóm.',
     'lecturer.groupDetail.removeLeaderSuccess': 'Đã hủy vai trò Trưởng nhóm của {name}.',
     'lecturer.groupDetail.errRemoveLeaderFail': 'Không thể hủy trưởng nhóm.',
+    // ── Invite Students modal — card grid (Phase C)
+    'lecturer.groupDetail.inviteSearchLabel': 'Tìm sinh viên',
+    'lecturer.groupDetail.inviteSearchPlaceholder': 'Tìm theo tên hoặc email',
+    'lecturer.groupDetail.inviteLoadingStudents': 'Đang tải danh sách sinh viên…',
+    'lecturer.groupDetail.inviteNoStudentsFound': 'Không tìm thấy sinh viên phù hợp.',
+    'lecturer.groupDetail.inviteEmptyState': 'Chưa có tài khoản sinh viên nào trong hệ thống.',
+    'lecturer.groupDetail.inviteCardFullName': 'Họ và tên',
+    'lecturer.groupDetail.inviteCardEmail': 'Email',
+    'lecturer.groupDetail.inviteCardExistingGroups': 'Đã ở trong',
+    'lecturer.groupDetail.inviteCardOtherGroups': 'Đã tham gia {count} nhóm khác',
+    'lecturer.groupDetail.inviteCardNoOtherGroups': 'Chưa tham gia nhóm nào',
+    'lecturer.groupDetail.inviteCardAlreadyInGroup': 'Đã trong nhóm này',
+    'lecturer.groupDetail.inviteAction': 'Mời',
+    'lecturer.groupDetail.inviteRemoveFromPending': 'Bỏ chọn',
+    'lecturer.groupDetail.invitePendingTitle': 'Sẽ gửi lời mời ({count})',
+    'lecturer.groupDetail.invitePendingEmpty': 'Chọn ít nhất một sinh viên để gửi lời mời.',
+    'lecturer.groupDetail.inviteSelectedCount': '{count} đã chọn',
+    'lecturer.groupDetail.invitePrevPage': 'Trang trước',
+    'lecturer.groupDetail.inviteNextPage': 'Trang sau',
+    'lecturer.groupDetail.invitePageIndicator': 'Trang {page} / {total}',
+    // Inline hint shown under the description field on the Edit Group
+    // modal — used to remind lecturers that deadlines now live on each
+    // individual phase (ConfigureMilestones), not on the group itself.
+    'lecturer.groupDetail.deadlineRemovedHint': 'Hạn chót được đặt trên từng giai đoạn (Mốc tiến độ).',
+    // ── Open Topic modal (placeholder; another agent owns the canonical
+    //    component — these keys are local fallbacks).
+    'lecturer.groupDetail.openTopicModalTitle': 'Chi tiết đề tài',
+    'lecturer.groupDetail.openTopicDescriptionLabel': 'Mô tả',
+    'lecturer.groupDetail.openTopicMaterialsTitle': 'Tài liệu tham khảo',
+    'lecturer.groupDetail.openTopicMaterialsEmpty': 'Đề tài này chưa có tài liệu đính kèm.',
+    'lecturer.groupDetail.openTopicMaterialTypeLink': 'Liên kết',
+    'lecturer.groupDetail.openTopicMaterialTypeFile': 'Tệp',
+    'lecturer.groupDetail.openTopicClose': 'Đóng',
     // ── Lecturer — Research Topics
     'lecturer.topics.breadcrumbParent': 'Diễn đàn',
     'lecturer.topics.breadcrumbCurrent': 'Đề tài Nghiên cứu',
@@ -1430,6 +1463,64 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.milestones.errSaveFail': 'Không thể lưu giai đoạn.',
     'lecturer.milestones.saveSuccess': 'Đã lưu các giai đoạn thành công.',
     'lecturer.milestones.savePartial': 'Đã lưu các giai đoạn. Không thể lưu một số tài liệu học tập (xem bên dưới).',
+    // ── Evaluate Reports (Phase Report Review Console)
+    'lecturer.evaluateReports.column.resubmitRequested': 'Yêu cầu nộp lại',
+    'lecturer.evaluateReports.column.resubmitRequestedHint': 'Không có báo cáo nào đang chờ sinh viên nộp lại.',
+    'lecturer.evaluateReports.column.resubmitRequestedSummary': 'Yêu cầu nộp lại',
+    'lecturer.evaluateReports.modal.requestResubmit': 'Yêu cầu nộp lại kèm nhận xét',
+    'lecturer.evaluateReports.modal.requestResubmitSubmit': 'Yêu cầu nộp lại',
+    'lecturer.evaluateReports.modal.requestResubmitSuccess': 'Đã yêu cầu sinh viên nộp lại. Sinh viên có thể chỉnh sửa và nộp lại.',
+    // ── Materials page (My Materials + Shared Materials)
+    'lecturer.materials.tab.myMaterials': 'Tài liệu của tôi',
+    'lecturer.materials.tab.sharedMaterials': 'Tài liệu chia sẻ',
+    'lecturer.materials.source.file': 'Tệp',
+    'lecturer.materials.source.link': 'Liên kết',
+    'lecturer.materials.usage.none': 'Chưa sử dụng',
+    'lecturer.materials.usage.summary': 'Được dùng bởi: {topics} đề tài, {phases} giai đoạn',
+    'lecturer.materials.action.open': 'Mở',
+    'lecturer.materials.action.share': 'Chia sẻ',
+    'lecturer.materials.action.deleteBlockedTitle': 'Không thể xóa tài liệu đang được sử dụng.',
+    'lecturer.materials.action.deleteConfirmTitle': 'Xóa tài liệu này?',
+    'lecturer.materials.action.deleteConfirmBody': 'Bạn sắp xóa "{title}". Hành động này không thể hoàn tác.',
+    'lecturer.materials.action.deleteConfirm': 'Xóa',
+    'lecturer.materials.action.cancel': 'Hủy',
+    'lecturer.materials.card.openAria': 'Mở tài liệu',
+    'lecturer.materials.card.deleteAria': 'Xóa tài liệu',
+    'lecturer.materials.card.shareAria': 'Chia sẻ tài liệu',
+    'lecturer.materials.empty.title': 'Chưa có tài liệu nào',
+    'lecturer.materials.empty.hint': 'Nhấn "Thêm tài liệu" để tải lên tệp hoặc dán liên kết đầu tiên của bạn.',
+    'lecturer.materials.empty.search': 'Không có tài liệu nào khớp với "{query}".',
+    // ── Share Materials modal
+    'lecturer.materials.shareModal.title': 'Chia sẻ tài liệu với đồng nghiệp',
+    'lecturer.materials.shareModal.subtitle': 'Chọn giảng viên muốn cấp quyền truy cập trong 30 ngày.',
+    'lecturer.materials.shareModal.searchPlaceholder': 'Tìm theo tên hoặc email',
+    'lecturer.materials.shareModal.selectAll': 'Chọn tất cả',
+    'lecturer.materials.shareModal.deselectAll': 'Bỏ chọn tất cả',
+    'lecturer.materials.shareModal.empty': 'Không tìm thấy giảng viên nào khác để chia sẻ.',
+    'lecturer.materials.shareModal.submitOne': 'Chia sẻ với 1 giảng viên',
+    'lecturer.materials.shareModal.submitMany': 'Chia sẻ với {count} giảng viên',
+    'lecturer.materials.shareModal.cancel': 'Hủy',
+    'lecturer.materials.shareModal.success': 'Đã gửi lời mời chia sẻ.',
+    'lecturer.materials.shareModal.error': 'Không thể chia sẻ tài liệu. Vui lòng thử lại.',
+    // ── Shared Materials sections
+    'lecturer.materials.shared.sectionByMe': 'Tôi đã chia sẻ',
+    'lecturer.materials.shared.sectionWithMe': 'Được chia sẻ với tôi',
+    'lecturer.materials.shared.emptyByMe': 'Bạn chưa chia sẻ tài liệu nào với đồng nghiệp.',
+    'lecturer.materials.shared.emptyWithMe': 'Chưa có đồng nghiệp nào chia sẻ tài liệu với bạn.',
+    'lecturer.materials.shared.expires': 'Hết hạn: {date}',
+    'lecturer.materials.shared.expiresIn': 'Còn {days} ngày',
+    'lecturer.materials.shared.status.PENDING': 'Đang chờ',
+    'lecturer.materials.shared.status.ACCEPTED': 'Đã chấp nhận',
+    'lecturer.materials.shared.status.DECLINED': 'Đã từ chối',
+    'lecturer.materials.shared.status.EXPIRED': 'Đã hết hạn',
+    'lecturer.materials.shared.status.ENDED': 'Đã kết thúc',
+    'lecturer.materials.shared.status.ACTIVE': 'Đang hoạt động',
+    'lecturer.materials.shared.status.ARCHIVED': 'Đã lưu trữ',
+    'lecturer.materials.shared.endSharing': 'Kết thúc chia sẻ',
+    'lecturer.materials.shared.accept': 'Chấp nhận',
+    'lecturer.materials.shared.decline': 'Từ chối',
+    'lecturer.materials.shared.gapBanner.field': 'SharedMaterial.learningMaterialId, status enum, expiry',
+    'lecturer.materials.shared.gapBanner.feature': 'API chỉ chấp nhận paperId (số) và trả về ACTIVE/ARCHIVED — FE suy ra các trạng thái còn lại và tự tính hạn 30 ngày.',
   },
 
   en: {
@@ -2361,6 +2452,39 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.groupDetail.errLeaderFail': 'Unable to assign group leader.',
     'lecturer.groupDetail.removeLeaderSuccess': 'Đã hủy vai trò Trưởng nhóm của {name}.',
     'lecturer.groupDetail.errRemoveLeaderFail': 'Unable to remove group leader.',
+    // ── Invite Students modal — card grid (Phase C)
+    'lecturer.groupDetail.inviteSearchLabel': 'Find a student',
+    'lecturer.groupDetail.inviteSearchPlaceholder': 'Search by name or email',
+    'lecturer.groupDetail.inviteLoadingStudents': 'Loading student roster…',
+    'lecturer.groupDetail.inviteNoStudentsFound': 'No students match your search.',
+    'lecturer.groupDetail.inviteEmptyState': 'No graduate-student accounts are available yet.',
+    'lecturer.groupDetail.inviteCardFullName': 'Full name',
+    'lecturer.groupDetail.inviteCardEmail': 'Email',
+    'lecturer.groupDetail.inviteCardExistingGroups': 'Already in',
+    'lecturer.groupDetail.inviteCardOtherGroups': 'Also in {count} other group(s)',
+    'lecturer.groupDetail.inviteCardNoOtherGroups': 'No other groups yet',
+    'lecturer.groupDetail.inviteCardAlreadyInGroup': 'Already in this group',
+    'lecturer.groupDetail.inviteAction': 'Invite',
+    'lecturer.groupDetail.inviteRemoveFromPending': 'Remove',
+    'lecturer.groupDetail.invitePendingTitle': 'Pending invites ({count})',
+    'lecturer.groupDetail.invitePendingEmpty': 'Select at least one student to send an invite.',
+    'lecturer.groupDetail.inviteSelectedCount': '{count} selected',
+    'lecturer.groupDetail.invitePrevPage': 'Previous',
+    'lecturer.groupDetail.inviteNextPage': 'Next',
+    'lecturer.groupDetail.invitePageIndicator': 'Page {page} of {total}',
+    // Inline hint shown under the description field on the Edit Group
+    // modal — used to remind lecturers that deadlines now live on each
+    // individual phase (ConfigureMilestones), not on the group itself.
+    'lecturer.groupDetail.deadlineRemovedHint': 'Deadlines are set per phase from the Milestones page.',
+    // ── Open Topic modal (placeholder; another agent owns the canonical
+    //    component — these keys are local fallbacks).
+    'lecturer.groupDetail.openTopicModalTitle': 'Topic details',
+    'lecturer.groupDetail.openTopicDescriptionLabel': 'Description',
+    'lecturer.groupDetail.openTopicMaterialsTitle': 'Reference materials',
+    'lecturer.groupDetail.openTopicMaterialsEmpty': 'No materials are attached to this topic.',
+    'lecturer.groupDetail.openTopicMaterialTypeLink': 'Link',
+    'lecturer.groupDetail.openTopicMaterialTypeFile': 'File',
+    'lecturer.groupDetail.openTopicClose': 'Close',
     // ── Lecturer — Research Topics
     'lecturer.topics.breadcrumbParent': 'Forums',
     'lecturer.topics.breadcrumbCurrent': 'Research Topics',
@@ -2500,6 +2624,64 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.milestones.errSaveFail': 'Unable to save phases.',
     'lecturer.milestones.saveSuccess': 'Milestones saved successfully.',
     'lecturer.milestones.savePartial': 'Milestones saved. Some material assignments could not be saved (see below).',
+    // ── Evaluate Reports (Phase Report Review Console)
+    'lecturer.evaluateReports.column.resubmitRequested': 'Resubmit Requested',
+    'lecturer.evaluateReports.column.resubmitRequestedHint': 'No reports awaiting a student resubmit.',
+    'lecturer.evaluateReports.column.resubmitRequestedSummary': 'Resubmit Requested',
+    'lecturer.evaluateReports.modal.requestResubmit': 'Request Resubmit with Feedback',
+    'lecturer.evaluateReports.modal.requestResubmitSubmit': 'Request Resubmit',
+    'lecturer.evaluateReports.modal.requestResubmitSuccess': 'Resubmit requested. The student may revise and submit again.',
+    // ── Materials page (My Materials + Shared Materials)
+    'lecturer.materials.tab.myMaterials': 'My Materials',
+    'lecturer.materials.tab.sharedMaterials': 'Shared Materials',
+    'lecturer.materials.source.file': 'File',
+    'lecturer.materials.source.link': 'Link',
+    'lecturer.materials.usage.none': 'Not used',
+    'lecturer.materials.usage.summary': 'Used by: {topics} topic(s), {phases} phase(s)',
+    'lecturer.materials.action.open': 'Open',
+    'lecturer.materials.action.share': 'Share',
+    'lecturer.materials.action.deleteBlockedTitle': 'This material is in use and cannot be deleted.',
+    'lecturer.materials.action.deleteConfirmTitle': 'Delete this material?',
+    'lecturer.materials.action.deleteConfirmBody': 'You are about to delete "{title}". This cannot be undone.',
+    'lecturer.materials.action.deleteConfirm': 'Delete',
+    'lecturer.materials.action.cancel': 'Cancel',
+    'lecturer.materials.card.openAria': 'Open material',
+    'lecturer.materials.card.deleteAria': 'Delete material',
+    'lecturer.materials.card.shareAria': 'Share material',
+    'lecturer.materials.empty.title': 'No materials yet',
+    'lecturer.materials.empty.hint': 'Click Add Material to upload a file or paste a link.',
+    'lecturer.materials.empty.search': 'No materials match "{query}".',
+    // ── Share Materials modal
+    'lecturer.materials.shareModal.title': 'Share material with a colleague',
+    'lecturer.materials.shareModal.subtitle': 'Pick the lecturers you want to grant 30-day read access to.',
+    'lecturer.materials.shareModal.searchPlaceholder': 'Search by name or email',
+    'lecturer.materials.shareModal.selectAll': 'Select all',
+    'lecturer.materials.shareModal.deselectAll': 'Deselect all',
+    'lecturer.materials.shareModal.empty': 'No other lecturers are available to share with.',
+    'lecturer.materials.shareModal.submitOne': 'Share with 1 lecturer',
+    'lecturer.materials.shareModal.submitMany': 'Share with {count} lecturers',
+    'lecturer.materials.shareModal.cancel': 'Cancel',
+    'lecturer.materials.shareModal.success': 'Share invitations created.',
+    'lecturer.materials.shareModal.error': 'Could not share the material. Please try again.',
+    // ── Shared Materials sections
+    'lecturer.materials.shared.sectionByMe': 'Shared by me',
+    'lecturer.materials.shared.sectionWithMe': 'Shared with me',
+    'lecturer.materials.shared.emptyByMe': 'You have not shared any materials with colleagues yet.',
+    'lecturer.materials.shared.emptyWithMe': 'No colleagues have shared a material with you yet.',
+    'lecturer.materials.shared.expires': 'Expires {date}',
+    'lecturer.materials.shared.expiresIn': 'in {days} day(s)',
+    'lecturer.materials.shared.status.PENDING': 'Pending',
+    'lecturer.materials.shared.status.ACCEPTED': 'Accepted',
+    'lecturer.materials.shared.status.DECLINED': 'Declined',
+    'lecturer.materials.shared.status.EXPIRED': 'Expired',
+    'lecturer.materials.shared.status.ENDED': 'Ended',
+    'lecturer.materials.shared.status.ACTIVE': 'Active',
+    'lecturer.materials.shared.status.ARCHIVED': 'Archived',
+    'lecturer.materials.shared.endSharing': 'End sharing',
+    'lecturer.materials.shared.accept': 'Accept',
+    'lecturer.materials.shared.decline': 'Decline',
+    'lecturer.materials.shared.gapBanner.field': 'SharedMaterial.learningMaterialId, status enum, expiry',
+    'lecturer.materials.shared.gapBanner.feature': 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
 
     // ── App shell
     'app.brand': 'ARS',
@@ -2848,19 +3030,28 @@ export const dictionaries: Record<Locale, Dictionary> = {
  * no explicit value for the key, we fall back to English. If English also
  * has nothing, we return the key itself so the UI never silently renders
  * `undefined`.
+ *
+ * `params` optionally interpolates `{key}` placeholders in the resolved
+ * string — useful for count-bearing messages such as
+ * `"Used by: {topics} topic(s), {phases} phase(s)"`. Missing keys are
+ * left untouched so a malformed template never throws.
  */
 export const translate = (
   locale: Locale,
   key: string,
   fallback?: string,
+  params?: Record<string, string | number>,
 ): string => {
+  let raw: string | undefined;
   if (locale === 'vi') {
-    const direct = dictionaries.vi[key];
-    if (direct) return direct;
+    raw = dictionaries.vi[key];
   }
-  const english = dictionaries.en[key];
-  if (english) return english;
-  const provided = fallback;
-  if (provided) return provided;
-  return key;
+  if (!raw) raw = dictionaries.en[key];
+  if (!raw) raw = fallback;
+  if (!raw) return key;
+  if (!params) return raw;
+  return raw.replace(/\{(\w+)\}/g, (match, name: string) => {
+    const v = params[name];
+    return v === undefined || v === null ? match : String(v);
+  });
 };

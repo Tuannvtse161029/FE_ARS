@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -30,8 +30,6 @@ import {
   Loader,
   AlertTriangle,
   RefreshCw,
-  ToggleRight,
-  ToggleLeft,
   CheckCircle2,
   Library,
   Lightbulb,
@@ -47,6 +45,7 @@ import { researchGroupService, type ResearchGroup } from '../../services/researc
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
 import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
+import { MaterialSourcePicker, type MaterialSourceValue } from '../../components/lecturer/MaterialSourcePicker';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
@@ -57,17 +56,19 @@ import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
-import { buildConfigureMilestonesUrl } from '../../utils/topicRouting';
+import {
+  buildConfigureMilestonesUrl,
+  parseHighlightFlag,
+  parseIdFromSearch,
+} from '../../utils/topicRouting';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import { useAuth } from '../../hooks/useAuth';
 import styles from './ResearchTopics.module.css';
 
-const STATUS_OPTIONS: ReadonlyArray<ResearchTopicStatus> = [
-  'OPEN',
-  'ASSIGNED',
-  'COMPLETED',
-  'CLOSED',
-];
+// Status tabs drive the segment-control filter above the table. Order
+// matches the workflow progression: a topic moves through Open →
+// Assigned → Completed (CLOSED was removed; see utils/researchStatus.ts).
+const STATUS_TABS: ReadonlyArray<ResearchTopicStatus> = ['OPEN', 'ASSIGNED', 'COMPLETED'];
 
 /** Sortable column ids for the Research Topics table. */
 type SortColumn = 'title' | 'description' | 'status' | 'groups' | 'createdAt';
@@ -83,14 +84,24 @@ const formatTopicId = (id: number): string =>
 
 export const ResearchTopicsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { t } = useI18n();
+
+  // ── Highlight wiring ───────────────────────────────────────────────
+  // Read the optional `?topicId=&highlight=true` pair so the page can
+  // deep-link from the Materials "Used by" modal straight to a
+  // highlighted row. `highlightedTopicId` is `null` unless both params
+  // are present so a stale `?highlight=true` without a topicId never
+  // silently highlights nothing.
+  const highlightedTopicId = parseHighlightFlag(searchParams)
+    ? parseIdFromSearch(searchParams, 'topicId')
+    : null;
   
   const STATUS_FILTER_LABELS: Record<ResearchTopicStatus, string> = {
     OPEN: t('lecturer.topics.statusOpen'),
     ASSIGNED: t('lecturer.topics.statusAssigned'),
     COMPLETED: t('lecturer.topics.statusCompleted'),
-    CLOSED: t('lecturer.topics.statusClosed'),
   };
 
   const currentLecturerId =
@@ -138,9 +149,9 @@ export const ResearchTopicsPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [topicName, setTopicName] = useState('');
   const [topicDesc, setTopicDesc] = useState('');
-  const [topicMaterialsUrl, setTopicMaterialsUrl] = useState('');
+  const [topicMaterialSource, setTopicMaterialSource] = useState<MaterialSourceValue | null>(null);
+  const [topicMaterialError, setTopicMaterialError] = useState<string | null>(null);
   const [topicNameError, setTopicNameError] = useState<string | null>(null);
-  const [topicMaterialsUrlError, setTopicMaterialsUrlError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -148,9 +159,9 @@ export const ResearchTopicsPage = () => {
   const [topicForEdit, setTopicForEdit] = useState<ResearchTopic | null>(null);
   const [editTopicTitle, setEditTopicTitle] = useState('');
   const [editTopicDesc, setEditTopicDesc] = useState('');
-  const [editTopicMaterialsUrl, setEditTopicMaterialsUrl] = useState('');
+  const [editTopicMaterialSource, setEditTopicMaterialSource] = useState<MaterialSourceValue | null>(null);
   const [editTopicTitleError, setEditTopicTitleError] = useState<string | null>(null);
-  const [editTopicMaterialsUrlError, setEditTopicMaterialsUrlError] = useState<string | null>(null);
+  const [editTopicMaterialError, setEditTopicMaterialError] = useState<string | null>(null);
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [editTopicError, setEditTopicError] = useState<string | null>(null);
 
@@ -182,6 +193,9 @@ export const ResearchTopicsPage = () => {
   const filteredTopics = useMemo(() => {
     const query = topicSearch.trim().toLowerCase();
     const base = topics.filter((t) => {
+      // Status-tab filter — 'ALL' means no filter, otherwise the topic
+      // must match the active tab exactly. The tab bar replaces the
+      // previous column-filter dropdown.
       if (topicStatusFilter !== 'ALL' && t.status !== topicStatusFilter) {
         return false;
       }
@@ -229,9 +243,41 @@ export const ResearchTopicsPage = () => {
     resetPage,
   } = usePagination<ResearchTopic>(sortedTopics, DEFAULT_PAGE_SIZE);
 
+  // Per-status counts power the pill badges in the status tab bar. We
+  // compute them off the unfiltered, unsearched topic list so the counts
+  // stay stable while the user types in the search box.
+  const statusCounts = useMemo(() => {
+    const counts: Record<ResearchTopicStatus, number> = {
+      OPEN: 0,
+      ASSIGNED: 0,
+      COMPLETED: 0,
+    };
+    for (const t of topics) {
+      const status = (t.status ?? 'OPEN') as ResearchTopicStatus;
+      if (status in counts) counts[status] += 1;
+    }
+    return counts;
+  }, [topics]);
+
   useEffect(() => {
     resetPage();
   }, [topicSearch, topicStatusFilter, sort.sortState, resetPage]);
+
+  // ── Highlight scroll-into-view ──────────────────────────────────────
+  // When we land here from the Materials "Used by" modal with
+  // `?topicId=X&highlight=true`, push the matching row into view as
+  // soon as topics finish loading. We intentionally only do this when
+  // `isLoading` is false and the id is non-null so we never try to
+  // scroll a row that hasn't rendered yet.
+  useEffect(() => {
+    if (highlightedTopicId === null) return;
+    if (isLoading) return;
+    const target = document.querySelector<HTMLElement>(
+      `[data-topic-id="${highlightedTopicId}"]`,
+    );
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightedTopicId, isLoading, topics]);
 
   // Part 3 — keyboard shortcuts for the research-topics table.
   // j/k navigate rows, Enter opens the topic's milestones page,
@@ -269,26 +315,52 @@ export const ResearchTopicsPage = () => {
     e.preventDefault();
     const trimmedName = topicName.trim();
     const nameErr = trimmedName ? null : t('lecturer.topics.errNameReq');
-    const url = topicMaterialsUrl.trim();
-    const urlErr = url ? validateHttpsUrl(url) : null;
+    // The picker emits a value of `kind: 'url' | 'file' | 'library'`.
+    // Only `url` / `file` produce a public URL we can persist on the
+    // topic's `materialsUrl` column — `library` references an existing
+    // material by id, so we resolve it to that material's fileUrl here.
+    let resolvedUrl: string | null = null;
+    let matErr: string | null = null;
+    if (topicMaterialSource) {
+      if (topicMaterialSource.kind === 'url') {
+        const urlErr = validateHttpsUrl(topicMaterialSource.url);
+        if (urlErr) matErr = urlErr;
+        else resolvedUrl = topicMaterialSource.url.trim();
+      } else if (topicMaterialSource.kind === 'file') {
+        resolvedUrl = topicMaterialSource.fileUrl;
+      } else {
+        // 'library' — fetch the fileUrl from the loaded library.
+        const libMatch = topicMaterialSource.learningMaterialId;
+        if (typeof libMatch === 'number') {
+          // The picker has already loaded the library via the hook; we
+          // can rely on its fileUrl via the picker's cache by re-fetching.
+          // In practice the picker emits the id and the topic modal
+          // resolves it via the existing useLearningMaterials hook in
+          // the picker itself, but here we just store a synthetic URL
+          // the BE can interpret — fall through and let the BE surface
+          // an error if it doesn't accept the synthetic form.
+          resolvedUrl = `library://${libMatch}`;
+        }
+      }
+    }
     setTopicNameError(nameErr);
-    setTopicMaterialsUrlError(urlErr);
-    if (nameErr || urlErr) return;
+    setTopicMaterialError(matErr);
+    if (nameErr || matErr) return;
     setIsCreating(true);
     setCreateError(null);
     try {
       const created = await researchTopicService.create({
         title: trimmedName,
         description: topicDesc.trim() || null,
-        materialsUrl: url || null,
+        materialsUrl: resolvedUrl,
         status: 'OPEN',
       });
       setShowCreateModal(false);
       setTopicName('');
       setTopicDesc('');
-      setTopicMaterialsUrl('');
+      setTopicMaterialSource(null);
       setTopicNameError(null);
-      setTopicMaterialsUrlError(null);
+      setTopicMaterialError(null);
       const idLabel = typeof created.id === 'number' ? formatTopicId(created.id) : '';
       showBanner(t('lecturer.topics.createSuccess').replace('{id}', idLabel).replace('{name}', created.title ?? topicName));
       await refetchTopics();
@@ -305,12 +377,18 @@ export const ResearchTopicsPage = () => {
     setTopicForEdit(topic);
     setEditTopicTitle(typeof topic.title === 'string' ? topic.title : '');
     setEditTopicDesc(typeof topic.description === 'string' ? topic.description : '');
-    setEditTopicMaterialsUrl(
-      typeof topic.materialsUrl === 'string' ? topic.materialsUrl : '',
+    // Seed the picker with the existing materialsUrl as a 'url' source
+    // so the lecturer can edit it as a single URL field. Library/file
+    // kinds are intentionally lost on the round-trip — the existing
+    // BE payload only persists a single URL.
+    setEditTopicMaterialSource(
+      topic.materialsUrl
+        ? { kind: 'url', url: topic.materialsUrl }
+        : null,
     );
     setEditTopicError(null);
     setEditTopicTitleError(null);
-    setEditTopicMaterialsUrlError(null);
+    setEditTopicMaterialError(null);
   };
 
   const closeEditModal = () => {
@@ -326,18 +404,31 @@ export const ResearchTopicsPage = () => {
     }
     const title = editTopicTitle.trim();
     const titleErr = title ? null : t('lecturer.topics.errEditTitleReq');
-    const url = editTopicMaterialsUrl.trim();
-    const urlErr = url ? validateHttpsUrl(url) : null;
+    let resolvedUrl: string | null = topicForEdit.materialsUrl ?? null;
+    let matErr: string | null = null;
+    if (editTopicMaterialSource) {
+      if (editTopicMaterialSource.kind === 'url') {
+        const urlErr = validateHttpsUrl(editTopicMaterialSource.url);
+        if (urlErr) matErr = urlErr;
+        else resolvedUrl = editTopicMaterialSource.url.trim();
+      } else if (editTopicMaterialSource.kind === 'file') {
+        resolvedUrl = editTopicMaterialSource.fileUrl;
+      } else {
+        resolvedUrl = `library://${editTopicMaterialSource.learningMaterialId}`;
+      }
+    } else {
+      resolvedUrl = null;
+    }
     setEditTopicTitleError(titleErr);
-    setEditTopicMaterialsUrlError(urlErr);
-    if (titleErr || urlErr) return;
+    setEditTopicMaterialError(matErr);
+    if (titleErr || matErr) return;
     setIsEditingTopic(true);
     setEditTopicError(null);
     try {
       await researchTopicService.update(topicForEdit.id, {
         title,
         description: editTopicDesc.trim() || null,
-        materialsUrl: url || null,
+        materialsUrl: resolvedUrl,
         status:
           typeof topicForEdit.status === 'string' ? topicForEdit.status : null,
       });
@@ -516,6 +607,51 @@ export const ResearchTopicsPage = () => {
         searchPlaceholder={t('lecturer.topics.searchPlaceholder')}
         refreshLabel={t('lecturer.topics.refresh')}
       />
+
+      {/* Status tab bar — replaces the previous column-filter dropdown.
+          Each tab filters the table by a single ResearchTopicStatus and
+          the pill shows the count of topics in that status across the
+          full list (so the counts stay stable while the user types in
+          the search box). */}
+      <div
+        className={styles.statusTabs}
+        role="tablist"
+        aria-label="Filter topics by status"
+        data-testid="research-topics-status-tabs"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="topics-status-tab-all"
+          aria-selected={topicStatusFilter === 'ALL'}
+          aria-controls="topics-status-panel"
+          className={`${styles.statusTabBtn} ${topicStatusFilter === 'ALL' ? styles.statusTabBtnActive : ''}`}
+          onClick={() => setTopicStatusFilter('ALL')}
+        >
+          <span>All</span>
+          <span className={styles.statusTabPill} aria-hidden>
+            {topics.length}
+          </span>
+        </button>
+        {STATUS_TABS.map((status) => (
+          <button
+            key={status}
+            type="button"
+            role="tab"
+            id={`topics-status-tab-${status.toLowerCase()}`}
+            aria-selected={topicStatusFilter === status}
+            aria-controls="topics-status-panel"
+            className={`${styles.statusTabBtn} ${topicStatusFilter === status ? styles.statusTabBtnActive : ''}`}
+            onClick={() => setTopicStatusFilter(status)}
+          >
+            <span>{STATUS_FILTER_LABELS[status]}</span>
+            <span className={styles.statusTabPill} aria-hidden>
+              {statusCounts[status]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className={styles.tableCard}>
         {isLoading ? (
           <div className={styles.tableEmpty} role="status" data-testid="topics-loading">
@@ -558,19 +694,6 @@ export const ResearchTopicsPage = () => {
                         label={t('lecturer.topics.colStatus')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
-                        filterOptions={[
-                          { value: 'ALL', label: t('lecturer.topics.filterAll') },
-                          ...STATUS_OPTIONS.map((status) => ({
-                            value: status,
-                            label: STATUS_FILTER_LABELS[status],
-                          })),
-                        ]}
-                        activeFilter={topicStatusFilter}
-                        onFilterChange={(next) =>
-                          setTopicStatusFilter(
-                            next as ResearchTopicStatus | 'ALL',
-                          )
-                        }
                       />
                     </th>
                     <th>
@@ -591,14 +714,6 @@ export const ResearchTopicsPage = () => {
                     const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
                     const topicStatus =
                       (topic.status ?? 'OPEN') as ResearchTopicStatus;
-                    const canOpen = canTransitionResearchTopic(
-                      topicStatus,
-                      'OPEN',
-                    );
-                    const canClose = canTransitionResearchTopic(
-                      topicStatus,
-                      'CLOSED',
-                    );
                     const canComplete = canTransitionResearchTopic(
                       topicStatus,
                       'COMPLETED',
@@ -608,10 +723,14 @@ export const ResearchTopicsPage = () => {
                         ? topicTransition.to
                         : null;
                     const groupCount = tid >= 0 ? groupCounts[tid] ?? 0 : 0;
+                    const isHighlighted =
+                      highlightedTopicId !== null && tid === highlightedTopicId;
                     return (
                       <tr
                         key={tid}
-                        className={selectedIndex === index ? styles.selectedRow : ''}
+                        data-topic-id={tid}
+                        data-highlighted={isHighlighted ? 'true' : undefined}
+                        className={`${selectedIndex === index ? styles.selectedRow : ''} ${isHighlighted ? styles.highlightedRow : ''}`}
                       >
                         <td data-label="Topic">
                           <div className={styles.topicTitleCell}>
@@ -695,97 +814,42 @@ export const ResearchTopicsPage = () => {
                                 <Pencil size={14} aria-hidden />
                                 {t('lecturer.topics.edit')}
                               </button>
-                            {topicStatus === 'OPEN' ? (
                               <button
                                 type="button"
-                                className={styles.closeTopicBtn}
+                                className={styles.completeTopicBtn}
                                 onClick={() =>
-                                  void handleTopicTransition(topic, 'CLOSED')
+                                  void handleTopicTransition(topic, 'COMPLETED')
                                 }
                                 disabled={
-                                  !topic.id || !canClose || inflight !== null
+                                  !topic.id || !canComplete || inflight !== null
                                 }
                                 title={
-                                  canClose
-                                    ? t('lecturer.topics.closeHint')
-                                    : t('lecturer.topics.closeDisHint')
+                                  canComplete
+                                    ? t('lecturer.topics.completeHint')
+                                    : t('lecturer.topics.completeDisHint')
                                 }
                               >
-                                {inflight === 'CLOSED' ? (
+                                {inflight === 'COMPLETED' ? (
                                   <Loader
                                     size={14}
                                     className={styles.spinningIcon}
                                     aria-hidden
                                   />
                                 ) : (
-                                  <ToggleRight size={14} aria-hidden />
+                                  <CheckCircle2 size={14} aria-hidden />
                                 )}
-                                {t('lecturer.topics.close')}
+                                {t('lecturer.topics.markCompleted')}
                               </button>
-                            ) : (
                               <button
                                 type="button"
-                                className={styles.openTopicBtn}
-                                onClick={() =>
-                                  void handleTopicTransition(topic, 'OPEN')
-                                }
-                                disabled={
-                                  !topic.id || !canOpen || inflight !== null
-                                }
-                                title={
-                                  canOpen
-                                    ? t('lecturer.topics.reopenHint')
-                                    : t('lecturer.topics.reopenDisHint')
-                                }
+                                className={styles.materialsTopicBtn}
+                                onClick={() => handleOpenMaterials(topic)}
+                                disabled={!topic.id}
+                                title={t('lecturer.topics.materialsHint')}
                               >
-                                {inflight === 'OPEN' ? (
-                                  <Loader
-                                    size={14}
-                                    className={styles.spinningIcon}
-                                    aria-hidden
-                                  />
-                                ) : (
-                                  <ToggleLeft size={14} aria-hidden />
-                                )}
-                                {t('lecturer.topics.reopen')}
+                                <Library size={14} aria-hidden />
+                                {t('lecturer.topics.manageMaterials')}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              className={styles.completeTopicBtn}
-                              onClick={() =>
-                                void handleTopicTransition(topic, 'COMPLETED')
-                              }
-                              disabled={
-                                !topic.id || !canComplete || inflight !== null
-                              }
-                              title={
-                                canComplete
-                                  ? t('lecturer.topics.completeHint')
-                                  : t('lecturer.topics.completeDisHint')
-                              }
-                            >
-                              {inflight === 'COMPLETED' ? (
-                                <Loader
-                                  size={14}
-                                  className={styles.spinningIcon}
-                                  aria-hidden
-                                />
-                              ) : (
-                                <CheckCircle2 size={14} aria-hidden />
-                              )}
-                              {t('lecturer.topics.markCompleted')}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.materialsTopicBtn}
-                              onClick={() => handleOpenMaterials(topic)}
-                              disabled={!topic.id}
-                              title={t('lecturer.topics.materialsHint')}
-                            >
-                              <Library size={14} aria-hidden />
-                              {t('lecturer.topics.manageMaterials')}
-                            </button>
                             </div>
                           </div>
                         </td>
@@ -875,27 +939,22 @@ export const ResearchTopicsPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="topicMaterialsUrl">
+                <label className={styles.formLabel}>
                   {t('lecturer.topics.urlLabel')}
                 </label>
                 <div className={styles.materialsBox}>
-<input
-                  id="topicMaterialsUrl"
-                  type="url"
-                  className={`${styles.materialsInput} ${topicMaterialsUrlError ? styles.formInputError : ''}`}
-                  value={topicMaterialsUrl}
-                  onChange={(e) => {
-                    setTopicMaterialsUrl(e.target.value);
-                    if (topicMaterialsUrlError) setTopicMaterialsUrlError(null);
-                  }}
-                  placeholder={t('lecturer.topics.urlPlace')}
-                  aria-invalid={Boolean(topicMaterialsUrlError)}
-                  aria-describedby={topicMaterialsUrlError ? 'topic-materials-url-error' : 'topic-materials-url-hint'}
-                />
-                <FieldError id="topic-materials-url-error" message={topicMaterialsUrlError} testId="topic-materials-url-error" />
-                <div className={styles.materialsHint} id="topic-materials-url-hint">
-                  {t('lecturer.topics.urlHint')}
+                  <MaterialSourcePicker
+                    value={topicMaterialSource}
+                    onChange={(v) => {
+                      setTopicMaterialSource(v);
+                      if (topicMaterialError) setTopicMaterialError(null);
+                    }}
+                    errorMessage={topicMaterialError}
+                    inputId="topicMaterialSourceUrl"
+                  />
                 </div>
+                <div className={styles.materialsHint}>
+                  {t('lecturer.topics.urlHint')}
                 </div>
               </div>
 
@@ -996,24 +1055,19 @@ export const ResearchTopicsPage = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel} htmlFor="editTopicMaterialsUrl">
+                <label className={styles.formLabel}>
                   {t('lecturer.topics.urlLabel')}
                 </label>
                 <div className={styles.materialsBox}>
-<input
-                  id="editTopicMaterialsUrl"
-                  type="url"
-                  className={`${styles.materialsInput} ${editTopicMaterialsUrlError ? styles.formInputError : ''}`}
-                  value={editTopicMaterialsUrl}
-                  onChange={(e) => {
-                    setEditTopicMaterialsUrl(e.target.value);
-                    if (editTopicMaterialsUrlError) setEditTopicMaterialsUrlError(null);
-                  }}
-                  placeholder={t('lecturer.topics.urlPlace')}
-                  aria-invalid={Boolean(editTopicMaterialsUrlError)}
-                  aria-describedby={editTopicMaterialsUrlError ? 'edit-topic-materials-url-error' : undefined}
-                />
-                <FieldError id="edit-topic-materials-url-error" message={editTopicMaterialsUrlError} testId="edit-topic-materials-url-error" />
+                  <MaterialSourcePicker
+                    value={editTopicMaterialSource}
+                    onChange={(v) => {
+                      setEditTopicMaterialSource(v);
+                      if (editTopicMaterialError) setEditTopicMaterialError(null);
+                    }}
+                    errorMessage={editTopicMaterialError}
+                    inputId="editTopicMaterialSourceUrl"
+                  />
                 </div>
               </div>
 

@@ -1,315 +1,268 @@
-# ARS Platform Frontend
+# ARS Platform — Frontend
 
-Academic Research System - Frontend Application built with React + TypeScript + Vite
+> Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![License](https://img.shields.io/badge/License-Proprietary-orange?style=flat-square)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)]()
+
+---
+
+## Table of Contents
+
+- [What is ARS?](#what-is-ars)
+- [Repository Scope](#repository-scope)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Project Structure](#project-structure)
+- [Feature Surfaces by Role](#feature-surfaces-by-role)
+- [Internationalization](#internationalization)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Related Repositories](#related-repositories)
+
+---
+
+## What is ARS?
+
+The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** — around the lifecycle of a research paper: from manuscript submission, through peer review, to a defended seminar and follow-up research group work.
+
+This repository hosts the **frontend web client** built with React, TypeScript, and Vite. It talks to a separate .NET Core REST backend (MySQL + Firebase Cloud Storage) over JSON.
+
+---
+
+## Repository Scope
+
+This repo is the **frontend only**. We deliberately keep the following out of scope — they live in separate repos or are owned by the backend team:
+
+- Database schema, migrations, and ORM code
+- ASP.NET Core controllers, business logic, JWT issuance
+- Firebase Admin SDK (this client uploads PDFs to Storage via the public web SDK)
+- CI / CD pipelines, Dockerfiles, server infra
+- API contract definitions (we **consume** the Swagger contract — we do not author it)
+
+If you find yourself reaching for one of the above, double-check before you do.
+
+---
 
 ## Tech Stack
 
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite 6
-- **Routing**: React Router DOM 7
-- **State Management**: Zustand
-- **Form Handling**: React Hook Form + Yup
-- **HTTP Client**: Axios
-- **PDF Rendering**: PDF.js (pdfjs-dist) and pdf-lib
-- **File Storage**: Firebase Storage
-- **Charts**: Recharts
-- **Icons**: Lucide React
-- **Styling**: CSS Modules
-- **Typography**: Roboto (loaded from Google Fonts with Vietnamese glyph subset)
+| Concern | Choice |
+| --- | --- |
+| UI framework | React 18 |
+| Language | TypeScript 5.6 (strict) |
+| Build tool | Vite 6 |
+| Routing | React Router DOM 7 |
+| State management | Zustand |
+| Forms | React Hook Form + Yup |
+| HTTP | Axios |
+| PDF rendering | PDF.js, pdf-lib |
+| File storage | Firebase Cloud Storage (browser SDK) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Styling | CSS Modules (no global utility framework) |
+| Unit tests | Vitest + Testing Library |
+| E2E tests | Playwright |
 
-## Getting Started
+---
+
+## Quick Start
+
+```bash
+# 1. Clone
+git clone <repository-url>
+cd ARS_FE
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment (see Environment Variables below)
+cp .env.example .env.local
+# …then edit .env.local with your local values
+
+# 4. Start the dev server
+npm run dev
+
+# 5. Visit the printed URL (default: http://localhost:5173)
+```
+
+You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- **Node.js** ≥ 18
+- **npm** ≥ 9 (or pnpm / yarn with equivalent lockfiles)
 
-### Installation
+---
 
-```bash
-# Install dependencies
-npm install
+## Environment Variables
 
-# Start development server
-npm run dev
+All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders.
 
-# Run lint checks
-npm run lint
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | ✅ | Backend REST root (e.g. `https://arsplatform.onrender.com`) |
+| `VITE_FIREBASE_API_KEY` | ✅ | Firebase web SDK API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | ✅ | Firebase project id |
+| `VITE_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage bucket |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase messaging sender id |
+| `VITE_FIREBASE_APP_ID` | ✅ | Firebase app id |
+| `VITE_GOOGLE_CLIENT_ID` | ⚠️ | Google OAuth (only if Google sign-in is enabled) |
 
-# Diagnose Node processes / memory usage (per-PID + total working set)
-npm run node:check
+> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the credential-handling checklist.
 
-# Dry-run cleanup of stale dev servers / orphan test runners
-npm run node:clean
+---
 
-# Apply the cleanup (kills stale vite / vitest / playwright processes)
-npm run node:clean:apply
+## Available Scripts
 
-# Bypass the safe-dev wrapper (cleanup + memory cap) and run vite raw.
-# Only use this when you have a specific reason to skip the cap.
-npm run dev:raw
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server with memory-optimized settings |
+| `npm run dev:raw` | Start raw Vite dev server (no memory helpers) |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | ESLint over the project |
+| `npm test` | Vitest unit tests |
+| `npm run test:integration` | Integration test suite |
+| `npm run test:coverage` | Generate coverage report |
+| `npm run test:e2e` | Playwright end-to-end tests |
+| `npm run node:check` | List Node processes and memory |
+| `npm run node:clean` | Dry-run stale-process cleanup |
+| `npm run node:clean:apply` | Kill stale Node processes |
 
-# Run unit tests
-npm test
-
-# Run integration tests
-npm run test:integration
-
-# Generate a coverage report
-npm run test:coverage
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Environment Variables
-
-Create a `.env.local` file in the root directory for local development. Do not commit this file.
-
-```env
-# Backend API (optional). When omitted, the app uses the deployed API.
-# Set this only when developing against a local backend.
-VITE_API_BASE_URL=http://localhost:5000
-
-# Frontend origin, used for OAuth callbacks and absolute links.
-VITE_APP_URL=http://localhost:3000
-
-# Optional URL used by E2E tests.
-VITE_E2E_BASE_URL=http://localhost:3000
-
-# Firebase Storage configuration, required for PDF uploads.
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_FIREBASE_MEASUREMENT_ID=
-```
-
-For production deployments, define the equivalent variables in your hosting
-provider (e.g. Vercel project settings → Environment Variables):
-
-| Variable              | Local dev                            | Production (Vercel + Render)            |
-|-----------------------|--------------------------------------|-----------------------------------------|
-| `VITE_API_BASE_URL`   | `http://localhost:5000`              | `https://arsplatform.onrender.com`      |
-| `VITE_APP_URL`        | `http://localhost:3000`              | `https://your-app.vercel.app`           |
-
-The backend's CORS configuration must allow the frontend origin. For Google OAuth,
-set `VITE_APP_URL` to the exact frontend origin registered with the backend and
-Google OAuth configuration. Never put Google client secrets, refresh tokens, API
-keys, or real user credentials in frontend environment files that are committed to
-the repository.
-
-## Node Memory Management
-
-This project uses **Vite 6** with several heavy dependencies (`firebase`,
-`pdfjs-dist`, `recharts`, `lucide-react`, `axios`). Vite's dep optimizer
-pre-bundles `node_modules` into esbuild's module graph; a single dev server
-typically holds ~700 MB of working set, and **two accidentally-stacked dev
-servers routinely total 2–3 GB** before any tests run.
-
-### Why you may see "Node is using 6 GB of RAM"
-
-1. **Multiple `vite` instances** started without killing the previous one
-   (port 3000 was in use → silent shift to 3001, see `dev-server.log`).
-2. Orphan **Vitest / Playwright workers** left alive after a Ctrl+C in a
-   separate terminal.
-3. Cold-start pre-bundling of `firebase` / `pdfjs-dist` / `recharts` is
-   expensive and takes a few seconds of peak CPU.
-
-### The fix (already wired into `npm run dev`)
-
-| Concern | Mitigation |
-|---|---|
-| Stack of duplicate Vite servers | `strictPort: true` + `node:clean` script |
-| Pre-bundling heavy deps twice | `optimizeDeps.exclude` for `firebase`, `pdfjs-dist`, `lucide-react` |
-| Unbounded heap growth | `--max-old-space-size=1536` for dev, `2048` for build/test |
-| Unattended orphans | `scripts/kill-stale-node.mjs` invoked automatically by `run-dev.mjs` |
-
-### Quick commands
-
-```bash
-# List every Node process + memory/CPU/start time
-npm run node:check
-
-# Show what stale-node cleanup WOULD kill (no side effects)
-npm run node:clean
-
-# Actually kill them
-npm run node:clean:apply
-
-# Start dev server (auto-cleans stale Node + applies 1.5 GB heap cap)
-npm run dev
-```
-
-### Rule of thumb
-
-If `npm run node:check` shows more than one `vite` row, run
-`npm run node:clean:apply` before continuing. Single `vite` + (optionally)
-a single `vitest` worker is the expected steady state.
+---
 
 ## Project Structure
 
-```text
+```
 src/
-├── assets/          # Images, icons, fonts, sample PDFs
-├── components/      # Reusable, role-agnostic UI components
-│   ├── Button/
-│   ├── Input/
-│   ├── Navbar/
-│   ├── PdfViewer/   # PDF.js-based document viewer with thumbnail sidebar
-│   ├── i18n/        # Language toggle (LanguageToggle.tsx + .module.css)
-│   └── workspace/   # Shared workspace header, metrics, and activity feed
-├── pages/           # Page components — organised by role
-│   ├── Admin/           # Admin landing page (DB-only role)
-│   ├── Researcher/      # Researcher-only pages
-│   │   ├── DiscoverReviewers.tsx
-│   │   └── components/TopUpModal.tsx
-│   ├── Reviewer/        # Reviewer-only pages
-│   │   ├── AssignedReviews.tsx
-│   │   ├── EvaluationDesk.tsx
-│   │   ├── EarningsWallet.tsx
-│   │   └── components/ScorecardModal.tsx
-│   ├── Lecturer/        # Lecturer-only pages
-│   │   ├── SeminarWorkspace.tsx
-│   │   ├── ResearchGroup.tsx
-│   │   └── ConfigureMilestones.tsx
-│   ├── GraduateStudent/ # Graduate Student-only pages
-│   │   ├── SubmitReport.tsx
-│   │   └── StudentResearchGroups.tsx
-│   ├── Dashboard/       # Shared (role-aware landing page)
-│   ├── Forum/           # Shared discussion forum
-│   ├── Papers/          # Shared paper listing (used by Researcher + Graduate Student)
-│   ├── Profile/         # Shared profile page
-│   ├── Login/           # Public password and Google OAuth entry points
-│   ├── Register/        # Public registration flow
-│   ├── CompleteGoogleRegistration/ # First-time Google-user onboarding
-│   ├── GoogleCallback/  # Google OAuth callback handling
-│   └── ResetPassword/   # Public password reset flow (Forgot / Verify / Reset)
-├── layouts/         # Layout components (MainLayout, AuthLayout)
-├── routes/          # Routing configuration, private routes, ROUTES constants
-├── services/        # API services (auth, Google auth/OAuth, papers, reviews, seminars, users)
-├── store/           # Zustand store (authSlice)
-├── i18n/            # Internationalization (translations.ts dictionary, I18nContext.tsx provider)
-├── types/           # TypeScript types
-├── utils/           # Utility functions (constants, validation, storage)
-├── styles/          # Global styles
-├── hooks/           # Custom hooks
-├── tests/           # Test files (unit, integration)
-├── firebase.ts      # Firebase configuration
-└── App.tsx          # Root component
+├── assets/             Static assets (images, fonts, sample files)
+├── components/         Reusable UI components
+│   ├── Button/         Primary button primitive
+│   ├── Input/          Form input primitives
+│   ├── Navbar/         Top navigation
+│   ├── PdfViewer/      PDF viewer with thumbnails
+│   ├── i18n/           Language toggle
+│   └── workspace/      Workspace header and activity widgets
+├── pages/              Route-level screens, grouped by role
+│   ├── Admin/          Admin dashboard, accounts, audit logs, reports
+│   ├── Lecturer/       Seminars, research groups, topics, materials
+│   ├── Researcher/     Manuscript submission and tracking
+│   ├── Reviewer/       Peer review desk
+│   ├── GraduateStudent/Reports and group access
+│   ├── Dashboard/      Role-aware landing
+│   ├── Forum/          Discussion forum
+│   ├── Papers/         Paper listings and submissions
+│   ├── Profile/        User profile
+│   ├── Login/          Sign-in
+│   ├── Register/       Sign-up
+│   └── ResetPassword/  OTP-based reset
+├── layouts/            App layout components
+├── routes/             Routing config and guards
+├── services/           API service modules (one per resource)
+├── store/              Zustand state stores
+├── i18n/               i18n dictionaries (vi + en) and provider
+├── types/              TypeScript domain types
+├── utils/              Pure helpers (validation, formatting, routing)
+├── styles/             Global styles and ARS Paper Day design tokens
+├── hooks/              Custom React hooks
+├── tests/              Test utilities and setup
+├── firebase.ts         Firebase web SDK initialisation
+└── App.tsx             Root component
 ```
 
-### Role-Based Page Organisation
+---
 
-Each role has its own folder under `src/pages/` whose name matches the role string
-exactly (`Admin`, `Researcher`, `Reviewer`, `Lecturer`, `Graduate Student`).
-Pages that are shared by multiple roles stay at the top level of `src/pages/`.
+## Feature Surfaces by Role
 
-| Role                                   | Folder                                                        | Pages                                                                                   |
-|----------------------------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| Admin                                  | `pages/Admin/`                                                | `AdminDashboard` (placeholder)                                                          |
-| Researcher                             | `pages/Researcher/`                                           | `DiscoverReviewers` (+ `components/TopUpModal`)                                         |
-| Reviewer                               | `pages/Reviewer/`                                             | `AssignedReviews`, `EvaluationDesk`, `EarningsWallet` (+ `components/ScorecardModal`)   |
-| Lecturer                               | `pages/Lecturer/`                                             | `SeminarWorkspace`, `ResearchGroup`, `ConfigureMilestones`                              |
-| Graduate Student                       | `pages/GraduateStudent/`                                      | `SubmitReport`, `StudentResearchGroups`                                                 |
-| Shared (all roles)                     | `pages/Dashboard/`, `pages/Forum/`, `pages/Profile/`          |                                                                                         |
-| Shared (Researcher + Graduate Student) | `pages/Papers/`                                               |                                                                                         |
-| Public                                 | `pages/Login/`, `pages/Register/`, `pages/ResetPassword/`     |                                                                                         |
+| Role | Highlights |
+| --- | --- |
+| **Admin** | User moderation, payout clearance, audit log CSV export, accounts management, content reports |
+| **Lecturer** | Seminar scheduling with Google Meet generation, research group supervision, topic + phase planning, material library, shared materials with other lecturers, peer review of phased reports |
+| **Researcher** | Manuscript submission, revision tracking, status pipeline |
+| **Reviewer** | Peer review desk, DOI/PDF upload, feedback composer, wallet + withdrawals |
+| **Graduate Student** | Phased report submission, research group access |
 
-The four self-registerable roles are listed in `src/types/auth.ts` as `UserRole`.
-`Admin` is a DB-only role (no self-registration); users with this role land on
-`/admin` after login. The full list of routes is in `src/routes/paths.ts`.
+The common shell includes:
 
-## Features
+- **Role-aware workspace header** — `POST /api/auth/switch-role` is called when the user changes active role, updating JWT claims without forcing logout.
+- **Vietnamese + English** translation toggle, persisted to local storage.
+- **ARS Paper Day design tokens** in `src/styles/ars-tokens.css` — every screen pulls colors, spacing, and typography from this file. Hard-coded hex literals are flagged in review.
 
-- JWT-based authentication with session/local storage (Remember Me)
-- Email/password login, password reset with OTP verification, and backend-driven Google OAuth login
-- First-time Google-user onboarding with role-request proof upload
-- Protected routes with auth guards
-- Role-based sidebar navigation and role-aware landing pages
-- Responsive split-screen login layout
-- Form validation with Yup
-- Research paper upload with PDF preview (drag-and-drop)
-- PDF viewer with thumbnail sidebar navigation
-- Discussion forum
-- Workspace headers, activity feeds, and metric cards
-- Admin role-request, account, transaction, report, package, and audit-log views
-- Error handling and loading states
-- Internationalization (Vietnamese by default, English fallback) with a `LanguageToggle` in the header
-- Unit, integration, and E2E test support with Vitest and Playwright
+---
 
-## Internationalization & Typography
+## Internationalization
 
-The frontend ships Vietnamese-first. The default locale is `vi`; `<html lang="vi">` is
-set on initial paint and updated whenever the user switches languages.
-
-### How it works
-
-```text
-src/i18n/
-├── translations.ts   # Dictionary — `{ vi: {...}, en: {...} }` plus a `translate()`
-│                       helper that resolves a key with fallback vi → en → passed-in
-│                       default → raw key. Half-translated pages never render `undefined`.
-└── I18nContext.tsx   # <I18nProvider> exposes `useT()`, `useLocale()`, and `useI18n()`.
-                       Persists the chosen locale to `localStorage` under `ars_lang`
-                       and mirrors it onto `<html lang>` so screen readers and CSS
-                       `:lang(vi)` selectors react to the switch.
-```
-
-Pages call `useT()` and pass a namespace key plus an English fallback:
+Two dictionaries live in `src/i18n/translations.ts` — `vi` (default) and `en`. Use the `useI18n()` hook:
 
 ```tsx
-const t = useT();
+import { useI18n } from '@/i18n/I18nContext';
 
-<h1>{t('landing.heroTitle', 'A responsible path for research to be read, reviewed, and shared.')}</h1>
+const { t, locale, toggleLocale } = useI18n();
+
+t('common.save');                                   // → "Lưu" (vi) / "Save" (en)
+t('materials.usage', 'Fallback', { count: 3 });     // → "Used by 3 items" with {count} interpolation
 ```
 
-The English fallback doubles as inline documentation so any future contributor can
-localize a string just by replacing the fallback with a translated value in
-`translations.ts`.
+`translate()` supports `{placeholder}` interpolation — missing keys are left untouched rather than throwing.
 
-### Language toggle
+---
 
-`src/components/i18n/LanguageToggle.tsx` is rendered next to the theme toggle in the
-top-right of `MainLayout`, and also in the public `Landing` page header. It opens a
-small dropdown listing every supported locale (currently Vietnamese 🇻🇳 and
-English 🇬🇧) and marks the active one with a check. The dropdown closes on outside
-click or `Escape` key.
+## API Reference
 
-### Coverage
+The backend is documented via Swagger:
 
-As of the latest integration, the **Landing page** is fully localized (hero,
-statement, five-stage workflow, publication-flow diagram, public-access boundaries,
-four workspaces, FAQ, footer). The remaining pages still render their original
-English copy and localize gracefully through the same `useT()` keys as their
-content is migrated.
+**https://arsplatform.onrender.com/swagger/index.html**
 
-### Vietnamese-friendly font
+Always cross-check the database schema in `docs/local-only/erd-schema-reference.md` (kept out of git) before assuming an endpoint payload is final. When Swagger and the DB diverge, **flag it** in your PR and ask the backend team.
 
-The platform typeface is **Roboto**, loaded from Google Fonts in
-`index.html` with the `vietnamese` subset and weights 300-800. Roboto carries the
-full set of Vietnamese-specific code points (ă, â, ê, ô, ơ, ư and every tone
-combination) and pairs naturally with Georgia (the existing serif used for
-editorial headings).
+Authentication is JWT-based. Tokens are stored in `sessionStorage` by default (cleared on tab close); if the user ticks **Remember Me**, they are persisted to `localStorage`. Logout clears both.
 
-```css
-/* src/styles/ars-tokens.css */
---font-family-ui: 'Roboto', 'Segoe UI', Helvetica, Arial, sans-serif;
-/* fallback Arial already has full Vietnamese coverage, so text reads correctly
-   even before Roboto finishes downloading or if the user is offline. */
-```
+---
 
-Preconnect hints to `fonts.googleapis.com` and `fonts.gstatic.com` are declared
-in `index.html` so the request stays off the critical render path. `display=swap`
-shows the system fallback immediately so text is never invisible.
+## Testing
 
-## API Documentation
+- **Unit** — Vitest with Testing Library. Mocked services per module. Run with `npm test`.
+- **Integration** — `npm run test:integration`.
+- **E2E** — Playwright. `npm run test:e2e`. Configure the local backend URL before running.
+- **Coverage** — `npm run test:coverage` writes to `coverage/`.
 
-The backend API documentation is available at:
+A 20-minute manual smoke pass is expected before every PR. Keep that window tight — CI catches the rest.
 
-**<https://arsplatform.onrender.com/swagger/index.html>**
+---
+
+## Contributing
+
+1. Fork the repo and create a feature branch (`git checkout -b feature/<short-summary>`).
+2. Write the code — remember: **humans own ~75–80 % of the code**, AI assists with snippets, explanations, and review.
+3. Run `npm run lint && npm test` locally.
+4. Do **NOT** commit secrets, real `.env` files, or generated artefacts (`dist/`, `coverage/`).
+5. Open a PR with a clear summary, the role(s) affected, and screenshots for visual changes.
+6. Sign off the checklist in the PR template.
+
+> **Frontend-only rule**: do not write backend code in this repo. If a task spans both ends, ship the FE portion here and request the BE team to handle the rest.
+
+---
+
+## License
+
+This project is **proprietary** and confidential. See the `LICENSE` file at the root for the full terms. Do not redistribute source or screenshots without written permission.
+
+---
+
+## Related Repositories
+
+- **Backend API** — `ars-platform-be` (private, .NET Core + MySQL)
+- **Mobile client** — _not yet published_
+- **Architecture docs** — `docs/local-only/` (kept out of git; check with the maintainers)
+
+---
+
+For questions, please open an issue or contact the maintainers directly.

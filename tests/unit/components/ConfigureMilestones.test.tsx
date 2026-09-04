@@ -1,132 +1,203 @@
 /**
  * Component tests for src/pages/Lecturer/ConfigureMilestones.tsx.
  *
- * Per the contract: Save is disabled (BE endpoint pending), the form
- * validates locally, and reference-material uploads use Firebase only.
+ * Verifies the new card-list view (no `?topicId`) renders topics fetched
+ * from the live service and surfaces group chips with phase counts. The
+ * detailed MaterialSourcePicker behaviour is tested in its own suite.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ConfigureMilestones } from '../../../src/pages/Lecturer/ConfigureMilestones';
 
-// We mimic the real useFirebaseUpload hook using real React state so that
-// when uploadPdf resolves, the consumer re-renders and the page's useEffect
-// picks up the new pdfUrl. This mirrors the local pattern used by
-// src/tests/integration/pdfUploadView.integration.test.tsx.
-const {
-  uploadPdfMock,
-  resetUploadMock,
-  pdfUrlSetterRef,
-  errorSetterRef,
-} = vi.hoisted(() => {
-  const uploadPdfMock = vi.fn();
-  const resetUploadMock = vi.fn();
-  const pdfUrlSetterRef: { current: ((v: string | null) => void) | null } = {
-    current: null,
-  };
-  const errorSetterRef: { current: ((v: string | null) => void) | null } = {
-    current: null,
-  };
-  return { uploadPdfMock, resetUploadMock, pdfUrlSetterRef, errorSetterRef };
-});
+const { getAllTopicsMock, getByTopicMock, getAllGroupsMock } = vi.hoisted(() => ({
+  getAllTopicsMock: vi.fn(),
+  getByTopicMock: vi.fn(),
+  getAllGroupsMock: vi.fn(),
+}));
 
-vi.mock('../../../src/hooks/useFirebaseUpload', async () => {
-  const React = await import('react');
+vi.mock('../../../src/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { userId: 7, email: 'lecturer@test.com', role: 'Lecturer' },
+    isLoading: false,
+  }),
+}));
+vi.mock('../../../src/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { userId: 7, email: 'lecturer@test.com', role: 'Lecturer' },
+    isLoading: false,
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  default: {},
+}));
+
+vi.mock('../../../src/services/researchTopic.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../src/services/researchTopic.service')
+  >('../../../src/services/researchTopic.service');
   return {
-    useFirebaseUpload: () => {
-      const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
-      const [error, setError] = React.useState<string | null>(null);
-      const [isUploading, setIsUploading] = React.useState<boolean>(false);
-      const [progress, setProgress] = React.useState<number>(0);
-      pdfUrlSetterRef.current = setPdfUrl;
-      errorSetterRef.current = setError;
-      return {
-        uploadPdf: uploadPdfMock,
-        resetUpload: resetUploadMock,
-        progress,
-        isUploading,
-        error,
-        pdfUrl,
-      };
+    ...actual,
+    researchTopicService: {
+      ...actual.researchTopicService,
+      getAll: getAllTopicsMock,
+      getMyTopics: getAllTopicsMock,
+      getById: getByTopicMock,
     },
   };
 });
 
-describe('<ConfigureMilestones>', () => {
+vi.mock('../../../src/services/researchGroup.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../src/services/researchGroup.service')
+  >('../../../src/services/researchGroup.service');
+  return {
+    ...actual,
+    researchGroupService: {
+      ...actual.researchGroupService,
+      getAll: getAllGroupsMock,
+      getMyGroups: getAllGroupsMock,
+    },
+  };
+});
+
+vi.mock('../../../src/services/researchTopicPhase.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../src/services/researchTopicPhase.service')
+  >('../../../src/services/researchTopicPhase.service');
+  return {
+    ...actual,
+    researchTopicPhaseService: {
+      ...actual.researchTopicPhaseService,
+      getByTopic: getByTopicMock,
+    },
+  };
+});
+
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <ConfigureMilestones />
+    </MemoryRouter>,
+  );
+
+describe('<ConfigureMilestones> — card-list view', () => {
   beforeEach(() => {
-    uploadPdfMock.mockReset();
-    resetUploadMock.mockReset();
-    uploadPdfMock.mockImplementation(async () => {
-      pdfUrlSetterRef.current?.(
-        'https://fb.storage/learning-materials/1234/reference.pdf',
-      );
-    });
+    getAllTopicsMock.mockReset();
+    getByTopicMock.mockReset();
+    getAllGroupsMock.mockReset();
   });
 
-  it('renders the disabled Save button + tooltip', () => {
-    render(<ConfigureMilestones />);
-    const save = screen.getByRole('button', {
-      name: /PUBLISH MILESTONE REQUIREMENTS/i,
-    });
-    expect(save).toBeDisabled();
-    expect(screen.getAllByText(/Save disabled — BE endpoint pending/).length).toBeGreaterThan(0);
-  });
-
-  it('shows the BE-gap banner naming the missing endpoint', () => {
-    render(<ConfigureMilestones />);
-    expect(screen.getAllByText(/Save disabled — BE endpoint pending/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/POST \/api\/Milestone/).length).toBeGreaterThan(0);
-  });
-
-  it('renders all four phase options', () => {
-    render(<ConfigureMilestones />);
-    const select = screen.getByLabelText(/Milestone Track Phase/);
-    expect(select.querySelectorAll('option')).toHaveLength(4);
-    expect(
-      Array.from(select.querySelectorAll('option')).map((o) => o.textContent),
-    ).toEqual([
-      'Phase 1: Project Introduction Draft',
-      'Phase 2: Literature Review Submission',
-      'Phase 3: Methodology & Implementation Details',
-      'Phase 4: Final Evaluation Report',
+  it('renders a topic card for every research topic returned by the service', async () => {
+    getAllTopicsMock.mockResolvedValue([
+      { id: 1, title: 'Distributed Systems', status: 'OPEN' },
+      { id: 2, title: 'Quantum Compilers', status: 'OPEN' },
     ]);
-  });
+    getAllGroupsMock.mockResolvedValue([]);
+    getByTopicMock.mockResolvedValue([]);
+    renderPage();
 
-  it('description textarea enforces 8000-character cap', () => {
-    render(<ConfigureMilestones />);
-    const textarea = screen.getByLabelText(/Description Requirements/);
-    expect(textarea).toHaveAttribute('maxLength', '8000');
-  });
-
-  it('blocks uploading non-PDF files (Firebase hook errors)', () => {
-    render(<ConfigureMilestones />);
-    errorSetterRef.current?.('Only PDF files are allowed.');
-    // The error banner is rendered synchronously when state flips.
-    return waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Only PDF files/);
-    });
-  });
-
-  it('accepts a PDF and appends to the materials list (simulating Firebase success)', async () => {
-    render(<ConfigureMilestones />);
-
-    const pdf = new File(['%PDF-1.4'], 'reference.pdf', {
-      type: 'application/pdf',
-    });
-    const input = screen.getByLabelText(/Browse files/i) as HTMLInputElement;
-    Object.defineProperty(input, 'files', { value: [pdf], configurable: true });
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-
-    await waitFor(() => expect(uploadPdfMock).toHaveBeenCalledWith(pdf));
-    // After the mocked uploadPdf sets pdfUrl via React state, the page's
-    // useEffect runs and calls resetUpload.
-    await waitFor(() => expect(resetUploadMock).toHaveBeenCalled());
-  });
-
-  it('displays an error banner when the Firebase upload fails', async () => {
-    render(<ConfigureMilestones />);
-    errorSetterRef.current?.('Storage quota exceeded');
+    // Wait for at least one topic heading before asserting on the rest.
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(/Storage quota/),
+      expect(
+        screen.getByRole('heading', { level: 2, name: /Distributed Systems/ }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Distributed Systems/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Quantum Compilers/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a "0 phases" chip for every group assigned to a topic', async () => {
+    getAllTopicsMock.mockResolvedValue([
+      { id: 1, title: 'Distributed Systems', status: 'OPEN' },
+    ]);
+    getAllGroupsMock.mockResolvedValue([
+      { id: 11, name: 'Group Alpha', topicId: 1 },
+      { id: 12, name: 'Group Beta', topicId: 1 },
+    ]);
+    getByTopicMock.mockResolvedValue([]);
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('group-chip-1-11')).toBeInTheDocument(),
+    );
+    const chips = screen.getAllByTestId(/^group-chip-1-/);
+    expect(chips).toHaveLength(2);
+    expect(screen.getByTestId('group-chip-1-11')).toHaveTextContent(/0 phases/);
+    expect(screen.getByTestId('group-chip-1-12')).toHaveTextContent(/0 phases/);
+  });
+
+  it('shows the correct phase count per group from the BE', async () => {
+    getAllTopicsMock.mockResolvedValue([
+      { id: 1, title: 'Distributed Systems', status: 'OPEN' },
+    ]);
+    getAllGroupsMock.mockResolvedValue([
+      { id: 11, name: 'Group Alpha', topicId: 1 },
+      { id: 12, name: 'Group Beta', topicId: 1 },
+    ]);
+    // Two phases for group 11, none for group 12.
+    getByTopicMock.mockResolvedValue([
+      {
+        id: 'api-1-1',
+        topicId: 1,
+        phaseNumber: 1,
+        title: 'Phase 1',
+        requirements: '',
+        assessmentCriteria: '',
+        startAt: '',
+        endAt: '',
+        deadlineAt: '',
+        order: 1,
+        locked: false,
+        source: 'api',
+        report: {
+          phasedReportId: 1,
+          researchGroupId: 11,
+          phaseNumber: 1,
+          topicId: 1,
+        },
+      },
+      {
+        id: 'api-1-2',
+        topicId: 1,
+        phaseNumber: 2,
+        title: 'Phase 2',
+        requirements: '',
+        assessmentCriteria: '',
+        startAt: '',
+        endAt: '',
+        deadlineAt: '',
+        order: 2,
+        locked: false,
+        source: 'api',
+        report: {
+          phasedReportId: 2,
+          researchGroupId: 11,
+          phaseNumber: 2,
+          topicId: 1,
+        },
+      },
+    ]);
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('group-chip-1-11')).toHaveTextContent(
+        /2 phases/,
+      ),
+    );
+    expect(screen.getByTestId('group-chip-1-11')).toHaveTextContent(/2 phases/);
+    expect(screen.getByTestId('group-chip-1-12')).toHaveTextContent(/0 phases/);
+  });
+
+  it('renders a recoverable error banner when the BE call fails', async () => {
+    getAllTopicsMock.mockRejectedValueOnce(new Error('Server is unavailable'));
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/Server is unavailable/),
     );
   });
 });

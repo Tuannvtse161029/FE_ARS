@@ -409,6 +409,33 @@
   /* intentionally empty */
 }
 
+/* Deep-link highlight — used when the user lands here from the Materials
+ * "Used by" modal with `?topicId=X&highlight=true`. The animation runs
+ * twice so the lecturer can spot the row even when many rows are on
+ * screen, then settles into a tinted background. */
+@keyframes topicHighlightPulse {
+  0%   { box-shadow: inset 3px 0 0 var(--ars-lecturer), 0 0 0 2px var(--ars-lecturer); }
+  50%  { box-shadow: inset 3px 0 0 var(--ars-lecturer), 0 0 0 6px color-mix(in srgb, var(--ars-lecturer) 25%, transparent); }
+  100% { box-shadow: inset 3px 0 0 var(--ars-lecturer), 0 0 0 0 transparent; }
+}
+
+.table tbody tr.highlightedRow {
+  background: color-mix(in srgb, var(--ars-lecturer) 6%, transparent);
+  animation: topicHighlightPulse 1.4s ease-out 1;
+  position: relative;
+}
+
+.table tbody tr.highlightedRow td:first-child {
+  box-shadow: inset 3px 0 0 var(--ars-lecturer);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table tbody tr.highlightedRow {
+    animation: none;
+    background: color-mix(in srgb, var(--ars-lecturer) 10%, transparent);
+  }
+}
+
 .topicIdBadge {
   display: inline-block;
   font-family: var(--font-family-mono);
@@ -1062,4 +1089,76 @@
 .topicActionSecondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Status tab bar (segment control) ────────────────────────
+ * Replaces the column-filter dropdown. Visually echoes the tab bar
+ * pattern used by Materials.tsx so the two surfaces read as part of
+ * the same workspace, with a small pill showing the count of topics
+ * in each status. */
+.statusTabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-1);
+  border-bottom: 2px solid var(--ars-network);
+  padding-bottom: 0;
+}
+
+.statusTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast);
+  min-height: 36px;
+}
+
+.statusTabBtn:hover {
+  color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+.statusTabBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.statusTabBtnActive {
+  color: var(--ars-lecturer);
+  border-bottom-color: var(--ars-lecturer);
+  background: var(--ars-paper-inset);
+}
+
+/* The pill badge carries the per-status count. Monospace keeps the
+   numbers visually aligned as the lecturer scans across tabs. */
+.statusTabPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-family-mono);
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  border-radius: 999px;
+  line-height: 1.6;
+}
+
+.statusTabBtnActive .statusTabPill {
+  color: var(--ars-lecturer);
+  background: color-mix(in srgb, var(--ars-lecturer) 18%, transparent);
 }

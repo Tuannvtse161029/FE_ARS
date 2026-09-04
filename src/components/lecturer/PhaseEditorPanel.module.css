@@ -1,0 +1,489 @@
+/* PhaseEditorPanel — reusable phase composer.
+ *
+ * Reuses the Lecturer workspace's visual language: warm paper surfaces,
+ * rust corner-anchor dot, and the same chip + form field tokens.
+ * Lives in both inline (full-page) and modal (card-list) contexts, so
+ * every state is internally scoped.
+ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinningIcon {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinningIcon { animation-duration: 1s; }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.loadingRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  color: var(--ars-error);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.successHint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-success-bg);
+  border: 1px solid var(--ars-success);
+  color: var(--ars-success);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.highlightNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--ars-lecturer) 8%, var(--ars-paper));
+  border: 1px solid var(--ars-lecturer);
+  color: var(--ars-ink);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.phaseLimitBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--ars-paper-inset);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+}
+
+.phasesForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.phaseEditor {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.phaseEditor::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ars-lecturer);
+}
+
+/* Deep-link highlight — used when the user lands here from the
+ * Materials "Used by" modal with `?topicId=X&groupId=Y&phase=N&highlight=true`.
+ * The phase row pulses once so the lecturer can spot it even when the
+ * form is long, then settles into a tinted background. */
+@keyframes phaseHighlightPulse {
+  0%   { box-shadow: 0 0 0 0 var(--ars-lecturer); border-color: var(--ars-lecturer); }
+  40%  { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ars-lecturer) 18%, transparent); border-color: var(--ars-lecturer); }
+  100% { box-shadow: 0 0 0 0 transparent; border-color: var(--ars-paper-rule); }
+}
+
+.phaseEditorHighlighted {
+  background: color-mix(in srgb, var(--ars-lecturer) 6%, var(--ars-paper));
+  border-color: var(--ars-lecturer);
+  animation: phaseHighlightPulse 1.6s ease-out 1;
+}
+
+.phaseEditorHighlighted::before {
+  background: var(--ars-lecturer);
+  width: 10px;
+  height: 10px;
+  left: calc(var(--space-4) - 2px);
+  top: calc(var(--space-4) - 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phaseEditorHighlighted {
+    animation: none;
+    background: color-mix(in srgb, var(--ars-lecturer) 10%, var(--ars-paper));
+  }
+}
+
+.phaseEditorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-left: var(--space-4);
+}
+
+.phaseEditorTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+}
+
+.phaseIndexChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px var(--space-2);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.04em;
+  margin-right: var(--space-2);
+}
+
+.phaseHeadActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.phaseEditorRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.phaseLockedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--ars-warning);
+  font-style: italic;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.formLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+}
+
+.formInput {
+  width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.formInput:focus,
+.formInput:focus-visible {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+.formTextarea {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  min-height: 64px;
+  box-sizing: border-box;
+  resize: vertical;
+  line-height: var(--line-height-normal);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formTextarea:focus,
+.formTextarea:focus-visible {
+  outline: none;
+  border-color: var(--ars-lecturer);
+  box-shadow: 0 0 0 3px rgba(124, 45, 18, 0.12);
+}
+
+.materialChipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.materialChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 30%, transparent);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  max-width: 100%;
+  font-family: var(--font-family-ui);
+}
+
+.materialChipEmpty {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+}
+
+.materialChipClear {
+  background: transparent;
+  border: none;
+  color: var(--ars-lecturer);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  margin-left: var(--space-1);
+}
+
+.materialChipClear:hover {
+  background: color-mix(in srgb, var(--ars-lecturer) 18%, transparent);
+}
+
+.materialChipClear:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.optionalBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7em;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  background: transparent;
+  border: 1px solid var(--ars-network);
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.iconBtn:hover:not(:disabled) {
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.removeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--ars-paper);
+  border: 1px solid color-mix(in srgb, var(--ars-error) 35%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--ars-error);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.removeBtn:hover {
+  background: var(--ars-error-bg);
+}
+
+.removeBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+.saveSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-soft);
+  flex-wrap: wrap;
+}
+
+.saveSummary strong {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.addPhaseBtn {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-style: dashed;
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+}
+
+.addPhaseBtn:hover {
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.addPhaseBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.addPhaseBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveBtn {
+  background: var(--ars-lecturer);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: background-color var(--transition-fast);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+}
+
+.saveBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.saveBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .phaseEditorRow {
+    grid-template-columns: 1fr;
+  }
+  .phaseEditorHead {
+    padding-left: var(--space-3);
+  }
+}

@@ -15,7 +15,7 @@ import type { PhasedReport } from '../../services/phasedReport.service';
 import { formatDisplayDateTime } from '../../utils/datetime';
 import styles from './EvaluateReportModal.module.css';
 
-export type EvaluationAction = 'approve' | 'reject';
+export type EvaluationAction = 'approve' | 'requestResubmit';
 
 export interface EvaluateReportModalProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ export interface EvaluateReportModalProps {
   onSubmitted?: (action: EvaluationAction, updated: PhasedReport) => void;
 }
 
-type Mode = 'approve' | 'reject';
+type Mode = 'approve' | 'requestResubmit';
 
 // Sentinel prefix that Agent 2 (GradStudent) writes into `capacityEvaluation`
 // when a PhasedReport is a resubmission of a previously rejected one. Format:
@@ -120,8 +120,7 @@ export const EvaluateReportModal = ({
       onSubmitted(mode, result);
       onClose();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  }, [result, onSubmitted, onClose, mode]);
 
   if (!isOpen || !report) return null;
 
@@ -130,7 +129,7 @@ export const EvaluateReportModal = ({
     const grade = Number(lectureFeedback);
     const trimmedOutcome = finalOutcomeEvaluation.trim();
     const trimmedReason = rejectionReason.trim();
-    if (mode === 'reject' && !trimmedReason && !trimmedOutcome) {
+    if (mode === 'requestResubmit' && !trimmedReason && !trimmedOutcome) {
       // The service rejects this too, but we surface the message locally for
       // an instant UX without an extra round-trip.
       return;
@@ -138,7 +137,7 @@ export const EvaluateReportModal = ({
     if (mode === 'approve' && (Number.isNaN(grade) || grade < 0 || grade > 10)) {
       return;
     }
-    await submit(mode, {
+    await submit(mode === 'requestResubmit' ? 'reject' : 'approve', {
       ...(mode === 'approve'
         ? {
             lectureFeedback: grade,
@@ -151,7 +150,7 @@ export const EvaluateReportModal = ({
     });
   };
 
-  const isRejectMode = mode === 'reject';
+  const isResubmitMode = mode === 'requestResubmit';
   const hasPdf = !!report.reportFileUrl;
 
   return (
@@ -230,26 +229,26 @@ export const EvaluateReportModal = ({
         <div className={styles.modeSwitcher}>
           <button
             type="button"
-            className={`${styles.modeBtn} ${!isRejectMode ? styles.modeBtnActiveApprove : ''}`}
+            className={`${styles.modeBtn} ${!isResubmitMode ? styles.modeBtnActiveApprove : ''}`}
             onClick={() => setMode('approve')}
-            aria-pressed={!isRejectMode}
+            aria-pressed={!isResubmitMode}
           >
             <Check size={14} aria-hidden />
             Approve &amp; Evaluate
           </button>
           <button
             type="button"
-            className={`${styles.modeBtn} ${isRejectMode ? styles.modeBtnActiveReject : ''}`}
-            onClick={() => setMode('reject')}
-            aria-pressed={isRejectMode}
+            className={`${styles.modeBtn} ${isResubmitMode ? styles.modeBtnActiveReject : ''}`}
+            onClick={() => setMode('requestResubmit')}
+            aria-pressed={isResubmitMode}
           >
             <AlertTriangle size={14} aria-hidden />
-            Reject with Feedback
+            Request Resubmit with Feedback
           </button>
         </div>
 
         <form className={styles.modalForm} onSubmit={handleSubmit}>
-          {!isRejectMode && (
+          {!isResubmitMode && (
             <>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="lectureFeedback">
@@ -292,7 +291,7 @@ export const EvaluateReportModal = ({
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor="finalOutcomeEvaluation">
-              {isRejectMode
+              {isResubmitMode
                 ? 'Feedback for the student'
                 : 'Outcome notes'}
             </label>
@@ -303,7 +302,7 @@ export const EvaluateReportModal = ({
               value={finalOutcomeEvaluation}
               onChange={(e) => setFinalOutcomeEvaluation(e.target.value)}
               placeholder={
-                isRejectMode
+                isResubmitMode
                   ? 'Summarise what is working and what needs to change.'
                   : 'A short paragraph describing the final outcome and what was learned.'
               }
@@ -313,7 +312,7 @@ export const EvaluateReportModal = ({
             </span>
           </div>
 
-          {isRejectMode && (
+          {isResubmitMode && (
             <div className={styles.formGroup}>
               <label className={styles.formLabel} htmlFor="rejectionReason">
                 What needs to change?{' '}
@@ -325,12 +324,11 @@ export const EvaluateReportModal = ({
                 rows={3}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Why is this submission being rejected? (Required for a request-revision decision.)"
+                placeholder="What does the student need to change before resubmitting? (Required for a request-resubmit decision.)"
                 required
               />
               <span className={styles.helperText}>
-                A specific reason is required before the lecturer can submit
-                a revision request.
+                A specific reason is required before the lecturer can request a resubmit.
               </span>
             </div>
           )}
@@ -409,30 +407,30 @@ export const EvaluateReportModal = ({
             </button>
             <button
               type="submit"
-              className={isRejectMode ? styles.submitRejectBtn : styles.submitApproveBtn}
+              className={isResubmitMode ? styles.submitRejectBtn : styles.submitApproveBtn}
               disabled={
                 isLoading ||
-                (isRejectMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim())
+                (isResubmitMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim())
               }
               title={
                 isLoading
                   ? 'Submission in progress'
-                  : isRejectMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim()
-                    ? 'Add a rejection reason or feedback before submitting.'
+                  : isResubmitMode && !rejectionReason.trim() && !finalOutcomeEvaluation.trim()
+                    ? 'Add a reason or feedback before requesting a resubmit.'
                     : undefined
               }
             >
               {isLoading ? (
                 <Loader size={14} className={styles.spinningIcon} aria-hidden />
-              ) : isRejectMode ? (
+              ) : isResubmitMode ? (
                 <AlertTriangle size={14} aria-hidden />
               ) : (
                 <Check size={14} aria-hidden />
               )}
               {isLoading
                 ? 'Submitting…'
-                : isRejectMode
-                ? 'Request Revision'
+                : isResubmitMode
+                ? 'Request Resubmit'
                 : 'Approve & Evaluate'}
             </button>
           </div>

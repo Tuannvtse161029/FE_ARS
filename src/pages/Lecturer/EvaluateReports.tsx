@@ -131,10 +131,10 @@ export const EvaluateReports = () => {
     return map;
   }, [groups]);
 
-  // Flat list of all reviewable reports in render order (Submitted → Rejected
-  // → Waiting). The keyboard shortcut j/k walks this single flat list; the
-  // visual highlight re-maps the selected index back to whichever column the
-  // selected report lives in.
+  // Flat list of all reviewable reports in render order (Submitted →
+  // Resubmit Requested → Waiting). The keyboard shortcut j/k walks this
+  // single flat list; the visual highlight re-maps the selected index back
+  // to whichever column the selected report lives in.
   const allReviewableReports = useMemo<PhasedReport[]>(
     () => [...submitted, ...rejected, ...waiting],
     [submitted, rejected, waiting],
@@ -145,8 +145,8 @@ export const EvaluateReports = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Part 3 — keyboard shortcuts for the review console. The columns are
-  // walked as a single flat list (Submitted → Rejected → Waiting). Enter
-  // opens the Evaluate modal for the selected report. There is no `n`
+  // walked as a single flat list (Submitted → Resubmit Requested → Waiting).
+  // Enter opens the Evaluate modal for the selected report. There is no `n`
   // (no create flow) or `f` (no search/filter on this page) shortcut.
   const { selectedIndex } = useListShortcuts({
     itemCount: allReviewableReports.length,
@@ -182,7 +182,7 @@ export const EvaluateReports = () => {
     showBanner(
       action === 'approve'
         ? 'Report approved. Student can now see your feedback.'
-        : 'Report rejected. The student may resubmit.',
+        : 'Resubmit requested. The student may revise and submit again.',
       'success',
     );
     // Refresh the list — we don't merge the optimistically-updated row
@@ -286,7 +286,7 @@ export const EvaluateReports = () => {
           count={submitted.length}
           tone="warning"
         />
-        <SummaryTile label="Rejected (Resubmission Pending)" count={rejected.length} tone="danger" />
+        <SummaryTile label="Resubmit Requested" count={rejected.length} tone="danger" />
         <SummaryTile label="Waiting (No Submission Yet)" count={waiting.length} tone="info" />
         <SummaryTile
           label="Total Reviewable"
@@ -311,7 +311,7 @@ export const EvaluateReports = () => {
           emptyText="No submissions waiting for your review."
         />
         <ReportColumn
-          title="Rejected (Resubmit Pending)"
+          title="Resubmit Requested"
           tone="danger"
           reports={rejected}
           isLoading={isLoadingReports || isLoadingGroups}
@@ -324,7 +324,7 @@ export const EvaluateReports = () => {
               : -1
           }
           flatOffset={submitted.length}
-          emptyText="No rejected reports awaiting a student resubmission."
+          emptyText="No reports awaiting a student resubmit."
         />
         <ReportColumn
           title="Waiting"

@@ -29,15 +29,26 @@ export const canTransitionGuidanceProject = (
 ): boolean => GUIDANCE_PROJECT_TRANSITIONS[from].includes(to);
 
 // ---------- ResearchTopic ----------
+//
+// Topic lifecycle (see research-workflow-contract.md §3):
+//   OPEN     → ASSIGNED, COMPLETED
+//   ASSIGNED → COMPLETED
+//   COMPLETED → (terminal)
+//
+// CLOSED was previously a fourth state used to retire a topic without
+// completing it. It is being removed: a topic that wraps up without a
+// successful run now transitions to COMPLETED (which is treated as the
+// archival terminal). `OPEN → CLOSED` and `ASSIGNED → CLOSED` are no longer
+// allowed from the lecturer surface — close actions now go via the
+// "Mark Completed" affordance.
 
 const RESEARCH_TOPIC_TRANSITIONS: Record<
   ResearchTopicStatus,
   ReadonlyArray<ResearchTopicStatus>
 > = {
-  OPEN: ['ASSIGNED', 'CLOSED'],
-  ASSIGNED: ['COMPLETED', 'CLOSED'],
+  OPEN: ['ASSIGNED', 'COMPLETED'],
+  ASSIGNED: ['COMPLETED'],
   COMPLETED: [],
-  CLOSED: [],
 };
 
 export const canTransitionResearchTopic = (
@@ -101,7 +112,9 @@ export const normalizeResearchTopicStatus = (
   if (v === 'OPEN') return 'OPEN';
   if (v === 'ASSIGNED') return 'ASSIGNED';
   if (v === 'COMPLETED' || v === 'DONE') return 'COMPLETED';
-  if (v === 'CLOSED') return 'CLOSED';
+  // CLOSED is no longer a canonical status — legacy BE records that ship
+  // a CLOSED value are coerced to OPEN so the lecturer can re-assign or
+  // mark them completed through the supported transitions.
   return 'OPEN';
 };
 
