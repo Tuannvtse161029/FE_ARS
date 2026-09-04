@@ -56,7 +56,12 @@ import {
   type SharedMaterial,
 } from '../../services/sharedMaterial.service';
 import { researchTopicService } from '../../services/researchTopic.service';
-import type { ResearchTopic } from '../../services/researchTopic.service';
+// NOTE: import the canonical `ResearchTopic` from the shared types module,
+// NOT from `researchTopic.service`. The service exposes a BE-response shape
+// (with optional `id`) that is intentionally wider than the canonical type
+// the rest of the FE uses. `MaterialUsageModal` accepts the canonical shape,
+// so the service result is cast at the fetch boundary below.
+import type { ResearchTopic } from '../../types/research';
 import { phasedReportService } from '../../services/phasedReport.service';
 import type { PhasedReport } from '../../services/phasedReport.service';
 import {
@@ -301,11 +306,21 @@ export const LecturerMaterialsPage = () => {
   const loadCrossReference = useCallback(async () => {
     setCrossRefLoading(true);
     try {
+      // The service returns its own wider BE-shape `ResearchTopic`
+      // (`id?: number`); the rest of the page works against the canonical
+      // shape from `types/research` (`id: number`). Cast at the boundary
+      // and drop topics that didn't come back with a usable id — the
+      // Usage Modal already handles missing ids defensively, but the
+      // canonical type won't accept them.
       const [topicList, phaseList] = await Promise.all([
-        researchTopicService.getAll().catch(() => [] as ResearchTopic[]),
+        researchTopicService.getAll().catch(() => []),
         phasedReportService.getAll().catch(() => [] as PhasedReport[]),
       ]);
-      setTopics(topicList);
+      setTopics(
+        (topicList as ResearchTopic[]).filter(
+          (t): t is ResearchTopic => typeof t.id === 'number',
+        ),
+      );
       setPhases(phaseList);
     } finally {
       setCrossRefLoading(false);
@@ -1475,12 +1490,14 @@ export const LecturerMaterialsPage = () => {
               status === 'ACCEPTED' ||
               status === 'EXPIRED'
             ) {
+              // After the narrowing above, `status` cannot be 'ENDED' in
+              // this branch, so no `disabled` is needed (and TS rightly
+              // rejects `status === 'ENDED'` as an impossible check).
               return (
                 <button
                   type="button"
                   className={styles.sharedEndBtn}
                   onClick={() => void updateSharedStatus(item, 'ENDED')}
-                  disabled={status === 'ENDED'}
                 >
                   {t('lecturer.materials.shared.endSharing', 'End sharing')}
                 </button>
