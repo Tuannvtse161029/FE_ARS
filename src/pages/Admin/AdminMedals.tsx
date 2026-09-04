@@ -2,6 +2,22 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Medal as MedalIcon,
   Award,
+  Trophy,
+  Crown,
+  BookOpen,
+  Mic,
+  GraduationCap,
+  ClipboardCheck,
+  Sparkles,
+  ShieldCheck,
+  Star,
+  Gem,
+  Flame,
+  Zap,
+  Compass,
+  Target,
+  FileText,
+  Bookmark,
   Plus,
   Search,
   CheckCircle2,
@@ -15,7 +31,6 @@ import {
   Table,
   HelpCircle,
   X,
-  Sparkles,
   ExternalLink,
 } from 'lucide-react';
 import {
@@ -40,98 +55,181 @@ const ALL_ROLES: RoleTarget[] = [
   'Graduate Student',
 ];
 
-const PRESET_SAMPLE_IMAGES = [
-  {
-    labelEn: 'ORCID Scholar',
-    labelVi: 'Học giả ORCID',
-    url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=160&auto=format&fit=crop&q=80',
-  },
-  {
-    labelEn: 'Book Author',
-    labelVi: 'Tác giả sách',
-    url: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=160&auto=format&fit=crop&q=80',
-  },
-  {
-    labelEn: 'Seminar Host',
-    labelVi: 'Hội thảo / Mic',
-    url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=160&auto=format&fit=crop&q=80',
-  },
-  {
-    labelEn: 'Master Mentor',
-    labelVi: 'Cố vấn / Mentor',
-    url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=160&auto=format&fit=crop&q=80',
-  },
-  {
-    labelEn: 'Peer Review',
-    labelVi: 'Phản biện / Review',
-    url: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=160&auto=format&fit=crop&q=80',
-  },
-  {
-    labelEn: 'Flawless Progress',
-    labelVi: 'Tiến độ hoàn hảo',
-    url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=160&auto=format&fit=crop&q=80',
-  },
+export const LUCIDE_ICONS_MAP: Record<
+  string,
+  React.ComponentType<any>
+> = {
+  Medal: MedalIcon,
+  Award: Award,
+  Trophy: Trophy,
+  Crown: Crown,
+  BookOpen: BookOpen,
+  Mic: Mic,
+  GraduationCap: GraduationCap,
+  ClipboardCheck: ClipboardCheck,
+  Sparkles: Sparkles,
+  ShieldCheck: ShieldCheck,
+  Star: Star,
+  Gem: Gem,
+  Flame: Flame,
+  Zap: Zap,
+  Compass: Compass,
+  Target: Target,
+  FileText: FileText,
+  Bookmark: Bookmark,
+};
+
+export const LUCIDE_ICONS_LIST = [
+  { name: 'Medal', labelVi: 'Huy chương', labelEn: 'Medal' },
+  { name: 'Award', labelVi: 'Giải thưởng', labelEn: 'Award' },
+  { name: 'Trophy', labelVi: 'Cúp vinh danh', labelEn: 'Trophy' },
+  { name: 'Crown', labelVi: 'Vương miện', labelEn: 'Crown' },
+  { name: 'BookOpen', labelVi: 'Sách / Tác giả', labelEn: 'Book / Author' },
+  { name: 'Mic', labelVi: 'Micro / Hội thảo', labelEn: 'Mic / Seminar' },
+  { name: 'GraduationCap', labelVi: 'Mũ tốt nghiệp / Mentor', labelEn: 'Mentor' },
+  { name: 'ClipboardCheck', labelVi: 'Phản biện / Đánh giá', labelEn: 'Reviewer' },
+  { name: 'Sparkles', labelVi: 'Tiến độ hoàn hảo', labelEn: 'Flawless' },
+  { name: 'ShieldCheck', labelVi: 'Khiên bảo vệ / ORCID', labelEn: 'ORCID' },
+  { name: 'Star', labelVi: 'Ngôi sao học thuật', labelEn: 'Star' },
+  { name: 'Gem', labelVi: 'Kim cương', labelEn: 'Diamond' },
+  { name: 'Flame', labelVi: 'Năng suất cao', labelEn: 'Flame' },
+  { name: 'Zap', labelVi: 'Đột phá', labelEn: 'Breakthrough' },
+  { name: 'Compass', labelVi: 'Định hướng', labelEn: 'Compass' },
+  { name: 'Target', labelVi: 'Mục tiêu', labelEn: 'Target' },
+  { name: 'FileText', labelVi: 'Bài báo', labelEn: 'Paper' },
+  { name: 'Bookmark', labelVi: 'Dấu ấn', labelEn: 'Bookmark' },
 ];
 
-const TIER_GRADIENTS: Record<MedalTier, { bg: string; border: string; iconColor: string }> = {
-  Bronze: { bg: 'linear-gradient(135deg, #fef3c7, #fed7aa)', border: '#d97706', iconColor: '#b45309' },
-  Silver: { bg: 'linear-gradient(135deg, #f1f5f9, #cbd5e1)', border: '#94a3b8', iconColor: '#475569' },
-  Gold: { bg: 'linear-gradient(135deg, #fef9c3, #fde047)', border: '#eab308', iconColor: '#a16207' },
-  Platinum: { bg: 'linear-gradient(135deg, #e0f2fe, #7dd3fc)', border: '#38bdf8', iconColor: '#0284c7' },
+const TIER_METALLIC_STYLES: Record<
+  MedalTier,
+  { bg: string; border: string; iconColor: string; glow: string }
+> = {
+  Bronze: {
+    bg: 'linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)',
+    border: '#cd7f32',
+    iconColor: '#92400e',
+    glow: '0 0 10px rgba(205, 127, 50, 0.4)',
+  },
+  Silver: {
+    bg: 'linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%)',
+    border: '#94a3b8',
+    iconColor: '#334155',
+    glow: '0 0 10px rgba(148, 163, 184, 0.45)',
+  },
+  Gold: {
+    bg: 'linear-gradient(135deg, #fef9c3 0%, #fde047 100%)',
+    border: '#eab308',
+    iconColor: '#854d0e',
+    glow: '0 0 12px rgba(234, 179, 8, 0.5)',
+  },
+  Platinum: {
+    bg: 'linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 100%)',
+    border: '#38bdf8',
+    iconColor: '#0369a1',
+    glow: '0 0 14px rgba(56, 189, 248, 0.55)',
+  },
 };
 
 /**
- * Robust image component that prevents any infinite onError retry loop.
- * If image fails to load (or is blocked by CORB/ad-blocker), it cleanly renders a vector medal badge.
+ * Resolves the appropriate Lucide icon name from medal code / metric / imageUrl
  */
-const SafeMedalImage: React.FC<{
-  src?: string;
-  alt: string;
+export const resolveMedalIconName = (medal: {
+  code?: string;
+  imageUrl?: string;
+  criteriaMetric?: string;
+}): string => {
+  if (medal.imageUrl && medal.imageUrl.startsWith('lucide:')) {
+    const raw = medal.imageUrl.replace('lucide:', '').trim();
+    if (LUCIDE_ICONS_MAP[raw]) return raw;
+  }
+  const code = (medal.code || '').toUpperCase();
+  const metric = (medal.criteriaMetric || '').toLowerCase();
+
+  if (code.includes('ORCID') || metric.includes('orcid')) return 'ShieldCheck';
+  if (code.includes('PROLIFIC') || metric.includes('paper')) return 'BookOpen';
+  if (code.includes('HOST') || metric.includes('host') || metric.includes('seminar')) return 'Mic';
+  if (code.includes('MENTOR') || metric.includes('guided') || metric.includes('group')) return 'GraduationCap';
+  if (code.includes('REVIEW') || metric.includes('review')) return 'ClipboardCheck';
+  if (code.includes('PARTICIPANT') || metric.includes('attended')) return 'Award';
+  if (code.includes('FLAWLESS') || metric.includes('flawless')) return 'Sparkles';
+
+  return 'Medal';
+};
+
+/**
+ * Renders a medal badge artwork using lucide-react vector icons or safe image fallback.
+ * Guaranteed 0 CORB loops, 0 network errors.
+ */
+export const SafeMedalBadge: React.FC<{
+  imageUrl?: string;
+  code?: string;
+  criteriaMetric?: string;
   tier: MedalTier;
-  className?: string;
   size?: number;
-}> = ({ src, alt, tier, className, size }) => {
-  const [failed, setFailed] = useState(false);
+  className?: string;
+  alt?: string;
+}> = ({ imageUrl, code, criteriaMetric, tier, size = 52, className, alt }) => {
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
-    setFailed(false);
-  }, [src]);
+    setImgFailed(false);
+  }, [imageUrl]);
 
-  const style = TIER_GRADIENTS[tier] || TIER_GRADIENTS.Bronze;
+  const style = TIER_METALLIC_STYLES[tier] || TIER_METALLIC_STYLES.Bronze;
+  const iconName = resolveMedalIconName({ code, imageUrl, criteriaMetric });
+  const IconComponent = LUCIDE_ICONS_MAP[iconName] || MedalIcon;
 
-  if (!src || failed) {
+  const isCustomHttpImage =
+    imageUrl &&
+    !imageUrl.startsWith('lucide:') &&
+    (imageUrl.startsWith('http://') ||
+      imageUrl.startsWith('https://') ||
+      imageUrl.startsWith('data:') ||
+      imageUrl.startsWith('blob:'));
+
+  if (isCustomHttpImage && !imgFailed) {
     return (
-      <div
+      <img
+        src={imageUrl}
+        alt={alt || 'Medal artwork'}
         className={className}
+        loading="lazy"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: style.bg,
+          width: `${size}px`,
+          height: `${size}px`,
           borderRadius: '50%',
-          width: size ? `${size}px` : '100%',
-          height: size ? `${size}px` : '100%',
-          userSelect: 'none',
+          objectFit: 'cover',
+          border: `2px solid ${style.border}`,
+          boxShadow: style.glow,
         }}
-        title={alt}
-      >
-        <MedalIcon size={size ? size * 0.5 : 26} color={style.iconColor} />
-      </div>
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          setImgFailed(true);
+        }}
+      />
     );
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
+    <div
       className={className}
-      loading="lazy"
-      onError={(e) => {
-        // Stop infinite retry loops immediately
-        e.currentTarget.onerror = null;
-        setFailed(true);
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '50%',
+        background: style.bg,
+        border: `2px solid ${style.border}`,
+        boxShadow: style.glow,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        userSelect: 'none',
       }}
-    />
+      title={alt || iconName}
+    >
+      <IconComponent size={size * 0.52} color={style.iconColor} />
+    </div>
   );
 };
 
@@ -153,9 +251,9 @@ export const AdminMedals: React.FC = () => {
   >(null);
   const [targetMedal, setTargetMedal] = useState<Medal | null>(null);
 
-  // Quick image change state
-  const [quickImageUrl, setQuickImageUrl] = useState<string>('');
-  const [quickImageTab, setQuickImageTab] = useState<'upload' | 'url'>('upload');
+  // Quick icon/image change state
+  const [quickImageUrl, setQuickImageUrl] = useState<string>('lucide:Medal');
+  const [quickImageTab, setQuickImageTab] = useState<'lucide' | 'upload' | 'url'>('lucide');
 
   // Firebase upload hook
   const {
@@ -174,7 +272,7 @@ export const AdminMedals: React.FC = () => {
   const [formRoles, setFormRoles] = useState<RoleTarget[]>([]);
   const [formTier, setFormTier] = useState<MedalTier>('Bronze');
   const [formStageLevel, setFormStageLevel] = useState<number>(1);
-  const [formImageUrl, setFormImageUrl] = useState('');
+  const [formImageUrl, setFormImageUrl] = useState('lucide:Medal');
   const [formCriteriaMetric, setFormCriteriaMetric] = useState('');
   const [formCriteriaThreshold, setFormCriteriaThreshold] = useState<number>(1);
   const [formCriteriaUnit, setFormCriteriaUnit] = useState('lần');
@@ -224,15 +322,15 @@ export const AdminMedals: React.FC = () => {
     }
   };
 
-  // Load Medals
+  // Load Medals from backend
   const loadMedals = async () => {
     setIsLoading(true);
     try {
       const data = await medalService.getAll();
       setMedals(data);
-    } catch (err) {
-      console.error('Failed to load medals:', err);
-      showNotification(copy('Failed to load medals', 'Không thể tải danh sách huy hiệu'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || copy('Failed to load medals from backend', 'Không thể tải danh sách huy hiệu');
+      showNotification(msg, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -245,7 +343,6 @@ export const AdminMedals: React.FC = () => {
   // Filtered medals
   const filteredMedals = useMemo(() => {
     return medals.filter((medal) => {
-      // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchTitle =
@@ -261,7 +358,6 @@ export const AdminMedals: React.FC = () => {
         }
       }
 
-      // Role filter
       if (selectedRole !== 'ALL') {
         const hasRole =
           medal.roles.includes('All') ||
@@ -269,12 +365,10 @@ export const AdminMedals: React.FC = () => {
         if (!hasRole) return false;
       }
 
-      // Tier filter
       if (selectedTier !== 'ALL') {
         if (medal.tier !== selectedTier) return false;
       }
 
-      // Status filter
       if (selectedStatus === 'ACTIVE' && !medal.isActive) return false;
       if (selectedStatus === 'INACTIVE' && medal.isActive) return false;
 
@@ -293,15 +387,16 @@ export const AdminMedals: React.FC = () => {
     return { total, active, bronze, silver, gold, platinum };
   }, [medals]);
 
-  // Handle Quick Image Modal Open
+  // Handle Quick Image / Icon Modal Open
   const handleOpenQuickImage = (medal: Medal) => {
     setTargetMedal(medal);
-    setQuickImageUrl(medal.imageUrl || '');
+    setQuickImageUrl(medal.imageUrl || 'lucide:' + resolveMedalIconName(medal));
+    setQuickImageTab(medal.imageUrl && medal.imageUrl.startsWith('http') ? 'url' : 'lucide');
     resetUpload();
     setActiveModal('quickImage');
   };
 
-  // Handle Quick Image Save
+  // Handle Quick Image / Icon Save
   const handleSaveQuickImage = async () => {
     if (!targetMedal) return;
     try {
@@ -318,9 +413,9 @@ export const AdminMedals: React.FC = () => {
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
-    } catch (err) {
-      console.error(err);
-      showNotification(copy('Failed to update medal image', 'Lỗi khi cập nhật ảnh huy hiệu'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to update medal image', 'Lỗi khi cập nhật ảnh huy hiệu');
+      showNotification(msg, 'error');
     }
   };
 
@@ -336,8 +431,7 @@ export const AdminMedals: React.FC = () => {
         setQuickImageUrl(downloadUrl);
         showNotification(copy('Image uploaded to Firebase successfully!', 'Tải ảnh lên Firebase thành công!'));
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       showNotification(copy('Failed to upload image to Firebase', 'Không thể tải ảnh lên Firebase'), 'error');
     }
   };
@@ -352,7 +446,7 @@ export const AdminMedals: React.FC = () => {
     setFormRoles(['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student']);
     setFormTier('Bronze');
     setFormStageLevel(1);
-    setFormImageUrl('');
+    setFormImageUrl('lucide:Medal');
     setFormCriteriaMetric('');
     setFormCriteriaThreshold(1);
     setFormCriteriaUnit(copy('times', 'lần'));
@@ -371,7 +465,7 @@ export const AdminMedals: React.FC = () => {
     setFormRoles(medal.roles);
     setFormTier(medal.tier);
     setFormStageLevel(medal.stageLevel);
-    setFormImageUrl(medal.imageUrl);
+    setFormImageUrl(medal.imageUrl || 'lucide:' + resolveMedalIconName(medal));
     setFormCriteriaMetric(medal.criteriaMetric);
     setFormCriteriaThreshold(medal.criteriaThreshold);
     setFormCriteriaUnit(medal.criteriaUnit);
@@ -396,7 +490,7 @@ export const AdminMedals: React.FC = () => {
       roles: formRoles.length > 0 ? formRoles : ['All'],
       tier: formTier,
       stageLevel: Number(formStageLevel) || 1,
-      imageUrl: formImageUrl.trim(),
+      imageUrl: formImageUrl.trim() || 'lucide:Medal',
       criteriaMetric: formCriteriaMetric.trim() || 'default_metric',
       criteriaThreshold: Number(formCriteriaThreshold) || 1,
       criteriaUnit: formCriteriaUnit.trim() || copy('times', 'lần'),
@@ -406,18 +500,18 @@ export const AdminMedals: React.FC = () => {
     try {
       if (activeModal === 'create') {
         await medalService.create(payload);
-        showNotification(copy('Created new academic medal successfully!', 'Tạo huy hiệu mới thành công!'));
+        showNotification(copy('Created new academic medal successfully on backend!', 'Tạo huy hiệu mới thành công trên hệ thống!'));
       } else if (activeModal === 'edit' && targetMedal) {
         await medalService.update(targetMedal.id, payload);
         const name = locale === 'en' ? payload.title : payload.titleVi;
-        showNotification(copy(`Updated medal "${name}" successfully!`, `Đã cập nhật huy hiệu "${name}"!`));
+        showNotification(copy(`Updated medal "${name}" successfully!`, `Đã cập nhật huy hiệu "${name}" thành công!`));
       }
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
-    } catch (err) {
-      console.error(err);
-      showNotification(copy('Error saving medal information', 'Lỗi khi lưu thông tin huy hiệu'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Error saving medal information', 'Lỗi khi lưu thông tin huy hiệu');
+      showNotification(msg, 'error');
     }
   };
 
@@ -433,9 +527,9 @@ export const AdminMedals: React.FC = () => {
         )
       );
       loadMedals();
-    } catch (err) {
-      console.error(err);
-      showNotification(copy('Failed to change status', 'Lỗi khi thay đổi trạng thái'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to change status', 'Lỗi khi thay đổi trạng thái');
+      showNotification(msg, 'error');
     }
   };
 
@@ -449,9 +543,9 @@ export const AdminMedals: React.FC = () => {
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
-    } catch (err) {
-      console.error(err);
-      showNotification(copy('Error deleting medal', 'Lỗi khi xóa huy hiệu'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Error deleting medal', 'Lỗi khi xóa huy hiệu');
+      showNotification(msg, 'error');
     }
   };
 
@@ -461,15 +555,15 @@ export const AdminMedals: React.FC = () => {
       await medalService.resetToDefaults();
       showNotification(
         copy(
-          'Restored all 26 default academic medals successfully!',
-          'Đã khôi phục toàn bộ danh sách 26 huy hiệu mặc định!'
+          'Restored all 26 default academic medals successfully on backend!',
+          'Đã khôi phục toàn bộ danh sách 26 huy hiệu mặc định trên hệ thống!'
         )
       );
       setActiveModal(null);
       loadMedals();
-    } catch (err) {
-      console.error(err);
-      showNotification(copy('Failed to restore default medals', 'Lỗi khi khôi phục dữ liệu gốc'), 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to restore default medals', 'Lỗi khi khôi phục dữ liệu gốc');
+      showNotification(msg, 'error');
     }
   };
 
@@ -539,13 +633,6 @@ export const AdminMedals: React.FC = () => {
     );
   };
 
-  const getTierClass = (tier: MedalTier) => {
-    if (tier === 'Silver') return styles.tierSilver;
-    if (tier === 'Gold') return styles.tierGold;
-    if (tier === 'Platinum') return styles.tierPlatinum;
-    return styles.tierBronze;
-  };
-
   const getTierBarClass = (tier: MedalTier) => {
     if (tier === 'Silver') return styles.tierBarSilver;
     if (tier === 'Gold') return styles.tierBarGold;
@@ -589,8 +676,8 @@ export const AdminMedals: React.FC = () => {
       <PageHeader
         title={copy('Academic Medals & Badges Management', 'Quản lý Huy hiệu & Danh hiệu (Medals & Badges)')}
         description={copy(
-          'Academic honors system for Researchers, Lecturers, Reviewers & Graduate Students. Support customizing and updating badge artwork at any time.',
-          'Hệ thống vinh danh học thuật dành cho Researcher, Lecturer, Reviewer & Graduate Student. Hỗ trợ tùy biến và cập nhật ảnh huy hiệu bất kỳ lúc nào.'
+          'Academic honors system for Researchers, Lecturers, Reviewers & Graduate Students. Support customizing artwork with Lucide Icons or custom images at any time.',
+          'Hệ thống vinh danh học thuật dành cho Researcher, Lecturer, Reviewer & Graduate Student. Hỗ trợ tùy biến biểu tượng với thư viện Lucide Icons hoặc ảnh riêng bất kỳ lúc nào.'
         )}
         actions={
           <div className={styles.headerActions}>
@@ -753,7 +840,7 @@ export const AdminMedals: React.FC = () => {
       {isLoading ? (
         <div className={styles.emptyStateContainer}>
           <MedalIcon size={40} className="animate-spin text-blue-500" />
-          <p>{copy('Loading medals list...', 'Đang tải danh sách huy hiệu...')}</p>
+          <p>{copy('Loading medals list from backend...', 'Đang tải danh sách huy hiệu từ hệ thống...')}</p>
         </div>
       ) : filteredMedals.length === 0 ? (
         <EmptyState
@@ -807,23 +894,20 @@ export const AdminMedals: React.FC = () => {
 
                 <div className={styles.cardBody}>
                   <div className={styles.cardTopRow}>
-                    {/* Medal Image Avatar with hover quick-change overlay */}
+                    {/* Medal Avatar using Lucide-react or custom safe image */}
                     <div
-                      className={`${styles.cardImageWrapper} ${getTierClass(
-                        medal.tier
-                      )}`}
+                      style={{ cursor: 'pointer', position: 'relative' }}
                       onClick={() => handleOpenQuickImage(medal)}
-                      title={copy('Click to replace artwork for this badge', 'Bấm để thay đổi hình ảnh huy hiệu này')}
+                      title={copy('Click to change icon or image for this badge', 'Bấm để đổi biểu tượng hoặc ảnh của huy hiệu này')}
                     >
-                      <SafeMedalImage
-                        src={medal.imageUrl}
-                        alt={primaryTitle}
+                      <SafeMedalBadge
+                        imageUrl={medal.imageUrl}
+                        code={medal.code}
+                        criteriaMetric={medal.criteriaMetric}
                         tier={medal.tier}
-                        className={styles.cardImage}
+                        size={64}
+                        alt={primaryTitle}
                       />
-                      <div className={styles.quickOverlay}>
-                        <ImageIcon size={16} />
-                      </div>
                     </div>
 
                     <div className={styles.cardTitleArea}>
@@ -859,10 +943,10 @@ export const AdminMedals: React.FC = () => {
                     type="button"
                     className={`${styles.btnAction} ${styles.btnChangeImgDirect}`}
                     onClick={() => handleOpenQuickImage(medal)}
-                    title={copy('Replace medal image', 'Thay đổi ảnh đại diện của huy hiệu')}
+                    title={copy('Replace medal icon/artwork', 'Thay đổi biểu tượng/ảnh của huy hiệu')}
                   >
                     <ImageIcon size={14} />
-                    <span>{copy('Change Image', 'Đổi ảnh')}</span>
+                    <span>{copy('Change Icon', 'Đổi biểu tượng')}</span>
                   </button>
 
                   <div className={styles.cardActionsRight}>
@@ -928,25 +1012,21 @@ export const AdminMedals: React.FC = () => {
                     <tr key={medal.id}>
                       <td>
                         <div className={styles.medalImageCell}>
-                          <div
-                            className={`${styles.medalThumbWrapper} ${getTierClass(
-                              medal.tier
-                            )}`}
-                          >
-                            <SafeMedalImage
-                              src={medal.imageUrl}
-                              alt={primaryTitle}
-                              tier={medal.tier}
-                              className={styles.medalThumb}
-                            />
-                          </div>
+                          <SafeMedalBadge
+                            imageUrl={medal.imageUrl}
+                            code={medal.code}
+                            criteriaMetric={medal.criteriaMetric}
+                            tier={medal.tier}
+                            size={44}
+                            alt={primaryTitle}
+                          />
                           <button
                             type="button"
                             className={styles.changeImageQuickBtn}
                             onClick={() => handleOpenQuickImage(medal)}
-                            title={copy('Replace badge image', 'Thay đổi ảnh của huy hiệu này')}
+                            title={copy('Replace badge icon', 'Thay đổi biểu tượng của huy hiệu này')}
                           >
-                            {copy('Change Image', 'Đổi ảnh')}
+                            {copy('Change Icon', 'Đổi icon')}
                           </button>
                         </div>
                       </td>
@@ -1021,17 +1101,17 @@ export const AdminMedals: React.FC = () => {
         </div>
       )}
 
-      {/* QUICK CHANGE IMAGE MODAL */}
+      {/* QUICK CHANGE ICON / IMAGE MODAL */}
       {activeModal === 'quickImage' && targetMedal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modal} style={{ maxWidth: '540px' }}>
+          <div className={styles.modal} style={{ maxWidth: '580px' }}>
             <div className={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ImageIcon size={20} color="#2563eb" />
                 <h3 className={styles.modalTitle}>
                   {copy(
-                    `Update Badge Image: ${locale === 'en' ? targetMedal.title : targetMedal.titleVi}`,
-                    `Cập nhật ảnh Huy hiệu: ${targetMedal.titleVi}`
+                    `Update Badge Icon: ${locale === 'en' ? targetMedal.title : targetMedal.titleVi}`,
+                    `Cập nhật Biểu tượng Huy hiệu: ${targetMedal.titleVi}`
                   )}
                 </h3>
               </div>
@@ -1045,20 +1125,14 @@ export const AdminMedals: React.FC = () => {
             </div>
 
             <div className={styles.modalBody}>
+              {/* Preview with Tier Frame */}
               <div className={styles.imagePreviewHero}>
-                <div
-                  className={`${styles.imageHeroFrame} ${getTierClass(
-                    targetMedal.tier
-                  )}`}
-                >
-                  <SafeMedalImage
-                    src={quickImageUrl}
-                    alt="Preview"
-                    tier={targetMedal.tier}
-                    className={styles.imageHeroImg}
-                    size={100}
-                  />
-                </div>
+                <SafeMedalBadge
+                  imageUrl={quickImageUrl}
+                  tier={targetMedal.tier}
+                  size={92}
+                  alt="Preview"
+                />
                 <span
                   style={{
                     fontSize: '0.8125rem',
@@ -1067,14 +1141,25 @@ export const AdminMedals: React.FC = () => {
                   }}
                 >
                   {copy(
-                    `Preview Badge artwork (${targetMedal.tier})`,
-                    `Xem trước ảnh huy hiệu (${targetMedal.tier})`
+                    `Live Preview Badge (${targetMedal.tier} Tier)`,
+                    `Xem trước Huy hiệu (${targetMedal.tier})`
                   )}
                 </span>
               </div>
 
-              {/* Toggle upload vs URL */}
+              {/* Tabs: Lucide Icons (Default), Firebase Upload, URL */}
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className={`${styles.btnAction} ${
+                    quickImageTab === 'lucide' ? styles.btnActionPrimary : ''
+                  }`}
+                  onClick={() => setQuickImageTab('lucide')}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  <MedalIcon size={16} />
+                  <span>{copy('Lucide Icons Library', 'Biểu tượng Lucide')}</span>
+                </button>
                 <button
                   type="button"
                   className={`${styles.btnAction} ${
@@ -1084,7 +1169,7 @@ export const AdminMedals: React.FC = () => {
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   <UploadCloud size={16} />
-                  <span>{copy('Upload from device (Firebase)', 'Tải ảnh từ máy tính (Firebase)')}</span>
+                  <span>{copy('Upload Image', 'Tải file ảnh')}</span>
                 </button>
                 <button
                   type="button"
@@ -1095,11 +1180,48 @@ export const AdminMedals: React.FC = () => {
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   <ExternalLink size={16} />
-                  <span>{copy('Paste Image URL', 'Dán đường dẫn ảnh (URL)')}</span>
+                  <span>{copy('Image URL', 'Link ảnh')}</span>
                 </button>
               </div>
 
-              {quickImageTab === 'upload' ? (
+              {/* Tab 1: Lucide Icons Grid */}
+              {quickImageTab === 'lucide' && (
+                <div>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: '#64748b',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {copy('Select an icon from the lucide-react library:', 'Chọn biểu tượng chuẩn từ thư viện lucide-react:')}
+                  </span>
+                  <div className={styles.iconPickerGrid}>
+                    {LUCIDE_ICONS_LIST.map((item) => {
+                      const IconComp = LUCIDE_ICONS_MAP[item.name] || MedalIcon;
+                      const isSelected = quickImageUrl === `lucide:${item.name}`;
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          className={`${styles.iconPickerItem} ${
+                            isSelected ? styles.iconPickerItemActive : ''
+                          }`}
+                          onClick={() => setQuickImageUrl(`lucide:${item.name}`)}
+                        >
+                          <IconComp size={24} color={isSelected ? '#1d4ed8' : '#475569'} />
+                          <span>{locale === 'en' ? item.labelEn : item.labelVi}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Upload File */}
+              {quickImageTab === 'upload' && (
                 <div>
                   <input
                     type="file"
@@ -1118,7 +1240,7 @@ export const AdminMedals: React.FC = () => {
                     <p style={{ fontWeight: 600, color: '#1e293b' }}>
                       {isUploading
                         ? copy('Uploading to Firebase Storage...', 'Đang tải lên Firebase...')
-                        : copy('Click here to select a new image file', 'Bấm vào đây để chọn file ảnh mới')}
+                        : copy('Click here to select a custom image file', 'Bấm vào đây để chọn file ảnh riêng')}
                     </p>
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                       {copy('Supports: PNG, JPG, WEBP, SVG (max 10MB)', 'Hỗ trợ: PNG, JPG, WEBP, SVG (tối đa 10MB)')}
@@ -1138,7 +1260,10 @@ export const AdminMedals: React.FC = () => {
                     </p>
                   )}
                 </div>
-              ) : (
+              )}
+
+              {/* Tab 3: Direct URL */}
+              {quickImageTab === 'url' && (
                 <div className={styles.formGroup}>
                   <label htmlFor="quickImageUrlInput" className={styles.formLabel}>
                     {copy('Online Image URL:', 'Đường dẫn ảnh trực tuyến (Image URL):')}
@@ -1147,41 +1272,13 @@ export const AdminMedals: React.FC = () => {
                     type="url"
                     id="quickImageUrlInput"
                     name="quickImageUrlInput"
-                    placeholder="https://example.com/medal-badge.png"
-                    value={quickImageUrl}
+                    placeholder="https://example.com/badge.png"
+                    value={quickImageUrl.startsWith('lucide:') ? '' : quickImageUrl}
                     onChange={(e) => setQuickImageUrl(e.target.value)}
                     className={styles.formInput}
                   />
                 </div>
               )}
-
-              {/* Sample Presets */}
-              <div style={{ marginTop: '8px' }}>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#64748b',
-                    display: 'block',
-                    marginBottom: '6px',
-                  }}
-                >
-                  {copy('Or choose a suggested preset icon:', 'Hoặc chọn mẫu ảnh gợi ý nhanh:')}
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {PRESET_SAMPLE_IMAGES.map((preset) => (
-                    <button
-                      key={preset.labelEn}
-                      type="button"
-                      className={styles.btnAction}
-                      style={{ fontSize: '0.75rem' }}
-                      onClick={() => setQuickImageUrl(preset.url)}
-                    >
-                      {copy(preset.labelEn, preset.labelVi)}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <div className={styles.modalFooter}>
@@ -1197,7 +1294,7 @@ export const AdminMedals: React.FC = () => {
                 onClick={handleSaveQuickImage}
                 disabled={!quickImageUrl.trim() || isUploading}
               >
-                {copy('Save New Image', 'Lưu hình ảnh mới')}
+                {copy('Save Changes', 'Lưu biểu tượng mới')}
               </Button>
             </div>
           </div>
@@ -1228,31 +1325,24 @@ export const AdminMedals: React.FC = () => {
 
             <form onSubmit={handleSaveMedalForm}>
               <div className={styles.modalBody}>
-                {/* Image Picker Section with Instant Preview */}
+                {/* Artwork selection with Live Badge Preview */}
                 <div className={styles.imageSectionCard}>
-                  <div
-                    className={`${styles.imagePreviewLargeWrapper} ${getTierClass(
-                      formTier
-                    )}`}
-                  >
-                    <SafeMedalImage
-                      src={formImageUrl}
-                      alt="Preview"
-                      tier={formTier}
-                      className={styles.imagePreviewLarge}
-                      size={74}
-                    />
-                  </div>
+                  <SafeMedalBadge
+                    imageUrl={formImageUrl}
+                    tier={formTier}
+                    size={72}
+                    alt="Preview"
+                  />
                   <div className={styles.imageUploadControls}>
                     <label htmlFor="formImageUrlInput" className={styles.formLabel}>
-                      {copy('Badge artwork (URL or upload file):', 'Hình ảnh huy hiệu (URL hoặc tải file lên):')}
+                      {copy('Badge Artwork (Lucide Icon code or image URL):', 'Biểu tượng / Hình ảnh (Mã Lucide Icon hoặc URL):')}
                     </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
-                        type="url"
+                        type="text"
                         id="formImageUrlInput"
                         name="formImageUrlInput"
-                        placeholder="https://... URL"
+                        placeholder="vd: lucide:BookOpen hoặc https://..."
                         value={formImageUrl}
                         onChange={(e) => setFormImageUrl(e.target.value)}
                         className={styles.formInput}
@@ -1276,18 +1366,38 @@ export const AdminMedals: React.FC = () => {
                         type="button"
                         className={styles.btnAction}
                         onClick={() => modalFileInputRef.current?.click()}
-                        title={copy('Upload image directly to Firebase', 'Tải ảnh trực tiếp lên Firebase')}
+                        title={copy('Upload image to Firebase', 'Tải ảnh lên Firebase')}
                       >
                         <UploadCloud size={16} />
                         <span>{isUploading ? copy('Uploading...', 'Đang tải...') : copy('Upload', 'Upload')}</span>
                       </button>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {copy(
-                        'Badge displays as a circular frame with tier glow.',
-                        'Ảnh sẽ hiển thị dạng khung tròn với viền ánh kim theo cấp bậc.'
-                      )}
-                    </span>
+
+                    {/* Quick select icons row */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                      {['Medal', 'Award', 'Trophy', 'Crown', 'BookOpen', 'Mic', 'GraduationCap', 'ClipboardCheck', 'Sparkles', 'ShieldCheck'].map((ic) => {
+                        const IconComponent = LUCIDE_ICONS_MAP[ic] || MedalIcon;
+                        const isChosen = formImageUrl === `lucide:${ic}`;
+                        return (
+                          <button
+                            key={ic}
+                            type="button"
+                            onClick={() => setFormImageUrl(`lucide:${ic}`)}
+                            className={styles.btnAction}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.75rem',
+                              background: isChosen ? '#dbeafe' : '#ffffff',
+                              borderColor: isChosen ? '#2563eb' : '#cbd5e1',
+                              color: isChosen ? '#1d4ed8' : '#334155',
+                            }}
+                          >
+                            <IconComponent size={14} />
+                            <span>{ic}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -1579,8 +1689,8 @@ export const AdminMedals: React.FC = () => {
               </p>
               <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
                 {copy(
-                  'This action will remove the medal from the system catalog.',
-                  'Hành động này sẽ xóa huy hiệu khỏi danh mục của hệ thống.'
+                  'This action will permanently delete the medal from the backend database.',
+                  'Hành động này sẽ xóa vĩnh viễn huy hiệu khỏi cơ sở dữ liệu hệ thống.'
                 )}
               </p>
             </div>
@@ -1620,8 +1730,8 @@ export const AdminMedals: React.FC = () => {
             <div className={styles.modalBody}>
               <p style={{ fontSize: '0.9375rem', color: '#334155' }}>
                 {copy(
-                  'Restore all 26 standard academic medals for 4 roles (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress).',
-                  'Khôi phục lại toàn bộ 26 huy hiệu chuẩn cho 4 vai trò (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress).'
+                  'Restore all 26 standard academic medals for 4 roles (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress) directly on backend database.',
+                  'Khôi phục lại toàn bộ 26 huy hiệu chuẩn cho 4 vai trò (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress) trực tiếp trên cơ sở dữ liệu.'
                 )}
               </p>
               <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
