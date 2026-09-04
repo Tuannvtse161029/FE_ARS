@@ -44,6 +44,7 @@ import {
   Menu as MenuIcon,
   Search,
   Library,
+  Medal as MedalIcon,
 } from 'lucide-react';
 import {
   ChevronLeftIcon,
@@ -581,7 +582,7 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: copy('Reports', 'Báo cáo vi phạm'), icon: <ReportsIcon size={20} /> },
           { to: ROUTES.ADMIN_PACKAGES, label: copy('Annual Fees', 'Phí thường niên'), icon: <PackagesIcon size={20} /> },
-
+          { to: ROUTES.ADMIN_MEDALS, label: copy('Medals & Badges', 'Huy hiệu & Danh hiệu'), icon: <MedalIcon size={20} /> },
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký hệ thống'), icon: <AuditLogsIcon size={20} /> },
         ];
       case 'Reviewer':
