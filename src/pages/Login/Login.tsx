@@ -310,7 +310,7 @@ const Login = () => {
             control={control}
             defaultValue={false}
             render={({ field }) => (
-              <label className={styles.toggleWrapper}>
+              <label className={styles.toggleWrapper} htmlFor="remember-me">
                 <input
                   type="checkbox"
                   name="rememberMe"
@@ -322,7 +322,7 @@ const Login = () => {
                   id="remember-me"
                 />
                 <span className={styles.toggleSlider} aria-hidden="true" />
-                <span className={styles.toggleLabel} htmlFor="remember-me">
+                <span className={styles.toggleLabel}>
                   {t('auth.rememberMe', 'Remember me')}
                 </span>
               </label>
