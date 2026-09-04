@@ -15,6 +15,7 @@ import { extractServerMessage } from '../../utils/validationRules';
 import authService from '../../services/auth.service';
 import styles from './ForgotPassword.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
+import { ArrowLeft } from 'lucide-react';
 
 /**
  * Render a user-facing error for the `forgot-password` flow when the BE
@@ -60,7 +61,7 @@ const ForgotPassword = () => {
     } catch (err: unknown) {
       const msg = forgotPasswordError(
         err,
-        t('reset.errorSend', 'Unable to send reset code. Please try again.')
+        t('reset.errorSend', 'Unable to send reset code. Please try again.'),
       );
       setError(msg);
     } finally {
@@ -71,23 +72,45 @@ const ForgotPassword = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logoHeader}>
+      {/* ── Compact Logo Header ───────────────────────────── */}
+      <header className={styles.logoHeader}>
         <div className={styles.logoWrapper}>
-          <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
+          <img src={ARSLogo} alt="ARS" className={styles.logoImage} />
         </div>
-        <span className={styles.brandText}>{t('app.brandName', 'ARS - Academic Research Sharing')}</span>
-      </div>
+        <span className={styles.brandText}>
+          {t('app.brandName', 'Academic Research Sharing')}
+        </span>
+      </header>
 
+      {/* ── Step Indicator ─────────────────────────────── */}
       <StepIndicator currentStep={1} />
 
+      {/* ── Constellation Node Cluster — Decorative ───── */}
+      <div className={styles.constellationCluster} aria-hidden="true">
+        <div className={styles.constellationNode} />
+        <div className={styles.constellationLine} />
+        <div className={styles.constellationNode} />
+        <div className={styles.constellationLine + ' ' + styles['constellationLine--up']} />
+        <div className={`${styles.constellationNode} ${styles['constellationNode--dot']}`} />
+        <div className={styles.constellationLine + ' ' + styles['constellationLine--up']} />
+        <div className={styles.constellationNode} />
+      </div>
+
+      {/* ── Header ────────────────────────────────────── */}
       <div className={styles.header}>
-        <h1 className={styles.title}>{t('reset.title', 'Forgot your password?')}</h1>
+        <h1 className={styles.title}>
+          {t('reset.title', 'Forgot your password?')}
+        </h1>
         <p className={styles.subtitle}>
-          {t('reset.subtitle', 'Enter the email associated with your account and we\'ll send you a verification code to reset your password.')}
+          {t(
+            'reset.subtitle',
+            "Enter the email associated with your account and we'll send you a verification code to reset your password.",
+          )}
         </p>
       </div>
 
-      <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
+      {/* ── Form ────────────────────────────────────── */}
+      <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
         {error && (
           <div className={styles.formError} role="alert">
             {error}
@@ -101,8 +124,9 @@ const ForgotPassword = () => {
             <Input
               {...field}
               type="email"
-              label={t('auth.email', 'Email')}
-              placeholder={t('reset.stepEmail', 'Enter your email')}
+              label={t('auth.email', 'Email address')}
+              placeholder=" "
+              floatLabel
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading}
@@ -113,7 +137,8 @@ const ForgotPassword = () => {
 
         {submittedEmail && (
           <p className={styles.helperText}>
-            {t('reset.sentCode', 'We sent a code to')} <strong>{submittedEmail}</strong>.
+            {t('reset.sentCode', 'We sent a code to')}{' '}
+            <strong>{submittedEmail}</strong>.
           </p>
         )}
 
@@ -130,6 +155,7 @@ const ForgotPassword = () => {
 
         <div className={styles.footer}>
           <Link to={ROUTES.LOGIN} className={styles.backLink}>
+            <ArrowLeft size={14} aria-hidden="true" />
             {t('reset.backToLogin', 'Back to sign in')}
           </Link>
         </div>

@@ -1,0 +1,169 @@
+/**
+ * Google MeetCapacityMeter — visualizes the 100-participant cap on a
+ * free Google Meet account.
+ *
+ * Three states: safe (<80%), warning (80–99%), full (>=100%).
+ */
+
+@keyframes fillGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+}
+
+.meterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.meterHeaderLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-soft);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.meterHeaderValue {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-medium);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.meterHeaderValue strong {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.meterHeaderSep {
+  color: var(--ars-ink-muted);
+}
+
+.meterBar {
+  width: 100%;
+  height: 6px;
+  background: var(--ars-paper-inset);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meterFill {
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: fillGrow 0.6s var(--motion-ease-out, ease-out);
+  transition: background-color var(--transition-fast);
+}
+
+.state_safe .meterFill {
+  background: var(--ars-success);
+}
+
+.state_warning .meterFill {
+  background: var(--ars-warning);
+}
+
+.state_full .meterFill {
+  background: var(--ars-error);
+}
+
+.meterFooter {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--ars-ink-soft);
+}
+
+.meterFooter svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.meterFooterAlert {
+  color: var(--ars-error);
+  font-weight: var(--font-weight-semibold);
+}
+
+.meterFooterWarn {
+  color: var(--ars-warning);
+  font-weight: var(--font-weight-semibold);
+}
+
+.meterFooterOk {
+  color: var(--ars-ink-soft);
+}
+
+/* ── Compact (inline) variant ──────────────────────────────────── */
+
+.compactMeter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px var(--space-2);
+  border-radius: 999px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-soft);
+  border: 1px solid var(--ars-paper-rule);
+}
+
+.compactMeterValue {
+  letter-spacing: 0.02em;
+}
+
+.state_safe.compactMeter {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: var(--ars-success);
+}
+
+.state_warning.compactMeter {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border-color: var(--ars-warning);
+}
+
+.state_full.compactMeter {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: var(--ars-error);
+}
+
+.compactMeterBadge {
+  margin-left: 2px;
+  font-family: var(--font-family-ui);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 999px;
+}

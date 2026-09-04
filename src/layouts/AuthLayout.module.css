@@ -129,21 +129,21 @@
 }
 
 /* ── Right Panel — Form Surface ────────────────────────────── */
-/* Deeper warm parchment than the canvas so the form sits on its
-   own paper-card surface — visible without breaking the
-   warm-paper direction. See --ars-paper-card in ars-tokens.css. */
+/* Warm parchment card surface — slightly deeper than the canvas so
+   the form panel reads as its own editorial paper surface without
+   breaking the warm-paper direction. See --ars-paper-card in ars-tokens. */
 .rightPanel {
   flex: 1;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: var(--space-8) var(--space-6);
-  background-color: var(--surface-base);
+  background-color: var(--ars-paper-card);
   background-image: radial-gradient(
-    85% 56% at 100% 0%,
-    color-mix(in srgb, var(--accent-primary) 30%, transparent) 0%,
-    color-mix(in srgb, var(--accent-primary) 10%, transparent) 48%,
-    transparent 78%
+    100% 60% at 100% 0%,
+    color-mix(in srgb, var(--accent-primary) 40%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 18%, transparent) 45%,
+    transparent 80%
   );
   color: var(--ink-on-paper);
   --ink-primary: var(--ink-on-paper);
@@ -158,16 +158,17 @@
   overflow-y: auto;
   max-height: 100vh;
   box-sizing: border-box;
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--accent-primary) 65%, transparent);
 }
 
-/* Thin constellation accent on panel edge */
+/* Amber accent rule — left panel edge */
 .rightPanel::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   bottom: 0;
-  width: 1px;
+  width: 2px;
   background: var(--accent-primary);
 }
 
@@ -181,6 +182,13 @@
      air rather than crashing into the panel edge. */
   padding: var(--space-8) 0 var(--space-8);
   box-sizing: border-box;
+  animation: authFadeIn 400ms ease-out both;
+  animation-delay: 80ms;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Tablet ──────────────────────────────────────────────── */

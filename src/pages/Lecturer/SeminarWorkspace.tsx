@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -15,7 +15,6 @@ import {
   Mail,
   AlertTriangle,
   Lock,
-  Inbox as InboxIcon,
   Users,
 } from 'lucide-react';
 import api from '../../services/axios';
@@ -30,6 +29,7 @@ import {
 } from '../../utils/datetime';
 import {
   deriveEffectiveStatus,
+  GOOGLE_MEET_FREE_PARTICIPANT_CAP,
   isValidMeetLink,
   ownsSeminar,
   seminarService,
@@ -39,11 +39,13 @@ import {
   useSeminars,
   useCreateSeminar,
   useSendReminder,
-  useSeminarParticipants,
   useSeminarRoleContext,
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
+import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
+import { SeminarFeedbackPanel } from '../../components/seminar/SeminarFeedbackPanel';
+import { GoogleMeetCapacityMeter } from '../../components/seminar/GoogleMeetCapacityMeter';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -150,13 +152,15 @@ export const SeminarWorkspace = () => {
   const { createSeminar, isCreating: isCreatingSeminar } =
     useCreateSeminar(handleCreateSuccess, refetch);
 
-  const { sendReminder: doSendReminder, isSending: isSendingReminder } =
-    useSendReminder(undefined, refetch);
+  const { sendReminder: doSendReminder } = useSendReminder(
+    undefined,
+    refetch,
+  );
 
-  const reminderInFlightRef = useRef(false);
-
-  const { participants: allParticipants, isLoading: isLoadingParticipants } =
-    useSeminarParticipants(selectedSeminarForFeedback?.seminarId);
+  // Note: participant list is now fetched inside `SeminarFeedbackPanel`
+  // when the owner opens the feedback view. We no longer need to preload it
+  // here.
+  void doSendReminder;
 
   // ── Tab filter + counts ───────────────────────────────────────
   const seminarCounts = useMemo(
@@ -506,18 +510,10 @@ export const SeminarWorkspace = () => {
     setShowFeedbackModal(true);
   };
 
-  const handleRemindPending = async (seminarId: number) => {
-    if (reminderInFlightRef.current) return;
-    reminderInFlightRef.current = true;
-    try {
-      await doSendReminder(seminarId);
-      announce('Reminder sent successfully.');
-    } catch {
-      announce('Failed to send reminder. Please try again.', 'error');
-    } finally {
-      reminderInFlightRef.current = false;
-    }
-  };
+  // Legacy reminder entrypoint kept on the page instance so callers can still
+  // trigger it via any future "Remind Pending" action. The new
+  // SeminarFeedbackPanel owns its own reminder flow for completed seminars.
+  void doSendReminder;
 
   const handleOpenAiSummary = useCallback((sem: SeminarCard) => {
     setSelectedSeminarForAi(sem);
@@ -763,9 +759,21 @@ export const SeminarWorkspace = () => {
                       {sem.content || 'No description provided.'}
                     </p>
 
-                    {sem.maxParticipants != null && !isCompleted && (
-                      <div className={styles.capacityRow}>
-                        Up to {sem.maxParticipants} participants
+                    {isValidMeetLink(sem.onlineLink) && !isCompleted && (
+                      <div className={styles.capacityWrapper}>
+                        <GoogleMeetCapacityMeter
+                          current={sem.participantCount || 0}
+                          cap={
+                            sem.maxParticipants &&
+                            sem.maxParticipants > 0
+                              ? Math.min(
+                                  sem.maxParticipants,
+                                  GOOGLE_MEET_FREE_PARTICIPANT_CAP,
+                                )
+                              : GOOGLE_MEET_FREE_PARTICIPANT_CAP
+                          }
+                          compact
+                        />
                       </div>
                     )}
 
@@ -1338,233 +1346,34 @@ export const SeminarWorkspace = () => {
         </div>
       )}
 
-      {/* FEEDBACK & GRADING MODAL */}
+      {/* OWNER FEEDBACK MODAL — pop-up, focus-trapped, scroll-locked */}
       {showFeedbackModal && selectedSeminarForFeedback && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={`${styles.modalCard} ${styles.modalCardLarge}`}>
-            <div className={styles.modalHeader}>
-              <div className={styles.modalTitleBlock}>
-                <span className={styles.modalIconCircle}>
-                  <ClipboardList size={18} aria-hidden />
-                </span>
-                <div>
-                  <h3 className={styles.modalTitle}>
-                    Feedback &amp; Grading Review
-                  </h3>
-                  <span className={styles.modalSubtitle}>
-                    {selectedSeminarForFeedback.title}
-                    {selectedSeminarForFeedback.startTime
-                      ? ` · ${formatDisplayDate(selectedSeminarForFeedback.startTime, locale)}`
-                      : ''}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                onClick={() => setShowFeedbackModal(false)}
-                aria-label="Close"
-              >
-                <X size={18} aria-hidden />
-              </button>
-            </div>
-
-            <div className={styles.modalBody}>
-              <div className={styles.statsGrid}>
-                <div className={styles.statCell}>
-                  <span className={styles.statLabel}>Total Invited</span>
-                  <span className={styles.statValue}>
-                    {allParticipants.length}
-                  </span>
-                </div>
-                <div className={styles.statCell}>
-                  <span className={styles.statLabel}>Submitted</span>
-                  <span className={styles.statValue}>
-                    {
-                      allParticipants.filter(
-                        (p) =>
-                          p.invitationStatus?.toLowerCase() === 'submitted',
-                      ).length
-                    }
-                  </span>
-                </div>
-                <div className={styles.statCell}>
-                  <span className={styles.statLabel}>Pending</span>
-                  <span className={styles.statValue}>
-                    {
-                      allParticipants.filter(
-                        (p) =>
-                          p.invitationStatus?.toLowerCase() !== 'submitted',
-                      ).length
-                    }
-                  </span>
-                </div>
-                <div className={styles.statCell}>
-                  <span className={styles.statLabel}>Avg. Score</span>
-                  <span className={styles.statValue}>—</span>
-                </div>
-                <div className={styles.statWide}>
-                  <div className={styles.statWideHeader}>
-                    <span className={styles.statLabel}>Completion</span>
-                    <span className={styles.statPercent}>
-                      {allParticipants.length > 0
-                        ? `${Math.round(
-                            (allParticipants.filter(
-                              (p) =>
-                                p.invitationStatus?.toLowerCase() ===
-                                'submitted',
-                            ).length /
-                              allParticipants.length) *
-                              100,
-                          )}%`
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className={styles.progressBarBg}>
-                    <div
-                      className={styles.progressBarFill}
-                      style={{
-                        width:
-                          allParticipants.length > 0
-                            ? `${
-                                (allParticipants.filter(
-                                  (p) =>
-                                    p.invitationStatus?.toLowerCase() ===
-                                    'submitted',
-                                ).length /
-                                  allParticipants.length) *
-                                100
-                              }%`
-                            : '0%',
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.participantsWrap}>
-                {isLoadingParticipants ? (
-                  <div className={styles.participantsLoading}>
-                    <SkeletonRow count={3} />
-                  </div>
-                ) : allParticipants.length === 0 ? (
-                  <EmptyState
-                    icon={<InboxIcon size={18} aria-hidden />}
-                    title="No participants invited yet"
-                    description="Invite guests from the Create Seminar flow."
-                    compact
-                  />
-                ) : (
-                  <table className={styles.participantsTable}>
-                    <thead>
-                      <tr>
-                        <th>Student</th>
-                        <th>Status</th>
-                        <th>Evaluation</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allParticipants.map((p) => (
-                        <tr key={p.seminarParticipantId ?? p.userId}>
-                          <td>
-                            <div className={styles.participantCell}>
-                              <span className={styles.participantAvatar}>
-                                {(p.userFullName ?? p.userEmail ?? '??')
-                                  .slice(0, 2)
-                                  .toUpperCase()}
-                              </span>
-                              <div>
-                                <span className={styles.participantName}>
-                                  {p.userFullName ?? p.userEmail ?? 'Unknown'}
-                                </span>
-                                {p.userEmail && (
-                                  <span className={styles.participantEmail}>
-                                    {p.userEmail}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            {p.invitationStatus?.toLowerCase() ===
-                            'submitted' ? (
-                              <span className={styles.metaBadge}>
-                                <Check
-                                  size={12}
-                                  strokeWidth={3}
-                                  aria-hidden
-                                />
-                                Submitted
-                              </span>
-                            ) : (
-                              <span
-                                className={`${styles.metaBadge} ${styles.pendingPill}`}
-                              >
-                                <Clock size={12} aria-hidden /> Pending
-                              </span>
-                            )}
-                          </td>
-                          <td className={styles.evaluationCell}>
-                            {p.participantEvaluation ?? '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              {canModify &&
-                ownsSeminar(
-                  selectedSeminarForFeedback,
-                  currentUserId,
-                  currentRole,
-                ) && (
-                  <Button
-                    variant="outline"
-                    size="md"
-                    leftIcon={
-                      isSendingReminder ? (
-                        <Loader
-                          size={14}
-                          className={styles.spinning}
-                          aria-hidden
-                        />
-                      ) : (
-                        <Mail size={14} aria-hidden />
-                      )
-                    }
-                    onClick={() =>
-                      void handleRemindPending(
-                        selectedSeminarForFeedback.seminarId,
-                      )
-                    }
-                    disabled={
-                      isSendingReminder ||
-                      allParticipants.filter(
-                        (p) =>
-                          p.invitationStatus?.toLowerCase() !== 'submitted',
-                      ).length === 0
-                    }
-                  >
-                    {isSendingReminder
-                      ? 'Sending…'
-                      : `Remind Pending (${allParticipants.length})`}
-                  </Button>
-                )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setShowFeedbackModal(false)}
-                className={styles.actionBtnLecturer}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
+        <SeminarFeedbackModalShell
+          seminarTitle={selectedSeminarForFeedback.title}
+          startTime={selectedSeminarForFeedback.startTime}
+          endTime={selectedSeminarForFeedback.endTime}
+          onClose={() => {
+            setShowFeedbackModal(false);
+            setSelectedSeminarForFeedback(null);
+          }}
+        >
+          <SeminarFeedbackPanel
+            seminarId={selectedSeminarForFeedback.seminarId}
+            seminarTitle={selectedSeminarForFeedback.title}
+            initialAiSummaryJson={
+              typeof selectedSeminarForFeedback.aiSummary === 'string'
+                ? selectedSeminarForFeedback.aiSummary
+                : null
+            }
+            initialAiGeneratedAt={
+              (selectedSeminarForFeedback as { aiFeedbackGeneratedAt?: string | null })
+                .aiFeedbackGeneratedAt ?? null
+            }
+            onRefreshSeminar={() => {
+              void refetch();
+            }}
+          />
+        </SeminarFeedbackModalShell>
       )}
 
       {/* AI SUMMARY MODAL */}
@@ -1581,14 +1390,13 @@ export const SeminarWorkspace = () => {
         />
       )}
 
-      {/* ATTENDEE FEEDBACK MODAL */}
+      {/* ATTENDEE FEEDBACK MODAL — participant submits structured feedback */}
       {showAttendeeFeedbackModal && selectedSeminarForAttendeeFeedback && (
         <SeminarFeedbackModal
           isOpen={showAttendeeFeedbackModal}
           onClose={() => setShowAttendeeFeedbackModal(false)}
           seminarId={selectedSeminarForAttendeeFeedback.seminarId}
           seminarTitle={selectedSeminarForAttendeeFeedback.title}
-          currentUserId={currentUserId}
           onSuccess={() => {
             void refetch();
           }}

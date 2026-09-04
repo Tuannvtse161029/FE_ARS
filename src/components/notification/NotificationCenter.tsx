@@ -4,9 +4,11 @@ import type { NotificationItem } from '../../types/domain';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
+import type { Locale } from '../../i18n/translations';
 import {
   inferNotificationKind,
   resolveNotificationRoute,
+  type NotificationKind,
 } from '../../utils/notificationRouteMap';
 import { formatRelativeTime } from '../../utils/formatDate';
 import styles from './NotificationCenter.module.css';
@@ -26,7 +28,7 @@ interface NotificationCenterProps {
 // `useNotifications`. The component is intentionally header-local — it
 // owns no global state, no localStorage, and no fabricated rows.
 export function NotificationCenter({ userId, onNavigate }: NotificationCenterProps): JSX.Element {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
   const isGuest = user?.role === 'Guest' || !user?.isActive;
   const resolvedUserId = isGuest ? null : (typeof userId === 'number' ? userId : user?.userId ?? null);
@@ -241,7 +243,9 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
                             )}
                             {titleForKind(kind, t)}
                           </span>
-                          <span className={styles.itemMessage}>{n.message}</span>
+                          <span className={styles.itemMessage}>
+                            {renderNotificationMessage(n, locale, t)}
+                          </span>
                           {n.createdAt && (
                             <span className={styles.itemTime}>
                               {formatRelativeTime(n.createdAt)}
@@ -370,3 +374,92 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
 }
 
 export default NotificationCenter;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Per-kind → translation key mapping.
+//
+// The BE only ships Vietnamese payloads today, so when the UI is in
+// `vi` we render the BE message verbatim (it already carries the
+// authoritative translation). When the UI is in `en`, we strip the
+// leading `[Tag]` prefix and rebuild the message using one of these
+// keys. Adding a new kind requires only adding one entry here and the
+// matching dictionary string.
+const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
+  'review-request-accepted': 'notif.body.reviewRequestAccepted',
+  'review-request-rejected': 'notif.body.reviewRequestRejected',
+  'review-request-started': 'notif.body.reviewRequestStarted',
+  'review-request-completed': 'notif.body.reviewRequestCompleted',
+  'paper-status-changed': 'notif.body.paperStatusChanged',
+  'paper-needs-revision': 'notif.body.paperNeedsRevision',
+  'review-result-available': 'notif.body.reviewResultAvailable',
+  'membership-result': 'notif.body.membershipResult',
+  'new-review-request': 'notif.body.newReviewRequest',
+  'review-request-cancelled': 'notif.body.reviewRequestCancelled',
+  'review-deadline-reminder': 'notif.body.reviewDeadlineReminder',
+  'student-report-submitted': 'notif.body.studentReportSubmitted',
+  'student-report-resubmitted': 'notif.body.studentReportResubmitted',
+  'student-topic-requested': 'notif.body.studentTopicRequested',
+  'seminar-participant-response': 'notif.body.seminarParticipantResponse',
+  'seminar-feedback-available': 'notif.body.seminarFeedbackAvailable',
+  'group-membership-response': 'notif.body.groupMembershipResponse',
+  'seminar-invitation': 'notif.body.seminarInvitation',
+  'seminar-schedule-update': 'notif.body.seminarScheduleUpdate',
+  'added-to-research-group': 'notif.body.addedToResearchGroup',
+  'topic-assigned': 'notif.body.topicAssigned',
+  'group-invitation': 'notif.body.groupInvitation',
+  'milestone-opened': 'notif.body.milestoneOpened',
+  'learning-material-available': 'notif.body.learningMaterialAvailable',
+  'report-evaluated': 'notif.body.reportEvaluated',
+  'report-rejected': 'notif.body.reportRejected',
+  'role-request-submitted': 'notif.body.roleRequestSubmitted',
+  'violation-report-submitted': 'notif.body.violationReportSubmitted',
+  'account-management-event': 'notif.body.accountManagementEvent',
+  'role-request-accepted': 'notif.body.roleRequestAccepted',
+  'role-request-rejected': 'notif.body.roleRequestRejected',
+  'account-status-changed': 'notif.body.accountStatusChanged',
+  'account-platform-update': 'notif.body.accountPlatformUpdate',
+  'follower-new': 'notif.body.followerNew',
+  'system-update': 'notif.body.systemUpdate',
+  'forum-reply': 'notif.body.forumReply',
+};
+
+// Strip the BE-side `[Tag]` prefix from a notification message so we can
+// use the dynamic suffix (e.g., "Report #123 by Student A") as a
+// variable inside our i18n template. Returns the original string (trimmed)
+// when no `[Tag]` prefix is present — natural-language BE messages and
+// unknown kinds are still surfaced to the user unchanged.
+const stripTagPrefix = (raw: string): string => (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '');
+
+// Render a notification message in the active locale.
+//
+// Rules:
+//   * When the locale is `vi` we trust the BE payload — it is already
+//     Vietnamese and is the authoritative source. We pass the message
+//     through unchanged so any dynamic names (student, group, …) render
+//     exactly as authored.
+//   * When the locale is `en` we look up the kind-specific template, strip
+//     the `[Tag]` prefix, and substitute the dynamic suffix. If the BE
+//     sent a natural-language message with no prefix or the kind is
+//     `unknown`, we keep the original message body — translating arbitrary
+//     machine-generated prose is unsafe and the user would still see the
+//     same information.
+function renderNotificationMessage(
+  notification: NotificationItem,
+  locale: Locale,
+  t: (key: string, fallback?: string) => string,
+): string {
+  const raw = (notification.message ?? '').trim();
+  if (!raw) return '';
+  if (locale === 'vi') return raw;
+
+  const kind = inferNotificationKind(raw);
+  if (kind === 'unknown') return raw;
+
+  const key = KIND_BODY_KEY[kind];
+  if (!key) return raw;
+
+  const template = t(key, raw);
+  const suffix = stripTagPrefix(raw);
+  if (!suffix) return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
+  return template.replace('{suffix}', suffix);
+}

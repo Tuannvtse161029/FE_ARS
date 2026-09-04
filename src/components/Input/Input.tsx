@@ -13,6 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       fullWidth = true,
       required,
       className = '',
+      floatLabel,
       id,
       ...props
     },
@@ -32,20 +33,51 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       .filter(Boolean)
       .join(' ');
 
+    const wrapperClasses = [
+      styles.inputWrapper,
+      fullWidth ? styles['inputWrapper--fullWidth'] : '',
+      floatLabel ? styles['inputWrapper--floatLabel'] : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return (
-      <div className={`${styles.inputWrapper} ${fullWidth ? styles['inputWrapper--fullWidth'] : ''}`}>
+      <div className={wrapperClasses}>
         {label && (
-          <label htmlFor={inputId} className={`${styles.label} ${required ? styles['label--required'] : ''}`}>
+          <label htmlFor={inputId} className={styles.label}>
             {label}
+            {required && (
+              <span className={styles.labelAsterisk} aria-hidden="true">
+                {' '}
+                *
+              </span>
+            )}
           </label>
         )}
         <div className={styles.inputContainer}>
-          {hasLeftIcon && <span className={`${styles.inputIcon} ${styles['inputIcon--left']}`}>{leftIcon}</span>}
-          <input ref={ref} id={inputId} className={inputClasses} required={required} {...props} />
-          {hasRightIcon && <span className={`${styles.inputIcon} ${styles['inputIcon--right']}`}>{rightIcon}</span>}
+          {hasLeftIcon && (
+            <span className={`${styles.inputIcon} ${styles['inputIcon--left']}`}>
+              {leftIcon}
+            </span>
+          )}
+          <input
+            ref={ref}
+            id={inputId}
+            className={inputClasses}
+            required={required}
+            aria-invalid={error ? 'true' : undefined}
+            {...props}
+          />
+          {hasRightIcon && (
+            <span className={`${styles.inputIcon} ${styles['inputIcon--right']}`}>
+              {rightIcon}
+            </span>
+          )}
         </div>
         {error && <span className={styles.errorText}>{error}</span>}
-        {!error && helperText && <span className={styles.helperText}>{helperText}</span>}
+        {!error && helperText && (
+          <span className={styles.helperText}>{helperText}</span>
+        )}
       </div>
     );
   }

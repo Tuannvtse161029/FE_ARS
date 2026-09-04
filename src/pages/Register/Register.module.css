@@ -1,37 +1,60 @@
+/**
+ * Register — ARS Academic Entry
+ * Premium academic journal registration: warm parchment surfaces, amber gold
+ * accent, editorial serif headings, constellation node motif.
+ * Consistent with the ARS Paper Day design contract.
+ */
+
+/* ── Page Wrapper ─────────────────────────────────────── */
 .registerPage {
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* ── Centered Masthead ────────────────────────────────────── */
-/* Logo + wordmark share the same journal-inside-cover rhythm as
-   Login / ResetPassword / EmailVerificationLanding. The form fields
-   below remain full-width within formContainer. */
+/* ── Masthead — Compact, Journal Imprint ───────────────── */
 .logoSection {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
+  gap: var(--space-2);
+  margin: 0 auto var(--space-5);
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
   gap: var(--space-3);
-  margin: 0 auto var(--space-6);
 }
 
 .logoImage {
-  width: 112px;
-  height: 112px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
-  display: block;
+  flex-shrink: 0;
 }
 
 .brandText {
+  font-family: var(--font-family-serif);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  letter-spacing: 0;
-  text-align: center;
+  font-weight: 400;
+  color: var(--ink-primary);
+  letter-spacing: 0.01em;
+  text-align: left;
+  line-height: var(--line-height-tight);
+  font-style: italic;
 }
 
+.logoRule {
+  width: 48px;
+  height: 2px;
+  border: 0;
+  margin: 0;
+  background-color: var(--accent-primary);
+  border-radius: 1px;
+}
+
+/* ── Page Header ────────────────────────────────────── */
 .pageHeader {
   text-align: center;
   margin-bottom: var(--space-5);
@@ -39,100 +62,197 @@
 
 .pageTitle {
   font-family: var(--font-family-serif);
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--space-2) 0;
+  font-size: clamp(1.5rem, 4vw, 1.875rem);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-2);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
 }
 
 .pageSubtitle {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-muted);
   margin: 0;
   line-height: var(--line-height-relaxed);
 }
 
+/* ── Form ─────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--space-4);
 }
 
-@media (max-width: 640px) {
-  .logoImage {
-    width: 72px;
-    height: 72px;
-  }
+/* ── Field Groups ──────────────────────────────────────── */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 
-  .pageTitle {
-    font-size: var(--font-size-2xl);
-  }
+.fieldLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.fieldLabel--required::after {
+  content: ' *';
+  color: var(--status-danger-text);
+  margin-left: 2px;
+}
+
+.passwordHelper {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+  margin-top: calc(-1 * var(--space-2));
 }
 
 .passwordRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-4);
+  gap: var(--space-3);
 }
 
-.passwordHelper {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  margin: 0;
-  margin-top: -var(--spacing-2);
-  line-height: var(--line-height-relaxed);
+/* ── Native Input / Select ─────────────────────────────── */
+.nativeInput {
+  width: 100%;
+  min-height: 48px;
+  padding: 18px var(--space-4) 6px;
+  background-color: var(--control-bg);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  color: var(--ink-primary);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  box-sizing: border-box;
+  position: relative;
 }
 
-/* ── ORCID section (third-party identity provider) ─────── */
+.nativeInput:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.nativeInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+.nativeInput:disabled {
+  background-color: var(--surface-sunken);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.nativeInput--error,
+.nativeInput--error:focus {
+  border-color: var(--status-danger-text) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-danger-text) 18%, transparent) !important;
+}
+
+.nativeSelect {
+  width: 100%;
+  min-height: 48px;
+  padding: 18px 40px 6px var(--space-4);
+  background-color: var(--control-bg);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  color: var(--ink-primary);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  cursor: pointer;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f695d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+}
+
+.nativeSelect:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.nativeSelect:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+.nativeSelect--error,
+.nativeSelect--error:focus {
+  border-color: var(--status-danger-text) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-danger-text) 18%, transparent) !important;
+}
+
+/* ── ORCID Section — Editorial Green Aside ─────────────── */
 .orcidConnection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3, 12px);
-  align-items: stretch;
-  padding: var(--space-4, 16px);
-  border: 1px solid #c8d880;
-  border-radius: var(--radius-md, 6px);
-  background: #f7ffeb;
-  border-left: 4px solid #A6CE39;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  padding: var(--space-4);
+  border-left: 3px solid #A6CE39;
+  background-color: color-mix(in srgb, #A6CE39 6%, transparent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  align-items: start;
 }
 
-/* Header: wordmark logo left-aligned above content. */
 .orcidHeader {
+  grid-column: 1;
+  grid-row: 1 / 3;
   display: flex;
   align-items: center;
+  align-self: center;
 }
 
 .orcidHeaderLogo {
-  height: 26px;
+  height: 24px;
   width: auto;
-  border-radius: 13px;
 }
 
 .orcidBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .orcidAction {
+  grid-column: 3;
+  grid-row: 1 / 3;
   display: flex;
   align-items: center;
+  align-self: center;
 }
 
 .orcidTitle {
-  margin: 0;
-  color: #3a6b1e;
+  margin: 0 0 4px;
   font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg, 18px);
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #3a6b1e;
   line-height: 1.3;
 }
 
 .orcidDescription,
 .orcidNotice {
   margin: 0;
+  font-size: var(--font-size-xs);
   color: #52627a;
-  font-size: var(--font-size-sm, 14px);
   line-height: 1.6;
 }
 
@@ -141,50 +261,52 @@
 }
 
 .orcidDevNotice {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: var(--spacing-2) var(--spacing-3);
+  grid-column: 2 / -1;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
   border-left: 3px solid #f59e0b;
   background-color: #fef3c7;
   color: #92400e;
-  font-size: var(--font-size-sm, 14px);
-  line-height: var(--line-height-relaxed);
-  border-radius: var(--radius-md, 6px);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-/* "ORCID verified" badge — ORCID green pill with check icon. */
 .orcidVerifiedBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-2, 8px);
-  padding: var(--spacing-1) var(--spacing-3, 12px);
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 999px;
   background-color: #A6CE39;
   color: #fff;
-  font-size: var(--font-size-sm, 14px);
-  font-weight: 600;
-  letter-spacing: 0.2px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-/* ── ORCID Connect button — full ORCID brand green pill ─── */
 .orcidConnectBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2, 8px);
-  height: 40px;
-  padding: 0 var(--space-3, 12px);
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
   border: none;
   border-radius: 20px;
   background: #A6CE39;
   cursor: pointer;
-  transition: background 150ms ease, transform 100ms ease;
+  transition:
+    background 150ms ease,
+    transform 100ms ease,
+    box-shadow 150ms ease;
   overflow: hidden;
 }
 
 .orcidConnectBtn:hover:not(:disabled) {
   background: #8FB72C;
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(166, 206, 57, 0.4);
 }
 
 .orcidConnectBtn:active:not(:disabled) {
@@ -201,19 +323,19 @@
   color: #6b9a25;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .orcidBtnLogo {
-  height: 26px;
+  height: 24px;
   width: auto;
   pointer-events: none;
 }
 
-/* Spinner while connecting */
 .orcidBtnSpinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-top-color: #fff;
   border-radius: 50%;
@@ -224,24 +346,24 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 560px) {
-  .orcidConnection {
-    grid-template-columns: 1fr;
-  }
+.orcidConnectBtn:disabled .orcidBtnSpinner {
+  border-color: rgba(255, 255, 255, 0.4);
+  border-top-color: rgba(255, 255, 255, 0.8);
 }
 
+/* ── Role Banner — Amber Left-Border Aside ──────────────── */
 .roleBanner {
-  background-color: var(--ars-paper-alt);
-  border: 1px solid var(--ars-node);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-4);
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-3);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background-color: color-mix(in srgb, var(--accent-primary) 5%, transparent);
 }
 
 .roleBannerIcon {
-  color: var(--color-primary);
+  color: var(--accent-primary);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -250,217 +372,132 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--space-2);
 }
 
 .roleBannerTitle {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-weight: 700;
+  color: var(--ink-primary);
   margin: 0;
+  line-height: 1.3;
 }
 
 .roleBannerText {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--ink-secondary);
   margin: 0;
-  line-height: var(--line-height-relaxed);
+  line-height: 1.6;
 }
 
 .roleBannerAction {
   display: flex;
   justify-content: flex-end;
-  margin-top: var(--spacing-1);
+  margin-top: var(--space-1);
 }
 
 .sampleBtn {
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-xs);
+  padding: var(--space-2) var(--space-3);
+  border-color: var(--accent-primary) !important;
+  color: var(--accent-ochre) !important;
+  border-radius: var(--radius-md) !important;
 }
 
-.fieldGroup {
+.sampleBtn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--accent-primary) 8%, transparent) !important;
+  border-color: var(--accent-hover) !important;
+  color: var(--accent-hover) !important;
+}
+
+/* ── PDF Dropzone Decoration ─────────────────────────────── */
+/* The dropzone itself is in PdfDropzone.tsx. Here we style its
+   outer wrapper (the .fieldGroup that wraps it) with a decorative
+   constellation node cluster above the dropzone. */
+.pdfDropzoneWrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--space-3);
 }
 
-.fieldLabel {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-}
-
-.fieldLabel--required::after {
-  content: ' *';
-  color: var(--color-error);
-}
-
-.nativeInput {
-  width: 100%;
-  min-height: 44px;
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1.5px solid var(--ars-paper-rule);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
-  font-family: inherit;
-  background-color: var(--ars-paper);
-  color: var(--color-text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
-  box-sizing: border-box;
-}
-
-.nativeInput:hover:not(:disabled) {
-  border-color: var(--ars-ink-muted);
-}
-
-.nativeInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
-}
-
-.nativeInput:disabled {
-  background-color: var(--color-border-light);
-  cursor: not-allowed;
-}
-
-.nativeInput--error,
-.nativeInput--error:focus {
-  border-color: #ef4444 !important;
-  background-color: #fff8f8;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
-}
-
-.nativeSelect--error,
-.nativeSelect--error:focus {
-  border-color: #ef4444 !important;
-  background-color: #fff8f8;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
-}
-
-.optionalText {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  font-weight: normal;
-  margin-left: 4px;
-}
-
-.nativeSelect {
-  width: 100%;
-  min-height: 44px;
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1.5px solid var(--ars-paper-rule);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
-  font-family: inherit;
-  background-color: var(--ars-paper);
-  color: var(--color-text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
-  cursor: pointer;
-  box-sizing: border-box;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right var(--spacing-3) center;
-  background-size: 18px;
-  padding-right: var(--spacing-10);
-}
-
-.nativeSelect:hover:not(:disabled) {
-  border-color: var(--ars-ink-muted);
-}
-
-.nativeSelect:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
-}
-
-.errorText {
-  font-size: var(--font-size-xs);
-  color: var(--color-error);
-  margin: 0;
-}
-
-.formError {
-  min-height: 44px;
-  padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-error-bg);
-  color: var(--color-error);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  border: 1px solid var(--color-error-light);
-}
-
-.submitButton {
-  margin-top: var(--spacing-2);
-}
-
-.footer {
-  margin-top: var(--spacing-5);
-  text-align: left;
-}
-
-.footerText {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.loginLink {
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.loginLink:hover {
-  color: var(--color-primary-hover);
-  text-decoration: underline;
-}
-
-.divider {
+/* Decorative constellation cluster above the dropzone */
+.pdfDropzoneCluster {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
-  margin: var(--spacing-2) 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
 }
 
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
+.pdfDropzoneClusterNode {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--accent-primary) 55%, transparent);
+}
+
+.pdfDropzoneClusterLine {
+  width: 20px;
   height: 1px;
-  background-color: var(--color-border);
+  background-color: color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  transform: rotate(-15deg);
+  transform-origin: left center;
 }
 
+/* ── Consent Group ─────────────────────────────────────── */
 .consentGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
-  padding: var(--spacing-3) 0;
+  gap: var(--space-2);
 }
 
 .consentLabel {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-3);
+  gap: var(--space-3);
   cursor: pointer;
   user-select: none;
 }
 
 .consentCheckbox {
+  position: relative;
   width: 18px;
   height: 18px;
-  margin-top: 2px;
+  appearance: none;
+  background-color: var(--control-bg);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
   cursor: pointer;
-  accent-color: var(--color-primary);
   flex-shrink: 0;
+  margin-top: 2px;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.consentCheckbox:checked {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+/* Custom checkmark using pseudo-element */
+.consentCheckbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid var(--ink-on-paper);
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
+}
+
+.consentCheckbox:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .consentCheckbox:disabled {
@@ -469,15 +506,15 @@
 }
 
 .consentText {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-xs);
+  color: var(--ink-secondary);
+  line-height: 1.65;
 }
 
 .consentLink {
-  color: var(--color-primary);
+  color: var(--accent-ochre);
   text-decoration: underline;
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   background: none;
   border: none;
   padding: 0;
@@ -489,38 +526,136 @@
 }
 
 .consentLink:hover {
-  color: var(--color-primary-hover);
+  color: var(--accent-hover);
 }
 
-@media (max-width: 480px) {
+/* ── Submit Button ─────────────────────────────────────── */
+.submitButton {
+  background-color: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--ink-on-paper) !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-md) !important;
+  min-height: 50px !important;
+  font-size: var(--font-size-base) !important;
+  margin-top: var(--space-1);
+  transition:
+    background-color var(--transition-fast),
+    transform 100ms ease,
+    box-shadow var(--transition-fast) !important;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 40%, transparent) !important;
+}
+
+.submitButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* ── Divider ──────────────────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-subtle);
+}
+
+/* ── Google Button ────────────────────────────────────── */
+.googleButtonWrapper {
+  width: 100%;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.footer {
+  margin-top: var(--space-4);
+  text-align: left;
+}
+
+.footerText {
+  font-size: var(--font-size-sm);
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.loginLink {
+  color: var(--accent-ochre);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.loginLink:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* ── Form Error ─────────────────────────────────────────── */
+.formError {
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--status-danger-text) 25%, transparent);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .logoImage {
+    width: 52px;
+    height: 52px;
+  }
+
+  .brandText {
+    font-size: var(--font-size-base);
+  }
+
   .passwordRow {
     grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .orcidConnection {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .orcidHeader,
+  .orcidBody,
+  .orcidAction {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .orcidAction {
+    justify-content: flex-start;
+    margin-top: var(--space-2);
   }
 }
 
-/* Archive Dusk auth surface */
-.brandText, .pageTitle, .fieldLabel, .roleBannerTitle, .orcidTitle { color: var(--ink-primary); }
-.pageSubtitle, .passwordHelper, .roleBannerText, .orcidDescription,
-.orcidNotice, .optionalText, .footerText, .consentText, .divider { color: var(--ink-secondary); }
-.roleBanner { background: var(--surface-sunken); border-color: var(--border-subtle); }
+/* ── Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .submitButton,
+  .orcidConnectBtn {
+    transition: none !important;
+  }
 
-/* ORCID brand overrides — always win over Archive Dusk surface vars. */
-.orcidConnection {
-  background: #f7ffeb !important;
-  border-color: #c8d880 !important;
-  border-left: 4px solid #A6CE39 !important;
+  .orcidBtnSpinner {
+    animation: none !important;
+  }
 }
-.orcidTitle { color: #3a6b1e !important; }
-.orcidDescription,
-.orcidNotice { color: #52627a !important; }
-.nativeInput, .nativeSelect { background-color: var(--control-bg); color: var(--control-text); border-color: var(--border-subtle); }
-.nativeInput:focus, .nativeSelect:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent); }
-.nativeInput--error, .nativeInput--error:focus, .nativeSelect--error, .nativeSelect--error:focus {
-  border-color: var(--status-danger-text) !important;
-  background: var(--status-danger-surface);
-  box-shadow: none !important;
-}
-.formError { background: var(--status-danger-surface); color: var(--status-danger-text); border-color: var(--status-danger-text); }
-.roleBannerIcon, .loginLink, .consentLink { color: var(--accent-ochre); }
-.loginLink:hover, .consentLink:hover { color: var(--accent-hover); }
-.consentCheckbox { accent-color: var(--accent-primary); }

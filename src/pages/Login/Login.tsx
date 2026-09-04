@@ -174,27 +174,33 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
-      {/* Brand & Logo Header — centered masthead, journal inside-cover feel */}
+      {/* ── Compact Masthead — Journal Imprint ───────────────────────── */}
       <header className={styles.logoSection}>
-        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>
-          {t('landing.brandName', 'Academic Research Sharing')}
-        </span>
+        <div className={styles.logoRow}>
+          <img src={ARSLogo} alt="ARS" className={styles.logoImage} />
+          <span className={styles.brandText}>
+            {t('landing.brandName', 'Academic Research Sharing')}
+          </span>
+        </div>
+        <hr className={styles.logoRule} aria-hidden="true" />
       </header>
 
-      {/* Page Title */}
+      {/* ── Page Title — Serif, Editorial Weight ─────────────────── */}
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>{t('auth.welcomeBack', 'Nice to see you again')}</h1>
+        <h1 className={styles.pageTitle}>
+          {t('auth.welcomeBack', 'Welcome back')}
+        </h1>
       </header>
 
-      {/* Login Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+      {/* ── Login Form ──────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.form} noValidate>
         {error && (
           <div className={styles.formError} role="alert">
             {error}
           </div>
         )}
 
+        {/* Email field */}
         <Controller
           name="email"
           control={control}
@@ -202,8 +208,9 @@ const Login = () => {
             <Input
               {...field}
               type="email"
-              label={t('auth.email', 'Email')}
-              placeholder={t('auth.emailPlaceholder', 'name@institution.edu')}
+              label={t('auth.email', 'Email address')}
+              placeholder=" "
+              floatLabel
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading || googlePending}
@@ -212,6 +219,7 @@ const Login = () => {
           )}
         />
 
+        {/* Password field */}
         <div className={styles.passwordFieldWrapper}>
           <Controller
             name="password"
@@ -221,7 +229,8 @@ const Login = () => {
                 {...field}
                 type={showPassword ? 'text' : 'password'}
                 label={t('auth.password', 'Password')}
-                placeholder={t('auth.passwordPlaceholder', 'Enter password')}
+                placeholder=" "
+                floatLabel
                 error={errors.password?.message}
                 autoComplete="current-password"
                 disabled={isLoading || googlePending}
@@ -231,9 +240,13 @@ const Login = () => {
                     type="button"
                     className={styles.passwordToggle}
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? t('login.hidePassword', 'Hide password') : t('login.showPassword', 'Show password')}
+                    aria-label={
+                      showPassword
+                        ? t('login.hidePassword', 'Hide password')
+                        : t('login.showPassword', 'Show password')
+                    }
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 }
               />
@@ -241,10 +254,13 @@ const Login = () => {
           />
         </div>
 
+        {/* Role selector — optional, amber left-border accent */}
         <div className={styles.roleFieldWrapper}>
           <label className={styles.fieldLabel} htmlFor="selectedRole">
             {t('login.signInAsRole', 'Sign in as Role')}{' '}
-            <span className={styles.optionalTag}>({t('login.optional', 'Optional')})</span>
+            <span className={styles.optionalTag}>
+              ({t('login.optional', 'optional')})
+            </span>
           </label>
           <Controller
             name="selectedRole"
@@ -256,8 +272,11 @@ const Login = () => {
                 id="selectedRole"
                 className={styles.roleSelect}
                 disabled={isLoading || googlePending}
+                aria-describedby="role-hint"
               >
-                <option value="">{t('login.autoDetectRole', 'Auto-detect Role (Default)')}</option>
+                <option value="">
+                  {t('login.autoDetectRole', 'Auto-detect role')}
+                </option>
                 {availableRoles
                   .filter((role) => role.name !== 'Admin')
                   .map((role) => (
@@ -268,25 +287,30 @@ const Login = () => {
               </select>
             )}
           />
-          {errors.selectedRole?.message && (
-            <span className={styles.fieldError}>{errors.selectedRole.message}</span>
-          )}
-          <span className={styles.fieldHint}>
+          <span id="role-hint" className={styles.fieldHint}>
             {t(
               'login.roleHint',
-              'Holding multiple roles? Select your role here. You can log out anytime to switch roles.',
+              'Select a role here. You can log out and switch anytime.',
             )}
           </span>
-          {rolesError && <span className={styles.fieldError}>{rolesError}</span>}
+          {errors.selectedRole?.message && (
+            <span className={styles.fieldError}>
+              {errors.selectedRole.message}
+            </span>
+          )}
+          {rolesError && (
+            <span className={styles.fieldError}>{rolesError}</span>
+          )}
         </div>
 
+        {/* Remember me + Forgot password */}
         <div className={styles.rememberRow}>
           <Controller
             name="rememberMe"
             control={control}
             defaultValue={false}
             render={({ field }) => (
-              <label className={styles.toggleWrapper}>
+              <label className={styles.toggleWrapper} htmlFor="remember-me">
                 <input
                   type="checkbox"
                   name="rememberMe"
@@ -295,9 +319,12 @@ const Login = () => {
                   onChange={(e) => field.onChange(e.target.checked)}
                   onBlur={field.onBlur}
                   ref={field.ref}
+                  id="remember-me"
                 />
-                <span className={styles.toggleSlider}></span>
-                <span className={styles.toggleLabel}>{t('auth.rememberMe', 'Remember me')}</span>
+                <span className={styles.toggleSlider} aria-hidden="true" />
+                <span className={styles.toggleLabel}>
+                  {t('auth.rememberMe', 'Remember me')}
+                </span>
               </label>
             )}
           />
@@ -306,6 +333,7 @@ const Login = () => {
           </Link>
         </div>
 
+        {/* Submit */}
         <Button
           type="submit"
           variant="primary"
@@ -317,6 +345,7 @@ const Login = () => {
           {t('auth.signInButton', 'Sign in')}
         </Button>
 
+        {/* Google sign-in */}
         <div className={styles.googleButtonWrapper}>
           <GoogleSignInButton
             onCredential={handleGoogleCredential}
@@ -332,6 +361,7 @@ const Login = () => {
           </div>
         )}
 
+        {/* Footer link */}
         <div className={styles.footer}>
           <p className={styles.footerText}>
             {t('auth.noAccount', "Don't have an account?")}{' '}

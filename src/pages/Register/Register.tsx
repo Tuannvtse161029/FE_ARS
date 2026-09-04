@@ -448,14 +448,24 @@ export const Register = () => {
   return (
     <div className={styles.registerPage}>
       <header className={styles.logoSection}>
-        <img src={ARSLogo} alt="ARS Logo" className={styles.logoImage} />
-        <span className={styles.brandText}>{t('app.brandName', 'Academic Research Sharing')}</span>
+        <div className={styles.logoRow}>
+          <img src={ARSLogo} alt="ARS" className={styles.logoImage} />
+          <span className={styles.brandText}>
+            {t('app.brandName', 'Academic Research Sharing')}
+          </span>
+        </div>
+        <hr className={styles.logoRule} aria-hidden="true" />
       </header>
 
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>{t('register.pageTitle', 'Create your Account')}</h1>
+        <h1 className={styles.pageTitle}>
+          {t('register.pageTitle', 'Create your account')}
+        </h1>
         <p className={styles.pageSubtitle}>
-          {t('register.pageSubtitle', 'Join the ARS community to publish, review, and collaborate on academic research.')}
+          {t(
+            'register.pageSubtitle',
+            'Join the ARS community to publish, review, and collaborate on academic research.',
+          )}
         </p>
       </header>
 
@@ -639,7 +649,10 @@ export const Register = () => {
         </div>
 
         {isOrcidEligibleRole(form.role) && (
-          <section className={styles.orcidConnection} aria-labelledby="registration-orcid-title">
+          <section
+            className={styles.orcidConnection}
+            aria-labelledby="registration-orcid-title"
+          >
             <div className={styles.orcidHeader}>
               <OrcidBrandLogo
                 variant="wordmark"
@@ -743,19 +756,32 @@ export const Register = () => {
           </div>
         </div>
 
-        <div className={styles.fieldGroup}>
-          <label
-            className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
-          >
-            {t('register.verificationDocument', 'Verification Document (PDF)')}
-          </label>
-          <PdfDropzone
-            onUploadComplete={handleUploadComplete}
-            onRemove={handleUploadRemove}
-            pdfUrl={pdfUrl}
-            uploadedFile={pdfFile}
-            onUploadStateChange={setIsUploadingPdf}
-          />
+        <div className={styles.pdfDropzoneWrapper}>
+          {/* Decorative constellation node cluster above the dropzone */}
+          <div className={styles.pdfDropzoneCluster} aria-hidden="true">
+            <div className={styles.pdfDropzoneClusterNode} />
+            <div className={styles.pdfDropzoneClusterLine} />
+            <div className={styles.pdfDropzoneClusterNode} />
+            <div className={styles.pdfDropzoneClusterLine} style={{ transform: 'rotate(10deg)' }} />
+            <div className={styles.pdfDropzoneClusterNode} />
+          </div>
+          <div className={styles.fieldGroup}>
+            <label
+              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+            >
+              {t(
+                'register.verificationDocument',
+                'Verification Document (PDF)',
+              )}
+            </label>
+            <PdfDropzone
+              onUploadComplete={handleUploadComplete}
+              onRemove={handleUploadRemove}
+              pdfUrl={pdfUrl}
+              uploadedFile={pdfFile}
+              onUploadStateChange={setIsUploadingPdf}
+            />
+          </div>
         </div>
 
         <div className={styles.consentGroup}>
@@ -768,6 +794,7 @@ export const Register = () => {
               disabled={isSubmitting || isUploadingPdf}
               className={styles.consentCheckbox}
               aria-describedby="consent-description"
+              id="consent-checkbox"
             />
             <span className={styles.consentText} id="consent-description">
               {t('register.consent.readAndAgree', 'I have read and agree to the')}{' '}
