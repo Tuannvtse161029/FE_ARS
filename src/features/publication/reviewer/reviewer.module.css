@@ -1,5 +1,77 @@
 /* Reviewer workspace */
 .page { display: grid; gap: var(--space-5); color: var(--ink-primary); font-family: var(--font-family-ui); }
+
+/* ── Tab Filter Bar ────────────────────────────────────── */
+.tabFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-secondary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.tabButton:hover {
+  background: var(--control-bg-hover);
+  border-color: var(--border-strong);
+  color: var(--ink-primary);
+}
+
+.tabButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tabButtonActive {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+.tabButtonActive:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--ink-primary);
+}
+
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+}
+
+.tabButton:not(.tabButtonActive) .tabCount {
+  background: var(--control-bg);
+  color: var(--ink-muted);
+}
+
 .toolbar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); flex-wrap: wrap; }
 .searchField { display: grid; gap: var(--space-1); flex: 1 1 240px; min-width: 200px; max-width: 360px; }
 .searchLabel, .count { color: var(--ink-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }

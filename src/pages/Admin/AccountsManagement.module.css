@@ -149,6 +149,12 @@
 }
 
 /* ── Role / Plan / Status pills ─────────────────────────── */
+.roleTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .roleTag,
 .planTag,
 .statusTag {
@@ -164,17 +170,28 @@
   line-height: 1.2;
 }
 
-.roleTag {
-  background: var(--ars-admin-light);
-  color: var(--ars-admin);
+/* Role-specific color tags */
+.roleLecturer {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
-.planPremium {
-  background: #f3e8ff;
-  color: #6b21a8;
+.roleResearcher {
+  background: #fef3c7;
+  color: #92400e;
 }
 
-.planFreeTier {
+.roleReviewer {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.roleGraduateStudent {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.planTag {
   background: var(--ars-paper-inset);
   color: var(--ars-ink-soft);
 }
@@ -187,6 +204,11 @@
 .statusSuspended {
   background: var(--ars-error-bg);
   color: var(--ars-error);
+}
+
+.statusExpired {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
 }
 
 /* ── Status cell (status pill + suspended-until pill) ───── */

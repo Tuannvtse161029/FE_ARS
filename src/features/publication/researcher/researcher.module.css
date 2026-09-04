@@ -12,6 +12,77 @@
   font-family: var(--font-family-ui);
 }
 
+/* ── Tab Filter Bar ────────────────────────────────────── */
+.tabFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ars-node);
+  padding-bottom: var(--space-2);
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink-soft);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.tabButton:hover {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
+}
+
+.tabButton:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
+}
+
+.tabButtonActive {
+  background: var(--ars-researcher);
+  border-color: var(--ars-researcher);
+  color: var(--ars-paper);
+}
+
+.tabButtonActive:hover {
+  background: var(--ars-researcher);
+  border-color: var(--ars-researcher);
+  color: var(--ars-paper);
+}
+
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+}
+
+.tabButton:not(.tabButtonActive) .tabCount {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+}
+
 /* ── Toolbar (search + status filter) ──────────────────────── */
 /* === ARS toolbar recolor (this worker) ===
    The previous `background: var(--ars-paper-alt)` read as a flat cool

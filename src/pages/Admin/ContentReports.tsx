@@ -1,7 +1,7 @@
 /**
  * ContentReports — Admin moderation queue for forum / paper violations.
  *
- * High-density operational table: search + status filter + resolve modal.
+ * High-density operational table: search + status tab filter + resolve modal.
  * Token-driven admin accent; uses PageHeader, TableToolbar, TablePagination,
  * EmptyState, ErrorBanner, SkeletonRow.
  */
@@ -15,7 +15,6 @@ import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useTableSort } from '../../hooks/useTableSort';
 import type {
   ViolationReport,
-  ViolationReportsQuery,
   ViolationResolutionAction,
   ViolationReportStatus,
 } from '../../types/adminAuxiliary';
@@ -35,19 +34,22 @@ const ROLE_ACCENT = 'var(--ars-admin)';
 /** Sortable column ids for the Content Reports table. */
 type SortColumn = 'reason' | 'type' | 'reporter' | 'reported' | 'status' | 'createdAt';
 
+// Status tabs for content reports
+type StatusTab = ViolationReportStatus | 'ALL';
+
+const STATUS_TABS: Array<{
+  value: StatusTab;
+  label: string;
+}> = [
+  { value: 'ALL', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'DISMISSED', label: 'Dismissed' },
+];
+
 export default function ContentReports(): JSX.Element {
   const { t } = useI18n();
   useAdminGuard();
-
-  const STATUS_OPTIONS: Array<{
-    value: ViolationReportStatus | 'ALL';
-    label: string;
-  }> = [
-    { value: 'ALL', label: t('admin.contentReports.status.allStatuses') },
-    { value: 'PENDING', label: t('common.status.pending') },
-    { value: 'RESOLVED', label: t('admin.contentReports.status.resolved') },
-    { value: 'DISMISSED', label: t('admin.contentReports.status.dismissed') },
-  ];
 
   const [reports, setReports] = useState<ViolationReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +57,8 @@ export default function ContentReports(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    ViolationReportsQuery['status']
-  >('PENDING');
+  // Tab filter for status
+  const [statusTab, setStatusTab] = useState<StatusTab>('PENDING');
 
   const [activeReport, setActiveReport] = useState<ViolationReport | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,7 +71,7 @@ export default function ContentReports(): JSX.Element {
     try {
       const data = await adminAuxiliaryService.getViolationReports({
         search: search.trim() || undefined,
-        status: statusFilter,
+        status: statusTab,
       });
       setReports(data);
     } catch (e) {
@@ -81,7 +82,7 @@ export default function ContentReports(): JSX.Element {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search, statusFilter, t]);
+  }, [search, statusTab, t]);
 
   useEffect(() => {
     void loadReports();
@@ -133,7 +134,7 @@ export default function ContentReports(): JSX.Element {
 
   useEffect(() => {
     resetPage();
-  }, [search, statusFilter, sort.sortState, resetPage]);
+  }, [search, statusTab, sort.sortState, resetPage]);
 
   const openReport = (report: ViolationReport): void => {
     setActiveReport(report);
@@ -181,6 +182,27 @@ export default function ContentReports(): JSX.Element {
         accent={ROLE_ACCENT}
       />
 
+      {/* Tab filter for status */}
+      <div className={styles.tabFilterBar} role="tablist" aria-label="Filter by status">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            role="tab"
+            aria-selected={statusTab === tab.value}
+            className={`${styles.tabButton} ${statusTab === tab.value ? styles.tabButtonActive : ''}`}
+            onClick={() => setStatusTab(tab.value)}
+            type="button"
+          >
+            {tab.label}
+            <span className={styles.tabCount}>
+              {tab.value === 'ALL'
+                ? (reports.length || 0)
+                : (reports.filter((r) => r.status === tab.value).length || 0)}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <TableToolbar
         search={search}
         onSearchChange={error ? () => undefined : setSearch}
@@ -191,24 +213,6 @@ export default function ContentReports(): JSX.Element {
         isRefreshing={refreshing}
         searchPlaceholder={t('admin.contentReports.searchPlaceholder')}
         refreshLabel={t('admin.contentReports.refresh')}
-        filters={
-          <select
-            className={styles.filterSelect}
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value as ViolationReportStatus | 'ALL')
-            }
-            aria-label="Filter by status"
-            data-testid="violations-status-filter"
-            disabled={Boolean(error)}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        }
       />
 
       {loading ? (
@@ -312,16 +316,6 @@ export default function ContentReports(): JSX.Element {
                       label={t('admin.contentReports.table.status')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
-                      filterOptions={STATUS_OPTIONS.map((opt) => ({
-                        value: opt.value,
-                        label: opt.label,
-                      }))}
-                      activeFilter={statusFilter}
-                      onFilterChange={(next) =>
-                        setStatusFilter(
-                          next as ViolationReportsQuery['status'],
-                        )
-                      }
                     />
                   </th>
                   <th className={styles.actionCell}>{t('admin.contentReports.table.action')}</th>

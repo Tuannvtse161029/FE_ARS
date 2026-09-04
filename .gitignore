@@ -49,6 +49,7 @@ appsettings.*.local.json
 !docs/LECTURER_RESEARCH_WORKFLOW_FILE_OWNERSHIP.md
 !docs/LECTURER_RESEARCH_WORKFLOW_BACKEND_REQUEST.md
 !docs/LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md
+!docs/BE_FE_TAKEOVER_AUDIT.md
 
 # ==========================================
 # Local Scripts, Code Execution & Text Artifacts

@@ -29,27 +29,18 @@ type SortColumn = 'title' | 'status' | 'reviewer' | 'submittedAt';
 
 const RESEARCHER_ACCENT = 'var(--ars-researcher)';
 
-// Only statuses a Researcher-owned paper can be in. We deliberately
-// exclude ADMIN_APPROVED / PUBLISHED from the quick filter list
-// because the Researcher list also surfaces terminal states, and
-// "All" covers the long tail.
-const STATUS_FILTER_OPTIONS: ReadonlyArray<PublicationStatus | 'ALL'> = [
-  'ALL',
-  'DRAFT',
-  'SUBMITTED',
-  'ADMIN_SCREENING',
-  'RESEARCHER_VERIFICATION_REQUIRED',
-  'READY_FOR_REVIEWER',
-  'REVIEWER_ASSIGNED',
-  'UNDER_REVIEW',
-  'REVISION_REQUIRED',
-  'RESUBMITTED',
-  'REVIEWER_RECOMMENDED_ACCEPT',
-  'REVIEWER_RECOMMENDED_REJECT',
-  'ADMIN_APPROVED',
-  'PUBLISHED',
-  'ADMIN_REJECTED',
-  'WITHDRAWN',
+// Status tabs for the researcher submissions
+type StatusTab = PublicationStatus | 'ALL';
+
+// Define the main status tabs to display as tabs (not all statuses)
+const STATUS_TABS: Array<{ value: StatusTab; label: string }> = [
+  { value: 'ALL', label: 'All' },
+  { value: 'DRAFT', label: statusLabel('DRAFT') },
+  { value: 'SUBMITTED', label: statusLabel('SUBMITTED') },
+  { value: 'REVISION_REQUIRED', label: statusLabel('REVISION_REQUIRED') },
+  { value: 'RESUBMITTED', label: statusLabel('RESUBMITTED') },
+  { value: 'ADMIN_APPROVED', label: statusLabel('ADMIN_APPROVED') },
+  { value: 'PUBLISHED', label: statusLabel('PUBLISHED') },
 ];
 
 const formatDate = (iso: string | undefined): string => {
@@ -64,7 +55,8 @@ export const ResearcherSubmissions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PublicationStatus | 'ALL'>('ALL');
+  // Tab filter for status
+  const [statusTab, setStatusTab] = useState<StatusTab>('ALL');
 
   // Default sort by submittedAt (newest first) so recently submitted
   // submissions surface at the top. The user can override per column.
@@ -90,6 +82,20 @@ export const ResearcherSubmissions = () => {
     };
   }, []);
 
+  // Count papers per status tab
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: papers.length };
+    STATUS_TABS.forEach((tab) => {
+      if (tab.value !== 'ALL') counts[tab.value] = 0;
+    });
+    papers.forEach((paper) => {
+      if (counts[paper.status] !== undefined) {
+        counts[paper.status]++;
+      }
+    });
+    return counts;
+  }, [papers]);
+
   const attentionPapers = useMemo(
     () =>
       papers.filter(
@@ -104,7 +110,9 @@ export const ResearcherSubmissions = () => {
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = papers.filter((paper) => {
-      if (statusFilter !== 'ALL' && paper.status !== statusFilter) return false;
+      // Apply status tab filter
+      if (statusTab !== 'ALL' && paper.status !== statusTab) return false;
+      // Apply search filter
       if (!term) return true;
       const haystack = [
         paper.title,
@@ -122,7 +130,7 @@ export const ResearcherSubmissions = () => {
     });
     // Sort is applied via sort.sortedItemsBy below.
     return filtered;
-  }, [papers, search, statusFilter]);
+  }, [papers, search, statusTab]);
 
   // Apply column sort on top of filtered list.
   const sortedPapers = useMemo(
@@ -211,6 +219,23 @@ export const ResearcherSubmissions = () => {
             </section>
           )}
 
+          {/* Tab filter for status */}
+          <div className={styles.tabFilterBar} role="tablist" aria-label="Filter by status">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                role="tab"
+                aria-selected={statusTab === tab.value}
+                className={`${styles.tabButton} ${statusTab === tab.value ? styles.tabButtonActive : ''}`}
+                onClick={() => setStatusTab(tab.value)}
+                type="button"
+              >
+                {tab.label}
+                <span className={styles.tabCount}>{tabCounts[tab.value] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+
           <div className={styles.toolbar} role="search">
             <label className={styles.searchField}>
               <span className={styles.searchLabel} id="researcher-search-label">
@@ -224,25 +249,6 @@ export const ResearcherSubmissions = () => {
                 placeholder="Search title, author, DOI…"
                 aria-labelledby="researcher-search-label"
               />
-            </label>
-            <label className={styles.statusField}>
-              <span className={styles.searchLabel} id="researcher-status-label">
-                Status
-              </span>
-              <select
-                className={styles.statusSelect}
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as PublicationStatus | 'ALL')
-                }
-                aria-labelledby="researcher-status-label"
-              >
-                {STATUS_FILTER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option === 'ALL' ? 'All statuses' : statusLabel(option)}
-                  </option>
-                ))}
-              </select>
             </label>
             <span className={styles.count} aria-live="polite">
               {visiblePapers.length} of {papers.length} research paper{papers.length === 1 ? '' : 's'}
@@ -274,21 +280,6 @@ export const ResearcherSubmissions = () => {
                         label="Status"
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
-                        filterOptions={STATUS_FILTER_OPTIONS.map(
-                          (option) => ({
-                            value: option,
-                            label:
-                              option === 'ALL'
-                                ? 'All statuses'
-                                : statusLabel(option),
-                          }),
-                        )}
-                        activeFilter={statusFilter}
-                        onFilterChange={(next) =>
-                          setStatusFilter(
-                            next as PublicationStatus | 'ALL',
-                          )
-                        }
                       />
                     </th>
                     <th scope="col">
