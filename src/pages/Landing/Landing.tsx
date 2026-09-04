@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   FileText,
   GraduationCap,
-  ShieldCheck,
   UserCheck,
   Users,
   Send,
@@ -124,7 +123,7 @@ const PUBLICATION_NODES = [
 
 export const Landing = () => {
   const t = useT();
-  const workflowListRef = useRef<HTMLUListElement>(null);
+  const workflowListRef = useRef<HTMLOListElement>(null);
   const flowSectionRef = useRef<HTMLElement>(null);
   const [workflowListVisible, setWorkflowListVisible] = useState(false);
   const [flowConnectorsDrawn, setFlowConnectorsDrawn] = useState(false);
@@ -318,10 +317,6 @@ export const Landing = () => {
     { cx: 168, cy: 156 }, // cn5 — bottom-center
   ];
 
-  const constellationLines = [
-    [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [2, 4],
-  ];
-
   const constellationIcons = [Users, BookOpen, GraduationCap, Network, FileText, MessageSquare];
 
   return (
@@ -468,9 +463,8 @@ export const Landing = () => {
                 </svg>
 
                 {/* Constellation nodes */}
-                {constellationNodes.map((node, i) => {
+                {constellationNodes.map((_node, i) => {
                   const Icon = constellationIcons[i];
-                  const sizes = ['cn0', 'cn1', 'cn2', 'cn3', 'cn4', 'cn5'];
                   return (
                     <div
                       key={i}
