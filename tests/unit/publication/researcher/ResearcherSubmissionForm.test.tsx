@@ -55,6 +55,21 @@ vi.mock('../../../../src/features/publication/researcher/openalexAdapter', () =>
   openAlexAdapter: mockOpenAlexAdapter,
 }));
 
+vi.mock('../../../../src/hooks/useMajorFields', () => ({
+  useMajorFields: () => ({
+    fields: [{ id: 1, name: 'Computer Science' }],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useSubFields: () => ({
+    subFields: [{ id: 10, name: 'Artificial Intelligence', majorFieldId: 1 }],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+}));
+
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<any>('react-router-dom');
@@ -128,6 +143,12 @@ const fillRequiredTextFields = () => {
   });
   fireEvent.change(screen.getByLabelText(/Institution/i), {
     target: { value: 'ARS University' },
+  });
+  fireEvent.change(screen.getByLabelText(/Major field/i), {
+    target: { value: '1' },
+  });
+  fireEvent.change(screen.getByLabelText(/Subfield/i), {
+    target: { value: '10' },
   });
 };
 

@@ -61,6 +61,9 @@ export const API_ENDPOINTS = {
     DELETE: (id: number | string) => `/api/paper/${id}`,
     ASSIGN_REVIEWERS: (id: number | string) => `/api/Paper/${id}/assign-reviewers`,
   },
+  OPEN_ALEX: {
+    GET_WORK: (workId: string) => `/api/OpenAlex/works/${workId}`,
+  },
   PROFESSIONAL_PROFILE: {
     GET_ALL: '/api/ProfessionalProfile',
     GET_BY_ID: (id: number) => `/api/ProfessionalProfile/${id}`,
