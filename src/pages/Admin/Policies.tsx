@@ -327,22 +327,47 @@ const Policies = () => {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PolicySlug | null>(null);
 
-  const load = useCallback(async () => {
+  /**
+   * Cold-load + subscribe to background updates.
+   *
+   * `policyService.subscribe()` is cache-first:
+   *   - In-memory TTL cache hit → resolves in ~ms, fires server refresh
+   *     in the background to fix any staleness.
+   *   - Firestore offline cache hit → same, sub-second.
+   *   - Cold load → one real `getDocsFromServer` call (~600 ms typical).
+   *
+   * Subsequent background refreshes (e.g. server data changed, or another
+   * tab saved a policy) flow through the same subscriber so the page
+   * updates without the admin clicking Refresh.
+   */
+  useEffect(() => {
+    setError(null);
+    const sub = policyService.subscribe((data) => {
+      setSnapshots(data);
+      setLoading(false);
+      setRefreshing(false);
+    });
+    return sub.unsubscribe;
+  }, []);
+
+  /**
+   * Force-refresh from server (skips cache). Triggered by the Refresh
+   * button — used when the admin suspects the local cache is stale
+   * (e.g. another admin edited a policy in a different tab).
+   */
+  const refreshFromServer = useCallback(async () => {
+    setRefreshing(true);
     setError(null);
     try {
-      const data = await policyService.listAll();
+      const data = await policyService.listAll({ force: true, backgroundRefresh: false });
       setSnapshots(data);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     } finally {
-      setLoading(false);
       setRefreshing(false);
+      setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const onSaved = useCallback((slug: PolicySlug, updated: PolicySnapshot) => {
     setSnapshots((prev) => {
@@ -371,8 +396,7 @@ const Policies = () => {
             variant="outline"
             size="md"
             onClick={() => {
-              setRefreshing(true);
-              void load();
+              void refreshFromServer();
             }}
             disabled={loading || refreshing}
             leftIcon={

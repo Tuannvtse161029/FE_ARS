@@ -50,9 +50,9 @@ const SafeMedalBadge = lazy(async () => {
 export type UserFlairSize = 'xs' | 'sm' | 'md';
 
 const SIZE_PX: Record<UserFlairSize, number> = {
-  xs: 18,
-  sm: 22,
-  md: 28,
+  xs: 24,
+  sm: 32,
+  md: 48,
 };
 
 export interface UserFlairBadgeProps {

@@ -265,6 +265,9 @@
   --shadow-color: rgba(37, 31, 18, 0.16);
 
   /* ── Medal tiers (warm metallic, semantic) ───────────────────── */
+  /* Ring stack — outer + inner colors drive the SafeMedalBadge layered
+     ring (single / bevel / double / iridescent). Numeral tokens drive
+     the corner Roman-numeral indicator (I / II / III / IV). */
   --tier-bronze-bg:       linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
   --tier-bronze-border:   #cd7f32;
   --tier-bronze-icon:     #92400e;
@@ -273,6 +276,13 @@
   --tier-bronze-pill-bg:  #fef3c7;
   --tier-bronze-pill-fg:  #78350f;
   --tier-bronze-pill-bd:  #fcd34d;
+  --tier-bronze-ring-outer: #b85a1f;
+  --tier-bronze-ring-inner: transparent;
+  --tier-bronze-numeral-bg: #b85a1f;
+  --tier-bronze-numeral-fg: #fff7e8;
+  --tier-bronze-icon-scale: 0.48;
+  --tier-bronze-halo:      0 0 12px rgba(205, 127, 50, 0.32),
+                           inset 0 1px 2px rgba(255, 255, 255, 0.45);
 
   --tier-silver-bg:       linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
   --tier-silver-border:   #94a3b8;
@@ -282,6 +292,13 @@
   --tier-silver-pill-bg:  #f1f5f9;
   --tier-silver-pill-fg:  #334155;
   --tier-silver-pill-bd:  #cbd5e1;
+  --tier-silver-ring-outer: #64748b;
+  --tier-silver-ring-inner: rgba(255, 255, 255, 0.55);
+  --tier-silver-numeral-bg: #475569;
+  --tier-silver-numeral-fg: #f8fafc;
+  --tier-silver-icon-scale: 0.52;
+  --tier-silver-halo:      0 0 14px rgba(148, 163, 184, 0.42),
+                           inset 0 1px 3px rgba(255, 255, 255, 0.6);
 
   --tier-gold-bg:         linear-gradient(135deg, #fef9c3 0%, #fde047 100%);
   --tier-gold-border:     #eab308;
@@ -291,6 +308,13 @@
   --tier-gold-pill-bg:    #fef9c3;
   --tier-gold-pill-fg:    #854d0e;
   --tier-gold-pill-bd:    #fde047;
+  --tier-gold-ring-outer: #b88404;
+  --tier-gold-ring-inner: #facc15;
+  --tier-gold-numeral-bg:  #b88404;
+  --tier-gold-numeral-fg:  #fffbeb;
+  --tier-gold-icon-scale:  0.56;
+  --tier-gold-halo:        0 0 18px rgba(234, 179, 8, 0.55),
+                           inset 0 1px 3px rgba(255, 255, 255, 0.65);
 
   --tier-platinum-bg:       linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 100%);
   --tier-platinum-border:   #38bdf8;
@@ -300,6 +324,14 @@
   --tier-platinum-pill-bg:  #e0f2fe;
   --tier-platinum-pill-fg:  #0369a1;
   --tier-platinum-pill-bd:  #7dd3fc;
+  --tier-platinum-ring-outer: #0284c7;
+  --tier-platinum-ring-inner: #67e8f9;
+  --tier-platinum-numeral-bg:  #0c4a6e;
+  --tier-platinum-numeral-fg:  #e0f7fa;
+  --tier-platinum-icon-scale:  0.6;
+  --tier-platinum-halo:        0 0 22px rgba(56, 189, 248, 0.62),
+                               0 0 4px rgba(186, 230, 253, 0.85),
+                               inset 0 1px 4px rgba(255, 255, 255, 0.75);
 
   --status-success-text: #28563d;
   --status-success-surface: #e3f1e7;
@@ -427,6 +459,13 @@
   --tier-bronze-pill-bg:  rgba(245, 158, 11, 0.18);
   --tier-bronze-pill-fg:  #fcd34d;
   --tier-bronze-pill-bd:  rgba(245, 158, 11, 0.4);
+  --tier-bronze-ring-outer: #f59e0b;
+  --tier-bronze-ring-inner: transparent;
+  --tier-bronze-numeral-bg: #b45309;
+  --tier-bronze-numeral-fg: #fff7e8;
+  --tier-bronze-icon-scale: 0.48;
+  --tier-bronze-halo:      0 0 14px rgba(245, 158, 11, 0.45),
+                           inset 0 1px 2px rgba(255, 255, 255, 0.18);
 
   --tier-silver-bg:       linear-gradient(135deg, #1e293b 0%, #475569 100%);
   --tier-silver-border:   #94a3b8;
@@ -436,6 +475,13 @@
   --tier-silver-pill-bg:  rgba(148, 163, 184, 0.18);
   --tier-silver-pill-fg:  #e2e8f0;
   --tier-silver-pill-bd:  rgba(148, 163, 184, 0.4);
+  --tier-silver-ring-outer: #cbd5e1;
+  --tier-silver-ring-inner: rgba(255, 255, 255, 0.32);
+  --tier-silver-numeral-bg: #94a3b8;
+  --tier-silver-numeral-fg: #0f172a;
+  --tier-silver-icon-scale: 0.52;
+  --tier-silver-halo:      0 0 14px rgba(148, 163, 184, 0.5),
+                           inset 0 1px 3px rgba(255, 255, 255, 0.18);
 
   --tier-gold-bg:         linear-gradient(135deg, #422006 0%, #854d0e 100%);
   --tier-gold-border:     #facc15;
@@ -445,6 +491,13 @@
   --tier-gold-pill-bg:    rgba(250, 204, 21, 0.18);
   --tier-gold-pill-fg:    #fde68a;
   --tier-gold-pill-bd:    rgba(250, 204, 21, 0.4);
+  --tier-gold-ring-outer: #facc15;
+  --tier-gold-ring-inner: #fde047;
+  --tier-gold-numeral-bg:  #b45309;
+  --tier-gold-numeral-fg:  #fffbeb;
+  --tier-gold-icon-scale:  0.56;
+  --tier-gold-halo:        0 0 18px rgba(250, 204, 21, 0.62),
+                           inset 0 1px 3px rgba(255, 255, 255, 0.22);
 
   --tier-platinum-bg:       linear-gradient(135deg, #082f49 0%, #0c4a6e 100%);
   --tier-platinum-border:   #38bdf8;
@@ -454,6 +507,14 @@
   --tier-platinum-pill-bg:  rgba(56, 189, 248, 0.18);
   --tier-platinum-pill-fg:  #bae6fd;
   --tier-platinum-pill-bd:  rgba(56, 189, 248, 0.4);
+  --tier-platinum-ring-outer: #38bdf8;
+  --tier-platinum-ring-inner: #67e8f9;
+  --tier-platinum-numeral-bg:  #0369a1;
+  --tier-platinum-numeral-fg:  #e0f7fa;
+  --tier-platinum-icon-scale:  0.6;
+  --tier-platinum-halo:        0 0 22px rgba(56, 189, 248, 0.7),
+                               0 0 4px rgba(186, 230, 253, 0.55),
+                               inset 0 1px 4px rgba(255, 255, 255, 0.25);
 
   /* Feedback & Status */
   --status-success-text: #34d399;

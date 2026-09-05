@@ -37,6 +37,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* `min-width: 0` lets the row shrink so the heading column inside it
+   * can wrap its long titles. Without this the badge + chips + title
+   * refuse to reflow on narrow viewports and the title clips. */
+  min-width: 0;
 }
 
 .cardHeading {
@@ -54,6 +58,10 @@
   color: var(--ink-primary);
   margin: 0;
   line-height: 1.3;
+  /* Title may be long (e.g. "ORCID Verified Platinum Scholar"). Allow
+   * wrap, keep tight measure. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cardCode {
@@ -126,6 +134,20 @@
   color: var(--ink-secondary);
   line-height: 1.45;
   margin: 0;
+  /* Description strings from BE may be very long (200+ chars). Let them
+   * wrap inside the card, never overflow the border.
+   *
+   * The `min-width: 0` is critical: this <p> lives inside a
+   * `flex-direction: column` parent, and flex items default to
+   * `min-width: auto` — which makes them refuse to shrink below their
+   * intrinsic content width. Without `min-width: 0` the long unbreakable
+   * strings (e.g. "Verified by 2 peers through DOI") push the paragraph
+   * wider than the card and bleed past the border. */
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .criteriaRow {
@@ -149,6 +171,12 @@
   font-family: var(--font-family-mono);
   font-size: 0.8125rem;
   color: var(--ink-primary);
+  /* `min-width: 0` lets long mono strings wrap inside the criteria row
+   * (e.g. "publicationCount >= 50 publications") instead of bleeding
+   * past the card border on narrow screens. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .unlockedDate {

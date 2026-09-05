@@ -33,7 +33,10 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  /* Tile min bumped from 120 → 140 so the 56px badge + 8px padding + 2px
+     border fits without crowding. Auto-fill keeps the column count
+     responsive to the parent width. */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: var(--space-3, 12px);
 }
 
@@ -215,12 +218,13 @@
 
 .skeletonGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: var(--space-3, 12px);
 }
 
 .skeletonTile {
-  height: 100px;
+  /* Tile height matches the bigger 56px badge + label. Was 100px. */
+  height: 116px;
   background: var(--surface-sunken);
   border-radius: var(--radius-md);
   opacity: 0.5;
