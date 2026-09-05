@@ -186,7 +186,7 @@ export const ProfileBadgesSection: React.FC<ProfileBadgesSectionProps> = ({
                   code={medal.code}
                   criteriaMetric={medal.criteriaMetric}
                   tier={medal.tier}
-                  size={56}
+                  size={96}
                   alt={title}
                 />
                 <div className={styles.cardHeading}>

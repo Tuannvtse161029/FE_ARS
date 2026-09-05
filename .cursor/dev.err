@@ -1,0 +1,116 @@
+2:50:39 PM [vite] Internal server error: F:\CAPSTONE_PROJECT\ARS_FE\src\pages\Admin\AdminMedals.tsx: Identifier 'Compass' has already been declared. (107:2)
+
+  105 |   FlagTriangleRight,
+  106 |   Anchor,
+> 107 |   Compass,
+      |   ^
+  108 |   Footprints,
+  109 |   Map,
+  110 |   Mountain,
+  Plugin: vite:react-babel
+  File: F:/CAPSTONE_PROJECT/ARS_FE/src/pages/Admin/AdminMedals.tsx:107:2
+  115|    Sun,
+  116|    Moon,
+  117|    Cloud,
+     |      ^
+  118|    CloudCog,
+  119|    Award as AwardIcon,
+      at constructor (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:369:19)
+      at TypeScriptParserMixin.raise (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:6620:19)
+      at TypeScriptScopeHandler.declareName (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:4882:21)
+      at TypeScriptParserMixin.declareNameFromIdentifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7588:16)
+      at TypeScriptParserMixin.checkIdentifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7584:12)
+      at TypeScriptParserMixin.checkLVal (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7521:12)
+      at TypeScriptParserMixin.finishImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14295:10)
+      at TypeScriptParserMixin.parseImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14448:17)
+      at TypeScriptParserMixin.parseImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:10169:18)
+      at TypeScriptParserMixin.parseNamedImportSpecifiers (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14427:36)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14271:37)
+      at TypeScriptParserMixin.parseImport (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14264:17)
+      at TypeScriptParserMixin.parseImport (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:9374:26)
+      at TypeScriptParserMixin.parseStatementContent (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12905:27)
+      at TypeScriptParserMixin.parseStatementContent (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:9529:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12796:17)
+      at TypeScriptParserMixin.parseModuleItem (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12773:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:13345:36)
+      at TypeScriptParserMixin.parseBlockBody (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:13338:10)
+      at TypeScriptParserMixin.parseProgram (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12651:10)
+      at TypeScriptParserMixin.parseTopLevel (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12641:25)
+      at TypeScriptParserMixin.parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14517:25)
+      at TypeScriptParserMixin.parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:10147:18)
+      at parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14551:38)
+      at parser (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transformation\normalize-file.js:51:37)
+      at normalizeFile.next (<anonymous>)
+      at run (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:261:32)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:223:11)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:189:28
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:113:33
+      at step (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:287:14)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:223:11)
+2:50:40 PM [vite] Internal server error: F:\CAPSTONE_PROJECT\ARS_FE\src\pages\Admin\AdminMedals.tsx: Identifier 'Compass' has already been declared. (107:2)
+
+  105 |   FlagTriangleRight,
+  106 |   Anchor,
+> 107 |   Compass,
+      |   ^
+  108 |   Footprints,
+  109 |   Map,
+  110 |   Mountain,
+  Plugin: vite:react-babel
+  File: F:/CAPSTONE_PROJECT/ARS_FE/src/pages/Admin/AdminMedals.tsx:107:2
+  115|    Sun,
+  116|    Moon,
+  117|    Cloud,
+     |      ^
+  118|    CloudCog,
+  119|    Sparkle,
+      at constructor (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:369:19)
+      at TypeScriptParserMixin.raise (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:6620:19)
+      at TypeScriptScopeHandler.declareName (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:4882:21)
+      at TypeScriptParserMixin.declareNameFromIdentifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7588:16)
+      at TypeScriptParserMixin.checkIdentifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7584:12)
+      at TypeScriptParserMixin.checkLVal (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:7521:12)
+      at TypeScriptParserMixin.finishImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14295:10)
+      at TypeScriptParserMixin.parseImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14448:17)
+      at TypeScriptParserMixin.parseImportSpecifier (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:10169:18)
+      at TypeScriptParserMixin.parseNamedImportSpecifiers (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14427:36)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14271:37)
+      at TypeScriptParserMixin.parseImport (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14264:17)
+      at TypeScriptParserMixin.parseImport (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:9374:26)
+      at TypeScriptParserMixin.parseStatementContent (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12905:27)
+      at TypeScriptParserMixin.parseStatementContent (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:9529:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12796:17)
+      at TypeScriptParserMixin.parseModuleItem (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12773:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:13345:36)
+      at TypeScriptParserMixin.parseBlockBody (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:13338:10)
+      at TypeScriptParserMixin.parseProgram (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12651:10)
+      at TypeScriptParserMixin.parseTopLevel (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:12641:25)
+      at TypeScriptParserMixin.parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14517:25)
+      at TypeScriptParserMixin.parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:10147:18)
+      at parse (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\parser\lib\index.js:14551:38)
+      at parser (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transformation\normalize-file.js:51:37)
+      at normalizeFile.next (<anonymous>)
+      at run (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:261:32)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:223:11)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:189:28
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:113:33
+      at step (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:287:14)
+      at F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (F:\CAPSTONE_PROJECT\ARS_FE\node_modules\gensync\index.js:223:11)

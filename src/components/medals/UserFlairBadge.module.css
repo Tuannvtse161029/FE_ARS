@@ -50,7 +50,6 @@
   font-size: 0.75rem;
   line-height: 1.35;
   box-shadow: var(--shadow-md);
-  white-space: nowrap;
   /* Tooltip is anchored above the wrapper; z-index above page chrome but
    * below modals. */
   z-index: 50;
@@ -58,7 +57,13 @@
   pointer-events: none;
   transition: opacity var(--duration-fast, 150ms)
     var(--motion-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-  max-width: 280px;
+  /* Width strategy: cap at 280px so long descriptions wrap instead of
+   * spilling past the badge background; center on the wrapper; clamp the
+   * left edge inside the viewport so tooltips near the page edge stay
+   * visible. `max()` keeps the tooltip from collapsing below the title
+   * width when descriptions are short. */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
 }
 
 .flairWrapper:hover .tooltip,
@@ -69,18 +74,22 @@
 .tooltipTitle {
   font-weight: 600;
   margin-bottom: 2px;
-  /* Title should never wrap onto multiple lines in the tooltip. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 260px;
+  /* Title wraps naturally inside the 280px cap; we no longer force
+   * single-line — that was the source of the "spilling past the badge"
+   * bug the user reported. */
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .tooltipTier {
   color: var(--ink-muted);
   font-size: 0.6875rem;
-  /* Tier + description share one logical block; let them wrap together
-   * if the tooltip widens, but keep tight inter-line spacing. */
+  /* Tier + description share one logical block; let them wrap inside
+   * the 280px cap so long descriptions never overflow the tooltip. */
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   line-height: 1.3;
 }
 

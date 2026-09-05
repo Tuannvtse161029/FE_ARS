@@ -249,7 +249,7 @@ export const FeaturedFlairPicker: React.FC<FeaturedFlairPickerProps> = ({
                 code={m.medal.code}
                 criteriaMetric={m.medal.criteriaMetric}
                 tier={m.medal.tier}
-                size={44}
+                size={56}
                 alt={m.medal.title}
               />
               <span className={styles.tileLabel}>{m.medal.title}</span>
@@ -303,7 +303,7 @@ export const FeaturedFlairPicker: React.FC<FeaturedFlairPickerProps> = ({
                 code={m.medal.code}
                 criteriaMetric={m.medal.criteriaMetric}
                 tier={m.medal.tier}
-                size={28}
+                size={36}
                 alt={m.medal.title}
               />
               <span className={styles.orderLabel}>{m.medal.title}</span>
