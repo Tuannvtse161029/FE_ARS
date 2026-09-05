@@ -96,8 +96,8 @@ You will need a reachable backend (or a local mock). The default `VITE_API_BASE_
 
 ### Prerequisites
 
-- **Node.js** ≥ 18
-- **npm** ≥ 9 (or pnpm / yarn with equivalent lockfiles)
+- **Node.js** 24 LTS (or newer)
+- **npm** ≥ 11 (or pnpm / yarn with equivalent lockfiles)
 
 ---
 

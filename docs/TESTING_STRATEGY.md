@@ -199,7 +199,7 @@ where a Node-based or `npm run`-nested solution is cleaner.
    code when using `&&`; with our scripts we can return specific codes
    (`2` = "smoke was empty", `3` = "no test-relevant changes") that the
    workflows interpret precisely.
-3. **No new runtime deps** — every workflow already runs Node 20+, so we
+3. **No new runtime deps** — every workflow already runs Node 24+, so we
    don't need to add `npm-run-all` or `concurrently` to `package.json`.
 
 The single-step Vitest scripts (`test:unit`, `test:integration`) stay as
