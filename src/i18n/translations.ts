@@ -1519,6 +1519,8 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.materials.shared.endSharing': 'Kết thúc chia sẻ',
     'lecturer.materials.shared.accept': 'Chấp nhận',
     'lecturer.materials.shared.decline': 'Từ chối',
+    'lecturer.materials.shared.open': 'Mở tài liệu',
+    'lecturer.materials.source.shared': 'Được chia sẻ',
     'lecturer.materials.shared.gapBanner.field': 'SharedMaterial.learningMaterialId, status enum, expiry',
     'lecturer.materials.shared.gapBanner.feature': 'API chỉ chấp nhận paperId (số) và trả về ACTIVE/ARCHIVED — FE suy ra các trạng thái còn lại và tự tính hạn 30 ngày.',
     'admin.medals.action.changeIcon': 'Đổi biểu tượng',
@@ -2804,6 +2806,8 @@ export const dictionaries: Record<Locale, Dictionary> = {
     'lecturer.materials.shared.endSharing': 'End sharing',
     'lecturer.materials.shared.accept': 'Accept',
     'lecturer.materials.shared.decline': 'Decline',
+    'lecturer.materials.shared.open': 'Open',
+    'lecturer.materials.source.shared': 'Shared',
     'lecturer.materials.shared.gapBanner.field': 'SharedMaterial.learningMaterialId, status enum, expiry',
     'lecturer.materials.shared.gapBanner.feature': 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
 
