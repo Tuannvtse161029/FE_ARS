@@ -10,6 +10,7 @@ import { CommentSection } from './CommentSection';
 import { FollowButton } from './FollowButton';
 import { ReportModal } from './ReportModal';
 import { ForumPostEngagementRow } from './ForumPostEngagementRow';
+import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { useForumComments } from '../../hooks/useForumComments';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { forumPostService } from '../../services/forumPost.service';
@@ -144,14 +145,19 @@ export const ForumPostCard = ({
           {authorInitials}
         </button>
         <div className={styles.authorInfo}>
-          <button
-            type="button"
-            className={styles.authorName}
-            onClick={handleAuthorClick}
-            title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
-          >
-            {authorLabel}
-          </button>
+          <span className={styles.authorNameRow}>
+            <button
+              type="button"
+              className={styles.authorName}
+              onClick={handleAuthorClick}
+              title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
+            >
+              {authorLabel}
+            </button>
+            {post.authorId != null && (
+              <UserFlairBadge userId={post.authorId} size="xs" showTooltip />
+            )}
+          </span>
           <span className={styles.timestamp}>
             {formatRelativeTime(post.createdAt)}
           </span>

@@ -1,0 +1,242 @@
+/* FeaturedFlairPicker — Paper Day card with grid picker + drag-reorder list. */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4, 16px);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-family: var(--font-family-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.help {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--surface-paper);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+  position: relative;
+  font-family: var(--font-family-ui);
+}
+
+.tile:hover {
+  border-color: var(--accent-primary);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tileSelected {
+  border-color: var(--accent-primary);
+  background: var(--surface-selected);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
+}
+
+.tileLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.tileCheck {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.orderSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: var(--space-3, 12px);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.orderTitle {
+  font-family: var(--font-family-ui);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.orderHelp {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.orderList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orderItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  user-select: none;
+}
+
+.orderItem:active {
+  cursor: grabbing;
+}
+
+.orderItemPrimary {
+  border-color: var(--accent-primary);
+  background: var(--surface-selected);
+}
+
+.orderDragHandle {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.orderLabel {
+  font-size: 0.8125rem;
+  color: var(--ink-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.orderPrimaryChip {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.emptyTitle {
+  font-family: var(--font-family-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.emptyBody {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  margin: 0;
+  max-width: 360px;
+}
+
+.emptyCta {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.emptyCta:hover {
+  background: var(--accent-hover);
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.skeletonTile {
+  height: 100px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  opacity: 0.5;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonTile {
+    animation: none;
+  }
+  .tile {
+    transition: none;
+  }
+}

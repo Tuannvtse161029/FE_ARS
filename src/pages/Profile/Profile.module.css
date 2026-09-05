@@ -133,6 +133,19 @@
   width: fit-content;
 }
 
+/* Reddit-style flair row rendered next to the role badge. Renders one
+ * UserFlairBadge per unlocked medal. Wraps when the identity row is
+ * narrow on small viewports. The component is responsible for skipping
+ * the wrapper entirely when there are zero unlocked medals, so this
+ * class is only ever applied to a non-empty badge collection. */
+.flairRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  flex-wrap: wrap;
+}
+
 /* ── Follow row (followers / following counts) ───────────── */
 .followRow {
   display: flex;

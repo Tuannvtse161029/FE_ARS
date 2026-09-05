@@ -66,8 +66,6 @@ export default defineConfig({
     // Never pre-bundle these — they ship fine through dev-server SSR
     // and stay out of the optimizer's working set.
     exclude: [
-      'firebase/app',
-      'firebase/storage',
       'pdfjs-dist',
       'lucide-react',
     ],
@@ -80,6 +78,15 @@ export default defineConfig({
       'src/App.tsx',
     ],
     // Keep these explicit so Vite does not auto-detect them.
+    //
+    // CRITICAL: every Firebase sub-package we import (`app`, `analytics`,
+    // `firestore`, `storage`) MUST be listed together here. If only some
+    // of them are pre-bundled and the others are served as raw ESM, the
+    // `@firebase/component` registry ends up duplicated across the two
+    // module graphs and `getFirestore(app)` throws
+    // `Service firestore is not available` because the Firestore factory
+    // registered with one registry while `initializeApp` registered the
+    // app with another.
     include: [
       'react',
       'react-dom/client',
@@ -89,6 +96,10 @@ export default defineConfig({
       'react-hook-form',
       '@hookform/resolvers',
       'yup',
+      'firebase/app',
+      'firebase/analytics',
+      'firebase/firestore',
+      'firebase/storage',
     ],
   },
   resolve: {

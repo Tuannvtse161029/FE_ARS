@@ -1,6 +1,6 @@
 // Firebase configuration - loaded from .env variables
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, type Analytics } from "firebase/analytics";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
@@ -72,6 +72,7 @@ export const getFirebaseConfigStatus = (): FirebaseConfigStatus => {
 let app: ReturnType<typeof initializeApp> | null = null;
 let storageInstance: FirebaseStorage | null = null;
 let firestoreInstance: Firestore | null = null;
+let analyticsInstance: Analytics | null = null;
 
 // Capture the init error so the UI can surface it (instead of silently
 // falling through to a misleading "Firebase is not configured" message).
@@ -80,12 +81,45 @@ let firebaseInitError: Error | null = null;
 if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig);
-    // Only get analytics in browser context
-    if (typeof window !== 'undefined') {
-      getAnalytics(app);
+
+    // Storage first — it never depends on anything else and is what
+    // manuscript PDF uploads use. If the env vars are bad at least
+    // we'll surface a clear error before touching Firestore.
+    try {
+      storageInstance = getStorage(app);
+    } catch (storageError) {
+      // eslint-disable-next-line no-console
+      console.error('Firebase Storage failed to initialize:', storageError);
+      throw storageError;
     }
-    storageInstance = getStorage(app);
-    firestoreInstance = getFirestore(app);
+
+    // Firestore next — Policies editor, Post moderation, and any other
+    // collection-backed feature call into this. We isolate it so a
+    // Firestore init failure doesn't take Storage down with it.
+    try {
+      firestoreInstance = getFirestore(app);
+    } catch (firestoreError) {
+      // eslint-disable-next-line no-console
+      console.error('Firebase Firestore failed to initialize:', firestoreError);
+    }
+
+    // Analytics is purely nice-to-have; if it fails we still want the
+    // rest of Firebase to work. Wrap in its own try/catch and only init
+    // when measurementId is present (otherwise the SDK can refuse to
+    // register with the same "Service analytics is not available" /
+    // "Component analytics has not been registered yet" error that the
+    // older code was crashing on).
+    if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+      try {
+        analyticsInstance = getAnalytics(app);
+      } catch (analyticsError) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          'Firebase Analytics failed to initialize; continuing without it.',
+          analyticsError,
+        );
+      }
+    }
   } catch (error) {
     firebaseInitError = error instanceof Error ? error : new Error(String(error));
     // eslint-disable-next-line no-console
@@ -101,5 +135,6 @@ if (isFirebaseConfigured()) {
 
 export const storage = storageInstance;
 export const firestore = firestoreInstance;
+export const analytics = analyticsInstance;
 export { app, isFirebaseConfigured };
 export const firebaseInitializationError = firebaseInitError;
