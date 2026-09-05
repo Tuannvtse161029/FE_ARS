@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=24.0.0",
-    "npm": ">=11.0.0"
+    "node": "24.x",
+    "npm": "11.x"
   },
   "scripts": {
     "dev": "node scripts/run-dev.mjs",
