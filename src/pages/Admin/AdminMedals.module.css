@@ -303,6 +303,11 @@
   border: 1px solid #7dd3fc;
 }
 
+.tierBadge_Bronze  { background: var(--tier-bronze-pill-bg); color: var(--tier-bronze-pill-fg); border-color: var(--tier-bronze-pill-bd); }
+.tierBadge_Silver  { background: var(--tier-silver-pill-bg); color: var(--tier-silver-pill-fg); border-color: var(--tier-silver-pill-bd); }
+.tierBadge_Gold    { background: var(--tier-gold-pill-bg);   color: var(--tier-gold-pill-fg);   border-color: var(--tier-gold-pill-bd);   }
+.tierBadge_Platinum{ background: var(--tier-platinum-pill-bg); color: var(--tier-platinum-pill-fg); border-color: var(--tier-platinum-pill-bd); }
+
 .criteriaText {
   color: var(--ink-on-paper, #334155);
   font-weight: 500;
@@ -910,4 +915,138 @@
   color: #1d4ed8;
   font-weight: 600;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* Family-grouped card (new) */
+.familyCodeBadge {
+  font-family: monospace;
+  font-size: 0.6875rem;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.tierCountHint {
+  font-size: 0.6875rem;
+  color: var(--ink-muted, #94a3b8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.familySharedHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #78350f;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.familySharedHint svg {
+  flex-shrink: 0;
+  color: #b45309;
+}
+
+/* Tier ladder inside a family card */
+.tierLadder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tierLadderHeader {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted, #64748b);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.tierLadderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.tierLadderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tierLadderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tierLadderName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-on-paper, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tierLadderCriteria {
+  font-size: 0.6875rem;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.tierLadderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tierLadderActions .btnAction {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+/* Quick image modal — 4-tier preview row */
+.tierPreviewRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.tierPreviewCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tierPreviewLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #475569);
 }

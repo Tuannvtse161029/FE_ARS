@@ -28,7 +28,7 @@
 //   A successful save exits edit mode and shows a success banner; the user
 //   can re-enter edit mode to make further changes.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -47,6 +47,10 @@ import { followerService } from '../../services/follower.service';
 import { FollowListModal } from '../../components/profile/FollowListModal';
 import { ProfilePublicationsSection } from '../../components/profile/ProfilePublicationsSection';
 import { ProfileForumSection } from '../../components/profile/ProfileForumSection';
+import { ProfileSectionTabs, type ProfileTabId } from '../../components/profile/ProfileSectionTabs';
+import { ProfileBadgesSection } from '../../components/profile/ProfileBadgesSection';
+import { FeaturedFlairPicker } from '../../components/profile/FeaturedFlairPicker';
+import { useAuthorFlair } from '../../hooks/useAuthorFlair';
 import { useProfileExtras } from '../../hooks/useProfileExtras';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button';
@@ -56,6 +60,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import { isOrcidEligibleRole } from '../../utils/registrationRoles';
+import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { useI18n } from '../../i18n/I18nContext';
 import styles from './Profile.module.css';
 
@@ -253,6 +258,7 @@ function draftFromProfile(p: {
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
+  const { t } = useI18n();
   const authenticatedUserId = user?.userId ?? null;
   const parsedTargetId = routeUserId ? Number(routeUserId) : null;
   const targetUserId = parsedTargetId && Number.isFinite(parsedTargetId) && parsedTargetId > 0
@@ -278,6 +284,18 @@ export const Profile = () => {
   const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
+
+  // Reddit-style flair row: pull this user's unlocked medals once. The
+  // hook is no-op when userId is null (during the unauthenticated /
+  // loading guards above). The same module-level cache used by the
+  // forum cards means switching between a forum card for author X and
+  // this profile will not refetch X's medals.
+  //
+  // IMPORTANT: pass `null` (not `0`) when no id is resolved — passing 0
+  // would be treated as a real user id and trigger a fetch, polluting the
+  // cache under the bogus key '0'.
+  const flairUserId = targetUserId ?? authenticatedUserId ?? null;
+  const { unlockedMedals } = useAuthorFlair(flairUserId);
 
   // Live preview of this user's published papers + forum posts. Only
   // fetches when we actually have a resolved userId (skipped during the
@@ -328,6 +346,67 @@ export const Profile = () => {
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [keywordDraft, setKeywordDraft] = useState<string>('');
 
+  // ── Tab navigation (Phase 2.4) ────────────────────────────────
+  // The Profile page splits its content into Overview / Forum /
+  // Publications / Badges tabs. Owner starts on Overview; visitor
+  // defaults to Overview as well so the profile reads as one document.
+  const [activeTab, setActiveTab] = useState<ProfileTabId>('overview');
+
+  // unlockedMedals comes from the existing flair fetch above. We just
+  // count unlocked ones for the badge chip on the Badges tab.
+  const unlockedBadgeCount = useMemo(
+    () => unlockedMedals.filter((m) => m && m.isUnlocked).length,
+    [unlockedMedals],
+  );
+
+  // ── Featured flair (Phase 2.5) ────────────────────────────────
+  // The BE now accepts `flairMedalId` + `flairOrder` on /api/Profile/{id}
+  // (PROFILE_UPDATE_KEYS), but reads may be empty if the user has never
+  // set a flair. We hydrate from localStorage (`ars_flair_<userId>`) so
+  // the in-form picker and the public UserFlairBadge stay in sync even
+  // when the BE column is still null.
+  const flairStorageKey = (uid: number): string => `ars_flair_${uid}`;
+
+  const [flairMedalId, setFlairMedalId] = useState<string | null>(
+    profile?.flairMedalId ?? null,
+  );
+  const [flairOrder, setFlairOrder] = useState<string[]>(
+    Array.isArray(profile?.flairOrder) ? profile.flairOrder : [],
+  );
+
+  // Seed from localStorage on mount / when targetUserId changes. We
+  // deliberately do NOT re-seed when `profile` changes — the user's local
+  // pick should win over a stale BE value.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const uid = targetUserId ?? authenticatedUserId;
+    if (!uid) return;
+    try {
+      const raw = window.localStorage.getItem(flairStorageKey(uid));
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        flairMedalId?: string;
+        flairOrder?: string[];
+      };
+      if (typeof parsed.flairMedalId === 'string') {
+        setFlairMedalId(parsed.flairMedalId);
+      }
+      if (Array.isArray(parsed.flairOrder)) {
+        setFlairOrder(parsed.flairOrder);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [targetUserId, authenticatedUserId]);
+
+  const handleFlairChange = useCallback(
+    (next: { flairMedalId: string | null; flairOrder: string[] }) => {
+      setFlairMedalId(next.flairMedalId);
+      setFlairOrder(next.flairOrder);
+    },
+    [],
+  );
+
   // Seed the draft whenever the BE profile resolves / changes.
   useEffect(() => {
     if (!profile) {
@@ -375,7 +454,12 @@ export const Profile = () => {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (hasValidationErrors || isSaving || !hasChanges) return;
-    const updated = await save(payload);
+    const mergedPayload: Partial<ProfileUpdateRequest> = {
+      ...payload,
+      flairMedalId,
+      flairOrder,
+    };
+    const updated = await save(mergedPayload);
     if (updated) {
       const next = draftFromProfile(updated);
       setDraft(next);
@@ -586,6 +670,26 @@ export const Profile = () => {
           </h2>
           <p className={styles.identityRole}>
             <span className={styles.roleBadge}>{roleLabel}</span>
+            {unlockedMedals.filter((m) => m.isUnlocked && m.medal).length > 0 ? (
+              <span
+                className={styles.flairRow}
+                aria-label={t('badges.profile.tab', 'Badges')}
+              >
+                {unlockedMedals
+                  .filter((m) => m.isUnlocked && m.medal)
+                  .map((m) =>
+                    flairUserId != null ? (
+                      <UserFlairBadge
+                        key={m.medal.id}
+                        userId={flairUserId}
+                        forceMedalId={m.medal.id}
+                        size="xs"
+                        showTooltip
+                      />
+                    ) : null,
+                  )}
+              </span>
+            ) : null}
             {isEmptyProfile && isOwner ? (
               <span className={styles.emptyBadge}>Profile not yet configured</span>
             ) : null}
@@ -685,34 +789,74 @@ export const Profile = () => {
           hasChanges={hasChanges}
           hasValidationErrors={hasValidationErrors}
           keywordDraft={keywordDraft}
+          flairMedalId={flairMedalId}
+          flairOrder={flairOrder}
+          authenticatedUserId={authenticatedUserId ?? 0}
           onChange={handleFieldChange}
           onKeywordDraftChange={setKeywordDraft}
           onKeywordKeyDown={handleKeywordKeyDown}
           onAddKeyword={handleAddKeyword}
           onRemoveKeyword={handleRemoveKeyword}
+          onFlairChange={handleFlairChange}
           onSubmit={handleSave}
           onCancel={handleCancelEdit}
         />
       )}
 
-      {/* Published papers + Forum posts — read-only previews of this
-          user's activity on the rest of the ARS platform. Both sections
-          render the same chrome so the profile reads as one document. */}
+      {/* Phase 2.4 — Tab navigation (view-only) + per-tab sections.
+          The identity card / banners / ProfileView stay mounted above the
+          tabs so they read as the profile's "masthead"; the tabs only swap
+          the four lower sections (Overview / Forum / Publications / Badges).
+          In edit mode we render the edit form instead and skip tabs so the
+          user can't navigate away mid-edit. */}
       {targetUserId && mode === 'view' ? (
-        <div className={styles.extrasGroup}>
-          <ProfilePublicationsSection
-            publications={publications}
-            isLoading={isExtrasLoading}
-            error={extrasError}
-            isOwner={isOwner}
+        <>
+          <ProfileSectionTabs
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            badgeCount={unlockedBadgeCount}
           />
-          <ProfileForumSection
-            posts={forumPosts}
-            isLoading={isExtrasLoading}
-            error={extrasError}
-            isOwner={isOwner}
-          />
-        </div>
+
+          <div
+            id="profile-tabpanel-overview"
+            role="tabpanel"
+            hidden={activeTab !== 'overview'}
+            data-testid="profile-tabpanel-overview"
+          >
+            {/*
+              The overview tab intentionally renders nothing below the
+              ProfileView — ProfileView is the overview content, already
+              mounted above. This empty panel keeps the tabpanel contract
+              honest (every tab has a panel).
+            */}
+          </div>
+
+          {activeTab === 'publications' ? (
+            <ProfilePublicationsSection
+              publications={publications}
+              isLoading={isExtrasLoading}
+              error={extrasError}
+              isOwner={isOwner}
+            />
+          ) : null}
+
+          {activeTab === 'forum' ? (
+            <ProfileForumSection
+              posts={forumPosts}
+              isLoading={isExtrasLoading}
+              error={extrasError}
+              isOwner={isOwner}
+            />
+          ) : null}
+
+          {activeTab === 'badges' ? (
+            <ProfileBadgesSection
+              userId={targetUserId}
+              isOwner={isOwner}
+              medals={unlockedMedals}
+            />
+          ) : null}
+        </>
       ) : null}
 
       {targetUserId && (
@@ -874,11 +1018,16 @@ interface ProfileEditFormProps {
   hasChanges: boolean;
   hasValidationErrors: boolean;
   keywordDraft: string;
+  flairMedalId: string | null;
+  flairOrder: string[];
+  /** Authenticated user id — used to scope the FeaturedFlairPicker's localStorage key. */
+  authenticatedUserId: number;
   onChange: <K extends keyof DraftFields>(key: K, value: DraftFields[K]) => void;
   onKeywordDraftChange: (value: string) => void;
   onKeywordKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   onAddKeyword: () => void;
   onRemoveKeyword: (kw: string) => void;
+  onFlairChange: (next: { flairMedalId: string | null; flairOrder: string[] }) => void;
   onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
 }
@@ -890,11 +1039,15 @@ const ProfileEditForm = ({
   hasChanges,
   hasValidationErrors,
   keywordDraft,
+  flairMedalId,
+  flairOrder,
+  authenticatedUserId,
   onChange,
   onKeywordDraftChange,
   onKeywordKeyDown,
   onAddKeyword,
   onRemoveKeyword,
+  onFlairChange,
   onSubmit,
   onCancel,
 }: ProfileEditFormProps) => {
@@ -1156,6 +1309,16 @@ const ProfileEditForm = ({
           ) : null}
         </div>
       </div>
+
+      {/* Phase 2.5 — Featured flair picker (Reddit-style). Sits below
+          the keyword chips and above the action bar so it's the last
+          thing the user sees before Save. */}
+      <FeaturedFlairPicker
+        userId={authenticatedUserId}
+        valueFlairMedalId={flairMedalId}
+        valueFlairOrder={flairOrder}
+        onChange={onFlairChange}
+      />
 
       <div className={styles.formActions}>
         <span className={styles.formActionsHint}>

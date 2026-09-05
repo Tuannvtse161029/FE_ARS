@@ -18,6 +18,24 @@ import {
   Target,
   FileText,
   Bookmark,
+  FlaskConical,
+  Atom,
+  Microscope,
+  Rocket,
+  Beaker,
+  Lightbulb,
+  Puzzle,
+  Layers,
+  Network,
+  GitBranch,
+  Binary,
+  Calculator,
+  Globe2,
+  Languages,
+  Presentation,
+  Headphones,
+  Quote,
+  PenTool,
   Plus,
   Search,
   CheckCircle2,
@@ -32,6 +50,7 @@ import {
   HelpCircle,
   X,
   ExternalLink,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   medalService,
@@ -39,6 +58,11 @@ import {
   type MedalTier,
   type RoleTarget,
   type MedalCreateInput,
+  type MedalFamilyGroup,
+  MEDAL_CRITERIA_UNITS,
+  criteriaUnitLabel,
+  type MedalCriteriaUnit,
+  groupMedalsByFamily,
 } from '../../services/medal.service';
 import { useFirebaseFileUpload } from '../../hooks/useFirebaseFileUpload';
 import { useI18n } from '../../i18n/I18nContext';
@@ -55,10 +79,7 @@ const ALL_ROLES: RoleTarget[] = [
   'Graduate Student',
 ];
 
-export const LUCIDE_ICONS_MAP: Record<
-  string,
-  React.ComponentType<any>
-> = {
+export const LUCIDE_ICONS_MAP: Record<string, LucideIcon> = {
   Medal: MedalIcon,
   Award: Award,
   Trophy: Trophy,
@@ -77,6 +98,24 @@ export const LUCIDE_ICONS_MAP: Record<
   Target: Target,
   FileText: FileText,
   Bookmark: Bookmark,
+  FlaskConical: FlaskConical,
+  Atom: Atom,
+  Microscope: Microscope,
+  Rocket: Rocket,
+  Beaker: Beaker,
+  Lightbulb: Lightbulb,
+  Puzzle: Puzzle,
+  Layers: Layers,
+  Network: Network,
+  GitBranch: GitBranch,
+  Binary: Binary,
+  Calculator: Calculator,
+  Globe2: Globe2,
+  Languages: Languages,
+  Presentation: Presentation,
+  Headphones: Headphones,
+  Quote: Quote,
+  PenTool: PenTool,
 };
 
 export const LUCIDE_ICONS_LIST = [
@@ -98,40 +137,37 @@ export const LUCIDE_ICONS_LIST = [
   { name: 'Target', labelVi: 'Mục tiêu', labelEn: 'Target' },
   { name: 'FileText', labelVi: 'Bài báo', labelEn: 'Paper' },
   { name: 'Bookmark', labelVi: 'Dấu ấn', labelEn: 'Bookmark' },
+  { name: 'FlaskConical', labelVi: 'Ống nghiệm / Thí nghiệm', labelEn: 'Lab / Experiment' },
+  { name: 'Atom', labelVi: 'Nguyên tử / Vật lý', labelEn: 'Atom / Physics' },
+  { name: 'Microscope', labelVi: 'Kính hiển vi', labelEn: 'Microscope' },
+  { name: 'Rocket', labelVi: 'Tên lửa / Khởi nghiệp', labelEn: 'Rocket / Launch' },
+  { name: 'Beaker', labelVi: 'Cốc thí nghiệm', labelEn: 'Beaker' },
+  { name: 'Lightbulb', labelVi: 'Bóng đèn / Ý tưởng', labelEn: 'Lightbulb / Idea' },
+  { name: 'Puzzle', labelVi: 'Ghép hình / Mô-đun', labelEn: 'Puzzle / Module' },
+  { name: 'Layers', labelVi: 'Lớp / Tầng', labelEn: 'Layers' },
+  { name: 'Network', labelVi: 'Mạng lưới', labelEn: 'Network' },
+  { name: 'GitBranch', labelVi: 'Nhánh / Phiên bản', labelEn: 'Branch / Version' },
+  { name: 'Binary', labelVi: 'Nhị phận / Số học', labelEn: 'Binary / Numeric' },
+  { name: 'Calculator', labelVi: 'Máy tính / Tính toán', labelEn: 'Calculator' },
+  { name: 'Globe2', labelVi: 'Địa cầu / Quốc tế', labelEn: 'Globe / Global' },
+  { name: 'Languages', labelVi: 'Ngôn ngữ / Dịch thuật', labelEn: 'Languages' },
+  { name: 'Presentation', labelVi: 'Thuyết trình', labelEn: 'Presentation' },
+  { name: 'Headphones', labelVi: 'Tai nghe / Nghiên cứu', labelEn: 'Headphones' },
+  { name: 'Quote', labelVi: 'Trích dẫn học thuật', labelEn: 'Academic Quote' },
+  { name: 'PenTool', labelVi: 'Bút / Sáng tạo', labelEn: 'Pen / Creative' },
 ];
-
-const TIER_METALLIC_STYLES: Record<
-  MedalTier,
-  { bg: string; border: string; iconColor: string; glow: string }
-> = {
-  Bronze: {
-    bg: 'linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)',
-    border: '#cd7f32',
-    iconColor: '#92400e',
-    glow: '0 0 10px rgba(205, 127, 50, 0.4)',
-  },
-  Silver: {
-    bg: 'linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%)',
-    border: '#94a3b8',
-    iconColor: '#334155',
-    glow: '0 0 10px rgba(148, 163, 184, 0.45)',
-  },
-  Gold: {
-    bg: 'linear-gradient(135deg, #fef9c3 0%, #fde047 100%)',
-    border: '#eab308',
-    iconColor: '#854d0e',
-    glow: '0 0 12px rgba(234, 179, 8, 0.5)',
-  },
-  Platinum: {
-    bg: 'linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 100%)',
-    border: '#38bdf8',
-    iconColor: '#0369a1',
-    glow: '0 0 14px rgba(56, 189, 248, 0.55)',
-  },
-};
 
 /**
  * Resolves the appropriate Lucide icon name from medal code / metric / imageUrl
+ *
+ * NOTE: this is only used when a medal has no explicit `imageUrl` stored
+ * yet. Once `imageUrl` is set (either via the data model or the Admin
+ * picker), the stored value always wins.
+ *
+ * Order matters — more specific keywords come BEFORE more general ones so
+ * the resolver doesn't pick the wrong icon. The previous version put the
+ * `HOST`/seminar keyword above `PARTICIPANT`, so `SEMINAR_PARTICIPANT`
+ * medals were given the `Mic` icon instead of `Headphones`. Fixed below.
  */
 export const resolveMedalIconName = (medal: {
   code?: string;
@@ -145,12 +181,26 @@ export const resolveMedalIconName = (medal: {
   const code = (medal.code || '').toUpperCase();
   const metric = (medal.criteriaMetric || '').toLowerCase();
 
+  // 1. Most specific — ORCID identity verification
   if (code.includes('ORCID') || metric.includes('orcid')) return 'ShieldCheck';
-  if (code.includes('PROLIFIC') || metric.includes('paper')) return 'BookOpen';
-  if (code.includes('HOST') || metric.includes('host') || metric.includes('seminar')) return 'Mic';
-  if (code.includes('MENTOR') || metric.includes('guided') || metric.includes('group')) return 'GraduationCap';
+
+  // 2. Hosting a seminar (Lecturer/Researcher)
+  if (code.includes('HOST') || metric.includes('host')) return 'Mic';
+
+  // 3. Participating in seminars (Graduate Student — listening)
+  if (code.includes('PARTICIPANT') || metric.includes('attended')) return 'Headphones';
+
+  // 4. Reviewing papers (Reviewer)
   if (code.includes('REVIEW') || metric.includes('review')) return 'ClipboardCheck';
-  if (code.includes('PARTICIPANT') || metric.includes('attended')) return 'Award';
+
+  // 5. Mentoring student groups (Lecturer)
+  if (code.includes('MENTOR') || metric.includes('guided') || metric.includes('group')) return 'GraduationCap';
+
+  // 6. Publishing papers (Researcher) — checked AFTER host/mentor so the
+  //    more specific role-based icons win.
+  if (code.includes('PROLIFIC') || metric.includes('paper') || metric.includes('published')) return 'BookOpen';
+
+  // 7. Flawless submissions (Graduate Student)
   if (code.includes('FLAWLESS') || metric.includes('flawless')) return 'Sparkles';
 
   return 'Medal';
@@ -158,7 +208,7 @@ export const resolveMedalIconName = (medal: {
 
 /**
  * Renders a medal badge artwork using lucide-react vector icons or safe image fallback.
- * Guaranteed 0 CORB loops, 0 network errors.
+ * Tier colors are resolved from CSS variables defined in src/styles/ars-tokens.css.
  */
 export const SafeMedalBadge: React.FC<{
   imageUrl?: string;
@@ -175,7 +225,7 @@ export const SafeMedalBadge: React.FC<{
     setImgFailed(false);
   }, [imageUrl]);
 
-  const style = TIER_METALLIC_STYLES[tier] || TIER_METALLIC_STYLES.Bronze;
+  const tierKey = tier.toLowerCase();
   const iconName = resolveMedalIconName({ code, imageUrl, criteriaMetric });
   const IconComponent = LUCIDE_ICONS_MAP[iconName] || MedalIcon;
 
@@ -199,8 +249,8 @@ export const SafeMedalBadge: React.FC<{
           height: `${size}px`,
           borderRadius: '50%',
           objectFit: 'cover',
-          border: `2px solid ${style.border}`,
-          boxShadow: style.glow,
+          border: `2px solid var(--tier-${tierKey}-border)`,
+          boxShadow: `var(--tier-${tierKey}-glow)`,
         }}
         onError={(e) => {
           e.currentTarget.onerror = null;
@@ -217,9 +267,9 @@ export const SafeMedalBadge: React.FC<{
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: '50%',
-        background: style.bg,
-        border: `2px solid ${style.border}`,
-        boxShadow: style.glow,
+        background: `var(--tier-${tierKey}-bg)`,
+        border: `2px solid var(--tier-${tierKey}-border)`,
+        boxShadow: `var(--tier-${tierKey}-glow)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -228,13 +278,17 @@ export const SafeMedalBadge: React.FC<{
       }}
       title={alt || iconName}
     >
-      <IconComponent size={size * 0.52} color={style.iconColor} />
+      <IconComponent
+        size={size * 0.52}
+        color={`var(--tier-${tierKey}-icon)`}
+      />
     </div>
   );
 };
 
 export const AdminMedals: React.FC = () => {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
+  // Tiny shim so legacy call sites still resolve bilingual text without throwing.
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
 
   const [medals, setMedals] = useState<Medal[]>([]);
@@ -254,6 +308,9 @@ export const AdminMedals: React.FC = () => {
   // Quick icon/image change state
   const [quickImageUrl, setQuickImageUrl] = useState<string>('lucide:Medal');
   const [quickImageTab, setQuickImageTab] = useState<'lucide' | 'upload' | 'url'>('lucide');
+
+  // Inline validation for the title fields
+  const [titleError, setTitleError] = useState<string>('');
 
   // Firebase upload hook
   const {
@@ -275,7 +332,8 @@ export const AdminMedals: React.FC = () => {
   const [formImageUrl, setFormImageUrl] = useState('lucide:Medal');
   const [formCriteriaMetric, setFormCriteriaMetric] = useState('');
   const [formCriteriaThreshold, setFormCriteriaThreshold] = useState<number>(1);
-  const [formCriteriaUnit, setFormCriteriaUnit] = useState('lần');
+  const [formCriteriaUnit, setFormCriteriaUnit] =
+    useState<MedalCriteriaUnit>('times');
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
 
   // Toast / Banner alert
@@ -287,39 +345,14 @@ export const AdminMedals: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+  const showNotification = (
+    message: string,
+    type: 'success' | 'error' = 'success'
+  ) => {
     setNotification({ message, type });
     setTimeout(() => {
       setNotification(null);
     }, 4500);
-  };
-
-  // Format criteria unit based on locale
-  const formatCriteriaUnit = (unit: string): string => {
-    if (locale !== 'en') return unit;
-    switch (unit?.toLowerCase()) {
-      case 'bài báo':
-        return 'papers';
-      case 'hội thảo':
-        return 'seminars';
-      case 'nhóm':
-      case 'nhóm sinh viên':
-        return 'student groups';
-      case 'lượt':
-      case 'lượt review':
-        return 'reviews';
-      case 'tài khoản':
-        return 'account';
-      case 'công trình':
-        return 'publications';
-      case 'giai đoạn':
-      case 'phase':
-        return 'phases';
-      case 'lần':
-        return 'times';
-      default:
-        return unit || 'times';
-    }
   };
 
   // Load Medals from backend
@@ -329,7 +362,9 @@ export const AdminMedals: React.FC = () => {
       const data = await medalService.getAll();
       setMedals(data);
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || copy('Failed to load medals from backend', 'Không thể tải danh sách huy hiệu');
+      const msg =
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.loadFailed', 'Không thể tải danh sách huy hiệu');
       showNotification(msg, 'error');
     } finally {
       setIsLoading(false);
@@ -340,7 +375,7 @@ export const AdminMedals: React.FC = () => {
     loadMedals();
   }, []);
 
-  // Filtered medals
+  // Filtered medals (used by the table view and stats)
   const filteredMedals = useMemo(() => {
     return medals.filter((medal) => {
       if (searchQuery.trim()) {
@@ -376,6 +411,19 @@ export const AdminMedals: React.FC = () => {
     });
   }, [medals, searchQuery, selectedRole, selectedTier, selectedStatus]);
 
+  /**
+   * Family-grouped view used by the card grid. Each family is rendered as
+   * ONE card, with the icon shown ONCE (shared across all tier variants).
+   * Tier variants are listed inside the card with their criteria
+   * thresholds so the Admin can still see/edit each tier individually.
+   */
+  const familyGroups = useMemo<MedalFamilyGroup[]>(() => {
+    // Group the already-filtered medals so search/role/tier/status filters
+    // apply to the family view too. A family is kept if AT LEAST ONE of its
+    // tiers passes the filters.
+    return groupMedalsByFamily(filteredMedals);
+  }, [filteredMedals]);
+
   // Statistics counters
   const stats = useMemo(() => {
     const total = medals.length;
@@ -387,7 +435,9 @@ export const AdminMedals: React.FC = () => {
     return { total, active, bronze, silver, gold, platinum };
   }, [medals]);
 
-  // Handle Quick Image / Icon Modal Open
+  // Handle Quick Image / Icon Modal Open — operates on a METRIC FAMILY,
+  // not a single medal. The icon belongs to the achievement (family), so
+  // changing it once updates every tier variant in one shot.
   const handleOpenQuickImage = (medal: Medal) => {
     setTargetMedal(medal);
     setQuickImageUrl(medal.imageUrl || 'lucide:' + resolveMedalIconName(medal));
@@ -396,27 +446,56 @@ export const AdminMedals: React.FC = () => {
     setActiveModal('quickImage');
   };
 
-  // Handle Quick Image / Icon Save
+  // Handle Quick Image / Icon Save — applies the new icon to EVERY medal
+  // in the metric family so all 4 tiers stay visually consistent (only the
+  // colour frame differs across tiers).
   const handleSaveQuickImage = async () => {
     if (!targetMedal) return;
+    const newImageUrl = quickImageUrl.trim() || 'lucide:Medal';
     try {
-      await medalService.update(targetMedal.id, {
-        imageUrl: quickImageUrl.trim(),
-      });
-      const medalName = locale === 'en' ? targetMedal.title : targetMedal.titleVi;
+      const familyTiers = medals.filter(
+        (m) =>
+          deriveFamilyKeyLocal(m.code) ===
+          deriveFamilyKeyLocal(targetMedal.code),
+      );
+      // Single-tier edge case: fall back to a single update.
+      if (familyTiers.length <= 1) {
+        await medalService.update(targetMedal.id, { imageUrl: newImageUrl });
+      } else {
+        await medalService.updateMedalFamilyIcon(
+          deriveFamilyKeyLocal(targetMedal.code),
+          newImageUrl,
+        );
+      }
+      const medalName =
+        locale === 'en' ? targetMedal.title : targetMedal.titleVi;
       showNotification(
-        copy(
-          `Updated badge artwork for "${medalName}" successfully!`,
-          `Đã cập nhật hình ảnh huy hiệu "${medalName}" thành công!`
+        t(
+          'admin.medals.success.imageUpdated',
+          `Đã cập nhật biểu tượng cho "${medalName}" — áp dụng cho mọi cấp bậc (tier) của huy hiệu này!`
         )
       );
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to update medal image', 'Lỗi khi cập nhật ảnh huy hiệu');
+      const msg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.saveFailed', 'Lỗi khi lưu thông tin huy hiệu');
       showNotification(msg, 'error');
     }
+  };
+
+  // Local helper — strips tier suffix to derive the metric family key.
+  // Mirrors the same logic in medal.service.ts. Kept local to avoid an
+  // extra import ceremony in this already-large file.
+  const deriveFamilyKeyLocal = (code: string): string => {
+    if (!code) return '';
+    return code
+      .replace(/_(BRONZE|SILVER|GOLD|PLATINUM)$/i, '')
+      .replace(/_(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i, '')
+      .toUpperCase();
   };
 
   // Handle Image File Pick for Quick Modal
@@ -429,10 +508,18 @@ export const AdminMedals: React.FC = () => {
       const downloadUrl = await uploadFile(file);
       if (downloadUrl) {
         setQuickImageUrl(downloadUrl);
-        showNotification(copy('Image uploaded to Firebase successfully!', 'Tải ảnh lên Firebase thành công!'));
+        showNotification(
+          t(
+            'admin.medals.success.uploaded',
+            'Tải ảnh lên Firebase thành công!'
+          )
+        );
       }
     } catch {
-      showNotification(copy('Failed to upload image to Firebase', 'Không thể tải ảnh lên Firebase'), 'error');
+      showNotification(
+        t('admin.medals.error.uploadFailed', 'Không thể tải ảnh lên Firebase'),
+        'error'
+      );
     }
   };
 
@@ -449,8 +536,9 @@ export const AdminMedals: React.FC = () => {
     setFormImageUrl('lucide:Medal');
     setFormCriteriaMetric('');
     setFormCriteriaThreshold(1);
-    setFormCriteriaUnit(copy('times', 'lần'));
+    setFormCriteriaUnit('times');
     setFormIsActive(true);
+    setTitleError('');
     resetUpload();
     setActiveModal('create');
   };
@@ -470,6 +558,7 @@ export const AdminMedals: React.FC = () => {
     setFormCriteriaThreshold(medal.criteriaThreshold);
     setFormCriteriaUnit(medal.criteriaUnit);
     setFormIsActive(medal.isActive);
+    setTitleError('');
     resetUpload();
     setActiveModal('edit');
   };
@@ -478,9 +567,16 @@ export const AdminMedals: React.FC = () => {
   const handleSaveMedalForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitleVi.trim() && !formTitle.trim()) {
-      showNotification(copy('Please enter a medal title', 'Vui lòng nhập tên huy hiệu'), 'error');
+      setTitleError(
+        t('admin.medals.error.titleRequired', 'Vui lòng nhập tên huy hiệu')
+      );
+      showNotification(
+        t('admin.medals.error.titleRequired', 'Vui lòng nhập tên huy hiệu'),
+        'error'
+      );
       return;
     }
+    setTitleError('');
 
     const payload: MedalCreateInput = {
       title: formTitle.trim() || formTitleVi.trim(),
@@ -493,24 +589,34 @@ export const AdminMedals: React.FC = () => {
       imageUrl: formImageUrl.trim() || 'lucide:Medal',
       criteriaMetric: formCriteriaMetric.trim() || 'default_metric',
       criteriaThreshold: Number(formCriteriaThreshold) || 1,
-      criteriaUnit: formCriteriaUnit.trim() || copy('times', 'lần'),
+      criteriaUnit: formCriteriaUnit,
       isActive: formIsActive,
     };
 
     try {
       if (activeModal === 'create') {
         await medalService.create(payload);
-        showNotification(copy('Created new academic medal successfully on backend!', 'Tạo huy hiệu mới thành công trên hệ thống!'));
+        showNotification(
+          t('admin.medals.success.created', 'Tạo huy hiệu mới thành công!')
+        );
       } else if (activeModal === 'edit' && targetMedal) {
         await medalService.update(targetMedal.id, payload);
         const name = locale === 'en' ? payload.title : payload.titleVi;
-        showNotification(copy(`Updated medal "${name}" successfully!`, `Đã cập nhật huy hiệu "${name}" thành công!`));
+        showNotification(
+          t(
+            'admin.medals.success.updated',
+            `Đã cập nhật huy hiệu "${name}" thành công!`
+          )
+        );
       }
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Error saving medal information', 'Lỗi khi lưu thông tin huy hiệu');
+      const msg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.saveFailed', 'Lỗi khi lưu thông tin huy hiệu');
       showNotification(msg, 'error');
     }
   };
@@ -520,15 +626,21 @@ export const AdminMedals: React.FC = () => {
     try {
       await medalService.update(medal.id, { isActive: !medal.isActive });
       const name = locale === 'en' ? medal.title : medal.titleVi;
+      const action = !medal.isActive
+        ? t('admin.medals.action.turnOn', 'Bật').toLowerCase()
+        : t('admin.medals.action.turnOff', 'Tắt').toLowerCase();
       showNotification(
-        copy(
-          `Medal "${name}" is now ${!medal.isActive ? 'active' : 'disabled'}.`,
-          `Đã ${!medal.isActive ? 'kích hoạt' : 'tạm dừng'} huy hiệu "${name}".`
+        t(
+          'admin.medals.success.statusChanged',
+          `Đã ${action} huy hiệu "${name}".`
         )
       );
       loadMedals();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to change status', 'Lỗi khi thay đổi trạng thái');
+      const msg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.statusChange', 'Lỗi khi thay đổi trạng thái');
       showNotification(msg, 'error');
     }
   };
@@ -539,12 +651,17 @@ export const AdminMedals: React.FC = () => {
     try {
       await medalService.delete(targetMedal.id);
       const name = locale === 'en' ? targetMedal.title : targetMedal.titleVi;
-      showNotification(copy(`Deleted medal "${name}"!`, `Đã xóa huy hiệu "${name}"!`));
+      showNotification(
+        t('admin.medals.success.deleted', `Đã xóa huy hiệu "${name}"!`)
+      );
       setActiveModal(null);
       setTargetMedal(null);
       loadMedals();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Error deleting medal', 'Lỗi khi xóa huy hiệu');
+      const msg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.deleteFailed', 'Lỗi khi xóa huy hiệu');
       showNotification(msg, 'error');
     }
   };
@@ -554,15 +671,18 @@ export const AdminMedals: React.FC = () => {
     try {
       await medalService.resetToDefaults();
       showNotification(
-        copy(
-          'Restored all 26 default academic medals successfully on backend!',
-          'Đã khôi phục toàn bộ danh sách 26 huy hiệu mặc định trên hệ thống!'
+        t(
+          'admin.medals.success.reset',
+          'Đã khôi phục toàn bộ 26 huy hiệu mặc định!'
         )
       );
       setActiveModal(null);
       loadMedals();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || copy('Failed to restore default medals', 'Lỗi khi khôi phục dữ liệu gốc');
+      const msg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        t('admin.medals.error.resetFailed', 'Lỗi khi khôi phục dữ liệu gốc');
       showNotification(msg, 'error');
     }
   };
@@ -572,7 +692,7 @@ export const AdminMedals: React.FC = () => {
     if (roles.includes('All') || roles.length >= 4) {
       return (
         <span className={`${styles.roleTag} ${styles.roleTagAll}`}>
-          {copy('All 4 Roles', 'Tất cả 4 vai trò')}
+          {t('admin.medals.role.allRoles', 'Tất cả 4 vai trò')}
         </span>
       );
     }
@@ -586,14 +706,14 @@ export const AdminMedals: React.FC = () => {
           if (role === 'Graduate Student') roleClass = styles.roleTagStudent;
 
           let label: string = role;
-          if (locale === 'vi') {
-            if (role === 'Researcher') label = 'Nhà nghiên cứu';
-            else if (role === 'Lecturer') label = 'Giảng viên';
-            else if (role === 'Reviewer') label = 'Người phản biện';
-            else if (role === 'Graduate Student') label = 'Học viên';
-          } else {
-            if (role === 'Graduate Student') label = 'Student';
-          }
+          if (role === 'Researcher')
+            label = t('admin.medals.role.researcher', 'Nhà nghiên cứu');
+          else if (role === 'Lecturer')
+            label = t('admin.medals.role.lecturer', 'Giảng viên');
+          else if (role === 'Reviewer')
+            label = t('admin.medals.role.reviewer', 'Người phản biện');
+          else if (role === 'Graduate Student')
+            label = t('admin.medals.role.student', 'Học viên');
 
           return (
             <span key={role} className={`${styles.roleTag} ${roleClass}`}>
@@ -605,29 +725,34 @@ export const AdminMedals: React.FC = () => {
     );
   };
 
+  // Tier icon mapping for the pill badge
+  const TIER_ICON_FOR_PILL: Record<MedalTier, LucideIcon> = {
+    Bronze: Award,
+    Silver: MedalIcon,
+    Gold: Trophy,
+    Platinum: Gem,
+  };
+
+  const TIER_LABEL_KEY: Record<MedalTier, string> = {
+    Bronze: 'admin.medals.tier.bronze',
+    Silver: 'admin.medals.tier.silver',
+    Gold: 'admin.medals.tier.gold',
+    Platinum: 'admin.medals.tier.platinum',
+  };
+
   // Render Tier badge
   const renderTierBadge = (tier: MedalTier, stageLevel: number) => {
-    let tierClass = styles.tierBadgeBronze;
-    let icon = '🥉';
-    let tierLabel = copy('Bronze', 'Đồng');
-    if (tier === 'Silver') {
-      tierClass = styles.tierBadgeSilver;
-      icon = '🥈';
-      tierLabel = copy('Silver', 'Bạc');
-    } else if (tier === 'Gold') {
-      tierClass = styles.tierBadgeGold;
-      icon = '🥇';
-      tierLabel = copy('Gold', 'Vàng');
-    } else if (tier === 'Platinum') {
-      tierClass = styles.tierBadgePlatinum;
-      icon = '💎';
-      tierLabel = copy('Platinum', 'Bạch Kim');
-    }
+    const TierIcon = TIER_ICON_FOR_PILL[tier];
+    const tierLabel = t(TIER_LABEL_KEY[tier], tier);
+    const tierPillClass = `tierBadge_${tier}` as const;
     return (
-      <span className={`${styles.tierBadge} ${tierClass}`}>
-        <span>{icon}</span>
+      <span
+        className={`${styles.tierBadge} ${styles[tierPillClass]}`}
+        style={{ color: `var(--tier-${tier.toLowerCase()}-icon)` }}
+      >
+        <TierIcon size={12} />
         <span>
-          {tierLabel} ({copy('Tier', 'Cấp')} {stageLevel})
+          {tierLabel} ({t('admin.medals.tier.tierWord', 'Cấp')} {stageLevel})
         </span>
       </span>
     );
@@ -640,6 +765,9 @@ export const AdminMedals: React.FC = () => {
     return styles.tierBarBronze;
   };
 
+  const renderCriterionUnitText = (unit: MedalCriteriaUnit): string =>
+    criteriaUnitLabel(unit, locale);
+
   return (
     <div className={styles.container}>
       {/* Toast Notification */}
@@ -651,7 +779,9 @@ export const AdminMedals: React.FC = () => {
             right: '24px',
             zIndex: 9999,
             backgroundColor:
-              notification.type === 'success' ? '#065f46' : '#991b1b',
+              notification.type === 'success'
+                ? 'var(--status-success-text, #065f46)'
+                : 'var(--status-danger-text, #991b1b)',
             color: '#ffffff',
             padding: '12px 20px',
             borderRadius: '10px',
@@ -674,10 +804,14 @@ export const AdminMedals: React.FC = () => {
 
       {/* Header */}
       <PageHeader
-        title={copy('Academic Medals & Badges Management', 'Quản lý Huy hiệu & Danh hiệu (Medals & Badges)')}
-        description={copy(
-          'Academic honors system for Researchers, Lecturers, Reviewers & Graduate Students. Support customizing artwork with Lucide Icons or custom images at any time.',
-          'Hệ thống vinh danh học thuật dành cho Researcher, Lecturer, Reviewer & Graduate Student. Hỗ trợ tùy biến biểu tượng với thư viện Lucide Icons hoặc ảnh riêng bất kỳ lúc nào.'
+        eyebrow={t('admin.medals.eyebrow', 'QUẢN TRỊ · VINH DANH')}
+        title={t(
+          'admin.medals.title',
+          'Huy hiệu & Danh hiệu Học thuật'
+        )}
+        description={t(
+          'admin.medals.description',
+          'Hệ thống vinh danh học thuật dành cho Nhà nghiên cứu, Giảng viên, Người phản biện & Học viên. Tùy biến biểu tượng từ thư viện Lucide hoặc tải lên ảnh riêng.'
         )}
         actions={
           <div className={styles.headerActions}>
@@ -685,17 +819,20 @@ export const AdminMedals: React.FC = () => {
               type="button"
               className={styles.btnAction}
               onClick={() => setActiveModal('reset')}
-              title={copy('Restore default 26 medals', 'Khôi phục danh sách chuẩn 26 huy hiệu')}
+              title={t(
+                'admin.medals.reset',
+                'Khôi phục mẫu chuẩn'
+              )}
             >
               <RotateCcw size={15} />
-              <span>{copy('Reset to Defaults', 'Khôi phục mẫu chuẩn')}</span>
+              <span>{t('admin.medals.reset', 'Khôi phục mẫu chuẩn')}</span>
             </button>
             <Button
               variant="primary"
               leftIcon={<Plus size={16} />}
               onClick={handleOpenCreate}
             >
-              {copy('Add New Medal', 'Thêm Huy hiệu mới')}
+              {t('admin.medals.add', 'Thêm huy hiệu mới')}
             </Button>
           </div>
         }
@@ -704,45 +841,65 @@ export const AdminMedals: React.FC = () => {
       {/* Stats Cards */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statIcon} style={{ color: '#2563eb' }}>
+          <div
+            className={styles.statIcon}
+            style={{ color: 'var(--accent-primary, #2563eb)' }}
+          >
             <MedalIcon size={24} />
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statLabel}>{copy('Total Medals', 'Tổng số Huy hiệu')}</span>
+            <span className={styles.statLabel}>
+              {t('admin.medals.stat.total', 'Tổng số huy hiệu')}
+            </span>
             <span className={styles.statValue}>{stats.total}</span>
           </div>
         </div>
 
         <div className={styles.statCard}>
-          <div className={styles.statIcon} style={{ color: '#16a34a' }}>
+          <div
+            className={styles.statIcon}
+            style={{ color: 'var(--status-success-text, #16a34a)' }}
+          >
             <CheckCircle2 size={24} />
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statLabel}>{copy('Active Medals', 'Đang kích hoạt')}</span>
+            <span className={styles.statLabel}>
+              {t('admin.medals.stat.active', 'Đang kích hoạt')}
+            </span>
             <span className={styles.statValue}>{stats.active}</span>
           </div>
         </div>
 
         <div className={styles.statCard}>
-          <div className={styles.statIcon} style={{ color: '#eab308' }}>
+          <div
+            className={styles.statIcon}
+            style={{ color: 'var(--tier-bronze-icon, #eab308)' }}
+          >
             <Award size={24} />
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statLabel}>{copy('Bronze / Silver Tier', 'Cấp Đồng / Bạc')}</span>
+            <span className={styles.statLabel}>
+              {t('admin.medals.stat.bronzeSilver', 'Cấp Đồng / Bạc')}
+            </span>
             <span className={styles.statValue}>
-              {stats.bronze} 🥉 / {stats.silver} 🥈
+              {stats.bronze} / {stats.silver}
             </span>
           </div>
         </div>
 
         <div className={styles.statCard}>
-          <div className={styles.statIcon} style={{ color: '#0ea5e9' }}>
+          <div
+            className={styles.statIcon}
+            style={{ color: 'var(--tier-platinum-icon, #0ea5e9)' }}
+          >
             <Sparkles size={24} />
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statLabel}>{copy('Gold / Platinum Tier', 'Cấp Vàng / Bạch Kim')}</span>
+            <span className={styles.statLabel}>
+              {t('admin.medals.stat.goldPlatinum', 'Cấp Vàng / Bạch Kim')}
+            </span>
             <span className={styles.statValue}>
-              {stats.gold} 🥇 / {stats.platinum} 💎
+              {stats.gold} / {stats.platinum}
             </span>
           </div>
         </div>
@@ -758,7 +915,10 @@ export const AdminMedals: React.FC = () => {
               type="text"
               id="searchMedalsInput"
               name="searchMedalsInput"
-              placeholder={copy('Search by title, code or metric...', 'Tìm theo tên, mã hoặc chỉ số...')}
+              placeholder={t(
+                'admin.medals.searchPlaceholder',
+                'Tìm theo tên, mã hoặc chỉ số...'
+              )}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
@@ -773,11 +933,21 @@ export const AdminMedals: React.FC = () => {
             onChange={(e) => setSelectedRole(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="ALL">{copy('All Roles', 'Tất cả vai trò')}</option>
-            <option value="Researcher">{copy('Researcher', 'Researcher (Nhà nghiên cứu)')}</option>
-            <option value="Lecturer">{copy('Lecturer', 'Lecturer (Giảng viên)')}</option>
-            <option value="Reviewer">{copy('Reviewer', 'Reviewer (Người phản biện)')}</option>
-            <option value="Graduate Student">{copy('Graduate Student', 'Graduate Student (Học viên)')}</option>
+            <option value="ALL">
+              {t('admin.medals.filter.allRoles', 'Tất cả vai trò')}
+            </option>
+            <option value="Researcher">
+              {t('admin.medals.role.researcher', 'Nhà nghiên cứu')}
+            </option>
+            <option value="Lecturer">
+              {t('admin.medals.role.lecturer', 'Giảng viên')}
+            </option>
+            <option value="Reviewer">
+              {t('admin.medals.role.reviewer', 'Người phản biện')}
+            </option>
+            <option value="Graduate Student">
+              {t('admin.medals.role.student', 'Học viên')}
+            </option>
           </select>
 
           {/* Tier Filter */}
@@ -788,11 +958,21 @@ export const AdminMedals: React.FC = () => {
             onChange={(e) => setSelectedTier(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="ALL">{copy('All Tiers', 'Tất cả thứ hạng')}</option>
-            <option value="Bronze">{copy('🥉 Bronze', '🥉 Đồng (Bronze)')}</option>
-            <option value="Silver">{copy('🥈 Silver', '🥈 Bạc (Silver)')}</option>
-            <option value="Gold">{copy('🥇 Gold', '🥇 Vàng (Gold)')}</option>
-            <option value="Platinum">{copy('💎 Platinum', '💎 Bạch Kim (Platinum)')}</option>
+            <option value="ALL">
+              {t('admin.medals.filter.allTiers', 'Tất cả thứ hạng')}
+            </option>
+            <option value="Bronze">
+              {t('admin.medals.tier.bronze', 'Đồng')}
+            </option>
+            <option value="Silver">
+              {t('admin.medals.tier.silver', 'Bạc')}
+            </option>
+            <option value="Gold">
+              {t('admin.medals.tier.gold', 'Vàng')}
+            </option>
+            <option value="Platinum">
+              {t('admin.medals.tier.platinum', 'Bạch Kim')}
+            </option>
           </select>
 
           {/* Status Filter */}
@@ -803,9 +983,15 @@ export const AdminMedals: React.FC = () => {
             onChange={(e) => setSelectedStatus(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="ALL">{copy('All Statuses', 'Tất cả trạng thái')}</option>
-            <option value="ACTIVE">{copy('Active', 'Đang hoạt động')}</option>
-            <option value="INACTIVE">{copy('Disabled', 'Đã tắt')}</option>
+            <option value="ALL">
+              {t('admin.medals.filter.allStatuses', 'Tất cả trạng thái')}
+            </option>
+            <option value="ACTIVE">
+              {t('admin.medals.status.active', 'Đang hoạt động')}
+            </option>
+            <option value="INACTIVE">
+              {t('admin.medals.status.disabled', 'Đã tắt')}
+            </option>
           </select>
         </div>
 
@@ -817,10 +1003,10 @@ export const AdminMedals: React.FC = () => {
               viewMode === 'grid' ? styles.viewToggleBtnActive : ''
             }`}
             onClick={() => setViewMode('grid')}
-            title={copy('Card Grid View', 'Dạng lưới thẻ (Card Grid)')}
+            title={t('admin.medals.view.cards', 'Thẻ')}
           >
             <LayoutGrid size={16} />
-            <span>{copy('Cards', 'Thẻ')}</span>
+            <span>{t('admin.medals.view.cards', 'Thẻ')}</span>
           </button>
           <button
             type="button"
@@ -828,10 +1014,10 @@ export const AdminMedals: React.FC = () => {
               viewMode === 'table' ? styles.viewToggleBtnActive : ''
             }`}
             onClick={() => setViewMode('table')}
-            title={copy('Detailed Table View', 'Dạng bảng chi tiết (Table)')}
+            title={t('admin.medals.view.table', 'Bảng')}
           >
             <Table size={16} />
-            <span>{copy('Table', 'Bảng')}</span>
+            <span>{t('admin.medals.view.table', 'Bảng')}</span>
           </button>
         </div>
       </div>
@@ -840,7 +1026,12 @@ export const AdminMedals: React.FC = () => {
       {isLoading ? (
         <div className={styles.emptyStateContainer}>
           <MedalIcon size={40} className="animate-spin text-blue-500" />
-          <p>{copy('Loading medals list from backend...', 'Đang tải danh sách huy hiệu từ hệ thống...')}</p>
+          <p>
+            {copy(
+              'Loading medals list from backend...',
+              'Đang tải danh sách huy hiệu từ hệ thống...'
+            )}
+          </p>
         </div>
       ) : filteredMedals.length === 0 ? (
         <EmptyState
@@ -865,121 +1056,281 @@ export const AdminMedals: React.FC = () => {
           }
         />
       ) : viewMode === 'grid' ? (
-        /* CARD GRID VIEW */
+        /* CARD GRID VIEW — Family-grouped.
+           Each card represents ONE metric family (achievement). The icon
+           is shown ONCE because it's shared by every tier variant. Tier
+           variants are listed underneath with their threshold and a
+           per-tier edit pencil. Changing the icon here updates all tiers
+           in the family at once. */
         <div className={styles.cardsGrid}>
-          {filteredMedals.map((medal) => {
-            const primaryTitle = locale === 'en' ? (medal.title || medal.titleVi) : (medal.titleVi || medal.title);
-            const secondaryTitle = locale === 'en' ? medal.titleVi : medal.title;
-            const description = locale === 'en' ? (medal.description || medal.descriptionVi) : (medal.descriptionVi || medal.description);
+          {familyGroups.map((family) => {
+            const primary = family.primary;
+            const familyDisplayTitle =
+              locale === 'en'
+                ? primary.title || primary.titleVi
+                : primary.titleVi || primary.title;
+            const familyDisplayDescription =
+              locale === 'en'
+                ? primary.description || primary.descriptionVi
+                : primary.descriptionVi || primary.description;
+
+            // Use the lowest-stage medal's code as the canonical family code.
+            const familyCode = family.primary.code
+              .replace(/_(BRONZE|SILVER|GOLD|PLATINUM)$/i, '')
+              .replace(/_(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i, '');
 
             return (
-              <div key={medal.id} className={styles.medalCard}>
+              <div key={family.family} className={styles.medalCard}>
+                {/* Top tier-strip — gradient bar based on the highest tier */}
                 <div
                   className={`${styles.cardTierBar} ${getTierBarClass(
-                    medal.tier
+                    family.tiers[family.tiers.length - 1]?.tier ?? 'Bronze'
                   )}`}
                 />
                 <div className={styles.cardHeader}>
-                  {renderTierBadge(medal.tier, medal.stageLevel)}
+                  <span className={styles.familyCodeBadge}>{familyCode}</span>
                   <span
                     className={
-                      medal.isActive
+                      family.allActive
                         ? styles.statusActive
                         : styles.statusInactive
                     }
                   >
-                    {medal.isActive ? copy('Active', 'Hoạt động') : copy('Disabled', 'Tắt')}
+                    {family.allActive
+                      ? t(
+                          'admin.medals.status.active',
+                          'Đang hoạt động'
+                        )
+                      : t(
+                          'admin.medals.status.partial',
+                          'Một số cấp đang tắt'
+                        )}
                   </span>
                 </div>
 
                 <div className={styles.cardBody}>
                   <div className={styles.cardTopRow}>
-                    {/* Medal Avatar using Lucide-react or custom safe image */}
+                    {/* Family icon — click to change. Updates ALL tiers. */}
                     <div
                       style={{ cursor: 'pointer', position: 'relative' }}
-                      onClick={() => handleOpenQuickImage(medal)}
-                      title={copy('Click to change icon or image for this badge', 'Bấm để đổi biểu tượng hoặc ảnh của huy hiệu này')}
+                      onClick={() => handleOpenQuickImage(primary)}
+                      title={copy(
+                        'Click to change the icon — applies to all 4 tiers of this achievement',
+                        'Bấm để đổi biểu tượng — áp dụng cho cả 4 cấp bậc của huy hiệu này'
+                      )}
                     >
                       <SafeMedalBadge
-                        imageUrl={medal.imageUrl}
-                        code={medal.code}
-                        criteriaMetric={medal.criteriaMetric}
-                        tier={medal.tier}
+                        imageUrl={family.imageUrl}
+                        code={primary.code}
+                        criteriaMetric={primary.criteriaMetric}
+                        tier="Gold"
                         size={64}
-                        alt={primaryTitle}
+                        alt={familyDisplayTitle}
                       />
                     </div>
 
                     <div className={styles.cardTitleArea}>
-                      <span className={styles.cardTitleVi}>{primaryTitle}</span>
-                      <span className={styles.cardTitleEn}>{secondaryTitle}</span>
-                      <span className={styles.cardCodeBadge}>{medal.code}</span>
-                    </div>
-                  </div>
-
-                  {renderRoleBadges(medal.roles)}
-
-                  <p className={styles.cardDesc}>{description}</p>
-
-                  {/* Criteria Box */}
-                  <div className={styles.criteriaBox}>
-                    <div className={styles.criteriaBoxHeader}>
-                      <HelpCircle size={14} color="#0284c7" />
-                      <span>{copy('Medal criteria:', 'Điều kiện đạt huy hiệu:')}</span>
-                    </div>
-                    <div>
-                      {copy('Requirement:', 'Yêu cầu:')}{' '}
-                      <span className={styles.criteriaBoxMetric}>
-                        {medal.criteriaMetric} &ge; {medal.criteriaThreshold}{' '}
-                        {formatCriteriaUnit(medal.criteriaUnit)}
+                      <span className={styles.cardTitleVi}>
+                        {familyDisplayTitle}
+                      </span>
+                      <span className={styles.cardTitleEn}>
+                        {family.label}
+                      </span>
+                      <span className={styles.tierCountHint}>
+                        {copy(
+                          `${family.tiers.length} tier variants`,
+                          `${family.tiers.length} cấp bậc`
+                        )}
                       </span>
                     </div>
                   </div>
+
+                  {/* Family-level notice: icon shared across tiers */}
+                  <div className={styles.familySharedHint}>
+                    <HelpCircle size={12} />
+                    <span>
+                      {copy(
+                        'Icon is shared across all tiers — tier only changes the colour frame.',
+                        'Biểu tượng dùng chung cho mọi cấp — tier chỉ đổi màu khung.'
+                      )}
+                    </span>
+                  </div>
+
+                  {renderRoleBadges(family.roles)}
+
+                  <p className={styles.cardDesc}>{familyDisplayDescription}</p>
+
+                  {/* Tier ladder — each tier in its own row with criteria + actions */}
+                  <div className={styles.tierLadder}>
+                    <div className={styles.tierLadderHeader}>
+                      {copy('Tiers & criteria', 'Các cấp bậc & điều kiện')}
+                    </div>
+                    {family.tiers.map((tier) => (
+                      <div
+                        key={tier.id}
+                        className={styles.tierLadderRow}
+                      >
+                        <div className={styles.tierLadderLeft}>
+                          <SafeMedalBadge
+                            imageUrl={family.imageUrl}
+                            code={tier.code}
+                            criteriaMetric={tier.criteriaMetric}
+                            tier={tier.tier}
+                            size={32}
+                            alt={tier.titleVi}
+                          />
+                          <div className={styles.tierLadderInfo}>
+                            <span className={styles.tierLadderName}>
+                              {locale === 'en'
+                                ? tier.title
+                                : tier.titleVi}
+                            </span>
+                            <span className={styles.tierLadderCriteria}>
+                              {tier.criteriaMetric} &ge;{' '}
+                              {tier.criteriaThreshold}{' '}
+                              {renderCriterionUnitText(tier.criteriaUnit)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={styles.tierLadderActions}>
+                          <button
+                            type="button"
+                            className={styles.btnAction}
+                            onClick={() => handleToggleStatus(tier)}
+                            title={
+                              tier.isActive
+                                ? t(
+                                    'admin.medals.action.turnOff',
+                                    'Tắt'
+                                  )
+                                : t(
+                                    'admin.medals.action.turnOn',
+                                    'Bật'
+                                  )
+                            }
+                          >
+                            {tier.isActive
+                              ? t(
+                                  'admin.medals.action.turnOff',
+                                  'Tắt'
+                                )
+                              : t(
+                                  'admin.medals.action.turnOn',
+                                  'Bật'
+                                )}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.btnAction}
+                            onClick={() => handleOpenEdit(tier)}
+                            title={t(
+                              'admin.medals.action.editTier',
+                              'Sửa cấp này'
+                            )}
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.btnAction} ${styles.btnActionDanger}`}
+                            onClick={() => {
+                              setTargetMedal(tier);
+                              setActiveModal('delete');
+                            }}
+                            title={copy(
+                              'Delete this tier',
+                              'Xóa cấp này'
+                            )}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Card Footer Actions */}
+                {/* Card Footer Actions — operate on the WHOLE family */}
                 <div className={styles.cardFooter}>
                   <button
                     type="button"
                     className={`${styles.btnAction} ${styles.btnChangeImgDirect}`}
-                    onClick={() => handleOpenQuickImage(medal)}
-                    title={copy('Replace medal icon/artwork', 'Thay đổi biểu tượng/ảnh của huy hiệu')}
+                    onClick={() => handleOpenQuickImage(primary)}
+                    title={t(
+                      'admin.medals.action.changeIcon',
+                      'Đổi biểu tượng (cả 4 cấp)'
+                    )}
                   >
                     <ImageIcon size={14} />
-                    <span>{copy('Change Icon', 'Đổi biểu tượng')}</span>
+                    <span>
+                      {t(
+                        'admin.medals.action.changeIconFamily',
+                        'Đổi biểu tượng'
+                      )}
+                    </span>
                   </button>
 
                   <div className={styles.cardActionsRight}>
                     <button
                       type="button"
                       className={styles.btnAction}
-                      onClick={() => handleToggleStatus(medal)}
+                      onClick={() => {
+                        // Toggle ALL tiers in the family
+                        const targetActive = !family.allActive;
+                        Promise.all(
+                          family.tiers.map((tier) =>
+                            tier.isActive === targetActive
+                              ? Promise.resolve()
+                              : medalService.update(tier.id, {
+                                  isActive: targetActive,
+                                }),
+                          ),
+                        )
+                          .then(() => {
+                            showNotification(
+                              t(
+                                'admin.medals.success.statusChanged',
+                                `Đã ${targetActive ? 'bật' : 'tắt'} toàn bộ cấp của "${familyDisplayTitle}".`
+                              )
+                            );
+                            loadMedals();
+                          })
+                          .catch(() => {
+                            showNotification(
+                              t(
+                                'admin.medals.error.statusChange',
+                                'Lỗi khi thay đổi trạng thái'
+                              ),
+                              'error'
+                            );
+                          });
+                      }}
                       title={
-                        medal.isActive
-                          ? copy('Disable this medal', 'Tạm dừng huy hiệu')
-                          : copy('Enable this medal', 'Kích hoạt huy hiệu')
+                        family.allActive
+                          ? copy(
+                              'Disable all tiers',
+                              'Tắt tất cả cấp'
+                            )
+                          : copy('Enable all tiers', 'Bật tất cả cấp')
                       }
                     >
-                      {medal.isActive ? copy('Turn Off', 'Tắt') : copy('Turn On', 'Bật')}
+                      {family.allActive
+                        ? t('admin.medals.action.turnOffAll', 'Tắt hết')
+                        : t('admin.medals.action.turnOnAll', 'Bật hết')}
                     </button>
                     <button
                       type="button"
                       className={styles.btnAction}
-                      onClick={() => handleOpenEdit(medal)}
-                      title={copy('Edit medal details', 'Chỉnh sửa thông tin chi tiết')}
+                      onClick={() => handleOpenEdit(primary)}
+                      title={t(
+                        'admin.medals.action.editFamily',
+                        'Sửa huy hiệu'
+                      )}
                     >
                       <Edit2 size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.btnAction} ${styles.btnActionDanger}`}
-                      onClick={() => {
-                        setTargetMedal(medal);
-                        setActiveModal('delete');
-                      }}
-                      title={copy('Delete medal', 'Xóa huy hiệu')}
-                    >
-                      <Trash2 size={14} />
+                      <span>
+                        {t('admin.medals.action.edit', 'Sửa')}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -994,19 +1345,37 @@ export const AdminMedals: React.FC = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th style={{ width: '80px' }}>{copy('Badge', 'Huy hiệu')}</th>
-                  <th>{copy('Title & Code', 'Tên & Mã')}</th>
-                  <th>{copy('Target Roles', 'Vai trò áp dụng')}</th>
-                  <th>{copy('Tier & Level', 'Cấp bậc (Tier)')}</th>
-                  <th>{copy('Criteria', 'Điều kiện đạt')}</th>
-                  <th>{copy('Status', 'Trạng thái')}</th>
-                  <th style={{ textAlign: 'right' }}>{copy('Actions', 'Thao tác')}</th>
+                  <th style={{ width: '80px' }}>
+                    {t('admin.medals.table.badge', 'Huy hiệu')}
+                  </th>
+                  <th>
+                    {t('admin.medals.table.titleCode', 'Tên & Mã')}
+                  </th>
+                  <th>
+                    {t('admin.medals.table.roles', 'Vai trò áp dụng')}
+                  </th>
+                  <th>
+                    {t('admin.medals.table.tierLevel', 'Cấp bậc (Tier)')}
+                  </th>
+                  <th>
+                    {t('admin.medals.table.criteria', 'Điều kiện đạt')}
+                  </th>
+                  <th>
+                    {t('admin.medals.table.status', 'Trạng thái')}
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    {t('admin.medals.table.actions', 'Thao tác')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredMedals.map((medal) => {
-                  const primaryTitle = locale === 'en' ? (medal.title || medal.titleVi) : (medal.titleVi || medal.title);
-                  const secondaryTitle = locale === 'en' ? medal.titleVi : medal.title;
+                  const primaryTitle =
+                    locale === 'en'
+                      ? medal.title || medal.titleVi
+                      : medal.titleVi || medal.title;
+                  const secondaryTitle =
+                    locale === 'en' ? medal.titleVi : medal.title;
 
                   return (
                     <tr key={medal.id}>
@@ -1024,9 +1393,15 @@ export const AdminMedals: React.FC = () => {
                             type="button"
                             className={styles.changeImageQuickBtn}
                             onClick={() => handleOpenQuickImage(medal)}
-                            title={copy('Replace badge icon', 'Thay đổi biểu tượng của huy hiệu này')}
+                            title={t(
+                              'admin.medals.action.changeIcon',
+                              'Đổi biểu tượng'
+                            )}
                           >
-                            {copy('Change Icon', 'Đổi icon')}
+                            {t(
+                              'admin.medals.action.changeIcon',
+                              'Đổi biểu tượng'
+                            )}
                           </button>
                         </div>
                       </td>
@@ -1045,7 +1420,8 @@ export const AdminMedals: React.FC = () => {
                       <td>{renderTierBadge(medal.tier, medal.stageLevel)}</td>
                       <td>
                         <span className={styles.criteriaText}>
-                          &ge; {medal.criteriaThreshold} {formatCriteriaUnit(medal.criteriaUnit)} (
+                          &ge; {medal.criteriaThreshold}{' '}
+                          {renderCriterionUnitText(medal.criteriaUnit)} (
                           <code>{medal.criteriaMetric}</code>)
                         </span>
                       </td>
@@ -1057,7 +1433,9 @@ export const AdminMedals: React.FC = () => {
                               : styles.statusInactive
                           }
                         >
-                          {medal.isActive ? copy('Active', 'Hoạt động') : copy('Disabled', 'Tắt')}
+                          {medal.isActive
+                            ? t('admin.medals.status.active', 'Đang hoạt động')
+                            : t('admin.medals.status.disabled', 'Đã tắt')}
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
@@ -1070,7 +1448,9 @@ export const AdminMedals: React.FC = () => {
                             className={styles.btnAction}
                             onClick={() => handleToggleStatus(medal)}
                           >
-                            {medal.isActive ? copy('Turn Off', 'Tắt') : copy('Turn On', 'Bật')}
+                            {medal.isActive
+                              ? t('admin.medals.action.turnOff', 'Tắt')
+                              : t('admin.medals.action.turnOn', 'Bật')}
                           </button>
                           <button
                             type="button"
@@ -1078,7 +1458,9 @@ export const AdminMedals: React.FC = () => {
                             onClick={() => handleOpenEdit(medal)}
                           >
                             <Edit2 size={14} />
-                            <span>{copy('Edit', 'Sửa')}</span>
+                            <span>
+                              {t('admin.medals.action.edit', 'Sửa')}
+                            </span>
                           </button>
                           <button
                             type="button"
@@ -1110,8 +1492,16 @@ export const AdminMedals: React.FC = () => {
                 <ImageIcon size={20} color="#2563eb" />
                 <h3 className={styles.modalTitle}>
                   {copy(
-                    `Update Badge Icon: ${locale === 'en' ? targetMedal.title : targetMedal.titleVi}`,
-                    `Cập nhật Biểu tượng Huy hiệu: ${targetMedal.titleVi}`
+                    `Family Icon: ${
+                      locale === 'en'
+                        ? targetMedal.title
+                        : targetMedal.titleVi
+                    }`,
+                    `Biểu tượng huy hiệu: ${
+                      locale === 'en'
+                        ? targetMedal.title
+                        : targetMedal.titleVi
+                    }`
                   )}
                 </h3>
               </div>
@@ -1124,25 +1514,61 @@ export const AdminMedals: React.FC = () => {
               </button>
             </div>
 
+            <div
+              style={{
+                padding: '12px 24px',
+                background: '#eff6ff',
+                borderBottom: '1px solid #dbeafe',
+                fontSize: '0.8125rem',
+                color: '#1e40af',
+                fontWeight: 500,
+              }}
+            >
+              <HelpCircle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              {copy(
+                'This icon is shared by every tier (Bronze, Silver, Gold, Platinum) of this achievement. Only the frame colour changes per tier.',
+                'Biểu tượng này dùng chung cho mọi cấp (Đồng, Bạc, Vàng, Bạch Kim). Chỉ màu khung đổi theo cấp.'
+              )}
+            </div>
+
             <div className={styles.modalBody}>
-              {/* Preview with Tier Frame */}
+              {/* Preview — shows ALL 4 tiers side-by-side so the Admin can
+                  verify the icon stays the same and only the frame colour
+                  changes across Bronze / Silver / Gold / Platinum. */}
               <div className={styles.imagePreviewHero}>
-                <SafeMedalBadge
-                  imageUrl={quickImageUrl}
-                  tier={targetMedal.tier}
-                  size={92}
-                  alt="Preview"
-                />
+                <div className={styles.tierPreviewRow}>
+                  {(['Bronze', 'Silver', 'Gold', 'Platinum'] as MedalTier[]).map(
+                    (tier) => (
+                      <div key={tier} className={styles.tierPreviewCell}>
+                        <SafeMedalBadge
+                          imageUrl={quickImageUrl}
+                          code={targetMedal.code}
+                          criteriaMetric={targetMedal.criteriaMetric}
+                          tier={tier}
+                          size={64}
+                          alt={`${tier} preview`}
+                        />
+                        <span className={styles.tierPreviewLabel}>
+                          {t(
+                            `admin.medals.tier.${tier.toLowerCase()}`,
+                            tier
+                          )}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
                 <span
                   style={{
                     fontSize: '0.8125rem',
-                    color: '#64748b',
+                    color: 'var(--ink-muted, #64748b)',
                     fontWeight: 500,
+                    textAlign: 'center',
                   }}
                 >
-                  {copy(
-                    `Live Preview Badge (${targetMedal.tier} Tier)`,
-                    `Xem trước Huy hiệu (${targetMedal.tier})`
+                  {t(
+                    'admin.medals.quick.previewFamily',
+                    'Xem trước — cùng một biểu tượng cho cả 4 cấp bậc (chỉ khác màu khung).'
                   )}
                 </span>
               </div>
@@ -1158,7 +1584,12 @@ export const AdminMedals: React.FC = () => {
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   <MedalIcon size={16} />
-                  <span>{copy('Lucide Icons Library', 'Biểu tượng Lucide')}</span>
+                  <span>
+                    {t(
+                      'admin.medals.quick.tab.lucide',
+                      'Biểu tượng Lucide'
+                    )}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1169,7 +1600,9 @@ export const AdminMedals: React.FC = () => {
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   <UploadCloud size={16} />
-                  <span>{copy('Upload Image', 'Tải file ảnh')}</span>
+                  <span>
+                    {t('admin.medals.quick.tab.upload', 'Tải file ảnh')}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1180,7 +1613,9 @@ export const AdminMedals: React.FC = () => {
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   <ExternalLink size={16} />
-                  <span>{copy('Image URL', 'Link ảnh')}</span>
+                  <span>
+                    {t('admin.medals.quick.tab.url', 'Link ảnh')}
+                  </span>
                 </button>
               </div>
 
@@ -1191,12 +1626,15 @@ export const AdminMedals: React.FC = () => {
                     style={{
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      color: '#64748b',
+                      color: 'var(--ink-muted, #64748b)',
                       display: 'block',
                       marginBottom: '8px',
                     }}
                   >
-                    {copy('Select an icon from the lucide-react library:', 'Chọn biểu tượng chuẩn từ thư viện lucide-react:')}
+                    {copy(
+                      'Select an icon from the lucide-react library:',
+                      'Chọn biểu tượng chuẩn từ thư viện lucide-react:'
+                    )}
                   </span>
                   <div className={styles.iconPickerGrid}>
                     {LUCIDE_ICONS_LIST.map((item) => {
@@ -1211,8 +1649,13 @@ export const AdminMedals: React.FC = () => {
                           }`}
                           onClick={() => setQuickImageUrl(`lucide:${item.name}`)}
                         >
-                          <IconComp size={24} color={isSelected ? '#1d4ed8' : '#475569'} />
-                          <span>{locale === 'en' ? item.labelEn : item.labelVi}</span>
+                          <IconComp
+                            size={24}
+                            color={isSelected ? '#1d4ed8' : '#475569'}
+                          />
+                          <span>
+                            {locale === 'en' ? item.labelEn : item.labelVi}
+                          </span>
                         </button>
                       );
                     })}
@@ -1239,11 +1682,20 @@ export const AdminMedals: React.FC = () => {
                     <UploadCloud size={36} color="#3b82f6" />
                     <p style={{ fontWeight: 600, color: '#1e293b' }}>
                       {isUploading
-                        ? copy('Uploading to Firebase Storage...', 'Đang tải lên Firebase...')
-                        : copy('Click here to select a custom image file', 'Bấm vào đây để chọn file ảnh riêng')}
+                        ? copy(
+                            'Uploading to Firebase Storage...',
+                            'Đang tải lên Firebase...'
+                          )
+                        : copy(
+                            'Click here to select a custom image file',
+                            'Bấm vào đây để chọn file ảnh riêng'
+                          )}
                     </p>
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {copy('Supports: PNG, JPG, WEBP, SVG (max 10MB)', 'Hỗ trợ: PNG, JPG, WEBP, SVG (tối đa 10MB)')}
+                      {t(
+                        'admin.medals.quick.uploadHint',
+                        'Hỗ trợ: PNG, JPG, WEBP, SVG (tối đa 10MB)'
+                      )}
                     </span>
                     {isUploading && (
                       <div className={styles.progressBarWrapper}>
@@ -1265,15 +1717,26 @@ export const AdminMedals: React.FC = () => {
               {/* Tab 3: Direct URL */}
               {quickImageTab === 'url' && (
                 <div className={styles.formGroup}>
-                  <label htmlFor="quickImageUrlInput" className={styles.formLabel}>
-                    {copy('Online Image URL:', 'Đường dẫn ảnh trực tuyến (Image URL):')}
+                  <label
+                    htmlFor="quickImageUrlInput"
+                    className={styles.formLabel}
+                  >
+                    {copy(
+                      'Online Image URL:',
+                      'Đường dẫn ảnh trực tuyến (Image URL):'
+                    )}
                   </label>
                   <input
                     type="url"
                     id="quickImageUrlInput"
                     name="quickImageUrlInput"
-                    placeholder="https://example.com/badge.png"
-                    value={quickImageUrl.startsWith('lucide:') ? '' : quickImageUrl}
+                    placeholder={t(
+                      'admin.medals.quick.urlPlaceholder',
+                      'https://example.com/badge.png'
+                    )}
+                    value={
+                      quickImageUrl.startsWith('lucide:') ? '' : quickImageUrl
+                    }
                     onChange={(e) => setQuickImageUrl(e.target.value)}
                     className={styles.formInput}
                   />
@@ -1287,32 +1750,32 @@ export const AdminMedals: React.FC = () => {
                 className={styles.btnAction}
                 onClick={() => setActiveModal(null)}
               >
-                {copy('Cancel', 'Hủy bỏ')}
+                {t('admin.medals.modal.cancel', 'Hủy bỏ')}
               </button>
               <Button
                 variant="primary"
                 onClick={handleSaveQuickImage}
                 disabled={!quickImageUrl.trim() || isUploading}
               >
-                {copy('Save Changes', 'Lưu biểu tượng mới')}
+                {t('admin.medals.modal.save', 'Lưu thay đổi')}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* CREATE OR EDIT FULL MODAL */}
+      {/* CREATE OR EDIT FULL MODAL — 3 sections: Identity / Naming / Rules */}
       {(activeModal === 'create' || activeModal === 'edit') && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>
                 {activeModal === 'create'
-                  ? copy('Create New Academic Medal', 'Thêm Huy hiệu vinh danh mới')
-                  : copy(
-                      `Edit Medal: ${locale === 'en' ? targetMedal?.title : targetMedal?.titleVi}`,
-                      `Chỉnh sửa Huy hiệu: ${targetMedal?.titleVi}`
-                    )}
+                  ? t(
+                      'admin.medals.modal.createTitle',
+                      'Thêm huy hiệu vinh danh mới'
+                    )
+                  : t('admin.medals.modal.editTitle', 'Chỉnh sửa huy hiệu')}
               </h3>
               <button
                 type="button"
@@ -1325,17 +1788,36 @@ export const AdminMedals: React.FC = () => {
 
             <form onSubmit={handleSaveMedalForm}>
               <div className={styles.modalBody}>
-                {/* Artwork selection with Live Badge Preview */}
+                {/* ── Section 1: Identity ─────────────────────── */}
+                <div className={styles.formGroup}>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--ink-muted, #64748b)',
+                    }}
+                  >
+                    {t('admin.medals.modal.identity', 'Nhận diện')}
+                  </span>
+                </div>
                 <div className={styles.imageSectionCard}>
                   <SafeMedalBadge
                     imageUrl={formImageUrl}
                     tier={formTier}
-                    size={72}
+                    size={80}
                     alt="Preview"
                   />
                   <div className={styles.imageUploadControls}>
-                    <label htmlFor="formImageUrlInput" className={styles.formLabel}>
-                      {copy('Badge Artwork (Lucide Icon code or image URL):', 'Biểu tượng / Hình ảnh (Mã Lucide Icon hoặc URL):')}
+                    <label
+                      htmlFor="formImageUrlInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.artworkUrl',
+                        'Biểu tượng / Hình ảnh (Mã Lucide hoặc URL)'
+                      )}
                     </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
@@ -1366,34 +1848,48 @@ export const AdminMedals: React.FC = () => {
                         type="button"
                         className={styles.btnAction}
                         onClick={() => modalFileInputRef.current?.click()}
-                        title={copy('Upload image to Firebase', 'Tải ảnh lên Firebase')}
+                        title={copy(
+                          'Upload image to Firebase',
+                          'Tải ảnh lên Firebase'
+                        )}
                       >
                         <UploadCloud size={16} />
-                        <span>{isUploading ? copy('Uploading...', 'Đang tải...') : copy('Upload', 'Upload')}</span>
+                        <span>
+                          {isUploading
+                            ? copy('Uploading...', 'Đang tải...')
+                            : copy('Upload', 'Upload')}
+                        </span>
                       </button>
                     </div>
 
-                    {/* Quick select icons row */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                      {['Medal', 'Award', 'Trophy', 'Crown', 'BookOpen', 'Mic', 'GraduationCap', 'ClipboardCheck', 'Sparkles', 'ShieldCheck'].map((ic) => {
-                        const IconComponent = LUCIDE_ICONS_MAP[ic] || MedalIcon;
-                        const isChosen = formImageUrl === `lucide:${ic}`;
+                    {/* Always-visible Lucide icon picker (36 entries) */}
+                    <div className={styles.iconPickerGrid}>
+                      {LUCIDE_ICONS_LIST.map((item) => {
+                        const IconComp =
+                          LUCIDE_ICONS_MAP[item.name] || MedalIcon;
+                        const isChosen =
+                          formImageUrl === `lucide:${item.name}`;
                         return (
                           <button
-                            key={ic}
+                            key={item.name}
                             type="button"
-                            onClick={() => setFormImageUrl(`lucide:${ic}`)}
-                            className={styles.btnAction}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '0.75rem',
-                              background: isChosen ? '#dbeafe' : '#ffffff',
-                              borderColor: isChosen ? '#2563eb' : '#cbd5e1',
-                              color: isChosen ? '#1d4ed8' : '#334155',
-                            }}
+                            onClick={() =>
+                              setFormImageUrl(`lucide:${item.name}`)
+                            }
+                            className={`${styles.iconPickerItem} ${
+                              isChosen ? styles.iconPickerItemActive : ''
+                            }`}
+                            title={item.name}
                           >
-                            <IconComponent size={14} />
-                            <span>{ic}</span>
+                            <IconComp
+                              size={20}
+                              color={isChosen ? '#1d4ed8' : '#475569'}
+                            />
+                            <span>
+                              {locale === 'en'
+                                ? item.labelEn
+                                : item.labelVi}
+                            </span>
                           </button>
                         );
                       })}
@@ -1401,11 +1897,30 @@ export const AdminMedals: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Title VI & EN */}
+                {/* ── Section 2: Naming ───────────────────────── */}
+                <div className={styles.formGroup}>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--ink-muted, #64748b)',
+                    }}
+                  >
+                    {t('admin.medals.modal.naming', 'Đặt tên')}
+                  </span>
+                </div>
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formTitleViInput" className={styles.formLabel}>
-                      {copy('Medal Title (Vietnamese) *', 'Tên Huy hiệu (Tiếng Việt) *')}
+                    <label
+                      htmlFor="formTitleViInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.titleVi',
+                        'Tên huy hiệu (Tiếng Việt) *'
+                      )}
                     </label>
                     <input
                       type="text"
@@ -1414,31 +1929,62 @@ export const AdminMedals: React.FC = () => {
                       required
                       placeholder="vd: Học giả xác thực ORCID (Cấp 1 - Đồng)"
                       value={formTitleVi}
-                      onChange={(e) => setFormTitleVi(e.target.value)}
+                      onChange={(e) => {
+                        setFormTitleVi(e.target.value);
+                        if (titleError) setTitleError('');
+                      }}
                       className={styles.formInput}
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formTitleEnInput" className={styles.formLabel}>
-                      {copy('Medal Title (English)', 'Tên Huy hiệu (English)')}
+                    <label
+                      htmlFor="formTitleEnInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.titleEn',
+                        'Tên huy hiệu (English)'
+                      )}
                     </label>
                     <input
                       type="text"
                       id="formTitleEnInput"
                       name="formTitleEnInput"
+                      required
                       placeholder="e.g.: ORCID Verified Scholar (Bronze)"
                       value={formTitle}
-                      onChange={(e) => setFormTitle(e.target.value)}
+                      onChange={(e) => {
+                        setFormTitle(e.target.value);
+                        if (titleError) setTitleError('');
+                      }}
                       className={styles.formInput}
                     />
                   </div>
                 </div>
+                {titleError && (
+                  <div
+                    style={{
+                      color: 'var(--status-danger-text, #b91c1c)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      marginTop: '-4px',
+                    }}
+                    role="alert"
+                  >
+                    {titleError}
+                  </div>
+                )}
 
-                {/* Description VI & EN */}
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formDescViInput" className={styles.formLabel}>
-                      {copy('Criteria Description (Vietnamese)', 'Mô tả điều kiện (Tiếng Việt)')}
+                    <label
+                      htmlFor="formDescViInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.descVi',
+                        'Mô tả điều kiện (Tiếng Việt)'
+                      )}
                     </label>
                     <textarea
                       id="formDescViInput"
@@ -1451,8 +1997,14 @@ export const AdminMedals: React.FC = () => {
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formDescEnInput" className={styles.formLabel}>
-                      {copy('Criteria Description (English)', 'Mô tả điều kiện (English)')}
+                    <label
+                      htmlFor="formDescEnInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.descEn',
+                        'Mô tả điều kiện (English)'
+                      )}
                     </label>
                     <textarea
                       id="formDescEnInput"
@@ -1466,11 +2018,27 @@ export const AdminMedals: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Tier & Stage Level */}
+                {/* ── Section 3: Rules ───────────────────────── */}
+                <div className={styles.formGroup}>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--ink-muted, #64748b)',
+                    }}
+                  >
+                    {t('admin.medals.modal.rules', 'Quy tắc')}
+                  </span>
+                </div>
                 <div className={styles.formGridTwo}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formTierSelect" className={styles.formLabel}>
-                      {copy('Tier *', 'Cấp bậc xếp hạng (Tier) *')}
+                    <label
+                      htmlFor="formTierSelect"
+                      className={styles.formLabel}
+                    >
+                      {t('admin.medals.modal.tier', 'Cấp bậc xếp hạng (Tier) *')}
                     </label>
                     <select
                       id="formTierSelect"
@@ -1481,22 +2049,25 @@ export const AdminMedals: React.FC = () => {
                       }
                       className={styles.formSelect}
                     >
-                      {TIER_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t === 'Bronze'
-                            ? copy('🥉 Bronze', '🥉 Đồng (Bronze)')
-                            : t === 'Silver'
-                            ? copy('🥈 Silver', '🥈 Bạc (Silver)')
-                            : t === 'Gold'
-                            ? copy('🥇 Gold', '🥇 Vàng (Gold)')
-                            : copy('💎 Platinum', '💎 Bạch Kim (Platinum)')}
-                        </option>
-                      ))}
+                      {TIER_OPTIONS.map((tier) => {
+                        const tierLabel = t(TIER_LABEL_KEY[tier], tier);
+                        return (
+                          <option key={tier} value={tier}>
+                            {`${tier} — ${tierLabel}`}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div className={styles.formGroup}>
-                    <label htmlFor="formStageLevelInput" className={styles.formLabel}>
-                      {copy('Stage Level', 'Cấp độ tiến trình (Stage Level)')}
+                    <label
+                      htmlFor="formStageLevelInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.stageLevel',
+                        'Cấp độ tiến trình (Stage Level)'
+                      )}
                     </label>
                     <input
                       type="number"
@@ -1513,24 +2084,121 @@ export const AdminMedals: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Metric / Threshold / Unit row */}
+                <div className={styles.formGridTwo}>
+                  <div className={styles.formGroup}>
+                    <label
+                      htmlFor="formCriteriaMetricInput"
+                      className={styles.formLabel}
+                    >
+                      {t(
+                        'admin.medals.modal.metric',
+                        'Mã chỉ số tự động (Metric Code) *'
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      id="formCriteriaMetricInput"
+                      name="formCriteriaMetricInput"
+                      required
+                      placeholder="e.g.: orcid_connected, published_papers, hosted_seminars..."
+                      value={formCriteriaMetric}
+                      onChange={(e) => setFormCriteriaMetric(e.target.value)}
+                      className={styles.formInput}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                    }}
+                  >
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="formCriteriaThresholdInput"
+                        className={styles.formLabel}
+                      >
+                        {t('admin.medals.modal.threshold', 'Ngưỡng đạt >=')}
+                      </label>
+                      <input
+                        type="number"
+                        id="formCriteriaThresholdInput"
+                        name="formCriteriaThresholdInput"
+                        min={1}
+                        value={formCriteriaThreshold}
+                        onChange={(e) =>
+                          setFormCriteriaThreshold(
+                            parseInt(e.target.value, 10) || 1
+                          )
+                        }
+                        className={styles.formInput}
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="formCriteriaUnitSelect"
+                        className={styles.formLabel}
+                      >
+                        {t('admin.medals.modal.unit', 'Đơn vị tính')}
+                      </label>
+                      <select
+                        id="formCriteriaUnitSelect"
+                        name="formCriteriaUnitSelect"
+                        value={formCriteriaUnit}
+                        onChange={(e) =>
+                          setFormCriteriaUnit(
+                            e.target.value as MedalCriteriaUnit
+                          )
+                        }
+                        className={styles.formSelect}
+                      >
+                        {MEDAL_CRITERIA_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {criteriaUnitLabel(unit, locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Roles Targeted */}
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
-                    {copy('Applicable Roles:', 'Vai trò áp dụng huy hiệu:')}
+                    {t('admin.medals.modal.roles', 'Vai trò áp dụng huy hiệu')}
                   </label>
                   <div className={styles.checkboxRoleGroup}>
                     {ALL_ROLES.map((role) => {
                       const isChecked = formRoles.includes(role);
                       let label: string = role;
-                      if (locale === 'vi') {
-                        if (role === 'Researcher') label = 'Nhà nghiên cứu (Researcher)';
-                        else if (role === 'Lecturer') label = 'Giảng viên (Lecturer)';
-                        else if (role === 'Reviewer') label = 'Người phản biện (Reviewer)';
-                        else if (role === 'Graduate Student') label = 'Học viên (Graduate Student)';
-                      }
+                      if (role === 'Researcher')
+                        label = t(
+                          'admin.medals.role.researcher',
+                          'Nhà nghiên cứu'
+                        );
+                      else if (role === 'Lecturer')
+                        label = t(
+                          'admin.medals.role.lecturer',
+                          'Giảng viên'
+                        );
+                      else if (role === 'Reviewer')
+                        label = t(
+                          'admin.medals.role.reviewer',
+                          'Người phản biện'
+                        );
+                      else if (role === 'Graduate Student')
+                        label = t(
+                          'admin.medals.role.student',
+                          'Học viên'
+                        );
                       const inputId = `roleCheck_${role.replace(/\s+/g, '_')}`;
                       return (
-                        <label key={role} htmlFor={inputId} className={styles.checkboxRoleItem}>
+                        <label
+                          key={role}
+                          htmlFor={inputId}
+                          className={styles.checkboxRoleItem}
+                        >
                           <input
                             type="checkbox"
                             id={inputId}
@@ -1553,72 +2221,13 @@ export const AdminMedals: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Metric, Threshold, Unit */}
-                <div className={styles.formGridTwo}>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="formCriteriaMetricInput" className={styles.formLabel}>
-                      {copy('Metric Code *', 'Mã chỉ số tự động (Metric Code) *')}
-                    </label>
-                    <input
-                      type="text"
-                      id="formCriteriaMetricInput"
-                      name="formCriteriaMetricInput"
-                      required
-                      placeholder="e.g.: orcid_connected, published_papers, hosted_seminars..."
-                      value={formCriteriaMetric}
-                      onChange={(e) => setFormCriteriaMetric(e.target.value)}
-                      className={styles.formInput}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '8px',
-                    }}
-                  >
-                    <div className={styles.formGroup}>
-                      <label htmlFor="formCriteriaThresholdInput" className={styles.formLabel}>
-                        {copy('Threshold >=', 'Ngưỡng đạt >=')}
-                      </label>
-                      <input
-                        type="number"
-                        id="formCriteriaThresholdInput"
-                        name="formCriteriaThresholdInput"
-                        min={1}
-                        value={formCriteriaThreshold}
-                        onChange={(e) =>
-                          setFormCriteriaThreshold(
-                            parseInt(e.target.value, 10) || 1
-                          )
-                        }
-                        className={styles.formInput}
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="formCriteriaUnitInput" className={styles.formLabel}>
-                        {copy('Unit', 'Đơn vị tính')}
-                      </label>
-                      <input
-                        type="text"
-                        id="formCriteriaUnitInput"
-                        name="formCriteriaUnitInput"
-                        placeholder="e.g.: papers, seminars..."
-                        value={formCriteriaUnit}
-                        onChange={(e) => setFormCriteriaUnit(e.target.value)}
-                        className={styles.formInput}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 {/* Active switch */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    marginTop: '8px',
+                    marginTop: '4px',
                   }}
                 >
                   <input
@@ -1637,9 +2246,9 @@ export const AdminMedals: React.FC = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    {copy(
-                      'Activate this badge immediately for users',
-                      'Kích hoạt huy hiệu này ngay lập tức cho người dùng'
+                    {t(
+                      'admin.medals.modal.active',
+                      'Kích hoạt huy hiệu này ngay cho người dùng'
                     )}
                   </label>
                 </div>
@@ -1651,12 +2260,10 @@ export const AdminMedals: React.FC = () => {
                   className={styles.btnAction}
                   onClick={() => setActiveModal(null)}
                 >
-                  {copy('Cancel', 'Hủy bỏ')}
+                  {t('admin.medals.modal.cancel', 'Hủy bỏ')}
                 </button>
                 <Button variant="primary" type="submit">
-                  {activeModal === 'create'
-                    ? copy('Create Medal', 'Tạo Huy hiệu')
-                    : copy('Save Changes', 'Lưu thay đổi')}
+                  {t('admin.medals.modal.save', 'Lưu thay đổi')}
                 </Button>
               </div>
             </form>
@@ -1669,8 +2276,14 @@ export const AdminMedals: React.FC = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.modal} style={{ maxWidth: '440px' }}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle} style={{ color: '#dc2626' }}>
-                {copy('Confirm Medal Deletion', 'Xác nhận xóa Huy hiệu')}
+              <h3
+                className={styles.modalTitle}
+                style={{ color: 'var(--status-danger-text, #dc2626)' }}
+              >
+                {t(
+                  'admin.medals.modal.deleteTitle',
+                  'Xác nhận xóa huy hiệu'
+                )}
               </h3>
               <button
                 type="button"
@@ -1682,16 +2295,18 @@ export const AdminMedals: React.FC = () => {
             </div>
             <div className={styles.modalBody}>
               <p style={{ fontSize: '0.9375rem', color: '#334155' }}>
-                {copy(
-                  `Are you sure you want to delete medal "${locale === 'en' ? targetMedal.title : targetMedal.titleVi}"?`,
-                  `Bạn có chắc chắn muốn xóa huy hiệu "${targetMedal.titleVi}" không?`
+                {t(
+                  'admin.medals.modal.deleteBody',
+                  'Bạn có chắc chắn muốn xóa huy hiệu này? Hành động không thể hoàn tác.'
                 )}
               </p>
-              <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-                {copy(
-                  'This action will permanently delete the medal from the backend database.',
-                  'Hành động này sẽ xóa vĩnh viễn huy hiệu khỏi cơ sở dữ liệu hệ thống.'
-                )}
+              <p
+                style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--ink-muted, #64748b)',
+                }}
+              >
+                {locale === 'en' ? targetMedal.title : targetMedal.titleVi}
               </p>
             </div>
             <div className={styles.modalFooter}>
@@ -1700,13 +2315,10 @@ export const AdminMedals: React.FC = () => {
                 className={styles.btnAction}
                 onClick={() => setActiveModal(null)}
               >
-                {copy('Cancel', 'Hủy')}
+                {t('admin.medals.modal.cancel', 'Hủy bỏ')}
               </button>
-              <Button
-                variant="danger"
-                onClick={handleDeleteConfirm}
-              >
-                {copy('Confirm Delete', 'Xác nhận xóa')}
+              <Button variant="danger" onClick={handleDeleteConfirm}>
+                {t('admin.medals.modal.deleteConfirm', 'Xác nhận xóa')}
               </Button>
             </div>
           </div>
@@ -1718,7 +2330,12 @@ export const AdminMedals: React.FC = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.modal} style={{ maxWidth: '460px' }}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>{copy('Restore Default Medals', 'Khôi phục mẫu chuẩn')}</h3>
+              <h3 className={styles.modalTitle}>
+                {t(
+                  'admin.medals.modal.resetTitle',
+                  'Khôi phục huy hiệu mặc định'
+                )}
+              </h3>
               <button
                 type="button"
                 className={styles.modalCloseBtn}
@@ -1729,12 +2346,17 @@ export const AdminMedals: React.FC = () => {
             </div>
             <div className={styles.modalBody}>
               <p style={{ fontSize: '0.9375rem', color: '#334155' }}>
-                {copy(
-                  'Restore all 26 standard academic medals for 4 roles (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress) directly on backend database.',
-                  'Khôi phục lại toàn bộ 26 huy hiệu chuẩn cho 4 vai trò (ORCID Scholar, Prolific Author, Academic Host, Master Mentor, Review Milestone, Seminar Participant, Flawless Progress) trực tiếp trên cơ sở dữ liệu.'
+                {t(
+                  'admin.medals.modal.resetBody',
+                  'Khôi phục toàn bộ 26 huy hiệu học thuật tiêu chuẩn cho 4 vai trò trên cơ sở dữ liệu.'
                 )}
               </p>
-              <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
+              <p
+                style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--ink-muted, #64748b)',
+                }}
+              >
                 {copy(
                   'Any custom changes made previously will be reset to initial defaults.',
                   'Các thay đổi tùy chỉnh trước đó sẽ được đặt lại về mặc định ban đầu.'
@@ -1747,10 +2369,13 @@ export const AdminMedals: React.FC = () => {
                 className={styles.btnAction}
                 onClick={() => setActiveModal(null)}
               >
-                {copy('Cancel', 'Hủy')}
+                {t('admin.medals.modal.cancel', 'Hủy bỏ')}
               </button>
               <Button variant="primary" onClick={handleResetDefaults}>
-                {copy('Restore Catalog', 'Khôi phục danh sách')}
+                {t(
+                  'admin.medals.modal.resetConfirm',
+                  'Khôi phục danh mục'
+                )}
               </Button>
             </div>
           </div>

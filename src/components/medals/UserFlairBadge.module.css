@@ -1,0 +1,115 @@
+/* UserFlairBadge — Reddit-style user flair badge
+ *
+ * Renders a single medal badge inline next to a username with a hover
+ * tooltip. Token-driven: every color, spacing, radius, and shadow comes
+ * from src/styles/ars-tokens.css. No hardcoded hex values.
+ */
+
+.flairWrapper {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 0; /* prevents inline-baseline gap next to text */
+}
+
+.flairBadge {
+  /* Inherit cursor so an onClick wrapper can flip it to pointer without
+     each badge knowing whether it's clickable. */
+  cursor: inherit;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  /* Subtle Reddit-style hover affordance — gentle scale, no color flash. */
+  transition: transform var(--duration-fast, 150ms)
+    var(--motion-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+  transform-origin: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flairWrapper:hover .flairBadge,
+.flairWrapper:focus-within .flairBadge {
+  transform: scale(1.08);
+}
+
+/* Tooltip — Reddit-style; floats above the badge, paper-day surface,
+ * ink-primary text, subtle border + shadow. Hidden by default, revealed
+ * on hover or keyboard focus of any inner element. */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  /* Tooltip is anchored above the wrapper; z-index above page chrome but
+   * below modals. */
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast, 150ms)
+    var(--motion-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+  max-width: 280px;
+}
+
+.flairWrapper:hover .tooltip,
+.flairWrapper:focus-within .tooltip {
+  opacity: 1;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  margin-bottom: 2px;
+  /* Title should never wrap onto multiple lines in the tooltip. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.tooltipTier {
+  color: var(--ink-muted);
+  font-size: 0.6875rem;
+  /* Tier + description share one logical block; let them wrap together
+   * if the tooltip widens, but keep tight inter-line spacing. */
+  line-height: 1.3;
+}
+
+/* When the parent click handler makes the wrapper interactive, the badge
+ * should advertise that with a pointer cursor. Consumers can add a class
+ * to opt in — we don't force it here because the badge is also valid as
+ * a purely decorative element. */
+.flairWrapper[data-clickable='true'] .flairBadge {
+  cursor: pointer;
+}
+
+.flairWrapper[data-clickable='true']:focus-within {
+  outline: none;
+}
+
+.flairWrapper[data-clickable='true']:focus-within .flairBadge {
+  /* Show a focus ring on the badge artwork when keyboard-navigated. */
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  border-radius: 50%;
+}
+
+/* Respect users who prefer no motion: kill the scale transition and the
+ * tooltip fade — the tooltip will simply toggle instantly on hover/focus. */
+@media (prefers-reduced-motion: reduce) {
+  .flairBadge,
+  .tooltip,
+  .flairWrapper:hover .flairBadge,
+  .flairWrapper:focus-within .flairBadge {
+    transition: none;
+    transform: none;
+  }
+}

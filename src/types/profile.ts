@@ -76,6 +76,14 @@ export interface Profile {
   /** ISO 8601 timestamps; present on responses that include them. */
   createdAt?: string | null;
   updatedAt?: string | null;
+  /**
+   * Reddit-style featured flair. ID of the medal the user wants rendered
+   * next to their name. The FE stores this in localStorage as
+   * `ars_flair_<userId>` until the BE exposes it on /api/Profile/{id}.
+   */
+  flairMedalId?: string | null;
+  /** Ordered list of unlocked medal IDs the user wants shown by default. */
+  flairOrder?: string[] | null;
 }
 
 /**
@@ -108,6 +116,14 @@ export interface ProfileUpdateRequest {
   dateOfBirth?: string | null;
   gender?: string | null;
   address?: string | null;
+  /**
+   * Reddit-style featured flair id. Forwarded to the BE so the user's
+   * pinned medal survives page reloads without depending on the FE-only
+   * localStorage cache (`ars_flair_<userId>`).
+   */
+  flairMedalId?: string | null;
+  /** Per-user medal display order. */
+  flairOrder?: string[] | null;
 }
 
 /**
@@ -128,6 +144,8 @@ export const PROFILE_UPDATE_KEYS = [
   'dateOfBirth',
   'gender',
   'address',
+  'flairMedalId',
+  'flairOrder',
 ] as const;
 
 export type ProfileUpdateKey = (typeof PROFILE_UPDATE_KEYS)[number];

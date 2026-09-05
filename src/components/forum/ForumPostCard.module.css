@@ -87,6 +87,16 @@
   gap: 2px;
 }
 
+/* Wrapper around the author name + Reddit-style flair badge. The author
+ * name keeps its existing button styling; only this row wrapper is new.
+ * The flair badge (when present) sits to the right of the name. */
+.authorNameRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .authorName {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);

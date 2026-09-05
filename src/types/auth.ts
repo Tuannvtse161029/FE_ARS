@@ -247,6 +247,10 @@ export interface User {
    */
   isNewUser?: boolean | null;
   requiresOnboarding?: boolean | null;
+  /** Reddit-style featured flair id (mirrors profile.flairMedalId). */
+  flairMedalId?: string | null;
+  /** Per-user medal display order (mirrors profile.flairOrder). */
+  flairOrder?: string[] | null;
 }
 
 export interface AuthState {

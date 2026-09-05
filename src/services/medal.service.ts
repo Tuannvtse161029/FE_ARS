@@ -4,6 +4,40 @@ export type MedalTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
 export type RoleTarget = 'All' | 'Researcher' | 'Lecturer' | 'Reviewer' | 'Graduate Student';
 
+export type MedalCriteriaUnit =
+  | 'papers'
+  | 'seminars'
+  | 'student_groups'
+  | 'reviews'
+  | 'account'
+  | 'publications'
+  | 'phases'
+  | 'times'
+  | 'verifications';
+
+export const MEDAL_CRITERIA_UNITS: MedalCriteriaUnit[] = [
+  'papers', 'seminars', 'student_groups', 'reviews',
+  'account', 'publications', 'phases', 'times', 'verifications',
+];
+
+export const CRITERIA_UNIT_LABEL: Record<MedalCriteriaUnit, { en: string; vi: string }> = {
+  papers:         { en: 'papers',          vi: 'bài báo' },
+  seminars:       { en: 'seminars',        vi: 'buổi seminar' },
+  student_groups: { en: 'student groups',  vi: 'nhóm sinh viên' },
+  reviews:        { en: 'reviews',         vi: 'lượt review' },
+  account:        { en: 'account',         vi: 'tài khoản' },
+  publications:   { en: 'publications',    vi: 'công trình' },
+  phases:         { en: 'phases',          vi: 'giai đoạn' },
+  times:          { en: 'times',           vi: 'lần' },
+  verifications:  { en: 'verifications',   vi: 'lần xác minh' },
+};
+
+export const criteriaUnitLabel = (unit: string, locale: 'en' | 'vi'): string => {
+  const known = CRITERIA_UNIT_LABEL[unit as MedalCriteriaUnit];
+  if (known) return known[locale];
+  return unit || (locale === 'en' ? 'times' : 'lần');
+};
+
 export interface Medal {
   id: string;
   code: string;
@@ -14,14 +48,56 @@ export interface Medal {
   roles: RoleTarget[];
   tier: MedalTier;
   stageLevel: number;
-  imageUrl: string; // Supports 'lucide:IconName' or standard http/https/data image URL
+  /**
+   * Shared icon for the whole metric family. Conventions:
+   *   - `lucide:IconName`  → renders a Lucide icon (default)
+   *   - `https://…`        → renders a remote image
+   *   - `/assets/badges/…` → renders a bundled asset (see assets/badges/index.ts)
+   *
+   * IMPORTANT: the icon belongs to the metric FAMILY (all tiers of the
+   * same achievement), not to a single tier. Tier only changes the
+   * color of the frame (Bronze/Silver/Gold/Platinum).
+   */
+  imageUrl: string;
   criteriaMetric: string;
   criteriaThreshold: number;
-  criteriaUnit: string;
+  criteriaUnit: MedalCriteriaUnit;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Derives the metric-family key from a medal code by stripping the trailing
+ * tier suffix. Examples:
+ *   ORCID_VERIFIED_BRONZE  →  ORCID_VERIFIED
+ *   PROLIFIC_AUTHOR_GOLD   →  PROLIFIC_AUTHOR
+ *   FLAWLESS_PROGRESS_GOLD →  FLAWLESS_PROGRESS
+ *   REVIEW_MILESTONE_IV    →  REVIEW_MILESTONE
+ *
+ * The function is forgiving: codes that don't include a recognised tier
+ * suffix fall back to the whole code so families still group correctly.
+ */
+export const deriveMetricFamily = (code: string): string => {
+  if (!code) return '';
+  return code
+    .replace(/_(BRONZE|SILVER|GOLD|PLATINUM)$/i, '')
+    .replace(/_(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i, '')
+    .toUpperCase();
+};
+
+/**
+ * Derives a canonical, human-readable family label from the family code.
+ * Used in the Admin UI when grouping tier variants under one card.
+ */
+export const metricFamilyLabel = (code: string): string => {
+  const family = deriveMetricFamily(code);
+  if (!family) return 'Achievement';
+  return family
+    .toLowerCase()
+    .replace(/_+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 export interface MedalCreateInput {
   title: string;
@@ -34,7 +110,7 @@ export interface MedalCreateInput {
   imageUrl: string;
   criteriaMetric: string;
   criteriaThreshold: number;
-  criteriaUnit: string;
+  criteriaUnit: MedalCriteriaUnit;
   isActive?: boolean;
 }
 
@@ -67,7 +143,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_connected',
     criteriaThreshold: 1,
-    criteriaUnit: 'tài khoản',
+    criteriaUnit: 'account',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -85,7 +161,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 1,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -103,7 +179,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ShieldCheck',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 3,
-    criteriaUnit: 'công trình',
+    criteriaUnit: 'publications',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -123,7 +199,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 1,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -141,7 +217,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 5,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -159,7 +235,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 10,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -177,7 +253,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:BookOpen',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 20,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -197,7 +273,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 1,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -215,7 +291,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 3,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -233,7 +309,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 5,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -251,7 +327,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Mic',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 10,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -271,7 +347,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 1,
-    criteriaUnit: 'nhóm sinh viên',
+    criteriaUnit: 'student_groups',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -289,7 +365,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 3,
-    criteriaUnit: 'nhóm sinh viên',
+    criteriaUnit: 'student_groups',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -307,7 +383,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 5,
-    criteriaUnit: 'nhóm sinh viên',
+    criteriaUnit: 'student_groups',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -325,7 +401,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:GraduationCap',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 10,
-    criteriaUnit: 'nhóm sinh viên',
+    criteriaUnit: 'student_groups',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -345,7 +421,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 5,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -363,7 +439,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 10,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -381,7 +457,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 25,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -399,7 +475,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:ClipboardCheck',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 50,
-    criteriaUnit: 'bài báo',
+    criteriaUnit: 'papers',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -416,10 +492,10 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Graduate Student'],
     tier: 'Bronze',
     stageLevel: 1,
-    imageUrl: 'lucide:Award',
+    imageUrl: 'lucide:Headphones',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 1,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -434,10 +510,10 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Graduate Student'],
     tier: 'Silver',
     stageLevel: 2,
-    imageUrl: 'lucide:Award',
+    imageUrl: 'lucide:Headphones',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 3,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -452,10 +528,10 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Graduate Student'],
     tier: 'Gold',
     stageLevel: 3,
-    imageUrl: 'lucide:Award',
+    imageUrl: 'lucide:Headphones',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 5,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -470,10 +546,10 @@ export const INITIAL_MEDALS: Medal[] = [
     roles: ['Graduate Student'],
     tier: 'Platinum',
     stageLevel: 4,
-    imageUrl: 'lucide:Award',
+    imageUrl: 'lucide:Headphones',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 10,
-    criteriaUnit: 'buổi seminar',
+    criteriaUnit: 'seminars',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -493,7 +569,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 1,
-    criteriaUnit: 'giai đoạn',
+    criteriaUnit: 'phases',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -511,7 +587,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 3,
-    criteriaUnit: 'giai đoạn',
+    criteriaUnit: 'phases',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -529,7 +605,7 @@ export const INITIAL_MEDALS: Medal[] = [
     imageUrl: 'lucide:Sparkles',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 5,
-    criteriaUnit: 'giai đoạn',
+    criteriaUnit: 'phases',
     isActive: true,
     createdAt: '2026-09-01T00:00:00Z',
     updatedAt: '2026-09-01T00:00:00Z',
@@ -543,7 +619,7 @@ function loadLocalMedals(): Medal[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return normalizeMedalFamilies(parsed as Medal[]);
       }
     }
   } catch {
@@ -561,6 +637,96 @@ function saveLocalMedals(medals: Medal[]): void {
   }
 }
 
+/**
+ * Ensures every medal in the same metric family shares the same `imageUrl`.
+ *
+ * Background: icons belong to the ACHIEVEMENT (metric family), not to a
+ * single tier. If the Admin previously changed icons on individual tier
+ * variants and they drifted apart, this helper re-syncs them to the icon
+ * of the lowest-stage medal in the family — which is treated as canonical.
+ *
+ * Returns the input list as a new array (no in-place mutation of the
+ * caller's reference).
+ */
+export function normalizeMedalFamilies(medals: Medal[]): Medal[] {
+  if (!Array.isArray(medals) || medals.length === 0) return medals;
+
+  const familyIcons = new Map<string, string>();
+  // Pass 1: for each family, pick the canonical icon from the lowest-stage medal.
+  for (const m of medals) {
+    const family = deriveMetricFamily(m.code);
+    if (!family) continue;
+    if (!familyIcons.has(family)) {
+      familyIcons.set(family, m.imageUrl || 'lucide:Medal');
+    }
+  }
+  // Pass 2: rewrite every medal's imageUrl to the family icon.
+  return medals.map((m) => {
+    const family = deriveMetricFamily(m.code);
+    const canonical = familyIcons.get(family);
+    if (canonical && m.imageUrl !== canonical) {
+      return { ...m, imageUrl: canonical };
+    }
+    return m;
+  });
+}
+
+export interface MedalFamilyGroup {
+  /** Family key derived from code prefix, e.g. "ORCID_VERIFIED". */
+  family: string;
+  /** Human-readable family label, e.g. "Orcid Verified". */
+  label: string;
+  /** Shared icon URL across all tiers in the family. */
+  imageUrl: string;
+  /** Stage 1 medal (typically Bronze) — used as canonical for the family. */
+  primary: Medal;
+  /** Every tier variant, sorted by stageLevel ascending. */
+  tiers: Medal[];
+  /** Roles aggregated across the family (deduped). */
+  roles: RoleTarget[];
+  /** True if every tier is active. */
+  allActive: boolean;
+}
+
+/**
+ * Group medals by their metric family (code prefix). Returns the families
+ * in stable order: alphabetical by family key.
+ */
+export function groupMedalsByFamily(medals: Medal[]): MedalFamilyGroup[] {
+  if (!Array.isArray(medals) || medals.length === 0) return [];
+
+  const buckets = new Map<string, Medal[]>();
+  for (const m of medals) {
+    const family = deriveMetricFamily(m.code);
+    if (!family) continue;
+    if (!buckets.has(family)) buckets.set(family, []);
+    buckets.get(family)!.push(m);
+  }
+
+  const families: MedalFamilyGroup[] = [];
+  for (const [family, list] of buckets.entries()) {
+    const sorted = [...list].sort(
+      (a, b) => (a.stageLevel ?? 0) - (b.stageLevel ?? 0),
+    );
+    const primary = sorted[0];
+    const rolesSet = new Set<RoleTarget>();
+    for (const m of sorted) {
+      for (const r of m.roles ?? []) rolesSet.add(r);
+    }
+    families.push({
+      family,
+      label: metricFamilyLabel(family),
+      imageUrl: primary?.imageUrl ?? 'lucide:Medal',
+      primary,
+      tiers: sorted,
+      roles: Array.from(rolesSet),
+      allActive: sorted.every((m) => m.isActive),
+    });
+  }
+
+  return families.sort((a, b) => a.family.localeCompare(b.family));
+}
+
 export const medalService = {
   async getAll(params?: {
     role?: string;
@@ -571,8 +737,9 @@ export const medalService = {
     try {
       const res = await api.get('/api/Medal', { params });
       if (Array.isArray(res.data) && res.data.length > 0) {
-        saveLocalMedals(res.data);
-        return res.data;
+        const normalized = normalizeMedalFamilies(res.data);
+        saveLocalMedals(normalized);
+        return normalized;
       }
     } catch (err) {
       console.warn('Live /api/Medal fetch error, falling back:', err);
@@ -592,6 +759,11 @@ export const medalService = {
   },
 
   async create(input: MedalCreateInput): Promise<Medal> {
+    const trimmedUnit = input.criteriaUnit.trim() as MedalCriteriaUnit;
+    const criteriaUnit: MedalCriteriaUnit = MEDAL_CRITERIA_UNITS.includes(trimmedUnit)
+      ? trimmedUnit
+      : 'times';
+
     const payload = {
       title: input.title.trim(),
       titleVi: input.titleVi.trim() || input.title.trim(),
@@ -603,7 +775,7 @@ export const medalService = {
       imageUrl: input.imageUrl?.trim() || 'lucide:Medal',
       criteriaMetric: input.criteriaMetric.trim(),
       criteriaThreshold: Number(input.criteriaThreshold) || 1,
-      criteriaUnit: input.criteriaUnit.trim() || 'lần',
+      criteriaUnit,
       isActive: input.isActive ?? true,
     };
 
@@ -611,7 +783,33 @@ export const medalService = {
     if (res.data) {
       const current = loadLocalMedals();
       saveLocalMedals([res.data, ...current.filter((m) => m.id !== res.data.id)]);
-      return res.data;
+      // If the new medal belongs to an existing family, sync the icon to
+      // the family canonical icon (lowest-stage sibling).
+      const created = res.data as Medal;
+      const family = deriveMetricFamily(created.code);
+      if (family) {
+        const allNow = loadLocalMedals();
+        const siblings = allNow.filter(
+          (m) => deriveMetricFamily(m.code) === family,
+        );
+        const canonical =
+          siblings
+            .sort((a, b) => (a.stageLevel ?? 0) - (b.stageLevel ?? 0))[0]
+            ?.imageUrl ?? created.imageUrl;
+        if (
+          canonical &&
+          siblings.some((m) => m.imageUrl !== canonical)
+        ) {
+          await Promise.all(
+            siblings.map((m) =>
+              m.imageUrl !== canonical
+                ? this.update(m.id, { imageUrl: canonical })
+                : Promise.resolve(m),
+            ),
+          );
+        }
+      }
+      return await this.getById(created.id) ?? created;
     }
 
     throw new Error('Failed to create medal: no data returned');
@@ -620,7 +818,17 @@ export const medalService = {
   async update(id: string, input: Partial<MedalCreateInput>): Promise<Medal> {
     const existing = await this.getById(id);
 
-    const merged = {
+    let criteriaUnit: MedalCriteriaUnit;
+    if (input.criteriaUnit !== undefined) {
+      const candidate = input.criteriaUnit.trim() as MedalCriteriaUnit;
+      criteriaUnit = MEDAL_CRITERIA_UNITS.includes(candidate)
+        ? candidate
+        : ((existing?.criteriaUnit ?? 'times') as MedalCriteriaUnit);
+    } else {
+      criteriaUnit = (existing?.criteriaUnit ?? 'times') as MedalCriteriaUnit;
+    }
+
+    const merged: Omit<Medal, 'id' | 'code' | 'createdAt' | 'updatedAt'> = {
       title: input.title !== undefined ? input.title.trim() : (existing?.title ?? ''),
       titleVi: input.titleVi !== undefined ? input.titleVi.trim() : (existing?.titleVi ?? ''),
       description: input.description !== undefined ? input.description.trim() : (existing?.description ?? ''),
@@ -631,7 +839,7 @@ export const medalService = {
       imageUrl: input.imageUrl !== undefined ? input.imageUrl.trim() : (existing?.imageUrl ?? 'lucide:Medal'),
       criteriaMetric: input.criteriaMetric !== undefined ? input.criteriaMetric.trim() : (existing?.criteriaMetric ?? 'default_metric'),
       criteriaThreshold: input.criteriaThreshold !== undefined ? Number(input.criteriaThreshold) : (existing?.criteriaThreshold ?? 1),
-      criteriaUnit: input.criteriaUnit !== undefined ? input.criteriaUnit.trim() : (existing?.criteriaUnit ?? 'lần'),
+      criteriaUnit,
       isActive: input.isActive !== undefined ? input.isActive : (existing?.isActive ?? true),
     };
 
@@ -657,6 +865,42 @@ export const medalService = {
     await api.delete('/api/Medal/' + id);
     const current = loadLocalMedals();
     saveLocalMedals(current.filter((m) => m.id !== id));
+  },
+
+  /**
+   * Update the icon for EVERY medal in a metric family.
+   *
+   * Icons belong to the family (the achievement itself), not to a single
+   * tier — the tier only changes the colour frame. Calling this once keeps
+   * every tier visually consistent with the same icon.
+   */
+  async updateMedalFamilyIcon(
+    family: string,
+    imageUrl: string,
+  ): Promise<Medal[]> {
+    const trimmed = imageUrl.trim();
+    if (!family) {
+      throw new Error('Family key is required');
+    }
+    const targetUrl = trimmed || 'lucide:Medal';
+
+    // Read the current state from the API/local cache so we can target
+    // exactly the medals in this family.
+    const current = await this.getAll();
+    const familyMedals = current.filter(
+      (m) => deriveMetricFamily(m.code) === family.toUpperCase(),
+    );
+    if (familyMedals.length === 0) {
+      throw new Error(`No medals found for family "${family}"`);
+    }
+
+    // Hit the per-id update endpoint for each medal in parallel. This is
+    // the only safe option today because the BE doesn't expose a family
+    // update endpoint yet.
+    const updated = await Promise.all(
+      familyMedals.map(async (m) => this.update(m.id, { imageUrl: targetUrl })),
+    );
+    return updated;
   },
 
   async resetToDefaults(): Promise<Medal[]> {
