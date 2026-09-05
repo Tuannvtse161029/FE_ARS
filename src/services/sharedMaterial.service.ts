@@ -7,9 +7,37 @@ export interface SharedMaterial extends SharedMaterialCreateRequest {
   id?: number;
   createdAt?: string | null;
   updatedAt?: string | null;
+  learningMaterialId?: number | null;
+  learningMaterialTitle?: string | null;
+  title?: string | null;
+  learningMaterialUrl?: string | null;
+  fileUrl?: string | null;
+  url?: string | null;
+  description?: string | null;
+  lecturerName?: string | null;
 }
 
-const normalize = (raw: SharedMaterial): SharedMaterial => ({ ...raw, id: raw.sharedMaterialId ?? raw.id });
+const normalize = (raw: any): SharedMaterial => {
+  const paperId = raw.paperId ?? raw.learningMaterialId ?? null;
+  const learningMaterialId = raw.learningMaterialId ?? raw.paperId ?? null;
+  const title = raw.learningMaterialTitle ?? raw.title ?? null;
+  const learningMaterialTitle = raw.learningMaterialTitle ?? raw.title ?? null;
+  const fileUrl = raw.learningMaterialUrl ?? raw.fileUrl ?? raw.url ?? null;
+  const learningMaterialUrl = raw.learningMaterialUrl ?? raw.fileUrl ?? raw.url ?? null;
+
+  return {
+    ...raw,
+    sharedMaterialId: raw.sharedMaterialId ?? raw.id ?? 0,
+    id: raw.sharedMaterialId ?? raw.id,
+    paperId,
+    learningMaterialId,
+    title,
+    learningMaterialTitle,
+    fileUrl,
+    learningMaterialUrl,
+    url: fileUrl,
+  };
+};
 const list = (data: unknown): SharedMaterial[] => {
   if (Array.isArray(data)) return data.map((item) => normalize(item as SharedMaterial));
   if (data && typeof data === 'object') {
