@@ -1184,6 +1184,12 @@
   border: 1px solid color-mix(in srgb, var(--ars-lecturer) 25%, transparent);
 }
 
+.materialSourceChipShared {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid color-mix(in srgb, #6d28d9 30%, transparent);
+}
+
 .materialCardUrl {
   margin: 0;
   font-family: var(--font-family-mono);
@@ -1617,6 +1623,46 @@
 
 .sharedDeclineBtn:hover {
   background: var(--ars-error-bg);
+}
+
+.sharedOpenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  background: var(--ars-lecturer);
+  color: #ffffff;
+  border: 1px solid var(--ars-lecturer);
+  flex: 0 0 auto;
+}
+
+.sharedOpenBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid);
+  border-color: var(--ars-lecturer-mid);
+}
+
+.sharedOpenBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.sharedOpenBtn:disabled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-node);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.sharedRowActions .materialOpenBtn {
+  flex: 0 0 auto;
 }
 
 /* ── Share modal ────────────────────────────────────────── */

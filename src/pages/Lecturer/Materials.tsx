@@ -41,6 +41,7 @@ import {
   CheckSquare,
   ChevronRight,
   Code2,
+  Eye,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -618,12 +619,23 @@ export const LecturerMaterialsPage = () => {
   const resolveSharedTitle = (
     item: SharedMaterial,
   ): { title: string; known: boolean } => {
-    const paperId = typeof item.paperId === 'number' ? item.paperId : null;
-    if (paperId !== null) {
-      const found = learningById.get(paperId);
+    // 1. Prioritize direct title returned by the BE
+    const directTitle = (item.learningMaterialTitle || item.title)?.trim();
+    if (directTitle) {
+      return { title: directTitle, known: true };
+    }
+    // 2. Lookup in learningById (via learningMaterialId or paperId)
+    const targetId =
+      typeof item.learningMaterialId === 'number'
+        ? item.learningMaterialId
+        : typeof item.paperId === 'number'
+        ? item.paperId
+        : null;
+    if (targetId !== null) {
+      const found = learningById.get(targetId);
       if (found) return { title: formatTitle(found), known: true };
     }
-    return { title: `Material #${item.paperId ?? '—'}`, known: false };
+    return { title: `Material #${targetId ?? '—'}`, known: false };
   };
 
   const resolveSharedExpiry = (
@@ -808,7 +820,7 @@ export const LecturerMaterialsPage = () => {
         sharedAt: item.sharedAt,
         status: nextStatus,
       });
-      await loadShared();
+      await Promise.all([loadShared(), refetchLearning()]);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Could not update the share.';
@@ -1260,6 +1272,9 @@ export const LecturerMaterialsPage = () => {
                   )
                 : undefined;
               const isConfirming = pendingDeleteId === id;
+              const isSharedFromColleague =
+                typeof material.lecturerId === 'number' &&
+                material.lecturerId !== lecturerId;
               return (
                 <li
                   key={String(material.id ?? id)}
@@ -1271,9 +1286,17 @@ export const LecturerMaterialsPage = () => {
                       {formatTitle(material)}
                     </h3>
                     <span
-                      className={`${styles.materialSourceChip} ${fileLike ? styles.materialSourceChipFile : styles.materialSourceChipLink}`}
+                      className={`${styles.materialSourceChip} ${
+                        isSharedFromColleague
+                          ? styles.materialSourceChipShared
+                          : fileLike
+                          ? styles.materialSourceChipFile
+                          : styles.materialSourceChipLink
+                      }`}
                     >
-                      {fileLike
+                      {isSharedFromColleague
+                        ? t('lecturer.materials.source.shared', 'Shared')
+                        : fileLike
                         ? t('lecturer.materials.source.file', 'File')
                         : t('lecturer.materials.source.link', 'Link')}
                     </span>
@@ -1363,38 +1386,40 @@ export const LecturerMaterialsPage = () => {
                       <Share2 size={14} aria-hidden />
                       {t('lecturer.materials.action.share', 'Share')}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.materialDeleteBtn}
-                      onClick={() => {
-                        if (disabledDelete) return;
-                        if (isConfirming) {
-                          void handleLmDelete(id);
-                        } else {
-                          setPendingDeleteId(id);
-                        }
-                      }}
-                      disabled={disabledDelete || id < 0}
-                      title={deleteTitle}
-                      aria-label={t(
-                        'lecturer.materials.card.deleteAria',
-                        'Delete material',
-                      )}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                      {isConfirming
-                        ? t(
-                            'lecturer.materials.action.deleteConfirm',
-                            'Delete',
-                          )
-                        : t(
-                            'lecturer.materials.action.cancel',
-                            'Delete',
-                          )}
-                    </button>
+                    {!isSharedFromColleague && (
+                      <button
+                        type="button"
+                        className={styles.materialDeleteBtn}
+                        onClick={() => {
+                          if (disabledDelete) return;
+                          if (isConfirming) {
+                            void handleLmDelete(id);
+                          } else {
+                            setPendingDeleteId(id);
+                          }
+                        }}
+                        disabled={disabledDelete || id < 0}
+                        title={deleteTitle}
+                        aria-label={t(
+                          'lecturer.materials.card.deleteAria',
+                          'Delete material',
+                        )}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                        {isConfirming
+                          ? t(
+                              'lecturer.materials.action.deleteConfirm',
+                              'Delete',
+                            )
+                          : t(
+                              'lecturer.materials.action.cancel',
+                              'Delete',
+                            )}
+                      </button>
+                    )}
                   </div>
 
-                  {isConfirming && !disabledDelete && (
+                  {!isSharedFromColleague && isConfirming && !disabledDelete && (
                     <div className={styles.materialDeleteConfirm}>
                       <span className={styles.materialDeleteConfirmText}>
                         {t(
@@ -1543,6 +1568,42 @@ export const LecturerMaterialsPage = () => {
                     {t('lecturer.materials.shared.decline', 'Decline')}
                   </button>
                 </div>
+              );
+            }
+            if (status === 'ACCEPTED') {
+              const targetId =
+                typeof item.learningMaterialId === 'number'
+                  ? item.learningMaterialId
+                  : typeof item.paperId === 'number'
+                  ? item.paperId
+                  : null;
+              const foundMaterial =
+                targetId !== null ? learningById.get(targetId) : null;
+              const openUrl =
+                item.learningMaterialUrl ||
+                item.fileUrl ||
+                item.url ||
+                foundMaterial?.fileUrl;
+
+              return (
+                <button
+                  type="button"
+                  className={`${styles.materialOpenBtn} ${styles.sharedOpenBtn}`}
+                  disabled={!openUrl}
+                  onClick={() => {
+                    if (openUrl) {
+                      window.open(openUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  title={
+                    openUrl
+                      ? t('lecturer.materials.action.open', 'Open')
+                      : 'No URL available'
+                  }
+                >
+                  <Eye size={14} aria-hidden />{' '}
+                  {t('lecturer.materials.shared.open', 'Open')}
+                </button>
               );
             }
             return null;
@@ -1835,6 +1896,11 @@ const SharedSection = ({
               `lecturer.materials.shared.status.${uiStatus}`,
               uiStatus,
             );
+            const openUrl =
+              item.learningMaterialUrl ||
+              item.fileUrl ||
+              item.url;
+            const canOpen = Boolean(openUrl && (uiStatus === 'ACCEPTED' || uiStatus === 'ACTIVE'));
             return (
               <li
                 key={String(id)}
@@ -1843,7 +1909,18 @@ const SharedSection = ({
               >
                 <div className={styles.sharedRowMain}>
                   <div className={styles.sharedRowTitleRow}>
-                    <span className={styles.sharedRowTitle}>{materialTitle}</span>
+                    <span
+                      className={styles.sharedRowTitle}
+                      style={canOpen ? { cursor: 'pointer', color: 'var(--ars-lecturer, #7c2d12)' } : undefined}
+                      onClick={() => {
+                        if (canOpen && openUrl) {
+                          window.open(openUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      title={canOpen ? t('lecturer.materials.action.open', 'Open') : undefined}
+                    >
+                      {materialTitle}
+                    </span>
                     <span className={styles.sharedRowStatusPill}>
                       {statusLabel}
                     </span>
