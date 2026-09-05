@@ -6,28 +6,20 @@
  *   - SeminarList (seminar list and card rendering)
  *   - SummaryDialog (create confirmation dialog)
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Plus,
   RefreshCw,
   Loader,
   Check,
   X,
-  FileText,
-  Inbox,
   Lock,
 } from 'lucide-react';
 import { useLocale } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
-import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
-import {
-  deriveEffectiveStatus,
-  seminarService,
-  type SeminarCard,
-} from '../../services/seminar.service';
+import { deriveEffectiveStatus } from '../../services/seminar.service';
 import {
   useSeminars,
   useCreateSeminar,
@@ -61,7 +53,12 @@ export const SeminarWorkspace = () => {
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const [emailInputText, setEmailInputText] = useState('');
   const [sendReminder, setSendReminder] = useState(true);
-  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
+  // The create-seminar modal previously tracked the host's selected subfield
+  // locally; that UI was moved into `SummaryDialog`/`CreateSeminarModal` and
+  // the parent no longer mutates the value, so the state collapses to a
+  // constant `undefined` here. Keep the `subFieldId` field on the request
+  // shape so the BE contract is unchanged.
+  const createSeminarSubFieldId: number | undefined = undefined;
   const [createModalError, setCreateModalError] = useState<string | null>(null);
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
 
@@ -178,7 +175,7 @@ export const SeminarWorkspace = () => {
         guestEmails: guestEmails.length > 0 ? guestEmails : undefined,
         isReminderSent: sendReminder,
         status: 'Upcoming',
-        subFieldId: selectedSubId ?? undefined,
+        subFieldId: createSeminarSubFieldId,
       });
       setSeminarName('');
       setDateTime('');
@@ -308,7 +305,6 @@ export const SeminarWorkspace = () => {
       </div>
 
       <SeminarList
-        seminars={seminars}
         filteredSeminars={filteredSeminars}
         paginatedPage={safeSeminarPage}
         paginatedTotalPages={totalSeminarPages}

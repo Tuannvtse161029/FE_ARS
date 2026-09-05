@@ -7,7 +7,7 @@
  *   - GroupMembership (members management)
  *   - MaterialsDisplay (learning materials)
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -21,18 +21,10 @@ import {
   X,
   FileText,
   ExternalLink,
-  Library,
   CheckCircle2,
-  UserPlus,
-  Crown,
-  Search,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
-import api from '../../services/axios';
-import type { User } from '../../types/auth';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
@@ -41,7 +33,6 @@ import { researchGroupService, deriveGroupStatus } from '../../services/research
 import type { ResearchGroup } from '../../services/researchGroup.service';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
-import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { OpenTopicModal } from '../../components/lecturer/OpenTopicModal';
 import { FieldError } from '../../components/FieldError';
@@ -57,13 +48,6 @@ interface BannerState {
   text: string;
   variant: 'success' | 'error';
 }
-
-const formatDateOnly = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-};
 
 const formatDateTime = (iso: string | null | undefined): string => {
   if (!iso) return '—';

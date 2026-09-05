@@ -6,7 +6,7 @@
  *   - MaterialEditor (add material form)
  *   - MaterialUpload (upload lifecycle helper)
  */
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   X,
@@ -18,9 +18,6 @@ import {
   Library,
   Trash2,
   Link2,
-  Upload,
-  Check,
-  CloudUpload,
   Search,
   Share2,
   ChevronRight,
@@ -43,11 +40,7 @@ import { researchTopicService } from '../../services/researchTopic.service';
 import type { ResearchTopic } from '../../types/research';
 import { phasedReportService } from '../../services/phasedReport.service';
 import type { PhasedReport } from '../../services/phasedReport.service';
-import {
-  useFirebaseFileUpload,
-  FILE_UPLOAD_ACCEPT,
-} from '../../hooks/useFirebaseFileUpload';
-import { FieldError } from '../../components/FieldError';
+import { useFirebaseFileUpload } from '../../hooks/useFirebaseFileUpload';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
@@ -132,11 +125,6 @@ interface LecturerRosterEntry {
   fullName: string;
   email: string;
 }
-
-export type RosterLoadOutcome =
-  | { kind: 'empty' }
-  | { kind: 'forbidden' }
-  | { kind: 'error'; message: string };
 
 const isForbiddenError = (err: unknown): boolean => {
   if (!err || typeof err !== 'object') return false;
@@ -461,14 +449,12 @@ export const LecturerMaterialsPage = () => {
   };
 
   const [lecturerRoster, setLecturerRoster] = useState<LecturerRosterEntry[]>([]);
-  const [rosterLoadOutcome, setRosterLoadOutcome] = useState<RosterLoadOutcome>({ kind: 'empty' });
 
   useEffect(() => {
     let cancelled = false;
-    void fetchLecturerRoster(lecturerId).then(({ rows, outcome }) => {
+    void fetchLecturerRoster(lecturerId).then(({ rows }) => {
       if (cancelled) return;
       setLecturerRoster(rows);
-      setRosterLoadOutcome(outcome);
     });
     return () => { cancelled = true; };
   }, [lecturerId]);

@@ -11,19 +11,17 @@ import {
   Eye,
   ClipboardList,
   Mail,
-  FileText,
   Inbox,
   Lock,
 } from 'lucide-react';
 import { useLocale } from '../../../i18n/I18nContext';
 import {
-  deriveEffectiveStatus,
   GOOGLE_MEET_FREE_PARTICIPANT_CAP,
   isValidMeetLink,
   ownsSeminar,
   type SeminarCard,
-  type BackendAvailability,
 } from '../../../services/seminar.service';
+import type { SeminarBackendAvailability } from '../../../hooks/useSeminar';
 import { formatDisplayDate, formatDisplayTime } from '../../../utils/datetime';
 import { EmptyState } from '../../../components/EmptyState';
 import { SkeletonRow } from '../../../components/SkeletonRow';
@@ -36,14 +34,13 @@ import { AudioSummaryModal } from '../../../components/seminar/AudioSummaryModal
 import styles from '../../../pages/Lecturer/SeminarWorkspace.module.css';
 
 export interface SeminarListProps {
-  seminars: SeminarCard[];
   filteredSeminars: SeminarCard[];
   paginatedPage: number;
   paginatedTotalPages: number;
   onPageChange: (page: number) => void;
   pageSize: number;
   isLoading: boolean;
-  backendAvailability: BackendAvailability;
+  backendAvailability: SeminarBackendAvailability;
   canModify: boolean;
   currentUserId: number | null;
   currentRole: string | null;
@@ -55,7 +52,6 @@ const formatSeminarId = (id: number): string =>
   `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 export const SeminarList: React.FC<SeminarListProps> = ({
-  seminars,
   filteredSeminars,
   paginatedPage,
   paginatedTotalPages,

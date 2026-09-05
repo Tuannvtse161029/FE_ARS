@@ -8,15 +8,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft,
-  BookOpen,
   Calendar,
   CircleCheck,
   CircleX,
   Clock3,
   Compass,
   Crown,
-  FileText,
   Inbox,
   Loader2,
   Mail,
@@ -29,41 +26,22 @@ import { useAuth } from '../../hooks/useAuth';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
-import { useLearningMaterials } from '../../hooks/useLearningMaterials';
-import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
+import { groupMemberService } from '../../services/groupMember.service';
 import { getAllGroupMembers } from '../../services/groupMembership.service';
 import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
 import { notificationService } from '../../services/notification.service';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
-import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
-import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
-import PhaseReportDetailModal from '../../components/gradstudent/PhaseReportDetailModal';
-import MilestoneProgress from '../../components/research/MilestoneProgress';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button';
-import { StatusBadge } from '../../components/common/StatusBadge';
-import { TableToolbar } from '../../components/table/TableToolbar';
-import { TablePagination } from '../../components/table/TablePagination';
-import { SortableHeader } from '../../components/table/SortableHeader';
-import BackendGapBanner from '../../components/BackendGapBanner';
-import { usePagination } from '../../hooks/usePagination';
-import { useTableSort } from '../../hooks/useTableSort';
-import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import { useListShortcuts } from '../../hooks/useListShortcuts';
-import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
-import type { LearningMaterial } from '../../services/learningMaterial.service';
 import { WorkspaceView } from './components/WorkspaceView';
 // CSS module kept at the original StudentResearchGroups CSS location for now.
 import styles from '../../pages/GraduateStudent/StudentResearchGroups.module.css';
 
 const ROLE_ACCENT = 'var(--accent-primary)';
-
-type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
-type ReportsSortColumn = 'phase' | 'milestone' | 'submitted' | 'deadline' | 'score' | 'status';
 
 export const StudentResearchGroups = (): JSX.Element => {
   const { t } = useI18n();

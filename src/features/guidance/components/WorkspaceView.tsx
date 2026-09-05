@@ -11,8 +11,6 @@ import {
   Inbox,
   FileText,
   Users,
-  Loader2,
-  X,
 } from 'lucide-react';
 import { useI18n, useLocale } from '../../../i18n/I18nContext';
 import { useLearningMaterials } from '../../../hooks/useLearningMaterials';
