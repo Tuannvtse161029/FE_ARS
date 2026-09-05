@@ -360,11 +360,16 @@ export const Profile = () => {
   );
 
   // ── Featured flair (Phase 2.5) ────────────────────────────────
-  // The BE now accepts `flairMedalId` + `flairOrder` on /api/Profile/{id}
-  // (PROFILE_UPDATE_KEYS), but reads may be empty if the user has never
-  // set a flair. We hydrate from localStorage (`ars_flair_<userId>`) so
-  // the in-form picker and the public UserFlairBadge stay in sync even
-  // when the BE column is still null.
+  // Flair persists in localStorage (`ars_flair_<userId>`), NOT in the BE
+  // profile row. The live Swagger `ProfileUpdateRequest` schema does not
+  // declare `flairMedalId` / `flairOrder` (see src/types/profile.ts), and
+  // the BE rejects undocumented keys with a 400 (additionalProperties:
+  // false). FeaturedFlairPicker writes to localStorage on every change,
+  // and UserFlairBadge rehydrates from the same key on read, so the
+  // picker's state stays in sync with the public badge without touching
+  // the BE column. When the BE formally ships flair columns, lift the
+  // localStorage write into the PUT/PATCH body and re-add the keys to
+  // PROFILE_UPDATE_KEYS — keep these two changes atomic.
   const flairStorageKey = (uid: number): string => `ars_flair_${uid}`;
 
   const [flairMedalId, setFlairMedalId] = useState<string | null>(
@@ -454,12 +459,13 @@ export const Profile = () => {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (hasValidationErrors || isSaving || !hasChanges) return;
-    const mergedPayload: Partial<ProfileUpdateRequest> = {
-      ...payload,
-      flairMedalId,
-      flairOrder,
-    };
-    const updated = await save(mergedPayload);
+    // Flair persistence lives in localStorage (`ars_flair_<userId>`), not
+    // the PUT/PATCH body. The live Swagger ProfileUpdateRequest schema
+    // does not declare `flairMedalId` / `flairOrder`, and shipping those
+    // keys would trip the BE's `additionalProperties: false` check.
+    // FeaturedFlairPicker writes to localStorage on every change, so the
+    // badge and the picker stay in sync without involving the BE column.
+    const updated = await save(payload);
     if (updated) {
       const next = draftFromProfile(updated);
       setDraft(next);
