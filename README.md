@@ -143,40 +143,132 @@ All env vars are **public** values consumed at build time via `import.meta.env.V
 
 ```
 src/
-├── assets/             Static assets (images, fonts, sample files)
-├── components/         Reusable UI components
-│   ├── Button/         Primary button primitive
-│   ├── Input/          Form input primitives
-│   ├── Navbar/         Top navigation
-│   ├── PdfViewer/      PDF viewer with thumbnails
-│   ├── i18n/           Language toggle
-│   └── workspace/      Workspace header and activity widgets
-├── pages/              Route-level screens, grouped by role
-│   ├── Admin/          Admin dashboard, accounts, audit logs, reports
-│   ├── Lecturer/       Seminars, research groups, topics, materials
-│   ├── Researcher/     Manuscript submission and tracking
-│   ├── Reviewer/       Peer review desk
-│   ├── GraduateStudent/Reports and group access
-│   ├── Dashboard/      Role-aware landing
-│   ├── Forum/          Discussion forum
-│   ├── Papers/         Paper listings and submissions
-│   ├── Profile/        User profile
-│   ├── Login/          Sign-in
-│   ├── Register/       Sign-up
-│   └── ResetPassword/  OTP-based reset
-├── layouts/            App layout components
-├── routes/             Routing config and guards
-├── services/           API service modules (one per resource)
-├── store/              Zustand state stores
-├── i18n/               i18n dictionaries (vi + en) and provider
-├── types/              TypeScript domain types
-├── utils/              Pure helpers (validation, formatting, routing)
-├── styles/             Global styles and ARS Paper Day design tokens
-├── hooks/              Custom React hooks
-├── tests/              Test utilities and setup
-├── firebase.ts         Firebase web SDK initialisation
-└── App.tsx             Root component
+├── app/                  # App bootstrap (main.tsx, App.tsx, firebase.ts)
+├── assets/               # Static assets
+│   ├── icons/           # Lucide icon re-exports and custom icons
+│   ├── badges/          # Badge assets and definitions
+│   ├── logo/            # Logo images (ARS, OpenAlex)
+│   └── videos/          # Video assets
+├── components/          # Reusable UI components (organized by feature/domain)
+│   ├── Button/          # Primary button primitive with variants
+│   ├── Input/           # Form input primitives
+│   ├── FieldError/      # Field-level error display
+│   ├── InlineNotice/    # Inline notice/warning component
+│   ├── PdfViewer/       # PDF viewer with thumbnails and lazy loading
+│   ├── SkeletonRow/     # Loading skeleton placeholder
+│   ├── EmptyState/      # Empty list placeholder
+│   ├── ErrorBanner/     # Inline error display
+│   ├── PageHeader/      # Page title and description
+│   ├── GlobalLoadingOverlay/   # Global loading overlay
+│   ├── DelayedLoadingOverlay/  # Delayed loading indicator
+│   ├── BackendGapBanner/      # Backend unavailable notice
+│   ├── WelcomeBackBanner/     # Returning user banner
+│   ├── admin/           # Admin-specific components
+│   ├── auth/            # Authentication components (Google Sign-In)
+│   ├── forum/           # Forum post and comment components
+│   ├── gradstudent/     # Graduate student components
+│   ├── identity/        # ORCID identity components
+│   ├── i18n/            # Language toggle
+│   ├── lecturer/        # Lecturer-specific components
+│   ├── medals/          # Medal/flair badge components
+│   ├── notification/    # Notification center
+│   ├── openalex/        # OpenAlex brand logo
+│   ├── orcid/           # ORCID brand components
+│   ├── profile/         # Profile section components
+│   ├── research/        # Research workflow components (milestones, timelines)
+│   ├── researcher/      # Researcher-specific components
+│   ├── reviewer/        # Reviewer-specific components
+│   ├── seminar/         # Seminar components (feedback, audio, Google Meet)
+│   ├── shortcuts/       # Keyboard shortcuts help modal
+│   ├── subscription/    # Subscription access guard
+│   ├── table/           # Table components (toolbar, pagination, sortable header)
+│   └── workspace/       # Workspace header and activity components
+├── config/              # Application configuration
+│   ├── app.ts           # Feature flags and app config
+│   ├── env.ts           # Environment variable helpers
+│   └── featureFlags.ts # Feature flag definitions
+├── context/             # React context providers
+│   └── AuthContext.tsx  # Authentication context
+├── features/            # Feature modules (co-located by domain)
+│   └── publication/     # Publication workflow feature
+│       ├── admin/       # Admin publication management
+│       ├── api/         # API adapters and transformers
+│       ├── components/   # Shared publication components
+│       ├── demo/        # Demo/mock data
+│       ├── home/        # Public research catalog
+│       ├── researcher/  # Researcher submission workflow
+│       ├── reviewer/    # Reviewer assignment workflow
+│       └── types/       # Publication-specific types
+├── hooks/               # Custom React hooks
+│   └── index.ts        # Hooks barrel export
+├── i18n/                # Internationalization
+│   ├── I18nContext.tsx # i18n provider and hooks
+│   └── translations.ts  # Vietnamese and English dictionaries
+├── layouts/             # App layout components
+│   ├── AuthLayout.tsx  # Auth pages layout (login, register)
+│   └── MainLayout.tsx  # Main app layout with sidebar/header
+├── lib/                 # Library utilities
+│   └── queryClient.tsx  # React Query client configuration
+├── pages/               # Route-level pages (organized by route domain)
+│   ├── Admin/          # Admin dashboard and management pages
+│   ├── Auth/           # Email verification landing
+│   ├── CompleteGoogleRegistration/  # Google onboarding
+│   ├── Forum/          # Discussion forum
+│   ├── GoogleCallback/ # Google OAuth callback
+│   ├── GraduateStudent/ # Student dashboard and reports
+│   ├── Landing/        # Public landing page
+│   ├── Lecturer/       # Lecturer workspace
+│   ├── Legal/          # Privacy policy, terms of service
+│   ├── Login/          # Sign-in page
+│   ├── OrcidCallback/  # ORCID OAuth callback
+│   ├── Profile/        # User profile
+│   ├── Register/       # Sign-up page
+│   ├── ResetPassword/  # Password reset flow
+│   ├── Reviewer/       # Reviewer professional profile
+│   └── Subscription/   # Subscription management
+├── routes/              # Routing configuration
+│   ├── paths.ts        # Route constants and types
+│   ├── PrivateRoute.tsx    # Authentication guard
+│   ├── RoleRouteGuard.tsx  # Role-based access control
+│   └── SubscriptionRouteGuard.tsx  # Subscription gate
+├── services/            # API service modules (one per resource)
+├── store/              # Zustand state stores
+│   ├── authSlice.ts    # Auth state slice
+│   ├── welcomeSignal.ts # Welcome banner signal
+│   └── index.ts        # Store barrel export
+├── styles/             # Global styles
+│   ├── ars-tokens.css # Design tokens (Paper Day theme)
+│   ├── globals.css     # Global styles
+│   ├── variables.css   # CSS custom properties
+│   └── reset.css       # CSS reset
+├── types/               # TypeScript domain types
+├── utils/               # Pure utility functions
+├── firebase.ts          # Firebase web SDK initialization
+└── App.tsx             # Root component
 ```
+
+### Barrel Files
+
+The following folders maintain index barrel files for clean re-exports:
+
+| Folder | Barrel | Purpose |
+|--------|--------|---------|
+| `src/hooks/` | `index.ts` | Re-exports all hooks |
+| `src/store/` | `index.ts` | Re-exports store slices |
+| `src/components/Button/` | `index.ts` | Button component exports |
+| `src/components/Input/` | `index.ts` | Input component exports |
+| `src/components/PdfViewer/` | `index.ts` | PDF viewer exports |
+| `src/components/FieldError/` | `index.ts` | FieldError exports |
+| `src/components/workspace/` | `index.ts` | Workspace component exports |
+| `src/pages/Forum/` | `index.ts` | Forum page re-export |
+| `src/pages/Landing/` | `index.ts` | Landing page re-export |
+| `src/pages/Login/` | `index.ts` | Login page re-export |
+| `src/pages/Register/` | `index.ts` | Register page re-export |
+| `src/pages/GoogleCallback/` | `index.ts` | Google callback re-export |
+| `src/assets/icons/` | `index.ts` | Icon re-exports |
+| `src/assets/badges/` | `index.ts` | Badge re-exports |
+
+> **Note**: Most folders intentionally do NOT have barrel files (e.g., `src/components/`, `src/pages/`, `src/services/`) to enable better tree-shaking and explicit imports.
 
 ---
 
