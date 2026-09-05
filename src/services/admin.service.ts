@@ -301,9 +301,13 @@ async function getAnalyticsTimeseries(
  * with a status filter. The Admin dashboard's "Published papers" metric
  * was previously sourced from `AnalyticsSummary.totalPapers`, which the
  * BE documents as the system-wide paper total — not the published subset.
- * Using this helper keeps the dashboard tile in lockstep with the
- * Published Papers admin tab, so the two surfaces cannot drift apart
- * (e.g. dashboard: 31, tab: 4).
+ *
+ * Status alignment: the Admin "Published Papers" tab groups both
+ * `PUBLISHED` and `INACTIVE` papers (deactivated papers were once published
+ * and the admin still wants to see them in the same catalog view). To
+ * keep the dashboard tile in lockstep with the tab, `getPublishedPapersTotal`
+ * sums the counts of both statuses. The BE filter accepts a single status
+ * at a time, so we issue two parallel requests and combine the totals.
  */
 async function getPapersCountByStatus(
   status: string,
@@ -327,6 +331,19 @@ async function getPapersCountByStatus(
   }
 }
 
+/**
+ * Counts the same population the Admin "Published Papers" tab renders.
+ * Aligns the dashboard tile with the tab by summing PUBLISHED + INACTIVE
+ * (deactivated published papers) so the two surfaces never drift apart.
+ */
+async function getPublishedPapersTotal(signal?: AbortSignal): Promise<number> {
+  const [publishedTotal, inactiveTotal] = await Promise.all([
+    getPapersCountByStatus('Published', signal),
+    getPapersCountByStatus('Inactive', signal).catch(() => 0),
+  ]);
+  return publishedTotal + inactiveTotal;
+}
+
 export const adminService = {
   getRoleRequests,
   getRoleRequest,
@@ -337,6 +354,7 @@ export const adminService = {
   getAnalyticsSummary,
   getAnalyticsTimeseries,
   getPapersCountByStatus,
+  getPublishedPapersTotal,
   // Kept as a no-op compatibility hook for legacy test doubles. Runtime data
   // no longer uses an in-memory Admin store.
   __resetAdminMockStores: (): void => undefined,

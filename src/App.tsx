@@ -87,7 +87,12 @@ const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ 
 // policy documents. Loads Firestore directly through `policyService`;
 // there is no BE endpoint.
 const AdminPolicies = lazy(() => import('./pages/Admin/Policies').then((m) => ({ default: m.default })));
-const AdminMedals = lazy(() => import('./pages/Admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
+// Agent admin-medals — Admin tab for managing academic medals & flairs.
+// Sourced from the refactored feature module (split into MedalCatalog,
+// TierEditor, ArtworkUpload, SafeMedalBadge). The previous duplicate at
+// `src/pages/Admin/AdminMedals.tsx` was deleted because it was a 110 KB
+// monolithic duplicate of this module.
+const AdminMedals = lazy(() => import('./features/admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
 // Researcher / Lecturer subscription page. Renders the current status,
 // plans, and `Proceed to Pay` button. Lives behind the existing role
 // guards so only Researcher / Lecturer reach it.

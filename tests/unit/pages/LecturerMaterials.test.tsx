@@ -9,7 +9,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { LecturerMaterialsPage } from '../../../src/pages/Lecturer/Materials';
+import { LecturerMaterialsPage } from '../../../src/features/guidance/MaterialsPage';
 
 const { getAllLearningMock, getAllSharedMock } = vi.hoisted(() => ({
   getAllLearningMock: vi.fn(),

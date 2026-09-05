@@ -159,6 +159,44 @@ export const canAppearInPublicCatalog = (paper: PublicationPaper): boolean =>
 export const publicReviewerName = (paper: Pick<PublicationPaper, 'reviewerIdentityPublic' | 'reviewer'>): string | null =>
   paper.reviewerIdentityPublic ? paper.reviewer?.reviewerName ?? null : null;
 
+/**
+ * Maps the BE's free-form review-assignment `type` to a human-readable label.
+ * The BE currently emits raw enum tokens (e.g. `ManualAssigned`, `Editorial`,
+ * `AiRecommended`). Surface friendly copy so the Researcher / Reviewer /
+ * Admin surfaces never show token-shaped strings in production UI.
+ *
+ * Mapping:
+ *   - `Editorial` / `ManualAssigned` / `Manual`  → "Assigned by an editor"
+ *   - `AiRecommended` / `AI` / `Auto`            → "AI-recommended"
+ *   - `Open` / `Public`                          → "Open invitation"
+ *   - unknown / empty                              → "" (caller hides the field)
+ */
+export const reviewTypeLabel = (type: string | null | undefined): string => {
+  if (!type) return '';
+  const normalized = type.trim().toLowerCase();
+  if (
+    normalized === 'editorial' ||
+    normalized === 'manualassigned' ||
+    normalized === 'manual' ||
+    normalized === 'editor'
+  ) {
+    return 'Assigned by an editor';
+  }
+  if (
+    normalized === 'airecommended' ||
+    normalized === 'ai' ||
+    normalized === 'auto'
+  ) {
+    return 'AI-recommended';
+  }
+  if (normalized === 'open' || normalized === 'public') {
+    return 'Open invitation';
+  }
+  // Unknown variant — render as a Title-Cased fallback so we never show
+  // the raw token to end users.
+  return type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+};
+
 export const statusLabel = (status: PublicationStatus): string => {
   if (status === 'REVIEWER_RECOMMENDED_REJECT') return 'Reviewer recommended rejection';
   if (status === 'REVIEWER_RECOMMENDED_ACCEPT') return 'Reviewer recommended acceptance';

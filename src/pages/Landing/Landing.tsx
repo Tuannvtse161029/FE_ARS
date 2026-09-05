@@ -548,7 +548,8 @@ export const Landing = () => {
             <h2 id="workflow-title">
               {t(
                 'landing.workflowHeading',
-                'Five stages. Clear responsibility at each one.',
+                `${workflow.length} stages. Clear responsibility at each one.`,
+                { count: workflow.length },
               )}
             </h2>
           </div>

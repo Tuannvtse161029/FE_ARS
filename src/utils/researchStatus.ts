@@ -144,11 +144,27 @@ export const countPhasedReportsByStatus = (
     evaluated: 0,
   };
   for (const report of reports) {
-    const normalized = normalizePhasedReportStatus(report?.status ?? null);
-    if (normalized === 'WAITING') counts.waiting += 1;
-    else if (normalized === 'SUBMITTED') counts.submitted += 1;
-    else if (normalized === 'REJECTED') counts.rejected += 1;
-    else if (normalized === 'EVALUATED') counts.evaluated += 1;
+    // Map BE timeliness states (Pending / OnTime / Overdue / Passed) onto
+    // the four submission/review buckets. Without this mapping, a report
+    // with a timeliness status slipped out of every bucket — so a group
+    // with 9 reports showed 8 in the milestone summary (audit BTR-XXX).
+    // The BE currently surfaces both state tracks in the same `status`
+    // column, so the mapping must be exhaustive.
+    const raw = (report?.status ?? '').toString().trim();
+    if (raw === 'Pending') counts.waiting += 1;
+    else if (raw === 'OnTime') counts.submitted += 1;
+    else if (raw === 'Overdue') counts.rejected += 1;
+    else if (raw === 'Passed') counts.evaluated += 1;
+    else {
+      const normalized = normalizePhasedReportStatus(raw);
+      if (normalized === 'WAITING') counts.waiting += 1;
+      else if (normalized === 'SUBMITTED') counts.submitted += 1;
+      else if (normalized === 'REJECTED') counts.rejected += 1;
+      else if (normalized === 'EVALUATED') counts.evaluated += 1;
+      // Unknown values fall through to WAITING so the totals still sum
+      // to `reports.length` — no row silently disappears.
+      else counts.waiting += 1;
+    }
   }
   return counts;
 };

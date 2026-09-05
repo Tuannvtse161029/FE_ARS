@@ -674,6 +674,22 @@
   gap: var(--space-4);
 }
 
+.stateHint {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  font-style: normal;
+}
+
+.stateActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   .header,

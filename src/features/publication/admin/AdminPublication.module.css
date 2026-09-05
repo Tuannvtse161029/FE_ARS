@@ -271,6 +271,46 @@
 .verificationPending    { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .verificationUnverified { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
 
+/* ── Editorial Status (manuscript pipeline) ──────────────── */
+.editorialDraft         { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
+.editorialUnderReview   { background: var(--ars-info-bg); color: var(--ars-info); }
+.editorialNeedsRevision { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.editorialAccepted      { background: var(--ars-success-bg); color: var(--ars-success); }
+.editorialRejected      { background: var(--ars-error-bg); color: var(--ars-error); }
+.editorialPublished     { background: var(--ars-admin-light, var(--ars-info-bg)); color: var(--ars-admin); }
+
+/* ── Stage Guide Banner ──────────────────────────────────── */
+.stageGuide {
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-info-bg);
+  border: 1px solid var(--ars-info);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  line-height: var(--line-height-snug);
+}
+
+.stageGuide strong {
+  color: var(--ars-info);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Header With Hint ──────────────────────────────────── */
+.headerWithHint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.headerHint {
+  font-weight: var(--font-weight-regular);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .verificationActions {
   display: flex;
   flex-direction: column;

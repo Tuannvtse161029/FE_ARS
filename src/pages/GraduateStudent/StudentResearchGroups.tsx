@@ -197,8 +197,8 @@ export const StudentResearchGroups = (): JSX.Element => {
     const memberCount = group.memberCount ?? (group.members?.length ?? 0);
     if (memberCount >= 5) {
       alert(copy(
-        'This research group already has five members and cannot accept another application.',
-        'Nhóm nghiên cứu này đã đủ 5 thành viên, không thể xin tham gia.',
+        `This research group already has ${memberCount} members and cannot accept another application.`,
+        `Nhóm nghiên cứu này đã đủ ${memberCount} thành viên, không thể xin tham gia.`,
       ));
       return;
     }

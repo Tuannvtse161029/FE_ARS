@@ -244,6 +244,12 @@
   --sidebar-bg: #1b1a17;
   --sidebar-raised: #2a2822;
   --header-bg: rgba(255, 255, 255, 0.92);
+
+  /* Navigation text on dark sidebar — warm parchment for readable enabled
+     nav items. The active state uses ink-on-dark so it's always distinct. */
+  --nav-text-on-dark: #f5efe3;
+  --nav-text-on-dark-muted: rgba(245, 239, 227, 0.7);
+
   --control-bg: #ffffff;
   --control-bg-hover: #fff8e4;
   --control-text: #1d1c19;
