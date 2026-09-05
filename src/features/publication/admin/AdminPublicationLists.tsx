@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Inbox, X } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nContext';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
@@ -56,11 +57,14 @@ type AdminListSortColumn =
   | 'reviewer'
   | 'submittedAt';
 
-const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
-  eyebrow: 'ADMIN · REVIEWER QUEUE',
-  title: 'Reviewer Assignments',
-  subtitle:
-    'Papers currently routed to a reviewer or completed review. Status-valid actions live on the editorial record.',
+const REVIEWER_ASSIGNMENTS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
+  eyebrowKey: string;
+  titleKey: string;
+  subtitleKey: string;
+} = {
+  eyebrowKey: 'admin.publicationLists.assignmentsEyebrow',
+  titleKey: 'admin.publicationLists.assignmentsTitle',
+  subtitleKey: 'admin.publicationLists.assignmentsSubtitle',
   statusOptions: [
     'REVIEWER_ASSIGNED',
     'UNDER_REVIEW',
@@ -75,18 +79,27 @@ const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
   itemLabel: 'assignments',
 };
 
-const PUBLISHED_PAPERS_CONFIG: AdminListConfig = {
-  eyebrow: 'ADMIN · PUBLISHED CATALOG',
-  title: 'Published Papers',
-  subtitle:
-    'Admin-only view of the published catalog. The Home catalog enforces the same visibility predicate.',
+const PUBLISHED_PAPERS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
+  eyebrowKey: string;
+  titleKey: string;
+  subtitleKey: string;
+} = {
+  eyebrowKey: 'admin.publicationLists.publishedEyebrow',
+  titleKey: 'admin.publicationLists.publishedTitle',
+  subtitleKey: 'admin.publicationLists.publishedSubtitle',
   statusOptions: ['PUBLISHED', 'INACTIVE'],
   defaultStatus: 'ALL',
   itemLabel: 'published papers',
 };
 
 // Build tab options from status options
-const buildTabOptions = (config: AdminListConfig): StatusTabOption[] => {
+const buildTabOptions = (
+  config: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
+    eyebrowKey: string;
+    titleKey: string;
+    subtitleKey: string;
+  },
+): StatusTabOption[] => {
   return [
     { value: 'ALL', label: 'All' },
     ...config.statusOptions.map((status) => ({
@@ -96,7 +109,22 @@ const buildTabOptions = (config: AdminListConfig): StatusTabOption[] => {
   ];
 };
 
-const AdminList = ({ config }: { config: AdminListConfig }) => {
+const AdminList = ({
+  config,
+}: {
+  config: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
+    eyebrowKey: string;
+    titleKey: string;
+    subtitleKey: string;
+  };
+}) => {
+  const { t } = useI18n();
+  const localizedConfig: AdminListConfig = {
+    ...config,
+    eyebrow: t(config.eyebrowKey, config.eyebrowKey),
+    title: t(config.titleKey, config.titleKey),
+    subtitle: t(config.subtitleKey, config.subtitleKey),
+  };
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,12 +179,15 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
       await load();
       setActionFeedback({
         type: 'success',
-        message: `The paper "${paper.title}" was published successfully and its author was notified.`,
+        message: t(
+          'admin.publicationLists.successPublished',
+          'The paper "{title}" was published successfully and its author was notified.'
+        ).replace('{title}', paper.title),
       });
     } catch (e) {
       setActionFeedback({
         type: 'error',
-        message: e instanceof Error ? e.message : 'The paper could not be published.',
+        message: e instanceof Error ? e.message : t('admin.publicationLists.errorPublish', 'The paper could not be published.'),
       });
     } finally {
       setPublishingId(null);
@@ -165,15 +196,15 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
 
   const handleDeactivate = async (paper: PublicationPaper) => {
     if (deactivatingId || rejectingId) return;
-    if (!window.confirm(`Deactivate the published paper "${paper.title}"? It will be hidden from the public catalog.`)) return;
+    if (!window.confirm(t('admin.publicationLists.confirmDeactivate', 'Deactivate the published paper "{title}"? It will be hidden from the public catalog.').replace('{title}', paper.title))) return;
     setDeactivatingId(paper.id);
     setActionFeedback(null);
     try {
       await publicationAdapter.deactivatePublishedPaper(paper.id);
       setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'INACTIVE' } : p)));
-      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" is now inactive.` });
+      setActionFeedback({ type: 'success', message: t('admin.publicationLists.successDeactivated', 'The paper "{title}" is now inactive.').replace('{title}', paper.title) });
     } catch (e) {
-      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : 'The paper could not be deactivated.' });
+      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : t('admin.publicationLists.errorDeactivate', 'The paper could not be deactivated.') });
     } finally {
       setDeactivatingId(null);
     }
@@ -188,9 +219,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
     try {
       await publicationAdapter.rejectPaper(paper.id, reason);
       setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)));
-      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" was rejected and its author was notified.` });
+      setActionFeedback({ type: 'success', message: t('admin.publicationLists.successRejected', 'The paper "{title}" was rejected and its author was notified.').replace('{title}', paper.title) });
     } catch (e) {
-      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : 'The paper could not be rejected.' });
+      setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : t('admin.publicationLists.errorReject', 'The paper could not be rejected.') });
     } finally {
       setRejectingId(null);
     }
@@ -204,7 +235,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
       setPapers(items);
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : `${config.title} could not be loaded.`,
+        e instanceof Error ? e.message : `${localizedConfig.title} could not be loaded.`,
       );
     } finally {
       setLoading(false);
@@ -272,9 +303,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow={config.eyebrow}
-        title={config.title}
-        description={config.subtitle}
+        eyebrow={localizedConfig.eyebrow}
+        title={localizedConfig.title}
+        description={localizedConfig.subtitle}
         accent="var(--ars-admin)"
       />
 
@@ -303,8 +334,8 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search title, author, DOI, reviewer, or topic"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.publicationLists.searchPlaceholder', 'Search title, author, DOI, reviewer, or topic')}
+        refreshLabel={t('admin.publicationLists.refresh', 'Refresh')}
       />
 
       {actionFeedback ? (
@@ -320,7 +351,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
           <button
             type="button"
             className={adminStyles.feedbackCloseButton}
-            aria-label="Dismiss message"
+            aria-label={t('admin.publicationLists.dismissMessage', 'Dismiss message')}
             onClick={() => setActionFeedback(null)}
           >
             <X size={16} aria-hidden="true" />
@@ -337,7 +368,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title={`Could not load ${config.title.toLowerCase()}`}
+          title={t('admin.publicationLists.loadFailed', 'Could not load {title}').replace('{title}', localizedConfig.title.toLowerCase())}
           message={error}
           retry={
             <Button
@@ -349,26 +380,26 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
               }}
               disabled={loading || refreshing}
             >
-              {loading || refreshing ? 'Retrying…' : 'Retry'}
+              {loading || refreshing ? t('admin.publicationLists.retrying', 'Retrying…') : t('admin.publicationLists.retry', 'Retry')}
             </Button>
           }
         />
       ) : paging.items.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} />}
-          title={`No ${config.itemLabel} match the current filters.`}
-          description="Adjust the search query or select a different status tab."
+          title={t('admin.publicationLists.emptyTitle', 'No {itemLabel} match the current filters.').replace('{itemLabel}', localizedConfig.itemLabel)}
+          description={t('admin.publicationLists.emptyDesc', 'Adjust the search query or select a different status tab.')}
         />
       ) : (
         <>
           <div className={adminStyles.tableWrap}>
-            <table className={adminStyles.table} aria-label={config.title}>
+            <table className={adminStyles.table} aria-label={localizedConfig.title}>
               <thead>
                 <tr>
                   <th scope="col">
                     <SortableHeader
                       column="title"
-                      label="Paper"
+                      label={t('admin.publicationLists.paperColumn', 'Paper')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -376,23 +407,23 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                   <th scope="col">
                     <SortableHeader
                       column="status"
-                      label="Status"
+                      label={t('admin.publicationLists.statusColumn', 'Status')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">Identifiers</th>
+                  <th scope="col">{t('admin.publicationLists.identifiersColumn', 'Identifiers')}</th>
                   <th scope="col">
                     <SortableHeader
                       column="reviewer"
-                      label="Reviewer"
+                      label={t('admin.publicationLists.reviewerColumn', 'Reviewer')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">Manuscript</th>
+                  <th scope="col">{t('admin.publicationLists.manuscriptColumn', 'Manuscript')}</th>
                   <th scope="col" align="right">
-                    Actions
+                    {t('admin.publicationLists.actionsColumn', 'Actions')}
                   </th>
                 </tr>
               </thead>
@@ -492,21 +523,21 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                           </span>
                         )}
                       </td>
-                      <td data-label="Actions" align="right">
+                      <td data-label={t('admin.publicationLists.actionsColumn', 'Actions')} align="right">
                         <div className={shared.actions}>
                           {/* Review record */}
                           <Link
                             className={adminStyles.previewButton}
                             to={`/admin/paper-submissions/${paper.id}`}
-                            title="Open the editorial and reviewer record"
+                            title={t('admin.publicationLists.recordTooltip', 'Open the editorial and reviewer record')}
                           >
-                            <FileText size={13} aria-hidden="true" /> View evaluation
+                            <FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.viewEvaluation', 'View evaluation')}
                           </Link>
 
                           {/* Publication action */}
                           {paper.status === 'PUBLISHED' ? (
-                            <button type="button" className={adminStyles.publishButton} onClick={() => void handleDeactivate(paper)} disabled={deactivatingId === paper.id} title="Deactivate this published paper">
-                              {deactivatingId === paper.id ? 'Deactivating…' : <><FileText size={13} aria-hidden="true" /> Deactivate</>}
+                            <button type="button" className={adminStyles.publishButton} onClick={() => void handleDeactivate(paper)} disabled={deactivatingId === paper.id} title={t('admin.publicationLists.deactivateTooltip', 'Deactivate this published paper')}>
+                              {deactivatingId === paper.id ? t('admin.publicationLists.deactivating', 'Deactivating…') : <><FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.deactivatePaper', 'Deactivate')}</>}
                             </button>
                           ) : (paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
                               paper.status === 'ADMIN_APPROVED' ||
@@ -516,9 +547,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                               className={adminStyles.publishButton}
                               disabled={publishingId === paper.id}
                               onClick={() => void handlePublish(paper)}
-                              title="Publish this paper"
+                              title={t('admin.publicationLists.publishTooltip', 'Publish this paper')}
                             >
-                              {publishingId === paper.id ? 'Publishing…' : <><ExternalLink size={13} aria-hidden="true" /> Publish</>}
+                              {publishingId === paper.id ? t('admin.publicationLists.publishing', 'Publishing…') : <><ExternalLink size={13} aria-hidden="true" /> {t('admin.publicationLists.publishPaper', 'Publish')}</>}
                             </button>
                           ) : paper.status === 'REVIEWER_RECOMMENDED_REJECT' || paper.reviewer?.recommendation === 'REJECT' ? (
                             <button
@@ -526,9 +557,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                               className={adminStyles.rejectActionButton}
                               disabled={rejectingId === paper.id}
                               onClick={() => setRejectingPaper(paper)}
-                              title="Reject this paper"
+                              title={t('admin.publicationLists.rejectTooltip', 'Reject this paper')}
                             >
-                              Reject
+                              {t('admin.publicationLists.rejectPaper', 'Reject')}
                             </button>
                           ) : null}
 
@@ -536,9 +567,9 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
                             type="button"
                             className={shared.buttonGhost}
                             onClick={() => setPreviewing(paper)}
-                            aria-label={`Preview ${paper.title}`}
+                            aria-label={t('admin.publicationLists.previewAria', 'Preview {title}').replace('{title}', paper.title)}
                           >
-                            <ExternalLink size={12} aria-hidden="true" /> Preview
+                            <ExternalLink size={12} aria-hidden="true" /> {t('admin.publicationLists.previewButton', 'Preview')}
                           </button>
                         </div>
                       </td>
@@ -560,7 +591,7 @@ const AdminList = ({ config }: { config: AdminListConfig }) => {
             onPrev={() => setPage((p) => Math.max(1, p - 1))}
             onNext={() => setPage((p) => Math.min(paging.totalPages, p + 1))}
             onPage={setPage}
-            itemLabel={config.itemLabel}
+            itemLabel={localizedConfig.itemLabel}
           />
         </>
       )}

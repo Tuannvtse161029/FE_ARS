@@ -83,6 +83,61 @@
   color: var(--ars-ink-muted);
 }
 
+/* ── Sub-tab filter (status filter nested under a stage group) ─────────
+   Same shape as the stage filter, slightly smaller and using a softer
+   amber-tinted rule so the eye reads the stage group as primary and the
+   status filter as secondary. */
+.subTabFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--ars-network);
+}
+
+.subTabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.subTabButton:hover {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-node);
+  color: var(--ars-ink);
+}
+
+.subTabButton:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
+}
+
+.subTabButtonActive {
+  background: var(--ars-researcher-light);
+  border-color: var(--ars-researcher-light);
+  color: var(--ars-researcher);
+}
+
+.subTabButtonActive:hover {
+  background: var(--ars-researcher-light);
+  border-color: var(--ars-researcher-light);
+  color: var(--ars-researcher);
+}
+
 /* ── Toolbar (search + status filter) ──────────────────────── */
 /* === ARS toolbar recolor (this worker) ===
    The previous `background: var(--ars-paper-alt)` read as a flat cool
@@ -855,6 +910,32 @@
   color: var(--ars-researcher-mid);
 }
 
+.formFinalReview {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--ars-paper-rule);
+}
+
+.formFinalReview > .formSectionHeader,
+.formFinalReview .formSectionHeader {
+  border-bottom: 0;
+  padding-bottom: 0;
+  align-items: flex-start;
+}
+
+.formFinalReview .formActionButtons {
+  justify-content: flex-end;
+}
+
+.formFinalReview .formHint,
+.formFinalReview .formValidation {
+  max-width: none;
+}
+
+/* Legacy single-row footer (`.formFooter`) was retired alongside the form
+   rework. Kept here so external callers referencing it don't throw a
+   missing-class warning — at zero visual cost. */
 .formFooter {
   display: flex;
   flex-wrap: wrap;
@@ -896,9 +977,152 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .formFinalReview .formActionButtons {
+    justify-content: stretch;
+  }
 }
 
 /* ── Submission Detail ─────────────────────────────────────── */
+
+/* ── What Happens Next ────────────────────────────────────── */
+.whatHappensNext {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4) var(--space-5);
+  background: var(--ars-surface-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+}
+
+.whatHappensNextIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--ars-researcher);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+}
+
+.whatHappensNextContent {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.whatHappensNextTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+}
+
+.whatHappensNextGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.whatHappensNextItem {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+}
+
+.whatHappensNextLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.whatHappensNextValue {
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.whatHappensNextIconInline {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.whatHappensNextAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+}
+
+.whatHappensNextActionBadge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-warning);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 600px) {
+  .whatHappensNext {
+    grid-template-columns: 1fr;
+  }
+
+  .whatHappensNextGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subHeading {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nextAction {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.nextAction[data-tone="attention"] {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+}
+
+.nextAction[data-tone="waiting"] {
+  background: var(--ars-surface-subtle);
+  color: var(--ars-ink-soft);
+}
+
+.nextAction[data-tone="success"] {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+
+.nextAction[data-tone="inactive"],
+.nextAction[data-tone="unknown"] {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+}
+
 .detailLayout {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);

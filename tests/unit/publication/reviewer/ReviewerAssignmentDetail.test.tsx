@@ -177,14 +177,10 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
 
     renderAt('/reviewer/assignments/under-review-1');
 
+    // New behavior: the submit button is disabled until all required
+    // fields are filled (private review feedback for Admin is required).
     const submitButton = await screen.findByRole('button', { name: /Submit private review to Admin/i });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        /Private comments for Admin are required/i,
-      );
-    });
+    expect(submitButton).toBeDisabled();
     expect(submit).not.toHaveBeenCalled();
   });
 
@@ -218,6 +214,11 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.selectOptions(recommendationSelect, 'ACCEPT');
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
+
+    // New behavior: a confirmation dialog appears before the API call.
+    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    expect(confirmDialog).toBeInTheDocument();
+    await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
     const banner = await screen.findByTestId('submitted-banner');
     expect(banner).toHaveTextContent(/Review submitted/i);
@@ -267,6 +268,10 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
+    // Confirmation dialog appears before the API call.
+    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
+
     const banner = await screen.findByTestId('submitted-banner');
     expect(banner).toHaveTextContent(/Awaiting Admin decision/i);
     expect((publicationAdapter.submitReview as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(
@@ -304,6 +309,10 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.selectOptions(recommendationSelect, 'REJECT');
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
+
+    // Confirmation dialog appears before the API call.
+    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
     const banner = await screen.findByTestId('submitted-banner');
     expect(banner).toHaveTextContent(/Review submitted/i);

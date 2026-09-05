@@ -13,6 +13,7 @@ import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
 import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
+import { useT } from '../../../i18n/I18nContext';
 import styles from './researcher.module.css';
 
 const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
@@ -33,10 +34,13 @@ const formatBytes = (bytes: number): string => {
 
 // ResearcherSubmissionForm — Researcher-only manuscript creation.
 //
-// Visual: sectioned form (Required metadata, Manuscript PDF, OpenAlex
-// link, Submit). Tokens come from ars-tokens.css; the section markers
-// are role-coloured with the Researcher amber accent. No inline styles
-// anywhere in the JSX; all layout lives in researcher.module.css.
+// Visual: sectioned form (Manuscript details / Authors & institutions /
+// Classification / Manuscript PDF / OpenAlex import / Final review).
+// OpenAlex lookup is intentionally placed BEFORE the manual metadata
+// section so a researcher can lift the open record once instead of
+// retyping the same fields by hand. Tokens come from ars-tokens.css; the
+// section markers are role-coloured with the Researcher amber accent. No
+// inline styles anywhere in the JSX; all layout lives in researcher.module.css.
 //
 // Behaviour (unchanged from the legacy version):
 //   - PDF upload must complete before the form can submit.
@@ -44,9 +48,14 @@ const formatBytes = (bytes: number): string => {
 //     renders a reviewable preview before the researcher confirms an import.
 //   - Save draft keeps the paper in DRAFT status; Submit advances to
 //     SUBMITTED via the adapter.
+//
+// Save-draft / submit copy: the form NEVER claims autosave. The
+// "Save draft" button is explicit; nothing is persisted until the user
+// clicks Save draft or Submit to Admin.
 
 export const ResearcherSubmissionForm = () => {
   const navigate = useNavigate();
+  const t = useT();
 
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
@@ -95,10 +104,10 @@ export const ResearcherSubmissionForm = () => {
 
   const validateClientSide = (file: File): string | null => {
     if (file.type !== 'application/pdf') {
-      return 'Only PDF files are allowed.';
+      return t('researcher.form.file.errorType');
     }
     if (file.size > 10 * 1024 * 1024) {
-      return 'File size must be 10 MB or less.';
+      return t('researcher.form.file.errorSize');
     }
     return null;
   };
@@ -155,8 +164,7 @@ export const ResearcherSubmissionForm = () => {
     if (!openAlexDraft.trim()) {
       setOpenAlexState({
         stage: 'invalid',
-        message:
-          'Enter an OpenAlex work ID (e.g. W2741809807) or use manual entry.',
+        message: t('researcher.form.openalex.invalid.example'),
       });
       return;
     }
@@ -220,9 +228,7 @@ export const ResearcherSubmissionForm = () => {
 
   const submit = async (sendToAdmin: boolean) => {
     if (!canSubmit) {
-      setError(
-        'Title, abstract, first author, institution, major field, subfield, and a completed PDF upload are required.',
-      );
+      setError(t('researcher.form.footer.validation'));
       return;
     }
     const submissionId = ++submissionIdRef.current;
@@ -263,7 +269,7 @@ export const ResearcherSubmissionForm = () => {
       navigate(`/researcher/submissions/${paper.id}`);
     } catch {
       if (submissionIdRef.current === submissionId) {
-        setError('The draft could not be saved.');
+        setError(t('researcher.form.error.title'));
       }
     } finally {
       if (submissionIdRef.current === submissionId) {
@@ -275,16 +281,16 @@ export const ResearcherSubmissionForm = () => {
   return (
     <section className={styles.page}>
       <PageHeader
-        eyebrow="RESEARCHER WORKSPACE"
-        title="New submission"
-        description="Prepare manuscript metadata for Admin screening. Reviewer selection is performed by Admin only."
+        eyebrow={t('researcher.submissions.eyebrow')}
+        title={t('researcher.form.title')}
+        description={t('researcher.form.description')}
         accent="var(--ars-researcher)"
       />
 
       {error && (
         <ErrorBanner
           tone="error"
-          title="Could not save submission"
+          title={t('researcher.form.error.title')}
           message={error}
         />
       )}
@@ -295,63 +301,85 @@ export const ResearcherSubmissionForm = () => {
           event.preventDefault();
           void submit(true);
         }}
-        aria-label="New submission form"
+        aria-label={t('researcher.form.title')}
       >
-        {/* ── Required metadata ──────────────────────────────────── */}
+        {/* ── Manuscript details ─────────────────────────────────── */}
         <section className={styles.formSection} aria-labelledby="form-section-metadata">
           <header className={styles.formSectionHeader}>
             <h2 className={styles.formSectionTitle} id="form-section-metadata">
-              Required metadata
+              {t('researcher.form.section.manuscript.title')}
             </h2>
-            <p className={styles.formSectionHint}>
-              All seven fields are required before Admin will accept the submission.
-            </p>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.manuscript.hint')}</p>
           </header>
 
           <div className={styles.formGrid}>
             <div className={`${styles.field} ${styles.full}`}>
-              <label htmlFor="submission-title">Title</label>
+              <label htmlFor="submission-title">{t('researcher.form.field.title')}</label>
               <input
                 id="submission-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Manuscript title"
+                placeholder={t('researcher.form.field.title')}
               />
             </div>
 
             <div className={`${styles.field} ${styles.full}`}>
-              <label htmlFor="submission-abstract">Abstract</label>
+              <label htmlFor="submission-abstract">{t('researcher.form.field.abstract')}</label>
               <textarea
                 id="submission-abstract"
                 rows={6}
                 value={abstract}
                 onChange={(event) => setAbstract(event.target.value)}
-                placeholder="Provide a structured abstract (objectives, methods, results, conclusions)."
+                placeholder={t('researcher.form.field.abstractPlaceholder')}
               />
             </div>
+          </div>
+        </section>
 
+        {/* ── Authors & institutions ─────────────────────────────── */}
+        <section className={styles.formSection} aria-labelledby="form-section-authors">
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-authors">
+              {t('researcher.form.section.authors.title')}
+            </h2>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.authors.hint')}</p>
+          </header>
+
+          <div className={styles.formGrid}>
             <div className={styles.field}>
-              <label htmlFor="submission-author">First author</label>
+              <label htmlFor="submission-author">{t('researcher.form.field.firstAuthor')}</label>
               <input
                 id="submission-author"
                 value={authorName}
                 onChange={(event) => setAuthorName(event.target.value)}
-                placeholder="Full name"
+                placeholder={t('researcher.form.field.firstAuthor')}
               />
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="submission-institution">Institution</label>
+              <label htmlFor="submission-institution">{t('researcher.form.field.institution')}</label>
               <input
                 id="submission-institution"
                 value={institution}
                 onChange={(event) => setInstitution(event.target.value)}
-                placeholder="Primary affiliation"
+                placeholder={t('researcher.form.field.institution')}
               />
             </div>
+          </div>
+        </section>
 
+        {/* ── Classification ────────────────────────────────────── */}
+        <section className={styles.formSection} aria-labelledby="form-section-classification">
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle} id="form-section-classification">
+              {t('researcher.form.section.classification.title')}
+            </h2>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.classification.hint')}</p>
+          </header>
+
+          <div className={styles.formGrid}>
             <div className={styles.field}>
-              <label htmlFor="submission-type">Paper type</label>
+              <label htmlFor="submission-type">{t('researcher.form.field.paperType')}</label>
               <select
                 id="submission-type"
                 value={paperType}
@@ -364,10 +392,10 @@ export const ResearcherSubmissionForm = () => {
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="submission-keywords">Keywords</label>
+              <label htmlFor="submission-keywords">{t('researcher.form.field.keywords')}</label>
               <input
                 id="submission-keywords"
-                placeholder="Comma separated"
+                placeholder={t('researcher.form.field.keywordsPlaceholder')}
                 value={keywords}
                 onChange={(event) => setKeywords(event.target.value)}
               />
@@ -375,7 +403,7 @@ export const ResearcherSubmissionForm = () => {
 
             <div className={styles.field}>
               <label htmlFor="submission-major-field">
-                Major field <span className={styles.fieldRequired}>*</span>
+                {t('researcher.form.field.majorField')} <span className={styles.fieldRequired}>*</span>
               </label>
               <select
                 id="submission-major-field"
@@ -388,7 +416,7 @@ export const ResearcherSubmissionForm = () => {
                 disabled={isLoadingMajorFields}
               >
                 <option value="">
-                  {isLoadingMajorFields ? 'Loading fields…' : 'Select a major field'}
+                  {isLoadingMajorFields ? 'Loading fields…' : t('researcher.form.field.majorField')}
                 </option>
                 {majorFields.map((field) => (
                   <option key={field.id} value={field.id}>
@@ -400,7 +428,7 @@ export const ResearcherSubmissionForm = () => {
 
             <div className={styles.field}>
               <label htmlFor="submission-subfield">
-                Subfield <span className={styles.fieldRequired}>*</span>
+                {t('researcher.form.field.subfield')} <span className={styles.fieldRequired}>*</span>
               </label>
               <select
                 id="submission-subfield"
@@ -413,10 +441,10 @@ export const ResearcherSubmissionForm = () => {
               >
                 <option value="">
                   {!selectedMajorFieldId
-                    ? 'Select a major field first'
+                    ? t('researcher.form.field.majorField')
                     : isLoadingSubFields
                       ? 'Loading subfields…'
-                      : 'Select a subfield'}
+                      : t('researcher.form.field.subfield')}
                 </option>
                 {subFields.map((sub) => (
                   <option key={sub.id} value={sub.id}>
@@ -432,14 +460,14 @@ export const ResearcherSubmissionForm = () => {
         <section className={styles.formSection} aria-labelledby="form-section-pdf">
           <header className={styles.formSectionHeader}>
             <h2 className={styles.formSectionTitle} id="form-section-pdf">
-              Manuscript PDF
+              {t('researcher.form.section.file.title')}
             </h2>
-            <p className={styles.formSectionHint}>PDF only, up to 10 MB.</p>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.file.hint')}</p>
           </header>
 
           <div className={`${styles.field} ${styles.full}`}>
             <div className={styles.fieldFile}>
-              <label htmlFor="submission-file">Upload Paper (PDF)</label>
+              <label htmlFor="submission-file">{t('researcher.form.file.uploadLabel')}</label>
               <input
                 id="submission-file"
                 data-testid="submission-file"
@@ -463,7 +491,7 @@ export const ResearcherSubmissionForm = () => {
 
             {isUploading && (
               <div className={styles.fileStatusRow} data-testid="submission-file-progress" aria-live="polite">
-                <span>Uploading PDF… {progress}%</span>
+                <span>{t('researcher.form.file.uploading', undefined, { progress })}</span>
                 <div
                   className={styles.progressBar}
                   role="progressbar"
@@ -481,8 +509,8 @@ export const ResearcherSubmissionForm = () => {
 
             {pdfUrl && !isUploading && (
               <p className={styles.fileStatusRow} data-testid="submission-file-url">
-                <CheckCircle2 size={12} aria-hidden /> <strong>Upload complete.</strong>
-                <span>The submit button unlocks once all required fields are valid.</span>
+                <CheckCircle2 size={12} aria-hidden /> <strong>{t('researcher.form.file.uploadComplete')}</strong>
+                <span>{t('researcher.form.file.uploadCompleteHint')}</span>
               </p>
             )}
 
@@ -490,7 +518,7 @@ export const ResearcherSubmissionForm = () => {
               <div data-testid="submission-file-error">
                 <ErrorBanner
                   tone="error"
-                  title="Manuscript upload failed"
+                  title={t('researcher.form.file.failedTitle')}
                   message={fileError}
                   retry={
                     <Button
@@ -500,7 +528,7 @@ export const ResearcherSubmissionForm = () => {
                       onClick={() => void handleRetry()}
                       data-testid="submission-file-retry"
                     >
-                      Retry upload
+                      {t('researcher.form.file.retry')}
                     </Button>
                   }
                 />
@@ -510,39 +538,38 @@ export const ResearcherSubmissionForm = () => {
             {!isUploading && uploadedFile && pdfUrl && !fileError && (
               <div className={styles.actionsRow}>
                 <Button variant="outline" size="sm" onClick={handleRemoveUpload}>
-                  Remove file
+                  {t('researcher.form.file.remove')}
                 </Button>
               </div>
             )}
           </div>
         </section>
 
-        {/* ── OpenAlex Work ID (optional) ───────────────────────── */}
+        {/* ── OpenAlex import (optional) ───────────────────────── */}
         <section className={`${styles.formSection} ${styles.openAlexSection}`} aria-labelledby="form-section-openalex">
           <header className={styles.openAlexSectionHeader}>
             <h2 className={styles.formSectionTitle} id="form-section-openalex">
-              Import metadata <span className={styles.openAlexOptional}>(optional)</span>
+              {t('researcher.form.section.openalex.title')}
+              <span className={styles.openAlexOptional}>&nbsp;(optional)</span>
             </h2>
-            <p className={styles.formSectionHint}>
-              Search the open scholarly index before typing manuscript details manually.
-            </p>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.openalex.hint')}</p>
           </header>
 
           <div className={styles.openAlexLookupSurface}>
-            <div className={styles.openAlexBrandLockup} aria-label="OpenAlex Work ID lookup">
+            <div className={styles.openAlexBrandLockup} aria-label={t('researcher.form.openalex.label.brand')}>
               <OpenAlexBrandLogo
                 variant="mark"
-                ariaLabel="OpenAlex"
+                ariaLabel={t('researcher.form.openalex.label.brand')}
                 className={styles.openAlexBrandMark}
               />
               <div>
-                <p className={styles.openAlexBrandName}>OpenAlex</p>
-                <p className={styles.openAlexBrandLabel}>Work ID</p>
+                <p className={styles.openAlexBrandName}>{t('researcher.form.openalex.label.brand')}</p>
+                <p className={styles.openAlexBrandLabel}>{t('researcher.form.openalex.label.workId')}</p>
               </div>
             </div>
 
             <div className={styles.openAlexEntry}>
-              <label htmlFor="submission-openalex">OpenAlex Work ID</label>
+              <label htmlFor="submission-openalex">{t('researcher.form.openalex.label.workId')}</label>
               <div className={styles.openAlexInputRow}>
                 <input
                   id="submission-openalex"
@@ -567,13 +594,11 @@ export const ResearcherSubmissionForm = () => {
                     data-testid="submission-openalex-scan"
                     isLoading={openAlexScanning}
                   >
-                    Look up metadata
+                    {t('researcher.form.openalex.lookupCta')}
                   </Button>
                 ) : null}
               </div>
-              <p className={styles.fieldHint}>
-                Enter a W-prefixed work ID, then review the preview before any metadata is copied.
-              </p>
+              <p className={styles.fieldHint}>{t('researcher.form.openalex.emptyHint')}</p>
               {openAlexState.stage === 'idle' ? (
                 <div className={styles.openAlexSecondaryActions}>
                   <Button
@@ -583,7 +608,7 @@ export const ResearcherSubmissionForm = () => {
                     onClick={handleSkipOpenAlex}
                     data-testid="submission-openalex-skip"
                   >
-                    Continue without importing
+                    {t('researcher.form.openalex.skip')}
                   </Button>
                 </div>
               ) : null}
@@ -596,7 +621,7 @@ export const ResearcherSubmissionForm = () => {
               <div data-testid="submission-openalex-invalid">
                 <ErrorBanner
                   tone="error"
-                  title="Invalid OpenAlex ID"
+                  title={t('researcher.form.openalex.invalidTitle')}
                   message={openAlexState.message}
                   retry={
                     <div className={styles.actionsRow}>
@@ -606,7 +631,7 @@ export const ResearcherSubmissionForm = () => {
                         size="sm"
                         onClick={() => setOpenAlexState({ stage: 'idle' })}
                       >
-                        Try another ID
+                        {t('researcher.form.openalex.tryAnother')}
                       </Button>
                     </div>
                   }
@@ -618,7 +643,7 @@ export const ResearcherSubmissionForm = () => {
               <div data-testid="submission-openalex-unavailable">
                 <ErrorBanner
                   tone="warning"
-                  title="OpenAlex preview unavailable"
+                  title={t('researcher.form.openalex.unavailableTitle')}
                   message={openAlexState.message}
                   retry={
                     <div className={styles.actionsRow}>
@@ -628,10 +653,10 @@ export const ResearcherSubmissionForm = () => {
                         size="sm"
                         onClick={() => setOpenAlexState({ stage: 'idle' })}
                       >
-                        Try again
+                        {t('researcher.form.openalex.unavailableTryAgain')}
                       </Button>
                       <Button type="button" variant="ghost" size="sm" onClick={handleSkipOpenAlex}>
-                        Skip
+                        {t('researcher.form.openalex.unavailableSkip')}
                       </Button>
                     </div>
                   }
@@ -642,25 +667,25 @@ export const ResearcherSubmissionForm = () => {
             {openAlexState.stage === 'preview' && (
               <div className={styles.openAlexPreview} data-testid="submission-openalex-preview">
                 <div className={styles.openAlexPreviewHeader}>
-                  <h3>OpenAlex imported metadata</h3>
+                  <h3>{t('researcher.form.openalex.previewTitle')}</h3>
                   <span className={styles.openAlexAttribution}>
                     <OpenAlexBrandLogo variant="mark" ariaLabel="" />
-                    <span>via OpenAlex</span>
+                    <span>{t('researcher.form.openalex.attribution')}</span>
                   </span>
                 </div>
                 <dl>
-                  {openAlexState.metadata.title && <><dt>Title</dt><dd>{openAlexState.metadata.title}</dd></>}
-                  {openAlexState.metadata.abstract && <><dt>Abstract</dt><dd>{openAlexState.metadata.abstract}</dd></>}
-                  {openAlexState.metadata.authors.length > 0 && <><dt>Authors</dt><dd>{openAlexState.metadata.authors.join(', ')}</dd></>}
-                  {openAlexState.metadata.institutions.length > 0 && <><dt>Institutions</dt><dd>{openAlexState.metadata.institutions.join(', ')}</dd></>}
-                  {openAlexState.metadata.keywords.length > 0 && <><dt>Keywords</dt><dd>{openAlexState.metadata.keywords.join(', ')}</dd></>}
-                  {openAlexState.metadata.doi && <><dt>DOI</dt><dd>{openAlexState.metadata.doi}</dd></>}
-                  {openAlexState.metadata.publicationDate && <><dt>Publication date</dt><dd>{openAlexState.metadata.publicationDate}</dd></>}
+                  {openAlexState.metadata.title && <><dt>{t('researcher.form.field.title')}</dt><dd>{openAlexState.metadata.title}</dd></>}
+                  {openAlexState.metadata.abstract && <><dt>{t('researcher.form.field.abstract')}</dt><dd>{openAlexState.metadata.abstract}</dd></>}
+                  {openAlexState.metadata.authors.length > 0 && <><dt>{t('researcher.detail.detail.authors')}</dt><dd>{openAlexState.metadata.authors.join(', ')}</dd></>}
+                  {openAlexState.metadata.institutions.length > 0 && <><dt>{t('researcher.detail.detail.institutions')}</dt><dd>{openAlexState.metadata.institutions.join(', ')}</dd></>}
+                  {openAlexState.metadata.keywords.length > 0 && <><dt>{t('researcher.form.field.keywords')}</dt><dd>{openAlexState.metadata.keywords.join(', ')}</dd></>}
+                  {openAlexState.metadata.doi && <><dt>{t('researcher.detail.identifiers.doi')}</dt><dd>{openAlexState.metadata.doi}</dd></>}
+                  {openAlexState.metadata.publicationDate && <><dt>{t('researcher.detail.timeline.published')}</dt><dd>{openAlexState.metadata.publicationDate}</dd></>}
                 </dl>
-                <p>ARS major field and subfield must be selected manually.</p>
+                <p>{t('researcher.form.openalex.manualHint')}</p>
                 <div className={styles.actionsRow}>
                   <Button type="button" variant="primary" size="sm" onClick={handleConfirmOpenAlex}>
-                    Use imported metadata
+                    {t('researcher.form.openalex.confirmImport')}
                   </Button>
                   <Button
                     type="button"
@@ -668,7 +693,7 @@ export const ResearcherSubmissionForm = () => {
                     size="sm"
                     onClick={() => setOpenAlexState({ stage: 'idle' })}
                   >
-                    Discard preview
+                    {t('researcher.form.openalex.discardPreview')}
                   </Button>
                 </div>
               </div>
@@ -678,18 +703,18 @@ export const ResearcherSubmissionForm = () => {
               <div className={styles.openAlexConfirm} data-testid="submission-openalex-confirmed">
                 <CheckCircle2 size={14} aria-hidden className={styles.openAlexConfirmIcon} />
                 <span className={styles.openAlexConfirmLabel}>
-                  Imported metadata attached (ID <strong>{openAlexState.metadata.id}</strong>)
+                  {t('researcher.form.openalex.confirmedLabel', undefined, { id: openAlexState.metadata.id })}
                 </span>
                 <span className={styles.openAlexAttribution}>
                   <OpenAlexBrandLogo variant="mark" ariaLabel="" />
-                  <span>via OpenAlex</span>
+                  <span>{t('researcher.form.openalex.attribution')}</span>
                 </span>
                 <button
                   type="button"
                   className={styles.openAlexLink}
                   onClick={() => setOpenAlexState({ stage: 'idle' })}
                 >
-                  Change
+                  {t('researcher.form.openalex.change')}
                 </button>
               </div>
             )}
@@ -698,28 +723,30 @@ export const ResearcherSubmissionForm = () => {
               <div className={styles.openAlexConfirm} data-testid="submission-openalex-skipped">
                 <AlertTriangle size={14} aria-hidden className={styles.openAlexConfirmIcon} />
                 <span className={styles.openAlexConfirmLabel}>
-                  Metadata lookup skipped
+                  {t('researcher.form.openalex.skippedLabel')}
                 </span>
                 <button
                   type="button"
                   className={styles.openAlexLink}
                   onClick={() => setOpenAlexState({ stage: 'idle' })}
                 >
-                  Provide an ID
+                  {t('researcher.form.openalex.provideId')}
                 </button>
               </div>
             )}
           </div>
         </section>
 
-        <footer className={styles.formFooter}>
-          <p className={styles.formHint}>
-            Submitting routes the manuscript to Admin screening. You can save a draft
-            without submitting to review the metadata first.
-          </p>
+        {/* ── Final review (Save draft / Submit) ──────────────────── */}
+        <footer className={styles.formFinalReview}>
+          <header className={styles.formSectionHeader}>
+            <h2 className={styles.formSectionTitle}>{t('researcher.form.section.finalReview.title')}</h2>
+            <p className={styles.formSectionHint}>{t('researcher.form.section.finalReview.hint')}</p>
+          </header>
+          <p className={styles.formHint}>{t('researcher.form.footer.hint')}</p>
           {!canSubmit && (
             <p className={styles.formValidation} role="status">
-              Submission remains unavailable until the required metadata (including major field and subfield), and a completed PDF upload are in place.
+              {t('researcher.form.footer.validation')}
             </p>
           )}
           <div className={styles.formActionButtons}>
@@ -731,7 +758,7 @@ export const ResearcherSubmissionForm = () => {
               leftIcon={<Save size={14} aria-hidden />}
               data-testid="submission-save-draft"
             >
-              Save draft
+              {t('researcher.form.footer.saveDraft')}
             </Button>
             <Button
               type="submit"
@@ -741,7 +768,7 @@ export const ResearcherSubmissionForm = () => {
               leftIcon={<Send size={14} aria-hidden />}
               data-testid="submission-submit"
             >
-              {saving ? 'Saving…' : 'Submit to Admin'}
+              {saving ? t('researcher.form.footer.submitting') : t('researcher.form.footer.submit')}
             </Button>
           </div>
         </footer>

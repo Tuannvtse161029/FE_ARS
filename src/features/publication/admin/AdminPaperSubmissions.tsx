@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleCheck, CircleX, ExternalLink, FileText, Inbox } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nContext';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
@@ -51,11 +52,13 @@ const VERIFICATION_TABS: Array<{
   { value: 'UNVERIFIED', label: 'Unverified' },
 ];
 
-// Helper to get verification badge CSS class
+// Helper to get researcher-verification (identity) badge CSS class
 const getVerificationBadgeClass = (status: string | undefined): string => {
   if (!status) return adminStyles.verificationUnverified;
   switch (status.toUpperCase()) {
     case 'VERIFIED':
+    case 'ALLOW':
+    case 'ALLOWED':
       return adminStyles.verificationVerified;
     case 'PENDING':
       return adminStyles.verificationPending;
@@ -64,12 +67,50 @@ const getVerificationBadgeClass = (status: string | undefined): string => {
   }
 };
 
-// Helper to format verification label
+// Helper to format researcher-verification label
 const formatVerification = (status: string | undefined): string => {
   return status ?? 'UNVERIFIED';
 };
 
+// Helper to get editorial-status (manuscript pipeline) badge CSS class.
+// Tracks `paper.status` (PublicationStatus enum) through the editorial
+// pipeline. The class names match the values used in AdminPublication.module.css.
+const getEditorialStatusBadgeClass = (status: string | undefined): string => {
+  if (!status) return adminStyles.editorialDraft;
+  switch (status.toUpperCase()) {
+    case 'PUBLISHED':
+      return adminStyles.editorialPublished;
+    case 'ADMIN_APPROVED':
+    case 'REVIEWER_RECOMMENDED_ACCEPT':
+      return adminStyles.editorialAccepted;
+    case 'ADMIN_REJECTED':
+    case 'REVIEWER_RECOMMENDED_REJECT':
+      return adminStyles.editorialRejected;
+    case 'UNDER_REVIEW':
+    case 'REVIEWER_ASSIGNED':
+    case 'ADMIN_SCREENING':
+      return adminStyles.editorialUnderReview;
+    case 'REVISION_REQUIRED':
+    case 'RESUBMITTED':
+      return adminStyles.editorialNeedsRevision;
+    case 'DRAFT':
+    case 'SUBMITTED':
+    case 'WITHDRAWN':
+    case 'INACTIVE':
+    case 'RESEARCHER_VERIFICATION_REQUIRED':
+    case 'READY_FOR_REVIEWER':
+    default:
+      return adminStyles.editorialDraft;
+  }
+};
+
+// Helper to format editorial status label
+const formatEditorialStatus = (status: string | undefined): string => {
+  return status ?? 'DRAFT';
+};
+
 export const AdminPaperSubmissions = () => {
+  const { t } = useI18n();
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,7 +137,7 @@ export const AdminPaperSubmissions = () => {
       setError(
         e instanceof Error
           ? e.message
-          : 'The admin submission list could not be loaded.',
+          : t('admin.paperIntake.loadFailed', 'The admin submission list could not be loaded.'),
       );
     } finally {
       setLoading(false);
@@ -208,14 +249,27 @@ export const AdminPaperSubmissions = () => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow="ADMIN · EDITORIAL INTAKE"
-        title="Paper Submissions"
-        description="Screen submissions, verify researcher identity, and prepare reviewer assignments."
+        eyebrow={t('admin.paperIntake.eyebrow', 'ADMIN · EDITORIAL INTAKE')}
+        title={t('admin.paperIntake.title', 'Paper Submissions')}
+        description={t(
+          'admin.paperIntake.description',
+          'Two independent checks per record: (1) researcher identity (verification) and (2) manuscript editorial quality. The Open editorial record button below shows the full evidence — ORCID match, proof PDF, reviewer notes, manuscript file.'
+        )}
         accent={ROLE_ACCENT}
       />
 
-      {/* Tab filter for verification status */}
-      <div className={adminStyles.tabFilterBar} role="tablist" aria-label="Filter by verification status">
+      {/* Stage guide — explains what each Accept/Reject button does so the
+          Admin never confuses "verify the person" with "accept the paper". */}
+      <div
+        className={adminStyles.stageGuide}
+        role="note"
+        aria-label={t('admin.paperIntake.editorialColumn', 'Editorial stage guide')}
+      >
+        {t('admin.paperIntake.stageGuide', 'Accept at the identity column confirms the researcher is who they claim (ORCID / institution match). Accept at the editorial column advances the manuscript to the next publication stage. Each row links to the full editorial record where every piece of evidence (proof PDF, manuscript file, reviewer history) lives in one place.')}
+      </div>
+
+      {/* Tab filter for researcher verification status — identity only */}
+      <div className={adminStyles.tabFilterBar} role="tablist" aria-label="Filter by researcher identity verification">
         {VERIFICATION_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -239,8 +293,8 @@ export const AdminPaperSubmissions = () => {
           void load();
         }}
         isRefreshing={refreshing}
-        searchPlaceholder="Search title, author, DOI, reviewer, or topic"
-        refreshLabel="Refresh"
+        searchPlaceholder={t('admin.paperIntake.searchPlaceholder', 'Search title, author, DOI, reviewer, or topic')}
+        refreshLabel={t('admin.paperIntake.refresh', 'Refresh')}
       />
 
       {loading ? (
@@ -252,7 +306,7 @@ export const AdminPaperSubmissions = () => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title="Could not load admin submissions"
+          title={t('admin.paperIntake.loadFailed', 'Could not load admin submissions')}
           message={error}
           retry={
             <Button
@@ -264,15 +318,15 @@ export const AdminPaperSubmissions = () => {
               }}
               disabled={loading || refreshing}
             >
-              {loading || refreshing ? 'Retrying…' : 'Retry'}
+              {loading || refreshing ? t('admin.paperIntake.retrying', 'Retrying…') : t('admin.paperIntake.retry', 'Retry')}
             </Button>
           }
         />
       ) : pageItems.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} />}
-          title="No admin submissions match the current filters."
-          description="Adjust the search query or select a different verification tab."
+          title={t('admin.paperIntake.emptyTitle', 'No admin submissions match the current filters.')}
+          description={t('admin.paperIntake.emptyDesc', 'Adjust the search query or select a different verification tab.')}
         />
       ) : (
         <>
@@ -287,7 +341,7 @@ export const AdminPaperSubmissions = () => {
                   <th scope="col">
                     <SortableHeader
                       column="title"
-                      label="Submission"
+                      label={t('admin.paperIntake.submissionColumn', 'Submission')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
@@ -295,23 +349,34 @@ export const AdminPaperSubmissions = () => {
                   <th scope="col">
                     <SortableHeader
                       column="verification"
-                      label="Verification"
+                      label={t('admin.paperIntake.identityColumn', 'Researcher Identity')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">Identifiers</th>
+                  <th scope="col">
+                    <span className={adminStyles.headerWithHint}>
+                      {t('admin.paperIntake.editorialColumn', 'Editorial Status')}
+                      <span className={adminStyles.headerHint}>
+                        {t(
+                          'admin.paperIntake.editorialHint',
+                          'Accept advances the manuscript through the publication track.'
+                        )}
+                      </span>
+                    </span>
+                  </th>
+                  <th scope="col">{t('admin.paperIntake.identifiersColumn', 'Identifiers')}</th>
                   <th scope="col">
                     <SortableHeader
                       column="reviewer"
-                      label="Reviewer"
+                      label={t('admin.paperIntake.reviewerColumn', 'Reviewer')}
                       cycleSort={sort.cycleSort}
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">Manuscript</th>
+                  <th scope="col">{t('admin.paperIntake.manuscriptColumn', 'Manuscript')}</th>
                   <th scope="col" align="right">
-                    Actions
+                    {t('admin.paperIntake.evidenceColumn', 'Evidence & actions')}
                   </th>
                 </tr>
               </thead>
@@ -323,7 +388,7 @@ export const AdminPaperSubmissions = () => {
                   const fileHref = paper.fileUrl?.trim();
                   return (
                     <tr key={paper.id} className={selectedIndex === index ? adminStyles.selectedRow : ''}>
-                      <td data-label="Submission">
+                      <td data-label={t('admin.paperIntake.submissionColumn', 'Submission')}>
                         <div className={adminStyles.titleCell}>
                           <strong>{paper.title}</strong>
                           <small>
@@ -333,12 +398,16 @@ export const AdminPaperSubmissions = () => {
                           </small>
                         </div>
                       </td>
-                      <td data-label="Verification">
+                      <td data-label={t('admin.paperIntake.identityColumn', 'Researcher Identity')}>
                         <div className={adminStyles.verificationActions}>
                           <span
                             className={`${adminStyles.verificationBadge} ${
                               getVerificationBadgeClass(paper.researcherVerificationStatus)
                             }`}
+                            title={t(
+                              'admin.paperIntake.identityTooltip',
+                              'Verifies that the submitter is who they claim to be (ORCID match, institution).'
+                            )}
                           >
                             {formatVerification(paper.researcherVerificationStatus)}
                           </span>
@@ -352,8 +421,12 @@ export const AdminPaperSubmissions = () => {
                                   await publicationAdapter.verifyAuthorship(paper.id, true);
                                   void load();
                                 }}
+                                title={t(
+                                  'admin.paperIntake.acceptIdentityTooltip',
+                                  'Accept researcher identity — confirms the submitter is who they claim.'
+                                )}
                               >
-                                <CircleCheck size={13} aria-hidden="true" /> Accept
+                                <CircleCheck size={13} aria-hidden="true" /> {t('admin.paperIntake.acceptIdentity', 'Accept identity')}
                               </button>
                               <button
                                 type="button"
@@ -362,12 +435,29 @@ export const AdminPaperSubmissions = () => {
                                   event.stopPropagation();
                                   setRejectingPaper(paper);
                                 }}
+                                title={t(
+                                  'admin.paperIntake.rejectIdentityTooltip',
+                                  'Reject researcher identity — open the editorial record for evidence.'
+                                )}
                               >
-                                <CircleX size={13} aria-hidden="true" /> Reject
+                                <CircleX size={13} aria-hidden="true" /> {t('admin.paperIntake.rejectIdentity', 'Reject')}
                               </button>
                             </div>
                           )}
                         </div>
+                      </td>
+                      <td data-label={t('admin.paperIntake.editorialColumn', 'Editorial Status')}>
+                        <span
+                          className={`${adminStyles.verificationBadge} ${getEditorialStatusBadgeClass(
+                            paper.status,
+                          )}`}
+                          title={t(
+                            'admin.paperIntake.editorialTooltip',
+                            'Tracks the manuscript through the editorial pipeline (Draft → Under Review → Needs Revision → Accepted → Published).'
+                          )}
+                        >
+                          {formatEditorialStatus(paper.status)}
+                        </span>
                       </td>
                       <td data-label="Identifiers">
                         <div className={adminStyles.identifierList}>
@@ -408,21 +498,21 @@ export const AdminPaperSubmissions = () => {
                           !identifiers.openAlexId &&
                           !identifiers.externalIdentifier ? (
                             <span className={adminStyles.fileMissing}>
-                              No identifier supplied
+                              {t('admin.paperIntake.noIdentifier', 'No identifier supplied')}
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td data-label="Reviewer">
+                      <td data-label={t('admin.paperIntake.reviewerColumn', 'Reviewer')}>
                         {reviewer ? (
                           <span>{reviewer}</span>
                         ) : (
                           <span className={adminStyles.fileMissing}>
-                            Not assigned
+                            {t('admin.paperIntake.notAssigned', 'Not assigned')}
                           </span>
                         )}
                       </td>
-                      <td data-label="Manuscript">
+                      <td data-label={t('admin.paperIntake.manuscriptColumn', 'Manuscript')}>
                         {fileHref ? (
                           <a
                             className={adminStyles.fileLink}
@@ -434,25 +524,27 @@ export const AdminPaperSubmissions = () => {
                           </a>
                         ) : (
                           <span className={adminStyles.fileMissing}>
-                            No file URL
+                            {t('admin.paperIntake.noFileUrl', 'No file URL')}
                           </span>
                         )}
                       </td>
-                      <td data-label="Actions" align="right">
+                      <td data-label={t('admin.paperIntake.evidenceColumn', 'Evidence & actions')} align="right">
                         <div className={shared.actions}>
                           <button
                             type="button"
                             className={adminStyles.previewButton}
                             onClick={() => setPreviewing(paper)}
-                            aria-label={`Preview ${paper.title}`}
+                            aria-label={t('admin.paperIntake.previewAria', 'Preview {title}').replace('{title}', paper.title)}
+                            title={t('admin.paperIntake.previewTooltip', 'Quick preview of the manuscript metadata.')}
                           >
-                            <ExternalLink size={12} aria-hidden="true" /> Preview
+                            <ExternalLink size={12} aria-hidden="true" /> {t('admin.paperIntake.previewButton', 'Preview')}
                           </button>
                           <Link
                             className={shared.buttonGhost}
                             to={`/admin/paper-submissions/${paper.id}`}
+                            title={t('admin.paperIntake.editorialRecordTooltip', 'Open the full editorial record — proof PDF, manuscript, reviewer history, all evidence in one place.')}
                           >
-                            Open editorial record
+                            {t('admin.paperIntake.openEditorialRecord', 'Open editorial record')}
                           </Link>
                         </div>
                       </td>
@@ -471,7 +563,7 @@ export const AdminPaperSubmissions = () => {
             onPrev={() => setPage((p) => Math.max(1, p - 1))}
             onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
             onPage={setPage}
-            itemLabel="submissions"
+            itemLabel={t('admin.paperIntake.itemLabel', 'submissions')}
           />
         </>
       )}

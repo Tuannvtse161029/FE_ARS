@@ -149,6 +149,25 @@
   border-color: var(--ars-admin);
 }
 
+/* Inline explanation banner — surfaces WHY the Accept/Reject buttons
+   are disabled so the Admin doesn't think the queue is broken. */
+.actionBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ars-info);
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.actionBannerText {
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+}
+
 .filterIcon {
   color: var(--ars-ink-muted);
 }
@@ -229,6 +248,22 @@
   font-size: var(--font-size-xs);
   font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
+}
+
+/* ── Email Address Cell ─────────────────────────────────── */
+.emailAddress {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+  word-break: break-word;
+  max-width: 220px;
+}
+
+/* ── Role Cells (assigned vs requested) ─────────────────── */
+.roleCell {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-medium);
 }
 
 /* ── Roles List ─────────────────────────────────────────── */

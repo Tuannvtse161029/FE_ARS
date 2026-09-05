@@ -1,0 +1,335 @@
+/**
+ * ARS Motion System
+ * 
+ * Motion vocabulary for consistent, accessible animations across the platform.
+ * Based on the ARS design system tokens in ars-tokens.css.
+ * 
+ * Motion Categories:
+ * - Micro:   120-160ms  — Color/opacity feedback for buttons, rows, links
+ * - Panel:   180-220ms  — Menus, drawers, dialogs with transform + opacity
+ * - Reveal:  ~240ms     — Route content reveal, card entrances
+ * - Loading: Local skeleton — Preserve layout geometry during loads
+ */
+
+/* ── Motion Duration Variables ────────────────────────────── */
+:root {
+  /* Core duration tokens (mirrors ars-tokens.css but with motion-specific naming) */
+  --motion-micro:   120ms;  /* Micro feedback — buttons, rows, links */
+  --motion-fast:     150ms;  /* Fast feedback — existing token */
+  --motion-normal:   200ms;  /* Panel transitions — menus, dialogs */
+  --motion-slow:     240ms;  /* Reveal animations — page content */
+  
+  /* Easing curves */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-linear: linear;
+}
+
+/* ── Micro Interactions ─────────────────────────────────── */
+/* For color/opacity feedback only — no layout movement */
+/* Duration: 120-160ms */
+.motion-micro {
+  transition-duration: var(--motion-micro);
+  transition-timing-function: ease-out;
+}
+
+.motion-micro-exact {
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+
+/* Color-only transitions for buttons and links */
+.motion-color {
+  transition-property: color, background-color, border-color, opacity, box-shadow;
+  transition-duration: var(--motion-micro);
+  transition-timing-function: ease-out;
+}
+
+/* ── Panel Transitions ──────────────────────────────────── */
+/* For menus, drawers, dialogs — small movement + opacity */
+/* Duration: 180-220ms */
+.motion-panel {
+  transition-duration: var(--motion-normal);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+}
+
+/* Slide-in from top */
+.motion-panel-top {
+  transition-duration: var(--motion-normal);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+  transform-origin: top center;
+}
+
+/* Slide-in from right (drawers) */
+.motion-panel-right {
+  transition-duration: var(--motion-normal);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+  transform-origin: right center;
+}
+
+/* Slide-in from bottom (sheets) */
+.motion-panel-bottom {
+  transition-duration: var(--motion-normal);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+  transform-origin: bottom center;
+}
+
+/* Slide-in from left */
+.motion-panel-left {
+  transition-duration: var(--motion-normal);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+  transform-origin: left center;
+}
+
+/* Scale + opacity (dialogs, modals) */
+.motion-dialog {
+  transition-duration: var(--motion-slow);
+  transition-property: opacity, transform;
+  transition-timing-function: var(--ease-out);
+}
+
+/* ── Reveal Animations ──────────────────────────────────── */
+/* For route content reveal — keep shell stable */
+/* Duration: ~240ms max */
+.motion-reveal {
+  animation: ars-reveal var(--motion-slow) var(--ease-out) both;
+}
+
+.motion-reveal-up {
+  animation: ars-reveal-up var(--motion-slow) var(--ease-out) both;
+}
+
+.motion-reveal-down {
+  animation: ars-reveal-down var(--motion-slow) var(--ease-out) both;
+}
+
+.motion-reveal-scale {
+  animation: ars-reveal-scale var(--motion-slow) var(--ease-out) both;
+  transform-origin: center center;
+}
+
+@keyframes ars-reveal {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes ars-reveal-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(16px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes ars-reveal-down {
+  from { 
+    opacity: 0; 
+    transform: translateY(-16px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes ars-reveal-scale {
+  from { 
+    opacity: 0; 
+    transform: scale(0.96); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+/* ── Loading States ─────────────────────────────────────── */
+/* Skeleton shimmer — preserves layout geometry */
+.motion-skeleton {
+  animation: ars-skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes ars-skeleton {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0.55; }
+}
+
+/* Staggered children animation */
+.motion-stagger > * {
+  animation: ars-reveal var(--motion-slow) var(--ease-out) both;
+}
+
+.motion-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.motion-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+.motion-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+.motion-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+.motion-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+.motion-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+.motion-stagger > *:nth-child(7)  { animation-delay: 240ms; }
+.motion-stagger > *:nth-child(8)  { animation-delay: 280ms; }
+.motion-stagger > *:nth-child(9)  { animation-delay: 320ms; }
+.motion-stagger > *:nth-child(10) { animation-delay: 360ms; }
+
+/* ── Focus & Interactive States ──────────────────────────── */
+.motion-focus {
+  transition: 
+    outline var(--motion-micro) ease-out,
+    outline-offset var(--motion-micro) ease-out,
+    box-shadow var(--motion-micro) ease-out;
+}
+
+/* ── Hover Lift ─────────────────────────────────────────── */
+/* Subtle lift on hover — for cards and interactive surfaces */
+.motion-hover-lift {
+  transition: 
+    transform var(--motion-normal) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out);
+}
+
+.motion-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Press Feedback ─────────────────────────────────────── */
+/* Tactile press effect for buttons */
+.motion-press {
+  transition: transform var(--motion-micro) var(--ease-out);
+}
+
+.motion-press:active {
+  transform: scale(0.97);
+}
+
+/* ── Accordion / Collapsible ────────────────────────────── */
+.motion-expand {
+  transition: 
+    max-height var(--motion-normal) var(--ease-out),
+    opacity var(--motion-normal) var(--ease-out);
+  overflow: hidden;
+}
+
+/* ── Toast / Notification ───────────────────────────────── */
+.motion-toast {
+  animation: ars-toast-in var(--motion-normal) var(--ease-spring) both;
+}
+
+.motion-toast-exit {
+  animation: ars-toast-out var(--motion-micro) ease-in both;
+}
+
+@keyframes ars-toast-in {
+  from { 
+    opacity: 0; 
+    transform: translateX(100%); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes ars-toast-out {
+  from { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateX(100%); 
+  }
+}
+
+/* ── Backdrop Fade ──────────────────────────────────────── */
+.motion-backdrop {
+  transition: opacity var(--motion-normal) ease-out;
+}
+
+.motion-backdrop-fade-in {
+  animation: ars-fade-in var(--motion-fast) ease-out both;
+}
+
+.motion-backdrop-fade-out {
+  animation: ars-fade-out var(--motion-micro) ease-in both;
+}
+
+@keyframes ars-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ars-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable skeleton animation */
+  .motion-skeleton {
+    animation: none;
+    opacity: 0.7;
+  }
+  
+  /* Disable hover lift */
+  .motion-hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* Disable press effect */
+  .motion-press:active {
+    transform: none;
+  }
+  
+  /* Instant tab changes */
+  [role='tabpanel'] {
+    animation: none;
+  }
+}
+
+/* ── Utility Classes ────────────────────────────────────── */
+.motion-none {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Pointer-events disabled during animation */
+.motion-no-interact {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Will-change hints for animated elements */
+.motion-will-transform {
+  will-change: transform;
+}
+
+.motion-will-opacity {
+  will-change: opacity;
+}

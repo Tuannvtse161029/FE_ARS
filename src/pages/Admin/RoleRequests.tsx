@@ -41,10 +41,29 @@ type StatusFilter = 'PENDING' | 'ACCEPTED' | 'REJECTED';
  * Sortable column identifiers for the Role Requests table.
  * Each id maps to a value extractor on the User row.
  */
+/**
+ * Sortable column identifiers for the Role Requests table.
+ * Each id maps to a value extractor on the User row.
+ *
+ * Column separation rationale (Phase B — Admin terminology clarity):
+ *   - `name`         : who (full name + ID — visual identity)
+ *   - `email`        : email ADDRESS only (sortable text)
+ *   - `emailState`   : email VERIFICATION STATE (true/false)
+ *   - `assignedRole` : role the user holds RIGHT NOW
+ *   - `requestedRole`: role the user has ASKED for
+ *   - `verification` : overall verification decision (Pending/Accepted/Rejected)
+ *   - `createdAt`    : submission date
+ *
+ * The previous version conflated "email" with "email verified", making
+ * the table read as if every row had the same email text. We split
+ * those two concepts into dedicated columns.
+ */
 type SortColumn =
   | 'name'
   | 'email'
-  | 'role'
+  | 'emailState'
+  | 'assignedRole'
+  | 'requestedRole'
   | 'verification'
   | 'createdAt';
 
@@ -87,11 +106,6 @@ export const RoleRequests = () => {
   };
 
   const VERIFICATION_MUTATION_DISABLED_TITLE = t('admin.roleRequests.action.mutationDisabled');
-
-  const formatRoleCell = (user: User): string => {
-    const roleName = user.roleName?.trim();
-    return roleName && roleName.length > 0 ? roleName : t('admin.roleRequests.table.pendingRole');
-  };
 
   // Default to newest-created-first so a newly submitted request doesn't
   // disappear at the bottom of the queue. The user can override per column.
@@ -156,7 +170,11 @@ export const RoleRequests = () => {
           return (row.fullName ?? row.username ?? '').toLowerCase();
         case 'email':
           return row.email ?? '';
-        case 'role':
+        case 'emailState':
+          return row.isEmailVerified ? 'verified' : 'unverified';
+        case 'assignedRole':
+          return row.roleName ?? '';
+        case 'requestedRole':
           return row.roleName ?? '';
         case 'verification':
           return normalizeVerificationStatus(row.verificationStatus) ?? '';
@@ -203,6 +221,23 @@ export const RoleRequests = () => {
         description={t('admin.roleRequests.description')}
         accent={ROLE_ACCENT}
       />
+
+      {/* Inline explanation — the Accept / Reject buttons below are
+          disabled because the BE has not yet exposed a verification-
+          mutation endpoint. The banner keeps the Admin informed of the
+          reason without hiding the queue behind a permanent "no action
+          available" state. */}
+      {status === 'PENDING' && !loading && !error ? (
+        <div
+          className={styles.actionBanner}
+          role="status"
+          data-testid="role-requests-action-banner"
+        >
+          <span className={styles.actionBannerText}>
+            {t('admin.roleRequests.action.mutationDisabled')}
+          </span>
+        </div>
+      ) : null}
 
       <TableToolbar
         search={search}
@@ -294,16 +329,32 @@ export const RoleRequests = () => {
                     </th>
                     <th>
                       <SortableHeader
-                        column="role"
-                        label={t('admin.roleRequests.table.role')}
+                        column="email"
+                        label={t('admin.roleRequests.table.emailAddress')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
                     </th>
                     <th>
                       <SortableHeader
-                        column="email"
-                        label={t('admin.roleRequests.table.email')}
+                        column="emailState"
+                        label={t('admin.roleRequests.table.emailVerified')}
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="assignedRole"
+                        label={t('admin.roleRequests.table.assignedRole')}
+                        cycleSort={sort.cycleSort}
+                        ariaSortFor={sort.ariaSortFor}
+                      />
+                    </th>
+                    <th>
+                      <SortableHeader
+                        column="requestedRole"
+                        label={t('admin.roleRequests.table.requestedRole')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -336,6 +387,13 @@ export const RoleRequests = () => {
                       ? VERIFICATION_STATUS_LABEL[verification]
                       : VERIFICATION_STATUS_LABEL.UNKNOWN;
                     const pending = isPendingVerification(row);
+                    const assignedRole = row.roleName?.trim();
+                    // The BE does not yet expose a separate "requested role"
+                    // field — when roleName is null the user is awaiting
+                    // their first assignment (no current AND no requested
+                    // role yet). Otherwise, the requested role is the same
+                    // as the assigned role for now.
+                    const requestedRole = assignedRole;
 
                     return (
                       <tr key={row.id}>
@@ -345,21 +403,37 @@ export const RoleRequests = () => {
                               {row.fullName || row.username || '—'}
                             </span>
                             <span className={styles.userEmail}>
-                              {row.email} · ID #{row.id}
+                              ID #{row.id}
                             </span>
                           </div>
                         </td>
-                        <td>{formatRoleCell(row)}</td>
+                        <td>
+                          <span className={styles.emailAddress}>
+                            {row.email || '—'}
+                          </span>
+                        </td>
                         <td>
                           {row.isEmailVerified ? (
                             <span className={`${styles.statusPill} ${styles.statusAPPROVED}`}>
-                              {t('admin.roleRequests.table.emailVerified')}
+                              {t('admin.roleRequests.table.emailVerifiedState')}
                             </span>
                           ) : (
                             <span className={`${styles.statusPill} ${styles.statusPENDING}`}>
-                              {t('admin.roleRequests.table.emailNotVerified')}
+                              {t('admin.roleRequests.table.emailNotVerifiedState')}
                             </span>
                           )}
+                        </td>
+                        <td>
+                          <span className={styles.roleCell}>
+                            {assignedRole && assignedRole.length > 0
+                              ? assignedRole
+                              : t('admin.roleRequests.table.pendingRole')}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={styles.roleCell}>
+                            {requestedRole || t('admin.roleRequests.table.noRoleRequested')}
+                          </span>
                         </td>
                         <td>
                           <span

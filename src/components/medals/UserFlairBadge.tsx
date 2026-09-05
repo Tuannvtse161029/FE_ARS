@@ -43,7 +43,7 @@ import styles from './UserFlairBadge.module.css';
 // small and prevents future circular imports if AdminMedals ever wants to
 // render a UserFlairBadge itself.
 const SafeMedalBadge = lazy(async () => {
-  const mod = await import('../../pages/Admin/AdminMedals');
+  const mod = await import('../../features/admin/AdminMedals');
   return { default: mod.SafeMedalBadge };
 });
 

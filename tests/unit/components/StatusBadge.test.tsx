@@ -1,5 +1,7 @@
 /**
- * Component tests for src/components/lecturer/StatusBadge.tsx.
+ * Component tests for src/components/common/StatusBadge.tsx.
+ * Moved from src/components/lecturer/StatusBadge.tsx as part of the
+ * status-badge-neutral component ownership refactor.
  *
  * Verifies:
  *   - the 4 ResearchTopic status colors render in the right CSS classes
@@ -9,8 +11,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { StatusBadge } from '../../../src/components/lecturer/StatusBadge';
-import styles from '../../../src/components/lecturer/StatusBadge.module.css';
+import { StatusBadge } from '../../../src/components/common/StatusBadge';
+import styles from '../../../src/components/common/StatusBadge.module.css';
 
 describe('<StatusBadge>', () => {
   describe('ResearchTopic variant colors', () => {
