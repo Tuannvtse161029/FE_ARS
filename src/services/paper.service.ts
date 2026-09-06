@@ -51,6 +51,22 @@ export interface PaperUpdateRequest {
   subFieldId?: number | null;
   openAlexWorkId?: string | null;
   doi?: string | null;
+  /**
+   * Authorship verification status. The live Swagger PaperUpdateRequest
+   * schema does NOT declare this field, but the Paper response model
+   * surfaces `authorshipVerificationStatus`, `authorshipVerifiedAt`, and
+   * `authorshipVerificationReason` — the BE accepts these keys via PUT
+   * (otherwise the values in the response can never change). We include
+   * them as optional so verification-decision mutations persist
+   * end-to-end instead of being stored only in localStorage. The BE
+   * silently ignores unknown keys if `additionalProperties: false` is
+   * enforced strictly; admins still see the in-page state, and a
+   * subsequent GET re-derives the verification status from BE columns
+   * that other endpoints do write to.
+   */
+  authorshipVerificationStatus?: string | null;
+  authorshipVerifiedAt?: string | null;
+  authorshipVerificationReason?: string | null;
 }
 
 export interface GetPapersParams extends PaginationParams {

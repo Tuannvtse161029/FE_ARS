@@ -1,0 +1,1753 @@
+/* ═══════════════════════════════════════════════════════════════════
+   LandingScrollVideo — premium scroll-driven landing page
+   Five-act scrollcraft narrative. Each act uses a different device so
+   the page never repeats the same idea twice.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Base page chrome ─────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  color: var(--ink-primary);
+  background: var(--app-canvas);
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
+.page :focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skipLink {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 10px 14px;
+  color: var(--ink-on-paper);
+  background: var(--ink-primary);
+  text-decoration: none;
+  transform: translateY(-180%);
+  transition: transform var(--transition-fast);
+}
+.skipLink:focus { transform: translateY(0); }
+
+/* ══════════════════════════════════════════════════════════════════
+   EDITORIAL TRACE — signature move
+   A thin horizontal line fixed at the bottom edge of the viewport,
+   present on every scroll position. The playhead glides with scroll;
+   passing an act stamps a marker that stays lit. This is the
+   bespoke interaction that lives on this site alone. Scrollcraft
+   uniqueness.md §3 lists this pattern by name.
+
+   The trace is intentionally restrained: 1px track, 6px playhead,
+   no animation. It earns its presence by being consistent rather
+   than by being loud.
+   ══════════════════════════════════════════════════════════════════ */
+.editorialTrace {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  right: auto;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(960px, calc(100% - 48px));
+  height: 36px;
+  pointer-events: none;
+  /* Soft glassy plate so the trace reads cleanly above scrolling
+     content without fully occluding it. The backdrop blur keeps
+     anything underneath legible while letting the line stay crisp. */
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+}
+.editorialTrace::before {
+  content: '';
+  position: absolute;
+  inset: 4px -8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+  z-index: -1;
+}
+
+.editorialTrack {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+  z-index: 1;
+}
+
+.editorialPlayhead {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  transform: translate3d(0, 0, 0);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent-primary) 24%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent-primary) 50%, transparent);
+  transition: transform 80ms linear;
+  will-change: transform;
+  z-index: 3;
+}
+
+.editorialMarker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+}
+
+.editorialMarkerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.editorialMarker[data-passed='true'] .editorialMarkerDot {
+  background: var(--accent-primary);
+  transform: scale(1.4);
+}
+
+.editorialMarkerLabel {
+  position: absolute;
+  top: 16px;
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+.editorialMarker[data-passed='true'] .editorialMarkerLabel {
+  color: var(--accent-primary);
+}
+
+/* ── Shared building blocks ─────────────────────────────────── */
+.issueLine {
+  margin: 0;
+  color: var(--accent-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  border-left: 3px solid var(--accent-primary);
+  padding-left: 14px;
+}
+
+/* Page-level fade-in for any text. With the engine gone, this is what
+   carries the "things arrive as you read them" feeling. */
+@keyframes sc-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page h1, .page h2, .page h3, .page p, .page .issueLine {
+  animation: sc-rise 700ms var(--motion-ease-standard, ease) backwards;
+}
+.page .heroCopy > *:nth-child(1) { animation-delay: 0ms; }
+.page .heroCopy > *:nth-child(2) { animation-delay: 80ms; }
+.page .heroCopy > *:nth-child(3) { animation-delay: 160ms; }
+.page .heroCopy > *:nth-child(4) { animation-delay: 240ms; }
+.page .heroCopy > *:nth-child(5) { animation-delay: 320ms; }
+@media (prefers-reduced-motion: reduce) {
+  .page h1, .page h2, .page h3, .page p, .page .issueLine {
+    animation: none;
+  }
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+/* Band: density at the bottom where copy sits on full-width hero */
+.scrimBand {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--ink-primary) 88%, transparent) 0%,
+    color-mix(in srgb, var(--ink-primary) 64%, transparent) 28%,
+    color-mix(in srgb, var(--ink-primary) 24%, transparent) 56%,
+    transparent 78%
+  );
+}
+/* Lead: density at the right corner where copy sits in the tension act.
+   Reduced from 94% → 78% because the previous density was overpowering the
+   body text — the gradient left a near-opaque dark wedge in the bottom-right
+   that swallowed the body line into the background. The lighter stop values
+   still create a directional depth cue while leaving the body copy legible. */
+.scrimLead {
+  background: linear-gradient(
+    to top left,
+    color-mix(in srgb, var(--ink-primary) 78%, transparent) 0%,
+    color-mix(in srgb, var(--ink-primary) 54%, transparent) 32%,
+    color-mix(in srgb, var(--ink-primary) 18%, transparent) 58%,
+    transparent 78%
+  );
+}
+
+.primaryButton {
+  min-height: 50px;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  font-size: 0.9rem;
+  font-weight: 750;
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+/* Hover / focus-visible: darken the background and switch the text to
+   white so it stays readable. Previously the text stayed near-black on a
+   darker-yellow hover background, which read as low-contrast. */
+.primaryButton:hover,
+.primaryButton:focus-visible {
+  background: var(--accent-hover);
+  color: #ffffff;
+  border-color: var(--accent-hover);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  transform: translateY(-1px);
+}
+.primaryButton:active { transform: translateY(0) scale(0.98); }
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  transition: color var(--transition-fast), gap var(--transition-fast);
+}
+.textLink:hover,
+.textLink:focus-visible {
+  color: var(--accent-primary);
+  gap: 10px;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-index-sticky);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--ink-on-dark);
+  background: color-mix(in srgb, var(--ink-primary) 92%, transparent);
+  backdrop-filter: saturate(140%) blur(12px);
+}
+
+.headerInner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  font-weight: 750;
+  text-decoration: none;
+}
+.brandLogo {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.brand span {
+  font-family: var(--font-family-serif);
+  font-size: 1rem;
+  color: var(--ink-on-dark);
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+}
+.navigation a {
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  font-size: 0.83rem;
+  text-decoration: none;
+  text-underline-offset: 5px;
+  transition: color var(--transition-fast);
+}
+.navigation a:hover,
+.navigation a:focus-visible {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.loginButton {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  font-size: 0.87rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+/* Same white-on-darker-yellow hover as .primaryButton so the header
+   Sign In button reads cleanly when the cursor lands on it. */
+.loginButton:hover,
+.loginButton:focus-visible {
+  background: var(--accent-hover);
+  color: #ffffff;
+  border-color: var(--accent-hover);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 1 — HERO (scrub): video scrubs frame-by-frame as headline assembles
+   ══════════════════════════════════════════════════════════════════ */
+.heroAct {
+  position: relative;
+  /* The act owns 3 viewports of scroll. Most of any act — this is the peak. */
+}
+
+.heroStage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #0a0d20; /* deep navy so first paint doesn't flash white */
+}
+
+.heroVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 380ms var(--motion-ease-standard);
+  z-index: 0;
+}
+/* When the video emits loadeddata, fade it in over the poster. We also
+   respect the engine's flag so the existing data-sc-has-clip pathway
+   still works if a future integration uses it. */
+.heroStage[data-sc-has-clip] .heroVideo,
+.heroVideo[data-sc-ready='true'] { opacity: 1; }
+
+.heroPoster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  /* Slight scale-up so parallax has somewhere to go without revealing
+     edges when the layer drifts upward. */
+  transform: scale(1.06);
+  transform-origin: center 60%;
+  will-change: transform;
+  transition: opacity 380ms var(--motion-ease-standard);
+}
+.heroStage[data-sc-has-clip] .heroPoster,
+.heroPoster[data-sc-ready='true'] { opacity: 0; }
+
+/* Foreground layer — a soft warm light streak that catches the eye
+   at the bottom edge of the frame. Drifts opposite to the photo so
+   the two read as separate planes. Sits above the photo, below the
+   scrim. */
+.heroLayerForeground {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      50% 28% at 50% 100%,
+      color-mix(in srgb, var(--accent-primary) 18%, transparent),
+      transparent 70%
+    );
+  will-change: transform;
+}
+
+/* Near-camera plane — a thin accent rule that sits a hair in front
+   of the copy, anchored to the top edge of the stage. Drifts slightly
+   more than the foreground so the three planes separate visibly. */
+.heroLayerNear {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 38%,
+      color-mix(in srgb, var(--ink-primary) 18%, transparent) 41%,
+      color-mix(in srgb, var(--ink-primary) 28%, transparent) 42%,
+      color-mix(in srgb, var(--ink-primary) 18%, transparent) 43%,
+      transparent 46%,
+      transparent 100%
+    );
+  will-change: transform, opacity;
+}
+
+/* Drift overlay — sits above the video but below the scrim so the page
+   background color interpolates as the act passes through. */
+.drift {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: transparent;
+  transition: background 200ms linear;
+}
+
+.heroCopy {
+  position: absolute;
+  z-index: 3;
+  left: clamp(1.25rem, 5vw, 5.5rem);
+  right: clamp(1.25rem, 5vw, 5.5rem);
+  /* Anchor near the top so the multi-line headline has room to breathe
+     before the metrics and actions. Bottom anchor was clipping the
+     "Where Vietnamese..." line on standard 16:9 viewports. */
+  top: clamp(2.5rem, 10vh, 5rem);
+  bottom: clamp(3rem, 8vh, 6rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: min(46rem, 76vw);
+}
+
+.heroKicker {
+  margin: 0;
+  color: var(--accent-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin: 18px 0 0;
+  color: var(--ink-on-dark);
+  font-family: var(--font-family-serif);
+  /* Reduced clamp from (2.8rem, 6vw, 5.6rem) to (2.4rem, 4.6vw, 4.4rem).
+     The previous sizing produced 4+ visible lines on 16:9 displays,
+     which the bottom-anchored copy box couldn't contain. */
+  font-size: clamp(2.4rem, 4.6vw, 4.4rem);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.heroLead {
+  margin: 18px 0 0;
+  max-width: 46ch;
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.heroMetrics {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3vw, 36px);
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metricValue {
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 750;
+  color: var(--accent-primary);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.metricLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink-on-dark) 55%, transparent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.metricDivider {
+  width: 1px;
+  height: 32px;
+  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+}
+
+.heroActions {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.heroHint {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(1.5rem, 4vh, 2.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.heroHintLine {
+  display: inline-block;
+  width: 36px;
+  height: 1px;
+  background: currentColor;
+  animation: hintPulse 1800ms var(--motion-ease-standard) infinite;
+}
+@keyframes hintPulse {
+  0%, 100% { transform: scaleX(0.4); opacity: 0.5; transform-origin: left center; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 2 — TENSION (pin + parallax): the cost of scattered tools
+   Redesigned as a cinematic night scene:
+   - rich midnight ground (replaces the gray sunken surface)
+   - three independent depth planes (back grid + aurora, mid glow,
+     foreground chips) that drift at slightly different rates
+   - right-anchored copy with a quote-mark kicker for editorial weight
+   ══════════════════════════════════════════════════════════════════ */
+.tensionAct {
+  position: relative;
+}
+
+.tensionStage {
+  /* Anchor below the sticky header (~72px) so the stage's content is
+     not hidden under the navigation bar. The hero stage stays at top:0
+     because it is full-bleed behind the header. The tension/turn/
+     substance stages are content-first and need the header offset. */
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 72px);
+  height: calc(100svh - 72px);
+  overflow: hidden;
+  /* Cinematic midnight ground — a layered wash of deep navy and
+     ink-black. The two stacked stops give the eye depth even before
+     the parallax planes are applied. */
+  background:
+    radial-gradient(
+      120% 90% at 70% 30%,
+      color-mix(in srgb, var(--ink-primary) 90%, #0b1238 10%) 0%,
+      color-mix(in srgb, var(--ink-primary) 96%, #050818 4%) 55%,
+      #050818 100%
+    );
+}
+
+/* Far plane — deep grid + aurora wash. Drifts slowest so it reads as
+   "the room", not as something the visitor is moving past. */
+.tensionLayerBack {
+  position: absolute;
+  inset: -10% -6% 0 -6%;
+  background:
+    /* aurora: two soft lights, primary accent at the upper right where
+       the copy sits, cooler reviewer accent at the lower left for
+       visual balance */
+    radial-gradient(45% 35% at 78% 18%, color-mix(in srgb, var(--accent-primary) 22%, transparent), transparent 70%),
+    radial-gradient(35% 40% at 8% 88%, color-mix(in srgb, var(--ars-reviewer) 16%, transparent), transparent 70%),
+    /* deep grid: hairline lines at 80px so it doesn't read as a
+       webdev grid */
+    linear-gradient(color-mix(in srgb, var(--ink-on-dark) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink-on-dark) 5%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 80px 80px, 80px 80px;
+  z-index: 0;
+  will-change: transform;
+}
+
+/* Mid plane — a single soft light orb that drifts slightly faster
+   than the back, giving the room a sense of scale. */
+.tensionLayerMid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    28% 22% at 65% 35%,
+    color-mix(in srgb, var(--accent-primary) 14%, transparent),
+    transparent 75%
+  );
+  will-change: transform;
+}
+
+/* Foreground plane — a near-camera light streak that drifts fastest.
+   This is the "depth" plane the eye reads as the closest object. */
+.tensionLayerFront {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    /* a thin horizontal light bar at the bottom that catches the eye
+       and anchors the composition */
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--accent-primary) 10%, transparent) 0%,
+      transparent 18%
+    );
+  will-change: transform;
+}
+
+.tensionCopy {
+  position: absolute;
+  z-index: 3;
+  inset-inline: auto clamp(1.25rem, 5vw, 5.5rem);
+  right: clamp(1.25rem, 5vw, 5.5rem);
+  bottom: clamp(3rem, 12vh, 9rem);
+  max-width: min(38rem, 60vw);
+  text-align: right;
+}
+
+/* Kicker uses a left-side accent rule (right-aligned in JSX). We render
+   the rule via an absolutely positioned span so it tracks the kicker
+   without breaking the right alignment of the title and body. */
+.tensionKicker {
+  position: relative;
+  margin: 0;
+  padding-right: 14px;
+  color: var(--accent-primary);
+  font-family: var(--font-family-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.tensionKicker::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary) 60%, transparent);
+}
+
+.tensionTitle {
+  margin: 18px 0 0;
+  font-family: var(--font-family-serif);
+  font-size: clamp(2.1rem, 4.6vw, 4rem);
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.04;
+  color: var(--ink-on-dark);
+  text-wrap: balance;
+  /* A subtle inner highlight + offset shadow give the title presence
+     on the deep midnight backdrop without a full-frame scrim. */
+  text-shadow:
+    0 1px 0 color-mix(in srgb, var(--accent-primary) 24%, transparent),
+    0 2px 24px color-mix(in srgb, var(--ink-primary) 60%, transparent);
+}
+
+.tensionBody {
+  margin: 22px 0 0;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--ink-on-dark) 88%, transparent);
+  font-size: 1.02rem;
+  line-height: 1.72;
+  max-width: 50ch;
+  font-weight: 500;
+  /* Soft glow under the body so it floats off the midnight ground. */
+  text-shadow: 0 0 18px color-mix(in srgb, var(--surface-paper) 60%, transparent);
+}
+
+/* Editorial quote mark — a large serif glyph anchored above the title
+   for editorial weight. Lives behind the title so it never collides
+   with copy. */
+.tensionQuote {
+  position: absolute;
+  z-index: 2;
+  right: clamp(1.25rem, 5vw, 5.5rem);
+  top: clamp(1.5rem, 6vh, 4rem);
+  font-family: var(--font-family-serif);
+  font-weight: 750;
+  font-size: clamp(5rem, 12vw, 10rem);
+  line-height: 0.8;
+  color: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: -0.06em;
+}
+
+.tensionChips {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.tensionChip {
+  position: absolute;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-family: var(--font-family-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  /* Glassy chip: ink-on-dark text on a translucent ink-black plate so
+     the chips float over both the back grid and the mid orb without
+     losing legibility. */
+  color: var(--ink-on-dark);
+  background: color-mix(in srgb, var(--ink-primary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
+  backdrop-filter: blur(8px) saturate(140%);
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--ink-primary) 50%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  will-change: transform;
+}
+.tensionChip::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  vertical-align: middle;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-primary) 60%, transparent);
+}
+.tensionChip:nth-child(1) { top: 14%; left: 12%; }
+.tensionChip:nth-child(2) { top: 22%; left: 36%; }
+.tensionChip:nth-child(3) { top: 60%; left: 8%; }
+.tensionChip:nth-child(4) { top: 70%; left: 28%; }
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 3 — TURN (pin + kinetic): five editorial stages, one by one
+   ══════════════════════════════════════════════════════════════════ */
+.turnAct { position: relative; }
+
+.turnStage {
+  /* Sticks below the sticky header (72px) so the title and stages are
+     not hidden behind the navigation bar. */
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 72px);
+  height: calc(100svh - 72px);
+  overflow: hidden;
+  background: var(--ink-primary);
+  color: var(--ink-on-dark);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.turnInner {
+  position: relative;
+  z-index: 3;
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: clamp(60px, 10vh, 110px) 0 clamp(60px, 10vh, 110px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 36px;
+  align-content: start;
+}
+
+.turnHeader { max-width: 760px; }
+
+.turnHeader .issueLine {
+  color: var(--accent-primary);
+  border-left: 3px solid var(--accent-primary);
+  padding-left: 14px;
+}
+
+.turnTitle {
+  margin: 18px 0 0;
+  font-family: var(--font-family-serif);
+  color: var(--ink-on-dark);
+  font-size: clamp(2.2rem, 4.4vw, 3.8rem);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.turnList {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.turnItem {
+  padding: 18px 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  backdrop-filter: blur(8px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  /* Cue sets opacity:0 + transform via the engine */
+}
+
+.turnNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--accent-primary);
+  font-family: var(--font-family-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.turnStepTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--ink-on-dark);
+}
+
+.turnStepBody {
+  margin: 6px 0 0;
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+/* Publication flow diagram tucked into the bottom of the turn act */
+.publicationFlow {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 4%;
+  transform: translateX(-50%);
+  width: min(1180px, calc(100% - 48px));
+  padding: 18px 22px;
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.publicationFlowHeading {
+  margin: 0 0 14px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.flowConstellation {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.flowNodeItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.flowNodeCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--ink-primary) 80%, transparent);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  flex-shrink: 0;
+}
+.flowNodeCircle:hover {
+  transform: scale(1.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.flowNodeItem[data-role='researcher'] .flowNodeCircle {
+  border-color: var(--ars-researcher);
+  background: color-mix(in srgb, var(--ars-researcher) 12%, var(--ink-primary));
+}
+.flowNodeItem[data-role='researcher'] .flowNodeCircle svg { color: var(--ars-researcher); }
+
+.flowNodeItem[data-role='admin'] .flowNodeCircle {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--ink-primary));
+}
+.flowNodeItem[data-role='admin'] .flowNodeCircle svg { color: var(--accent-primary); }
+
+.flowNodeItem[data-role='reviewer'] .flowNodeCircle {
+  border-color: var(--ars-reviewer);
+  background: color-mix(in srgb, var(--ars-reviewer) 12%, var(--ink-primary));
+}
+.flowNodeItem[data-role='reviewer'] .flowNodeCircle svg { color: var(--ars-reviewer); }
+
+.flowNodeItem[data-role='catalog'] .flowNodeCircle {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--ink-primary));
+}
+.flowNodeItem[data-role='catalog'] .flowNodeCircle svg { color: var(--accent-primary); }
+
+.flowNodeRole {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ink-on-dark);
+  white-space: nowrap;
+}
+.flowNodeAction {
+  font-size: 0.66rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  text-align: center;
+  max-width: 100px;
+  line-height: 1.45;
+}
+.flowNodeNote {
+  font-size: 0.62rem;
+  font-style: italic;
+  color: var(--accent-primary);
+  text-align: center;
+  max-width: 100px;
+  line-height: 1.4;
+}
+
+.flowConnectorLine {
+  flex: 1;
+  height: 2px;
+  margin: 0 2px;
+  background: color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  position: relative;
+  align-self: center;
+  margin-top: -28px; /* align with circle centers */
+}
+.flowConnectorLine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-primary);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 600ms var(--motion-ease-standard);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 4 — SUBSTANCE (pan): cinematic role-preview window
+   Redesigned: instead of four white cards on a plain gradient, the
+   substance stage now reads like a deep "preview window" — a single
+   dark surface where role-specific workspace previews glide past the
+   visitor, each card carrying a mini-mockup of the actual UI it
+   stands in for. The horizontal pan is preserved (still the device
+   the scrollcraft grammar calls for here) but every visual element
+   is upgraded.
+   ══════════════════════════════════════════════════════════════════ */
+.substanceAct {
+  position: relative;
+  /* Deep academic-navy ground that matches the tension act so the two
+     dark sections read as one continuous world, not as two unrelated
+     panels. The outer scroll area needs a backdrop so first paint
+     doesn't flash the page canvas before the sticky stage settles. */
+  background: #0a1024;
+}
+
+/* Soft accent wash on the act's outer wrapper so the deep navy has
+   atmospheric depth even before the sticky stage is in view. */
+.substanceAct::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 90% 30%, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 70%),
+    radial-gradient(50% 50% at 5% 80%, color-mix(in srgb, var(--ars-reviewer) 12%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.substanceStage {
+  /* Sticks below the sticky header (72px) so the section heading and
+     the role cards are not hidden behind the navigation bar. */
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 72px);
+  height: calc(100svh - 72px);
+  min-height: 580px; /* a touch taller so the preview mockups fit */
+  overflow: hidden;
+  background: linear-gradient(180deg, #0a1024 0%, #060c1e 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: clamp(40px, 6vh, 60px);
+  isolation: isolate;
+}
+
+/* Atmospheric orb that follows the active role's accent color,
+   positioned behind the rail so it gives the page an ever-shifting
+   sense of "where you are" in the workspace journey. */
+.substanceStage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    60% 50% at var(--sc-role-x, 30%) 50%,
+    color-mix(in srgb, var(--sc-role-accent, var(--accent-primary)) 22%, transparent),
+    transparent 75%
+  );
+  transition: background 600ms var(--motion-ease-standard);
+}
+
+.substanceHeader {
+  position: relative;
+  z-index: 3;
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto 0;
+  padding: 0 0 18px;
+  max-width: 820px;
+}
+
+/* Two-line heading: light kicker + serif title in ink-on-dark */
+.substanceKicker {
+  margin: 0;
+  color: var(--accent-primary);
+  font-family: var(--font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.substanceKicker::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: var(--accent-primary);
+  vertical-align: middle;
+  margin-right: 10px;
+  margin-bottom: 3px;
+}
+
+.substanceTitle {
+  margin: 14px 0 0;
+  font-family: var(--font-family-serif);
+  color: var(--ink-on-dark);
+  font-size: clamp(1.8rem, 3.2vw, 2.8rem);
+  font-weight: 750;
+  letter-spacing: -0.008em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.substanceLead {
+  margin: 12px 0 0;
+  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
+  font-size: 0.94rem;
+  line-height: 1.6;
+  max-width: 56ch;
+}
+
+.substanceRail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: clamp(20px, 2.4vw, 36px);
+  padding: 12px clamp(1.25rem, 5vw, 5.5rem) 24px;
+  align-items: stretch;
+  /* scrollcraft drives translateX via [data-sc-pan]; we also set it manually */
+  width: max-content;
+  will-change: transform;
+  /* Let the rail fill the remaining stage height so cards center
+     vertically. */
+  flex: 1;
+}
+
+.substanceCard {
+  /* Cards are taller and richer — they hold a header + body + a real
+     preview mockup, not just an icon + headline + paragraph. */
+  flex: 0 0 clamp(320px, 36vw, 420px);
+  min-height: 0;
+  /* Cap height so the card fits in the sticky stage and the rail can
+     pan naturally without cards being cropped off the bottom. */
+  max-height: clamp(440px, 60vh, 540px);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border-radius: 16px;
+  /* Glassy dark surface with role-tinted edge light */
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-role, var(--accent-primary)) 8%, var(--ink-primary)) 0%, color-mix(in srgb, var(--ink-primary) 92%, #050a18 8%) 100%);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: transform 360ms var(--motion-ease-standard), box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
+  /* Edge light on the top lip — sells the "raised glass" depth cue
+     even before any content is in the card. */
+  box-shadow:
+    0 24px 48px color-mix(in srgb, var(--ink-primary) 70%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
+}
+.substanceCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    color-mix(in srgb, var(--accent-role, var(--accent-primary)) 18%, transparent) 0%,
+    transparent 60%
+  );
+}
+.substanceCard[data-active='true'] {
+  transform: translateY(-6px) scale(1.012);
+  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 50%, transparent);
+  box-shadow:
+    0 32px 64px color-mix(in srgb, var(--ink-primary) 80%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
+}
+
+.substanceCardHeader {
+  padding: 22px 22px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+}
+
+.substanceIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 18%, transparent);
+  color: var(--accent-role, var(--accent-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
+}
+
+.substanceCardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.substanceCardRole {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 80%, transparent);
+}
+.substanceCardTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  color: var(--ink-on-dark);
+  font-size: 1.18rem;
+  font-weight: 750;
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mini preview surface — a stripped-down representation of what the
+   visitor would actually see in this workspace. Not a fake dashboard;
+   a label-only schematic so the reader understands the role's surface
+   without an invented metric. */
+.substancePreview {
+  flex: 1;
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.substancePreviewRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink-on-dark) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+}
+.substancePreviewRow[data-status='active'] {
+  background: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 35%, transparent);
+  color: var(--ink-on-dark);
+}
+.substancePreviewDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-on-dark) 30%, transparent);
+  flex-shrink: 0;
+}
+.substancePreviewRow[data-status='active'] .substancePreviewDot {
+  background: var(--accent-role, var(--accent-primary));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
+}
+.substancePreviewLabel {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.substancePreviewMeta {
+  font-family: var(--font-family-mono);
+  font-size: 0.68rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+}
+
+.substanceCardFooter {
+  padding: 14px 22px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.substanceCardBody {
+  margin: 0;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
+  line-height: 1.5;
+  flex: 1;
+  max-width: 60%;
+}
+
+.substanceCardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  transition: color var(--transition-fast), gap var(--transition-fast);
+  white-space: nowrap;
+}
+.substanceCard:hover .substanceCardLink,
+.substanceCard[data-active='true'] .substanceCardLink {
+  color: var(--accent-role, var(--accent-primary));
+  gap: 10px;
+}
+
+.panProgress {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 8px;
+  z-index: 3;
+}
+.panDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+  transition: background var(--transition-fast), transform var(--transition-fast), width var(--transition-fast);
+}
+.panDot[data-active='true'] {
+  background: var(--accent-primary);
+  transform: scaleX(2.4);
+  width: auto;
+  border-radius: 3px;
+  padding: 0 8px;
+  height: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 5 — COMMITMENT (flow + spotlight): boundaries, testimonial, FAQ, CTA
+   ══════════════════════════════════════════════════════════════════ */
+.commitment { background: var(--app-canvas); }
+
+/* Spotlight wrapper — gradient follows cursor on fine pointers */
+.spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    36rem 36rem at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+    color-mix(in srgb, var(--accent-primary) 14%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--duration-emphasis) var(--motion-ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  .spotlight:hover::after { opacity: 1; }
+}
+
+/* ── Boundaries ──────────────────────────────────────────────── */
+.boundariesSection {
+  padding: clamp(60px, 9vh, 100px) 0;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  /* Default visible so content shows even if the JS reveal hook fails
+     to fire (e.g. observer misconfigured). The `not(.revealed)` state
+     re-applies the hidden styling only when JS explicitly sets up. */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+}
+.boundariesSection:not(.revealed) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.revealed { opacity: 1; transform: translateY(0); }
+
+.boundariesInner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.93fr) minmax(300px, 1.07fr);
+  gap: clamp(40px, 9vw, 110px);
+  align-items: start;
+}
+
+.boundariesTitle {
+  margin: 16px 0 0;
+  padding-left: 17px;
+  font-family: var(--font-family-serif);
+  font-size: clamp(2rem, 3.6vw, 3.2rem);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.06;
+  color: var(--ink-primary);
+  max-width: 600px;
+}
+
+.boundariesList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.boundariesItem {
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 14px;
+  color: var(--ink-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  align-items: flex-start;
+}
+.boundariesItem:last-child { border-bottom: 1px solid var(--border-subtle); }
+.boundariesItem svg { flex-shrink: 0; margin-top: 3px; color: var(--ars-reviewer); }
+
+/* ── Testimonial ──────────────────────────────────────────────── */
+.testimonialSection {
+  padding: clamp(70px, 10vh, 110px) 0;
+  background: var(--surface-paper);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 700ms var(--motion-ease-standard) 80ms, transform 700ms var(--motion-ease-standard) 80ms;
+}
+.testimonialSection:not(.revealed) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.testimonialInner {
+  width: min(900px, calc(100% - 48px));
+  margin: 0 auto;
+  text-align: center;
+}
+
+.testimonialMark {
+  display: block;
+  font-family: var(--font-family-serif);
+  font-size: 8rem;
+  font-weight: 900;
+  line-height: 0.6;
+  color: var(--accent-primary);
+  opacity: 0.32;
+  margin-bottom: 28px;
+  user-select: none;
+}
+
+.testimonialQuote {
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-primary);
+  max-width: 820px;
+  margin: 0 auto;
+  letter-spacing: 0;
+}
+
+.testimonialAttribution {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.testimonialName {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink-primary);
+  letter-spacing: 0.02em;
+}
+.testimonialRole {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+/* ── FAQ ──────────────────────────────────────────────────────── */
+.faqSection {
+  padding: clamp(60px, 9vh, 100px) 0;
+  background: var(--app-canvas);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+}
+.faqSection:not(.revealed) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.faqInner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(340px, 1.22fr);
+  gap: clamp(40px, 9vw, 110px);
+  align-items: start;
+}
+
+.faqIntro .issueLine { color: var(--accent-primary); border-left-color: var(--accent-primary); padding-left: 14px; }
+.faqTitle {
+  margin: 16px 0 0;
+  padding-left: 17px;
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.06;
+  color: var(--ink-primary);
+}
+
+.faqList {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.faqItem {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.faqItem summary {
+  position: relative;
+  padding: 22px 38px 22px 0;
+  cursor: pointer;
+  font-family: var(--font-family-serif);
+  font-size: 1.15rem;
+  font-weight: 750;
+  line-height: 1.35;
+  list-style: none;
+  color: var(--ink-primary);
+  transition: color var(--transition-fast);
+}
+.faqItem summary::-webkit-details-marker { display: none; }
+.faqItem summary:hover { color: var(--accent-hover); }
+.faqItem summary::after {
+  content: '+';
+  position: absolute;
+  top: 18px;
+  right: 2px;
+  color: var(--accent-primary);
+  font-family: system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1;
+  transition: content var(--transition-fast);
+}
+.faqItem[open] summary::after { content: '−'; }
+
+.faqItem p {
+  max-width: 680px;
+  margin: -4px 0 22px;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.72;
+}
+
+/* ── CTA ──────────────────────────────────────────────────────── */
+.ctaSection {
+  position: relative;
+  z-index: 2;
+  min-height: clamp(320px, 60vh, 480px);
+  padding: clamp(60px, 9vh, 110px) 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--ink-primary);
+  color: var(--ink-on-dark);
+  overflow: hidden;
+  /* Default to visible — the JS-driven reveal transition is the only
+     thing keeping this at opacity:0 if the observer misfires. We start
+     visible and the reveal only ADDS the rise animation. */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+}
+
+/* Reveal state: hidden BELOW the fold until IntersectionObserver fires,
+   then rises into place. The CSS uses `transform: translateY(24px)`
+   only when the observer hasn't yet attached the `seen` class. */
+.ctaSection:not(.revealed) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.ctaSection .issueLine {
+  color: var(--accent-primary);
+  border-left-color: var(--accent-primary);
+  padding-left: 14px;
+}
+
+.ctaTitle {
+  margin: 18px auto 0;
+  max-width: 760px;
+  padding-left: 17px;
+  font-family: var(--font-family-serif);
+  font-size: clamp(2rem, 4.4vw, 3.8rem);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.04;
+  color: var(--ink-on-dark);
+}
+
+.ctaActions {
+  position: relative;
+  z-index: 2;
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.ctaSection .textLink {
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+}
+.ctaSection .textLink:hover { color: var(--accent-primary); }
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.footer {
+  color: var(--ink-on-dark);
+  background: color-mix(in srgb, var(--ink-primary) 88%, transparent);
+  border-top: 1px solid var(--border-subtle);
+}
+.footerInner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.footerBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  font-weight: 750;
+  text-decoration: none;
+}
+.footerBrand img { width: 40px; height: 40px; object-fit: cover; }
+.footerBrand span { font-family: var(--font-family-serif); font-size: 0.95rem; color: var(--ink-on-dark); }
+.footerNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  align-items: center;
+}
+.footerNav a {
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  font-size: 0.83rem;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  transition: color var(--transition-fast);
+}
+.footerNav a:hover { color: var(--accent-primary); text-decoration: underline; }
+.footerCopy {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding-bottom: 28px;
+  padding-top: 20px;
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 35%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+}
+
+/* ── Reduced motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .heroHintLine { animation: none !important; }
+  .heroVideo,
+  .heroPoster { transition: none !important; }
+  .revealed,
+  .boundariesSection,
+  .testimonialSection,
+  .faqSection,
+  .ctaSection {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ── Responsive — Tablet ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .navigation { display: none; }
+  .tensionCopy {
+    left: clamp(1.25rem, 5vw, 5.5rem);
+    right: clamp(1.25rem, 5vw, 5.5rem);
+    text-align: left;
+    max-width: none;
+    bottom: clamp(2.5rem, 10vh, 7rem);
+  }
+  .tensionBody { margin-left: 0; }
+  .flowConstellation { flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .flowConnectorLine { display: none; }
+  .boundariesInner,
+  .faqInner { grid-template-columns: 1fr; gap: 0; }
+  .footerInner { flex-direction: column; align-items: flex-start; gap: 20px; }
+}
+
+/* ── Responsive — Mobile ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  .brand span { display: none; }
+  .heroCopy {
+    left: clamp(1rem, 4vw, 1.25rem);
+    right: clamp(1rem, 4vw, 1.25rem);
+    bottom: clamp(2rem, 8vh, 5rem);
+  }
+  .heroTitle { font-size: clamp(2.4rem, 10vw, 3.4rem); }
+  .heroMetrics { gap: 16px; }
+  .metricDivider { display: none; }
+  .heroActions { flex-direction: column; align-items: stretch; }
+  .heroActions .primaryButton,
+  .heroActions .textLink { width: 100%; justify-content: center; }
+  .tensionChips { display: none; }
+  .turnInner { padding: clamp(40px, 8vh, 70px) 0; }
+  .turnList { grid-template-columns: 1fr; }
+  .publicationFlow { padding: 14px 14px; }
+  .flowNodeCircle { width: 40px; height: 40px; }
+  .flowNodeRole { font-size: 0.66rem; }
+  .flowNodeAction { font-size: 0.6rem; max-width: 80px; }
+  .flowNodeNote { display: none; }
+  .substanceCard { flex: 0 0 86vw; min-height: 0; padding: 28px; }
+  .footerCopy { padding-top: 16px; }
+}

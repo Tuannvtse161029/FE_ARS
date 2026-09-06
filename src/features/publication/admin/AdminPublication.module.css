@@ -868,8 +868,18 @@
 }
 
 .publishButton:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-network);
+  color: var(--ars-ink-muted);
+}
+
+.publishButton:disabled:hover {
+  transform: none;
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-network);
+  color: var(--ars-ink-muted);
 }
 
 .publishedBadge {

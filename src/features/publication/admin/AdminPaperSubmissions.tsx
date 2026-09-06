@@ -92,8 +92,25 @@ const formatVerification = (status: string | undefined): string => {
 // Helper to know whether the researcher identity has reached a terminal
 // state (no further Accept/Reject button is meaningful). For REJECTED
 // identities the only follow-up is a manual reset — not exposed here.
-const isIdentityTerminal = (status: string | undefined): boolean => {
-  return (status ?? '').toUpperCase() === 'REJECTED';
+//
+// ALSO true when the manuscript editorial state is already terminal
+// (ADMIN_REJECTED / PUBLISHED / INACTIVE / WITHDRAWN) — once Admin has
+// terminated the manuscript, the identity question is moot: the paper
+// cannot be advanced to reviewer assignment in any form, so the
+// Accept / Reject buttons MUST disappear even if the cached localStorage
+// value hasn't been refreshed yet.
+const isIdentityTerminal = (
+  status: string | undefined,
+  editorialStatus: string | undefined,
+): boolean => {
+  if ((status ?? '').toUpperCase() === 'REJECTED') return true;
+  const editorial = (editorialStatus ?? '').toUpperCase();
+  return (
+    editorial === 'ADMIN_REJECTED' ||
+    editorial === 'PUBLISHED' ||
+    editorial === 'INACTIVE' ||
+    editorial === 'WITHDRAWN'
+  );
 };
 
 // Helper to get editorial-status (manuscript pipeline) badge CSS class.
@@ -435,7 +452,12 @@ export const AdminPaperSubmissions = () => {
                           >
                             {formatVerification(paper.researcherVerificationStatus)}
                           </span>
-                          {!isAuthorshipAllowed(paper) && !isIdentityTerminal(paper.researcherVerificationStatus) && (
+                          {/* Only show Accept/Reject buttons when:
+                              1. Authorship is NOT already allowed (not verified/allowed)
+                              2. Identity is NOT in a terminal state (not rejected, not ADMIN_REJECTED, etc.)
+                              Once admin rejects a paper, the identity buttons must disappear.
+                          */}
+                          {!isAuthorshipAllowed(paper) && !isIdentityTerminal(paper.researcherVerificationStatus, paper.status) && (
                             <div className={adminStyles.rowActionGroup}>
                               <button
                                 type="button"
