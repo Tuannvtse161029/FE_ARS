@@ -16,11 +16,8 @@ import { type Medal, type MedalTier } from '../../../services/medal.service';
 import { useFirebaseFileUpload } from '../../../hooks/useFirebaseFileUpload';
 import { useI18n } from '../../../i18n/I18nContext';
 import { Button } from '../../../components/Button/Button';
-import {
-  SafeMedalBadge,
-  LUCIDE_ICONS_MAP,
-  LUCIDE_ICONS_LIST,
-} from './SafeMedalBadge';
+import { SafeMedalBadge } from './SafeMedalBadge';
+import { LucideIconPicker } from './LucideIconPicker';
 import styles from './ArtworkUpload.module.css';
 
 const TIER_PREVIEW: MedalTier[] = ['Bronze', 'Silver', 'Gold', 'Platinum'];
@@ -172,23 +169,11 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
               <span className={styles.iconPickerLabel}>
                 {copy('Select an icon from the lucide-react library:', 'Chọn biểu tượng chuẩn từ thư viện lucide-react:')}
               </span>
-              <div className={styles.iconPickerGrid}>
-                {LUCIDE_ICONS_LIST.map((item) => {
-                  const IconComp = LUCIDE_ICONS_MAP[item.name] || MedalIcon;
-                  const isSelected = imageUrl === `lucide:${item.name}`;
-                  return (
-                    <button
-                      key={item.name}
-                      type="button"
-                      className={`${styles.iconPickerItem} ${isSelected ? styles.iconPickerItemActive : ''}`}
-                      onClick={() => setImageUrl(`lucide:${item.name}`)}
-                    >
-                      <IconComp size={24} color={isSelected ? '#1d4ed8' : '#475569'} />
-                      <span>{locale === 'vi' ? item.labelVi : item.labelEn}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <LucideIconPicker
+                value={imageUrl}
+                onChange={setImageUrl}
+                id="artworkUploadIconPickerSearch"
+              />
             </div>
           )}
 

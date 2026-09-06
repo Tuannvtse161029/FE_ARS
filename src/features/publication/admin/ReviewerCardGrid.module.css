@@ -68,6 +68,112 @@
   border-color: var(--accent-primary);
 }
 
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.modeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.modeToggle:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.modeToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.modeToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.modeToggleActive,
+.modeToggleActive:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 14px;
+  border: 1px dashed var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-primary) 6%, var(--surface-raised));
+  flex-wrap: wrap;
+}
+
+.batchBarText {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.batchConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    transform 100ms ease;
+}
+
+.batchConfirm:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.batchConfirm:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.batchConfirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
 /* ── Grid ─────────────────────────────────────────────────────────── */
 .grid {
   display: grid;
@@ -401,8 +507,7 @@
 }
 
 /* ── Assign button + current badge ────────────────────────────────── */
-.assignButton {
-  border: 1px solid var(--accent-primary);
+.assignButton {  border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
   color: var(--ink-primary);
   font: var(--font-weight-semibold) var(--font-size-sm) var(--font-family-ui);
@@ -432,6 +537,108 @@
   cursor: not-allowed;
   opacity: 0.55;
   box-shadow: none;
+}
+
+.assignButtonSelected,
+.assignButtonSelected:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+/* ── Multi-select card states ─────────────────────────────────────── */
+.cardTopBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.selectCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  color: var(--ink-muted);
+  background: var(--surface-raised);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.selectCircleOn {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+.cardSelectable {
+  cursor: pointer;
+}
+
+.cardSelectable:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.cardSelected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+
+/* ── Batch confirm modal ─────────────────────────────────────────── */
+.batchConfirmIntro {
+  margin: 0 0 10px;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.batchConfirmList {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.batchConfirmItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-paper);
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+}
+
+.batchMatchBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.batchConfirmHint {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
 }
 
 .currentNote {

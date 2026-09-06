@@ -269,6 +269,7 @@
 
 .verificationVerified   { background: var(--ars-success-bg); color: var(--ars-success); }
 .verificationPending    { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.verificationRejected   { background: var(--ars-error-bg); color: var(--ars-error); }
 .verificationUnverified { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
 
 /* ── Editorial Status (manuscript pipeline) ──────────────── */
