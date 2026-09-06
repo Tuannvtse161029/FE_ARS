@@ -45,6 +45,7 @@ export interface PublicationAdapter {
     specializedCriteria?: Partial<SpecializedCriteriaBundle>,
   ): Promise<PublicationPaper>;
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
+  assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper>;
   assignReviewersAuto(id: string, reviewerCount?: number): Promise<unknown>;
   verifyAuthorship(id: string, allow?: boolean): Promise<PublicationPaper>;
   publishPaper(id: string): Promise<PublicationPaper>;
@@ -558,6 +559,28 @@ class ApiPublicationAdapter implements PublicationAdapter {
       type: 'Editorial',
     });
     return toPublicationPaper(await paperService.getById(id), request);
+  }
+
+  async assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper> {
+    const normalizedIds = Array.from(
+      new Set(reviewerIds.filter((reviewerId) => Number.isInteger(reviewerId) && reviewerId > 0)),
+    );
+    if (normalizedIds.length === 0) {
+      throw new PublicationBackendContractError('Select at least one reviewer.');
+    }
+    if (normalizedIds.length > 3) {
+      throw new PublicationBackendContractError('A paper can have at most 3 reviewers.');
+    }
+
+    // The BE manual-assignment contract accepts reviewerIds[] and returns an
+    // assignment summary rather than a full PaperResponse. Fetch the canonical
+    // paper after the mutation so callers receive the same PublicationPaper
+    // shape as assignReviewer and other adapter mutations.
+    await paperService.assignReviewersManual(Number(id), {
+      paperId: Number(id),
+      reviewerIds: normalizedIds,
+    });
+    return this.getPaperById(id);
   }
 
   async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {

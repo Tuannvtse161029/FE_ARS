@@ -57,6 +57,12 @@ export interface GetPapersParams extends PaginationParams {
   status?: string;
 }
 
+/** Exact `ManualAssignReviewersRequest` shape from the checked-in OpenAPI contract. */
+export interface ManualAssignReviewersRequest {
+  paperId: number;
+  reviewerIds: number[];
+}
+
 export const paperService = {
   getAll: async (
     params?: GetPapersParams,
@@ -102,6 +108,21 @@ export const paperService = {
       API_ENDPOINTS.PAPER.ASSIGN_REVIEWERS(id),
       null,
       { params: { reviewerCount } },
+    );
+    return response.data;
+  },
+
+  // Manual reviewer assignment — Admin picks up to 3 specific reviewers and
+  // the BE assigns the paper directly. The FE never decides the
+  // reviewers on its own; the IDs come from the admin's selections in
+  // the ReviewerCardGrid.
+  assignReviewersManual: async (
+    id: string | number,
+    data: ManualAssignReviewersRequest,
+  ): Promise<unknown> => {
+    const response = await api.post(
+      API_ENDPOINTS.PAPER.ASSIGN_REVIEWERS_MANUAL(id),
+      data,
     );
     return response.data;
   },

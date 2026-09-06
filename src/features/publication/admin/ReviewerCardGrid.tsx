@@ -11,8 +11,14 @@
  *   2. Then ascending pending-review count (workload-balanced)
  *   3. Then alphabetical by full name
  *
- * 9 cards per page (3×3). Two confirm/feedback modals own the mutation:
- * a confirmation modal before sending, and a success/failure modal after.
+ * 9 cards per page (3×3). The grid supports two interaction modes:
+ *   - single-select (default): each card has an "Assign" button
+ *   - multi-select: a mode-toggle button switches the grid into a checkbox
+ *     layout where the admin can pick up to 3 reviewers and confirm them as a
+ *     batch via the parent's `onAssignMany(reviewerIds[])` callback.
+ *
+ * The grid still owns its confirmation / feedback modals so the caller does
+ * not need to render any extra UI.
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -20,6 +26,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  CircleCheck,
   Loader2,
   Sparkles,
   Users,
@@ -41,6 +49,12 @@ interface ReviewerCardGridProps {
    *  rejects when it fails. The grid maps those outcomes to its own feedback
    *  modal, so the caller does not need to render any extra UI. */
   onAssign: (reviewerId: number) => Promise<void>;
+  /** Receives up to 3 reviewer IDs when the admin uses the multi-select
+   *  confirm action. The grid enforces the 3-reviewer cap. */
+  onAssignMany?: (reviewerIds: number[]) => Promise<void>;
+  /** Maximum number of reviewers allowed in multi-select mode. Defaults
+   *  to 3, which is the BE cap for manual reviewer assignment. */
+  maxBatchSize?: number;
 }
 
 interface ReviewerRow {
@@ -49,10 +63,13 @@ interface ReviewerRow {
   pendingCount: number;
 }
 
-type ConfirmState = { reviewer: ReviewerRow } | null;
+type ConfirmState =
+  | { kind: 'single'; reviewer: ReviewerRow }
+  | { kind: 'batch'; reviewers: ReviewerRow[] }
+  | null;
 
 type FeedbackState =
-  | { kind: 'success'; reviewerName: string }
+  | { kind: 'success'; reviewerName: string; reviewerCount?: number }
   | { kind: 'error'; message: string }
   | null;
 
@@ -84,6 +101,8 @@ export const ReviewerCardGrid = ({
   currentReviewerId,
   isAssigning,
   onAssign,
+  onAssignMany,
+  maxBatchSize = 3,
 }: ReviewerCardGridProps): JSX.Element => {
   const [reviewers, setReviewers] = useState<ReviewerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +111,13 @@ export const ReviewerCardGrid = ({
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  // Multi-select state. When `multiSelect` is true, cards render a
+  // selection circle instead of a per-card "Assign" button and the
+  // toolbar exposes a batch-assign action.
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const supportsBatchAssign = typeof onAssignMany === 'function';
 
   useEffect(() => {
     let active = true;
@@ -178,20 +204,77 @@ export const ReviewerCardGrid = ({
     setPage(1);
   }, [search]);
 
-  const handleConfirm = async (row: ReviewerRow) => {
-    const reviewerName = row.user.fullName?.trim() || `Reviewer #${row.user.id}`;
+  const handleConfirm = async (state: Exclude<ConfirmState, null>) => {
     setConfirm(null);
     try {
-      await onAssign(row.user.id);
-      setFeedback({ kind: 'success', reviewerName });
+      if (state.kind === 'single') {
+        await onAssign(state.reviewer.user.id);
+        const reviewerName = state.reviewer.user.fullName?.trim() ||
+          `Reviewer #${state.reviewer.user.id}`;
+        setFeedback({ kind: 'success', reviewerName });
+      } else {
+        // Batch assign. Caller is responsible for the BE call.
+        const ids = state.reviewers.map((row) => row.user.id);
+        if (onAssignMany) {
+          await onAssignMany(ids);
+        } else {
+          // Should not be reachable — batch confirm is only opened when
+          // the parent supplied onAssignMany — but guard anyway.
+          throw new Error('Batch assign is not supported by the parent.');
+        }
+        const joined = state.reviewers
+          .map((row) => row.user.fullName?.trim() || `Reviewer #${row.user.id}`)
+          .join(', ');
+        setFeedback({
+          kind: 'success',
+          reviewerName: joined,
+          reviewerCount: state.reviewers.length,
+        });
+        // Clear the multi-select basket on success — the paper now has its
+        // reviewers, and the admin can switch back to single-select mode
+        // (or start a fresh batch) without stale selections lingering.
+        setSelectedIds(new Set());
+      }
     } catch (e) {
       setFeedback({
         kind: 'error',
         message:
-          e instanceof Error ? e.message : 'The reviewer could not be assigned.',
+          e instanceof Error ? e.message : 'The reviewer(s) could not be assigned.',
       });
     }
   };
+
+  const toggleSelect = (row: ReviewerRow): void => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(row.user.id)) {
+        next.delete(row.user.id);
+        return next;
+      }
+      // Cap the selection at the BE-enforced maximum. If we are already at
+      // the cap, refuse the new selection rather than silently dropping it
+      // — admins need to see why a click "did nothing".
+      if (next.size >= maxBatchSize) {
+        setFeedback({
+          kind: 'error',
+          message: `You can assign at most ${maxBatchSize} reviewers at once. Remove one first.`,
+        });
+        return prev;
+      }
+      next.add(row.user.id);
+      return next;
+    });
+  };
+
+  const exitMultiSelect = (): void => {
+    setMultiSelect(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectedRows = useMemo<ReviewerRow[]>(
+    () => reviewers.filter((row) => selectedIds.has(row.user.id)),
+    [reviewers, selectedIds],
+  );
 
   if (loading) {
     return (
@@ -241,29 +324,85 @@ export const ReviewerCardGrid = ({
     <div className={styles.shell}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarLabel}>
-          Choose a reviewer
+          {multiSelect
+            ? `Pick up to ${maxBatchSize} reviewers`
+            : 'Choose a reviewer'}
           <span className={styles.toolbarCount}>
             {sorted.length} reviewer{sorted.length === 1 ? '' : 's'}
             {paperSubFieldId != null && paperSubFieldName
               ? ` · subfield: ${paperSubFieldName}`
               : ''}
+            {multiSelect
+              ? ` · ${selectedIds.size}/${maxBatchSize} selected`
+              : ''}
           </span>
         </div>
-        <input
-          className={styles.search}
-          type="text"
-          placeholder="Search by name, email, or field"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          aria-label="Search reviewers"
-        />
+        <div className={styles.toolbarActions}>
+          <input
+            className={styles.search}
+            type="text"
+            placeholder="Search by name, email, or field"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label="Search reviewers"
+          />
+          {supportsBatchAssign ? (
+            <button
+              type="button"
+              className={`${styles.modeToggle} ${multiSelect ? styles.modeToggleActive : ''}`}
+              onClick={() => (multiSelect ? exitMultiSelect() : setMultiSelect(true))}
+              disabled={isAssigning}
+              aria-pressed={multiSelect}
+              title={
+                multiSelect
+                  ? 'Switch back to assigning one reviewer at a time.'
+                  : `Pick up to ${maxBatchSize} reviewers and assign them in a single batch.`
+              }
+              data-testid="reviewer-multi-toggle"
+            >
+              {multiSelect ? (
+                <>
+                  <X size={14} aria-hidden="true" /> Exit multi-select
+                </>
+              ) : (
+                <>
+                  <CircleCheck size={14} aria-hidden="true" /> Pick multiple
+                </>
+              )}
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {multiSelect ? (
+        <div className={styles.batchBar} role="status" aria-live="polite">
+          <span className={styles.batchBarText}>
+            {selectedIds.size === 0
+              ? 'Tick up to 3 reviewers to assign them together.'
+              : `${selectedIds.size} reviewer${selectedIds.size === 1 ? '' : 's'} selected.`}
+          </span>
+          <button
+            type="button"
+            className={styles.batchConfirm}
+            disabled={isAssigning || selectedIds.size === 0}
+            onClick={() => {
+              if (selectedRows.length === 0) return;
+              setConfirm({ kind: 'batch', reviewers: selectedRows });
+            }}
+            data-testid="reviewer-batch-confirm"
+          >
+            <CircleCheck size={14} aria-hidden="true" />
+            Assign {selectedIds.size || ''} reviewer{selectedIds.size === 1 ? '' : 's'}
+          </button>
+        </div>
+      ) : null}
 
       <div className={styles.grid}>
         {pageItems.map((row) => {
           const isMatch =
             paperSubFieldId != null && row.profile?.subFieldId === paperSubFieldId;
           const isCurrent = currentReviewerId != null && row.user.id === currentReviewerId;
+          const isSelected = selectedIds.has(row.user.id);
           return (
             <article
               key={row.user.id}
@@ -271,10 +410,33 @@ export const ReviewerCardGrid = ({
                 styles.card,
                 isMatch ? styles.cardMatch : '',
                 isCurrent ? styles.cardCurrent : '',
+                isSelected ? styles.cardSelected : '',
+                multiSelect ? styles.cardSelectable : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
               aria-label={`Reviewer ${row.user.fullName ?? row.user.id}`}
+              data-testid={`reviewer-card-${row.user.id}`}
+              onClick={
+                multiSelect
+                  ? () => {
+                      if (!isAssigning) toggleSelect(row);
+                    }
+                  : undefined
+              }
+              role={multiSelect ? 'button' : undefined}
+              aria-pressed={multiSelect ? isSelected : undefined}
+              tabIndex={multiSelect ? 0 : undefined}
+              onKeyDown={
+                multiSelect
+                  ? (event) => {
+                      if (event.key === ' ' || event.key === 'Enter') {
+                        event.preventDefault();
+                        if (!isAssigning) toggleSelect(row);
+                      }
+                    }
+                  : undefined
+              }
             >
               <div className={styles.cardTopRow}>
                 <div className={styles.identity}>
@@ -299,14 +461,24 @@ export const ReviewerCardGrid = ({
                     </p>
                   </div>
                 </div>
-                {isMatch ? (
-                  <span
-                    className={styles.matchBadge}
-                    title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
-                  >
-                    <Sparkles size={11} aria-hidden="true" /> Best match
-                  </span>
-                ) : null}
+                <div className={styles.cardTopBadges}>
+                  {multiSelect ? (
+                    <span
+                      className={`${styles.selectCircle} ${isSelected ? styles.selectCircleOn : ''}`}
+                      aria-hidden="true"
+                    >
+                      {isSelected ? <CircleCheck size={14} /> : <Circle size={14} />}
+                    </span>
+                  ) : null}
+                  {isMatch ? (
+                    <span
+                      className={styles.matchBadge}
+                      title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
+                    >
+                      <Sparkles size={11} aria-hidden="true" /> Best match
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className={styles.section}>
@@ -360,16 +532,48 @@ export const ReviewerCardGrid = ({
                 <WorkloadPill count={row.pendingCount} />
               </div>
 
-              <button
-                type="button"
-                className={styles.assignButton}
-                disabled={isAssigning}
-                onClick={() => setConfirm({ reviewer: row })}
-                aria-label={`Assign ${row.user.fullName ?? 'this reviewer'} to this paper`}
-              >
-                {isCurrent ? 'Reassign Reviewer' : 'Assign Reviewer'}
-              </button>
-              {isCurrent ? <small className={styles.currentNote}>Currently assigned</small> : null}
+              {multiSelect ? (
+                <button
+                  type="button"
+                  className={`${styles.assignButton} ${isSelected ? styles.assignButtonSelected : ''}`}
+                  disabled={isAssigning}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSelect(row);
+                  }}
+                  aria-pressed={isSelected}
+                  aria-label={
+                    isSelected
+                      ? `Remove ${row.user.fullName ?? 'this reviewer'} from the batch`
+                      : `Add ${row.user.fullName ?? 'this reviewer'} to the batch`
+                  }
+                  data-testid={`reviewer-toggle-${row.user.id}`}
+                >
+                  {isSelected ? (
+                    <>
+                      <CircleCheck size={13} aria-hidden="true" /> Selected
+                    </>
+                  ) : (
+                    <>
+                      <Circle size={13} aria-hidden="true" /> Select
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.assignButton}
+                  disabled={isAssigning}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setConfirm({ kind: 'single', reviewer: row });
+                  }}
+                  aria-label={`Assign ${row.user.fullName ?? 'this reviewer'} to this paper`}
+                >
+                  {isCurrent ? 'Reassign Reviewer' : 'Assign Reviewer'}
+                </button>
+              )}
+              {!multiSelect && isCurrent ? <small className={styles.currentNote}>Currently assigned</small> : null}
             </article>
           );
         })}
@@ -402,21 +606,38 @@ export const ReviewerCardGrid = ({
       </nav>
 
       {confirm ? (
-        <ReviewerAssignConfirmModal
-          reviewerName={
-            confirm.reviewer.user.fullName?.trim() ||
-            `Reviewer #${confirm.reviewer.user.id}`
-          }
-          isMatch={
-            paperSubFieldId != null &&
-            confirm.reviewer.profile?.subFieldId === paperSubFieldId
-          }
-          isSubmitting={isAssigning}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => {
-            void handleConfirm(confirm.reviewer);
-          }}
-        />
+        confirm.kind === 'single' ? (
+          <ReviewerAssignConfirmModal
+            reviewerName={
+              confirm.reviewer.user.fullName?.trim() ||
+              `Reviewer #${confirm.reviewer.user.id}`
+            }
+            isMatch={
+              paperSubFieldId != null &&
+              confirm.reviewer.profile?.subFieldId === paperSubFieldId
+            }
+            isSubmitting={isAssigning}
+            onCancel={() => setConfirm(null)}
+            onConfirm={() => {
+              void handleConfirm(confirm);
+            }}
+          />
+        ) : (
+          <ReviewerBatchAssignConfirmModal
+            reviewers={confirm.reviewers.map((row) => ({
+              id: row.user.id,
+              name: row.user.fullName?.trim() || `Reviewer #${row.user.id}`,
+              isMatch:
+                paperSubFieldId != null &&
+                row.profile?.subFieldId === paperSubFieldId,
+            }))}
+            isSubmitting={isAssigning}
+            onCancel={() => setConfirm(null)}
+            onConfirm={() => {
+              void handleConfirm(confirm);
+            }}
+          />
+        )
       ) : null}
 
       {feedback ? (
@@ -545,6 +766,8 @@ const ReviewerAssignFeedbackModal = ({ feedback, onClose }: FeedbackModalProps):
     if (event.target === event.currentTarget) onClose();
   };
   const isSuccess = feedback.kind === 'success';
+  const isBatch =
+    isSuccess && typeof feedback.reviewerCount === 'number' && feedback.reviewerCount > 1;
   return (
     <div className={styles.backdrop} role="presentation" onMouseDown={backdropMouseDown}>
       <div
@@ -565,7 +788,11 @@ const ReviewerAssignFeedbackModal = ({ feedback, onClose }: FeedbackModalProps):
               <AlertCircle size={18} aria-hidden="true" />
             )}
             <h2 id="reviewer-feedback-title">
-              {isSuccess ? 'Reviewer assigned' : 'Could not assign reviewer'}
+              {isSuccess
+                ? isBatch
+                  ? `Assigned ${feedback.reviewerCount} reviewers`
+                  : 'Reviewer assigned'
+                : 'Could not assign reviewer'}
             </h2>
           </div>
           <button
@@ -579,11 +806,19 @@ const ReviewerAssignFeedbackModal = ({ feedback, onClose }: FeedbackModalProps):
         </header>
         <p className={styles.modalBody}>
           {isSuccess ? (
-            <>
-              “{feedback.reviewerName}” has been notified. The paper is now
-              in <strong>Reviewer Assigned</strong> status and waits for their
-              response.
-            </>
+            isBatch ? (
+              <>
+                {feedback.reviewerName} have been notified. The paper is now in
+                <strong> Reviewer Assigned</strong> status and waits for their
+                responses.
+              </>
+            ) : (
+              <>
+                “{feedback.reviewerName}” has been notified. The paper is now
+                in <strong>Reviewer Assigned</strong> status and waits for their
+                response.
+              </>
+            )
           ) : (
             feedback.message
           )}
@@ -591,6 +826,101 @@ const ReviewerAssignFeedbackModal = ({ feedback, onClose }: FeedbackModalProps):
         <footer className={styles.modalFooter}>
           <button type="button" className={styles.confirmButton} onClick={onClose}>
             {isSuccess ? 'Got it' : 'Try again'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+interface BatchConfirmModalProps {
+  reviewers: Array<{ id: number; name: string; isMatch: boolean }>;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+const ReviewerBatchAssignConfirmModal = ({
+  reviewers,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: BatchConfirmModalProps): JSX.Element => {
+  const backdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget && !isSubmitting) onCancel();
+  };
+  return (
+    <div className={styles.backdrop} role="presentation" onMouseDown={backdropMouseDown}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reviewer-batch-confirm-title"
+      >
+        <header className={styles.modalHeader}>
+          <div className={styles.modalHeading}>
+            <CircleCheck size={18} aria-hidden="true" />
+            <h2 id="reviewer-batch-confirm-title">
+              Assign {reviewers.length} reviewer{reviewers.length === 1 ? '' : 's'}?
+            </h2>
+          </div>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onCancel}
+            disabled={isSubmitting}
+            aria-label="Close confirmation"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+        <div className={styles.modalBody}>
+          <p className={styles.batchConfirmIntro}>
+            Each of these reviewers will be asked to review the paper
+            (matching subfields are marked):
+          </p>
+          <ul className={styles.batchConfirmList}>
+            {reviewers.map((reviewer) => (
+              <li key={reviewer.id} className={styles.batchConfirmItem}>
+                <span>{reviewer.name}</span>
+                {reviewer.isMatch ? (
+                  <span className={styles.batchMatchBadge}>Best match</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <p className={styles.batchConfirmHint}>
+            Each reviewer receives an independent notification and 14 days to
+            accept or decline.
+          </p>
+        </div>
+        <footer className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={onConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2
+                  size={14}
+                  aria-hidden="true"
+                  className={styles.spinning}
+                />{' '}
+                Assigning…
+              </>
+            ) : (
+              `Assign ${reviewers.length} reviewer${reviewers.length === 1 ? '' : 's'}`
+            )}
           </button>
         </footer>
       </div>

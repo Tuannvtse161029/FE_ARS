@@ -5,7 +5,6 @@
  */
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import {
-  Medal as MedalIcon,
   X,
   UploadCloud,
 } from 'lucide-react';
@@ -23,10 +22,9 @@ import { useI18n } from '../../../i18n/I18nContext';
 import { Button } from '../../../components/Button/Button';
 import {
   SafeMedalBadge,
-  LUCIDE_ICONS_MAP,
-  LUCIDE_ICONS_LIST,
   resolveMedalIconName,
 } from './SafeMedalBadge';
+import { LucideIconPicker } from './LucideIconPicker';
 import styles from './TierEditor.module.css';
 
 const TIER_OPTIONS: MedalTier[] = ['Bronze', 'Silver', 'Gold', 'Platinum'];
@@ -228,25 +226,11 @@ export const TierEditor: React.FC<TierEditorProps> = ({
                 </div>
 
                 <div className={styles.iconPickerGrid}>
-                  {LUCIDE_ICONS_LIST.map((item) => {
-                    const IconComp = LUCIDE_ICONS_MAP[item.name] || MedalIcon;
-                    const isChosen = formImageUrl === `lucide:${item.name}`;
-                    return (
-                      <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => setFormImageUrl(`lucide:${item.name}`)}
-                        className={`${styles.iconPickerItem} ${isChosen ? styles.iconPickerItemActive : ''}`}
-                        title={item.name}
-                      >
-                        <IconComp
-                          size={20}
-                          color={isChosen ? '#1d4ed8' : '#475569'}
-                        />
-                        <span>{locale === 'vi' ? item.labelVi : item.labelEn}</span>
-                      </button>
-                    );
-                  })}
+                  <LucideIconPicker
+                    value={formImageUrl}
+                    onChange={setFormImageUrl}
+                    id="tierEditorIconPickerSearch"
+                  />
                 </div>
               </div>
             </div>

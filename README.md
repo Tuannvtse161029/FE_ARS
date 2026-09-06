@@ -203,7 +203,8 @@ src/
 │   └── index.ts        # Hooks barrel export
 ├── i18n/                # Internationalization
 │   ├── I18nContext.tsx # i18n provider and hooks
-│   └── translations.ts  # Vietnamese and English dictionaries
+│   ├── translations.ts  # Locale metadata + translator (no inline dicts)
+│   └── dictionaries/   # Per-locale lazy chunks (`en.ts`, `vi.ts`)
 ├── layouts/             # App layout components
 │   ├── AuthLayout.tsx  # Auth pages layout (login, register)
 │   └── MainLayout.tsx  # Main app layout with sidebar/header
@@ -292,7 +293,7 @@ The common shell includes:
 
 ## Internationalization
 
-Two dictionaries live in `src/i18n/translations.ts` — `vi` (default) and `en`. Use the `useI18n()` hook:
+Two dictionaries live in `src/i18n/dictionaries/` — `vi.ts` and `en.ts`. Each one is a separate Vite chunk, lazy-loaded on demand so the entry bundle never carries both at once (English is the default and is preloaded; Vietnamese is fetched the first time the user picks it). The provider lives in `src/i18n/I18nContext.tsx` and keeps both dictionaries in memory once loaded. Use the `useI18n()` hook:
 
 ```tsx
 import { useI18n } from '@/i18n/I18nContext';

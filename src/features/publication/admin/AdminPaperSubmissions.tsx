@@ -62,14 +62,38 @@ const getVerificationBadgeClass = (status: string | undefined): string => {
       return adminStyles.verificationVerified;
     case 'PENDING':
       return adminStyles.verificationPending;
+    case 'REJECTED':
+      return adminStyles.verificationRejected;
     default:
       return adminStyles.verificationUnverified;
   }
 };
 
-// Helper to format researcher-verification label
+// Helper to format researcher-verification label — render human-readable
+// copy rather than the raw enum token so admins do not see the row say
+// "PENDING" after they have already acted.
 const formatVerification = (status: string | undefined): string => {
-  return status ?? 'UNVERIFIED';
+  switch ((status ?? '').toUpperCase()) {
+    case 'VERIFIED':
+    case 'ALLOW':
+    case 'ALLOWED':
+      return 'Verified';
+    case 'PENDING':
+      return 'Awaiting review';
+    case 'REJECTED':
+      return 'Rejected';
+    case 'UNVERIFIED':
+      return 'Unverified';
+    default:
+      return status ?? 'Unverified';
+  }
+};
+
+// Helper to know whether the researcher identity has reached a terminal
+// state (no further Accept/Reject button is meaningful). For REJECTED
+// identities the only follow-up is a manual reset — not exposed here.
+const isIdentityTerminal = (status: string | undefined): boolean => {
+  return (status ?? '').toUpperCase() === 'REJECTED';
 };
 
 // Helper to get editorial-status (manuscript pipeline) badge CSS class.
@@ -411,7 +435,7 @@ export const AdminPaperSubmissions = () => {
                           >
                             {formatVerification(paper.researcherVerificationStatus)}
                           </span>
-                          {!isAuthorshipAllowed(paper) && (
+                          {!isAuthorshipAllowed(paper) && !isIdentityTerminal(paper.researcherVerificationStatus) && (
                             <div className={adminStyles.rowActionGroup}>
                               <button
                                 type="button"
@@ -582,7 +606,15 @@ export const AdminPaperSubmissions = () => {
           onConfirm={(reason) => {
             setRejecting(true);
             void publicationAdapter.rejectPaper(rejectingPaper.id, reason)
-              .then(() => {
+              .then(async () => {
+                // Also mark the researcher identity as REJECTED so the
+                // Accept / Reject buttons disappear from the row and the
+                // identity badge stops showing "PENDING" forever.
+                try {
+                  await publicationAdapter.verifyAuthorship(rejectingPaper.id, false);
+                } catch (authorshipErr) {
+                  console.warn('Identity verification could not be updated:', authorshipErr);
+                }
                 setRejectingPaper(null);
                 return load();
               })
