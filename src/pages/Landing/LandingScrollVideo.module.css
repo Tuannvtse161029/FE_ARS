@@ -790,6 +790,13 @@
 .tensionChip:nth-child(2) { top: 22%; left: 36%; }
 .tensionChip:nth-child(3) { top: 60%; left: 8%; }
 .tensionChip:nth-child(4) { top: 70%; left: 28%; }
+/* Added in the second pass to fill the negative space on the left half
+   of the stage — chips 5-8 nestle into the gaps between the original
+   four and the lower band of the layer. */
+.tensionChip:nth-child(5) { top: 32%; left: 20%; }
+.tensionChip:nth-child(6) { top: 46%; left: 6%; }
+.tensionChip:nth-child(7) { top: 78%; left: 16%; }
+.tensionChip:nth-child(8) { top: 84%; left: 36%; }
 
 /* ══════════════════════════════════════════════════════════════════
    ACT 3 — TURN (pin + kinetic): five editorial stages, one by one
@@ -1135,8 +1142,8 @@
   position: relative;
   z-index: 2;
   display: flex;
-  gap: clamp(20px, 2.4vw, 36px);
-  padding: 12px clamp(1.25rem, 5vw, 5.5rem) 24px;
+  gap: clamp(16px, 1.8vw, 26px);
+  padding: 12px clamp(1rem, 4vw, 4.5rem) 24px;
   align-items: stretch;
   /* scrollcraft drives translateX via [data-sc-pan]; we also set it manually */
   width: max-content;
@@ -1148,8 +1155,12 @@
 
 .substanceCard {
   /* Cards are taller and richer — they hold a header + body + a real
-     preview mockup, not just an icon + headline + paragraph. */
-  flex: 0 0 clamp(320px, 36vw, 420px);
+     preview mockup, not just an icon + headline + paragraph. The
+     clamp is tightened from `clamp(320px, 36vw, 420px)` so all four
+     cards fit side-by-side at common viewport widths (≥1180px). Below
+     that the cards overflow and the rail still pans; below ~640px the
+     mobile breakpoint below takes over and stacks the rail. */
+  flex: 0 0 clamp(260px, 22vw, 300px);
   min-height: 0;
   /* Cap height so the card fits in the sticky stage and the rail can
      pan naturally without cards being cropped off the bottom. */
@@ -1164,6 +1175,8 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  text-decoration: none;
+  color: inherit;
   transition: transform 360ms var(--motion-ease-standard), box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
   /* Edge light on the top lip — sells the "raised glass" depth cue
      even before any content is in the card. */
@@ -1190,6 +1203,21 @@
     0 32px 64px color-mix(in srgb, var(--ink-primary) 80%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
+}
+/* Whole card is now a Link — give it a hover lift and a visible
+   focus ring for keyboard users. Hover lift matches the data-active
+   transform so the eye reads them as the same affordance. */
+.substanceCard:hover {
+  transform: translateY(-4px) scale(1.006);
+  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 40%, transparent);
+}
+.substanceCard:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
+  box-shadow:
+    0 24px 48px color-mix(in srgb, var(--ink-primary) 70%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 45%, transparent);
 }
 
 .substanceCardHeader {
@@ -1235,10 +1263,15 @@
   font-size: 1.18rem;
   font-weight: 750;
   letter-spacing: -0.005em;
-  line-height: 1.15;
-  white-space: nowrap;
+  line-height: 1.2;
+  /* Was `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`
+     which truncated the longer "Graduate student workspace" / "Researcher
+     workspace" titles at the new narrower card width. Clamp at two
+     lines and ellipsize anything beyond so the card stays uniform. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Mini preview surface — a stripped-down representation of what the
