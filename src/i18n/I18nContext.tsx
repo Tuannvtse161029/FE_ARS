@@ -189,17 +189,30 @@ export const useI18n = (): I18nContextValue => {
   if (ctx) return ctx;
   // Fallback for components mounted outside the provider (e.g. tests).
   // We use an empty dictionary cache so the translator still returns the
-  // fallback (or key) without ever crashing.
-  return {
-    locale: DEFAULT_LOCALE,
-    setLocale: () => {},
-    toggleLocale: () => {},
-    t: (
-      key: string,
-      fallback?: string,
-      params?: Record<string, string | number>,
-    ) => translate(DEFAULT_LOCALE, key, fallback, params, {}),
-  };
+  // fallback (or key) without ever crashing. The fallback object must be
+  // stable across renders — components that depend on `t` (and via
+  // useCallback, on the returned value) would otherwise re-render
+  // infinitely when no provider wraps them.
+  return FALLBACK_I18N;
+};
+
+/**
+ * Stable fallback value for `useI18n()` when no `<I18nProvider>` is mounted.
+ * Hoisted to module scope so returning it does NOT allocate a new object
+ * reference on every render — see the `useI18n` comment above for the
+ * re-render-infinite-loop this prevents.
+ */
+const FALLBACK_T = (
+  key: string,
+  fallback?: string,
+  params?: Record<string, string | number>,
+) => translate(DEFAULT_LOCALE, key, fallback, params, {});
+
+const FALLBACK_I18N: I18nContextValue = {
+  locale: DEFAULT_LOCALE,
+  setLocale: () => {},
+  toggleLocale: () => {},
+  t: FALLBACK_T,
 };
 
 /**

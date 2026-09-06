@@ -534,24 +534,34 @@ const AdminList = ({
                             <FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.viewEvaluation', 'View evaluation')}
                           </Link>
 
-                          {/* Publication action */}
+                          {/*
+                            Publication actions are gated STRICTLY on the paper's
+                            editorial `status` — never on
+                            `paper.reviewer?.recommendation` alone. A reviewer
+                            may have recommended ACCEPT for an earlier review
+                            round, but until Admin returns the paper to a
+                            post-recommendation state, the Publish button must
+                            remain disabled. This matches the lifecycle the
+                            admin detail page enforces via
+                            `adminActionsForStatus()` — see
+                            adminPublicationHelpers.ts.
+                          */}
                           {paper.status === 'PUBLISHED' ? (
                             <button type="button" className={adminStyles.publishButton} onClick={() => void handleDeactivate(paper)} disabled={deactivatingId === paper.id} title={t('admin.publicationLists.deactivateTooltip', 'Deactivate this published paper')}>
                               {deactivatingId === paper.id ? t('admin.publicationLists.deactivating', 'Deactivating…') : <><FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.deactivatePaper', 'Deactivate')}</>}
                             </button>
-                          ) : (paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
-                              paper.status === 'ADMIN_APPROVED' ||
-                              paper.reviewer?.recommendation === 'ACCEPT') ? (
+                          ) : paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
+                              paper.status === 'ADMIN_APPROVED' ? (
                             <button
                               type="button"
                               className={adminStyles.publishButton}
                               disabled={publishingId === paper.id}
                               onClick={() => void handlePublish(paper)}
-                              title={t('admin.publicationLists.publishTooltip', 'Publish this paper')}
+                              title={t('admin.publicationLists.publishTooltip', 'Publish this paper — only available after the reviewer recommended acceptance.')}
                             >
                               {publishingId === paper.id ? t('admin.publicationLists.publishing', 'Publishing…') : <><ExternalLink size={13} aria-hidden="true" /> {t('admin.publicationLists.publishPaper', 'Publish')}</>}
                             </button>
-                          ) : paper.status === 'REVIEWER_RECOMMENDED_REJECT' || paper.reviewer?.recommendation === 'REJECT' ? (
+                          ) : paper.status === 'REVIEWER_RECOMMENDED_REJECT' ? (
                             <button
                               type="button"
                               className={adminStyles.rejectActionButton}
@@ -561,7 +571,26 @@ const AdminList = ({
                             >
                               {t('admin.publicationLists.rejectPaper', 'Reject')}
                             </button>
-                          ) : null}
+                          ) : (
+                            // REVIEWER_ASSIGNED / UNDER_REVIEW / DRAFT /
+                            // SUBMITTED / READY_FOR_REVIEWER / etc.: render
+                            // a disabled placeholder so the Admin sees the
+                            // row still needs the reviewer to submit a
+                            // recommendation before Publish becomes
+                            // available.
+                            <button
+                              type="button"
+                              className={adminStyles.publishButton}
+                              disabled
+                              title={t(
+                                'admin.publicationLists.publishDisabledTooltip',
+                                'Publish is unlocked after the assigned reviewer submits a recommendation.',
+                              )}
+                              aria-disabled="true"
+                            >
+                              <ExternalLink size={13} aria-hidden="true" /> {t('admin.publicationLists.publishPaper', 'Publish')}
+                            </button>
+                          )}
 
                           <button
                             type="button"

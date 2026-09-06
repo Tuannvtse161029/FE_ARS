@@ -17,6 +17,12 @@ import './styles/globals.css';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })));
+// Opt-in scroll-driven landing page (video scrub + parallax + pan).
+// Mounted at /scroll-craft-landing so reviewers can switch without
+// touching the public route.
+const LandingScrollVideo = lazy(() =>
+  import('./pages/Landing').then((m) => ({ default: m.LandingScrollVideo })),
+);
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
@@ -140,6 +146,11 @@ const App = () => {
             {/* Public project introduction. It intentionally sits outside
                 PublicRoute so both signed-out and returning users can visit it. */}
             <Route path={ROUTES.LANDING} element={<Landing />} />
+
+            {/* Scroll-driven variant of the landing page. Opt-in preview
+                mount that does NOT replace the canonical landing route.
+                Visit /scroll-craft-landing to A/B compare them. */}
+            <Route path="/scroll-craft-landing" element={<LandingScrollVideo />} />
 
             {/* Public Routes */}
             <Route element={<PublicRoute />}>

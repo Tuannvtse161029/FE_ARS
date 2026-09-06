@@ -375,6 +375,19 @@
   font-weight: var(--font-weight-bold);
   transition: all var(--transition-fast);
   font-family: var(--font-family-ui);
+  position: relative;
+  user-select: none;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  z-index: 1;
 }
 
 .inspectButton {
@@ -468,6 +481,30 @@
 .retryBtn:focus-visible {
   outline: 2px solid var(--ars-admin);
   outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orcidInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border: 1px solid var(--ars-success);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* ── Spinner ────────────────────────────────────────────── */
