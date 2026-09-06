@@ -27,8 +27,12 @@ const LoadingFallback = () => (
       justifyContent: 'center',
       minHeight: 240,
       width: '100%',
-      color: '#64748b',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 'var(--radius-lg)',
+      background: 'var(--surface-sunken)',
+      color: 'var(--ink-muted)',
       fontSize: 13,
+      fontFamily: 'var(--font-family-ui)',
     }}
     role="status"
     aria-live="polite"

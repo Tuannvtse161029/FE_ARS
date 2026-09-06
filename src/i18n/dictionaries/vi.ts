@@ -260,7 +260,7 @@ export const dictionary: Dictionary = {
     'landing.workspaceReviewerBody': 'Quản lý nhiệm vụ được phân công và chấm điểm đánh giá trong quy trình phản biện.',
     'landing.workspaceLecturerTitle': 'Không gian Giảng viên',
     'landing.workspaceLecturerBody': 'Điều phối nhóm nghiên cứu, tổ chức hội thảo, chia sẻ tài liệu và quản lý các mốc tiến độ.',
-    'landing.workspaceStudentTitle': 'Không gian Học viên sau đại học',
+    'landing.workspaceStudentTitle': 'Không gian Học viên',
     'landing.workspaceStudentBody': 'Tham gia nhóm nghiên cứu, nộp báo cáo giai đoạn, học tập và cộng tác học thuật.',
     'landing.exploreCatalogs': 'Khám phá Danh mục Nghiên cứu',
     'landing.joinCommunity': 'Gia nhập Cộng đồng',

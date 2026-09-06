@@ -1,13 +1,16 @@
 /* ── Wrapper ───────────────────────────────────────────────────── */
+/* Paper Day surface — warm-white raised card with subtle border. The viewer's
+   own background is intentionally a touch warmer than the PDF page chrome,
+   so the white PDF pages read as a distinct surface. */
 .viewerWrapper {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 500px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   /* Inherit the project's UI font from the token cascade. The previous
      hard-coded `font-family: 'Inter', ...` was the only non-token font
@@ -16,14 +19,17 @@
 }
 
 /* ── Toolbar ───────────────────────────────────────────────────── */
+/* Sunken paper band so the toolbar visually separates from the white card
+   body and the white PDF page. Token-driven so it tracks both Paper Day
+   (warm cream) and Archive Dusk (deep slate) themes. */
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -35,6 +41,10 @@
   gap: 6px;
 }
 
+/* ── Nav / zoom button ──────────────────────────────────────── */
+/* Default state: white-on-light-paper control. Hover flips to the
+   gold accent (Paper Day primary surface) so it visually mirrors the
+   rest of the toolbar primary actions. */
 .navBtn,
 .zoomBtn {
   display: flex;
@@ -42,18 +52,26 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .navBtn:hover:not(:disabled),
 .zoomBtn:hover:not(:disabled) {
-  background: #e2e8f0;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+.navBtn:focus-visible,
+.zoomBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .navBtn:disabled,
@@ -69,38 +87,55 @@
   min-width: 52px;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .zoomPercent:hover {
-  background: #e2e8f0;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
+.zoomPercent:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Primary toolbar action ("Open in new tab") — uses the gold accent
+   surface with near-black ink (Paper Day rule: never white-on-yellow). */
 .toolbarOpenBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .toolbarOpenBtn:hover {
-  background: #e2e8f0;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.toolbarOpenBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .pageIndicator {
@@ -108,18 +143,25 @@
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #475569;
+  color: var(--ink-secondary);
 }
 
 .pageInput {
   width: 40px;
   height: 28px;
   text-align: center;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   font-size: 13px;
-  color: #1e293b;
-  background: #fff;
+  color: var(--ink-primary);
+  background: var(--surface-raised);
+  font-family: var(--font-family-ui);
+}
+
+.pageInput:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--accent-primary);
 }
 
 .pageInput::-webkit-inner-spin-button,
@@ -129,7 +171,7 @@
 }
 
 .pageTotal {
-  color: #64748b;
+  color: var(--ink-muted);
 }
 
 /* ── Body: sidebar + canvas ─────────────────────────────────────── */
@@ -140,13 +182,16 @@
 }
 
 /* ── Sidebar / thumbnail strip ──────────────────────────────────── */
+/* A slightly sunken band so the sidebar reads as a margin next to the
+   white page canvas. Token-driven so Paper Day and Archive Dusk both pick
+   up the correct warm / cool tone. */
 .sidebar {
   width: 140px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #f1f5f9;
-  border-right: 1px solid #e2e8f0;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 
@@ -154,15 +199,16 @@
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebarTitle {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--ink-muted);
+  font-family: var(--font-family-ui);
 }
 
 .thumbList {
@@ -181,10 +227,13 @@
   background: transparent;
 }
 .thumbList::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-strong);
   border-radius: 2px;
 }
 
+/* Thumbnail item — white-on-paper card. Hover lifts to the gold accent
+   border + warm paper surface; active state locks the same treatment so
+   the reader can always see which page is current. */
 .thumbItem {
   display: flex;
   flex-direction: column;
@@ -192,33 +241,40 @@
   gap: 4px;
   padding: 6px;
   border: 2px solid transparent;
-  border-radius: 6px;
-  background: #fff;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
   width: 100%;
+  font-family: var(--font-family-ui);
+  color: var(--ink-primary);
 }
 
 .thumbItem:hover {
-  border-color: #94a3b8;
-  background: #f8fafc;
+  border-color: var(--accent-primary);
+  background: var(--surface-paper);
 }
 
 .thumbItemActive {
-  border-color: #2563eb !important;
-  background: #eff6ff;
+  border-color: var(--accent-primary) !important;
+  background: var(--surface-selected);
+}
+
+.thumbItem:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .thumbNumber {
   font-size: 11px;
-  font-weight: 600;
-  color: #475569;
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-secondary);
 }
 
 .thumbPreview {
   width: 100%;
   aspect-ratio: 3 / 4;
-  background: #e2e8f0;
+  background: var(--surface-sunken);
   border-radius: 3px;
   overflow: hidden;
   display: flex;
@@ -239,7 +295,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  color: #94a3b8;
+  color: var(--ink-muted);
   font-size: 12px;
 }
 
@@ -247,10 +303,14 @@
   padding: 16px;
   text-align: center;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--ink-muted);
 }
 
 /* ── Canvas area ───────────────────────────────────────────────── */
+/* Warm subtle canvas so the white PDF page reads as a distinct paper,
+   matching the rest of the platform's paper-day direction. In Archive
+   Dusk this becomes a deep slate so the white PDF still reads as
+   an exposed page surface. */
 .canvasContainer {
   flex: 1;
   overflow: auto;
@@ -258,7 +318,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 24px;
-  background: #e8ecf0;
+  background: var(--app-canvas-subtle);
   position: relative;
 }
 
@@ -267,17 +327,18 @@
   height: 8px;
 }
 .canvasContainer::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--surface-sunken);
 }
 .canvasContainer::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
+/* The white PDF page canvas itself — tokenised shadows track the theme. */
 .canvas {
   display: block;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  background: var(--surface-raised);
+  box-shadow: 0 2px 12px var(--shadow-color);
   border-radius: 2px;
 }
 
@@ -290,16 +351,19 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: rgba(248, 250, 252, 0.85);
+  /* Translucent warm-paper so the canvas content stays slightly visible
+     while loading — derived from the app-canvas token (no literal). */
+  background: color-mix(in srgb, var(--app-canvas) 88%, transparent);
   font-size: 14px;
-  color: #475569;
+  color: var(--ink-secondary);
+  font-family: var(--font-family-ui);
 }
 
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #2563eb;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -321,7 +385,7 @@
   gap: 8px;
   text-align: center;
   padding: 24px;
-  color: #b91c1c;
+  color: var(--status-danger-text);
   font-size: 14px;
 }
 
@@ -330,11 +394,14 @@
 }
 
 .errorBox p {
-  color: #991b1b;
+  color: var(--status-danger-text);
   margin: 0;
 }
 
 /* ── Error card (replaces errorBox for typed errors) ───────────── */
+/* Paired semantic danger tokens so the card reads as a status surface in
+   both themes. The two variant states below switch to the warning pair for
+   recoverable (forbidden / server / network) reasons. */
 .errorCard {
   position: absolute;
   inset: 12px;
@@ -344,30 +411,31 @@
   align-items: flex-start;
   gap: 16px;
   padding: 20px 22px;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  background: #fff7f7;
-  color: #991b1b;
+  border: 1px solid var(--status-danger-text);
+  border-radius: var(--radius-lg);
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
   text-align: left;
   overflow: auto;
+  font-family: var(--font-family-ui);
 }
 
 .errorCard[data-reason='forbidden'] {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--status-warning-text);
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
 }
 
 .errorCard[data-reason='server'] {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #9a3412;
+  border-color: var(--status-warning-text);
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
 }
 
 .errorCard[data-reason='network'] {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--status-warning-text);
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
 }
 
 .errorIcon {
@@ -376,9 +444,9 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
-  background: #fef2f2;
-  color: #b91c1c;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--status-danger-text);
   flex-shrink: 0;
 }
 
@@ -392,22 +460,22 @@
 
 .errorTitle {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   color: inherit;
 }
 
 .errorMessage {
   margin: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: inherit;
 }
 
 .errorHint {
   margin: 0;
   font-size: 12px;
-  color: #7f1d1d;
-  font-weight: 400;
+  color: var(--ink-secondary);
+  font-weight: var(--font-weight-normal);
 }
 
 .errorActions {
@@ -424,32 +492,48 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
   text-decoration: none;
   cursor: pointer;
   border: 1px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
+/* Primary "Retry" CTA — gold accent with near-black ink (Paper Day rule:
+   never white-on-yellow). */
 .errorRetry {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: #fff;
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-primary);
 }
 
 .errorRetry:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
+.errorRetry:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Secondary "Open in new tab" — quiet white control with strong border. */
 .errorOpen {
-  border-color: #cbd5e1;
-  background: #fff;
-  color: #334155;
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
 }
 
 .errorOpen:hover {
-  background: #f1f5f9;
+  background: var(--surface-paper);
+}
+
+.errorOpen:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ── Empty card (no document supplied) ─────────────────────────── */
@@ -463,17 +547,18 @@
   justify-content: center;
   gap: 6px;
   padding: 24px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 10px;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
   font-size: 13px;
   text-align: center;
+  font-family: var(--font-family-ui);
 }
 
 .emptyCard strong {
   font-size: 14px;
-  color: #334155;
+  color: var(--ink-primary);
 }
 
 /* ── Responsive: stack error card on narrow panes ──────────────── */
@@ -518,17 +603,20 @@
   padding: 16px;
 }
 
-/** Confidential notice — semi-transparent so the PDF canvas remains visible beneath. */
+/** Confidential notice — warm-paper semi-transparent so the red text stays
+    legible against an arbitrary page content while keeping the Paper Day
+    warm tone (instead of cold white). */
 .protectedNotice {
   display: inline-block;
   padding: 6px 16px;
-  border: 1px solid rgba(220, 38, 38, 0.45);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--status-danger-text);
+  border-radius: var(--radius-md);
+  background: var(--status-danger-surface);
   backdrop-filter: blur(4px);
-  color: #b91c1c;
+  color: var(--status-danger-text);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -541,13 +629,14 @@
 .protectedWatermark {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.6);
-  color: #64748b;
+  border-radius: var(--radius-sm);
+  background: var(--status-danger-surface);
+  color: var(--ink-secondary);
   font-size: 10px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
-  opacity: 0.7;
+  opacity: 0.85;
 }

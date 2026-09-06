@@ -47,6 +47,9 @@ const ROLE_WORKS = [
   {
     icon: FileText,
     role: 'researcher',
+    // Researcher workspace lives behind the submission list (public deep
+    // link is the canonical landing for an authenticated researcher).
+    to: ROUTES.RESEARCHER_SUBMISSIONS,
     titleKey: 'landing.workspaceResearcherTitle',
     fallback: 'Researcher workspace',
     bodyKey: 'landing.workspaceResearcherBody',
@@ -57,6 +60,7 @@ const ROLE_WORKS = [
   {
     icon: UserCheck,
     role: 'reviewer',
+    to: ROUTES.REVIEWER_ASSIGNMENTS,
     titleKey: 'landing.workspaceReviewerTitle',
     fallback: 'Reviewer workspace',
     bodyKey: 'landing.workspaceReviewerBody',
@@ -67,6 +71,10 @@ const ROLE_WORKS = [
   {
     icon: GraduationCap,
     role: 'lecturer',
+    // Materials is the most general top-level surface a visitor can
+    // land on without first picking a group; Research Topics would have
+    // forced a group-scoped entry that doesn't exist on a fresh account.
+    to: ROUTES.LECTURER_MATERIALS,
     titleKey: 'landing.workspaceLecturerTitle',
     fallback: 'Lecturer workspace',
     bodyKey: 'landing.workspaceLecturerBody',
@@ -77,8 +85,13 @@ const ROLE_WORKS = [
   {
     icon: Network,
     role: 'student',
+    to: ROUTES.GRADUATE_STUDENT_DASHBOARD,
     titleKey: 'landing.workspaceStudentTitle',
-    fallback: 'Graduate student workspace',
+    // Was "Graduate student workspace" which repeats the STUDENT role
+    // label above and is also the longest of the four titles (so it
+    // ellipsizes inside the narrower card width). Shortened so the
+    // four cards read as one collection: <role> workspace.
+    fallback: 'Student workspace',
     bodyKey: 'landing.workspaceStudentBody',
     bodyFallback:
       'Participate in research groups, submit phased reports, track learning activity, and collaborate with peers by milestone.',
@@ -369,12 +382,21 @@ const Spotlight: React.FC<SpotlightProps> = ({ className = '', children }) => {
 // This is the bespoke interaction that lives on this site alone — it is
 // not a parameter change to any kit device.
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// Trace acts — the words along the bottom of the page describe what
+// the visitor is actually looking at in each section, not abstract
+// narrative beats. Recognition / Tension / Turn / Substance /
+// Commitment used to be writing-process labels; the page is now
+// structured around the platform itself (intro → the problem → the
+// workflow → the role workspaces → the public catalog), so the
+// marker labels should mirror that journey.
+// ════════════════════════════════════════════════════════════════
 const TRACE_ACTS = [
-  { id: 'hero', label: 'Recognition' },
-  { id: 'tension', label: 'Tension' },
-  { id: 'turn', label: 'Turn' },
-  { id: 'substance', label: 'Substance' },
-  { id: 'commitment', label: 'Commitment' },
+  { id: 'hero', label: 'Opening' },
+  { id: 'tension', label: 'The Problem' },
+  { id: 'turn', label: 'The Workflow' },
+  { id: 'substance', label: 'Workspaces' },
+  { id: 'commitment', label: 'The Catalog' },
 ] as const;
 
 const EditorialTrace: React.FC = () => {
@@ -649,7 +671,7 @@ const TensionAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string
     if (frontRef.current) frontRef.current.style.transform = `translate3d(0, ${(progress * 24).toFixed(2)}px, 0)`;
     // Chips float with their own subtle rates so they read as drifting
     // objects, not as the same image repeating.
-    const rates = [0.5, -0.4, 0.6, -0.3];
+    const rates = [0.5, -0.4, 0.6, -0.3, 0.45, -0.5, 0.35, -0.4];
     chipRefs.current.forEach((el, i) => {
       if (!el) return;
       el.style.transform = `translate3d(${(Math.sin(i) * progress * 16).toFixed(2)}px, ${(-progress * rates[i] * 24).toFixed(2)}px, 0)`;
@@ -706,12 +728,18 @@ const TensionAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string
           </p>
         </div>
 
-        {/* Floating "before" chips that parallax at slightly different rates */}
+        {/* Floating "before" chips that parallax at slightly different rates.
+            Doubled from 4 to 8 so the left half of the stage doesn't read
+            as empty against the rich parallax background. */}
         <ul className={styles.tensionChips} aria-hidden="true">
           <li ref={(el) => (chipRefs.current[0] = el)} className={styles.tensionChip}>email threads</li>
           <li ref={(el) => (chipRefs.current[1] = el)} className={styles.tensionChip}>lost PDFs</li>
           <li ref={(el) => (chipRefs.current[2] = el)} className={styles.tensionChip}>ghost reviewers</li>
           <li ref={(el) => (chipRefs.current[3] = el)} className={styles.tensionChip}>decision drift</li>
+          <li ref={(el) => (chipRefs.current[4] = el)} className={styles.tensionChip}>version chaos</li>
+          <li ref={(el) => (chipRefs.current[5] = el)} className={styles.tensionChip}>lost approvals</li>
+          <li ref={(el) => (chipRefs.current[6] = el)} className={styles.tensionChip}>deadline drift</li>
+          <li ref={(el) => (chipRefs.current[7] = el)} className={styles.tensionChip}>no audit trail</li>
         </ul>
       </div>
     </section>
@@ -920,8 +948,9 @@ const SubstanceAct: React.FC<{ t: (k: string, f: string, p?: Record<string, stri
             const isActive = ROLE_WORKS[activeIndex]?.role === role.role;
             const accentVar = role.accent.replace('var(', '').replace(')', '');
             return (
-              <article
+              <Link
                 key={role.role}
+                to={role.to}
                 className={styles.substanceCard}
                 data-role={role.role}
                 data-active={isActive}
@@ -960,11 +989,16 @@ const SubstanceAct: React.FC<{ t: (k: string, f: string, p?: Record<string, stri
                   <p className={styles.substanceCardBody}>
                     {t(role.bodyKey, role.bodyFallback)}
                   </p>
+                  {/* Whole card is the link target — keep "Explore" as a
+                      visual affordance so the cursor reads the card as
+                      clickable, but it is not the click target on its
+                      own (anchoring the entire card avoids dead zones
+                      on the right half of the card). */}
                   <span className={styles.substanceCardLink}>
                     Explore <ArrowRight size={14} aria-hidden="true" />
                   </span>
                 </footer>
-              </article>
+              </Link>
             );
           })}
         </div>

@@ -255,7 +255,7 @@ export const dictionary: Dictionary = {
     'landing.workspaceReviewerBody': 'Manage eligible assignments and provide evaluations within the review process.',
     'landing.workspaceLecturerTitle': 'Lecturer workspace',
     'landing.workspaceLecturerBody': 'Coordinate research groups, seminars, learning materials, and academic milestones.',
-    'landing.workspaceStudentTitle': 'Graduate student workspace',
+    'landing.workspaceStudentTitle': 'Student workspace',
     'landing.workspaceStudentBody': 'Participate in research groups, reports, learning activity, and academic collaboration.',
     'landing.exploreCatalogs': 'Explore Research Catalog',
     'landing.joinCommunity': 'Join the Community',
