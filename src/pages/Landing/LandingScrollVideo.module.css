@@ -228,12 +228,19 @@
   cursor: pointer;
   transition:
     background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
     transform var(--transition-fast),
     box-shadow var(--transition-fast);
 }
+/* Hover / focus-visible: darken the background and switch the text to
+   white so it stays readable. Previously the text stayed near-black on a
+   darker-yellow hover background, which read as low-contrast. */
 .primaryButton:hover,
 .primaryButton:focus-visible {
   background: var(--accent-hover);
+  color: #ffffff;
+  border-color: var(--accent-hover);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
   transform: translateY(-1px);
 }
@@ -335,11 +342,18 @@
   font-size: 0.87rem;
   font-weight: 750;
   text-decoration: none;
-  transition: background var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
+/* Same white-on-darker-yellow hover as .primaryButton so the header
+   Sign In button reads cleanly when the cursor lands on it. */
 .loginButton:hover,
 .loginButton:focus-visible {
   background: var(--accent-hover);
+  color: #ffffff;
+  border-color: var(--accent-hover);
 }
 
 /* ══════════════════════════════════════════════════════════════════

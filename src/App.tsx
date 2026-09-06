@@ -16,13 +16,12 @@ import './styles/globals.css';
 // on one of them and they share no heavy dependencies with each other.
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+// Landing page — the redesigned scroll-driven build (Layered hero
+// parallax, cinematic tension act, role-preview substance, editorial
+// trace signature). Mounted at `/` (the public landing route) and also
+// served under `/scroll-craft-landing` as a permanent URL alias so any
+// bookmarks from the A/B preview still resolve.
 const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })));
-// Opt-in scroll-driven landing page (video scrub + parallax + pan).
-// Mounted at /scroll-craft-landing so reviewers can switch without
-// touching the public route.
-const LandingScrollVideo = lazy(() =>
-  import('./pages/Landing').then((m) => ({ default: m.LandingScrollVideo })),
-);
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
@@ -147,10 +146,10 @@ const App = () => {
                 PublicRoute so both signed-out and returning users can visit it. */}
             <Route path={ROUTES.LANDING} element={<Landing />} />
 
-            {/* Scroll-driven variant of the landing page. Opt-in preview
-                mount that does NOT replace the canonical landing route.
-                Visit /scroll-craft-landing to A/B compare them. */}
-            <Route path="/scroll-craft-landing" element={<LandingScrollVideo />} />
+            {/* Permanent URL alias for the redesigned landing. Kept so
+                any `/scroll-craft-landing` bookmarks from the A/B
+                preview period still resolve to the same page. */}
+            <Route path="/scroll-craft-landing" element={<Landing />} />
 
             {/* Public Routes */}
             <Route element={<PublicRoute />}>
