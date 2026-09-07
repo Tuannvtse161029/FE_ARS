@@ -689,6 +689,48 @@ export interface MedalFamilyGroup {
 }
 
 /**
+ * Normalizes UserMedal[] data by ensuring all medals in the same family
+ * share the same imageUrl. This function extracts the nested medals from
+ * UserMedal objects, normalizes them, and reconstructs the UserMedal[]
+ * with the normalized medals.
+ *
+ * This ensures that user-facing views (Profile, UserFlairBadge) display
+ * the same consistent artwork as the Admin medal configuration page.
+ *
+ * @param userMedals - Array of UserMedal objects from API
+ * @returns UserMedal[] with normalized medal.imageUrl values within each family
+ */
+export function normalizeUserMedals(userMedals: UserMedal[]): UserMedal[] {
+  if (!Array.isArray(userMedals) || userMedals.length === 0) return userMedals;
+
+  // Extract all nested medals
+  const medals: Medal[] = userMedals
+    .map((um) => um?.medal)
+    .filter((m): m is Medal => m != null && typeof m === 'object');
+
+  if (medals.length === 0) return userMedals;
+
+  // Normalize the medals
+  const normalizedMedals = normalizeMedalFamilies(medals);
+
+  // Build a map for fast lookup: medal.id -> normalized medal
+  const normalizedMap = new Map<string, Medal>();
+  for (const m of normalizedMedals) {
+    if (m?.id) normalizedMap.set(m.id, m);
+  }
+
+  // Reconstruct UserMedal[] with normalized medals
+  return userMedals.map((um) => {
+    if (!um?.medal?.id) return um;
+    const normalizedMedal = normalizedMap.get(um.medal.id);
+    if (!normalizedMedal) return um;
+    // Only update if the imageUrl actually changed
+    if (um.medal.imageUrl === normalizedMedal.imageUrl) return um;
+    return { ...um, medal: normalizedMedal };
+  });
+}
+
+/**
  * Group medals by their metric family (code prefix). Returns the families
  * in stable order: alphabetical by family key.
  */
@@ -916,8 +958,9 @@ export const medalService = {
   async getMyMedals(): Promise<UserMedal[]> {
     try {
       const res = await api.get('/api/Medal/my-medals');
-      if (Array.isArray(res.data)) {
-        return res.data;
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        // Normalize user medal data to ensure family icons are consistent
+        return normalizeUserMedals(res.data);
       }
     } catch (err) {
       console.warn('Failed to fetch user medals:', err);
@@ -928,8 +971,9 @@ export const medalService = {
   async getUserMedals(userId: string | number): Promise<UserMedal[]> {
     try {
       const res = await api.get('/api/Medal/user/' + userId);
-      if (Array.isArray(res.data)) {
-        return res.data;
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        // Normalize user medal data to ensure family icons are consistent
+        return normalizeUserMedals(res.data);
       }
     } catch (err) {
       console.warn(`Failed to fetch medals for user ${userId}:`, err);

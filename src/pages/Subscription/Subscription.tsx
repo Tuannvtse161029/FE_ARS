@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useLocale } from '../../i18n/I18nContext';
 import { subscriptionService } from '../../services/subscription.service';
 import { PageHeader } from '../../components/PageHeader';
 import { SkeletonRow } from '../../components/SkeletonRow';
@@ -33,11 +34,15 @@ import styles from './Subscription.module.css';
 const formatVnd = (value: number): string =>
   new Intl.NumberFormat('vi-VN').format(value);
 
-const formatDate = (iso: string | undefined | null): string => {
+const formatDate = (
+  iso: string | undefined | null,
+  locale: 'vi' | 'en' = 'en',
+): string => {
   if (!iso) return '—';
   const ts = Date.parse(iso);
   if (Number.isNaN(ts)) return iso;
-  return new Date(ts).toLocaleDateString('vi-VN', {
+  const tag = locale === 'vi' ? 'vi-VN' : 'en-US';
+  return new Date(ts).toLocaleDateString(tag, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -75,6 +80,7 @@ const FEATURE_LINES: Record<number, string[]> = {
 export const Subscription = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const locale = useLocale();
   const {
     current,
     isLoading: isSubscriptionLoading,
@@ -245,8 +251,8 @@ export const Subscription = () => {
               {current.status}
             </span>
             <span className={styles.statusMeta}>
-              Started {formatDate(current.startsAt)} · Expires{' '}
-              {formatDate(current.expiresAt)}
+              Started {formatDate(current.startsAt, locale)} · Expires{' '}
+              {formatDate(current.expiresAt, locale)}
             </span>
           </div>
         )}

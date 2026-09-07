@@ -22,6 +22,7 @@ import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
 import {
   statusLabel,
+  paperTypeLabel,
   type PublicationPaper,
   type PublicationStatus,
 } from '../types/publication';
@@ -439,8 +440,8 @@ const AdminList = ({
                         <div className={adminStyles.titleCell}>
                           <strong>{paper.title}</strong>
                           <small>
-                            {paper.paperType}
-                            {paper.version != null ? ` · v${paper.version}` : ''} ·{' '}
+                            {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
+                            {paper.version != null ? `v${paper.version}` : ''} ·{' '}
                             {paper.authors.map((author) => author.name).join(', ')}
                           </small>
                         </div>

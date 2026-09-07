@@ -84,7 +84,7 @@ type PageState =
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const formatDate = (iso: string | null | undefined): string => {
-  return formatDisplayDate(iso, 'vi');
+  return formatDisplayDate(iso);
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────

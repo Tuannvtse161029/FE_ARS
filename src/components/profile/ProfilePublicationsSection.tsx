@@ -79,7 +79,7 @@ export const ProfilePublicationsSection = ({
             <button
               type="button"
               className={styles.item}
-              onClick={() => navigate(`/papers/${paper.id}`)}
+              onClick={() => navigate(`/researcher/submissions/${paper.id}`)}
               aria-label={`Open ${paper.title}`}
             >
               <div className={styles.itemHead}>

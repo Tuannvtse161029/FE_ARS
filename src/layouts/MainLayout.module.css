@@ -18,6 +18,9 @@
   min-height: 100vh;
   width: 100%;
   background-color: var(--surface-canvas);
+  /* Shared width token: both the fixed sidebar and the content area
+     read this so they stay in sync when the sidebar collapses. */
+  --sidebar-visible-width: var(--sidebar-width);
 }
 
 /* ── Sidebar ──────────────────────────────────────────────── */
@@ -25,21 +28,29 @@
   /* The sidebar width is exposed as a custom property so the right
      content area can adapt without a parallel layout reflow. */
   --sidebar-current-size: var(--sidebar-width);
-  width: var(--sidebar-current-size);
+  width: var(--sidebar-visible-width);
   background-color: var(--sidebar-bg, #1a2035);
   color: var(--ink-on-dark, #ffffff);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  min-height: 100vh;
-  position: sticky;
+  /* Fixed on desktop so it stays in place while the page scrolls.
+     Starts at the top of the viewport — the sidebar spans the full
+     viewport height so the header sits to the right of the rail
+     instead of above it. */
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 4;
   overflow: hidden;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   /* Custom-property animation replaces the legacy width animation that
      caused layout reflow on every frame. The right column reclaims the
      space automatically because it's flex:1. */
-  transition: --sidebar-current-size var(--transition-normal);
+  transition:
+    width var(--transition-normal),
+    --sidebar-visible-width var(--transition-normal);
 }
 
 .sidebarHeader {
@@ -108,7 +119,9 @@
   /* The collapsed rail is narrower (64px) but we still own the size
      through the custom property so the transition interpolates instead
      of reflowing the layout on each intermediate value. The right column
-     reclaims the reclaimed space automatically because it's flex:1. */
+     reclaims the reclaimed space automatically because margin-left on
+     .rightContentArea also reads --sidebar-visible-width. */
+  --sidebar-visible-width: 64px;
   --sidebar-current-size: 64px;
 }
 
@@ -435,6 +448,10 @@
   flex-direction: column;
   min-width: 0;
   background-color: var(--surface-canvas);
+  /* Shift right by the fixed sidebar width so content never sits
+     behind the nav. Uses --sidebar-visible-width so this margin shrinks
+     in lockstep when the sidebar collapses to its 64px rail. */
+  margin-left: var(--sidebar-visible-width);
 }
 
 .contentBody {
@@ -943,6 +960,10 @@
 
   .sidebarCollapsed {
     width: var(--sidebar-width);
+  }
+
+  .rightContentArea {
+    margin-left: 0;
   }
 
   .sidebarCollapsed .sidebarHeader {

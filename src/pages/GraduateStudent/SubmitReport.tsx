@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
+import type { Locale } from '../../i18n/translations';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
@@ -31,7 +32,7 @@ import styles from './SubmitReport.module.css';
 
 const DEFAULT_FOLDER_KEY = 'milestone';
 
-const formatDate = (iso: string | null | undefined, locale: string): string => {
+const formatDate = (iso: string | null | undefined, locale: Locale): string => {
   return formatDisplayDateTime(iso, locale);
 };
 

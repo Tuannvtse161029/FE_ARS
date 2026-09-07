@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Inbox, Search, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import type { CatalogQuery, PublicationPaper } from '../types/publication';
 import { PublishedPaperCard } from './PublishedPaperCard';
@@ -11,7 +11,8 @@ import { Button } from '../../../components/Button/Button';
 import { publicReviewerName } from '../types/publication';
 import { PublicationDemoBanner } from '../components/PublicationDemoBanner';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
-import { useLocale } from '../../../i18n/I18nContext';
+import { useFieldTaxonomy } from '../../../hooks/useFieldTaxonomy';
+import { useLocale, useT } from '../../../i18n/I18nContext';
 import styles from './HomeResearchCatalog.module.css';
 
 const PAGE_SIZE = 8;
@@ -21,26 +22,38 @@ const HOMEPAGE_ACCENT = 'var(--ars-blue)';
  * Authenticated research catalog.
  *
  * Surfaces only papers that satisfy the public catalog predicate
- * (`status === 'PUBLISHED' && visibility === 'PUBLIC'`). The BE must
- * apply the same predicate server-side — see
- * `docs/PUBLICATION_FLOW_API_BLOCKERS.md` §3.1.
+ * (`status === 'PUBLISHED' && visibility === 'PUBLIC'`).
  *
- * Visual:
- *   - WorkspaceHeader at the top with the publication accent (ARS blue)
- *     and a hero-style marker. Mirrors the editorial research-discovery
- *     pattern from Semantic Scholar / OpenAlex.
- *   - Search + filter toolbar below the hero, then a grid of paper
- *     cards. Stats row summarises the visible result set so the page
- *     reads as a real catalog, not just a list.
+ * Filter taxonomy (BE-validated):
+ *   - "Major field" → "Subfield" (the BE MajorField → SubField hierarchy)
+ *     is the only taxonomy filter wired end-to-end. The Paper BE response
+ *     exposes `subFieldId` (per docs/local-only/erd-schema-reference.md
+ *     and `Paper` in src/services/paper.service.ts) and the MajorField /
+ *     SubField tree is loaded from `GET /api/MajorField`. Filtering by
+ *     subFieldId happens client-side via `matchesCatalogQuery`.
+ *   - "Domain" and "Field" filters were removed: the Paper BE response has
+ *     no `domain` or `field` fields. The previous `toPublicationPaper()`
+ *     adapter shimmed those from localStorage, which is empty for catalog
+ *     papers loaded via the public endpoint — so the filter dropdowns were
+ *     rendered but had no effect. Re-introduce them only when the BE
+ *     starts returning these fields on Paper responses.
+ *   - "Topic" filter was removed: `toPublicationPaper()` hardcoded
+ *     `topics: []` for every paper, so the topic dropdown was always empty
+ *     and matching always returned true. Re-introduce it once the BE
+ *     returns a topics[] array.
+ *   - "Sort" offers publication date and title ordering. The default is
+ *     "Newest published" so the freshest research surfaces first.
+ *   - Search matches title, abstract, DOI, authors, institutions, topics,
+ *     and keywords (case-insensitive substring) via the adapter.
  */
 export const HomeResearchCatalog = () => {
   const locale = useLocale();
-  const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
+  const t = useT();
 
   const sortOptions: Array<{ value: NonNullable<CatalogQuery['sort']>; label: string }> = [
-    { value: 'PUBLISHED_DESC', label: copy('Newest published', 'Mới xuất bản nhất') },
-    { value: 'PUBLISHED_ASC', label: copy('Oldest published', 'Xuất bản cũ nhất') },
-    { value: 'TITLE_ASC', label: copy('Title A-Z', 'Tiêu đề A-Z') },
+    { value: 'PUBLISHED_DESC', label: t('home.catalog.sort.newest') },
+    { value: 'PUBLISHED_ASC', label: t('home.catalog.sort.oldest') },
+    { value: 'TITLE_ASC', label: t('home.catalog.sort.title') },
   ];
 
   const [query, setQuery] = useState<CatalogQuery>({
@@ -65,35 +78,51 @@ export const HomeResearchCatalog = () => {
         setTotal(result.totalCount);
         setIsDemo(result.dataSource === 'demo');
       })
-      .catch(() => active && setError('The research catalog could not be loaded.'))
+      .catch(() => active && setError(t('home.catalog.error.loadFailed')))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [query, t]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const topicOptions = useMemo(
-    () => Array.from(new Set(papers.flatMap((paper) => paper.topics))).sort(),
-    [papers],
+
+  // Taxonomy (MajorField → SubField) loaded from `GET /api/MajorField`. This
+  // is the only taxonomy filter that has a matching field on the Paper BE
+  // response (`subFieldId`).
+  const { taxonomy, isLoading: isLoadingTaxonomy } = useFieldTaxonomy(
+    papers.map((p) => ({ subFieldId: p.subFieldId ?? null })),
   );
-  const domainOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(papers.map((paper) => paper.domain).filter((value): value is string => Boolean(value))),
-      ).sort(),
-    [papers],
+
+  // When a MajorField is selected, show only its SubFields as "Subfield"
+  // options. We use `majorFieldName` (not id) as the dropdown value so the
+  // rendered label matches the visible text and stays human-readable when
+  // serialized into the URL / future API query.
+  const selectedMajorField = useMemo(
+    () => taxonomy.majorFields.find((mf) => mf.name === query.majorField) ?? null,
+    [taxonomy.majorFields, query.majorField],
   );
-  const fieldOptions = useMemo(
+
+  const subfieldOptions = useMemo(
     () =>
-      Array.from(
-        new Set(papers.map((paper) => paper.field).filter((value): value is string => Boolean(value))),
-      ).sort(),
-    [papers],
+      selectedMajorField?.subFields
+        ?.filter((sf) => taxonomy.activeSubFieldIds.has(sf.id))
+        .sort((a, b) => a.name.localeCompare(b.name)) ?? [],
+    [selectedMajorField, taxonomy.activeSubFieldIds],
   );
 
   const updateQuery = (patch: Partial<CatalogQuery>) =>
-    setQuery((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
+    setQuery((current) => {
+      const next = { ...current, ...patch, page: 1 };
+      // When majorField changes, clear the dependent subFieldId pick.
+      if (patch.majorField !== undefined && patch.majorField !== current.majorField) {
+        next.subFieldId = undefined;
+      }
+      return next;
+    });
+
+  const clearFilters = () =>
+    updateQuery({ query: undefined, majorField: undefined, subFieldId: undefined });
 
   // Part 4 — keyboard shortcuts for the public research catalog.
   // j/k walk the cards, Enter opens the focused paper's detail view
@@ -108,73 +137,83 @@ export const HomeResearchCatalog = () => {
     filterFocusId: 'public-catalog-search-input',
   });
 
+  const hasActiveFilters = Boolean(
+    query.query || query.majorField || query.subFieldId,
+  );
+
   return (
     <section className={styles.catalog}>
       <WorkspaceHeader
-        marker={copy('01 / PUBLIC CATALOG', '01 / DANH MỤC CÔNG KHAI')}
-        title={copy('Research catalog', 'Danh mục nghiên cứu')}
-        subtitle={copy('Discover ARS publications across authors, institutions, topics, and research domains.', 'Khám phá các công trình nghiên cứu ARS theo tác giả, viện nghiên cứu, chủ đề và lĩnh vực.')}
-        annotation={copy('An OpenAlex-style research discovery surface. Every paper has passed editorial review and is publicly visible.', 'Không gian khám phá nghiên cứu. Mọi bài báo đều đã qua xét duyệt biên tập và hiển thị công khai.')}
+        marker={t('home.catalog.marker')}
+        title={t('home.catalog.title')}
+        subtitle={t('home.catalog.subtitle')}
         accent={HOMEPAGE_ACCENT}
       />
 
       {isDemo && <PublicationDemoBanner />}
 
       <div className={styles.toolbar}>
+        {/* Full-text search */}
         <label className={styles.search}>
           <Search size={18} aria-hidden="true" />
           <input
             id="public-catalog-search-input"
-            aria-label={copy('Search published research', 'Tìm kiếm nghiên cứu đã xuất bản')}
+            aria-label={t('home.catalog.search.ariaLabel')}
             value={query.query ?? ''}
             onChange={(event) => updateQuery({ query: event.target.value })}
-            placeholder={copy('Search title, author, DOI, institution, topic, or keyword', 'Tìm kiếm tiêu đề, tác giả, DOI, viện nghiên cứu, chủ đề hoặc từ khóa')}
+            placeholder={t('home.catalog.search.placeholder')}
           />
         </label>
+
+        {/* Taxonomy: Major field — always shown. Lists only branches that
+            have at least one published paper, so empty categories never
+            appear. */}
         <label className={styles.filter}>
-          <SlidersHorizontal size={14} aria-hidden="true" />
-          <span>{copy('Topic', 'Chủ đề')}</span>
+          <span>{t('home.catalog.filter.majorField')}</span>
           <select
-            aria-label={copy('Filter by topic', 'Lọc theo chủ đề')}
-            value={query.topic ?? ''}
-            onChange={(event) => updateQuery({ topic: event.target.value || undefined })}
+            aria-label={t('home.catalog.filter.majorFieldAria')}
+            value={query.majorField ?? ''}
+            onChange={(event) =>
+              updateQuery({ majorField: event.target.value || undefined })
+            }
           >
-            <option value="">{copy('All topics', 'Tất cả chủ đề')}</option>
-            {topicOptions.map((topic) => (
-              <option key={topic} value={topic}>{topic}</option>
-            ))}
+            <option value="">{t('home.catalog.filter.allMajorFields')}</option>
+            {isLoadingTaxonomy
+              ? null
+              : taxonomy.majorFields
+                  .filter((mf) => taxonomy.activeMajorFieldIds.has(mf.id))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((mf) => (
+                    <option key={mf.id} value={mf.name}>{mf.name}</option>
+                  ))}
           </select>
         </label>
+
+        {/* Taxonomy: Subfield — only shown when a major field is selected. */}
+        {query.majorField ? (
+          <label className={styles.filter}>
+            <span>{t('home.catalog.filter.subfield')}</span>
+            <select
+              aria-label={t('home.catalog.filter.subfieldAria')}
+              value={query.subFieldId != null ? String(query.subFieldId) : ''}
+              onChange={(event) => {
+                const val = event.target.value;
+                updateQuery({ subFieldId: val ? Number(val) : undefined });
+              }}
+            >
+              <option value="">{t('home.catalog.filter.allSubfields')}</option>
+              {subfieldOptions.map((sf) => (
+                <option key={sf.id} value={String(sf.id)}>{sf.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {/* Sort */}
         <label className={styles.filter}>
-          <span>{copy('Domain', 'Lĩnh vực')}</span>
+          <span>{t('home.catalog.sort.label')}</span>
           <select
-            aria-label={copy('Filter by domain', 'Lọc theo lĩnh vực')}
-            value={query.domain ?? ''}
-            onChange={(event) => updateQuery({ domain: event.target.value || undefined })}
-          >
-            <option value="">{copy('All domains', 'Tất cả lĩnh vực')}</option>
-            {domainOptions.map((domain) => (
-              <option key={domain} value={domain}>{domain}</option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.filter}>
-          <span>{copy('Field', 'Ngành')}</span>
-          <select
-            aria-label={copy('Filter by field', 'Lọc theo ngành')}
-            value={query.field ?? ''}
-            onChange={(event) => updateQuery({ field: event.target.value || undefined })}
-          >
-            <option value="">{copy('All fields', 'Tất cả ngành')}</option>
-            {fieldOptions.map((field) => (
-              <option key={field} value={field}>{field}</option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.filter}>
-          <span>{copy('Sort', 'Sắp xếp')}</span>
-          <select
-            aria-label={copy('Catalog sort', 'Sắp xếp danh mục')}
+            aria-label={t('home.catalog.sort.ariaLabel')}
             value={query.sort}
             onChange={(event) => updateQuery({ sort: event.target.value as CatalogQuery['sort'] })}
           >
@@ -188,16 +227,12 @@ export const HomeResearchCatalog = () => {
       <div className={styles.resultContext} aria-live="polite">
         <span>
           {loading
-            ? copy('Loading published research…', 'Đang tải danh mục nghiên cứu…')
-            : `${total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} ${copy(total === 1 ? 'published paper' : 'published papers', 'bài báo đã xuất bản')}`}
+            ? t('home.catalog.loading')
+            : `${total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} ${total === 1 ? t('home.catalog.totalLabel_one') : t('home.catalog.totalLabel_other')}`}
         </span>
-        {!loading && (query.query || query.topic || query.domain || query.field) ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => updateQuery({ query: undefined, topic: undefined, domain: undefined, field: undefined })}
-          >
-            {copy('Clear filters', 'Xóa bộ lọc')}
+        {!loading && hasActiveFilters ? (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            {t('home.catalog.clearFilters')}
           </Button>
         ) : null}
       </div>
@@ -207,28 +242,24 @@ export const HomeResearchCatalog = () => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title={copy('Could not load catalog', 'Không thể tải danh mục')}
+          title={t('home.catalog.error.title')}
           message={error}
         />
       ) : papers.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
-          title={query.query || query.topic || query.domain || query.field
-            ? copy('No published papers match the current catalog filters', 'Không có bài báo nào khớp với bộ lọc hiện tại')
-            : copy('The public catalog is empty', 'Danh mục công khai đang trống')}
+          title={hasActiveFilters
+            ? t('home.catalog.empty.titleNoResults')
+            : t('home.catalog.empty.titleEmpty')}
           description={
-            query.query || query.topic || query.domain || query.field
-              ? copy('Adjust your filters, clear the search, or change the sort to see every published paper.', 'Hãy điều chỉnh bộ lọc, xóa tìm kiếm hoặc thay đổi thứ tự sắp xếp.')
-              : copy('Published papers will appear here once Admin completes the editorial workflow.', 'Bài báo xuất bản sẽ xuất hiện tại đây sau khi hoàn tất quy trình biên tập.')
+            hasActiveFilters
+              ? t('home.catalog.empty.descNoResults')
+              : t('home.catalog.empty.descEmpty')
           }
           action={
-            (query.query || query.topic || query.domain || query.field) ? (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => updateQuery({ query: undefined, topic: undefined, domain: undefined, field: undefined })}
-              >
-                {copy('Clear filters', 'Xóa bộ lọc')}
+            hasActiveFilters ? (
+              <Button variant="outline" size="md" onClick={clearFilters}>
+                {t('home.catalog.clearFilters')}
               </Button>
             ) : undefined
           }
@@ -251,7 +282,7 @@ export const HomeResearchCatalog = () => {
 
       <footer className={styles.pagination}>
         <span className={styles.paginationCount}>
-          <strong>{total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')}</strong> {copy(total === 1 ? 'published paper' : 'published papers', 'bài báo đã xuất bản')}
+          <strong>{total.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')}</strong> {total === 1 ? t('home.catalog.totalLabel_one') : t('home.catalog.totalLabel_other')}
         </span>
         <div className={styles.paginationControls}>
           <Button
@@ -259,22 +290,22 @@ export const HomeResearchCatalog = () => {
             size="sm"
             disabled={query.page <= 1}
             onClick={() => updateQuery({ page: query.page - 1 })}
-            aria-label={copy('Previous catalog page', 'Trang trước')}
+            aria-label={t('home.catalog.pagination.prevAria')}
           >
             <ChevronLeft size={14} aria-hidden />
-            {copy('Previous', 'Trước')}
+            {t('home.catalog.pagination.prevLabel')}
           </Button>
           <span className={styles.paginationMeta} aria-live="polite">
-            {`${copy('Page', 'Trang')} ${query.page} / ${totalPages}`}
+            {`${t('home.catalog.pagination.pageLabel')} ${query.page} / ${totalPages}`}
           </span>
           <Button
             variant="outline"
             size="sm"
             disabled={query.page >= totalPages}
             onClick={() => updateQuery({ page: query.page + 1 })}
-            aria-label={copy('Next catalog page', 'Trang sau')}
+            aria-label={t('home.catalog.pagination.nextAria')}
           >
-            {copy('Next', 'Sau')}
+            {t('home.catalog.pagination.nextLabel')}
             <ChevronRight size={14} aria-hidden />
           </Button>
         </div>

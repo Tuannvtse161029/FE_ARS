@@ -360,7 +360,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
                   {isVi
                     ? `Yêu cầu cấp vai trò "${pendingRequest.requestedRole}" gửi lúc ${new Date(
                         pendingRequest.submittedAt,
-                      ).toLocaleDateString('vi-VN')} đang được Quản trị viên thẩm định.`
+                      ).toLocaleDateString(isVi ? 'vi-VN' : 'en-US')} đang được Quản trị viên thẩm định.`
                     : `Your request for role "${pendingRequest.requestedRole}" submitted on ${new Date(
                         pendingRequest.submittedAt,
                       ).toLocaleDateString()} is currently under review by an Administrator.`}

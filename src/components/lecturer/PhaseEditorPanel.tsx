@@ -672,7 +672,7 @@ export const PhaseEditorPanel = ({
                 .sort()
                 .pop();
               if (!lastEnd) return 'not set';
-              return formatDisplayDate(lastEnd, 'vi');
+              return formatDisplayDate(lastEnd);
             })()}
           </strong>
         </div>

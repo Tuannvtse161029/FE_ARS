@@ -33,7 +33,7 @@ import { useT } from '../../i18n/I18nContext';
 import { LanguageToggle } from '../../components/i18n/LanguageToggle';
 import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
-import heroPoster from '../../assets/images/hero-bg.jpg';
+import heroPoster from '../../assets/images/login_wallpaper.jpg';
 import styles from './LandingScrollVideo.module.css';
 
 // ── Static content (i18n keys + English fallbacks) ──────────────

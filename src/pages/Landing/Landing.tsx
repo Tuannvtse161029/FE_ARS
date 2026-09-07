@@ -21,8 +21,15 @@ import { ROUTES } from '../../routes/paths';
 import { useT } from '../../i18n/I18nContext';
 import { LanguageToggle } from '../../components/i18n/LanguageToggle';
 import { smoothScrollTo } from '../../utils/smoothScroll';
+import { useAuth } from '../../context/AuthContext';
+import { RoleExploreModal, type ExploreRole } from '../../components/RoleExploreModal';
 import arsLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Landing.module.css';
+import {
+  HERO_BACKDROP_URL,
+  STATEMENT_STILL_URL,
+  TESTIMONIAL_PORTRAIT_URL,
+} from './landingImages';
 
 // ── Hero social proof metrics ────────────────────────────────
 const HERO_METRICS = [
@@ -123,11 +130,15 @@ const PUBLICATION_NODES = [
 
 export const Landing = () => {
   const t = useT();
+  const { isAuthenticated, user } = useAuth();
   const workflowListRef = useRef<HTMLOListElement>(null);
   const flowSectionRef = useRef<HTMLElement>(null);
   const [workflowListVisible, setWorkflowListVisible] = useState(false);
   const [flowConnectorsDrawn, setFlowConnectorsDrawn] = useState(false);
   const [flowDotsAnimated, setFlowDotsAnimated] = useState(false);
+
+  // Explore modal state
+  const [exploreModalRole, setExploreModalRole] = useState<ExploreRole | null>(null);
 
   // ── Scroll-driven observers ───────────────────────────────
   useEffect(() => {
@@ -187,6 +198,27 @@ export const Landing = () => {
       window.history.replaceState(null, '', `#${targetId}`);
     },
     [],
+  );
+
+  // Check if authenticated user has access to a specific role
+  const canAccessRole = useCallback(
+    (role: ExploreRole): boolean => {
+      if (!isAuthenticated || !user) return false;
+      // Check if user's roles array includes this role
+      const userRoles = user.roles ?? [];
+      if (userRoles.length > 0) {
+        return userRoles.some(
+          (r) => r === role || r.toLowerCase() === role.toLowerCase(),
+        );
+      }
+      // Fallback to role check
+      const userRole = user.role ?? '';
+      return (
+        userRole === role ||
+        userRole.toLowerCase() === role.toLowerCase()
+      );
+    },
+    [isAuthenticated, user],
   );
 
   // ── Static content data ───────────────────────────────────
@@ -325,6 +357,12 @@ export const Landing = () => {
         {t('landing.skipToContent', 'Skip to main content')}
       </a>
 
+      {/* ── Build marker (confirms new code is loaded) ────────────── */}
+      <div className={styles.buildMarker} aria-hidden="true">
+        <span className={styles.buildMarkerDot} />
+        <span>ARS Editorial Build · Image Placeholders Wired · v2026-09-07</span>
+      </div>
+
       {/* ── Header ───────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -429,6 +467,23 @@ export const Landing = () => {
             <div className={styles.heroVisual} aria-hidden="true">
               <div className={styles.heroAcrLabel}>ARS</div>
               <div className={styles.heroConstellation}>
+                {/* AI-generated editorial backdrop — visible primary asset
+                    for the hero right column. Tinted subtly toward the
+                    navy palette so the SVG lines + nodes read on top. */}
+                <div className={styles.heroBackdropFrame}>
+                  <img
+                    className={styles.heroBackdrop}
+                    src={HERO_BACKDROP_URL}
+                    alt="Three Vietnamese researchers collaborating in a warmly lit university library reading room"
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <div className={styles.heroBackdropPlaceholder}>
+                    <span>hero-backdrop.png</span>
+                    <small>Editorial photograph</small>
+                  </div>
+                </div>
+                <div className={styles.heroBackdropTint} aria-hidden="true" />
                 {/* SVG connecting lines */}
                 <svg
                   className={styles.constellationCanvas}
@@ -492,12 +547,37 @@ export const Landing = () => {
               )}
             </h2>
           </div>
-          <p>
-            {t(
-              'landing.statementBody',
-              'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the editorial process.',
-            )}
-          </p>
+          <div className={styles.statementBody}>
+            <figure className={styles.statementFigure}>
+              <div className={styles.statementFigureFrame}>
+                <img
+                  src={STATEMENT_STILL_URL}
+                  alt={t(
+                    'landing.statementImageAlt',
+                    'Stacked research journals, manuscripts, and scholarly tools on a parchment desk',
+                  )}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className={styles.statementFigurePlaceholder}>
+                  <span>statement-still.png</span>
+                  <small>Editorial archive still life</small>
+                </div>
+              </div>
+              <figcaption className={styles.statementCaption}>
+                {t(
+                  'landing.statementCaption',
+                  'Editorial archive · papers, reviews, and seminars in one record',
+                )}
+              </figcaption>
+            </figure>
+            <p>
+              {t(
+                'landing.statementBody',
+                'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the editorial process.',
+              )}
+            </p>
+          </div>
         </section>
 
         {/* ── Features ────────────────────────────────────── */}
@@ -670,12 +750,21 @@ export const Landing = () => {
                 data-role={role}
                 style={{ '--workspace-stagger': `${index * 60}ms` } as React.CSSProperties}
               >
-                <Icon size={24} aria-hidden="true" />
+                <div className={styles.workspaceIcon}>
+                  <Icon size={24} aria-hidden="true" />
+                </div>
                 <h3>{title}</h3>
                 <p>{description}</p>
-                <span className={styles.workspaceArrow}>
-                  Explore <ArrowRight size={14} aria-hidden="true" />
-                </span>
+                <button
+                  className={styles.workspaceExploreBtn}
+                  onClick={() => setExploreModalRole(role as ExploreRole)}
+                  aria-label={t(`landing.workspace.explore.${role}`, getDefaultExploreLabel(role as ExploreRole))}
+                >
+                  <span>
+                    {t(`landing.workspace.explore.${role}`, getDefaultExploreLabel(role as ExploreRole))}
+                  </span>
+                  <ArrowRight size={14} aria-hidden="true" />
+                </button>
               </article>
             ))}
           </div>
@@ -684,7 +773,7 @@ export const Landing = () => {
         {/* ── Testimonial ─────────────────────────────────── */}
         <section className={styles.testimonialSection} aria-label="Researcher testimonial">
           <div className={styles.testimonialInner}>
-            <span className={styles.testimonialMark} aria-hidden="true">"</span>
+            <span className={styles.testimonialMark} aria-hidden="true">&ldquo;</span>
             <blockquote className={styles.testimonialQuote}>
               {t(
                 'landing.testimonialQuote',
@@ -692,12 +781,26 @@ export const Landing = () => {
               )}
             </blockquote>
             <div className={styles.testimonialAttribution}>
-              <span className={styles.testimonialName}>
-                {t('landing.testimonialName', 'Dr. Nguyen Minh Anh')}
-              </span>
-              <span className={styles.testimonialRole}>
-                {t('landing.testimonialRole', 'Research Lead, HCMUT')}
-              </span>
+              <div className={styles.testimonialPortraitFrame}>
+                <img
+                  className={styles.testimonialPortrait}
+                  src={TESTIMONIAL_PORTRAIT_URL}
+                  alt="Vietnamese female researcher holding an open book"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className={styles.testimonialPortraitPlaceholder}>
+                  <span>testimonial-portrait.png</span>
+                </div>
+              </div>
+              <div className={styles.testimonialMeta}>
+                <span className={styles.testimonialName}>
+                  {t('landing.testimonialName', 'Dr. Nguyen Minh Anh')}
+                </span>
+                <span className={styles.testimonialRole}>
+                  {t('landing.testimonialRole', 'Research Lead, HCMUT')}
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -751,6 +854,14 @@ export const Landing = () => {
 
       </main>
 
+      {/* ── Role Explore Modal ────────────────────────────────── */}
+      <RoleExploreModal
+        isOpen={exploreModalRole !== null}
+        onClose={() => setExploreModalRole(null)}
+        role={exploreModalRole}
+        canAccess={exploreModalRole ? canAccessRole(exploreModalRole) : false}
+      />
+
       {/* ── Footer ────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
@@ -777,5 +888,20 @@ export const Landing = () => {
     </div>
   );
 };
+
+function getDefaultExploreLabel(role: string): string {
+  switch (role) {
+    case 'researcher':
+      return 'Explore researcher tools';
+    case 'reviewer':
+      return 'Explore reviewer tools';
+    case 'lecturer':
+      return 'Explore lecturer tools';
+    case 'student':
+      return 'Explore student tools';
+    default:
+      return 'Explore workspace';
+  }
+}
 
 export default Landing;

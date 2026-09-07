@@ -6,6 +6,7 @@ import {
   publicReviewerName,
   reviewTypeLabel,
   statusLabel,
+  paperTypeLabel,
   type PublicationPaper,
 } from '../types/publication';
 import { CitationActions } from '../components/CitationActions';
@@ -435,7 +436,7 @@ export const ResearcherSubmissionDetail = () => {
             </div>
             <div>
               <dt>{t('researcher.detail.detail.paperType')}</dt>
-              <dd>{paper.paperType && paper.paperType !== 'Not supplied' ? paper.paperType : NOT_SUPPLIED}</dd>
+              <dd>{paperTypeLabel(paper.paperType) || NOT_SUPPLIED}</dd>
             </div>
             {(formattedField || formattedSubfield) && (
               <div>

@@ -12,132 +12,6 @@
   font-family: var(--font-family-ui);
 }
 
-/* ── Tab Filter Bar ────────────────────────────────────── */
-.tabFilterBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--ars-node);
-  padding-bottom: var(--space-2);
-}
-
-.tabButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 8px 16px;
-  border: 1px solid var(--ars-node);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper);
-  color: var(--ars-ink-soft);
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.tabButton:hover {
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-ink-muted);
-  color: var(--ars-ink);
-}
-
-.tabButton:focus-visible {
-  outline: 2px solid var(--ars-researcher);
-  outline-offset: 2px;
-}
-
-.tabButtonActive {
-  background: var(--ars-researcher);
-  border-color: var(--ars-researcher);
-  color: var(--ars-paper);
-}
-
-.tabButtonActive:hover {
-  background: var(--ars-researcher);
-  border-color: var(--ars-researcher);
-  color: var(--ars-paper);
-}
-
-.tabCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  font-family: var(--font-family-mono);
-}
-
-.tabButton:not(.tabButtonActive) .tabCount {
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-}
-
-/* ── Sub-tab filter (status filter nested under a stage group) ─────────
-   Same shape as the stage filter, slightly smaller and using a softer
-   amber-tinted rule so the eye reads the stage group as primary and the
-   status filter as secondary. */
-.subTabFilterBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px dashed var(--ars-network);
-}
-
-.subTabButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 4px 10px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--ars-ink-muted);
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.subTabButton:hover {
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-node);
-  color: var(--ars-ink);
-}
-
-.subTabButton:focus-visible {
-  outline: 2px solid var(--ars-researcher);
-  outline-offset: 2px;
-}
-
-.subTabButtonActive {
-  background: var(--ars-researcher-light);
-  border-color: var(--ars-researcher-light);
-  color: var(--ars-researcher);
-}
-
-.subTabButtonActive:hover {
-  background: var(--ars-researcher-light);
-  border-color: var(--ars-researcher-light);
-  color: var(--ars-researcher);
-}
-
 /* ── Toolbar (search + status filter) ──────────────────────── */
 /* === ARS toolbar recolor (this worker) ===
    The previous `background: var(--ars-paper-alt)` read as a flat cool
@@ -203,34 +77,94 @@
   box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
 }
 
-.statusField {
+/* ── Status Filter Tab Bar ─────────────────────────────────── */
+.tabBar {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--ars-node);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.statusSelect {
-  height: 36px;
+.tabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--ars-ink);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--ars-researcher);
+  border-bottom-color: var(--ars-researcher);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.tabCount {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ── Clear filters button ─────────────────────────────────── */
+/* Clear filters button — appears only when a filter is active */
+.clearButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: 0 var(--space-3);
+  height: 36px;
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   background: var(--ars-paper);
-  color: var(--ars-ink);
+  color: var(--ars-ink-muted);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-.statusSelect:hover {
+.clearButton:hover {
+  background: var(--ars-paper-inset);
   border-color: var(--ars-ink-muted);
+  color: var(--ars-ink);
 }
 
-.statusSelect:focus {
-  outline: none;
-  border-color: var(--ars-researcher);
-  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+.clearButton:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
 }
 
 .count {
@@ -402,9 +336,13 @@
     justify-content: flex-start;
   }
 
-  .searchField,
-  .statusField {
+  .searchField {
     max-width: 100%;
+  }
+
+  /* Tab bar spans full width on mobile */
+  .tabBar {
+    margin-top: var(--space-2);
   }
 
   .table thead th,
@@ -485,6 +423,13 @@
 .fieldRequired {
   color: var(--ars-error);
   margin-left: 2px;
+}
+
+.optionalLabel {
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-normal);
+  margin-left: 4px;
+  font-size: var(--font-size-xs);
 }
 
 .field input,
@@ -910,6 +855,66 @@
   color: var(--ars-researcher-mid);
 }
 
+/* ── OpenAlex Classification Reminder ─────────────────────────── */
+.openAlexClassificationReminder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+  background: var(--ars-info-bg, #eff6ff);
+  border: 1px solid var(--ars-info, #3b82f6);
+  border-radius: var(--radius-md);
+}
+
+.openAlexReminderContent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.openAlexReminderIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ars-info, #3b82f6);
+}
+
+.openAlexReminderText {
+  margin: 0;
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.openAlexReminderAction {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--ars-info, #3b82f6);
+  color: #ffffff;
+  border: 1px solid var(--ars-info, #3b82f6);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.openAlexReminderAction:hover {
+  background: var(--ars-researcher-mid);
+  border-color: var(--ars-researcher-mid);
+}
+
+.openAlexReminderAction:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: 2px;
+}
+
 .formFinalReview {
   display: grid;
   gap: var(--space-3);
@@ -1095,11 +1100,15 @@
 }
 
 .nextAction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
+  margin-top: var(--space-1);
 }
 
 .nextAction[data-tone="attention"] {
@@ -1115,6 +1124,31 @@
 .nextAction[data-tone="success"] {
   background: var(--ars-success-bg);
   color: var(--ars-success);
+}
+
+.nextAction[data-tone="rejected"] {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+
+.nextAction[data-tone="submitted"] {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+}
+
+.nextAction[data-tone="assigned"] {
+  background: var(--ars-blue-light);
+  color: var(--ars-blue);
+}
+
+.nextAction[data-tone="published"] {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+
+.nextAction[data-tone="improvement"] {
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .nextAction[data-tone="inactive"],

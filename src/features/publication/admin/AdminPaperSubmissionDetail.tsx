@@ -27,6 +27,7 @@ import { useAdminGuard } from '../../../hooks/useAdminGuard';
 import {
   statusLabel,
   isAuthorshipAllowed,
+  paperTypeLabel,
   type PublicationPaper,
   type PublicationStatus,
 } from '../types/publication';
@@ -338,7 +339,7 @@ export const AdminPaperSubmissionDetail = () => {
         </p>
         <dl className={shared.detailList}>
           <dt>Paper type</dt>
-          <dd>{paper.paperType}</dd>
+          <dd>{paperTypeLabel(paper.paperType) || 'Not supplied'}</dd>
           <dt>Version</dt>
           <dd>{paper.version != null ? `v${paper.version}` : 'Not supplied'}</dd>
           <dt>Visibility</dt>

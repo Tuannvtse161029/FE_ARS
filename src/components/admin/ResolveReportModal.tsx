@@ -4,6 +4,7 @@ import type {
   ViolationReport,
   ViolationResolutionAction,
 } from '../../types/adminAuxiliary';
+import { useLocale } from '../../i18n/I18nContext';
 
 interface ResolveReportModalProps {
   report: ViolationReport | null;
@@ -42,6 +43,8 @@ export function ResolveReportModal({
   onClose,
   onConfirm,
 }: ResolveReportModalProps): JSX.Element | null {
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   const [selectedAction, setSelectedAction] = useState<ViolationResolutionAction>(
     'DELETE_CONTENT_WARN',
   );
@@ -111,7 +114,7 @@ export function ResolveReportModal({
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>Filed</span>
                 <span className={styles.metaValue}>
-                  {new Date(report.date).toLocaleString('vi-VN')}
+                  {new Date(report.date).toLocaleString(intlTag)}
                 </span>
               </div>
               <div className={`${styles.metaItem} ${styles.metaItemFull}`}>

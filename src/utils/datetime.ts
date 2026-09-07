@@ -11,7 +11,32 @@
  *    into the previous day.
  */
 
+const LOCALE_STORAGE_KEY = 'ars_lang';
+
 const pad = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * Read the active UI locale from localStorage. Mirrors the behaviour of
+ * `utils/formatDate.ts:resolveActiveLocale` so the two formatter helpers
+ * never disagree on which language is currently displayed.
+ *
+ * Defaults to `'en'` to match I18nProvider's `DEFAULT_LOCALE`. SSR /
+ * privacy-mode callers fall back to the same value.
+ */
+const resolveActiveLocale = (): 'vi' | 'en' => {
+  if (typeof window === 'undefined') return 'en';
+  try {
+    const raw = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (raw === 'vi' || raw === 'en') return raw;
+  } catch {
+    /* ignore — privacy mode / SSR */
+  }
+  return 'en';
+};
+
+/** Map the short app locale code (`vi` / `en`) to a BCP-47 tag. */
+const toIntlLocaleTag = (locale: 'vi' | 'en'): string =>
+  locale === 'en' ? 'en-US' : 'vi-VN';
 
 /**
  * Safely parse any API or user date/time value into a valid Date object.
@@ -96,15 +121,20 @@ export function toApiIsoString(val: string | number | Date | null | undefined): 
 }
 
 /**
- * Formats a date for user-facing UI in local time (e.g. "15/09/2026" or "Sep 15, 2026").
+ * Formats a date for user-facing UI in local time (e.g. "Aug 18, 2026"
+ * in English, "18 thg 8, 2026" in Vietnamese). The locale argument
+ * accepts the short app codes (`en` / `vi`) and is translated to the
+ * proper BCP-47 tag before reaching `Intl`. When omitted the helper
+ * reads the active UI locale from storage so the output matches the
+ * rest of the page even if the caller forgets to pass a locale.
  */
 export function formatDisplayDate(
   val: string | number | Date | null | undefined,
-  locale = 'vi',
+  locale: 'vi' | 'en' = resolveActiveLocale(),
 ): string {
   const d = parseApiDate(val);
   if (!d) return '—';
-  return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return d.toLocaleDateString(toIntlLocaleTag(locale), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -112,15 +142,17 @@ export function formatDisplayDate(
 }
 
 /**
- * Formats a date and time for user-facing UI in local time (e.g. "14:00, 15/09/2026").
+ * Formats a date and time for user-facing UI in local time (e.g.
+ * "Aug 18, 2026, 14:00"). Same locale-resolution contract as
+ * `formatDisplayDate`.
  */
 export function formatDisplayDateTime(
   val: string | number | Date | null | undefined,
-  locale = 'vi',
+  locale: 'vi' | 'en' = resolveActiveLocale(),
 ): string {
   const d = parseApiDate(val);
   if (!d) return '—';
-  return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return d.toLocaleDateString(toIntlLocaleTag(locale), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -131,14 +163,15 @@ export function formatDisplayDateTime(
 
 /**
  * Formats a time for user-facing UI in local time (e.g. "14:00").
+ * Same locale-resolution contract as `formatDisplayDate`.
  */
 export function formatDisplayTime(
   val: string | number | Date | null | undefined,
-  locale = 'vi',
+  locale: 'vi' | 'en' = resolveActiveLocale(),
 ): string {
   const d = parseApiDate(val);
   if (!d) return '—';
-  return d.toLocaleTimeString(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return d.toLocaleTimeString(toIntlLocaleTag(locale), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

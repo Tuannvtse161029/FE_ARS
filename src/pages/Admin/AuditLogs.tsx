@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, Inbox } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import styles from './AuditLogs.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
@@ -57,6 +57,8 @@ const ACTION_COLOR: Record<
 
 export default function AuditLogs(): JSX.Element {
   const { t } = useI18n();
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   useAdminGuard();
 
   const ACTION_LABEL: Record<AuditLogAction, string> = {
@@ -87,7 +89,7 @@ export default function AuditLogs(): JSX.Element {
     if (!value || typeof value !== 'string') return t('admin.auditLogs.notSupplied');
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return t('admin.auditLogs.notSupplied');
-    return parsed.toLocaleString('vi-VN');
+    return parsed.toLocaleString(intlTag);
   };
 
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
