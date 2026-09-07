@@ -28,6 +28,8 @@ import {
   seminarService,
   type SeminarFeedbackContent,
 } from '../../services/seminar.service';
+import { DynamicQuestionRenderer } from './DynamicQuestionRenderer';
+import type { FeedbackQuestion, FeedbackAnswer } from '../../types/seminarFeedback';
 import styles from './SeminarFeedbackModal.module.css';
 
 interface SeminarFeedbackModalProps {
@@ -150,6 +152,10 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [dynamicQuestions, setDynamicQuestions] = useState<FeedbackQuestion[]>([]);
+  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, FeedbackAnswer>>({});
+  const [dynamicErrors, setDynamicErrors] = useState<Record<string, string>>({});
+  const [isDynamicMode, setIsDynamicMode] = useState(false);
   const dialogRef = useDialogFocus(isOpen, isSubmitting, onClose);
 
   // Prefill when opening or when the existing payload changes.
@@ -161,7 +167,39 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
     setSuggestions(bulletsFromArray(existingFeedback?.suggestions));
     setErrorMsg(null);
     setIsSuccess(false);
-  }, [isOpen, existingFeedback]);
+    setDynamicErrors({});
+
+    let isMounted = true;
+    seminarService
+      .getFeedbackQuestions(seminarId)
+      .then((questions) => {
+        if (!isMounted) return;
+        if (questions && questions.length > 0) {
+          setDynamicQuestions(questions);
+          setIsDynamicMode(true);
+          const initAnswers: Record<string, FeedbackAnswer> = {};
+          questions.forEach((q) => {
+            initAnswers[q.id] = {
+              questionId: q.id,
+              orderIndex: q.orderIndex,
+              type: q.type,
+              rating: q.type === 'rating' ? 0 : undefined,
+              text: q.type === 'text' ? '' : undefined,
+            };
+          });
+          setDynamicAnswers(initAnswers);
+        } else {
+          setIsDynamicMode(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsDynamicMode(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, existingFeedback, seminarId]);
 
   const isValid = useMemo(
     () =>
@@ -198,6 +236,53 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isDynamicMode) {
+      const errs: Record<string, string> = {};
+      dynamicQuestions.forEach((q) => {
+        const ans = dynamicAnswers[q.id];
+        if (q.isRequired) {
+          if (q.type === 'rating' && (!ans?.rating || ans.rating <= 0)) {
+            errs[q.id] = 'Vui lòng chọn số sao đánh giá / Please select a star rating.';
+          } else if (q.type === 'text' && (!ans?.text || !ans.text.trim())) {
+            errs[q.id] = 'Vui lòng trả lời câu hỏi này / Please provide your answer.';
+          }
+        }
+      });
+
+      if (Object.keys(errs).length > 0) {
+        setDynamicErrors(errs);
+        setErrorMsg('Vui lòng hoàn thành các câu hỏi bắt buộc / Please answer all required questions.');
+        return;
+      }
+
+      setDynamicErrors({});
+      setIsSubmitting(true);
+      setErrorMsg(null);
+
+      try {
+        await seminarService.submitDynamicFeedback(seminarId, Object.values(dynamicAnswers));
+        setIsSuccess(true);
+        onSuccess?.();
+      } catch (err: unknown) {
+        const responseData = (
+          err as {
+            response?: { data?: { message?: string } | string; status?: number };
+          }
+        )?.response?.data;
+        const rawMsg =
+          typeof responseData === 'string'
+            ? responseData
+            : responseData?.message ??
+              (err instanceof Error ? err.message : '') ??
+              '';
+        setErrorMsg(rawMsg || 'Could not submit feedback. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!isValid) {
       setErrorMsg(
         'Please share at least one item across any of the four sections.',
@@ -331,77 +416,104 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               </div>
             )}
 
-            <p className={styles.introHint}>
-              Fill any combination of the four sections below — at least one
-              needs a response before you can submit.
-            </p>
+            {isDynamicMode ? (
+              <div style={{ marginTop: 'var(--space-2)' }}>
+                <DynamicQuestionRenderer
+                  questions={dynamicQuestions}
+                  answers={dynamicAnswers}
+                  onAnswerChange={(qId, ans) => {
+                    setDynamicAnswers((prev) => ({
+                      ...prev,
+                      [qId]: ans,
+                    }));
+                    if (dynamicErrors[qId]) {
+                      setDynamicErrors((prev) => {
+                        const next = { ...prev };
+                        delete next[qId];
+                        return next;
+                      });
+                    }
+                  }}
+                  errors={dynamicErrors}
+                  previewMode={previewMode}
+                  disabled={previewMode || isSubmitting}
+                />
+              </div>
+            ) : (
+              <>
+                <p className={styles.introHint}>
+                  Fill any combination of the four sections below — at least one
+                  needs a response before you can submit.
+                </p>
 
-            {/* Overall Comment */}
-            <section className={styles.fieldSection}>
-              <header className={styles.fieldHeader}>
-                <span className={styles.fieldIcon}>
-                  <MessageSquareText size={15} aria-hidden />
-                </span>
-                <label htmlFor="feedback-overall" className={styles.fieldLabel}>
-                  Overall Comment
-                </label>
-                <span className={styles.fieldOptional}>Optional</span>
-              </header>
-              <p className={styles.fieldHint}>
-                A short paragraph on what you took away from the seminar.
-              </p>
-              <textarea
-                id="feedback-overall"
-                className={styles.textarea}
-                value={overallComment}
-                onChange={(e) => setOverallComment(e.target.value)}
-                placeholder="The session was clear and well-paced; I left with a working mental model of the topic."
-                disabled={isSubmitting || isSuccess || previewMode}
-                rows={4}
-              />
-            </section>
+                {/* Overall Comment */}
+                <section className={styles.fieldSection}>
+                  <header className={styles.fieldHeader}>
+                    <span className={styles.fieldIcon}>
+                      <MessageSquareText size={15} aria-hidden />
+                    </span>
+                    <label htmlFor="feedback-overall" className={styles.fieldLabel}>
+                      Overall Comment
+                    </label>
+                    <span className={styles.fieldOptional}>Optional</span>
+                  </header>
+                  <p className={styles.fieldHint}>
+                    A short paragraph on what you took away from the seminar.
+                  </p>
+                  <textarea
+                    id="feedback-overall"
+                    className={styles.textarea}
+                    value={overallComment}
+                    onChange={(e) => setOverallComment(e.target.value)}
+                    placeholder="The session was clear and well-paced; I left with a working mental model of the topic."
+                    disabled={isSubmitting || isSuccess || previewMode}
+                    rows={4}
+                  />
+                </section>
 
-            {/* Strengths */}
-            <BulletListField
-              icon={<ThumbsUp size={15} aria-hidden />}
-              label="Strengths"
-              helperText="What worked well — content, format, delivery, examples."
-              bullets={strengths}
-              placeholder="Concrete examples grounded in the talk."
-              disabled={isSubmitting || isSuccess || previewMode}
-              variant="strength"
-              onAdd={() => addBullet(setStrengths)}
-              onChange={(id, text) => updateBullet(setStrengths, id, text)}
-              onRemove={(id) => removeBullet(setStrengths, id)}
-            />
+                {/* Strengths */}
+                <BulletListField
+                  icon={<ThumbsUp size={15} aria-hidden />}
+                  label="Strengths"
+                  helperText="What worked well — content, format, delivery, examples."
+                  bullets={strengths}
+                  placeholder="Concrete examples grounded in the talk."
+                  disabled={isSubmitting || isSuccess || previewMode}
+                  variant="strength"
+                  onAdd={() => addBullet(setStrengths)}
+                  onChange={(id, text) => updateBullet(setStrengths, id, text)}
+                  onRemove={(id) => removeBullet(setStrengths, id)}
+                />
 
-            {/* Improvements */}
-            <BulletListField
-              icon={<Wrench size={15} aria-hidden />}
-              label="Areas for Improvement"
-              helperText="Constructive critique — pacing, depth, Q&A, slides, anything that did not land."
-              bullets={improvements}
-              placeholder="Pacing in the second half felt rushed."
-              disabled={isSubmitting || isSuccess || previewMode}
-              variant="improvement"
-              onAdd={() => addBullet(setImprovements)}
-              onChange={(id, text) => updateBullet(setImprovements, id, text)}
-              onRemove={(id) => removeBullet(setImprovements, id)}
-            />
+                {/* Improvements */}
+                <BulletListField
+                  icon={<Wrench size={15} aria-hidden />}
+                  label="Areas for Improvement"
+                  helperText="Constructive critique — pacing, depth, Q&A, slides, anything that did not land."
+                  bullets={improvements}
+                  placeholder="Pacing in the second half felt rushed."
+                  disabled={isSubmitting || isSuccess || previewMode}
+                  variant="improvement"
+                  onAdd={() => addBullet(setImprovements)}
+                  onChange={(id, text) => updateBullet(setImprovements, id, text)}
+                  onRemove={(id) => removeBullet(setImprovements, id)}
+                />
 
-            {/* Suggestions */}
-            <BulletListField
-              icon={<Lightbulb size={15} aria-hidden />}
-              label="Suggestions"
-              helperText="Forward-looking ideas — follow-up topics, formats, resources."
-              bullets={suggestions}
-              placeholder="Send the slide deck + reading list after the talk."
-              disabled={isSubmitting || isSuccess || previewMode}
-              variant="suggestion"
-              onAdd={() => addBullet(setSuggestions)}
-              onChange={(id, text) => updateBullet(setSuggestions, id, text)}
-              onRemove={(id) => removeBullet(setSuggestions, id)}
-            />
+                {/* Suggestions */}
+                <BulletListField
+                  icon={<Lightbulb size={15} aria-hidden />}
+                  label="Suggestions"
+                  helperText="Forward-looking ideas — follow-up topics, formats, resources."
+                  bullets={suggestions}
+                  placeholder="Send the slide deck + reading list after the talk."
+                  disabled={isSubmitting || isSuccess || previewMode}
+                  variant="suggestion"
+                  onAdd={() => addBullet(setSuggestions)}
+                  onChange={(id, text) => updateBullet(setSuggestions, id, text)}
+                  onRemove={(id) => removeBullet(setSuggestions, id)}
+                />
+              </>
+            )}
 
             <div className={styles.guidanceNote}>
               <Sparkles size={14} aria-hidden />
@@ -426,7 +538,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               <button
                 type="submit"
                 className={styles.submitBtn}
-                disabled={isSubmitting || isSuccess || !isValid}
+                disabled={isSubmitting || isSuccess || (isDynamicMode ? false : !isValid)}
               >
                 {isSubmitting ? (
                   <>

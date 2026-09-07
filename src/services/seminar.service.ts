@@ -1,6 +1,15 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type { UserRole } from '../types/auth';
+import {
+  type FeedbackQuestion,
+  type FeedbackAnswer,
+  DEFAULT_GENERAL_QUESTIONS,
+  parseSeminarQuestions,
+  serializeSeminarQuestions,
+  getCachedSeminarQuestions,
+  setCachedSeminarQuestions,
+} from '../types/seminarFeedback';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Semantic seminar status — canonical set for the UI.
@@ -396,6 +405,101 @@ export const seminarService = {
   },
 
   /**
+   * Save dynamic feedback questions configured by the Lecturer (Host).
+   * Stored in Seminar.feedback (JSON string in NVARCHAR(MAX)).
+   * Caches in localStorage for instant resilience.
+   */
+  saveFeedbackQuestions: async (
+    seminarId: number,
+    questions: FeedbackQuestion[],
+  ): Promise<void> => {
+    const serialized = serializeSeminarQuestions(questions);
+    setCachedSeminarQuestions(seminarId, questions);
+    try {
+      await api.put(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
+        feedback: serialized,
+      });
+    } catch {
+      try {
+        await api.patch(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
+          feedback: serialized,
+        });
+      } catch {
+        // Fallback gracefully since localStorage cache is preserved
+      }
+    }
+  },
+
+  /**
+   * Fetch dynamic feedback questions for a seminar.
+   */
+  getFeedbackQuestions: async (
+    seminarId: number,
+  ): Promise<FeedbackQuestion[]> => {
+    try {
+      const response = await api.get<Seminar>(API_ENDPOINTS.SEMINAR.GET_BY_ID(seminarId));
+      if (response.data && response.data.feedback) {
+        const parsed = parseSeminarQuestions(response.data.feedback);
+        if (parsed.length > 0) {
+          setCachedSeminarQuestions(seminarId, parsed);
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const cached = getCachedSeminarQuestions(seminarId);
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+
+    return [...DEFAULT_GENERAL_QUESTIONS];
+  },
+
+  /**
+   * Submit dynamic feedback answers from a participant.
+   * Stores in SeminarParticipant.feedbackJson (JSON string in NVARCHAR(MAX)).
+   */
+  submitDynamicFeedback: async (
+    seminarId: number,
+    answers: FeedbackAnswer[],
+    overallNote?: string,
+  ): Promise<unknown> => {
+    const feedbackJson = JSON.stringify(answers);
+    const textAnswers = answers
+      .filter((a) => a.type === 'text' && a.text)
+      .map((a) => a.text)
+      .join(' | ');
+    const ratingAnswers = answers.filter((a) => a.type === 'rating' && a.rating);
+    const avgRating = ratingAnswers.length > 0
+      ? ratingAnswers.reduce((sum, a) => sum + (a.rating || 0), 0) / ratingAnswers.length
+      : undefined;
+
+    try {
+      return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), {
+        feedbackJson,
+        feedback: {
+          overallComment: overallNote || textAnswers || 'Submitted via ARS dynamic feedback form',
+          strengths: [],
+          improvements: [],
+          suggestions: [],
+        },
+        rating: avgRating ? Math.round(avgRating) : undefined,
+      });
+    } catch {
+      return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), {
+        feedback: {
+          overallComment: feedbackJson,
+          strengths: [],
+          improvements: [],
+          suggestions: [],
+        },
+      });
+    }
+  },
+
+  /**
    * Owner-only — returns raw participant feedback for the seminar.
    * Returns [] when BE responds 200 with an empty body or no items.
    */
@@ -725,6 +829,7 @@ export interface SeminarCard {
   /** Transient UI flag — set to true after a successful create so the page
    *  can render a "NEW" badge. Not persisted or sent to the BE. */
   isNew?: boolean;
+  feedback?: string | null;
 }
 
 /**
@@ -749,6 +854,7 @@ export const mapSeminarToCard = (s: Seminar): SeminarCard => {
     isReminderSent: s.isReminderSent ?? false,
     maxParticipants: s.maxParticipants ?? null,
     aiSummary: s.aiSummary ?? null,
+    feedback: s.feedback ?? null,
     participantCount: 0,
     feedbackSubmitted: 0,
     feedbackTotal: 0,

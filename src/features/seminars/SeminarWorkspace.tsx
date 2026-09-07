@@ -27,6 +27,7 @@ import {
 } from '../../hooks/useSeminar';
 import { SeminarList } from './components/SeminarList';
 import { SummaryDialog } from './components/SummaryDialog';
+import { SeminarFeedbackSetupModal } from '../../components/seminar/SeminarFeedbackSetupModal';
 // CSS module kept at the original SeminarWorkspace CSS location for now.
 import styles from '../../pages/Lecturer/SeminarWorkspace.module.css';
 
@@ -61,6 +62,12 @@ export const SeminarWorkspace = () => {
   const createSeminarSubFieldId: number | undefined = undefined;
   const [createModalError, setCreateModalError] = useState<string | null>(null);
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
+  const [lastCreatedSeminarId, setLastCreatedSeminarId] = useState<number | null>(null);
+  const [feedbackSetupSeminar, setFeedbackSetupSeminar] = useState<{
+    id: number;
+    title: string;
+    feedbackRaw?: string | null;
+  } | null>(null);
 
   const {
     seminars,
@@ -74,6 +81,7 @@ export const SeminarWorkspace = () => {
 
   const handleCreateSuccess = useCallback(
     (created: { seminarId: number; onlineLink?: string | null }) => {
+      setLastCreatedSeminarId(created.seminarId);
       setGeneratedMeetLink(created.onlineLink ?? '');
       setBannerText(`"${seminarName || 'Seminar'}" has been created.`);
       setBannerVariant('success');
@@ -317,6 +325,13 @@ export const SeminarWorkspace = () => {
         currentRole={currentRole}
         onRefetch={() => void refetch()}
         onShowSuccess={(text) => announce(text, 'success')}
+        onOpenFeedbackSetup={(sem) =>
+          setFeedbackSetupSeminar({
+            id: sem.seminarId,
+            title: sem.title,
+            feedbackRaw: sem.feedback,
+          })
+        }
       />
 
       {/* Modal: Create Seminar */}
@@ -405,6 +420,15 @@ export const SeminarWorkspace = () => {
         guestEmails={guestEmails}
         onCopyLink={() => { navigator.clipboard.writeText(generatedMeetLink); announce('Google Meet link copied.'); }}
         onLaunch={() => window.open(generatedMeetLink, '_blank', 'noopener')}
+        onOpenFeedbackSetup={() => {
+          if (lastCreatedSeminarId) {
+            setFeedbackSetupSeminar({
+              id: lastCreatedSeminarId,
+              title: seminarName || 'Seminar',
+            });
+          }
+          setShowGeneratedModal(false);
+        }}
         onClose={() => {
           setShowGeneratedModal(false);
           setSeminarName('');
@@ -413,8 +437,27 @@ export const SeminarWorkspace = () => {
           setGuestEmails([]);
           setEmailInputText('');
           setGeneratedMeetLink('');
+          setLastCreatedSeminarId(null);
         }}
       />
+
+      {/* Seminar Feedback Setup Modal */}
+      {feedbackSetupSeminar && (
+        <SeminarFeedbackSetupModal
+          isOpen={Boolean(feedbackSetupSeminar)}
+          onClose={() => setFeedbackSetupSeminar(null)}
+          seminarId={feedbackSetupSeminar.id}
+          seminarTitle={feedbackSetupSeminar.title}
+          existingFeedbackRaw={feedbackSetupSeminar.feedbackRaw}
+          onSuccess={() => {
+            announce(
+              copy('Feedback form configured and saved successfully.', 'Đã thiết lập và lưu biểu mẫu đánh giá thành công.'),
+              'success'
+            );
+            void refetch();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import {
   Mail,
   Inbox,
   Lock,
+  Sliders,
 } from 'lucide-react';
 import { useLocale } from '../../../i18n/I18nContext';
 import {
@@ -46,6 +47,7 @@ export interface SeminarListProps {
   currentRole: string | null;
   onRefetch: () => void;
   onShowSuccess: (text: string) => void;
+  onOpenFeedbackSetup?: (seminar: SeminarCard) => void;
 }
 
 const formatSeminarId = (id: number): string =>
@@ -64,6 +66,7 @@ export const SeminarList: React.FC<SeminarListProps> = ({
   currentRole,
   onRefetch,
   onShowSuccess,
+  onOpenFeedbackSetup,
 }) => {
   const locale = useLocale();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -166,9 +169,21 @@ export const SeminarList: React.FC<SeminarListProps> = ({
                         </button>
                       )}
                       {showFeedbackOrganizer ? (
-                        <button type="button" className={styles.actionBtnPrimary} onClick={() => handleOpenFeedbackModal(sem)}>
-                          <ClipboardList size={14} aria-hidden /> Feedback &amp; Grading
-                        </button>
+                        <>
+                          <button type="button" className={styles.actionBtnPrimary} onClick={() => handleOpenFeedbackModal(sem)}>
+                            <ClipboardList size={14} aria-hidden /> Feedback &amp; Grading
+                          </button>
+                          {onOpenFeedbackSetup && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => onOpenFeedbackSetup(sem)}
+                              style={{ borderColor: 'var(--ars-lecturer)', color: 'var(--ars-lecturer)' }}
+                            >
+                              <Sliders size={14} aria-hidden /> Feedback Setup
+                            </button>
+                          )}
+                        </>
                       ) : (
                         <button type="button" className={styles.actionBtnPrimary} onClick={() => {
                           setSelectedSeminarForAttendeeFeedback(sem);
@@ -187,6 +202,16 @@ export const SeminarList: React.FC<SeminarListProps> = ({
                       {canModify && owns && (
                         <button type="button" className={styles.actionBtnOutline} onClick={() => { navigator.clipboard.writeText(sem.onlineLink ?? ''); onShowSuccess('Invite link copied.'); }} disabled={!isValidMeetLink(sem.onlineLink)}>
                           <Mail size={14} aria-hidden /> Send Invite Link
+                        </button>
+                      )}
+                      {canModify && owns && onOpenFeedbackSetup && (
+                        <button
+                          type="button"
+                          className={styles.actionBtnOutline}
+                          onClick={() => onOpenFeedbackSetup(sem)}
+                          style={{ borderColor: 'var(--ars-lecturer)', color: 'var(--ars-lecturer)' }}
+                        >
+                          <Sliders size={14} aria-hidden /> Feedback Setup
                         </button>
                       )}
                       <button type="button" className={styles.actionBtnOutline} onClick={() => {
