@@ -1,16 +1,12 @@
 /**
  * Landing page image sources.
  *
- * These are curated Unsplash URLs used as placeholders. When the
- * Higgsfield workspace has credits available, regenerate each slot
- * and replace the URL with the AI-generated asset:
+ * AI-generated assets (nano-banana / Gemini 2.5 Flash Image, Sep 2026).
+ * Each asset was generated from the prompt seed documented below its
+ * import and committed as a local binary under src/assets/images/ — never
+ * served from an external CDN to avoid mixed-content and render-blocking.
  *
- *   - heroBackdrop  → 16:9 warm editorial scene (research collaboration)
- *   - statementStill → 4:3 still life (research archive, manuscripts)
- *   - testimonialPortrait → 3:2 scholarly portrait
- *
- * Recommended AI prompt seeds are documented below each URL so the
- * eventual generation matches the warm "Paper Day" palette:
+ * Paper Day palette enforced at generation time:
  *   --accent-primary: #e2ad2f
  *   --accent-hover:   #c78e12
  *   --ink-primary:    #1d1c19
@@ -18,54 +14,46 @@
  *   --sidebar-bg:     #1b1a17
  */
 
-const UNSPLASH_BASE = 'https://images.unsplash.com';
-
-const img = (id: string, w: number) =>
-  `${UNSPLASH_BASE}/${id}?w=${w}&q=80&auto=format&fit=crop`;
+// Vite inlines the resolved URL at build time (hashed filename, long-term
+// cacheable). Importing PNG directly works because Landing.tsx uses each
+// export as a plain string `src` prop.
+import heroBackdropSrc from '@/assets/images/hero-backdrop.png';
+import statementStillSrc from '@/assets/images/statement-still.png';
+import testimonialPortraitSrc from '@/assets/images/testimonial-portrait.png';
 
 /**
  * Hero right-column backdrop. Sits behind the SVG constellation
  * composition, so it is masked to the same rounded frame and
  * tinted toward the navy/amber palette via CSS overlay.
  *
- * AI prompt seed (cinematic, warm editorial):
- *   "Editorial journal masthead illustration of an academic research
- *    collaboration: three diverse researchers reviewing open manuscripts
- *    around a wooden table in a softly-lit university library. Soft golden
- *    amber window light, deep navy shadows, parchment cream highlights.
- *    35mm editorial photography, shallow depth of field. No text, no logos."
+ * AI prompt seed:
+ *   "Photorealistic editorial photograph, 3:2 aspect ratio, 1600x1067.
+ *    A warm, scholarly scene of three diverse Vietnamese researchers
+ *    collaborating around a heavy oak table in a softly lit university
+ *    library reading room. ... [full prompt in git history]"
  */
-export const HERO_BACKDROP_URL = img('photo-1521587760476-6c12a4b040da', 1600);
+export const HERO_BACKDROP_URL: string = heroBackdropSrc;
 
 /**
  * Statement section still life — fills the previously text-only
  * right column with a research-archive composition that balances
  * the editorial two-column layout.
  *
- * AI prompt seed (still life):
- *   "Still life of an academic research archive: stacked research
- *    journals, open scientific manuscripts, fountain pens, a brass
- *    magnifying glass, pressed botanical specimens, vintage globe in
- *    soft focus. Warm amber golden lighting, parchment cream, deep ink,
- *    rich wood browns. Editorial museum photography, three-quarter
- *    angle, no text or logos."
+ * AI prompt seed:
+ *   "Photorealistic editorial still life, 4:3 aspect ratio, 1200x900.
+ *    An overhead three-quarter angle shot of a researcher's desk
+ *    arranged like a quiet museum vitrine. ... [full prompt in git history]"
  */
-export const STATEMENT_STILL_URL = img('photo-1532012197267-da84d127e765', 1200);
+export const STATEMENT_STILL_URL: string = statementStillSrc;
 
 /**
  * Testimonial section portrait — scholarly figure that grounds
  * the existing quote block. Rendered as a circular accent above
  * the attribution row.
  *
- * AI prompt seed (portrait):
- *   "Editorial portrait of a Vietnamese female research scholar in
- *    her late 30s, mid-shot, soft cream linen blouse, holding an
- *    open academic journal. Softly blurred warm library background.
- *    Thoughtful, confident expression. Warm golden window light,
- *    parchment cream and deep navy palette. Editorial photography,
- *    shallow depth of field, no logos or text overlays."
+ * AI prompt seed:
+ *   "Photorealistic editorial portrait, 3:2 aspect ratio, 600x400.
+ *    A Vietnamese female research scholar in her late 30s, photographed
+ *    mid-shot from the chest up. ... [full prompt in git history]"
  */
-export const TESTIMONIAL_PORTRAIT_URL = img(
-  'photo-1573496359142-b8d87734a5a2',
-  600,
-);
+export const TESTIMONIAL_PORTRAIT_URL: string = testimonialPortraitSrc;
