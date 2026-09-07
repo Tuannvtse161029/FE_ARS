@@ -81,6 +81,22 @@ const ROLE_INFO: Record<
   },
 };
 
+/**
+ * Role progression & transition matrix:
+ * Defines which additional roles an existing role is eligible to request.
+ * - Graduate Student: can only request Researcher (cannot request Reviewer or Lecturer).
+ * - Lecturer: can request Researcher, Reviewer.
+ * - Researcher: can request Lecturer, Reviewer.
+ * - Reviewer: can request Lecturer, Researcher.
+ */
+const ELIGIBLE_ADDITIONAL_ROLES_MAP: Record<string, RequestableRole[]> = {
+  'Graduate Student': ['Researcher'],
+  GraduateStudent: ['Researcher'],
+  Lecturer: ['Researcher', 'Reviewer'],
+  Researcher: ['Lecturer', 'Reviewer'],
+  Reviewer: ['Lecturer', 'Researcher'],
+};
+
 export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProps> = ({
   isOpen,
   onClose,
@@ -102,9 +118,17 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     return ['Researcher'];
   }, [currentUser]);
 
-  // Roles available for selection (exclude currently held roles and Admin)
+  // Roles available for selection (based on eligibility matrix, excluding currently held roles and Admin)
   const availableRoles = useMemo(() => {
-    return REGISTRATION_ROLES.filter((role) => !currentRoles.includes(role));
+    const eligiblePool = new Set<RequestableRole>();
+    currentRoles.forEach((r) => {
+      const allowed = ELIGIBLE_ADDITIONAL_ROLES_MAP[r] || [];
+      allowed.forEach((target) => eligiblePool.add(target));
+    });
+
+    return REGISTRATION_ROLES.filter(
+      (role) => eligiblePool.has(role) && !currentRoles.includes(role),
+    );
   }, [currentRoles]);
 
   // Selected role
@@ -215,11 +239,11 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     e.preventDefault();
     if (!currentUser?.userId) return;
 
-    if (!selectedRole) {
+    if (!selectedRole || !availableRoles.includes(selectedRole)) {
       setError(
         isVi
-          ? 'Vui lòng chọn vai trò bổ sung muốn yêu cầu.'
-          : 'Please select an additional role to request.',
+          ? 'Vui lòng chọn vai trò bổ sung hợp lệ theo quy định chuyển đổi vai trò.'
+          : 'Please select an eligible additional role based on role progression policies.',
       );
       return;
     }
