@@ -82,15 +82,15 @@
 .statusNeutral { background: var(--ars-blue-light); color: var(--ars-ink-soft); }
 
 /* Lifecycle groupings — readable, accessible contrast */
-.statusDraft   { background: #eef0f4; color: #3a4156; }
-.statusSubmitted { background: #e0e7ff; color: #1e3a8a; }
+.statusDraft   { background: var(--status-draft-surface); color: var(--status-draft-text); }
+.statusSubmitted { background: var(--status-info-surface); color: var(--status-info-text); }
 .statusScreening { background: #ede9fe; color: #5b21b6; }
-.statusVerification { background: #fef3c7; color: #92400e; }
-.statusReadyForReviewer { background: #dbeafe; color: #1e40af; }
-.statusReviewerAssigned { background: #dbeafe; color: #1e40af; }
-.statusUnderReview { background: #dbeafe; color: #1e40af; }
+.statusVerification { background: var(--status-warning-surface); color: var(--status-warning-text); }
+.statusReadyForReviewer { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusReviewerAssigned { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusUnderReview { background: var(--status-info-surface); color: var(--status-info-text); }
 .statusRevisionRequired { background: var(--ars-warning-bg); color: var(--ars-warning); }
-.statusResubmitted { background: #fef3c7; color: #92400e; }
+.statusResubmitted { background: var(--status-warning-surface); color: var(--status-warning-text); }
 
 .statusRecommendedAccept {
   background: var(--ars-success-bg);
@@ -101,7 +101,7 @@
   color: var(--ars-error);
 }
 
-.statusApproved { background: #ccfbf1; color: #115e59; }
+.statusApproved { background: var(--status-success-surface); color: var(--status-success-text); }
 .statusPublished {
   background: var(--ars-success-bg);
   color: var(--ars-success);
@@ -111,8 +111,8 @@
   color: var(--ars-error);
 }
 .statusWithdrawn {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
 }
 
 /* Legacy aliases so existing TSX that references statusWarning /
@@ -636,7 +636,7 @@
   padding: 3px 8px;
 }
 
-.tagNeutral { background: #eef0f4; color: var(--ars-ink-soft); }
+.tagNeutral { background: var(--status-inactive-surface); color: var(--status-inactive-text); }
 .tagSuccess { background: var(--ars-success-bg); color: var(--ars-success); }
 .tagWarning { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .tagDanger  { background: var(--ars-error-bg); color: var(--ars-error); }

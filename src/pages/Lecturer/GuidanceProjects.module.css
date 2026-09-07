@@ -302,9 +302,9 @@
 }
 
 .statusClosed {
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-network);
-  color: var(--ars-ink-muted);
+  background: var(--status-inactive-surface);
+  border-color: color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
+  color: var(--status-inactive-text);
 }
 
 .statusInProgress {
@@ -574,8 +574,8 @@
   padding: var(--space-1) var(--space-3);
   border: var(--border-thin);
   border-radius: var(--radius-md);
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
+  background: var(--status-draft-surface);
+  color: var(--status-draft-text);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;

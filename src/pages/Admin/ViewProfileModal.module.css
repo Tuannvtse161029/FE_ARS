@@ -280,9 +280,9 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-family: var(--font-family-ui);
-  background: var(--surface-sunken);
-  color: var(--ink-secondary);
-  border: 1px solid var(--border-subtle);
+  background: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
+  border: 1px solid color-mix(in srgb, var(--status-inactive-text) 35%, transparent);
 }
 
 .statusActive {

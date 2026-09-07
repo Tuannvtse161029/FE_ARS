@@ -1537,10 +1537,10 @@
 .sharedRowStatusPENDING { background: var(--ars-info-bg); color: var(--ars-info); border-color: color-mix(in srgb, var(--ars-info) 35%, transparent); }
 .sharedRowStatusACCEPTED { background: var(--ars-success-bg); color: var(--ars-success); border-color: color-mix(in srgb, var(--ars-success) 35%, transparent); }
 .sharedRowStatusDECLINED { background: var(--ars-error-bg); color: var(--ars-error); border-color: color-mix(in srgb, var(--ars-error) 35%, transparent); }
-.sharedRowStatusEXPIRED { background: var(--ars-paper-inset); color: var(--ars-ink-muted); border-color: var(--ars-node); }
-.sharedRowStatusENDED { background: var(--ars-paper-inset); color: var(--ars-ink-muted); border-color: var(--ars-node); text-decoration: line-through; }
+.sharedRowStatusEXPIRED { background: var(--status-inactive-surface); color: var(--status-inactive-text); border-color: var(--status-inactive-text); }
+.sharedRowStatusENDED { background: var(--status-inactive-surface); color: var(--status-inactive-text); border-color: var(--status-inactive-text); text-decoration: line-through; }
 .sharedRowStatusACTIVE { background: var(--ars-lecturer-light); color: var(--ars-lecturer); border-color: color-mix(in srgb, var(--ars-lecturer) 25%, transparent); }
-.sharedRowStatusARCHIVED { background: var(--ars-paper-inset); color: var(--ars-ink-muted); border-color: var(--ars-node); }
+.sharedRowStatusARCHIVED { background: var(--status-inactive-surface); color: var(--status-inactive-text); border-color: var(--status-inactive-text); }
 
 .sharedRowMeta {
   display: flex;

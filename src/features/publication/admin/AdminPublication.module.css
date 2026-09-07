@@ -235,9 +235,9 @@
   color: var(--ars-admin);
 }
 
-.statusDraft          { background: var(--status-neutral-surface); color: var(--status-neutral-text); }
+.statusDraft          { background: var(--status-draft-surface); color: var(--status-draft-text); }
 .statusSubmitted      { background: var(--status-info-surface); color: var(--status-info-text); }
-.statusScreening      { background: var(--surface-selected); color: var(--ink-primary); }
+.statusScreening      { background: var(--status-info-surface); color: var(--status-info-text); }
 .statusVerification   { background: var(--status-warning-surface); color: var(--status-warning-text); }
 .statusReady          { background: var(--status-info-surface); color: var(--status-info-text); }
 .statusAssigned       { background: var(--status-info-surface); color: var(--status-info-text); }
@@ -250,7 +250,7 @@
 .statusPublished      { background: var(--status-success-surface); color: var(--status-success-text); }
 .statusInactive       { background: var(--status-danger-surface); color: var(--status-danger-text); }
 .statusRejected       { background: var(--status-danger-surface); color: var(--status-danger-text); }
-.statusWithdrawn      { background: var(--status-neutral-surface); color: var(--status-neutral-text); }
+.statusWithdrawn      { background: var(--status-inactive-surface); color: var(--status-inactive-text); }
 
 /* ── Verification badge ──────────────────────────────── */
 .verificationBadge {
@@ -270,10 +270,10 @@
 .verificationVerified   { background: var(--ars-success-bg); color: var(--ars-success); }
 .verificationPending    { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .verificationRejected   { background: var(--ars-error-bg); color: var(--ars-error); }
-.verificationUnverified { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
+.verificationUnverified { background: var(--status-draft-surface); color: var(--status-draft-text); }
 
 /* ── Editorial Status (manuscript pipeline) ──────────────── */
-.editorialDraft         { background: var(--ars-paper-inset); color: var(--ars-ink-soft); }
+.editorialDraft         { background: var(--status-draft-surface); color: var(--status-draft-text); }
 .editorialUnderReview   { background: var(--ars-info-bg); color: var(--ars-info); }
 .editorialNeedsRevision { background: var(--ars-warning-bg); color: var(--ars-warning); }
 .editorialAccepted      { background: var(--ars-success-bg); color: var(--ars-success); }

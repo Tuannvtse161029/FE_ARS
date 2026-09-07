@@ -372,9 +372,9 @@
 }
 
 .statusBadge_DRAFT {
-  color: var(--ars-ink-muted);
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-node);
+  color: var(--status-draft-text);
+  background: var(--status-draft-surface);
+  border-color: color-mix(in srgb, var(--status-draft-text) 30%, transparent);
 }
 
 .statusBadge_UPCOMING {

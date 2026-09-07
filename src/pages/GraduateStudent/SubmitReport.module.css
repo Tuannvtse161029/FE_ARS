@@ -224,7 +224,7 @@
 .statusOnTime { background: var(--ars-info-bg); border-color: var(--ars-info); color: var(--ars-info); }
 .statusOverdue,
 .statusRejected { background: var(--ars-error-bg); border-color: var(--ars-error); color: var(--ars-error); }
-.statusPending { background: var(--ars-paper-inset); border-color: var(--ars-network); color: var(--ars-ink-muted); }
+.statusPending { background: var(--status-draft-surface); border-color: var(--status-draft-text); color: var(--status-draft-text); }
 
 .gradeText {
   color: var(--ars-success);

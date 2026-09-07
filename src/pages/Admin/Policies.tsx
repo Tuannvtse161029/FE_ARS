@@ -86,17 +86,17 @@ const PolicyCard = ({ snapshot, onEdit }: PolicyCardProps) => {
         <div className={styles.cardBadgeBlock}>
           {isSeeded ? (
             <span
-              className={`${styles.badge} ${styles.badgeSeed}`}
-              data-testid={`policy-badge-${snapshot.slug}-seed`}
+              className={`${styles.badge} ${styles.badgeDefault}`}
+              data-testid={`policy-badge-${snapshot.slug}-default`}
             >
-              {t('admin.policies.badge.notSaved')}
+              {t('admin.policies.badge.default')}
             </span>
           ) : (
             <span
-              className={`${styles.badge} ${styles.badgeSaved}`}
-              data-testid={`policy-badge-${snapshot.slug}-saved`}
+              className={`${styles.badge} ${styles.badgeActive}`}
+              data-testid={`policy-badge-${snapshot.slug}-active`}
             >
-              v{snapshot.version}
+              {t('admin.policies.badge.active')} · v{snapshot.version}
             </span>
           )}
         </div>

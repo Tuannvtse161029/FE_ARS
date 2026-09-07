@@ -86,9 +86,9 @@
 }
 
 .statusPill[data-status='expired'] {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  background: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
+  border: 1px solid color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
 }
 
 .readOnlyHint {

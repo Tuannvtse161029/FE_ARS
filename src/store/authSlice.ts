@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { storage } from '../utils/storage';
 import type { User, AuthState, EffectiveRole } from '../types/auth';
 
 /**
@@ -35,13 +36,15 @@ type PersistedAuth = Pick<
  * - When Remember Me is ON (`ars_remember === 'true'`): reads/writes `localStorage` so the
  *   authenticated session survives browser and tab restarts.
  * - When Remember Me is OFF: reads/writes `sessionStorage` so the session expires upon tab close.
+ *
+ * Uses `storage.getRememberMe()` so the decision is consistent with the rest of
+ * the app (it falls back to `sessionStorage` when `ars_remember` is absent,
+ * which is the correct "Remember Me OFF" state).
  */
 const smartAuthStorageAdapter = {
   getItem: (name: string) => {
     if (typeof window === 'undefined') return null;
-    const isRemember =
-      localStorage.getItem('ars_remember') === 'true' ||
-      localStorage.getItem('ars_remember_me') === 'true';
+    const isRemember = storage.getRememberMe();
 
     const raw = isRemember
       ? (localStorage.getItem(name) || sessionStorage.getItem(name))
@@ -56,9 +59,7 @@ const smartAuthStorageAdapter = {
   },
   setItem: (name: string, value: { state: PersistedAuth; version?: number }) => {
     if (typeof window === 'undefined') return;
-    const isRemember =
-      localStorage.getItem('ars_remember') === 'true' ||
-      localStorage.getItem('ars_remember_me') === 'true';
+    const isRemember = storage.getRememberMe();
 
     const payload = JSON.stringify(value.state);
     if (isRemember) {
@@ -103,10 +104,11 @@ const useAuthStore = create<AuthStore>()(
       effectiveRole: null,
 
       login: (user: User, token: string, effectiveRole?: EffectiveRole) => {
-        const isRemember =
-          typeof window !== 'undefined' &&
-          (localStorage.getItem('ars_remember') === 'true' ||
-            localStorage.getItem('ars_remember_me') === 'true');
+        // Use the storage utility so the decision is consistent with the
+        // rest of the app: falls back to `sessionStorage` when `ars_remember`
+        // is absent (the correct "Remember Me OFF" state), preventing stale
+        // localStorage auth state from leaking into new tabs.
+        const isRemember = storage.getRememberMe();
 
         const resolvedEffectiveRole =
           effectiveRole ??
