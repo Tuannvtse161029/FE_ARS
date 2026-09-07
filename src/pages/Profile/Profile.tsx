@@ -30,8 +30,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { Clock, RefreshCw, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { RequestAdditionalRoleModal } from '../../components/profile/RequestAdditionalRoleModal';
+import { roleRequestService, type UserPendingRoleRequest } from '../../services/roleRequest.service';
 import { useProfile } from '../../hooks/useProfile';
 import { toLocalDateInput, formatDisplayDate } from '../../utils/datetime';
 import {
@@ -339,6 +341,21 @@ export const Profile = () => {
   const [isFollowModalOpen, setIsFollowModalOpen] = useState<boolean>(false);
   const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers');
 
+  const canRequestAdditionalRole =
+    isOwner && user?.role !== 'Admin' && user?.effectiveRole !== 'Admin';
+  const [isRoleRequestModalOpen, setIsRoleRequestModalOpen] = useState<boolean>(false);
+  const [pendingRoleRequest, setPendingRoleRequest] =
+    useState<UserPendingRoleRequest | null>(null);
+  const [roleRequestSuccessMessage, setRoleRequestSuccessMessage] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (user?.userId) {
+      setPendingRoleRequest(roleRequestService.getPendingRequest(user.userId));
+    }
+  }, [user?.userId]);
+
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<DraftFields>(EMPTY_DRAFT);
   const [savedDraft, setSavedDraft] = useState<DraftFields>(EMPTY_DRAFT);
@@ -619,6 +636,30 @@ export const Profile = () => {
         actions={
           mode === 'view' ? (
             <>
+              {canRequestAdditionalRole && (
+                <Button
+                  variant={pendingRoleRequest ? 'secondary' : 'outline'}
+                  size="md"
+                  leftIcon={
+                    pendingRoleRequest ? (
+                      <Clock size={14} aria-hidden />
+                    ) : (
+                      <UserPlus size={14} aria-hidden />
+                    )
+                  }
+                  onClick={() => setIsRoleRequestModalOpen(true)}
+                  data-testid="profile-request-role-button"
+                  title={
+                    pendingRoleRequest
+                      ? t('profile.requestPending', 'Role request pending')
+                      : t('profile.requestRole', 'Request additional role')
+                  }
+                >
+                  {pendingRoleRequest
+                    ? t('profile.requestPending', 'Role request pending')
+                    : t('profile.requestRole', 'Request additional role')}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="md"
@@ -752,6 +793,16 @@ export const Profile = () => {
         </div>
       )}
 
+      {roleRequestSuccessMessage && (
+        <div data-testid="profile-role-request-success-banner">
+          <ErrorBanner
+            tone="info"
+            title={t('common.success', 'Success')}
+            message={roleRequestSuccessMessage}
+          />
+        </div>
+      )}
+
       {saveError && mode === 'edit' && (
         <div data-testid="profile-save-error-banner">
           <ErrorBanner
@@ -866,6 +917,32 @@ export const Profile = () => {
           userId={targetUserId}
           onClose={() => setIsFollowModalOpen(false)}
           onCountsChanged={refetchCounts}
+        />
+      )}
+
+      {canRequestAdditionalRole && (
+        <RequestAdditionalRoleModal
+          isOpen={isRoleRequestModalOpen}
+          onClose={() => setIsRoleRequestModalOpen(false)}
+          currentUser={user}
+          currentProfile={{
+            institution: profile?.institution ?? draft.institution,
+            department: null,
+            phoneNumber: profile?.phoneNumber ?? draft.phoneNumber,
+            orcidId: profile?.orcidId ?? null,
+            fullName: profile?.fullName ?? draft.fullName,
+          }}
+          onSubmitted={() => {
+            if (user?.userId) {
+              setPendingRoleRequest(roleRequestService.getPendingRequest(user.userId));
+            }
+            setRoleRequestSuccessMessage(
+              t(
+                'profile.requestRoleSuccess',
+                'Your request to add role has been submitted and is pending administrator review.',
+              ),
+            );
+          }}
         />
       )}
     </div>
