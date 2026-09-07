@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: var(--spacing-4);
+  padding: var(--space-4);
 }
 
 .modal {

@@ -13,7 +13,9 @@
  * backend enforcement is required (see BE Team Request).
  */
 import { useEffect, useRef } from 'react';
-import { X, FileText, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { useT } from '../../i18n/I18nContext';
 import styles from './ReviewerPolicyModal.module.css';
 
 export interface ReviewerPolicyProps {
@@ -74,6 +76,7 @@ export const ReviewerPolicyModal = ({
   onCancel,
   onAccept,
 }: ReviewerPolicyProps) => {
+  const t = useT();
   const firstFocusRef = useRef<HTMLButtonElement>(null);
   const lastFocusRef = useRef<HTMLButtonElement>(null);
 
@@ -110,7 +113,7 @@ export const ReviewerPolicyModal = ({
     onCancel();
   };
 
-  return (
+  const dialog = (
     <div
       className={styles.overlay}
       role="dialog"
@@ -129,7 +132,7 @@ export const ReviewerPolicyModal = ({
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
-            <FileText size={20} className={styles.headerIcon} aria-hidden="true" />
+            <ClipboardCheck size={20} className={styles.headerIcon} aria-hidden="true" />
             <div>
               <h2 id="reviewer-policy-title" className={styles.title}>
                 Reviewer Policy Agreement
@@ -223,12 +226,20 @@ export const ReviewerPolicyModal = ({
             onClick={handleAccept}
             data-testid="policy-accept-btn"
           >
-            Accept &amp; Continue
+            {t('reviewer.policy.acknowledge', 'Acknowledge responsibilities')}
           </button>
         </div>
       </div>
     </div>
   );
+
+  // Render through a portal so the dialog centers in the visible viewport
+  // regardless of how far the user has scrolled, what stacking contexts
+  // the parent layout establishes, or whether the page is scrolled
+  // independently of the document. The host element is <body>; if `document`
+  // is not available (SSR / unit test) we fall back to inline rendering.
+  if (typeof document === 'undefined') return dialog;
+  return createPortal(dialog, document.body);
 };
 
 export default ReviewerPolicyModal;

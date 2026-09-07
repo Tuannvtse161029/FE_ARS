@@ -50,6 +50,10 @@ appsettings.*.local.json
 !docs/LECTURER_RESEARCH_WORKFLOW_BACKEND_REQUEST.md
 !docs/LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md
 !docs/BE_FE_TAKEOVER_AUDIT.md
+!docs/PUBLICATION_INCIDENT_QA.md
+!docs/PUBLICATION_SUBMISSION_LIVE_RETEST.md
+!docs/PUBLICATION_INCIDENT_BACKEND_REQUEST.md
+!docs/PUBLICATION_INCIDENT_TRIAGE.md
 
 # ==========================================
 # Local Scripts, Code Execution & Text Artifacts

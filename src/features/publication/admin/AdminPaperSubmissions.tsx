@@ -6,7 +6,7 @@
  * PageHeader at the top, toolbar with search + verification tab filters,
  * shared TablePagination, and AdminPaperPreviewModal for quick lookups.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleCheck, CircleX, ExternalLink, FileText, Inbox } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
@@ -160,6 +160,27 @@ export const AdminPaperSubmissions = () => {
   const [previewing, setPreviewing] = useState<PublicationPaper | null>(null);
   const [rejectingPaper, setRejectingPaper] = useState<PublicationPaper | null>(null);
   const [rejecting, setRejecting] = useState(false);
+  const mutationBusy = useRef(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const runAction = async (action: () => Promise<PublicationPaper>) => {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const updated = await action();
+      setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
+      await load();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'The action could not be saved.');
+    } finally {
+      mutationBusy.current = false;
+      setActionBusy(false);
+      setRejecting(false);
+    }
+  };
 
   // Default sort by submittedAt (newest first) so recently submitted papers
   // surface at the top. The user can override per column header click.
@@ -332,6 +353,8 @@ export const AdminPaperSubmissions = () => {
         refreshLabel={t('admin.paperIntake.refresh', 'Refresh')}
       />
 
+      {actionError && <ErrorBanner tone="error" title={t('admin.paperIntake.actionFailed', 'Action failed')} message={actionError} />}
+
       {loading ? (
         <div className={adminStyles.tableWrap}>
           <div className={shared.loading} role="status">
@@ -367,10 +390,20 @@ export const AdminPaperSubmissions = () => {
         <>
           <div className={adminStyles.tableWrap}>
             <table
-              className={adminStyles.table}
+              className={`${adminStyles.table} ${adminStyles.intakeTable}`}
               role="table"
               aria-label="Admin paper submissions"
             >
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">
@@ -381,6 +414,7 @@ export const AdminPaperSubmissions = () => {
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
+                  <th scope="col">{t('admin.paperIntake.submitterColumn', 'Submitted by')}</th>
                   <th scope="col">
                     <SortableHeader
                       column="verification"
@@ -389,17 +423,7 @@ export const AdminPaperSubmissions = () => {
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">
-                    <span className={adminStyles.headerWithHint}>
-                      {t('admin.paperIntake.editorialColumn', 'Editorial Status')}
-                      <span className={adminStyles.headerHint}>
-                        {t(
-                          'admin.paperIntake.editorialHint',
-                          'Accept advances the manuscript through the publication track.'
-                        )}
-                      </span>
-                    </span>
-                  </th>
+                  <th scope="col">{t('admin.paperIntake.editorialColumn', 'Editorial Status')}</th>
                   <th scope="col">{t('admin.paperIntake.identifiersColumn', 'Identifiers')}</th>
                   <th scope="col">
                     <SortableHeader
@@ -433,6 +457,9 @@ export const AdminPaperSubmissions = () => {
                           </small>
                         </div>
                       </td>
+                      <td data-label={t('admin.paperIntake.submitterColumn', 'Submitted by')}>
+                        {paper.submitterName || t('admin.paperIntake.submitterMissing', 'Name not supplied')}
+                      </td>
                       <td data-label={t('admin.paperIntake.identityColumn', 'Researcher Identity')}>
                         <div className={adminStyles.verificationActions}>
                           <span
@@ -456,10 +483,10 @@ export const AdminPaperSubmissions = () => {
                               <button
                                 type="button"
                                 className={adminStyles.verifyActionButton}
-                                onClick={async (event) => {
+                                disabled={actionBusy}
+                                onClick={(event) => {
                                   event.stopPropagation();
-                                  await publicationAdapter.verifyAuthorship(paper.id, true);
-                                  void load();
+                                  void runAction(() => publicationAdapter.verifyAuthorship(paper.id, true));
                                 }}
                                 title={t(
                                   'admin.paperIntake.acceptIdentityTooltip',
@@ -471,6 +498,7 @@ export const AdminPaperSubmissions = () => {
                               <button
                                 type="button"
                                 className={adminStyles.rejectActionButton}
+                                disabled={actionBusy}
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   setRejectingPaper(paper);
@@ -616,25 +644,19 @@ export const AdminPaperSubmissions = () => {
       ) : null}
       {rejectingPaper ? (
         <RejectPaperModal
+          identity
+          error={actionError ?? undefined}
           paperTitle={rejectingPaper.title}
           isSubmitting={rejecting}
           onClose={() => setRejectingPaper(null)}
           onConfirm={(reason) => {
+            if (mutationBusy.current || !reason.trim()) return;
             setRejecting(true);
-            void publicationAdapter.rejectPaper(rejectingPaper.id, reason)
-              .then(async () => {
-                // Also mark the researcher identity as REJECTED so the
-                // Accept / Reject buttons disappear from the row and the
-                // identity badge stops showing "PENDING" forever.
-                try {
-                  await publicationAdapter.verifyAuthorship(rejectingPaper.id, false);
-                } catch (authorshipErr) {
-                  console.warn('Identity verification could not be updated:', authorshipErr);
-                }
+            void runAction(async () => {
+                const updated = await publicationAdapter.verifyAuthorship(rejectingPaper.id, false);
                 setRejectingPaper(null);
-                return load();
-              })
-              .finally(() => setRejecting(false));
+                return updated;
+            });
           }}
         />
       ) : null}

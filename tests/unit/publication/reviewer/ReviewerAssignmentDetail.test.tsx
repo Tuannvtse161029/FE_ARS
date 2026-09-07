@@ -5,10 +5,24 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ReviewerAssignmentDetail } from '../../../../src/features/publication/reviewer/ReviewerAssignmentDetail';
 import { publicationAdapter } from '../../../../src/features/publication/api/publication.adapter';
 import type { PublicationPaper } from '../../../../src/features/publication/types/publication';
+import { dictionary } from '../../../../src/i18n/dictionaries/en';
+
+const translate = (key: string, fallback?: string) => dictionary[key] ?? fallback ?? key;
+vi.mock('../../../../src/i18n/I18nContext', () => ({ useT: () => translate }));
+vi.mock('../../../../src/components/PdfViewer', () => ({ PdfViewer: () => <div data-testid="mock-pdf" /> }));
+
+beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(publicationAdapter.getReviewerAssignmentById).mockImplementation(async (id) => {
+    const papers = await publicationAdapter.getReviewerAssignments();
+    return papers.find((paper) => paper.id === id) as PublicationPaper;
+  });
+});
 
 vi.mock('../../../../src/features/publication/api/publication.adapter', () => ({
   publicationAdapter: {
     getReviewerAssignments: vi.fn(),
+    getReviewerAssignmentById: vi.fn(),
     getAdminSubmissions: vi.fn(),
     respondToAssignment: vi.fn(),
     submitReview: vi.fn(),
@@ -19,6 +33,7 @@ const buildUnderReviewPaper = (
   overrides: Partial<PublicationPaper> = {},
 ): PublicationPaper => ({
   id: 'under-review-1',
+  reviewRequestId: 7,
   title: 'Manuscript for Reviewer Evaluation',
   abstract: 'A submission that requires a full reviewer evaluation.',
   authors: [
@@ -120,6 +135,7 @@ describe('ReviewerAssignmentDetail — privacy & metadata', () => {
 describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.setItem('ars_reviewer_policy_accepted_7', JSON.stringify({ version: 'v1.0.0', acceptedAt: Date.now() }));
   });
 
   it('renders Accept / Decline and NOT the Evaluate Paper form for REVIEWER_ASSIGNED', async () => {
@@ -212,6 +228,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     );
     const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
     await user.selectOptions(recommendationSelect, 'ACCEPT');
+    for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
@@ -222,7 +239,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
 
     const banner = await screen.findByTestId('submitted-banner');
     expect(banner).toHaveTextContent(/Review submitted/i);
-    expect(banner).toHaveTextContent(/Awaiting Admin decision/i);
+    expect(banner).toHaveTextContent(/awaiting an Admin decision/i);
 
     // Form is gone, Accept/Decline buttons are gone, post-submit banner is visible.
     expect(screen.queryByTestId('evaluate-form')).toBeNull();
@@ -232,7 +249,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     // submitReview was called once with the reviewer's recommendation + comments
     expect(publicationAdapter.submitReview).toHaveBeenCalledTimes(1);
     const [idArg, recArg, commentsArg] = (publicationAdapter.submitReview as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
-    expect(idArg).toBe('under-review-1');
+    expect(idArg).toBe('7');
     expect(recArg).toBe('ACCEPT');
     expect(commentsArg as string).toMatch(/Strong contribution with minor revision suggestions/);
   });
@@ -265,6 +282,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     );
     const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
     await user.selectOptions(recommendationSelect, 'REVISION_REQUIRED');
+    for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
@@ -273,7 +291,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
     const banner = await screen.findByTestId('submitted-banner');
-    expect(banner).toHaveTextContent(/Awaiting Admin decision/i);
+    expect(banner).toHaveTextContent(/awaiting an Admin decision/i);
     expect((publicationAdapter.submitReview as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(
       'REVISION_REQUIRED',
     );
@@ -307,6 +325,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     );
     const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
     await user.selectOptions(recommendationSelect, 'REJECT');
+    for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
 
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 

@@ -5,20 +5,40 @@
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ── Vietnamese-friendly font: Roboto ──────────────
-         Roboto carries the full Latin-Extended-A and Vietnamese-specific
-         code points (ă, â, ê, ô, ơ, ư plus every tone combination). The
-         preconnect warm-up keeps the request off the critical render path;
-         `display=swap` shows the system fallback immediately so text is never
-         invisible. The subset list includes `vietnamese` so the browser only
-         downloads the Vietnamese glyphs the user actually needs.
+    <!-- ── Vietnamese-friendly font stack ───────────────────
+         Roboto (preferred) is loaded via the non-blocking `media="print"
+         onload=…` trick below so the stylesheet does NOT block first
+         paint. Browsers fetch it at low priority while the page renders
+         with the next stack entry — Segoe UI on Windows, San Francisco
+         on macOS, Roboto on Android. We swap `media` to `all` once the
+         file is parsed so the rendered text reflows to Roboto without a
+         layout shift.
+
+         Why not `<link rel="stylesheet">`? A blocking stylesheet on
+         `fonts.googleapis.com` / `fonts.gstatic.com` added 5-10 s to
+         dev-server cold start when the network was slow. The blocking
+         hint also stalled the Vite HMR client from connecting.
+
+         Why no `preconnect` to fonts.gstatic.com? We keep a single
+         preconnect to fonts.googleapis.com (which serves the CSS) and
+         let the CSS file's `@font-face` URLs trigger the
+         fonts.gstatic.com connection lazily. This avoids a useless
+         preconnect handshake when the network is fast enough that the
+         font never matters.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
+      />
+    </noscript>
     <meta
       name="description"
       content="ARS is a trusted academic platform for research discovery, structured paper review, seminars, and role-based collaboration."

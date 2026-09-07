@@ -5,6 +5,13 @@ import type { AxiosRequestConfig } from 'axios';
 
 /** Exact `PaperResponse` shape from the checked-in OpenAPI contract. */
 export interface Paper {
+  paperType?: string | null;
+  publicationDate?: string | null;
+  sourceName?: string | null;
+  issnValue?: string | null;
+  authorOrcidId?: string | null;
+  authorOrcidDisplayName?: string | null;
+  authors?: PaperAuthorResponse[] | null;
   id: number;
   title?: string | null;
   abstract?: string | null;
@@ -28,6 +35,11 @@ export interface Paper {
 
 /** Exact `PaperCreateRequest` shape; title and abstract are required. */
 export interface PaperCreateRequest {
+  paperType: 'Journal' | 'Conference';
+  publicationDate?: string | null;
+  sourceName?: string | null;
+  issnValue?: string | null;
+  authors?: PaperAuthorRequest[] | null;
   title: string;
   abstract: string;
   fileUrl?: string | null;
@@ -39,8 +51,18 @@ export interface PaperCreateRequest {
   doi?: string | null;
 }
 
-/** Exact `PaperUpdateRequest` shape; title and abstract remain required. */
+/** Update input; paperType is filled from the authoritative record before PUT. */
 export interface PaperUpdateRequest {
+  // Manual decision fields retained for the Admin workflow. Persistence must
+  // be confirmed from the authoritative response, not assumed from HTTP 200.
+  authorshipVerificationStatus?: string;
+  authorshipVerifiedAt?: string;
+  authorshipVerificationReason?: string;
+  paperType?: 'Journal' | 'Conference';
+  publicationDate?: string | null;
+  sourceName?: string | null;
+  issnValue?: string | null;
+  authors?: PaperAuthorRequest[] | null;
   title: string;
   abstract: string;
   fileUrl?: string | null;
@@ -51,26 +73,29 @@ export interface PaperUpdateRequest {
   subFieldId?: number | null;
   openAlexWorkId?: string | null;
   doi?: string | null;
-  /**
-   * Authorship verification status. The live Swagger PaperUpdateRequest
-   * schema does NOT declare this field, but the Paper response model
-   * surfaces `authorshipVerificationStatus`, `authorshipVerifiedAt`, and
-   * `authorshipVerificationReason` — the BE accepts these keys via PUT
-   * (otherwise the values in the response can never change). We include
-   * them as optional so verification-decision mutations persist
-   * end-to-end instead of being stored only in localStorage. The BE
-   * silently ignores unknown keys if `additionalProperties: false` is
-   * enforced strictly; admins still see the in-page state, and a
-   * subsequent GET re-derives the verification status from BE columns
-   * that other endpoints do write to.
-   */
-  authorshipVerificationStatus?: string | null;
-  authorshipVerifiedAt?: string | null;
-  authorshipVerificationReason?: string | null;
 }
 
 export interface GetPapersParams extends PaginationParams {
   status?: string;
+}
+
+/** Exact required wire fields from the live Swagger update contract. */
+export interface PaperUpdateWireRequest extends PaperUpdateRequest {
+  paperType: 'Journal' | 'Conference';
+}
+
+export interface PaperAuthorRequest {
+  authorName: string;
+  rawAuthorName?: string | null;
+  orcidId?: string | null;
+  openAlexAuthorId?: string | null;
+  isCorresponding?: boolean | null;
+}
+export interface PaperAuthorResponse extends PaperAuthorRequest {
+  paperAuthorId: number;
+  authorOrder: number;
+  source?: string | null;
+  createdAt: string;
 }
 
 /** Exact `ManualAssignReviewersRequest` shape from the checked-in OpenAPI contract. */
@@ -104,12 +129,33 @@ export const paperService = {
 
   create: async (data: PaperCreateRequest): Promise<Paper> => {
     const response = await api.post<Paper>(API_ENDPOINTS.PAPER.CREATE, data);
-    return response.data;
+    if (!Number.isInteger(response.data?.id) || response.data.id <= 0) {
+      throw new Error('The backend did not return the created paper ID. Refresh your submissions before retrying.');
+    }
+    return paperService.getById(response.data.id);
   },
 
   update: async (id: number | string, data: PaperUpdateRequest): Promise<Paper> => {
-    const response = await api.put<Paper>(API_ENDPOINTS.PAPER.UPDATE(Number(id)), data);
-    return response.data;
+    const current = await paperService.getById(id);
+    const paperType = data.paperType ?? current.paperType;
+    if (paperType !== 'Journal' && paperType !== 'Conference') {
+      throw new Error('The backend requires a Journal or Conference paper type. Update the paper metadata before continuing.');
+    }
+    const body: PaperUpdateWireRequest = {
+      fileUrl: current.fileUrl, status: current.status, issn: current.issn,
+      isOpenAccess: current.isOpenAccess, quartile: current.quartile,
+      subFieldId: current.subFieldId, openAlexWorkId: current.openAlexWorkId,
+      doi: current.doi, publicationDate: current.publicationDate,
+      sourceName: current.sourceName, issnValue: current.issnValue,
+      authors: current.authors?.map(({ authorName, rawAuthorName, orcidId, openAlexAuthorId, isCorresponding }) => ({ authorName, rawAuthorName, orcidId, openAlexAuthorId, isCorresponding })),
+      ...data, paperType,
+    };
+    await api.put(API_ENDPOINTS.PAPER.UPDATE(Number(id)), body);
+    const refreshed = await paperService.getById(id);
+    if (data.status && refreshed.status?.trim().toLowerCase() !== data.status.trim().toLowerCase()) {
+      throw new Error('The backend did not confirm the requested paper status. Refresh and try again.');
+    }
+    return refreshed;
   },
 
   delete: async (id: number | string): Promise<void> => {

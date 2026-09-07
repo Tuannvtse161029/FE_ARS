@@ -15,6 +15,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { dictionary } from '../../../../src/i18n/dictionaries/en';
+
+const translate = (key: string, fallback?: string, params?: Record<string, string | number>) =>
+  Object.entries(params ?? {}).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), dictionary[key] ?? fallback ?? key);
+vi.mock('../../../../src/i18n/I18nContext', () => ({ useT: () => translate }));
+vi.mock('../../../../src/components/PdfViewer', () => ({ default: () => <div data-testid="mock-local-preview" />, PdfViewer: () => <div data-testid="mock-local-preview" /> }));
 
 const { mockUseFirebaseUpload } = vi.hoisted(() => ({
   mockUseFirebaseUpload: vi.fn(),
@@ -141,7 +147,7 @@ const fillRequiredTextFields = () => {
   fireEvent.change(screen.getByLabelText(/First author/i), {
     target: { value: 'Researcher One' },
   });
-  fireEvent.change(screen.getByLabelText(/Institution/i), {
+  fireEvent.change(screen.getByLabelText(/Institution/i, { selector: 'input' }), {
     target: { value: 'ARS University' },
   });
   fireEvent.change(screen.getByLabelText(/Major field/i), {
@@ -226,7 +232,7 @@ describe('ResearcherSubmissionForm – Upload Paper (PDF) sequencing', () => {
     fireEvent.change(screen.getByLabelText(/First author/i), {
       target: { value: 'Author' },
     });
-    fireEvent.change(screen.getByLabelText(/Institution/i), {
+    fireEvent.change(screen.getByLabelText(/Institution/i, { selector: 'input' }), {
       target: { value: 'Inst' },
     });
 
@@ -242,11 +248,12 @@ describe('ResearcherSubmissionForm – Upload Paper (PDF) sequencing', () => {
     expect(fileInput.disabled).toBe(true);
   });
 
-  it('renders the "Firebase URL captured" hint once the upload completes', () => {
+  it('renders the "Firebase URL captured" hint once the upload completes', async () => {
     setFirebaseState({ progress: 100, isUploading: false, pdfUrl: EXACT_URL });
     renderForm();
+    selectFile(screen.getByTestId('submission-file'), new File(['%PDF-1.4'], 'paper.pdf', { type: 'application/pdf' }));
 
-    expect(screen.getByTestId('submission-file-url')).toHaveTextContent(
+    expect(await screen.findByTestId('submission-file-url')).toHaveTextContent(
       /Upload complete/i,
     );
   });
@@ -267,12 +274,14 @@ describe('ResearcherSubmissionForm – Upload Paper (PDF) sequencing', () => {
   });
 
   it('exposes a Retry upload control after a failed upload', async () => {
-    setFirebaseState({ error: 'Storage quota exceeded', pdfUrl: null });
-    renderForm();
+    setFirebaseState({ error: null, pdfUrl: null });
+    const { rerender } = renderForm();
 
     const fileInput = screen.getByTestId('submission-file') as HTMLInputElement;
     const pdfFile = new File(['x'], 'manuscript.pdf', { type: 'application/pdf' });
     selectFile(fileInput, pdfFile);
+    setFirebaseState({ error: 'Storage quota exceeded' });
+    rerender(<MemoryRouter><ResearcherSubmissionForm /></MemoryRouter>);
 
     expect(
       await screen.findByTestId('submission-file-error'),
@@ -342,7 +351,7 @@ describe('ResearcherSubmissionForm – OpenAlex scan', () => {
     expect(screen.getByLabelText(/Title/i)).toHaveValue('Imported title');
     expect(screen.getByLabelText(/Abstract/i)).toHaveValue('Imported abstract');
     expect(screen.getByLabelText(/First author/i)).toHaveValue('Imported Author');
-    expect(screen.getByLabelText(/Institution/i)).toHaveValue('Imported Institution');
+    expect(screen.getByLabelText(/Institution/i, { selector: 'input' })).toHaveValue('Imported Institution');
     expect(screen.getByLabelText(/Keywords/i)).toHaveValue('open access');
     expect(screen.getByTestId('submission-openalex-confirmed')).toHaveTextContent('W2741809807');
     expect(mockAdapter.createDraft).not.toHaveBeenCalled();

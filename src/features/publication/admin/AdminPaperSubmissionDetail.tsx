@@ -6,7 +6,8 @@
  * hides those fields. Unsupported actions are exposed as honest
  * unavailable placeholders.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -82,6 +83,9 @@ export const AdminPaperSubmissionDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [autoAssigning, setAutoAssigning] = useState(false);
+  const mutationBusy = useRef(false);
+  const busy = saving || verifying || autoAssigning;
+
   const [autoAssignFeedback, setAutoAssignFeedback] = useState<
     | { kind: 'success' }
     | { kind: 'error'; message: string }
@@ -119,7 +123,8 @@ export const AdminPaperSubmissionDetail = () => {
   const actions = paper ? adminActionsForStatus(paper) : [];
 
   const handleAssignReviewer = async (reviewerId: number): Promise<void> => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) throw new Error('Another action is already in progress.');
+    mutationBusy.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -129,6 +134,7 @@ export const AdminPaperSubmissionDetail = () => {
       throw e instanceof Error ? e : new Error('The reviewer assignment could not be saved.');
     } finally {
       setSaving(false);
+      mutationBusy.current = false;
     }
   };
 
@@ -137,7 +143,8 @@ export const AdminPaperSubmissionDetail = () => {
   // once. The adapter enforces the 3-reviewer cap and returns the
   // refreshed paper so we can flip the local state in place.
   const handleAssignReviewers = async (reviewerIds: number[]): Promise<void> => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) throw new Error('Another action is already in progress.');
+    mutationBusy.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -147,20 +154,21 @@ export const AdminPaperSubmissionDetail = () => {
       throw e instanceof Error ? e : new Error('The reviewer batch could not be saved.');
     } finally {
       setSaving(false);
+      mutationBusy.current = false;
     }
   };
 
   const assignAuto = async () => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) return;
+    mutationBusy.current = true;
     setAutoAssigning(true);
     setAutoAssignFeedback(null);
     try {
       await publicationAdapter.assignReviewersAuto(paper.id, 3);
       const items = await publicationAdapter.getAdminSubmissions();
       const match = items.find((item) => item.id === id) ?? null;
-      if (match) {
-        setPaper(match);
-      }
+      if (!match || !['REVIEWER_ASSIGNED', 'UNDER_REVIEW'].includes(match.status)) throw new Error('The assignment could not be confirmed from the saved record. Refresh before retrying.');
+      setPaper(match);
       setAutoAssignFeedback({ kind: 'success' });
     } catch (err) {
       setAutoAssignFeedback({
@@ -172,50 +180,59 @@ export const AdminPaperSubmissionDetail = () => {
       });
     } finally {
       setAutoAssigning(false);
+      mutationBusy.current = false;
     }
   };
 
   const publish = async () => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) return;
+    mutationBusy.current = true;
     setSaving(true);
     setError(null);
     try {
       const updated = await publicationAdapter.publishPaper(paper.id);
       setPaper(updated);
-    } catch {
-      setError('The publish action could not be performed.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The publish action could not be performed.');
     } finally {
       setSaving(false);
+      mutationBusy.current = false;
     }
   };
 
   const reject = async (reason?: string) => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) return;
+    mutationBusy.current = true;
     setSaving(true);
     setError(null);
     try {
       const updated = await publicationAdapter.rejectPaper(paper.id, reason);
       setPaper(updated);
-    } catch {
-      setError('The reject action could not be performed.');
+      setRejectDialogOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The reject action could not be performed.');
     } finally {
       setSaving(false);
+      mutationBusy.current = false;
     }
   };
 
   const handleAllowVerification = async () => {
-    if (!paper) return;
+    if (!paper || mutationBusy.current) return;
+    mutationBusy.current = true;
     setVerifying(true);
     setError(null);
     setVerificationSuccess(null);
     try {
       const updated = await publicationAdapter.verifyAuthorship(paper.id, true);
       setPaper(updated);
+      if (!isAuthorshipAllowed(updated)) throw new Error('Authorship verification was not confirmed in the saved record.');
       setVerificationSuccess('Authorship was verified successfully. The status is now ALLOW.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authorship could not be verified.');
     } finally {
       setVerifying(false);
+      mutationBusy.current = false;
     }
   };
 
@@ -335,7 +352,7 @@ export const AdminPaperSubmissionDetail = () => {
       <div className={shared.panel}>
         <h2 className={shared.panelTitle}>Metadata</h2>
         <p className={shared.panelSubtitle}>
-          Author, institution, taxonomy, and identifiers as supplied by the researcher.
+          Author, institution, taxonomy, and identifiers from the manuscript and linked academic records.
         </p>
         <dl className={shared.detailList}>
           <dt>Paper type</dt>
@@ -353,14 +370,13 @@ export const AdminPaperSubmissionDetail = () => {
             {paper.authors
               .sort((a, b) => a.order - b.order)
               .map((author) => author.name)
-              .join(', ')}
+              .join(', ') || 'Not supplied'}
           </dd>
           <dt>Institutions</dt>
-          <dd>{paper.institutions.map((institution) => institution.name).join(', ')}</dd>
+          <dd>{paper.institutions.map((institution) => institution.name).join(', ') || 'Not supplied'}</dd>
           <dt>Field / Subfield</dt>
           <dd>
-            {[paper.domain, paper.field, paper.subfield].filter(Boolean).join(' / ') ||
-              (paper.subFieldId ? `Subfield #${paper.subFieldId}` : '—')}
+            {Array.from(new Set([paper.domain, paper.field, paper.subfield].filter(Boolean))).join(' / ') || 'Not supplied'}
           </dd>
           <dt>Keywords</dt>
           <dd>{paper.keywords.join(', ') || '—'}</dd>
@@ -387,7 +403,9 @@ export const AdminPaperSubmissionDetail = () => {
           <dd>{identifiers.openAlexId ?? '—'}</dd>
           <dt>External</dt>
           <dd>{identifiers.externalIdentifier ?? '—'}</dd>
+          {paper.externalMetadataSource && <><dt>Bibliographic enrichment</dt><dd>{paper.externalMetadataSource}</dd></>}
         </dl>
+        {paper.metadataWarnings?.map((warning) => <p key={warning} role="status">{warning}</p>)}
       </div>
 
       <div className={shared.panel}>
@@ -450,7 +468,7 @@ export const AdminPaperSubmissionDetail = () => {
                   ] ?? ''
                 }`}
               >
-                {paper.reviewer.recommendation.replace(/_/g, ' ')}
+                {paper.reviewer.recommendation?.replace(/_/g, ' ') ?? 'Awaiting submitted review'}
               </span>
             </dd>
             <dt>Submitted</dt>
@@ -587,19 +605,19 @@ export const AdminPaperSubmissionDetail = () => {
 
               {isAuthorshipAllowed(paper) ? (
                 <p style={{ color: '#047857', fontSize: 13, margin: '6px 0 0' }}>
-                  Authorship has been officially verified (ALLOW). This paper is eligible for reviewer assignment.
+                  Authorship is verified. This paper is eligible for reviewer assignment.
                 </p>
               ) : (
                 <>
                   <p className={adminStyles.actionZoneHint} style={{ color: '#1e3a8a', marginBottom: 12 }}>
-                    Verify authorship so the system can unlock reviewer assignment for this paper.
+                    Verify the submitter's authorship evidence before making the editorial decision.
                   </p>
                   <div className={shared.actions}>
                     <button
                       type="button"
                       className={shared.button}
                       style={{ background: '#2563eb' }}
-                      disabled={verifying || saving}
+                      disabled={busy}
                       onClick={() => void handleAllowVerification()}
                     >
                       {verifying ? 'Verifying…' : 'Verify authorship'}
@@ -631,7 +649,7 @@ export const AdminPaperSubmissionDetail = () => {
                     <button
                       type="button"
                       className={shared.button}
-                      disabled={autoAssigning || saving}
+                      disabled={busy}
                       onClick={() => void assignAuto()}
                     >
                       {autoAssigning ? 'Assigning…' : 'Automatically assign 3 reviewers'}
@@ -646,7 +664,7 @@ export const AdminPaperSubmissionDetail = () => {
                     paperSubFieldId={paper.subFieldId ?? null}
                     paperSubFieldName={paper.subfield ?? null}
                     currentReviewerId={paper.reviewerId ?? null}
-                    isAssigning={saving || autoAssigning}
+                    isAssigning={busy}
                     onAssign={handleAssignReviewer}
                     onAssignMany={handleAssignReviewers}
                   />
@@ -661,7 +679,7 @@ export const AdminPaperSubmissionDetail = () => {
                   <button
                     type="button"
                     className={shared.button}
-                    disabled={saving}
+                    disabled={busy}
                     onClick={() => void publish()}
                   >
                     {saving ? 'Publishing…' : 'Approve and publish'}
@@ -690,7 +708,7 @@ export const AdminPaperSubmissionDetail = () => {
                     type="button"
                     className={shared.buttonSecondary}
                     style={{ color: '#dc2626', borderColor: '#fca5a5', fontWeight: 600 }}
-                    disabled={saving}
+                    disabled={busy}
                     onClick={() => setRejectDialogOpen(true)}
                   >
                     {saving ? 'Processing…' : 'Confirm rejection and notify author'}
@@ -727,11 +745,11 @@ export const AdminPaperSubmissionDetail = () => {
       )}
   {rejectDialogOpen ? (
     <RejectPaperModal
+      error={error ?? undefined}
       paperTitle={paper.title}
       isSubmitting={saving}
       onClose={() => setRejectDialogOpen(false)}
       onConfirm={(reason) => {
-        setRejectDialogOpen(false);
         void reject(reason);
       }}
     />
@@ -766,7 +784,7 @@ const AutoAssignFeedbackModal = ({
   const backdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose();
   };
-  return (
+  return createPortal(
     <div className={adminStyles.previewModalBackdrop} role="presentation" onMouseDown={backdropMouseDown}>
       <div
         className={adminStyles.previewModal}
@@ -801,7 +819,7 @@ const AutoAssignFeedbackModal = ({
         <div className={adminStyles.previewBody}>
           <p>
             {isSuccess
-              ? 'The system has matched and notified 3 reviewers based on subfield and workload. You will see their assignments on the paper shortly.'
+              ? 'Reviewer assignment is confirmed in the refreshed paper record.'
               : feedback.message}
           </p>
           {!isSuccess ? (
@@ -817,6 +835,6 @@ const AutoAssignFeedbackModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 };

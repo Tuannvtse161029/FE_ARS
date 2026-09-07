@@ -67,17 +67,17 @@ const REVIEWER_VISIBLE_STATUSES: ReadonlySet<PublicationStatus> = new Set([
 ]);
 
 const isVisibleReviewerAssignment = (paper: PublicationPaper): boolean =>
-  REVIEWER_VISIBLE_STATUSES.has(paper.status);
+  paper.reviewRequestId != null && REVIEWER_VISIBLE_STATUSES.has(paper.status);
 
 const actionableLabel = (paper: PublicationPaper): string => {
-  if (isReviewerSubmitted(paper.status)) return 'Review submitted · awaiting Admin';
+  if (paper.reviewer?.recommendation) return 'Review submitted · awaiting Admin';
   if (isReviewerActionable(paper.status)) return 'Ready for evaluation';
   if (isAwaitingReviewerResponse(paper.status)) return 'Awaiting your response';
   return 'Not actionable yet';
 };
 
 const actionableTone = (paper: PublicationPaper): 'submitted' | 'evaluated' | 'waiting' | 'unknown' => {
-  if (isReviewerSubmitted(paper.status)) return 'submitted';
+  if (paper.reviewer?.recommendation) return 'submitted';
   if (isReviewerActionable(paper.status)) return 'evaluated';
   if (isAwaitingReviewerResponse(paper.status)) return 'waiting';
   return 'unknown';
@@ -104,6 +104,7 @@ const ACTION_BUCKET_I18N: Record<ActionBucket, { label: string; hint: string }> 
 };
 
 const bucketFor = (paper: PublicationPaper): ActionBucket => {
+  if (paper.reviewer?.recommendation) return 'completed';
   if (isAwaitingReviewerResponse(paper.status)) return 'response';
   if (isReviewerActionable(paper.status)) return 'in_progress';
   if (isReviewerSubmitted(paper.status)) return 'completed';
@@ -205,14 +206,14 @@ export const ReviewerAssignments = () => {
 
   const rows = useMemo(
     () =>
-      sortedPapers.map((paper) => ({
+      ACTION_BUCKET_ORDER.flatMap((bucket) => groupedPapers[bucket]).map((paper) => ({
         paper,
         actionable: actionableLabel(paper),
         actionableTone: actionableTone(paper),
         assignedAt: formatDate(paper.assignmentCreatedAt ?? paper.submittedAt),
         deadline: formatDate(paper.reviewDeadline),
       })),
-    [sortedPapers],
+    [groupedPapers],
   );
 
   // Intentional next-action hint per paper.
@@ -240,8 +241,8 @@ export const ReviewerAssignments = () => {
     itemCount: rows.length,
     onOpen: (index) => {
       const row = rows[index];
-      if (!row?.paper?.id) return;
-      navigate(`/reviewer/assignments/${row.paper.id}`);
+      if (row?.paper?.reviewRequestId == null) return;
+      navigate(`/reviewer/assignments/${row.paper.reviewRequestId}`);
     },
     filterFocusId: 'reviewer-assignments-search',
   });
@@ -362,7 +363,7 @@ export const ReviewerAssignments = () => {
                     </header>
                     <ul className={reviewer.bucketList}>
                       {bucketPapers.map((paper) => {
-                        const rowIndex = rows.findIndex((row) => row.paper.id === paper.id);
+                        const rowIndex = rows.findIndex((row) => row.paper.reviewRequestId === paper.reviewRequestId);
                         const aiLabel = aiRecommendedLabel(paper);
                         return (
                           <li
@@ -370,10 +371,11 @@ export const ReviewerAssignments = () => {
                             className={reviewer.bucketItem}
                           >
                             <Link
-                              to={`/reviewer/assignments/${paper.id}`}
+                              to={`/reviewer/assignments/${paper.reviewRequestId}`}
                               className={reviewer.bucketLink}
                               data-testid="assignment-row"
                               data-paper-id={paper.id}
+                              data-assignment-id={paper.reviewRequestId}
                               aria-current={selectedIndex === rowIndex ? 'true' : undefined}
                             >
                               <div className={reviewer.bucketMain}>
@@ -383,6 +385,10 @@ export const ReviewerAssignments = () => {
                                   {paper.reviewType ? reviewTypeLabel(paper.reviewType) : ''}
                                   {aiLabel ? ` · ${aiLabel}` : ''}
                                 </span>
+                                <span className={reviewer.bucketMeta}>
+                                  {paper.authors.map((author) => author.name).filter(Boolean).join(', ') || t('reviewer.detail.notSupplied', 'Not supplied')}
+                                </span>
+                                {paper.abstract && <span className={reviewer.assignmentAbstract}>{paper.abstract}</span>}
                               </div>
                               <div className={reviewer.bucketStatus}>
                                 <span className={reviewer.bucketStatusLabel}>

@@ -40,36 +40,36 @@ export interface ReviewerCriterion {
 export const REVIEWER_CRITERIA: ReadonlyArray<ReviewerCriterion> = [
   {
     key: 'originality',
-    label: 'Originality (Tính độc đáo)',
-    description: 'Novelty of the contribution; how much new ground the work covers.',
+    label: 'reviewer.criterion.originality.label',
+    description: 'reviewer.criterion.originality.description',
     min: 1,
     max: 10,
   },
   {
     key: 'methodology',
-    label: 'Methodology (Phương pháp nghiên cứu)',
-    description: 'Soundness of the research design, methods, and analysis.',
+    label: 'reviewer.criterion.methodology.label',
+    description: 'reviewer.criterion.methodology.description',
     min: 1,
     max: 10,
   },
   {
     key: 'clarity',
-    label: 'Formatting & Clarity (Trình bày & Bố cục)',
-    description: 'Quality of writing, structure, figures, and adherence to academic formatting standards.',
+    label: 'reviewer.criterion.clarity.label',
+    description: 'reviewer.criterion.clarity.description',
     min: 1,
     max: 10,
   },
   {
     key: 'significance',
-    label: 'Results & Significance (Kết quả & Đóng góp)',
-    description: 'Importance, empirical results, and likely impact on the scientific field.',
+    label: 'reviewer.criterion.significance.label',
+    description: 'reviewer.criterion.significance.description',
     min: 1,
     max: 10,
   },
   {
     key: 'references',
-    label: 'Literature & References (Tài liệu tham khảo)',
-    description: 'Coverage and balance of related work; appropriate academic citations.',
+    label: 'reviewer.criterion.references.label',
+    description: 'reviewer.criterion.references.description',
     min: 1,
     max: 10,
   },
@@ -78,6 +78,7 @@ export const REVIEWER_CRITERIA: ReadonlyArray<ReviewerCriterion> = [
 export type ReviewerCriterionScores = Record<ReviewerCriterionKey, number>;
 
 export const REVIEWER_RECOMMENDATIONS = [
+  { value: '', label: 'Select recommendation' },
   { value: 'ACCEPT', label: 'Accept' },
   { value: 'REVISION_REQUIRED', label: 'Revision required' },
   { value: 'REJECT', label: 'Reject' },
@@ -86,8 +87,19 @@ export const REVIEWER_RECOMMENDATIONS = [
 export type ReviewerRecommendationValue =
   (typeof REVIEWER_RECOMMENDATIONS)[number]['value'];
 
+/**
+ * Default reviewer recommendation.
+ *
+ * Pre-2026-09 this defaulted to `'ACCEPT'`, which made every new draft
+ * surface as "Reviewer recommended ACCEPT" in the Admin editorial record
+ * before the reviewer had actually submitted anything. The recommendation
+ * is now an explicit, reviewer-authored choice — the form starts blank so
+ * an absent recommendation reads as "No recommendation submitted" in every
+ * downstream view, and the submission flow validates that a real value is
+ * picked before allowing the API call.
+ */
 export const DEFAULT_REVIEWER_RECOMMENDATION: ReviewerRecommendationValue =
-  'ACCEPT';
+  '';
 
 export const buildEmptyCriterionScores = (): ReviewerCriterionScores => {
   const scores = {} as ReviewerCriterionScores;

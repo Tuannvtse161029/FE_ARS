@@ -12,6 +12,7 @@ import { NotificationCenter } from '../components/notification/NotificationCente
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
 import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
+import { PublicationToastViewport } from '../features/publication/components/PublicationToastViewport';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { useI18n, useLocale } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
@@ -1015,6 +1016,11 @@ export const MainLayout = () => {
           open={shortcutsOpen}
           onClose={() => setShortcutsOpen(false)}
         />
+
+        {/* Publication-flow toast viewport. Mounted at the layout root so
+            success / error feedback for cross-page mutations (submit,
+            assign, review, publish) survives navigation. */}
+        <PublicationToastViewport />
       </div>
     </div>
   );

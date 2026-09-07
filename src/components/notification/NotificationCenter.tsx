@@ -480,6 +480,17 @@ function renderNotificationMessage(
   if (!raw) return '';
   if (locale === 'vi') return raw;
 
+  // Translate only known application-authored legacy templates. Captured
+  // manuscript titles and editor-written reasons retain their original text.
+  const published = raw.match(/^Bài báo "([\s\S]+)" của bạn đã được xuất bản chính thức lên Discover RESEARCH!$/u);
+  if (published) return `Your paper "${published[1]}" has been published in Discover Research.`;
+  const rejected = raw.match(/^Bài báo "([\s\S]+)" của bạn đã bị từ chối xuất bản\.\s*(?:Lý do: ([\s\S]*))?$/u);
+  if (rejected) return `Your paper "${rejected[1]}" was rejected for publication.${rejected[2] ? ` Reason: ${rejected[2]}` : ''}`;
+  const verified = raw.match(/^Bài báo "([\s\S]+)" của bạn đã được Ban biên tập xác nhận quyền sở hữu tác giả chính thức \(Status: ALLOW\)\.$/u);
+  if (verified) return `Authorship of your paper "${verified[1]}" was confirmed by the editorial team.`;
+  const unverified = raw.match(/^Bài báo "([\s\S]+)" của bạn không được Ban biên tập xác nhận quyền sở hữu tác giả\.$/u);
+  if (unverified) return `Authorship of your paper "${unverified[1]}" was not confirmed by the editorial team.`;
+
   const kind = inferNotificationKind(raw);
   if (kind === 'unknown') return raw;
 
@@ -493,6 +504,10 @@ function renderNotificationMessage(
   // suffix rather than a full Vietnamese sentence.
   const stripped = stripTagPrefix(raw);
   const suffix = extractDynamicSuffix(stripped);
+  // Without a delimiter the entire sentence is not an entity-name suffix.
+  if (!stripped.includes(':') && /^\[[^\]]+\]/.test(raw)) {
+    return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').replace('{suffix}', '').trim();
+  }
   if (!suffix) return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
   return template.replace('{suffix}', suffix);
 }

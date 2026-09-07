@@ -7,7 +7,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 // static file so the lazy-loaded `PdfViewer` chunk stays under the warning
 // limit (the main JS bundle still won't ship the worker at all).
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { RefreshCw, ExternalLink, FileText } from 'lucide-react';
+import { RefreshCw, ExternalLink, FileText, Download } from 'lucide-react';
 import {
   resolvePdfSource,
   classifyPdfSource,
@@ -308,6 +308,7 @@ export const PdfViewer = ({
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
 
     const resetState = () => {
       setLoading(true);
@@ -363,7 +364,7 @@ export const PdfViewer = ({
           );
         }
 
-        const loadingTask = pdfjsLib.getDocument({ data: buffer });
+        loadingTask = pdfjsLib.getDocument({ data: buffer });
         const doc = await loadingTask.promise;
 
         if (controller.signal.aborted) {
@@ -399,7 +400,11 @@ export const PdfViewer = ({
 
     return () => {
       controller.abort();
+      renderTaskRef.current?.cancel();
+      renderTaskRef.current = null;
+      void loadingTask?.destroy();
       pdfDocRef.current = null;
+      pdfObjectUrlRef.current = swapObjectUrl(pdfObjectUrlRef.current, null);
     };
     // retryNonce forces a retry-driven reload without depending on identity of `url`.
     // isProtected is included so that switching modes re-fetches the PDF.
@@ -494,7 +499,7 @@ export const PdfViewer = ({
   const handleRetry = () => setRetryNonce((n) => n + 1);
 
   const openTarget = (() => {
-    if (!error) return null;
+    if (!error || isProtected) return null;
     if (isOpenableAbsoluteUrl(error.rawInputUrl)) return error.rawInputUrl;
     if (typeof url === 'string' && isOpenableAbsoluteUrl(url)) return url;
     return null;
@@ -563,6 +568,7 @@ export const PdfViewer = ({
             </button>
           ) : null}
           {openTarget ? (
+            <>
             <a
               href={openTarget}
               target="_blank"
@@ -572,6 +578,10 @@ export const PdfViewer = ({
             >
               <ExternalLink size={14} /> Open in new tab
             </a>
+            {error.reason === 'network' || error.reason === 'forbidden' ? <a href={openTarget} download target="_blank" rel="noreferrer noopener" className={styles.errorOpen}>
+              <Download size={14} /> Download PDF
+            </a> : null}
+            </>
           ) : null}
         </div>
       </div>
@@ -698,7 +708,7 @@ export const PdfViewer = ({
               not treat the response as a forced "save as" download — the
               user already sees the PDF inline and just wants a new tab.
               Hidden in protected-review mode. */}
-          {totalPages > 0 && !isProtected ? (
+          {totalPages > 0 && !isProtected && !loading && !error && pdfObjectUrlRef.current ? (
             <div className={styles.toolbarActions}>
               <button
                 type="button"
@@ -710,6 +720,14 @@ export const PdfViewer = ({
               >
                 <ExternalLink size={14} /> Open in new tab
               </button>
+              <a
+                href={pdfObjectUrlRef.current ?? undefined}
+                download={url instanceof File ? url.name : 'manuscript.pdf'}
+                className={styles.toolbarOpenBtn}
+                data-testid="pdf-download-link"
+              >
+                <Download size={14} /> Download PDF
+              </a>
             </div>
           ) : null}
         </div>

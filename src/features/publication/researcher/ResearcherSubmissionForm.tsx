@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, Info, Save, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Save, Send, Eye } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
 import { useMajorFields, useSubFields } from '../../../hooks/useMajorFields';
@@ -14,6 +14,8 @@ import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
 import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
 import { useT } from '../../../i18n/I18nContext';
+import { publicationToast } from '../utils/publicationToast';
+import LazyPdfViewer from '../../../components/PdfViewer/LazyPdfViewer';
 import styles from './researcher.module.css';
 
 const PAPER_UPLOAD_FOLDER = 'researcher_papers/';
@@ -61,7 +63,7 @@ export const ResearcherSubmissionForm = () => {
   const [abstract, setAbstract] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [institution, setInstitution] = useState('');
-  const [paperType, setPaperType] = useState('Research article');
+  const [paperType, setPaperType] = useState('Journal');
   const [keywords, setKeywords] = useState('');
   const [doi, setDoi] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
@@ -72,6 +74,7 @@ export const ResearcherSubmissionForm = () => {
   const { subFields, isLoading: isLoadingSubFields } = useSubFields(selectedMajorFieldId);
 
   const [saving, setSaving] = useState(false);
+  const submissionInFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -86,13 +89,13 @@ export const ResearcherSubmissionForm = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedAt, setUploadedAt] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const inFlightRef = useRef(false);
   const submissionIdRef = useRef(0);
 
   useEffect(() => {
     if (uploadError) {
       setFileError(uploadError);
-      setUploadedFile(null);
       setUploadedAt(null);
     }
   }, [uploadError]);
@@ -127,6 +130,8 @@ export const ResearcherSubmissionForm = () => {
     inFlightRef.current = true;
     setUploadedFile(file);
     setUploadedAt(null);
+    setFileError(null);
+    resetUpload();
     try {
       await uploadPdf(file);
     } finally {
@@ -228,6 +233,7 @@ export const ResearcherSubmissionForm = () => {
     !saving &&
     !inFlightRef.current &&
     !!pdfUrl &&
+    !fileError &&
     uploadedAt !== null &&
     !!title.trim() &&
     !!abstract.trim() &&
@@ -237,10 +243,16 @@ export const ResearcherSubmissionForm = () => {
     selectedSubFieldId !== null;
 
   const submit = async (sendToAdmin: boolean) => {
+    if (submissionInFlight.current) return;
     if (!canSubmit) {
       setError(t('researcher.form.footer.validation'));
+      publicationToast.error(
+        t('researcher.form.footer.validation'),
+        'submission-validation',
+      );
       return;
     }
+    submissionInFlight.current = true;
     const submissionId = ++submissionIdRef.current;
     setSaving(true);
     setError(null);
@@ -276,14 +288,23 @@ export const ResearcherSubmissionForm = () => {
         openAlexId: trimmedOpenAlex,
         doi: doi.trim() || undefined,
         publicationDate: publicationDate.trim() || undefined,
-      });
-      const paper = sendToAdmin ? await publicationAdapter.submitPaper(draft.id) : draft;
+      }, sendToAdmin);
+      const paper = draft;
+      publicationToast.success(
+        sendToAdmin
+          ? t('researcher.form.toast.submittedToAdmin')
+          : t('researcher.form.toast.draftSaved'),
+        sendToAdmin ? 'submission-to-admin' : 'submission-draft',
+      );
       navigate(`/researcher/submissions/${paper.id}`);
-    } catch {
+    } catch (caught) {
       if (submissionIdRef.current === submissionId) {
-        setError(t('researcher.form.error.title'));
+        const message = caught instanceof Error ? caught.message : t('researcher.form.error.title');
+        setError(message);
+        publicationToast.error(message, 'submission-failed');
       }
     } finally {
+      submissionInFlight.current = false;
       if (submissionIdRef.current === submissionId) {
         setSaving(false);
       }
@@ -397,9 +418,8 @@ export const ResearcherSubmissionForm = () => {
                 value={paperType}
                 onChange={(event) => setPaperType(event.target.value)}
               >
-                <option>Research article</option>
-                <option>Methodology article</option>
-                <option>Review article</option>
+                <option value="Journal">Journal</option>
+                <option value="Conference">Conference</option>
               </select>
             </div>
 
@@ -513,6 +533,7 @@ export const ResearcherSubmissionForm = () => {
               <label htmlFor="submission-file">{t('researcher.form.file.uploadLabel')}</label>
               <input
                 id="submission-file"
+                ref={fileInputRef}
                 data-testid="submission-file"
                 type="file"
                 accept="application/pdf"
@@ -557,6 +578,15 @@ export const ResearcherSubmissionForm = () => {
               </p>
             )}
 
+            {uploadedFile && (
+              <div data-testid="submission-file-preview" className={styles.field}>
+                <p className={styles.previewTitle}>
+                  <Eye size={14} aria-hidden="true" /> {t('researcher.form.file.previewTitle', 'Preview PDF')}
+                </p>
+                <LazyPdfViewer url={uploadedFile} />
+              </div>
+            )}
+
             {fileError && (
               <div data-testid="submission-file-error">
                 <ErrorBanner
@@ -570,6 +600,7 @@ export const ResearcherSubmissionForm = () => {
                       size="sm"
                       onClick={() => void handleRetry()}
                       data-testid="submission-file-retry"
+                      disabled={!uploadedFile || isUploading || saving}
                     >
                       {t('researcher.form.file.retry')}
                     </Button>
@@ -578,9 +609,18 @@ export const ResearcherSubmissionForm = () => {
               </div>
             )}
 
-            {!isUploading && uploadedFile && pdfUrl && !fileError && (
+            {!isUploading && uploadedFile && (
               <div className={styles.actionsRow}>
-                <Button variant="outline" size="sm" onClick={handleRemoveUpload}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={saving}
+                  data-testid="submission-file-replace"
+                >
+                  {t('researcher.form.file.replace', 'Replace file')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRemoveUpload} disabled={saving}>
                   {t('researcher.form.file.remove')}
                 </Button>
               </div>

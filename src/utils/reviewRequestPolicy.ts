@@ -66,7 +66,6 @@ const COMPLETED_VARIANTS = new Set<string>([
   'REVIEWED',
   'CLOSED',
   'DELIVERED',
-  'ACCEPTED',
 ]);
 
 const DECLINED_VARIANTS = new Set<string>([
@@ -96,8 +95,7 @@ const normalizeStatus = (raw: string | null | undefined): string =>
  * - `PENDING` ↔ Pending / pending / Requested / Created / Awaiting
  * - `IN_PROGRESS` ↔ InProgress / In Progress / in-progress / Ongoing /
  *   Evaluating / Processing
- * - `COMPLETED` ↔ Completed / Complete / Done / Reviewed / Closed / Delivered /
- *   Accepted
+ * - `COMPLETED` ↔ Completed / Complete / Done / Reviewed / Closed / Delivered
  * - `DECLINED` ↔ Declined / Rejected
  * - `CANCELLED` ↔ Cancelled / Canceled / Expired / Timeout / Refunded /
  *   Returned / Withdrawn / Failed / Error

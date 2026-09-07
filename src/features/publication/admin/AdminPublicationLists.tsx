@@ -4,7 +4,7 @@
  * pattern; the only thing that differs is the status filter applied on top
  * of the API feed.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Inbox, X } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
@@ -36,6 +36,7 @@ import {
 import adminStyles from './AdminPublication.module.css';
 import { AdminPaperPreviewModal } from './AdminPaperPreviewModal';
 import { RejectPaperModal } from './RejectPaperModal';
+import { PublicationConfirmation } from './PublicationConfirmation';
 
 interface StatusTabOption {
   value: PublicationStatus | 'ALL';
@@ -140,6 +141,9 @@ const AdminList = ({
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectingPaper, setRejectingPaper] = useState<PublicationPaper | null>(null);
+  const [visibilityPaper, setVisibilityPaper] = useState<PublicationPaper | null>(null);
+  const mutationBusy = useRef(false);
+  const busy = Boolean(publishingId || deactivatingId || rejectingId);
   const [actionFeedback, setActionFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -155,14 +159,14 @@ const AdminList = ({
       if (tab.value !== 'ALL') counts[tab.value] = 0;
     });
 
-    papers.forEach((paper) => {
+    papers.filter((paper) => config.statusOptions.includes(paper.status)).forEach((paper) => {
       counts.ALL++;
       if (counts[paper.status] !== undefined) {
         counts[paper.status]++;
       }
     });
     return counts;
-  }, [papers, tabOptions]);
+  }, [papers, tabOptions, config.statusOptions]);
 
   // Default sort by submittedAt (newest first) so recently submitted papers
   // surface at the top. The user can override per column header click.
@@ -172,18 +176,17 @@ const AdminList = ({
   );
 
   const handlePublish = async (paper: PublicationPaper) => {
-    if (publishingId || rejectingId) return;
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setPublishingId(paper.id);
     setActionFeedback(null);
     try {
-      await publicationAdapter.publishPaper(paper.id);
-      await load();
+      const updated = await publicationAdapter.publishPaper(paper.id);
+      setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
+      await load(true);
       setActionFeedback({
         type: 'success',
-        message: t(
-          'admin.publicationLists.successPublished',
-          'The paper "{title}" was published successfully and its author was notified.'
-        ).replace('{title}', paper.title),
+        message: `The paper "${paper.title}" was published successfully.`,
       });
     } catch (e) {
       setActionFeedback({
@@ -192,43 +195,52 @@ const AdminList = ({
       });
     } finally {
       setPublishingId(null);
+      mutationBusy.current = false;
     }
   };
 
   const handleDeactivate = async (paper: PublicationPaper) => {
-    if (deactivatingId || rejectingId) return;
-    if (!window.confirm(t('admin.publicationLists.confirmDeactivate', 'Deactivate the published paper "{title}"? It will be hidden from the public catalog.').replace('{title}', paper.title))) return;
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setDeactivatingId(paper.id);
     setActionFeedback(null);
     try {
-      await publicationAdapter.deactivatePublishedPaper(paper.id);
-      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'INACTIVE' } : p)));
-      setActionFeedback({ type: 'success', message: t('admin.publicationLists.successDeactivated', 'The paper "{title}" is now inactive.').replace('{title}', paper.title) });
+      const updated = paper.status === 'INACTIVE'
+        ? await publicationAdapter.reactivatePublishedPaper(paper.id)
+        : await publicationAdapter.deactivatePublishedPaper(paper.id);
+      setPapers((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+      await load(true);
+      setVisibilityPaper(null);
+      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" is now ${updated.status === 'INACTIVE' ? 'inactive' : 'active'}.` });
     } catch (e) {
       setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : t('admin.publicationLists.errorDeactivate', 'The paper could not be deactivated.') });
     } finally {
       setDeactivatingId(null);
+      mutationBusy.current = false;
     }
   };
 
 
   const handleReject = async (paper: PublicationPaper, reason: string) => {
-    if (publishingId || rejectingId) return;
-    setRejectingPaper(null);
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setRejectingId(paper.id);
     setActionFeedback(null);
     try {
-      await publicationAdapter.rejectPaper(paper.id, reason);
-      setPapers((prev) => prev.map((p) => (p.id === paper.id ? { ...p, status: 'ADMIN_REJECTED' } : p)));
-      setActionFeedback({ type: 'success', message: t('admin.publicationLists.successRejected', 'The paper "{title}" was rejected and its author was notified.').replace('{title}', paper.title) });
+      const updated = await publicationAdapter.rejectPaper(paper.id, reason);
+      setPapers((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+      await load(true);
+      setRejectingPaper(null);
+      setActionFeedback({ type: 'success', message: `The paper "${paper.title}" was rejected.` });
     } catch (e) {
       setActionFeedback({ type: 'error', message: e instanceof Error ? e.message : t('admin.publicationLists.errorReject', 'The paper could not be rejected.') });
     } finally {
       setRejectingId(null);
+      mutationBusy.current = false;
     }
   };
 
-  const load = async (): Promise<void> => {
+  const load = async (propagateError = false): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
@@ -238,6 +250,7 @@ const AdminList = ({
       setError(
         e instanceof Error ? e.message : `${localizedConfig.title} could not be loaded.`,
       );
+      if (propagateError) throw e;
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -547,16 +560,16 @@ const AdminList = ({
                             `adminActionsForStatus()` — see
                             adminPublicationHelpers.ts.
                           */}
-                          {paper.status === 'PUBLISHED' ? (
-                            <button type="button" className={adminStyles.publishButton} onClick={() => void handleDeactivate(paper)} disabled={deactivatingId === paper.id} title={t('admin.publicationLists.deactivateTooltip', 'Deactivate this published paper')}>
-                              {deactivatingId === paper.id ? t('admin.publicationLists.deactivating', 'Deactivating…') : <><FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.deactivatePaper', 'Deactivate')}</>}
+                          {paper.status === 'PUBLISHED' || paper.status === 'INACTIVE' ? (
+                            <button type="button" className={adminStyles.publishButton} onClick={() => setVisibilityPaper(paper)} disabled={busy}>
+                              <FileText size={13} aria-hidden="true" /> {paper.status === 'INACTIVE' ? 'Reactivate' : 'Deactivate'}
                             </button>
                           ) : paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
                               paper.status === 'ADMIN_APPROVED' ? (
                             <button
                               type="button"
                               className={adminStyles.publishButton}
-                              disabled={publishingId === paper.id}
+                              disabled={busy}
                               onClick={() => void handlePublish(paper)}
                               title={t('admin.publicationLists.publishTooltip', 'Publish this paper — only available after the reviewer recommended acceptance.')}
                             >
@@ -566,7 +579,7 @@ const AdminList = ({
                             <button
                               type="button"
                               className={adminStyles.rejectActionButton}
-                              disabled={rejectingId === paper.id}
+                              disabled={busy}
                               onClick={() => setRejectingPaper(paper)}
                               title={t('admin.publicationLists.rejectTooltip', 'Reject this paper')}
                             >
@@ -634,10 +647,21 @@ const AdminList = ({
       ) : null}
       {rejectingPaper ? (
         <RejectPaperModal
+          error={actionFeedback?.type === 'error' ? actionFeedback.message : undefined}
           paperTitle={rejectingPaper.title}
           isSubmitting={rejectingId === rejectingPaper.id}
           onClose={() => setRejectingPaper(null)}
           onConfirm={(reason) => void handleReject(rejectingPaper, reason)}
+        />
+      ) : null}
+      {visibilityPaper ? (
+        <PublicationConfirmation
+          title={visibilityPaper.status === 'INACTIVE' ? 'Reactivate paper' : 'Deactivate paper'}
+          message={visibilityPaper.status === 'INACTIVE' ? `Restore "${visibilityPaper.title}" to the public catalog?` : `Hide "${visibilityPaper.title}" from the public catalog? The Admin record will remain available.`}
+          busy={busy}
+          error={actionFeedback?.type === 'error' ? actionFeedback.message : undefined}
+          onClose={() => setVisibilityPaper(null)}
+          onConfirm={() => void handleDeactivate(visibilityPaper)}
         />
       ) : null}
     </section>
