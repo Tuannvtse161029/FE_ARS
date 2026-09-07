@@ -109,14 +109,20 @@ const toPublicationPaper = (
   request?: ReviewRequest,
   evaluation: DetailedEvaluation | null = null,
 ): PublicationPaper => {
-  // The paper record is authoritative for terminal editorial states. A review
-  // request can remain completed after Admin publishes or rejects the paper,
-  // so reviewer assignment status must never overwrite a persisted paper
-  // status such as Published or Rejected during a later reload.
+  // The paper record is authoritative for terminal editorial states. However, a
+  // paper with an active review request should never be shown as "Inactive" to
+  // the researcher — the INACTIVE state is only meant for published papers that
+  // have been taken offline. If a review request exists and the paper hasn't
+  // been published/rejected/withdrawn, use the assignment status instead.
   const persistedStatus = paperStatus(paper.status);
-  const status = ['PUBLISHED', 'INACTIVE', 'ADMIN_REJECTED', 'WITHDRAWN'].includes(persistedStatus)
+  const hasActiveReviewRequest = request != null;
+  const isTerminalEditorialState =
+    ['PUBLISHED', 'ADMIN_REJECTED', 'WITHDRAWN'].includes(persistedStatus);
+  const status = isTerminalEditorialState
     ? persistedStatus
-    : assignmentStatus(request, evaluation) ?? persistedStatus;
+    : hasActiveReviewRequest
+      ? assignmentStatus(request, evaluation) ?? persistedStatus
+      : persistedStatus;
   const authorId = paper.authorId ?? (paper as unknown as { userId?: number }).userId;
   const subFieldId = paper.subFieldId ?? (paper as unknown as { subfieldId?: number }).subfieldId;
   const authorName = paper.authorName?.trim();

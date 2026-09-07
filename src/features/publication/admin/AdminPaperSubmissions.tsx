@@ -40,7 +40,7 @@ type SortColumn = 'title' | 'verification' | 'reviewer' | 'submittedAt';
 const ROLE_ACCENT = 'var(--ars-admin)';
 
 // Verification filter tabs - Primary filter for the table
-type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED' | 'UNVERIFIED';
+type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED';
 
 const VERIFICATION_TABS: Array<{
   value: VerificationTab;
@@ -49,7 +49,6 @@ const VERIFICATION_TABS: Array<{
   { value: 'ALL', label: 'All' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'VERIFIED', label: 'Verified' },
-  { value: 'UNVERIFIED', label: 'Unverified' },
 ];
 
 // Helper to get researcher-verification (identity) badge CSS class
@@ -79,13 +78,11 @@ const formatVerification = (status: string | undefined): string => {
     case 'ALLOWED':
       return 'Verified';
     case 'PENDING':
-      return 'Awaiting review';
+      return 'Pending';
     case 'REJECTED':
       return 'Rejected';
-    case 'UNVERIFIED':
-      return 'Unverified';
     default:
-      return status ?? 'Unverified';
+      return 'Pending';
   }
 };
 
@@ -197,10 +194,9 @@ export const AdminPaperSubmissions = () => {
     return papers.filter((paper) => {
       // Apply verification tab filter
       if (verificationTab !== 'ALL') {
-        const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'UNVERIFIED';
+        const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'PENDING';
         if (verificationTab === 'PENDING' && verification !== 'PENDING') return false;
         if (verificationTab === 'VERIFIED' && verification !== 'VERIFIED') return false;
-        if (verificationTab === 'UNVERIFIED' && verification !== 'UNVERIFIED') return false;
       }
 
       // Apply search filter
@@ -233,13 +229,11 @@ export const AdminPaperSubmissions = () => {
       ALL: papers.length,
       PENDING: 0,
       VERIFIED: 0,
-      UNVERIFIED: 0,
     };
     papers.forEach((paper) => {
-      const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'UNVERIFIED';
+      const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'PENDING';
       if (verification === 'PENDING') counts.PENDING++;
       else if (verification === 'VERIFIED') counts.VERIFIED++;
-      else counts.UNVERIFIED++;
     });
     return counts;
   }, [papers]);

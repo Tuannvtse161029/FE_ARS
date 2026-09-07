@@ -1147,14 +1147,14 @@
 }
 
 .nextAction[data-tone="improvement"] {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: #e9d5ff;
+  color: #7c3aed;
 }
 
 .nextAction[data-tone="inactive"],
 .nextAction[data-tone="unknown"] {
-  background: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
+  background: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
 }
 
 .detailLayout {

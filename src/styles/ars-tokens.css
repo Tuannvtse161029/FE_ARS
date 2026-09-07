@@ -349,6 +349,10 @@
   --status-info-surface: #e5eef7;
   --status-neutral-text: var(--ink-secondary);
   --status-neutral-surface: var(--surface-sunken);
+  --status-draft-text: #3a4156;
+  --status-draft-surface: #dde4f0;
+  --status-inactive-text: #5b4a6e;
+  --status-inactive-surface: #ebe3f5;
   --surface-canvas: var(--app-canvas);
   --surface-subtle: var(--app-canvas-subtle);
   --surface-inset: var(--surface-sunken);
@@ -536,6 +540,10 @@
   --status-info-surface: rgba(59, 130, 246, 0.18);
   --status-neutral-text: var(--ink-secondary);
   --status-neutral-surface: var(--surface-sunken);
+  --status-draft-text: #a8b4d4;
+  --status-draft-surface: rgba(99, 130, 196, 0.18);
+  --status-inactive-text: #b8a8d4;
+  --status-inactive-surface: rgba(139, 109, 182, 0.18);
 
   /* Full ARS Compatibility Tokens (overrides for dark mode) */
   --ars-paper: #121a2d;

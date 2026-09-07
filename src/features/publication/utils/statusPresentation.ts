@@ -15,7 +15,7 @@
  * Mapping:
  *  | Backend State                | Presentation Label                     | Color     |
  *  |------------------------------|---------------------------------------|-----------|
- *  | SUBMITTED                    | Submitted                             | Amber     |
+ *  | SUBMITTED                    | Pending                               | Amber     |
  *  | REVIEWER_ASSIGNED            | Reviewer Assigned                     | Blue      |
  *  | PUBLISHED                    | Published                             | Green     |
  *  | ADMIN_REJECTED               | Admin Rejected                        | Red       |
@@ -49,7 +49,7 @@ export const SUBMITTED_PAPER_STATUS_MAP: Record<
 > = {
   // ── The five listable researcher-paper states ──────────────────
   SUBMITTED: {
-    label: 'Submitted',
+    label: 'Pending',
     tone: 'submitted',
   },
   REVIEWER_ASSIGNED: {

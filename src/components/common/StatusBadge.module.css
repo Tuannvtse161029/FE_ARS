@@ -82,9 +82,9 @@
 }
 
 .closed {
-  background-color: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
+  background-color: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
+  border-color: color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
 }
 
 /* GuidanceProject variants */
@@ -101,15 +101,15 @@
 }
 
 .cancelled {
-  background-color: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
+  background-color: var(--status-inactive-surface);
+  color: var(--status-inactive-text);
+  border-color: color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
 }
 
 .unknown {
-  background-color: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
+  background-color: var(--status-draft-surface);
+  color: var(--status-draft-text);
+  border-color: color-mix(in srgb, var(--status-draft-text) 30%, transparent);
 }
 
 /* ── Publication researcher-paper list badges ────────────────────────
@@ -147,7 +147,7 @@
 
 /* REVIEWER_RECOMMENDED_REJECT — purple */
 .pubImprovement {
-  background-color: #f5f3ff;
-  color: #6d28d9;
-  border-color: color-mix(in srgb, #6d28d9 30%, transparent);
+  background-color: #e9d5ff;
+  color: #7c3aed;
+  border-color: color-mix(in srgb, #7c3aed 30%, transparent);
 }

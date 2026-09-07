@@ -123,13 +123,13 @@
   border: 1px solid transparent;
 }
 
-.badgeSeed {
-  background: var(--ars-warning-bg, rgba(245, 158, 11, 0.1));
-  color: var(--ars-warning, #b45309);
-  border-color: var(--ars-warning, #b45309);
+.badgeDefault {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
 }
 
-.badgeSaved {
+.badgeActive {
   background: var(--ars-success-bg);
   color: var(--ars-success);
   border-color: var(--ars-success);

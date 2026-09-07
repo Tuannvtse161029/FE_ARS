@@ -430,6 +430,31 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
 // unknown kinds are still surfaced to the user unchanged.
 const stripTagPrefix = (raw: string): string => (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '');
 
+// Extract the dynamic part of a BE notification message — the paper title,
+// entity name, or other user-specific value that should be substituted into
+// the English template.  The BE sends full natural-language sentences in the
+// user's preferred language, e.g.
+//
+//   "[REVIEWER_PAPER_ASSIGNED] Bạn có một bài báo mới được phân công
+//    phản biện: Deep Learning for Climate Prediction"
+//
+// After stripTagPrefix the remainder is a full Vietnamese sentence.  We only
+// want the "Deep Learning…" part so the English template renders as:
+//   "New review request: Deep Learning for Climate Prediction"
+// not:
+//   "New review request: Bạn có một bài báo mới được phân công phản biện:
+//    Deep Learning for Climate Prediction"
+//
+// The dynamic value always comes after the FIRST colon, so we split on it.
+const extractDynamicSuffix = (stripped: string): string => {
+  const colonIdx = stripped.indexOf(':');
+  if (colonIdx >= 0) {
+    const after = stripped.slice(colonIdx + 1).trim();
+    if (after) return after;
+  }
+  return stripped;
+};
+
 // Render a notification message in the active locale.
 //
 // Rules:
@@ -438,8 +463,11 @@ const stripTagPrefix = (raw: string): string => (raw ?? '').trim().replace(/^\[[
 //     through unchanged so any dynamic names (student, group, …) render
 //     exactly as authored.
 //   * When the locale is `en` we look up the kind-specific template, strip
-//     the `[Tag]` prefix, and substitute the dynamic suffix. If the BE
-//     sent a natural-language message with no prefix or the kind is
+//     the `[Tag]` prefix, extract only the dynamic suffix (paper title, entity
+//     name, etc. — the text after the first colon), and substitute that into
+//     the English template.  This prevents the English UI from displaying a
+//     full Vietnamese sentence inside an English header.
+//   * If the BE sent a natural-language message with no prefix or the kind is
 //     `unknown`, we keep the original message body — translating arbitrary
 //     machine-generated prose is unsafe and the user would still see the
 //     same information.
@@ -459,7 +487,12 @@ function renderNotificationMessage(
   if (!key) return raw;
 
   const template = t(key, raw);
-  const suffix = stripTagPrefix(raw);
+
+  // Strip any BE-side [Tag] prefix, then extract only the dynamic value
+  // (paper title, entity name, etc.) so the English template gets a clean
+  // suffix rather than a full Vietnamese sentence.
+  const stripped = stripTagPrefix(raw);
+  const suffix = extractDynamicSuffix(stripped);
   if (!suffix) return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
   return template.replace('{suffix}', suffix);
 }
