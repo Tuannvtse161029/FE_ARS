@@ -416,16 +416,26 @@ export const seminarService = {
     const serialized = serializeSeminarQuestions(questions);
     setCachedSeminarQuestions(seminarId, questions);
     try {
-      await api.put(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
+      await api.put(API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId), {
+        questions,
         feedback: serialized,
       });
+      return;
     } catch {
       try {
-        await api.patch(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
+        await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId), {
+          questions,
           feedback: serialized,
         });
+        return;
       } catch {
-        // Fallback gracefully since localStorage cache is preserved
+        try {
+          await api.put(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
+            feedback: serialized,
+          });
+        } catch {
+          // Preserved in localStorage
+        }
       }
     }
   },
@@ -436,6 +446,29 @@ export const seminarService = {
   getFeedbackQuestions: async (
     seminarId: number,
   ): Promise<FeedbackQuestion[]> => {
+    try {
+      const formResp = await api.get<{
+        seminarId?: number;
+        feedback?: string | null;
+        questions?: FeedbackQuestion[] | null;
+      }>(API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId));
+      if (formResp.data) {
+        if (Array.isArray(formResp.data.questions) && formResp.data.questions.length > 0) {
+          setCachedSeminarQuestions(seminarId, formResp.data.questions);
+          return formResp.data.questions;
+        }
+        if (formResp.data.feedback) {
+          const parsed = parseSeminarQuestions(formResp.data.feedback);
+          if (parsed.length > 0) {
+            setCachedSeminarQuestions(seminarId, parsed);
+            return parsed;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       const response = await api.get<Seminar>(API_ENDPOINTS.SEMINAR.GET_BY_ID(seminarId));
       if (response.data && response.data.feedback) {
@@ -476,26 +509,28 @@ export const seminarService = {
       ? ratingAnswers.reduce((sum, a) => sum + (a.rating || 0), 0) / ratingAnswers.length
       : undefined;
 
+    const payload = {
+      answers,
+      feedbackJson,
+      feedback: {
+        overallComment: overallNote || textAnswers || 'Submitted via ARS dynamic feedback form',
+        strengths: [],
+        improvements: [],
+        suggestions: [],
+      },
+      rating: avgRating ? Math.round(avgRating) : undefined,
+    };
+
     try {
-      return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), {
-        feedbackJson,
-        feedback: {
-          overallComment: overallNote || textAnswers || 'Submitted via ARS dynamic feedback form',
-          strengths: [],
-          improvements: [],
-          suggestions: [],
-        },
-        rating: avgRating ? Math.round(avgRating) : undefined,
-      });
+      const resp = await api.post(API_ENDPOINTS.SEMINAR_PARTICIPANT.FEEDBACK(seminarId), payload);
+      return resp.data;
     } catch {
-      return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), {
-        feedback: {
-          overallComment: feedbackJson,
-          strengths: [],
-          improvements: [],
-          suggestions: [],
-        },
-      });
+      try {
+        const resp = await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK_ANSWERS(seminarId), payload);
+        return resp.data;
+      } catch {
+        return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), payload);
+      }
     }
   },
 
