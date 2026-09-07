@@ -86,6 +86,14 @@ export interface PublicationPaper {
   reviewer?: PublicationReview;
   reviewerIdentityPublic: boolean;
   researcherVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'ALLOW' | 'REJECTED';
+  /**
+   * Free-text explanation returned by the BE for the current
+   * `authorshipVerificationStatus`. Surfaced in the admin detail surface so
+   * the admin sees why verification is still pending (e.g. "ORCID 0000-…
+   * was not found in the supplied author list") before deciding whether to
+   * re-run the automatic check.
+   */
+  authorshipVerificationReason?: string;
   adminNote?: string;
   researcherFeedback?: string;
   reviewRequestId?: number;

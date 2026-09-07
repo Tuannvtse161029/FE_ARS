@@ -51,6 +51,8 @@ interface AdminListConfig {
   defaultStatus: PublicationStatus | 'ALL';
   /** Human-friendly item label used by the pagination control. */
   itemLabel: string;
+  /** Optional map of status → custom display label for the filter tabs. */
+  customLabels?: Partial<Record<PublicationStatus | 'ALL', string>>;
 }
 
 type AdminListSortColumn =
@@ -69,16 +71,19 @@ const REVIEWER_ASSIGNMENTS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | '
   subtitleKey: 'admin.publicationLists.assignmentsSubtitle',
   statusOptions: [
     'REVIEWER_ASSIGNED',
-    'UNDER_REVIEW',
     'REVIEWER_RECOMMENDED_ACCEPT',
     'REVIEWER_RECOMMENDED_REJECT',
-    'ADMIN_APPROVED',
-    // PUBLISHED is intentionally excluded — once Admin publishes a paper it
-    // moves to the Published Papers tab. The Publish button no longer renders
-    // for published rows in that tab, so the lifecycle stays predictable.
   ],
   defaultStatus: 'ALL',
   itemLabel: 'assignments',
+  // Custom labels: keep the filter bar to 3 short, plain-language tabs.
+  // 'REVIEWER_RECOMMENDED_ACCEPT' is rendered as "Reviewer recommended"
+  // and 'REVIEWER_RECOMMENDED_REJECT' as "Reviewer not recommended".
+  customLabels: {
+    REVIEWER_ASSIGNED: 'Reviewer Assigned',
+    REVIEWER_RECOMMENDED_ACCEPT: 'Reviewer recommended',
+    REVIEWER_RECOMMENDED_REJECT: 'Reviewer not recommended',
+  },
 };
 
 const PUBLISHED_PAPERS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
@@ -102,11 +107,12 @@ const buildTabOptions = (
     subtitleKey: string;
   },
 ): StatusTabOption[] => {
+  const customLabels = config.customLabels ?? {};
   return [
-    { value: 'ALL', label: 'All' },
+    { value: 'ALL', label: customLabels.ALL ?? 'All' },
     ...config.statusOptions.map((status) => ({
       value: status as PublicationStatus | 'ALL',
-      label: statusLabel(status),
+      label: customLabels[status] ?? statusLabel(status),
     })),
   ];
 };
@@ -543,7 +549,7 @@ const AdminList = ({
                           <Link
                             className={adminStyles.previewButton}
                             to={`/admin/paper-submissions/${paper.id}`}
-                            title={t('admin.publicationLists.recordTooltip', 'Open the editorial and reviewer record')}
+                            title={t('admin.publicationLists.recordTooltip', 'Open the submission and reviewer record')}
                           >
                             <FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.viewEvaluation', 'View evaluation')}
                           </Link>

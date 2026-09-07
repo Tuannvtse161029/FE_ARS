@@ -105,6 +105,15 @@ export interface ManualAssignReviewersRequest {
 }
 
 export const paperService = {
+  verifyAuthorship: async (id: number | string, openAlexWorkId: string | null): Promise<{
+    paperId: number;
+    authorshipVerificationStatus?: string | null;
+    authorshipVerificationReason?: string | null;
+    authorshipVerifiedAt?: string | null;
+  }> => {
+    const response = await api.post(API_ENDPOINTS.PAPER.VERIFY_AUTHORSHIP(id), { openAlexWorkId });
+    return response.data;
+  },
   getAll: async (
     params?: GetPapersParams,
     config?: AxiosRequestConfig,

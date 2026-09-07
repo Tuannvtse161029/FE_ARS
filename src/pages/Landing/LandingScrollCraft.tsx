@@ -292,11 +292,11 @@ export const LandingScrollCraft = () => {
   const workflow = [
     {
       title: t('landing.workflowStep1Title', 'Submit'),
-      description: t('landing.workflowStep1Body', 'Researchers provide a manuscript and the academic metadata needed for editorial assessment.'),
+      description: t('landing.workflowStep1Body', 'Researchers provide a manuscript and the academic metadata needed for review assessment.'),
     },
     {
       title: t('landing.workflowStep2Title', 'Screen'),
-      description: t('landing.workflowStep2Body', 'Administrators assess submission readiness and manage the editorial process.'),
+      description: t('landing.workflowStep2Body', 'Administrators assess submission readiness and manage the review process.'),
     },
     {
       title: t('landing.workflowStep3Title', 'Review'),
@@ -317,7 +317,7 @@ export const LandingScrollCraft = () => {
       icon: BookOpen,
       role: 'researcher',
       title: t('landing.workspaceResearcherTitle', 'Researcher workspace'),
-      description: t('landing.workspaceResearcherBody', 'Prepare submissions, follow editorial status, revise work, and discover published research.'),
+      description: t('landing.workspaceResearcherBody', 'Prepare submissions, follow review status, revise work, and discover published research.'),
     },
     {
       icon: Users,
@@ -341,7 +341,7 @@ export const LandingScrollCraft = () => {
 
   const boundaries = [
     t('landing.boundary1', 'Only approved public research is discoverable in the catalog.'),
-    t('landing.boundary2', 'Reviewer recommendations inform, but do not replace, the final editorial decision.'),
+    t('landing.boundary2', 'Reviewer recommendations inform, but do not replace, the final Admin review decision.'),
     t('landing.boundary3', 'Private review comments, scores, and administrative notes remain in authorized workspaces.'),
   ];
 
@@ -352,7 +352,7 @@ export const LandingScrollCraft = () => {
     },
     {
       question: t('landing.faq2Q', 'Who decides whether research is published?'),
-      answer: t('landing.faq2A', 'Administrators make the final editorial publication decision. Reviewers provide recommendations as part of that process.'),
+      answer: t('landing.faq2A', 'Administrators make the final publication decision. Reviewers provide recommendations as part of that process.'),
     },
     {
       question: t('landing.faq3Q', 'What becomes public?'),
@@ -499,7 +499,7 @@ export const LandingScrollCraft = () => {
               </h2>
             </div>
             <p>
-              {t('landing.statementBody', 'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the editorial process.')}
+              {t('landing.statementBody', 'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the review process.')}
             </p>
           </ScrollFlowReveal>
 
@@ -535,7 +535,7 @@ export const LandingScrollCraft = () => {
           <section className={styles.workflowSection} id="workflow" aria-labelledby="workflow-title">
             <div className={styles.sectionHeading}>
               <p className={styles.issueLine}>
-                {t('landing.workflowKicker', 'The editorial record')}
+                {t('landing.workflowKicker', 'The review record')}
               </p>
               <h2 id="workflow-title">
                 {t('landing.workflowHeading', `${workflow.length} stages. Clear responsibility at each one.`, { count: workflow.length })}

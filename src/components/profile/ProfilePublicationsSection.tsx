@@ -65,7 +65,7 @@ export const ProfilePublicationsSection = ({
           </p>
           <p>
             {isOwner
-              ? 'Papers you publish will appear here once they pass editorial review.'
+              ? 'Papers you publish will appear here once they pass Admin review.'
               : 'This member hasn’t published a paper yet.'}
           </p>
         </div>

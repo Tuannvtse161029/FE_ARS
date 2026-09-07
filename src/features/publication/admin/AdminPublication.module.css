@@ -407,17 +407,32 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  /* Ensure table doesn't overflow container */
+  table-layout: auto;
 }
 
 .intakeTable {
   table-layout: fixed;
 }
+
+/* Reduce cell padding to prevent horizontal overflow */
 .intakeTable thead th,
 .intakeTable tbody td {
   white-space: normal;
   overflow-wrap: anywhere;
-  padding: 10px 8px;
+  padding: 8px 6px;
+  font-size: var(--font-size-xs);
 }
+
+.intakeTable thead th {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.intakeTable tbody td {
+  font-size: var(--font-size-xs);
+}
+
 .intakeTable button,
 .intakeTable a,
 .intakeTable small,
@@ -426,11 +441,15 @@
   overflow-wrap: anywhere;
   max-width: 100%;
   min-width: 0;
+  font-size: var(--font-size-xs);
 }
+
 .intakeTable td > div { min-width: 0; }
+
 @media (min-width: 681px) and (max-width: 1100px) {
   .intakeTable { min-width: 900px; }
 }
+
 @media (max-width: 680px) {
   .intakeTable colgroup { display: none; }
 }

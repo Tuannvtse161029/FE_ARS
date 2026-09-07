@@ -59,8 +59,8 @@ export interface ResolveReportPayload {
 }
 
 // ── Subscription packages (Figma screens 9 + 10) ───────────────────────────
-export type PremiumPackageTargetRole = 'RESEARCHER' | 'REVIEWER' | 'LECTURER';
-export type PremiumPackageBillingCycle = 'Monthly' | 'Yearly';
+export type PremiumPackageTargetRole = 'RESEARCHER' | 'LECTURER';
+export type PremiumPackageBillingCycle = 'SixMonth' | 'Annual';
 
 export interface PremiumPackage {
   packageId: number;

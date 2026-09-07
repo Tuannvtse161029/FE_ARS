@@ -35,7 +35,7 @@ const ROLE_INFO: Record<ExploreRole, RoleInfo> = {
       'landing.workspace.role.researcher.cap4',
     ],
     capabilities: [
-      'Submit manuscripts with academic metadata for editorial review',
+      'Submit manuscripts with academic metadata for review',
       'Track submission status through screening, review, and decision stages',
       'Receive structured feedback and revision requests from reviewers',
       'Discover and read approved public research in the ARS catalog',
@@ -53,7 +53,7 @@ const ROLE_INFO: Record<ExploreRole, RoleInfo> = {
     capabilities: [
       'Accept or decline assigned manuscript review invitations',
       'Provide structured evaluation with scores and written feedback',
-      'Recommend publication decisions while editorial authority remains with Admin',
+      'Recommend publication decisions while Admin review authority remains with Admin',
     ],
   },
   Lecturer: {

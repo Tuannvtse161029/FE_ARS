@@ -116,21 +116,6 @@ export const MOCK_PREMIUM_PACKAGES: PremiumPackage[] = [
     isActive: true,
   },
   {
-    packageId: 9002,
-    title: 'Reviewer Premium',
-    targetRole: 'REVIEWER',
-    priceVnd: 150_000,
-    billingCycle: 'Monthly',
-    features: [
-      'First-pick on review invitations',
-      'Higher held-fund payout rates (+15%)',
-      'Detailed scoring breakdown history',
-      'Priority access to high-impact journals',
-    ],
-    subscriberCount: 974,
-    isActive: true,
-  },
-  {
     packageId: 9003,
     title: 'Lecturer Premium',
     targetRole: 'LECTURER',
@@ -265,16 +250,6 @@ export const MOCK_AUDIT_LOG_ENTRIES: AuditLogEntry[] = [
     targetId: 9003,
     timestamp: daysAgo(11),
     details: '300,000 VND/month; 4 features.',
-  },
-  {
-    logId: 10011,
-    adminId: 0,
-    adminName: 'Admin User',
-    action: 'UPDATED_PACKAGE',
-    target: 'Package #9002 / Reviewer Premium',
-    targetId: 9002,
-    timestamp: daysAgo(14),
-    details: 'Updated feature list to include held-fund bonus.',
   },
   {
     logId: 10012,

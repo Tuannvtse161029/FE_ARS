@@ -24,6 +24,7 @@ import { publicationAdapter } from '../api/publication.adapter';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
+import { friendlyAuthorshipVerificationError } from '../utils/authorshipVerificationCopy';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
 import {
   statusLabel,
@@ -227,7 +228,7 @@ export const AdminPaperSubmissionDetail = () => {
       const updated = await publicationAdapter.verifyAuthorship(paper.id, true);
       setPaper(updated);
       if (!isAuthorshipAllowed(updated)) throw new Error('Authorship verification was not confirmed in the saved record.');
-      setVerificationSuccess('Authorship was verified successfully. The status is now ALLOW.');
+      setVerificationSuccess('Authorship was verified successfully through OpenAlex/ORCID.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authorship could not be verified.');
     } finally {
@@ -612,6 +613,26 @@ export const AdminPaperSubmissionDetail = () => {
                   <p className={adminStyles.actionZoneHint} style={{ color: '#1e3a8a', marginBottom: 12 }}>
                     Verify the submitter's authorship evidence before making the editorial decision.
                   </p>
+                  {paper.authorshipVerificationReason ? (
+                    <p
+                      role="status"
+                      style={{
+                        background: '#fffbeb',
+                        border: '1px solid #fcd34d',
+                        color: '#78350f',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        fontSize: 13,
+                        margin: '0 0 12px',
+                      }}
+                    >
+                      <strong>Authorship status:</strong>{' '}
+                      {friendlyAuthorshipVerificationError(
+                        paper.researcherVerificationStatus,
+                        paper.authorshipVerificationReason,
+                      )}
+                    </p>
+                  ) : null}
                   <div className={shared.actions}>
                     <button
                       type="button"

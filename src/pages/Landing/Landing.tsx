@@ -227,14 +227,14 @@ export const Landing = () => {
       title: t('landing.workflowStep1Title', 'Submit'),
       description: t(
         'landing.workflowStep1Body',
-        'Researchers provide a manuscript and the academic metadata needed for editorial assessment.',
+        'Researchers provide a manuscript and the academic metadata needed for review assessment.',
       ),
     },
     {
       title: t('landing.workflowStep2Title', 'Screen'),
       description: t(
         'landing.workflowStep2Body',
-        'Administrators assess submission readiness and manage the editorial process.',
+        'Administrators assess submission readiness and manage the review process.',
       ),
     },
     {
@@ -267,7 +267,7 @@ export const Landing = () => {
       title: t('landing.workspaceResearcherTitle', 'Researcher workspace'),
       description: t(
         'landing.workspaceResearcherBody',
-        'Prepare submissions, follow editorial status, revise work, and discover published research.',
+        'Prepare submissions, follow review status, revise work, and discover published research.',
       ),
     },
     {
@@ -306,7 +306,7 @@ export const Landing = () => {
     ),
     t(
       'landing.boundary2',
-      'Reviewer recommendations inform, but do not replace, the final editorial decision.',
+      'Reviewer recommendations inform, but do not replace, the final Admin review decision.',
     ),
     t(
       'landing.boundary3',
@@ -326,7 +326,7 @@ export const Landing = () => {
       question: t('landing.faq2Q', 'Who decides whether research is published?'),
       answer: t(
         'landing.faq2A',
-        'Administrators make the final editorial publication decision. Reviewers provide recommendations as part of that process.',
+        'Administrators make the final publication decision. Reviewers provide recommendations as part of that process.',
       ),
     },
     {
@@ -574,7 +574,7 @@ export const Landing = () => {
             <p>
               {t(
                 'landing.statementBody',
-                'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the editorial process.',
+                'ARS brings research discovery, paper submission and review, seminars, collaboration, and role-specific workspaces into one academic environment. Its public catalog is reserved for research that has completed the review process.',
               )}
             </p>
           </div>
@@ -623,7 +623,7 @@ export const Landing = () => {
         >
           <div className={styles.sectionHeading}>
             <p className={styles.issueLine}>
-              {t('landing.workflowKicker', 'The editorial record')}
+              {t('landing.workflowKicker', 'The review record')}
             </p>
             <h2 id="workflow-title">
               {t(
