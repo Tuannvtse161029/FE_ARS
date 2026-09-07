@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../../src/utils/storage', () => ({ storage: { getUser: () => ({ id: 42, role: 'Reviewer' }) } }));
 vi.mock('../../../../src/services/reviewRequest.service', () => ({ reviewRequestService: { getAll: vi.fn(), getById: vi.fn(), update: vi.fn(), create: vi.fn() } }));
-vi.mock('../../../../src/services/paper.service', () => ({ paperService: { getById: vi.fn(), create: vi.fn(), update: vi.fn(), getAll: vi.fn() } }));
+vi.mock('../../../../src/services/paper.service', () => ({ paperService: { verifyAuthorship: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), getAll: vi.fn() } }));
 vi.mock('../../../../src/services/detailedEvaluation.service', () => ({ detailedEvaluationService: { create: vi.fn(), getByReviewRequestId: vi.fn() } }));
 vi.mock('../../../../src/services/notification.service', () => ({ notificationService: { create: vi.fn().mockResolvedValue({}) } }));
 
@@ -16,17 +16,31 @@ const request = { id: 7, paperId: 12, reviewerId: 42, status: 'In Progress' };
 const paper = { id: 12, title: 'QA manuscript', abstract: 'QA abstract', status: 'Under Review', paperType: 'Journal', fileUrl: 'https://example.test/document.pdf' };
 
 describe('Publication incident contract guards', () => {
-  it('sends manual authorship decisions and accepts confirmed backend verification', async () => {
-    vi.mocked(paperService.update).mockResolvedValue({ ...paper, authorshipVerificationStatus: 'ALLOW' });
+  it('calls the dedicated verification operation and confirms the persisted decision', async () => {
+    vi.mocked(paperService.getById).mockResolvedValueOnce({ ...paper, openAlexWorkId: 'W123' }).mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'VERIFIED' });
+    vi.mocked(paperService.verifyAuthorship).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'VERIFIED' });
     const result = await publicationAdapter.verifyAuthorship('12', true);
-    expect(paperService.update).toHaveBeenCalledWith('12', expect.objectContaining({ authorshipVerificationStatus: 'ALLOW' }));
+    expect(paperService.verifyAuthorship).toHaveBeenCalledWith('12', 'W123');
+    expect(paperService.update).not.toHaveBeenCalled();
     expect(result.researcherVerificationStatus).toBe('VERIFIED');
   });
 
   it('does not invent verification when the backend ignores the sent decision', async () => {
-    vi.mocked(paperService.update).mockResolvedValue(paper);
-    await expect(publicationAdapter.verifyAuthorship('12', false)).rejects.toThrow(/did not confirm the authorship decision/);
-    expect(paperService.update).toHaveBeenCalledWith('12', expect.objectContaining({ authorshipVerificationStatus: 'REJECTED' }));
+    vi.mocked(paperService.verifyAuthorship).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
+    // The friendly mapper rewrites structured tokens like
+    // PENDING_ADMIN_REVIEW into a human-readable phrase (e.g. "Awaiting
+    // admin review"). The contract guarded here is that the adapter still
+    // throws — never invents a verified Paper — when the BE does not
+    // confirm verification, regardless of what the user-visible message
+    // looks like.
+    await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toThrow(/Awaiting admin review/i);
+    expect(paperService.verifyAuthorship).toHaveBeenCalledWith('12', null);
+    expect(paperService.update).not.toHaveBeenCalled();
+  });
+  it('does not send manual rejection to the automatic verification endpoint', async () => {
+    await expect(publicationAdapter.verifyAuthorship('12', false)).rejects.toThrow(/Manual authorship rejection/);
+    expect(paperService.verifyAuthorship).not.toHaveBeenCalled();
+    expect(paperService.update).not.toHaveBeenCalled();
   });
   it('keeps a directly submitted create response without attempting a Draft transition', async () => {
     vi.mocked(paperService.create).mockResolvedValue({ ...paper, status: 'Submitted' });

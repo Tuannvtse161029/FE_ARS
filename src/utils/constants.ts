@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: number) => `/api/user/${id}`,
   },
   PAPER: {
+    VERIFY_AUTHORSHIP: (id: number | string) => `/api/Paper/${id}/verify-authorship`,
     BASE: '/api/paper',
     GET_ALL: '/api/paper',
     GET_BY_ID: (id: number | string) => `/api/paper/${id}`,

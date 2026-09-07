@@ -54,7 +54,7 @@ const ROLE_WORKS = [
     fallback: 'Researcher workspace',
     bodyKey: 'landing.workspaceResearcherBody',
     bodyFallback:
-      'Prepare submissions, follow editorial status, revise work, and discover published research — all in one focused workspace.',
+      'Prepare submissions, follow review status, revise work, and discover published research — all in one focused workspace.',
     accent: 'var(--ars-researcher)',
   },
   {
@@ -100,8 +100,8 @@ const ROLE_WORKS = [
 ] as const;
 
 const WORKFLOW = [
-  { num: '01', titleKey: 'landing.workflowStep1Title', titleFallback: 'Submit', bodyKey: 'landing.workflowStep1Body', bodyFallback: 'Researchers provide a manuscript and the academic metadata needed for editorial assessment.' },
-  { num: '02', titleKey: 'landing.workflowStep2Title', titleFallback: 'Screen', bodyKey: 'landing.workflowStep2Body', bodyFallback: 'Administrators assess submission readiness and manage the editorial process.' },
+  { num: '01', titleKey: 'landing.workflowStep1Title', titleFallback: 'Submit', bodyKey: 'landing.workflowStep1Body', bodyFallback: 'Researchers provide a manuscript and the academic metadata needed for review assessment.' },
+  { num: '02', titleKey: 'landing.workflowStep2Title', titleFallback: 'Screen', bodyKey: 'landing.workflowStep2Body', bodyFallback: 'Administrators assess submission readiness and manage the review process.' },
   { num: '03', titleKey: 'landing.workflowStep3Title', titleFallback: 'Review', bodyKey: 'landing.workflowStep3Body', bodyFallback: 'Eligible reviewers return recommendations within their authorized workspace.' },
   { num: '04', titleKey: 'landing.workflowStep4Title', titleFallback: 'Decide', bodyKey: 'landing.workflowStep4Body', bodyFallback: 'Administrators make the final publication decision. Reviewer recommendations are not publication decisions.' },
   { num: '05', titleKey: 'landing.workflowStep5Title', titleFallback: 'Discover', bodyKey: 'landing.workflowStep5Body', bodyFallback: 'Only approved public research becomes available through the research catalog.' },
@@ -147,7 +147,7 @@ const BOUNDARIES = [
 ] as const;
 const BOUNDARY_FALLBACKS = [
   'Only approved public research is discoverable in the catalog.',
-  'Reviewer recommendations inform, but do not replace, the final editorial decision.',
+  'Reviewer recommendations inform, but do not replace, the final Admin review decision.',
   'Private review comments, scores, and administrative notes remain in authorized workspaces.',
 ];
 
@@ -158,7 +158,7 @@ const FAQS = [
   },
   {
     qKey: 'landing.faq2Q', qFallback: 'Who decides whether research is published?',
-    aKey: 'landing.faq2A', aFallback: 'Administrators make the final editorial publication decision. Reviewers provide recommendations as part of that process.',
+    aKey: 'landing.faq2A', aFallback: 'Administrators make the final publication decision. Reviewers provide recommendations as part of that process.',
   },
   {
     qKey: 'landing.faq3Q', qFallback: 'What becomes public?',
@@ -762,7 +762,7 @@ const TurnAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string | 
         <div className={styles.turnInner}>
           <div className={styles.turnHeader}>
             <p className={styles.issueLine}>
-              {t('landing.workflowKicker', 'The editorial record')}
+              {t('landing.workflowKicker', 'The review record')}
             </p>
             <h2
               id="turn-title"

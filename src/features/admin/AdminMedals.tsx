@@ -23,6 +23,7 @@ import { MedalCatalog } from './components/MedalCatalog';
 import { TierEditor } from './components/TierEditor';
 import { ArtworkUpload } from './components/ArtworkUpload';
 import { SafeMedalBadge, LUCIDE_ICONS_MAP, LUCIDE_ICONS_LIST, resolveMedalIconName } from './components/SafeMedalBadge';
+import { invalidateFlairCache } from '../../hooks/useAuthorFlair';
 // CSS module kept alongside the refactored component so the stale
 // `src/pages/Admin/AdminMedals.tsx` duplicate can be deleted without
 // breaking the styling of this module.
@@ -145,6 +146,13 @@ export const AdminMedals: React.FC = () => {
       setActiveModal(null);
       setTargetMedal(null);
       await loadMedals();
+      // Critical: drop the module-level flair cache so any
+      // UserFlairBadge / ProfileBadgesSection currently mounted on a
+      // viewer's page picks up the new icon on its next render. Without
+      // this the cache holds the old icon for the rest of the browser
+      // session — exactly the bug where the Profile keeps showing
+      // ShieldCheck after admin sets the ORCID family to Award.
+      invalidateFlairCache();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||

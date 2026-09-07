@@ -487,9 +487,9 @@ function renderNotificationMessage(
   const rejected = raw.match(/^Bài báo "([\s\S]+)" của bạn đã bị từ chối xuất bản\.\s*(?:Lý do: ([\s\S]*))?$/u);
   if (rejected) return `Your paper "${rejected[1]}" was rejected for publication.${rejected[2] ? ` Reason: ${rejected[2]}` : ''}`;
   const verified = raw.match(/^Bài báo "([\s\S]+)" của bạn đã được Ban biên tập xác nhận quyền sở hữu tác giả chính thức \(Status: ALLOW\)\.$/u);
-  if (verified) return `Authorship of your paper "${verified[1]}" was confirmed by the editorial team.`;
+  if (verified) return `Authorship of your paper "${verified[1]}" was confirmed by the Admin review team.`;
   const unverified = raw.match(/^Bài báo "([\s\S]+)" của bạn không được Ban biên tập xác nhận quyền sở hữu tác giả\.$/u);
-  if (unverified) return `Authorship of your paper "${unverified[1]}" was not confirmed by the editorial team.`;
+  if (unverified) return `Authorship of your paper "${unverified[1]}" was not confirmed by the Admin review team.`;
 
   const kind = inferNotificationKind(raw);
   if (kind === 'unknown') return raw;

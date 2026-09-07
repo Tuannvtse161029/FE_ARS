@@ -20,6 +20,9 @@ import {
 } from '../types/publication';
 import { notificationService } from '../../../services/notification.service';
 import type { SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
+import {
+  friendlyAuthorshipVerificationError,
+} from '../utils/authorshipVerificationCopy';
 import { enrichPublicationMetadata } from './publicationMetadata';
 export class PublicationBackendContractError extends Error {
   constructor(message: string) {
@@ -258,6 +261,7 @@ const toPublicationPaper = async (
 
       return 'PENDING';
     })(),
+    authorshipVerificationReason: paper.authorshipVerificationReason ?? undefined,
     reviewRequestId: request?.id,
     reviewRequestStatus: request?.status ?? undefined,
     reviewerId: request?.reviewerId ?? undefined,
@@ -622,20 +626,33 @@ class ApiPublicationAdapter implements PublicationAdapter {
   }
 
   async verifyAuthorship(id: string, allow = true): Promise<PublicationPaper> {
+    if (!allow) {
+      throw new PublicationBackendContractError('Manual authorship rejection is not supported by the automatic verification endpoint. No decision was sent.');
+    }
     const current = await paperService.getById(id);
-    const updated = await paperService.update(id, {
-      title: current.title ?? '',
-      abstract: current.abstract ?? '',
-      authorshipVerificationStatus: allow ? 'ALLOW' : 'REJECTED',
-      authorshipVerifiedAt: new Date().toISOString(),
-      authorshipVerificationReason: allow ? 'Admin ALLOW' : 'Admin REJECTED',
-    });
+    const verification = await paperService.verifyAuthorship(id, current.openAlexWorkId ?? null);
+    if (verification.paperId !== Number(id)) {
+      throw new PublicationBackendContractError('The verification response did not identify the requested paper. Refresh the paper before retrying.');
+    }
+    const updated = await paperService.getById(id);
     const decision = normalizedText(updated.authorshipVerificationStatus);
-    const confirmed = allow
-      ? ['ALLOW', 'ALLOWED', 'VERIFIED'].includes(decision)
-      : ['REJECTED', 'DENIED'].includes(decision);
+    const confirmed = ['ALLOW', 'ALLOWED', 'VERIFIED'].includes(decision);
     if (!confirmed) {
-      throw new PublicationBackendContractError('The request was sent, but the backend did not confirm the authorship decision. The paper has not been marked verified locally.');
+      // Surface the BE's structured verification tokens (e.g.
+      // `PENDING_ADMIN_REVIEW__ORCID_NOT_IN_AUTHORSHIP`) as a friendly
+      // human-readable phrase — never as a `CAPITALIZED__UNDERSCORED`
+      // raw token, which is unreadable in the admin error banner.
+      const rawStatus =
+        updated.authorshipVerificationStatus ??
+        verification.authorshipVerificationStatus ??
+        null;
+      const rawReason =
+        updated.authorshipVerificationReason ??
+        verification.authorshipVerificationReason ??
+        null;
+      throw new PublicationBackendContractError(
+        friendlyAuthorshipVerificationError(rawStatus, rawReason),
+      );
     }
     return toPublicationPaper(updated);
   }

@@ -288,13 +288,13 @@ interface NavItem {
   // When true, renders a visual section-header divider instead of a link.
   // Section headers are non-interactive and only group related items.
   isSectionHeader?: boolean;
-  // Section header label key (e.g. 'admin.nav.section.editorial')
+  // Section header label key (e.g. 'admin.nav.section.review')
   sectionLabelKey?: string;
 }
 
 /** Section label helper */
 const SECTION_LABELS: Record<string, string> = {
-  editorial: 'admin.nav.section.editorial',
+  review: 'admin.nav.section.review',
   people: 'admin.nav.section.people',
   platform: 'admin.nav.section.platform',
 };
@@ -595,8 +595,8 @@ export const MainLayout = () => {
           // defect 3B).
           { to: ROUTES.ADMIN, label: copy('Dashboard', 'Bảng điều khiển'), icon: <DashboardIcon size={20} />, end: true },
 
-          // ── Editorial section ──────────────────────────────
-          { to: '#', label: copy('Editorial', 'Biên tập'), icon: <PapersIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.editorial },
+          // ── Paper Review section ──────────────────────────────
+          { to: '#', label: copy('Paper Review', 'Duyệt Bài'), icon: <PapersIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.review },
           { to: ROUTES.ADMIN_PAPER_SUBMISSIONS, label: copy('Paper Submissions', 'Bài nộp duyệt'), icon: <PapersIcon size={20} /> },
           { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: copy('Reviewer Assignments', 'Phân công phản biện'), icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: copy('Published Papers', 'Bài báo đã xuất bản'), icon: <PublicationIcon size={20} /> },

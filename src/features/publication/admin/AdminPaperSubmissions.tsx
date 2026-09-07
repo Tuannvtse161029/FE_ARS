@@ -40,7 +40,7 @@ type SortColumn = 'title' | 'verification' | 'reviewer' | 'submittedAt';
 const ROLE_ACCENT = 'var(--ars-admin)';
 
 // Verification filter tabs - Primary filter for the table
-type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED';
+type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 const VERIFICATION_TABS: Array<{
   value: VerificationTab;
@@ -49,6 +49,7 @@ const VERIFICATION_TABS: Array<{
   { value: 'ALL', label: 'All' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'VERIFIED', label: 'Verified' },
+  { value: 'REJECTED', label: 'Rejected' },
 ];
 
 // Helper to get researcher-verification (identity) badge CSS class
@@ -218,6 +219,7 @@ export const AdminPaperSubmissions = () => {
         const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'PENDING';
         if (verificationTab === 'PENDING' && verification !== 'PENDING') return false;
         if (verificationTab === 'VERIFIED' && verification !== 'VERIFIED') return false;
+        if (verificationTab === 'REJECTED' && verification !== 'REJECTED') return false;
       }
 
       // Apply search filter
@@ -250,11 +252,13 @@ export const AdminPaperSubmissions = () => {
       ALL: papers.length,
       PENDING: 0,
       VERIFIED: 0,
+      REJECTED: 0,
     };
     papers.forEach((paper) => {
       const verification = paper.researcherVerificationStatus?.toUpperCase() ?? 'PENDING';
       if (verification === 'PENDING') counts.PENDING++;
       else if (verification === 'VERIFIED') counts.VERIFIED++;
+      else if (verification === 'REJECTED') counts.REJECTED++;
     });
     return counts;
   }, [papers]);
@@ -305,11 +309,11 @@ export const AdminPaperSubmissions = () => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow={t('admin.paperIntake.eyebrow', 'ADMIN · EDITORIAL INTAKE')}
+        eyebrow={t('admin.paperIntake.eyebrow', 'ADMIN · PAPER REVIEW')}
         title={t('admin.paperIntake.title', 'Paper Submissions')}
         description={t(
           'admin.paperIntake.description',
-          'Two independent checks per record: (1) researcher identity (verification) and (2) manuscript editorial quality. The Open editorial record button below shows the full evidence — ORCID match, proof PDF, reviewer notes, manuscript file.'
+          'Two independent checks per record: (1) researcher identity (verification) and (2) manuscript review quality. The Open submission record button below shows the full evidence — ORCID match, proof PDF, reviewer notes, manuscript file.'
         )}
         accent={ROLE_ACCENT}
       />
@@ -319,9 +323,9 @@ export const AdminPaperSubmissions = () => {
       <div
         className={adminStyles.stageGuide}
         role="note"
-        aria-label={t('admin.paperIntake.editorialColumn', 'Editorial stage guide')}
+        aria-label={t('admin.paperIntake.editorialColumn', 'Review stage guide')}
       >
-        {t('admin.paperIntake.stageGuide', 'Accept at the identity column confirms the researcher is who they claim (ORCID / institution match). Accept at the editorial column advances the manuscript to the next publication stage. Each row links to the full editorial record where every piece of evidence (proof PDF, manuscript file, reviewer history) lives in one place.')}
+        {t('admin.paperIntake.stageGuide', 'Accept at the identity column confirms the researcher is who they claim (ORCID / institution match). Accept at the review column advances the manuscript to the next publication stage. Each row links to the full submission record where every piece of evidence (proof PDF, manuscript file, reviewer history) lives in one place.')}
       </div>
 
       {/* Tab filter for researcher verification status — identity only */}
@@ -395,14 +399,14 @@ export const AdminPaperSubmissions = () => {
               aria-label="Admin paper submissions"
             >
               <colgroup>
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '7%' }} />
+                <col style={{ width: '20%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '12%' }} />
               </colgroup>
               <thead>
                 <tr>
@@ -423,7 +427,7 @@ export const AdminPaperSubmissions = () => {
                       ariaSortFor={sort.ariaSortFor}
                     />
                   </th>
-                  <th scope="col">{t('admin.paperIntake.editorialColumn', 'Editorial Status')}</th>
+                  <th scope="col">{t('admin.paperIntake.editorialColumn', 'Review Status')}</th>
                   <th scope="col">{t('admin.paperIntake.identifiersColumn', 'Identifiers')}</th>
                   <th scope="col">
                     <SortableHeader
@@ -505,7 +509,7 @@ export const AdminPaperSubmissions = () => {
                                 }}
                                 title={t(
                                   'admin.paperIntake.rejectIdentityTooltip',
-                                  'Reject researcher identity — open the editorial record for evidence.'
+                                  'Reject researcher identity — open the submission record for evidence.'
                                 )}
                               >
                                 <CircleX size={13} aria-hidden="true" /> {t('admin.paperIntake.rejectIdentity', 'Reject')}
@@ -514,14 +518,14 @@ export const AdminPaperSubmissions = () => {
                           )}
                         </div>
                       </td>
-                      <td data-label={t('admin.paperIntake.editorialColumn', 'Editorial Status')}>
+                      <td data-label={t('admin.paperIntake.editorialColumn', 'Review Status')}>
                         <span
                           className={`${adminStyles.verificationBadge} ${getEditorialStatusBadgeClass(
                             paper.status,
                           )}`}
                           title={t(
                             'admin.paperIntake.editorialTooltip',
-                            'Tracks the manuscript through the editorial pipeline (Draft → Under Review → Needs Revision → Accepted → Published).'
+                            'Tracks the manuscript through the review pipeline (Draft → Under Review → Needs Revision → Accepted → Published).'
                           )}
                         >
                           {formatEditorialStatus(paper.status)}
@@ -610,9 +614,9 @@ export const AdminPaperSubmissions = () => {
                           <Link
                             className={shared.buttonGhost}
                             to={`/admin/paper-submissions/${paper.id}`}
-                            title={t('admin.paperIntake.editorialRecordTooltip', 'Open the full editorial record — proof PDF, manuscript, reviewer history, all evidence in one place.')}
+                            title={t('admin.paperIntake.editorialRecordTooltip', 'Open the full submission record — proof PDF, manuscript, reviewer history, all evidence in one place.')}
                           >
-                            {t('admin.paperIntake.openEditorialRecord', 'Open editorial record')}
+                            {t('admin.paperIntake.openEditorialRecord', 'Open submission record')}
                           </Link>
                         </div>
                       </td>

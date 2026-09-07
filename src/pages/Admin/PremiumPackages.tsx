@@ -27,9 +27,10 @@ export default function PremiumPackages(): JSX.Element {
   const { t } = useI18n();
   useAdminGuard();
 
+  // Annual Fees only apply to Researcher and Lecturer; REVIEWER was removed
+  // to keep the role pills aligned with the PremiumPackageTargetRole type.
   const ROLE_LABEL: Record<PremiumPackage['targetRole'], string> = {
     RESEARCHER: t('admin.packages.role.researcher'),
-    REVIEWER: t('admin.packages.role.reviewer'),
     LECTURER: t('admin.packages.role.lecturer'),
   };
 

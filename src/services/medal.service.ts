@@ -731,6 +731,66 @@ export function normalizeUserMedals(userMedals: UserMedal[]): UserMedal[] {
 }
 
 /**
+ * Cross-references a user-medal response against the canonical medal
+ * catalog so that even a single tier of a family gets the family's
+ * shared icon. The in-response normaliser
+ * (`normalizeMedalFamilies` / `normalizeUserMedals`) only sees the
+ * medals the user has — so when the user has only Silver unlocked, the
+ * response never contains Bronze, and the function has nothing to copy
+ * from. It then keeps whatever icon Silver happens to hold in the BE,
+ * which can drift from whatever the admin set on the Admin Medals page.
+ *
+ * This async helper closes the gap by:
+ *
+ *   1. Loading the canonical catalog (`getAll()` returns the admin-edited
+ *      view, with every tier of a family normalised to the family's
+ *      canonical icon — see `normalizeMedalFamilies` pass 1).
+ *   2. Building a per-family canonical-icon map from the catalog.
+ *   3. Rewriting every user medal's `imageUrl` to that canonical icon.
+ *
+ * It is intentionally async because step 1 may issue a live BE request.
+ * Callers that already have the catalog (e.g. a page that just rendered
+ * the admin catalog) should pass it through `catalog` to skip the fetch.
+ */
+export async function normalizeUserMedalsAgainstCatalog(
+  userMedals: UserMedal[],
+  catalog?: Medal[],
+): Promise<UserMedal[]> {
+  if (!Array.isArray(userMedals) || userMedals.length === 0) return userMedals;
+
+  const medals: Medal[] = userMedals
+    .map((um) => um?.medal)
+    .filter((m): m is Medal => m != null && typeof m === 'object');
+
+  if (medals.length === 0) return userMedals;
+
+  const sourceCatalog = Array.isArray(catalog) && catalog.length > 0
+    ? catalog
+    : await medalService.getAll();
+
+  // Build the per-family canonical-icon map from the catalog. The
+  // catalog is already normalised, so the first row per family IS the
+  // canonical icon.
+  const familyCanonicalIcon = new Map<string, string>();
+  for (const m of sourceCatalog) {
+    const family = deriveMetricFamily(m.code);
+    if (family && !familyCanonicalIcon.has(family)) {
+      familyCanonicalIcon.set(family, m.imageUrl ?? 'lucide:Medal');
+    }
+  }
+
+  return userMedals.map((um) => {
+    if (!um?.medal?.id) return um;
+    const family = deriveMetricFamily(um.medal.code);
+    const canonical = family ? familyCanonicalIcon.get(family) : null;
+    if (canonical && um.medal.imageUrl !== canonical) {
+      return { ...um, medal: { ...um.medal, imageUrl: canonical } };
+    }
+    return um;
+  });
+}
+
+/**
  * Group medals by their metric family (code prefix). Returns the families
  * in stable order: alphabetical by family key.
  */
@@ -959,8 +1019,10 @@ export const medalService = {
     try {
       const res = await api.get('/api/Medal/my-medals');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        // Normalize user medal data to ensure family icons are consistent
-        return normalizeUserMedals(res.data);
+        // Cross-reference against the canonical catalog so a single
+        // unlocked tier of a family still gets the family's shared icon
+        // (see `normalizeUserMedalsAgainstCatalog` for the rationale).
+        return normalizeUserMedalsAgainstCatalog(res.data);
       }
     } catch (err) {
       console.warn('Failed to fetch user medals:', err);
@@ -972,8 +1034,9 @@ export const medalService = {
     try {
       const res = await api.get('/api/Medal/user/' + userId);
       if (Array.isArray(res.data) && res.data.length > 0) {
-        // Normalize user medal data to ensure family icons are consistent
-        return normalizeUserMedals(res.data);
+        // Same cross-reference as `getMyMedals` — see that comment for
+        // why we can't rely on the in-response normaliser alone.
+        return normalizeUserMedalsAgainstCatalog(res.data);
       }
     } catch (err) {
       console.warn(`Failed to fetch medals for user ${userId}:`, err);

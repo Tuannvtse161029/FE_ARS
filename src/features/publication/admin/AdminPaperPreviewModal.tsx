@@ -106,7 +106,7 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
             </dd>
           </dl>
           <p className={shared.fieldHint}>
-            Preview only — private review content is not surfaced here. Open the editorial record for full review material.
+            Preview only — private review content is not surfaced here. Open the submission record for full review material.
           </p>
         </div>
       </div>

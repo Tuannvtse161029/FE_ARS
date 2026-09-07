@@ -65,8 +65,11 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
 
 const mapPremiumPackage = (row: PremiumPackageApiRow): PremiumPackage | null => {
   const targetRole = row.targetRole?.toUpperCase();
-  if (targetRole !== 'RESEARCHER' && targetRole !== 'REVIEWER' && targetRole !== 'LECTURER') return null;
-  if (row.billingCycle !== 'Monthly' && row.billingCycle !== 'Yearly') return null;
+  // Annual Fees only apply to RESEARCHER and LECTURER; REVIEWER was
+  // intentionally removed from the FE contract — see CreatePackageModal
+  // and the PremiumPackageTargetRole type in adminAuxiliary.ts.
+  if (targetRole !== 'RESEARCHER' && targetRole !== 'LECTURER') return null;
+  if (row.billingCycle !== 'SixMonth' && row.billingCycle !== 'Annual') return null;
   return {
     packageId: row.id,
     title: row.title?.trim() || `Package #${row.id}`,

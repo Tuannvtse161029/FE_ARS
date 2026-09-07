@@ -33,8 +33,8 @@ const ROLE_OPTIONS: Array<{ value: PremiumPackageTargetRole; label: string }> = 
 ];
 
 const CYCLE_OPTIONS: Array<{ value: PremiumPackageBillingCycle; label: string }> = [
-  { value: 'Monthly', label: 'Monthly' },
-  { value: 'Yearly', label: 'Yearly' },
+  { value: 'SixMonth', label: '6 Months' },
+  { value: 'Annual', label: '1 Year' },
 ];
 
 interface CreatePackageModalProps {
@@ -57,7 +57,7 @@ const empty = (): FormState => ({
   title: '',
   targetRole: 'RESEARCHER',
   priceVnd: 0,
-  billingCycle: 'Yearly',
+  billingCycle: 'Annual',
   isActive: true,
 });
 

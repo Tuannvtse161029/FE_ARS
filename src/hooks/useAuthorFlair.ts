@@ -29,6 +29,36 @@ import type { MedalTier, UserMedal } from '../services/medal.service';
 // either `number` or `string` IDs without missing the cache.
 const flairCache: Record<string, UserMedal[]> = {};
 
+/**
+ * Generation counter — bumped every time `invalidateFlairCache` runs so
+ * that subscribers can re-fetch even when the same key is already in
+ * the cache. This is the escape hatch for the admin icon-update path:
+ * after admin changes a medal's icon, the cache must drop its stale
+ * copy so the next read returns the fresh canonical image.
+ */
+let flairCacheGeneration = 0;
+
+/**
+ * Clears the module-level flair cache so the next `useAuthorFlair` read
+ * refetches from `/api/Medal/user/:id`. Two overloads:
+ *
+ *   - `invalidateFlairCache()`          → drop every cached entry
+ *   - `invalidateFlairCache(userId)`    → drop only the given user
+ *
+ * `useAuthorFlair` reads the generation counter on every render, so a
+ * cache drop is enough — no extra wiring is needed in the hook.
+ */
+export function invalidateFlairCache(
+  userId?: number | string | null,
+): void {
+  if (userId == null) {
+    for (const k of Object.keys(flairCache)) delete flairCache[k];
+  } else {
+    delete flairCache[String(userId)];
+  }
+  flairCacheGeneration += 1;
+}
+
 /** Tier rank for tie-breaking featured-flair selection. Higher = better. */
 const TIER_RANK: Record<MedalTier, number> = {
   Bronze: 1,
@@ -103,12 +133,22 @@ export interface UseAuthorFlairResult {
  * so 20 forum cards on the same page only fire ONE /api/Medal/user/:id call
  * per author.
  *
+ * When `invalidateFlairCache()` runs (e.g. after admin changes a medal
+ * icon) the cache is dropped AND the generation counter increments. The
+ * hook keys its fetch effect on the generation so a new counter forces
+ * the cache-miss branch to run again — without that wiring the cache
+ * drop would be invisible to mounted subscribers.
+ *
  * @param userId - numeric user id, string id, or null/undefined to no-op
  */
 export function useAuthorFlair(
   userId: number | string | undefined | null,
 ): UseAuthorFlairResult {
   const key = userId !== null && userId !== undefined ? String(userId) : '';
+  // Generation is intentionally read inside the effect below so each
+  // invalidation forces the cache-miss branch to re-run. We capture
+  // the current value once per render to keep the effect's deps stable.
+  const generation = flairCacheGeneration;
   const hasCached = key.length > 0 && Array.isArray(flairCache[key]);
 
   const [data, setData] = useState<UserMedal[]>(() => (hasCached ? flairCache[key] : []));
@@ -153,9 +193,11 @@ export function useAuthorFlair(
       cancelled = true;
     };
     // We key the effect on `key` (string) rather than `userId` directly so
-    // that `42` and `"42"` collapse to the same cache slot.
+    // that `42` and `"42"` collapse to the same cache slot. We also
+    // depend on `generation` so an external `invalidateFlairCache()`
+    // call drops the cached copy and forces a refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, generation]);
 
   return { unlockedMedals: data, isLoading };
 }

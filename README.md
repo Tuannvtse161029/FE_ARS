@@ -336,25 +336,25 @@ Top-level endpoint groups defined in `src/utils/constants.ts`:
 | `AUTH` | 17 | src/utils/constants.ts:14 |
 | `ROLE` | 1 | src/utils/constants.ts:45 |
 | `USER` | 5 | src/utils/constants.ts:48 |
-| `PAPER` | 8 | src/utils/constants.ts:55 |
-| `OPEN_ALEX` | 1 | src/utils/constants.ts:66 |
-| `PROFESSIONAL_PROFILE` | 4 | src/utils/constants.ts:69 |
-| `PROFILE` | 5 | src/utils/constants.ts:75 |
-| `REVIEW_REQUEST` | 6 | src/utils/constants.ts:82 |
-| `DETAILED_EVALUATION` | 3 | src/utils/constants.ts:90 |
-| `SEMINAR` | 18 | src/utils/constants.ts:95 |
-| `SEMINAR_PARTICIPANT` | 9 | src/utils/constants.ts:115 |
-| `FOLLOWER` | 10 | src/utils/constants.ts:126 |
-| `NOTIFICATION` | 10 | src/utils/constants.ts:138 |
-| `USER_ROLE` | 6 | src/utils/constants.ts:150 |
-| `MAJOR_FIELD` | 6 | src/utils/constants.ts:158 |
-| `SUB_FIELD` | 6 | src/utils/constants.ts:166 |
-| `COMMENT_VOTE` | 5 | src/utils/constants.ts:174 |
-| `FORUM_POST` | 6 | src/utils/constants.ts:181 |
-| `FORUM_COMMENT` | 8 | src/utils/constants.ts:189 |
-| `ADMIN` | 25 | src/utils/constants.ts:202 |
-| `ANALYTICS` | 2 | src/utils/constants.ts:243 |
-| `RESEARCH_WORKFLOW` | 52 | src/utils/constants.ts:250 |
+| `PAPER` | 9 | src/utils/constants.ts:55 |
+| `OPEN_ALEX` | 1 | src/utils/constants.ts:67 |
+| `PROFESSIONAL_PROFILE` | 4 | src/utils/constants.ts:70 |
+| `PROFILE` | 5 | src/utils/constants.ts:76 |
+| `REVIEW_REQUEST` | 6 | src/utils/constants.ts:83 |
+| `DETAILED_EVALUATION` | 3 | src/utils/constants.ts:91 |
+| `SEMINAR` | 18 | src/utils/constants.ts:96 |
+| `SEMINAR_PARTICIPANT` | 9 | src/utils/constants.ts:116 |
+| `FOLLOWER` | 10 | src/utils/constants.ts:127 |
+| `NOTIFICATION` | 10 | src/utils/constants.ts:139 |
+| `USER_ROLE` | 6 | src/utils/constants.ts:151 |
+| `MAJOR_FIELD` | 6 | src/utils/constants.ts:159 |
+| `SUB_FIELD` | 6 | src/utils/constants.ts:167 |
+| `COMMENT_VOTE` | 5 | src/utils/constants.ts:175 |
+| `FORUM_POST` | 6 | src/utils/constants.ts:182 |
+| `FORUM_COMMENT` | 8 | src/utils/constants.ts:190 |
+| `ADMIN` | 25 | src/utils/constants.ts:203 |
+| `ANALYTICS` | 2 | src/utils/constants.ts:244 |
+| `RESEARCH_WORKFLOW` | 52 | src/utils/constants.ts:251 |
 
 ### Service layer
 

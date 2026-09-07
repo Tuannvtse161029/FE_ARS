@@ -55,10 +55,10 @@ const QUEUE_CARDS: QueueCard[] = [
     href: `${ROUTES.ADMIN_ROLE_REQUESTS}?status=PENDING`,
   },
   {
-    key: 'editorial',
+    key: 'review',
     icon: <FileCheck size={20} />,
-    labelKey: 'admin.dashboard.queue.editorial.label',
-    descriptionKey: 'admin.dashboard.queue.editorial.desc',
+    labelKey: 'admin.dashboard.queue.review.label',
+    descriptionKey: 'admin.dashboard.queue.review.desc',
     href: ROUTES.ADMIN_PAPER_SUBMISSIONS,
   },
   {

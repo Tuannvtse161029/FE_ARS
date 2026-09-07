@@ -2,7 +2,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* Bumped min card width from 260 → 320 so titles like
+   * "ORCID Verified Scholar (Silver)" fit on one line after the 96px
+   * badge + 12px gap + status chip are accounted for. 260px left the
+   * title column at ~150px and forced per-character wrapping. */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4, 16px);
   margin-top: var(--space-3, 12px);
 }
@@ -18,6 +22,9 @@
   transition:
     transform var(--transition-fast),
     border-color var(--transition-fast);
+  /* The card must allow its children to shrink so a long title can
+   * wrap instead of forcing the card past the grid track. */
+  min-width: 0;
 }
 
 .card:hover {
@@ -41,13 +48,18 @@
    * can wrap its long titles. Without this the badge + chips + title
    * refuse to reflow on narrow viewports and the title clips. */
   min-width: 0;
+  /* Below ~360px the row gets too cramped to hold the badge + title +
+   * status chip on one line. Stack the badge above the heading so the
+   * title gets the full card width and can wrap at word boundaries
+   * instead of breaking per character. */
+  flex-wrap: wrap;
 }
 
 .cardHeading {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
 }
 
@@ -58,10 +70,15 @@
   color: var(--ink-primary);
   margin: 0;
   line-height: 1.3;
-  /* Title may be long (e.g. "ORCID Verified Platinum Scholar"). Allow
-   * wrap, keep tight measure. */
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  /* Wrap at WORD boundaries. `overflow-wrap: break-word` (the default)
+   * only kicks in for genuinely unbreakable strings (URLs, single
+   * 40-char words) — it does NOT force per-character breaks on
+   * normal text. We deliberately avoid `overflow-wrap: anywhere` and
+   * `word-break: break-word` here: together they caused the previous
+   * bug where "Master Mentor (Platinum)" wrapped as
+   * "Maste r Mento r (Platin um)" on every card. */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .cardCode {
@@ -81,6 +98,11 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  /* Prevent the chip from being crushed when the title column needs
+   * to grow on narrow viewports — `flex-shrink: 0` keeps the chip on
+   * a single line and lets the title wrap to a second line instead. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .unlockedChip {
@@ -142,12 +164,16 @@
    * `min-width: auto` — which makes them refuse to shrink below their
    * intrinsic content width. Without `min-width: 0` the long unbreakable
    * strings (e.g. "Verified by 2 peers through DOI") push the paragraph
-   * wider than the card and bleed past the border. */
+   * wider than the card and bleed past the border.
+   *
+   * We deliberately use the gentler `overflow-wrap: break-word` (only
+   * breaks genuinely-unbreakable strings) and DROP the previous
+   * `overflow-wrap: anywhere` + `word-break: break-word` combo, which
+   * was wrapping descriptions mid-word for no visual benefit. */
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .criteriaRow {
@@ -172,11 +198,18 @@
   font-size: 0.8125rem;
   color: var(--ink-primary);
   /* `min-width: 0` lets long mono strings wrap inside the criteria row
-   * (e.g. "publicationCount >= 50 publications") instead of bleeding
-   * past the card border on narrow screens. */
+   * (e.g. "guided_groups_completed >= 10 student_groups") instead of
+   * bleeding past the card border on narrow screens.
+   *
+   * The mono strings ARE technical identifiers and ARE allowed to
+   * break mid-token — so we keep `overflow-wrap: anywhere` here, but
+   * DROP the previous `word-break: break-word`, which was breaking
+   * even at spaces and made "10 student_groups" wrap as
+   * "10 stude nt_gro ups". `overflow-wrap: anywhere` alone is enough
+   * to wrap a long underscore-joined identifier inside the card
+   * boundary. */
   min-width: 0;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .unlockedDate {
@@ -235,7 +268,7 @@
 
 .skeleton {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4, 16px);
 }
 
