@@ -68,9 +68,17 @@ export const roleRequestService = {
       if (response.data && response.data.id) {
         requestId = response.data.id;
       }
-    } catch {
-      // Backend may not expose POST /api/RoleRequest yet or may require Admin token;
-      // we generate an ID and persist to local storage so the flow is seamless.
+    } catch (err: any) {
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        (typeof err?.response?.data === 'string' ? err?.response?.data : null);
+
+      if (err?.response?.status === 400 || err?.response?.status === 409) {
+        throw new Error(serverMsg || 'Yêu cầu không hợp lệ hoặc bạn đã có yêu cầu đang chờ duyệt.');
+      }
+
+      // If endpoint is not yet accepting POST or returns 404/500, fallback to local persistence
       requestId = Date.now();
     }
 
@@ -103,7 +111,7 @@ export const roleRequestService = {
   },
 
   /**
-   * Check if a user currently has a pending additional role request.
+   * Fast synchronous check from local storage.
    */
   getPendingRequest(userId: number): UserPendingRoleRequest | null {
     if (typeof window === 'undefined' || !userId) return null;
@@ -118,6 +126,63 @@ export const roleRequestService = {
       return null;
     }
     return null;
+  },
+
+  /**
+   * Live check against backend API, syncing local cache.
+   */
+  async fetchPendingRequest(userId: number): Promise<UserPendingRoleRequest | null> {
+    if (!userId) return null;
+    try {
+      const response = await api.get<any[]>('/api/RoleRequest');
+      const items = Array.isArray(response.data)
+        ? response.data
+        : (response.data as any)?.items || [];
+
+      // Find requests for this user
+      const userRequests = items.filter((r: any) => r.userId === userId);
+      const pending = userRequests.find((r: any) => {
+        const s = String(r.status || '').toUpperCase();
+        return s === 'PENDING';
+      });
+
+      if (pending) {
+        const requestedRole = (
+          pending.requestedAdditionalRoles?.[0] ||
+          pending.requestedRoles?.[0] ||
+          'Reviewer'
+        ) as RequestableRole;
+
+        const record: UserPendingRoleRequest = {
+          id: pending.id,
+          userId: pending.userId,
+          userName: pending.userName || '',
+          email: pending.email || '',
+          phone: pending.phone,
+          affiliation: pending.affiliation,
+          department: pending.department,
+          currentRoles: pending.currentRoles || [],
+          requestedRole,
+          reason: pending.notes,
+          proofDocumentUrl: pending.proofDocumentUrl,
+          orcidId: pending.orcidId,
+          status: 'PENDING',
+          submittedAt: pending.submissionDate || new Date().toISOString(),
+        };
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(getStorageKey(userId), JSON.stringify(record));
+        }
+        return record;
+      }
+
+      // If user has no pending request in BE, clear any stale local state
+      this.clearPendingRequest(userId);
+      return null;
+    } catch {
+      // If live endpoint is protected or unavailable, fall back to local storage
+      return this.getPendingRequest(userId);
+    }
   },
 
   /**

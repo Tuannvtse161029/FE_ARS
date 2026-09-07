@@ -353,6 +353,9 @@ export const Profile = () => {
   useEffect(() => {
     if (user?.userId) {
       setPendingRoleRequest(roleRequestService.getPendingRequest(user.userId));
+      roleRequestService.fetchPendingRequest(user.userId).then((res) => {
+        setPendingRoleRequest(res);
+      });
     }
   }, [user?.userId]);
 
