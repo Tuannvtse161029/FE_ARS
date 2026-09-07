@@ -109,6 +109,8 @@ export const API_ENDPOINTS = {
     SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
     SAVE_AI_SUMMARY: (id: number) => `/api/Seminar/${id}/ai-summary`,
     SUGGESTED_INVITEES: '/api/Seminar/suggested-invitees',
+    FEEDBACK_FORM: (id: number) => `/api/Seminar/${id}/feedback-form`,
+    FEEDBACK_ANSWERS: (id: number) => `/api/Seminar/${id}/feedback-answers`,
   },
   SEMINAR_PARTICIPANT: {
     BASE: '/api/SeminarParticipant',
@@ -118,6 +120,8 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
     DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
     MY_SEMINARS: '/api/SeminarParticipant/my-seminars',
+    FEEDBACK: (seminarId: number) => `/api/SeminarParticipant/${seminarId}/feedback`,
+    FEEDBACK_ANSWERS: (seminarId: number) => `/api/SeminarParticipant/${seminarId}/feedback-answers`,
   },
   FOLLOWER: {
     BASE: '/api/Follower',

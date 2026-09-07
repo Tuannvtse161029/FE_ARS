@@ -1,0 +1,200 @@
+/**
+ * QuestionEditorCard.module.css
+ * Styling for the Lecturer question editor card.
+ */
+
+.card {
+  background: var(--ars-paper, #ffffff);
+  border: 1px solid var(--ars-network, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: border-color var(--motion-feedback, 150ms ease), box-shadow var(--motion-feedback, 150ms ease);
+}
+
+.card:focus-within {
+  border-color: var(--ars-lecturer, #7c2d12);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding-bottom: var(--space-2, 8px);
+  border-bottom: 1px solid var(--ars-network, #f1f5f9);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.orderBadge {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer-light, #fef2f2);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm, 4px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconBtn {
+  background: transparent;
+  border: 1px solid var(--ars-network, #cbd5e1);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--ars-ink-muted, #64748b);
+  cursor: pointer;
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms ease;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: var(--ars-ink, #0f172a);
+  background: var(--ars-paper-inset, #f8fafc);
+  border-color: var(--ars-ink-muted, #94a3b8);
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.deleteBtn {
+  color: var(--ars-danger, #dc2626) !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: #fef2f2 !important;
+  border-color: var(--ars-danger, #dc2626) !important;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.label {
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #1e293b);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-family: var(--font-family-ui, inherit);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--ars-ink, #0f172a);
+  background: var(--ars-paper, #ffffff);
+  border: 1px solid var(--ars-network, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--ars-lecturer, #7c2d12);
+  box-shadow: 0 0 0 2px rgba(124, 45, 18, 0.15);
+}
+
+.inputError {
+  border-color: var(--ars-danger, #dc2626) !important;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  flex-wrap: wrap;
+  padding-top: var(--space-1, 4px);
+}
+
+.typeSelectorGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.typeSelectorLabel {
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink-muted, #64748b);
+}
+
+.typeButtonGroup {
+  display: flex;
+  border: 1px solid var(--ars-network, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  overflow: hidden;
+  background: var(--ars-paper-inset, #f8fafc);
+}
+
+.typeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink-muted, #64748b);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.typeBtnActive {
+  background: var(--ars-lecturer, #7c2d12);
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.typeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: -2px;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink, #1e293b);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ars-lecturer, #7c2d12);
+  cursor: pointer;
+}
+
+.errorText {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--ars-danger, #dc2626);
+  font-weight: var(--font-weight-medium, 500);
+}

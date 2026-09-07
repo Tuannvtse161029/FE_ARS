@@ -1,0 +1,209 @@
+/**
+ * DynamicQuestionRenderer.module.css
+ * Styling for the dynamic seminar questions (stars rating & text area).
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.previewBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-lecturer-light, #fef2f2);
+  border: 1px dashed var(--ars-lecturer, #7c2d12);
+  color: var(--ars-lecturer, #7c2d12);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.previewBanner svg {
+  flex-shrink: 0;
+}
+
+.emptyState {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--ars-ink-muted, #64748b);
+  background: var(--ars-paper-inset, #f8fafc);
+  border: 1px dashed var(--ars-network, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.questionCard {
+  background: var(--ars-paper, #ffffff);
+  border: 1px solid var(--ars-network, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-4);
+  transition: border-color var(--motion-feedback, 150ms ease), box-shadow var(--motion-feedback, 150ms ease);
+}
+
+.questionCard:focus-within {
+  border-color: var(--ars-lecturer, #7c2d12);
+  box-shadow: 0 0 0 1px var(--ars-lecturer, #7c2d12);
+}
+
+.questionCardError {
+  border-color: var(--ars-danger, #dc2626) !important;
+  background-color: #fff5f5;
+}
+
+.questionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.questionTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.questionIndex {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer-light, #fef2f2);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+  white-space: nowrap;
+}
+
+.questionTitle {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #0f172a);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.requiredMark {
+  color: var(--ars-danger, #dc2626);
+  font-weight: var(--font-weight-bold, 700);
+  margin-left: 2px;
+}
+
+.optionalBadge {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--ars-ink-muted, #64748b);
+  background: var(--ars-paper-inset, #f1f5f9);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm, 4px);
+  font-weight: normal;
+}
+
+/* Rating Widget */
+.ratingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.starsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.starBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 4px);
+  color: #cbd5e1;
+  transition: transform 120ms ease, color 120ms ease;
+}
+
+.starBtn:hover:not(:disabled) {
+  transform: scale(1.15);
+}
+
+.starBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: 2px;
+}
+
+.starActive {
+  color: #eab308 !important; /* Gold / Amber star */
+}
+
+.starHovered {
+  color: #facc15 !important;
+}
+
+.ratingLabel {
+  font-size: var(--font-size-xs, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink-muted, #64748b);
+  min-height: 18px;
+}
+
+.ratingLabelSelected {
+  color: var(--ars-ink, #0f172a);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+/* Text Area Widget */
+.textContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-family-ui, inherit);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--ars-ink, #0f172a);
+  background: var(--ars-paper, #ffffff);
+  border: 1px solid var(--ars-network, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  resize: vertical;
+  line-height: 1.5;
+  transition: border-color var(--motion-feedback, 150ms ease), box-shadow var(--motion-feedback, 150ms ease);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--ars-lecturer, #7c2d12);
+  box-shadow: 0 0 0 2px rgba(124, 45, 18, 0.15);
+}
+
+.textarea:disabled {
+  background: var(--ars-paper-inset, #f8fafc);
+  color: var(--ars-ink-muted, #94a3b8);
+  cursor: not-allowed;
+}
+
+.textMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--ars-ink-muted, #94a3b8);
+}
+
+.errorMessage {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--ars-danger, #dc2626);
+  font-weight: var(--font-weight-medium, 500);
+}

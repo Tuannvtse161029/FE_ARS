@@ -1517,3 +1517,35 @@
   line-height: 1.5;
   margin-bottom: var(--space-3);
 }
+
+/* Inline feedback builder inside Create Seminar modal */
+.feedbackSectionCard {
+  background: var(--ars-paper-inset, #f8fafc);
+  border: 1px solid var(--ars-network, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  margin-top: var(--space-2, 8px);
+}
+
+.feedbackSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+
+.emptyQuestionsNotice {
+  padding: var(--space-4, 16px);
+  background: var(--ars-paper, #ffffff);
+  border: 1px dashed var(--ars-network, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}

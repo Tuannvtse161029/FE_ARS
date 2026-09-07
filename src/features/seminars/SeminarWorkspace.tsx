@@ -14,12 +14,14 @@ import {
   Check,
   X,
   Lock,
+  Sliders,
+  Sparkles,
 } from 'lucide-react';
 import { useLocale } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Button } from '../../components/Button/Button';
-import { deriveEffectiveStatus } from '../../services/seminar.service';
+import { deriveEffectiveStatus, seminarService } from '../../services/seminar.service';
 import {
   useSeminars,
   useCreateSeminar,
@@ -27,6 +29,9 @@ import {
 } from '../../hooks/useSeminar';
 import { SeminarList } from './components/SeminarList';
 import { SummaryDialog } from './components/SummaryDialog';
+import { SeminarFeedbackSetupModal } from '../../components/seminar/SeminarFeedbackSetupModal';
+import { QuestionEditorCard } from '../../components/seminar/QuestionEditorCard';
+import type { FeedbackQuestion } from '../../types/seminarFeedback';
 // CSS module kept at the original SeminarWorkspace CSS location for now.
 import styles from '../../pages/Lecturer/SeminarWorkspace.module.css';
 
@@ -61,6 +66,13 @@ export const SeminarWorkspace = () => {
   const createSeminarSubFieldId: number | undefined = undefined;
   const [createModalError, setCreateModalError] = useState<string | null>(null);
   const [generatedMeetLink, setGeneratedMeetLink] = useState('');
+  const [lastCreatedSeminarId, setLastCreatedSeminarId] = useState<number | null>(null);
+  const [feedbackSetupSeminar, setFeedbackSetupSeminar] = useState<{
+    id: number;
+    title: string;
+    feedbackRaw?: string | null;
+  } | null>(null);
+  const [createCustomQuestions, setCreateCustomQuestions] = useState<FeedbackQuestion[]>([]);
 
   const {
     seminars,
@@ -73,15 +85,24 @@ export const SeminarWorkspace = () => {
   const { currentRole, currentUserId, canModify } = useSeminarRoleContext();
 
   const handleCreateSuccess = useCallback(
-    (created: { seminarId: number; onlineLink?: string | null }) => {
+    async (created: { seminarId: number; onlineLink?: string | null }) => {
+      setLastCreatedSeminarId(created.seminarId);
       setGeneratedMeetLink(created.onlineLink ?? '');
       setBannerText(`"${seminarName || 'Seminar'}" has been created.`);
       setBannerVariant('success');
       setShowSuccessBanner(true);
       setShowCreateModal(false);
       setShowGeneratedModal(true);
+
+      if (createCustomQuestions.length > 0) {
+        try {
+          await seminarService.saveFeedbackQuestions(created.seminarId, createCustomQuestions);
+        } catch {
+          // local fallback preserved
+        }
+      }
     },
-    [seminarName],
+    [seminarName, createCustomQuestions],
   );
 
   const { createSeminar, isCreating: isCreatingSeminar } =
@@ -166,6 +187,19 @@ export const SeminarWorkspace = () => {
     const endTime = new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
     const fullContent = seminarName.trim() ? `[${seminarName.trim()}] ${seminarDetails.trim()}` : seminarDetails.trim();
 
+    if (createCustomQuestions.length > 0) {
+      const hasEmpty = createCustomQuestions.some((q) => !q.questionText || !q.questionText.trim());
+      if (hasEmpty) {
+        const errorMsg = copy(
+          'Please fill in the question content for all custom feedback questions or delete empty ones.',
+          'Vui lòng điền đầy đủ nội dung các câu hỏi đánh giá hoặc xóa câu hỏi còn trống.'
+        );
+        setCreateModalError(errorMsg);
+        announce(errorMsg, 'error');
+        return;
+      }
+    }
+
     try {
       setCreateModalError(null);
       await createSeminar({
@@ -183,6 +217,7 @@ export const SeminarWorkspace = () => {
       setGuestEmails([]);
       setEmailInputText('');
       setSendReminder(true);
+      setCreateCustomQuestions([]);
       setCreateModalError(null);
     } catch (err: unknown) {
       const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
@@ -317,6 +352,13 @@ export const SeminarWorkspace = () => {
         currentRole={currentRole}
         onRefetch={() => void refetch()}
         onShowSuccess={(text) => announce(text, 'success')}
+        onOpenFeedbackSetup={(sem) =>
+          setFeedbackSetupSeminar({
+            id: sem.seminarId,
+            title: sem.title,
+            feedbackRaw: sem.feedback,
+          })
+        }
       />
 
       {/* Modal: Create Seminar */}
@@ -386,8 +428,131 @@ export const SeminarWorkspace = () => {
                 </span>
               </label>
 
+              {/* Custom Feedback Questions Builder for this Seminar */}
+              <div className={styles.feedbackSectionCard}>
+                <div className={styles.feedbackSectionHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sliders size={18} color="var(--ars-lecturer)" aria-hidden />
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--ars-ink)' }}>
+                        {copy('Custom Feedback Form for this Seminar', 'Tự tạo câu hỏi đánh giá riêng cho Hội thảo này')}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ars-ink-muted)' }}>
+                        {copy(
+                          'Configure rating criteria (1–5 stars) or written answers specifically for this session.',
+                          'Thiết lập câu hỏi đánh giá sao (1–5 sao) hoặc câu hỏi tự luận theo đúng nội dung buổi chia sẻ này.'
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newId = `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                      setCreateCustomQuestions((prev) => [
+                        ...prev,
+                        {
+                          id: newId,
+                          orderIndex: prev.length,
+                          type: 'rating',
+                          questionText: '',
+                          isRequired: true,
+                          maxStar: 5,
+                        },
+                      ]);
+                    }}
+                    leftIcon={<Plus size={14} aria-hidden />}
+                  >
+                    {copy('Add Question', 'Thêm câu hỏi')}
+                  </Button>
+                </div>
+
+                {createCustomQuestions.length === 0 ? (
+                  <div className={styles.emptyQuestionsNotice}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '0.8125rem', color: 'var(--ars-ink-muted)' }}>
+                      {copy(
+                        'No custom questions added yet. You can add questions now or set them up after creating the seminar.',
+                        'Chưa thêm câu hỏi nào. Bạn có thể thêm ngay bây giờ hoặc thiết lập sau khi tạo hội thảo.'
+                      )}
+                    </p>
+                    <button
+                      type="button"
+                      className={styles.actionBtnOutline}
+                      style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                      onClick={() => {
+                        setCreateCustomQuestions([
+                          {
+                            id: `q_${Date.now()}_1`,
+                            orderIndex: 0,
+                            type: 'rating',
+                            questionText: copy(
+                              'How relevant and insightful was this seminar?',
+                              'Mức độ hữu ích và thực tế của buổi hội thảo này?'
+                            ),
+                            isRequired: true,
+                            maxStar: 5,
+                          },
+                          {
+                            id: `q_${Date.now()}_2`,
+                            orderIndex: 1,
+                            type: 'text',
+                            questionText: copy(
+                              'What key takeaways or feedback do you have for the speaker?',
+                              'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?'
+                            ),
+                            isRequired: false,
+                            placeholder: copy('Enter your response...', 'Nhập câu trả lời...'),
+                          },
+                        ]);
+                      }}
+                    >
+                      <Sparkles size={12} aria-hidden />
+                      {copy('Load Starter Questions', 'Tạo mẫu câu hỏi gợi ý')}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {createCustomQuestions.map((q, idx) => (
+                      <QuestionEditorCard
+                        key={q.id}
+                        question={q}
+                        index={idx}
+                        totalCount={createCustomQuestions.length}
+                        onUpdate={(patch) => {
+                          setCreateCustomQuestions((prev) =>
+                            prev.map((item) => (item.id === q.id ? { ...item, ...patch } : item))
+                          );
+                        }}
+                        onMoveUp={() => {
+                          if (idx === 0) return;
+                          const list = [...createCustomQuestions];
+                          const temp = list[idx];
+                          list[idx] = list[idx - 1];
+                          list[idx - 1] = temp;
+                          setCreateCustomQuestions(list.map((item, i) => ({ ...item, orderIndex: i })));
+                        }}
+                        onMoveDown={() => {
+                          if (idx === createCustomQuestions.length - 1) return;
+                          const list = [...createCustomQuestions];
+                          const temp = list[idx];
+                          list[idx] = list[idx + 1];
+                          list[idx + 1] = temp;
+                          setCreateCustomQuestions(list.map((item, i) => ({ ...item, orderIndex: i })));
+                        }}
+                        onDelete={() => {
+                          const filtered = createCustomQuestions.filter((item) => item.id !== q.id);
+                          setCreateCustomQuestions(filtered.map((item, i) => ({ ...item, orderIndex: i })));
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className={styles.modalFooter}>
-                <Button variant="outline" size="md" onClick={() => setShowCreateModal(false)} disabled={isCreatingSeminar}>Cancel</Button>
+                <Button variant="outline" size="md" onClick={() => { setShowCreateModal(false); setCreateCustomQuestions([]); }} disabled={isCreatingSeminar}>Cancel</Button>
                 <Button variant="primary" size="md" type="submit" className={styles.actionBtnLecturer} leftIcon={isCreatingSeminar ? <Loader size={14} className={styles.spinning} aria-hidden /> : <Plus size={14} aria-hidden />} disabled={isCreatingSeminar}>
                   {isCreatingSeminar ? 'Creating…' : 'Generate & Create Seminar'}
                 </Button>
@@ -405,6 +570,15 @@ export const SeminarWorkspace = () => {
         guestEmails={guestEmails}
         onCopyLink={() => { navigator.clipboard.writeText(generatedMeetLink); announce('Google Meet link copied.'); }}
         onLaunch={() => window.open(generatedMeetLink, '_blank', 'noopener')}
+        onOpenFeedbackSetup={() => {
+          if (lastCreatedSeminarId) {
+            setFeedbackSetupSeminar({
+              id: lastCreatedSeminarId,
+              title: seminarName || 'Seminar',
+            });
+          }
+          setShowGeneratedModal(false);
+        }}
         onClose={() => {
           setShowGeneratedModal(false);
           setSeminarName('');
@@ -413,8 +587,27 @@ export const SeminarWorkspace = () => {
           setGuestEmails([]);
           setEmailInputText('');
           setGeneratedMeetLink('');
+          setLastCreatedSeminarId(null);
         }}
       />
+
+      {/* Seminar Feedback Setup Modal */}
+      {feedbackSetupSeminar && (
+        <SeminarFeedbackSetupModal
+          isOpen={Boolean(feedbackSetupSeminar)}
+          onClose={() => setFeedbackSetupSeminar(null)}
+          seminarId={feedbackSetupSeminar.id}
+          seminarTitle={feedbackSetupSeminar.title}
+          existingFeedbackRaw={feedbackSetupSeminar.feedbackRaw}
+          onSuccess={() => {
+            announce(
+              copy('Feedback form configured and saved successfully.', 'Đã thiết lập và lưu biểu mẫu đánh giá thành công.'),
+              'success'
+            );
+            void refetch();
+          }}
+        />
+      )}
     </div>
   );
 };
