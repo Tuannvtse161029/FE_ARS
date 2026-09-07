@@ -60,7 +60,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
   const copy = (en: string, vi: string) => (isVi ? vi : en);
 
   const [activeTab, setActiveTab] = useState<TabType>('setup');
-  const [formMode, setFormMode] = useState<FormMode>('general');
+  const [formMode, setFormMode] = useState<FormMode>('custom');
   const [customQuestions, setCustomQuestions] = useState<FeedbackQuestion[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -80,7 +80,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
     const initial = fromProp.length > 0 ? fromProp : cached;
 
     if (initial && initial.length > 0) {
-      // Check if it matches default general questions
+      // If matches default exactly, preserve general, else custom
       const isDefault =
         initial.length === DEFAULT_GENERAL_QUESTIONS.length &&
         initial.every((q, i) => q.id === DEFAULT_GENERAL_QUESTIONS[i].id);
@@ -93,16 +93,16 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
         setCustomQuestions(initial);
       }
     } else {
-      // Default to general form
-      setFormMode('general');
+      // Default to custom form riêng cho seminar
+      setFormMode('custom');
       setCustomQuestions([
         {
           id: `q_${Date.now()}_1`,
           orderIndex: 0,
           type: 'rating',
           questionText: copy(
-            'How satisfied are you with the overall seminar quality?',
-            'Bạn đánh giá mức độ hài lòng chung về buổi hội thảo thế nào?'
+            'How relevant and insightful was this seminar?',
+            'Mức độ hữu ích và thực tế của buổi hội thảo này đối với bạn?'
           ),
           isRequired: true,
           maxStar: 5,
@@ -112,8 +112,8 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
           orderIndex: 1,
           type: 'text',
           questionText: copy(
-            'What key insights or takeaways did you gain?',
-            'Những bài học hoặc giá trị tâm đắc nhất bạn thu nhận được?'
+            'What key takeaways or constructive feedback do you have for the speaker?',
+            'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?'
           ),
           isRequired: false,
           placeholder: copy('Enter your response...', 'Nhập câu trả lời...'),
@@ -347,35 +347,6 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
               <div className={styles.modeSelection}>
                 <div
                   className={`${styles.modeOption} ${
-                    formMode === 'general' ? styles.modeOptionSelected : ''
-                  }`}
-                  onClick={() => setFormMode('general')}
-                  role="radio"
-                  aria-checked={formMode === 'general'}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') setFormMode('general');
-                  }}
-                >
-                  <div className={styles.modeHeader}>
-                    <span className={styles.modeTitle}>
-                      <FileCheck2 size={18} color="var(--ars-lecturer)" aria-hidden />
-                      {copy('ARS General Form', 'Biểu mẫu chuẩn ARS')}
-                    </span>
-                    {formMode === 'general' && (
-                      <CheckCircle2 size={18} color="var(--ars-lecturer)" aria-hidden />
-                    )}
-                  </div>
-                  <p className={styles.modeDesc}>
-                    {copy(
-                      'Use ARS standard evaluation (4 balanced questions: Content & Speaker ratings + Takeaways & Improvements text).',
-                      'Sử dụng bộ câu hỏi chuẩn của hệ thống (4 câu: Đánh giá sao nội dung & diễn giả + Trả lời bài học & góp ý).'
-                    )}
-                  </p>
-                </div>
-
-                <div
-                  className={`${styles.modeOption} ${
                     formMode === 'custom' ? styles.modeOptionSelected : ''
                   }`}
                   onClick={() => setFormMode('custom')}
@@ -389,7 +360,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
                   <div className={styles.modeHeader}>
                     <span className={styles.modeTitle}>
                       <Sparkles size={18} color="var(--ars-lecturer)" aria-hidden />
-                      {copy('Custom Question Builder', 'Tự tạo câu hỏi riêng')}
+                      {copy('Custom Question Builder', 'Tự tạo câu hỏi riêng cho Hội thảo')}
                     </span>
                     {formMode === 'custom' && (
                       <CheckCircle2 size={18} color="var(--ars-lecturer)" aria-hidden />
@@ -398,7 +369,36 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
                   <p className={styles.modeDesc}>
                     {copy(
                       'Build your own questions. Tailor rating criteria and custom text questions specifically for this topic.',
-                      'Tự do thêm câu hỏi, lựa chọn định dạng đánh giá sao hoặc nhập văn bản theo đúng nội dung buổi chia sẻ.'
+                      'Tự do thêm câu hỏi, lựa chọn định dạng đánh giá sao hoặc nhập văn bản theo đúng nội dung buổi chia sẻ này.'
+                    )}
+                  </p>
+                </div>
+
+                <div
+                  className={`${styles.modeOption} ${
+                    formMode === 'general' ? styles.modeOptionSelected : ''
+                  }`}
+                  onClick={() => setFormMode('general')}
+                  role="radio"
+                  aria-checked={formMode === 'general'}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setFormMode('general');
+                  }}
+                >
+                  <div className={styles.modeHeader}>
+                    <span className={styles.modeTitle}>
+                      <FileCheck2 size={18} color="var(--ars-lecturer)" aria-hidden />
+                      {copy('ARS General Form', 'Dùng mẫu chuẩn ARS')}
+                    </span>
+                    {formMode === 'general' && (
+                      <CheckCircle2 size={18} color="var(--ars-lecturer)" aria-hidden />
+                    )}
+                  </div>
+                  <p className={styles.modeDesc}>
+                    {copy(
+                      'Use ARS standard evaluation (4 balanced questions: Content & Speaker ratings + Takeaways & Improvements text).',
+                      'Sử dụng bộ câu hỏi mẫu của hệ thống (4 câu: Đánh giá sao nội dung & diễn giả + Trả lời bài học & góp ý).'
                     )}
                   </p>
                 </div>
