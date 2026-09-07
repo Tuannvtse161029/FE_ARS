@@ -666,15 +666,6 @@ export const Register = () => {
             className={styles.orcidConnection}
             aria-labelledby="registration-orcid-title"
           >
-            <div className={styles.orcidHeader}>
-              <OrcidBrandLogo
-                variant="wordmark"
-                size={22}
-                ariaLabel={t('orcid.brandAria', 'ORCID iD')}
-                className={styles.orcidHeaderLogo}
-              />
-            </div>
-
             <div className={styles.orcidBody}>
               <h2 id="registration-orcid-title" className={styles.orcidTitle}>
                 {t('orcid.connectTitle', 'Connect your ORCID iD')}
@@ -727,11 +718,6 @@ export const Register = () => {
               )}
             </div>
 
-            {!orcidTicket && (
-              <p className={styles.orcidNotice}>
-                {t('orcid.privacyNotice', 'We will open the official ORCID authorization page. ARS never asks for your ORCID password — authentication happens entirely on orcid.org.')}
-              </p>
-            )}
             {reviewerOrcidBypassAllowed() && form.role === 'Reviewer' ? (
               <p
                 className={styles.orcidDevNotice}

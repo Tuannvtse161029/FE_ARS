@@ -4,45 +4,57 @@ import { Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import reviewer from './reviewer.module.css';
-import { statusLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { statusLabel, reviewTypeLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
   isAwaitingReviewerResponse,
   isReviewerActionable,
   isReviewerSubmitted,
 } from './reviewerCriteria';
 import { PageHeader } from '../../../components/PageHeader';
-import { SortableHeader } from '../../../components/table/SortableHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
-import { StatusBadge } from '../../../components/lecturer/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import { formatDisplayDate } from '../../../utils/datetime';
+import { useT } from '../../../i18n/I18nContext';
+import { ROUTES } from '../../../routes/paths';
 
 /** Sortable column ids for the Reviewer Assignments table. */
 type SortColumn = 'title' | 'status' | 'actionability' | 'assigned' | 'deadline';
 
 // ReviewerAssignments — Reviewer-only list of Admin-assigned papers.
 //
-// Coordinator authority:
-//   - `docs/UI_PUBLICATION_FLOW_DECISIONS.md` §1, §3 (route is fixed at
-//     /reviewer/assignments; the list is filtered by status), §6 (API
-//     banner remains).
-//   - `docs/PUBLICATION_FLOW_ARCHITECTURE_REVIEW.md` §10 (no reviewer
-//     review bodies leak into the list rendering — even when the paper
-//     already has a `PublicationReview` attached).
+// ORGANIZATION:
+//   The list is organized into three action-centered groups:
+//   1. Response needed  — reviewer must accept/decline (REVIEWER_ASSIGNED)
+//   2. Accepted/in progress — reviewer has accepted and is evaluating
+//      (UNDER_REVIEW, REVISION_REQUIRED, RESUBMITTED)
+//   3. Completed recommendations — reviewer has submitted and is awaiting
+//      Admin (REVIEWER_RECOMMENDED_ACCEPT/REJECT)
 //
-// Privacy: this page never renders `PublicationReview.privateComments`
-// or `PublicationReview.privateScores`. The reviewer can only see their
-// own work product from inside the detail page after they submit.
+// AVAILABILITY:
+//   The reviewer's availability setting is shown next to its control
+//   (in the Professional Profile page). An empty queue is NOT solely
+//   attributed to availability — Admin may simply not have assigned any
+//   matching papers yet.
+//
+// PRIVACY:
+//   This page never renders `PublicationReview.privateComments` or
+//   `PublicationReview.privateScores`. The reviewer can only see their
+//   own work product from inside the detail page after they submit.
+//
+// I18N:
+//   All user-facing copy routes through the shared i18n dictionary.
+//   Status labels come from `statusLabel()` (BE contract preserved); the
+//   i18n dictionary owns the bucket titles, hints, and empty-state copy.
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 
 const formatDate = (iso: string | undefined): string => {
-  if (!iso) return 'Not supplied';
+  if (!iso) return '—';
   const formatted = formatDisplayDate(iso);
-  return formatted === '—' ? 'Not supplied' : formatted;
+  return formatted === '—' ? '—' : formatted;
 };
 
 const REVIEWER_VISIBLE_STATUSES: ReadonlySet<PublicationStatus> = new Set([
@@ -71,27 +83,44 @@ const actionableTone = (paper: PublicationPaper): 'submitted' | 'evaluated' | 'w
   return 'unknown';
 };
 
-// Status options for tabs
-type StatusTab = PublicationStatus | 'ALL';
+// Group assignments by next-action bucket.
+type ActionBucket = 'response' | 'in_progress' | 'completed';
 
-const STATUS_TABS: Array<{ value: StatusTab; label: string }> = [
-  { value: 'ALL', label: 'All' },
-  { value: 'REVIEWER_ASSIGNED', label: statusLabel('REVIEWER_ASSIGNED') },
-  { value: 'UNDER_REVIEW', label: statusLabel('UNDER_REVIEW') },
-  { value: 'REVISION_REQUIRED', label: statusLabel('REVISION_REQUIRED') },
-  { value: 'RESUBMITTED', label: statusLabel('RESUBMITTED') },
-  { value: 'REVIEWER_RECOMMENDED_ACCEPT', label: statusLabel('REVIEWER_RECOMMENDED_ACCEPT') },
-  { value: 'REVIEWER_RECOMMENDED_REJECT', label: statusLabel('REVIEWER_RECOMMENDED_REJECT') },
-];
+const ACTION_BUCKET_ORDER: ActionBucket[] = ['response', 'in_progress', 'completed'];
+
+const ACTION_BUCKET_I18N: Record<ActionBucket, { label: string; hint: string }> = {
+  response: {
+    label: 'reviewer.assignments.bucket.response.label',
+    hint: 'reviewer.assignments.bucket.response.hint',
+  },
+  in_progress: {
+    label: 'reviewer.assignments.bucket.inProgress.label',
+    hint: 'reviewer.assignments.bucket.inProgress.hint',
+  },
+  completed: {
+    label: 'reviewer.assignments.bucket.completed.label',
+    hint: 'reviewer.assignments.bucket.completed.hint',
+  },
+};
+
+const bucketFor = (paper: PublicationPaper): ActionBucket => {
+  if (isAwaitingReviewerResponse(paper.status)) return 'response';
+  if (isReviewerActionable(paper.status)) return 'in_progress';
+  if (isReviewerSubmitted(paper.status)) return 'completed';
+  // Revision / resubmission still need reviewer attention.
+  if (paper.status === 'REVISION_REQUIRED' || paper.status === 'RESUBMITTED') {
+    return 'in_progress';
+  }
+  return 'completed';
+};
 
 export const ReviewerAssignments = () => {
   const navigate = useNavigate();
+  const t = useT();
   const [papers, setPapers] = useState<PublicationPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  // Tab filter for status
-  const [statusTab, setStatusTab] = useState<StatusTab>('ALL');
 
   // Default sort by assigned (newest first) so recently assigned papers
   // surface at the top. The user can override per column header click.
@@ -107,7 +136,7 @@ export const ReviewerAssignments = () => {
         setPapers(items.filter(isVisibleReviewerAssignment));
       })
       .catch(() => {
-        if (!cancelled) setError('Review assignments could not be loaded.');
+        if (!cancelled) setError(t('reviewer.assignments.loadError.title'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -115,29 +144,11 @@ export const ReviewerAssignments = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // Count papers per status tab
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: papers.length };
-    STATUS_TABS.forEach((tab) => {
-      if (tab.value !== 'ALL') counts[tab.value] = 0;
-    });
-    papers.forEach((paper) => {
-      if (counts[paper.status] !== undefined) {
-        counts[paper.status]++;
-      }
-    });
-    return counts;
-  }, [papers]);
+  }, [t]);
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return papers.filter((paper) => {
-      // Apply status tab filter
-      if (statusTab !== 'ALL' && paper.status !== statusTab) {
-        return false;
-      }
       if (!term) return true;
       const haystack = [
         paper.title,
@@ -154,7 +165,7 @@ export const ReviewerAssignments = () => {
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [papers, search, statusTab]);
+  }, [papers, search]);
 
   // Apply column sort on top of filtered list.
   const sortedPapers = useMemo(
@@ -178,6 +189,20 @@ export const ReviewerAssignments = () => {
     [visiblePapers, sort],
   );
 
+  // Group sorted papers by action bucket so reviewers see what to do next
+  // before scanning detail.
+  const groupedPapers = useMemo(() => {
+    const groups: Record<ActionBucket, PublicationPaper[]> = {
+      response: [],
+      in_progress: [],
+      completed: [],
+    };
+    for (const paper of sortedPapers) {
+      groups[bucketFor(paper)].push(paper);
+    }
+    return groups;
+  }, [sortedPapers]);
+
   const rows = useMemo(
     () =>
       sortedPapers.map((paper) => ({
@@ -190,7 +215,25 @@ export const ReviewerAssignments = () => {
     [sortedPapers],
   );
 
-  // Part 5 — keyboard shortcuts for the reviewer queue.
+  // Intentional next-action hint per paper.
+  const nextActionHint = (paper: PublicationPaper): string => {
+    if (isAwaitingReviewerResponse(paper.status)) return t('reviewer.assignments.nextAction.accept');
+    if (isReviewerActionable(paper.status)) return t('reviewer.assignments.nextAction.evaluate');
+    if (paper.status === 'REVISION_REQUIRED' || paper.status === 'RESUBMITTED') {
+      return t('reviewer.assignments.nextAction.revise');
+    }
+    if (isReviewerSubmitted(paper.status)) return t('reviewer.assignments.nextAction.submitted');
+    return t('reviewer.assignments.nextAction.viewOnly');
+  };
+
+  const aiRecommendedLabel = (paper: PublicationPaper): string | null => {
+    if (paper.aiRecommended == null) return null;
+    return paper.aiRecommended
+      ? t('reviewer.assignments.status.aiRecommended')
+      : t('reviewer.assignments.status.notAiRecommended');
+  };
+
+  // Keyboard shortcuts for the reviewer queue.
   // j/k navigate assignments, Enter opens the focused assignment,
   // f focuses the toolbar search input.
   const { selectedIndex } = useListShortcuts({
@@ -206,9 +249,9 @@ export const ReviewerAssignments = () => {
   return (
     <section className={reviewer.page}>
       <PageHeader
-        eyebrow="REVIEWER WORKSPACE"
-        title="Review Assignments"
-        description="Accept or decline Admin assignments, then submit a private recommendation to Admin. Your review content is never published to the catalog."
+        eyebrow={t('reviewer.assignments.eyebrow')}
+        title={t('reviewer.assignments.title')}
+        description={t('reviewer.assignments.description')}
         accent={REVIEWER_ACCENT}
       />
 
@@ -217,159 +260,172 @@ export const ReviewerAssignments = () => {
       ) : error ? (
         <ErrorBanner
           tone="error"
-          title="Could not load assignments"
+          title={t('reviewer.assignments.loadError.title')}
           message={error}
         />
       ) : (
         <>
-          {/* Tab filter for status */}
-          {papers.length > 0 && (
-            <>
-              <div className={reviewer.tabFilterBar} role="tablist" aria-label="Filter by status">
-                {STATUS_TABS.map((tab) => (
-                  <button
-                    key={tab.value}
-                    role="tab"
-                    aria-selected={statusTab === tab.value}
-                    className={`${reviewer.tabButton} ${statusTab === tab.value ? reviewer.tabButtonActive : ''}`}
-                    onClick={() => setStatusTab(tab.value)}
-                    type="button"
-                  >
-                    {tab.label}
-                    <span className={reviewer.tabCount}>{tabCounts[tab.value] ?? 0}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Availability control — explained inline next to it. */}
+          <section className={reviewer.availabilityPanel} aria-labelledby="availability-title">
+            <div>
+              <h2 id="availability-title" className={reviewer.availabilityTitle}>
+                {t('reviewer.assignments.availability.title')}
+              </h2>
+              <p className={reviewer.availabilityHint}>
+                {t('reviewer.assignments.availability.hint')}
+              </p>
+            </div>
+            <Link
+              to={ROUTES.PROFESSIONAL_PROFILE}
+              className={reviewer.availabilityLink}
+            >
+              {t('reviewer.assignments.availability.manage')}
+            </Link>
+          </section>
 
-              <div className={reviewer.toolbar} role="search">
-                <label className={reviewer.searchField}>
-                  <span className={reviewer.searchLabel} id="reviewer-search-label">
-                    Search assignments
-                  </span>
-                  <input
-                    id="reviewer-assignments-search"
-                    type="search"
-                    className={reviewer.searchInput}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search title, author, or institution…"
-                    aria-labelledby="reviewer-search-label"
-                  />
-                </label>
-                <span className={reviewer.count} aria-live="polite">
-                  {visiblePapers.length} of {papers.length} assignment{papers.length === 1 ? '' : 's'}
+          {papers.length > 0 && (
+            <div className={reviewer.toolbar} role="search">
+              <label className={reviewer.searchField}>
+                <span className={reviewer.searchLabel} id="reviewer-search-label">
+                  {t('reviewer.assignments.search.label')}
                 </span>
-              </div>
-            </>
+                <input
+                  id="reviewer-assignments-search"
+                  type="search"
+                  className={reviewer.searchInput}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t('reviewer.assignments.search.placeholder')}
+                  aria-labelledby="reviewer-search-label"
+                />
+              </label>
+              <span className={reviewer.count} aria-live="polite">
+                {search
+                  ? t('reviewer.assignments.count', undefined, {
+                      visible: visiblePapers.length,
+                      total: papers.length,
+                    })
+                  : t('reviewer.assignments.count', undefined, {
+                      visible: papers.length,
+                      total: papers.length,
+                    })}
+              </span>
+            </div>
           )}
 
           {rows.length === 0 ? (
             <EmptyState
               icon={<Inbox size={20} aria-hidden />}
-              title={search || statusTab !== 'ALL' ? 'No assignments match your filters' : 'No reviewer assignments are ready'}
+              title={
+                search
+                  ? t('reviewer.assignments.empty.titleFiltered')
+                  : t('reviewer.assignments.empty.title')
+              }
               description={
-                search || statusTab !== 'ALL'
-                  ? 'Try a different keyword, or select a different status tab.'
-                  : 'New Admin assignments appear here automatically. Accept or decline them from the row.'
+                search
+                  ? t('reviewer.assignments.empty.descriptionFiltered')
+                  : t('reviewer.assignments.empty.description')
+              }
+              action={
+                !search ? (
+                  <Link to={ROUTES.PROFESSIONAL_PROFILE}>
+                    <Button variant="outline" size="md">
+                      {t('reviewer.assignments.openAvailability')}
+                    </Button>
+                  </Link>
+                ) : undefined
               }
               data-testid="empty-assignments"
             />
           ) : (
-            <div className={reviewer.tableWrap}>
-              <table className={reviewer.table}>
-                <thead>
-                  <tr>
-                    <th scope="col" className={reviewer.thTitle}>
-                      <SortableHeader
-                        column="title"
-                        label="Title"
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                      />
-                    </th>
-                    <th scope="col">
-                      <SortableHeader
-                        column="status"
-                        label="Status"
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                      />
-                    </th>
-                    <th scope="col">
-                      <SortableHeader
-                        column="actionability"
-                        label="Actionability"
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                      />
-                    </th>
-                    <th scope="col">
-                      <SortableHeader
-                        column="assigned"
-                        label="Assigned"
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                      />
-                    </th>
-                    <th scope="col">
-                      <SortableHeader
-                        column="deadline"
-                        label="Deadline"
-                        cycleSort={sort.cycleSort}
-                        ariaSortFor={sort.ariaSortFor}
-                      />
-                    </th>
-                    <th scope="col" className={reviewer.thActions}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(({ paper, actionable, actionableTone, assignedAt, deadline }, index) => (
-                    <tr
-                      key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
-                      data-testid="assignment-row"
-                      data-paper-id={paper.id}
-                      className={selectedIndex === index ? reviewer.selectedRow : ''}
-                    >
-                      <td className={reviewer.tdTitle}>
-                        <Link
-                          to={`/reviewer/assignments/${paper.id}`}
-                          className={reviewer.titleLink}
-                        >
-                          {paper.title}
-                        </Link>
-                        <span className={reviewer.titleMeta}>
-                          {paper.paperType || 'Not supplied'}
-                          {paper.reviewType ? ` · ${paper.reviewType}` : ''}
-                          {paper.aiRecommended != null
-                            ? ` · AI recommended: ${paper.aiRecommended ? 'Yes' : 'No'}`
-                            : ''}
-                        </span>
-                      </td>
-                      <td>
-                        <StatusBadge status={paper.status} label={statusLabel(paper.status)} size="sm" />
-                      </td>
-                      <td>
-                        <StatusBadge status={actionableTone} label={actionable} size="sm" />
-                      </td>
-                      <td>
-                        <span className={reviewer.mono}>{assignedAt}</span>
-                      </td>
-                      <td>
-                        <span className={reviewer.mono}>{deadline}</span>
-                      </td>
-                      <td className={reviewer.tdActions}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => navigate(`/reviewer/assignments/${paper.id}`)}
-                        >
-                          Open
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={reviewer.buckets}>
+              {ACTION_BUCKET_ORDER.map((bucket) => {
+                const bucketPapers = groupedPapers[bucket];
+                if (bucketPapers.length === 0) return null;
+                const bucketCopy = ACTION_BUCKET_I18N[bucket];
+                return (
+                  <section
+                    key={bucket}
+                    className={reviewer.bucket}
+                    aria-labelledby={`bucket-${bucket}-title`}
+                    data-testid={`bucket-${bucket}`}
+                  >
+                    <header className={reviewer.bucketHeader}>
+                      <h2
+                        id={`bucket-${bucket}-title`}
+                        className={reviewer.bucketTitle}
+                      >
+                        {t(bucketCopy.label)}
+                        <span className={reviewer.bucketCount}>{bucketPapers.length}</span>
+                      </h2>
+                      <p className={reviewer.bucketHint}>{t(bucketCopy.hint)}</p>
+                    </header>
+                    <ul className={reviewer.bucketList}>
+                      {bucketPapers.map((paper) => {
+                        const rowIndex = rows.findIndex((row) => row.paper.id === paper.id);
+                        const aiLabel = aiRecommendedLabel(paper);
+                        return (
+                          <li
+                            key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
+                            className={reviewer.bucketItem}
+                          >
+                            <Link
+                              to={`/reviewer/assignments/${paper.id}`}
+                              className={reviewer.bucketLink}
+                              data-testid="assignment-row"
+                              data-paper-id={paper.id}
+                              aria-current={selectedIndex === rowIndex ? 'true' : undefined}
+                            >
+                              <div className={reviewer.bucketMain}>
+                                <span className={reviewer.bucketTitleText}>{paper.title}</span>
+                                <span className={reviewer.bucketMeta}>
+                                  {paper.paperType || '—'}
+                                  {paper.reviewType ? ` · ${reviewTypeLabel(paper.reviewType)}` : ''}
+                                  {aiLabel ? ` · ${aiLabel}` : ''}
+                                </span>
+                              </div>
+                              <div className={reviewer.bucketStatus}>
+                                <span className={reviewer.bucketStatusLabel}>
+                                  {statusLabel(paper.status)}
+                                </span>
+                                <span
+                                  className={reviewer.bucketActionable}
+                                  data-tone={actionableTone(paper)}
+                                >
+                                  {actionableLabel(paper)}
+                                </span>
+                              </div>
+                              <div className={reviewer.bucketDates}>
+                                <span>
+                                  <span className={reviewer.bucketDateLabel}>
+                                    {t('reviewer.assignments.assigned')}
+                                  </span>
+                                  <span className={reviewer.mono}>
+                                    {formatDate(paper.assignmentCreatedAt ?? paper.submittedAt)}
+                                  </span>
+                                </span>
+                                <span>
+                                  <span className={reviewer.bucketDateLabel}>
+                                    {t('reviewer.assignments.deadline')}
+                                  </span>
+                                  <span className={reviewer.mono}>
+                                    {formatDate(paper.reviewDeadline)}
+                                  </span>
+                                </span>
+                              </div>
+                              <div className={reviewer.bucketAction}>
+                                <span className={reviewer.bucketNextAction}>
+                                  {nextActionHint(paper)} →
+                                </span>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                );
+              })}
             </div>
           )}
         </>

@@ -4,9 +4,14 @@
  * The dashboard deliberately leads with live work that needs an Admin's
  * attention. It retains the existing summary and role-request APIs, but does
  * not present charts or unsupported operational counts as decision evidence.
+ *
+ * Layout priority (Phase B — Admin priority refactor):
+ *   1. Action queues  — Verification, Editorial, Reviewer, Publication
+ *   2. Live snapshot  — Platform counts (members, papers)
+ *   3. Analytics      — Time-series charts with labeled period/currency/units
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, FileText as PapersIcon, Users as UsersIcon } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckSquare, FileText as PapersIcon, FileCheck, UserCheck, Users as UsersIcon } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -16,7 +21,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useI18n } from '../../i18n/I18nContext';
+import { Link } from 'react-router-dom';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
 import type {
   AnalyticsMetric,
@@ -24,11 +30,52 @@ import type {
   AnalyticsSummary,
   AnalyticsTimeSeries,
 } from '../../types/admin';
+import { ROUTES } from '../../routes/paths';
 import { MetricCard } from '../../components/workspace/MetricCard';
 import styles from './AdminDashboard.module.css';
 
 const DASHBOARD_UNAVAILABLE = 'admin.dashboard.dataUnavailable';
 const ROLE_ACCENT = 'var(--ars-admin)';
+
+/** Actionable queue definitions — links to filtered Admin views */
+interface QueueCard {
+  key: string;
+  icon: React.ReactNode;
+  labelKey: string;
+  descriptionKey: string;
+  href: string;
+}
+
+const QUEUE_CARDS: QueueCard[] = [
+  {
+    key: 'verification',
+    icon: <UserCheck size={20} />,
+    labelKey: 'admin.dashboard.queue.verification.label',
+    descriptionKey: 'admin.dashboard.queue.verification.desc',
+    href: `${ROUTES.ADMIN_ROLE_REQUESTS}?status=PENDING`,
+  },
+  {
+    key: 'editorial',
+    icon: <FileCheck size={20} />,
+    labelKey: 'admin.dashboard.queue.editorial.label',
+    descriptionKey: 'admin.dashboard.queue.editorial.desc',
+    href: ROUTES.ADMIN_PAPER_SUBMISSIONS,
+  },
+  {
+    key: 'reviewer',
+    icon: <CheckSquare size={20} />,
+    labelKey: 'admin.dashboard.queue.reviewer.label',
+    descriptionKey: 'admin.dashboard.queue.reviewer.desc',
+    href: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS,
+  },
+  {
+    key: 'publication',
+    icon: <PapersIcon size={20} />,
+    labelKey: 'admin.dashboard.queue.publication.label',
+    descriptionKey: 'admin.dashboard.queue.publication.desc',
+    href: ROUTES.ADMIN_PUBLISHED_PAPERS,
+  },
+];
 
 const ANALYTICS_RANGES = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 
@@ -48,10 +95,14 @@ const formatNumber = (value: number) => new Intl.NumberFormat('en-US').format(va
 
 const formatRevenue = (value: number) => `${formatNumber(value)} VND`;
 
-const formatChartDate = (value: string) => {
+const formatChartDate = (value: string, locale: string = 'en') => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short' });
+  // Respect the active UI locale so an English page never surfaces a
+  // Vietnamese date formatter. Defaults to 'en' so the dashboard doesn't
+  // depend on i18n wiring for first paint.
+  const tag = locale === 'vi' ? 'vi-VN' : 'en-US';
+  return date.toLocaleDateString(tag, { day: '2-digit', month: 'short' });
 };
 
 const isRequestCancelled = (error: unknown) =>
@@ -87,6 +138,7 @@ interface AnalyticsChartProps {
   onRangeChange: (range: AnalyticsRange) => void;
   onRetry: () => void;
   t: (k: string) => string;
+  locale: string;
 }
 
 const AnalyticsChart = ({
@@ -98,10 +150,16 @@ const AnalyticsChart = ({
   onRangeChange,
   onRetry,
   t,
+  locale,
 }: AnalyticsChartProps) => {
   const title = `${t(METRIC_TITLES[metric])} - ${t(RANGE_LABELS[range]).toLowerCase()}`;
   const points = series?.points ?? [];
   const valueFormatter = metric === 'revenue' ? formatRevenue : formatNumber;
+  // The unit shown on the Y-axis and in the chart subtitle. The chart
+  // never infers this from the raw number — revenue always reads as
+  // VND, registrations as count, so an Admin never has to guess the
+  // magnitude.
+  const axisUnit = metric === 'revenue' ? 'VND' : '';
 
   return (
     <section className={styles.chartSection} aria-labelledby={`${metric}-chart-title`}>
@@ -139,7 +197,7 @@ const AnalyticsChart = ({
               <CartesianGrid stroke="var(--ars-network)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tickFormatter={formatChartDate}
+                tickFormatter={(value) => formatChartDate(value, locale)}
                 tick={{ fill: 'var(--ars-ink-muted)', fontSize: 11 }}
                 interval="preserveStartEnd"
                 tickLine={false}
@@ -147,15 +205,27 @@ const AnalyticsChart = ({
               />
               <YAxis
                 tickFormatter={(value: number) => metric === 'revenue'
-                  ? new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+                  ? `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)}${axisUnit ? ' ' + axisUnit : ''}`
                   : formatNumber(value)}
                 tick={{ fill: 'var(--ars-ink-muted)', fontSize: 11 }}
-                width={metric === 'revenue' ? 56 : 38}
+                width={metric === 'revenue' ? 80 : 38}
                 tickLine={false}
                 axisLine={false}
+                label={
+                  axisUnit
+                    ? {
+                        value: axisUnit,
+                        angle: -90,
+                        position: 'insideLeft',
+                        fill: 'var(--ars-ink-muted)',
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }
+                    : undefined
+                }
               />
               <Tooltip
-                labelFormatter={(value) => formatChartDate(String(value))}
+                labelFormatter={(value) => formatChartDate(String(value), locale)}
                 formatter={(value) => valueFormatter(Number(value))}
                 contentStyle={{
                   background: 'var(--ars-paper-card)',
@@ -181,6 +251,7 @@ const AnalyticsChart = ({
 
 export const AdminDashboard = () => {
   const { t } = useI18n();
+  const locale = useLocale();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -223,7 +294,7 @@ export const AdminDashboard = () => {
     setLoadingPublished(true);
     setPublishedError(null);
     try {
-      const total = await adminService.getPapersCountByStatus('Published', signal);
+      const total = await adminService.getPublishedPapersTotal(signal);
       if (!signal.aborted) setPublishedCount(total);
     } catch (error) {
       if (signal.aborted || isRequestCancelled(error)) return;
@@ -281,6 +352,36 @@ export const AdminDashboard = () => {
   return (
     <div className={styles.page}>
       <div className={styles.content}>
+        {/* ── 1. Action Queues ─────────────────────────────────── */}
+        <section className={styles.snapshotSection} aria-labelledby="action-queues-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionEyebrow}>{t('admin.dashboard.queueEyebrow')}</p>
+              <h2 id="action-queues-title">{t('admin.dashboard.queueTitle')}</h2>
+            </div>
+          </div>
+          <div className={styles.metricGrid}>
+            {QUEUE_CARDS.map((queue) => (
+              <Link
+                key={queue.key}
+                to={queue.href}
+                className={styles.queueCard}
+                aria-label={t(queue.labelKey)}
+              >
+                <span className={styles.queueCardIcon} aria-hidden="true">
+                  {queue.icon}
+                </span>
+                <span className={styles.queueCardContent}>
+                  <span className={styles.queueCardLabel}>{t(queue.labelKey)}</span>
+                  <span className={styles.queueCardDesc}>{t(queue.descriptionKey)}</span>
+                </span>
+                <ArrowRight size={16} className={styles.queueCardArrow} aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ── 2. Live Snapshot ─────────────────────────────────── */}
         <section className={styles.snapshotSection} aria-labelledby="platform-snapshot-title">
           <div className={styles.sectionHeading}>
             <div>
@@ -302,6 +403,7 @@ export const AdminDashboard = () => {
           )}
         </section>
 
+        {/* ── 3. Analytics ──────────────────────────────────────── */}
         <section className={styles.analyticsSection} aria-label={t('admin.dashboard.platformAnalytics')}>
           <AnalyticsChart
             metric="user_registrations"
@@ -312,6 +414,7 @@ export const AdminDashboard = () => {
             onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
             t={t}
+            locale={locale}
           />
           <AnalyticsChart
             metric="revenue"
@@ -322,6 +425,7 @@ export const AdminDashboard = () => {
             onRangeChange={handleAnalyticsRangeChange}
             onRetry={() => void loadAll()}
             t={t}
+            locale={locale}
           />
         </section>
 

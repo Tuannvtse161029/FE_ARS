@@ -1050,3 +1050,55 @@
   letter-spacing: 0.05em;
   color: var(--ink-muted, #475569);
 }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: var(--space-5, 20px);
+  right: var(--space-5, 20px);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--surface-paper, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--ink-on-paper, #0f172a);
+  box-shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.25);
+  z-index: 1100;
+  font-size: 0.875rem;
+  font-weight: 500;
+  max-width: 360px;
+}
+
+/* Confirm modal (delete / reset) */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+}
+
+.confirmModal {
+  background: var(--surface-paper, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.35);
+}
+
+.confirmActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}

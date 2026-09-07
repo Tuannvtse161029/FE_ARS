@@ -16,6 +16,11 @@ import './styles/globals.css';
 // on one of them and they share no heavy dependencies with each other.
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+// Landing page — the redesigned scroll-driven build (Layered hero
+// parallax, cinematic tension act, role-preview substance, editorial
+// trace signature). Mounted at `/` (the public landing route) and also
+// served under `/scroll-craft-landing` as a permanent URL alias so any
+// bookmarks from the A/B preview still resolve.
 const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })));
 import ForgotPassword from './pages/ResetPassword/ForgotPassword';
 import VerifyOtp from './pages/ResetPassword/VerifyOtp';
@@ -87,7 +92,12 @@ const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ 
 // policy documents. Loads Firestore directly through `policyService`;
 // there is no BE endpoint.
 const AdminPolicies = lazy(() => import('./pages/Admin/Policies').then((m) => ({ default: m.default })));
-const AdminMedals = lazy(() => import('./pages/Admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
+// Agent admin-medals — Admin tab for managing academic medals & flairs.
+// Sourced from the refactored feature module (split into MedalCatalog,
+// TierEditor, ArtworkUpload, SafeMedalBadge). The previous duplicate at
+// `src/pages/Admin/AdminMedals.tsx` was deleted because it was a 110 KB
+// monolithic duplicate of this module.
+const AdminMedals = lazy(() => import('./features/admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
 // Researcher / Lecturer subscription page. Renders the current status,
 // plans, and `Proceed to Pay` button. Lives behind the existing role
 // guards so only Researcher / Lecturer reach it.
@@ -135,6 +145,11 @@ const App = () => {
             {/* Public project introduction. It intentionally sits outside
                 PublicRoute so both signed-out and returning users can visit it. */}
             <Route path={ROUTES.LANDING} element={<Landing />} />
+
+            {/* Permanent URL alias for the redesigned landing. Kept so
+                any `/scroll-craft-landing` bookmarks from the A/B
+                preview period still resolve to the same page. */}
+            <Route path="/scroll-craft-landing" element={<Landing />} />
 
             {/* Public Routes */}
             <Route element={<PublicRoute />}>

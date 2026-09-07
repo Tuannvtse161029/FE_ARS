@@ -1,6 +1,26 @@
 /* Reviewer workspace */
 .page { display: grid; gap: var(--space-5); color: var(--ink-primary); font-family: var(--font-family-ui); }
 
+/* Pill-shaped status indicator rendered into the PageHeader actions slot.
+   Replaces the prior StatusBadge import (which carried a tone key) so the
+   reviewer header honours Paper Day tokens without an extra component. */
+.headerStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 /* ── Tab Filter Bar ────────────────────────────────────── */
 .tabFilterBar {
   display: flex;
@@ -98,6 +118,284 @@
 .reviewGate h2 { margin: 0 0 var(--space-1); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }
 .reviewGate p { margin: 0; max-width: 75ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 
+/* ── Availability panel (above assignment list) ──────────────── */
+.availabilityPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.availabilityTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+}
+
+.availabilityHint {
+  margin: 2px 0 0;
+  max-width: 70ch;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.availabilityLink {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.availabilityLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.availabilityLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Bucketed assignment list ───────────────────────────────── */
+.buckets {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.bucket {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.bucketHeader {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bucketTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.bucketCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+}
+
+.bucketHint {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.bucketList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bucketItem {
+  margin: 0;
+  padding: 0;
+}
+
+.bucketLink {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto minmax(160px, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--ink-primary);
+  text-decoration: none;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.bucketLink:hover {
+  background: var(--control-bg-hover);
+  border-color: var(--border-strong);
+}
+
+.bucketLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.bucketLink[aria-current="true"] {
+  background: var(--status-info-surface);
+  border-color: var(--accent-primary);
+}
+
+.bucketMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bucketTitleText {
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bucketMeta {
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+}
+
+.bucketStatus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+/* Pill-shaped status + actionable label pair. Replaces the prior double
+   StatusBadge pattern so the bucket list stays legible and respects the
+   reviewer palette tokens. */
+.bucketStatusLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.bucketActionable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.bucketActionable[data-tone="waiting"] {
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+  border-color: color-mix(in srgb, var(--status-warning-text) 25%, transparent);
+}
+
+.bucketActionable[data-tone="evaluated"] {
+  background: var(--status-info-surface);
+  color: var(--status-info-text);
+  border-color: color-mix(in srgb, var(--status-info-text) 25%, transparent);
+}
+
+.bucketActionable[data-tone="submitted"] {
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--status-success-text) 25%, transparent);
+}
+
+.bucketActionable[data-tone="unknown"] {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-subtle);
+}
+
+.bucketDates {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+.bucketDates > span {
+  display: grid;
+  gap: 0;
+}
+
+.bucketDateLabel {
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bucketAction {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.bucketNextAction {
+  color: var(--accent-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .bucketLink {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .bucketStatus {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .bucketDates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bucketAction {
+    justify-content: flex-start;
+  }
+}
+
+.selectedRow {
+  background: var(--status-info-surface);
+}
+
 .detailLayout { display: grid; grid-template-columns: minmax(0, 8fr) minmax(280px, 4fr); gap: var(--space-5); align-items: start; }
 .detailSide { display: grid; gap: var(--space-4); }
 .detailContext { display: grid; gap: var(--space-4); padding: var(--space-5); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
@@ -119,6 +417,78 @@
 .pdfUnavailable { margin: 0; padding: var(--space-3) var(--space-4); background: var(--status-warning-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); color: var(--status-warning-text); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 
 .formCard { display: grid; gap: var(--space-5); padding: var(--space-6); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
+.formSection { display: grid; gap: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
+.formSection:first-of-type { padding-top: 0; border-top: 0; }
+.formSectionTitle {
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+.requiredMark { color: var(--status-danger-text); margin-left: 4px; font-weight: var(--font-weight-bold); }
+.requiredHint {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--status-danger-text);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+.requiredLegend { flex: 0 0 200px; padding: var(--space-2) var(--space-3); background: var(--surface-paper); color: var(--ink-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+.unsavedHint { margin: 4px 0 0; color: var(--status-warning-text); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.formValidation {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--status-warning-surface);
+  border: 1px solid var(--status-warning-text);
+  color: var(--status-warning-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+}
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 50;
+  padding: var(--space-4);
+}
+.confirmCard {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+.confirmCard h2 {
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-lg);
+}
+.confirmCard p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+.confirmSummary {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.confirmActions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; }
+
 .formHeader { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
 .formHeader h2, .specializedSection h2 { margin: 0 0 var(--space-2); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-xl); }
 .formHeader p, .specializedSection > div > p { margin: 0; max-width: 70ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }

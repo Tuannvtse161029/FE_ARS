@@ -14,7 +14,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { ResearchGroup } from '../../../src/pages/Lecturer/ResearchGroup';
 import { buildMockAuth } from '../../../src/utils/mockAuth';
 import { ROUTES } from '../../../src/routes/paths';
-import styles from '../../../src/components/lecturer/StatusBadge.module.css';
+import styles from '../../../src/components/common/StatusBadge.module.css';
 
 const { getAllGroupsMock, getAllTopicsMock, getAllMembersMock } = vi.hoisted(
   () => ({

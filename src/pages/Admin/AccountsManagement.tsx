@@ -28,6 +28,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { ViewProfileModal } from './ViewProfileModal';
 import styles from './AccountsManagement.module.css';
 
 type StatusFilter = 'ALL' | AccountStatus;
@@ -94,6 +95,8 @@ export const AccountsManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [viewProfileAccount, setViewProfileAccount] =
+    useState<AccountItem | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -440,9 +443,7 @@ export const AccountsManagement = () => {
                         <div className={styles.actionBtns}>
                           <button
                             className={styles.actionBtn}
-                            onClick={() =>
-                              window.open(`/profile/${a.id}`, '_blank')
-                            }
+                            onClick={() => setViewProfileAccount(a)}
                             title={t('admin.accounts.action.viewProfile')}
                             type="button"
                           >
@@ -565,6 +566,13 @@ export const AccountsManagement = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {viewProfileAccount && (
+        <ViewProfileModal
+          account={viewProfileAccount}
+          onClose={() => setViewProfileAccount(null)}
+        />
       )}
     </div>
   );

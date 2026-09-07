@@ -96,8 +96,9 @@ if (isFirebaseConfigured()) {
     // Firestore next — Policies editor, Post moderation, and any other
     // collection-backed feature call into this. We isolate it so a
     // Firestore init failure doesn't take Storage down with it.
+    // Uses the "policies" non-default database.
     try {
-      firestoreInstance = getFirestore(app);
+      firestoreInstance = getFirestore(app, 'policies');
     } catch (firestoreError) {
       // eslint-disable-next-line no-console
       console.error('Firebase Firestore failed to initialize:', firestoreError);

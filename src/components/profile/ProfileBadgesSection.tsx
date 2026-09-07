@@ -21,7 +21,7 @@ import {
 } from '../../services/medal.service';
 import { useI18n } from '../../i18n/I18nContext';
 import { useAuthorFlair } from '../../hooks/useAuthorFlair';
-import { SafeMedalBadge } from '../../pages/Admin/AdminMedals';
+import { SafeMedalBadge } from '../../features/admin/AdminMedals';
 import { ProfileExtrasSection } from './ProfileExtrasSection';
 import { formatDate } from '../../utils/formatDate';
 import styles from './ProfileBadgesSection.module.css';

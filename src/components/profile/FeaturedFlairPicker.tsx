@@ -24,7 +24,7 @@ import {
   medalService,
   type UserMedal,
 } from '../../services/medal.service';
-import { SafeMedalBadge } from '../../pages/Admin/AdminMedals';
+import { SafeMedalBadge } from '../../features/admin/AdminMedals';
 import { useI18n } from '../../i18n/I18nContext';
 import styles from './FeaturedFlairPicker.module.css';
 

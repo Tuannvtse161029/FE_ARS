@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { StudentResearchGroups } from '../../../../src/pages/GraduateStudent/StudentResearchGroups';
+import { StudentResearchGroups } from '../../../../src/features/guidance/StudentResearchGroups';
 import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const {

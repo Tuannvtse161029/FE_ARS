@@ -45,6 +45,7 @@ export interface PublicationAdapter {
     specializedCriteria?: Partial<SpecializedCriteriaBundle>,
   ): Promise<PublicationPaper>;
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
+  assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper>;
   assignReviewersAuto(id: string, reviewerCount?: number): Promise<unknown>;
   verifyAuthorship(id: string, allow?: boolean): Promise<PublicationPaper>;
   publishPaper(id: string): Promise<PublicationPaper>;
@@ -210,14 +211,18 @@ const toPublicationPaper = (
       : undefined,
     reviewerIdentityPublic: false,
     researcherVerificationStatus: (() => {
+      // First check localStorage for any explicit verification decision
       if (typeof window !== 'undefined' && window.localStorage) {
         const saved = window.localStorage.getItem(`paper_verification_${paper.id}`);
         if (saved === 'ALLOW' || saved === 'REJECTED' || saved === 'VERIFIED') {
           return saved === 'ALLOW' ? 'VERIFIED' : saved;
         }
       }
+      
+      // Check raw backend authorship verification status
       const rawAuthStatus = (paper as unknown as { authorshipVerificationStatus?: string }).authorshipVerificationStatus;
       const authorIsOrcidVerified = (paper as unknown as { authorIsOrcidVerified?: boolean }).authorIsOrcidVerified;
+      
       if (rawAuthStatus) {
         const norm = rawAuthStatus.trim().toUpperCase();
         if (norm === 'ALLOW' || norm === 'ALLOWED' || norm === 'VERIFIED') {
@@ -227,15 +232,28 @@ const toPublicationPaper = (
           return 'REJECTED';
         }
       }
+      
       if (authorIsOrcidVerified) {
         return 'VERIFIED';
       }
+      
+      // Editorial status-based inference:
+      // When admin rejects a paper, the researcher identity should also be
+      // considered rejected — the paper cannot advance to reviewer assignment.
+      // Show REJECTED so the UI hides the Accept/Reject buttons via
+      // isIdentityTerminal() and the badge reads "Rejected" instead of
+      // "Awaiting review".
       if (
+        status === 'ADMIN_REJECTED' ||
         status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
         status === 'ADMIN_APPROVED' ||
         status === 'PUBLISHED' ||
         evaluation != null
       ) {
+        // ADMIN_REJECTED maps to identity REJECTED; the rest mean verified.
+        if (status === 'ADMIN_REJECTED') {
+          return 'REJECTED';
+        }
         return 'VERIFIED';
       }
       if (
@@ -560,12 +578,37 @@ class ApiPublicationAdapter implements PublicationAdapter {
     return toPublicationPaper(await paperService.getById(id), request);
   }
 
+  async assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper> {
+    const normalizedIds = Array.from(
+      new Set(reviewerIds.filter((reviewerId) => Number.isInteger(reviewerId) && reviewerId > 0)),
+    );
+    if (normalizedIds.length === 0) {
+      throw new PublicationBackendContractError('Select at least one reviewer.');
+    }
+    if (normalizedIds.length > 3) {
+      throw new PublicationBackendContractError('A paper can have at most 3 reviewers.');
+    }
+
+    // The BE manual-assignment contract accepts reviewerIds[] and returns an
+    // assignment summary rather than a full PaperResponse. Fetch the canonical
+    // paper after the mutation so callers receive the same PublicationPaper
+    // shape as assignReviewer and other adapter mutations.
+    await paperService.assignReviewersManual(Number(id), {
+      paperId: Number(id),
+      reviewerIds: normalizedIds,
+    });
+    return this.getPaperById(id);
+  }
+
   async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {
     return paperService.assignReviewers(id, reviewerCount);
   }
 
   async verifyAuthorship(id: string, allow = true): Promise<PublicationPaper> {
     const statusValue = allow ? 'ALLOW' : 'REJECTED';
+    // Mirror the decision into localStorage so the row updates immediately
+    // even on a slow network round-trip — the next page render reads this
+    // key inside `toPublicationPaper()` and pins the verification state.
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(`paper_verification_${id}`, statusValue);
     }
@@ -583,7 +626,37 @@ class ApiPublicationAdapter implements PublicationAdapter {
         console.warn('Failed to send authorship notification:', err);
       }
     }
-    return toPublicationPaper(current);
+
+    // Persist the verification decision to the backend too. The
+    // `paperService.update()` PUT will fold the optional
+    // `authorshipVerificationStatus` / `authorshipVerifiedAt` / Reason
+    // fields onto the row (BE silently ignores unknowns if
+    // additionalProperties is enforced). Even when the BE rejects the
+    // extras, the localStorage entry above still drives the in-page
+    // state immediately.
+    let persisted = current;
+    try {
+      persisted = await paperService.update(id, {
+        title: current.title ?? '',
+        abstract: current.abstract ?? '',
+        fileUrl: current.fileUrl ?? null,
+        subFieldId: current.subFieldId ?? null,
+        openAlexWorkId: current.openAlexWorkId ?? null,
+        doi: current.doi ?? null,
+        authorshipVerificationStatus: statusValue,
+        authorshipVerifiedAt: new Date().toISOString(),
+        authorshipVerificationReason: allow ? 'Admin ALLOW' : 'Admin REJECTED',
+      });
+    } catch (err) {
+      // Best-effort: keep the localstorage entry and continue. The next
+      // page load will reconcile via the localStorage pin in
+      // toPublicationPaper.
+      console.warn(
+        'verifyAuthorship: backend persistence not available, using local pin only',
+        err,
+      );
+    }
+    return toPublicationPaper(persisted);
   }
 
   async publishPaper(id: string): Promise<PublicationPaper> {

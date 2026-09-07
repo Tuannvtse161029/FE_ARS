@@ -36,20 +36,18 @@ excluded `docs/` or `.github/` would silently leave required checks
 
 ## 2. Node version
 
-All workflows pin `actions/setup-node@v4` to **`node-version: '20'`**.
+All workflows pin `actions/setup-node@v4` to **`node-version: '24'`**.
 
-Why Node 20:
+Why Node 24:
 
-- It is the current "Active LTS" line (mainstream support through April 2025
-  and into maintenance). Node 20 ships native `fetch`, ESM, and the
-  performance profile Vitest 4 needs.
-- It matches the matrix used by the project's other dev tooling.
-- The CI cache key (`npm cache npm`) requires the same major version across
-  the runner; pinning here keeps that cache hit-rate predictable.
+- It is the project's selected LTS line and matches the local development toolchain.
+- It matches the version declared in `.nvmrc` and the `engines` field in `package.json`.
+- Node 24 provides the runtime features and performance profile required by the project's Vite and Vitest tooling.
+- The CI cache key (`npm cache npm`) requires the same major version across the runner; pinning here keeps that cache hit-rate predictable.
 
-If you want to upgrade, change **all three** workflow files and
-`package.json` `engines` in one PR. Mismatched Node versions will produce
-"works for me, broken for you" situations.
+If you want to upgrade, change **all workflow files**, `.nvmrc`, and the
+`package.json` `engines` field in one PR. Mismatched Node versions will
+produce "works for me, broken for you" situations.
 
 ---
 
@@ -249,7 +247,7 @@ configuration has drifted.
   `scripts/run-affected-tests.mjs` fallback (`git merge-base` → `HEAD~1`)
   keeps the PR job meaningful even if origin/main has never been fetched.
 - **No Node version bump without a coordinated PR.** Bumping the version
-  means changing all three workflow files AND `package.json`.
+  means changing all workflow files, `.nvmrc`, and `package.json` together.
 
 ---
 

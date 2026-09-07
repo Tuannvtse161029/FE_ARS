@@ -152,13 +152,37 @@ export const ProfessionalProfile = () => {
   }
 
   if (!professionalProfile) {
+    // Professional profile missing — provide a clear onboarding destination
+    // OR an explanation when setup is unavailable in the current environment.
     return (
       <div className={styles.state} role="status">
         <h1>Professional Profile</h1>
-        <p>No professional profile was found for the authenticated reviewer account.</p>
-        <button className={styles.primaryButton} onClick={handleRetry} disabled={isRetrying}>
-          {isRetrying ? 'Retrying…' : 'Refresh'}
-        </button>
+        <p>
+          No professional profile was found for the authenticated reviewer account.
+          A profile is required so Admin can match you to relevant assignments.
+        </p>
+        <p className={styles.stateHint}>
+          If you have just upgraded to the Reviewer role, it may take a moment for
+          the system to provision your profile. Otherwise, contact the editorial
+          Admin to request onboarding, or use the action below to retry.
+        </p>
+        <div className={styles.stateActions}>
+          <button
+            className={styles.primaryButton}
+            onClick={handleRetry}
+            disabled={isRetrying}
+            data-testid="profile-retry"
+          >
+            {isRetrying ? 'Retrying…' : 'Retry loading profile'}
+          </button>
+          <a
+            className={styles.secondaryButton}
+            href="/onboarding/reviewer"
+            data-testid="profile-onboarding-link"
+          >
+            Open reviewer onboarding
+          </a>
+        </div>
       </div>
     );
   }

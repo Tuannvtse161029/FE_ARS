@@ -1,0 +1,113 @@
+/* StatusBadge — token-aligned 22px pill. Always paired with a dot prefix and
+ * a label. Color is communicated via color + label + dot (never color alone).
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-family: var(--font-family-ui);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sizeSm {
+  font-size: 0.65rem;
+  height: 20px;
+  padding: 0 8px;
+}
+
+.sizeMd {
+  font-size: 0.6875rem;
+  height: 22px;
+  padding: 0 10px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+/* PhasedReport variants — info/warning/success/error tones */
+.waiting {
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
+}
+
+.submitted {
+  background-color: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border-color: color-mix(in srgb, var(--ars-warning) 30%, transparent);
+}
+
+.evaluated {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+.rejected {
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
+}
+
+/* ResearchTopic variants */
+.open {
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
+}
+
+.assigned {
+  background-color: var(--ars-admin-light);
+  color: var(--ars-admin);
+  border-color: color-mix(in srgb, var(--ars-admin) 30%, transparent);
+}
+
+.completed {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+.closed {
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
+}
+
+/* GuidanceProject variants */
+.proposed {
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
+}
+
+.ongoing {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+.cancelled {
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
+}
+
+.unknown {
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
+}

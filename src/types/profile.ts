@@ -88,7 +88,7 @@ export interface Profile {
 
 /**
  * Strict ProfileUpdateRequest payload. Mirrors `ProfileUpdateRequest` in
- * swagger.json:5717-5821 (the PUT/PATCH /api/Profile/{id} body shape).
+ * swagger.json:17900-17955 (the PUT/PATCH /api/Profile/{id} body shape).
  *
  *   - `userId` is REQUIRED by the BE. The FE always sends the authenticated
  *     user's id here; never a client-controlled value.
@@ -103,6 +103,18 @@ export interface Profile {
  * object lets us PATCH without clearing unchanged fields, and the same
  * sparse object is the canonical PUT body because the form only knows the
  * fields it actually edited.
+ *
+ * NOTE on flair fields (added 2026-09-05)
+ *   The Profile page renders a Reddit-style featured-flair picker that
+ *   lets the owner pick one unlocked medal and reorder the rest. The
+ *   picker persists the selection in `ars_flair_<userId>` (localStorage)
+ *   and `UserFlairBadge` rehydrates from the same key on read. We
+ *   intentionally do NOT include those fields in ProfileUpdateRequest —
+ *   the live Swagger schema (swagger.json:17900-17955) does not declare
+ *   them, and shipping undocumented keys in a PUT/PATCH body would fail
+ *   the BE's `additionalProperties: false` check with a 400. When the BE
+ *   formally ships flair columns, add `flairMedalId` and `flairOrder`
+ *   here AND to PROFILE_UPDATE_KEYS together.
  */
 export interface ProfileUpdateRequest {
   userId: number;
@@ -116,14 +128,6 @@ export interface ProfileUpdateRequest {
   dateOfBirth?: string | null;
   gender?: string | null;
   address?: string | null;
-  /**
-   * Reddit-style featured flair id. Forwarded to the BE so the user's
-   * pinned medal survives page reloads without depending on the FE-only
-   * localStorage cache (`ars_flair_<userId>`).
-   */
-  flairMedalId?: string | null;
-  /** Per-user medal display order. */
-  flairOrder?: string[] | null;
 }
 
 /**
@@ -131,6 +135,11 @@ export interface ProfileUpdateRequest {
  * frontend-only / unmapped fields before sending the PUT/PATCH payload.
  * Centralized so the page form and the hook can both call
  * `pickProfileUpdateFields(...)` without diverging.
+ *
+ * MUST match exactly the keys declared on `ProfileUpdateRequest` above,
+ * which in turn mirrors swagger.json:17900-17955. If you add a new
+ * field, add it to BOTH places and update the smoke test in
+ * `tests/unit/services/profile.service.test.ts`.
  */
 export const PROFILE_UPDATE_KEYS = [
   'userId',
@@ -144,8 +153,6 @@ export const PROFILE_UPDATE_KEYS = [
   'dateOfBirth',
   'gender',
   'address',
-  'flairMedalId',
-  'flairOrder',
 ] as const;
 
 export type ProfileUpdateKey = (typeof PROFILE_UPDATE_KEYS)[number];

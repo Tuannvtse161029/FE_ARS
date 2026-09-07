@@ -149,6 +149,25 @@
   border-color: var(--ars-admin);
 }
 
+/* Inline explanation banner — surfaces WHY the Accept/Reject buttons
+   are disabled so the Admin doesn't think the queue is broken. */
+.actionBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ars-info);
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.actionBannerText {
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+}
+
 .filterIcon {
   color: var(--ars-ink-muted);
 }
@@ -229,6 +248,22 @@
   font-size: var(--font-size-xs);
   font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
+}
+
+/* ── Email Address Cell ─────────────────────────────────── */
+.emailAddress {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+  word-break: break-word;
+  max-width: 220px;
+}
+
+/* ── Role Cells (assigned vs requested) ─────────────────── */
+.roleCell {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-medium);
 }
 
 /* ── Roles List ─────────────────────────────────────────── */
@@ -340,6 +375,19 @@
   font-weight: var(--font-weight-bold);
   transition: all var(--transition-fast);
   font-family: var(--font-family-ui);
+  position: relative;
+  user-select: none;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  z-index: 1;
 }
 
 .inspectButton {
@@ -433,6 +481,30 @@
 .retryBtn:focus-visible {
   outline: 2px solid var(--ars-admin);
   outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orcidInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border: 1px solid var(--ars-success);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* ── Spinner ────────────────────────────────────────────── */

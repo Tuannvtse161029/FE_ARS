@@ -131,6 +131,24 @@ export const AdminPaperSubmissionDetail = () => {
     }
   };
 
+  // Batch reviewer assignment. Used by the multi-select flow in the
+  // ReviewerCardGrid when an admin wants to pick up to 3 reviewers at
+  // once. The adapter enforces the 3-reviewer cap and returns the
+  // refreshed paper so we can flip the local state in place.
+  const handleAssignReviewers = async (reviewerIds: number[]): Promise<void> => {
+    if (!paper) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await publicationAdapter.assignReviewers(paper.id, reviewerIds);
+      setPaper(updated);
+    } catch (e) {
+      throw e instanceof Error ? e : new Error('The reviewer batch could not be saved.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const assignAuto = async () => {
     if (!paper) return;
     setAutoAssigning(true);
@@ -612,7 +630,6 @@ export const AdminPaperSubmissionDetail = () => {
                     <button
                       type="button"
                       className={shared.button}
-                      style={{ background: '#0284c7' }}
                       disabled={autoAssigning || saving}
                       onClick={() => void assignAuto()}
                     >
@@ -630,6 +647,7 @@ export const AdminPaperSubmissionDetail = () => {
                     currentReviewerId={paper.reviewerId ?? null}
                     isAssigning={saving || autoAssigning}
                     onAssign={handleAssignReviewer}
+                    onAssignMany={handleAssignReviewers}
                   />
                 </div>
               )

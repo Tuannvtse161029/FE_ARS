@@ -289,6 +289,46 @@
   text-overflow: ellipsis;
 }
 
+/* ── Nav section header — non-interactive divider for grouped nav items
+   ──────────────────────────────────────────────────────────────── */
+.navSectionHeader {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  margin-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, rgba(250, 248, 243, 0.1) 100%, transparent);
+  pointer-events: none;
+}
+
+.navSectionHeader:first-child {
+  margin-top: 0;
+  border-top: none;
+}
+
+.navSectionLabel {
+  font-family: var(--font-family-mono);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarCollapsed .navSectionHeader {
+  padding: var(--space-2) 0;
+  justify-content: center;
+  border-top-color: rgba(250, 248, 243, 0.08);
+}
+
+.sidebarCollapsed .navSectionLabel {
+  /* Show smaller text when collapsed to keep a visual cue */
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+}
+
 /* === Nav dot removal (this worker) ===
    The 6×6 dot that used to sit next to the Forums nav item was a stale
    visual artifact (no signal, no counter, no badge contract). The
@@ -1193,7 +1233,7 @@
 .sidebarCollapsed .roleContext,
 .sidebarCollapsed .sidebarAccountText,
 .sidebarCollapsed .sidebarLogout { display: none; }
-.sidebarCollapseBtn, .sidebarCollapse, .navItem { color: var(--ink-secondary); }
+.sidebarCollapseBtn, .sidebarCollapse, .navItem { color: var(--nav-text-on-dark, var(--ink-on-dark)); }
 .sidebarCollapse:hover,
 .navItem:hover:not(.disabledNavItem):not(.navItemActive) { background: var(--sidebar-raised); color: var(--ink-on-dark); }
 .sidebarCollapse:focus-visible,
@@ -1205,6 +1245,8 @@
   color: var(--ink-on-dark) !important;
 }
 .navItemActive::before { background: var(--accent-primary); }
+.navSectionHeader { border-top-color: var(--border-subtle); }
+.navSectionLabel { color: var(--ink-muted); }
 .navBadge { background: var(--accent-primary); color: var(--ink-on-paper); }
 .sidebarAccount {
   display: flex;
@@ -1255,7 +1297,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--ink-secondary);
+  color: var(--nav-text-on-dark-muted, var(--ink-on-dark));
   cursor: pointer;
 }
 .sidebarLogout:hover { border-color: var(--status-danger-text); color: var(--status-danger-text); }

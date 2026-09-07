@@ -1,0 +1,29 @@
+# Testing Time Budget
+
+The testing/QA phase for any feature work in this repository **must complete within 30 minutes** of wall-clock time.
+
+## Rule
+
+- All tests + smoke checks + manual verification steps for a single bug fix or feature MUST fit inside a **30-minute** testing window.
+- When 30 minutes is reached, stop expanding coverage. Ship what passed, log what didn't, and surface the gap to the user.
+- Do not invent new test cases once the budget is exhausted — every additional case compounds the time-cost.
+- Run tests in parallel where the harness supports it (Vitest `--reporter=basic --maxConcurrency`, Playwright workers).
+
+## Why
+
+- Production bug-fix velocity > exhaustive coverage.
+- The team triages gaps weekly, so unreached cases surface naturally.
+- Avoids the "test the tests" anti-pattern.
+
+## What counts as testing
+
+- Unit + integration tests under `tests/unit/`.
+- E2E specs under `tests/e2e/` and `tests/automation/Playwright/specs/`.
+- Manual smoke checks via `npm run build` / `npm run dev` / browser screenshots.
+- Lint, type-check (`npx tsc --noEmit`), and Prettier dry-runs.
+
+## What doesn't count
+
+- Reading source to scope the fix.
+- Implementing the fix itself.
+- Commit / push / Vercel preview verification (those are deployment, not testing).

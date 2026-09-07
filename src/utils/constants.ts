@@ -60,6 +60,8 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number | string) => `/api/paper/${id}`,
     DELETE: (id: number | string) => `/api/paper/${id}`,
     ASSIGN_REVIEWERS: (id: number | string) => `/api/Paper/${id}/assign-reviewers`,
+    ASSIGN_REVIEWERS_MANUAL: (id: number | string) =>
+      `/api/Paper/${id}/assign-reviewers-manual`,
   },
   OPEN_ALEX: {
     GET_WORK: (workId: string) => `/api/OpenAlex/works/${workId}`,

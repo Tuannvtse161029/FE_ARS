@@ -284,15 +284,33 @@ interface NavItem {
   // so the user still sees which section they're in. React Router's default
   // prefix matching only walks down `to`, not sideways to sibling routes.
   activeFor?: string[];
+  // When true, renders a visual section-header divider instead of a link.
+  // Section headers are non-interactive and only group related items.
+  isSectionHeader?: boolean;
+  // Section header label key (e.g. 'admin.nav.section.editorial')
+  sectionLabelKey?: string;
 }
+
+/** Section label helper */
+const SECTION_LABELS: Record<string, string> = {
+  editorial: 'admin.nav.section.editorial',
+  people: 'admin.nav.section.people',
+  platform: 'admin.nav.section.platform',
+};
 
 /**
  * Returns true when the current pathname should mark the given nav item
  * as active. We combine React Router's default "starts with `to`" rule
  * with any explicit `activeFor` prefixes declared on the item so parent
  * list routes can stay highlighted on their child detail pages.
+ *
+ * Section headers (isSectionHeader) are never considered "active" —
+ * they are non-interactive visual dividers.
  */
 const isNavItemActive = (item: NavItem, pathname: string): boolean => {
+  // Section headers are never active
+  if (item.isSectionHeader) return false;
+
   const toPrefix = item.to;
   if (item.end) {
     if (pathname === toPrefix) return true;
@@ -575,16 +593,25 @@ export const MainLayout = () => {
           // keep Dashboard highlighted on every admin page (Phase C
           // defect 3B).
           { to: ROUTES.ADMIN, label: copy('Dashboard', 'Bảng điều khiển'), icon: <DashboardIcon size={20} />, end: true },
+
+          // ── Editorial section ──────────────────────────────
+          { to: '#', label: copy('Editorial', 'Biên tập'), icon: <PapersIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.editorial },
           { to: ROUTES.ADMIN_PAPER_SUBMISSIONS, label: copy('Paper Submissions', 'Bài nộp duyệt'), icon: <PapersIcon size={20} /> },
           { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: copy('Reviewer Assignments', 'Phân công phản biện'), icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: copy('Published Papers', 'Bài báo đã xuất bản'), icon: <PublicationIcon size={20} /> },
-          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: copy('User Verification', 'Xác thực người dùng'), icon: <RoleRequestsIcon size={20} /> },
+          { to: ROUTES.ADMIN_MEDALS, label: copy('Medal Management', 'Quản lý huy hiệu'), icon: <MedalIcon size={20} /> },
+
+          // ── People section ───────────────────────────────
+          { to: '#', label: copy('People', 'Người dùng'), icon: <AccountsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.people },
           { to: ROUTES.ADMIN_ACCOUNTS, label: copy('Accounts', 'Tài khoản'), icon: <AccountsIcon size={20} /> },
+          { to: ROUTES.ADMIN_ROLE_REQUESTS, label: copy('User Verification', 'Xác thực người dùng'), icon: <RoleRequestsIcon size={20} /> },
+
+          // ── Platform section ─────────────────────────────
+          { to: '#', label: copy('Platform', 'Nền tảng'), icon: <TransactionsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.platform },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_REPORTS, label: copy('Reports', 'Báo cáo vi phạm'), icon: <ReportsIcon size={20} /> },
           { to: ROUTES.ADMIN_PACKAGES, label: copy('Annual Fees', 'Phí thường niên'), icon: <PackagesIcon size={20} /> },
-          { to: ROUTES.ADMIN_MEDALS, label: copy('Medals & Badges', 'Huy hiệu & Danh hiệu'), icon: <MedalIcon size={20} /> },
-          { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký hệ thống'), icon: <AuditLogsIcon size={20} /> },
+          { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký kiểm tra'), icon: <AuditLogsIcon size={20} /> },
           { to: ROUTES.ADMIN_POLICIES, label: copy('Policies', 'Chính sách'), icon: <PoliciesIcon size={20} /> },
         ];
       case 'Reviewer':
@@ -692,6 +719,22 @@ export const MainLayout = () => {
           }
         >
           {navItems.map((item, index) => {
+            // Render section header dividers for Admin navigation grouping
+            if (item.isSectionHeader) {
+              return (
+                <div
+                  key={index}
+                  className={styles.navSectionHeader}
+                  role="separator"
+                  aria-label={item.sectionLabelKey ? tr(item.sectionLabelKey) : item.label}
+                >
+                  <span className={styles.navSectionLabel}>
+                    {item.sectionLabelKey ? tr(item.sectionLabelKey) : item.label}
+                  </span>
+                </div>
+              );
+            }
+
             if (item.to.startsWith('#')) {
               return (
                 <div

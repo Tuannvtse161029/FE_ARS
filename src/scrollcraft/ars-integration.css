@@ -1,0 +1,186 @@
+/**
+ * ScrollCraft × ARS Integration Styles
+ * 
+ * This CSS file integrates scrollcraft's base styles with the ARS design system.
+ * Import this in your app to enable scrollcraft components with ARS theming.
+ */
+
+/* Import the base scrollcraft engine styles */
+@import './scrollcraft.css';
+
+/* ============================================================================
+   ARS Token Overrides
+   Replace scrollcraft defaults with ARS semantic tokens
+   ============================================================================ */
+
+:root {
+  /* Use ARS motion tokens */
+  --sc-ease-out: var(--motion-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+  --sc-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --sc-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --sc-d-fast: var(--duration-fast, 150ms);
+  --sc-d-base: var(--duration-standard, 200ms);
+  --sc-d-slow: var(--duration-emphasis, 250ms);
+}
+
+/* ============================================================================
+   Warm Paper Theme (Default)
+   ============================================================================ */
+
+.scroll-page--warm,
+[data-scrollcraft-theme="warm"] {
+  --sc-canvas: var(--app-canvas, #fffdf8);
+  --sc-surface: var(--surface-raised, #ffffff);
+  --sc-ink: var(--ink-primary, #1d1c19);
+  --sc-ink-soft: var(--ink-secondary, #6f695d);
+  --sc-accent: var(--accent-primary, #e2ad2f);
+  --sc-accent-ink: var(--ink-on-paper, #1d1c19);
+  --sc-hairline: var(--border-subtle);
+  --sc-hairline-strong: var(--border-strong);
+}
+
+/* ============================================================================
+   Archive Dusk Theme (Dark)
+   ============================================================================ */
+
+.scroll-page--dark,
+[data-scrollcraft-theme="dark"] {
+  --sc-canvas: var(--app-canvas, #090d16);
+  --sc-surface: var(--surface-base, #101726);
+  --sc-ink: var(--ink-primary, #f8fafc);
+  --sc-ink-soft: var(--ink-secondary, #94a3b8);
+  --sc-accent: var(--accent-primary, #3b82f6);
+  --sc-accent-ink: var(--ink-on-paper, #ffffff);
+  --sc-hairline: rgba(255, 255, 255, 0.09);
+  --sc-hairline-strong: rgba(255, 255, 255, 0.18);
+}
+
+/* ============================================================================
+   Academic Navy Theme
+   ============================================================================ */
+
+[data-scrollcraft-theme="navy"] {
+  --sc-canvas: #1a1f36;
+  --sc-surface: #2d3561;
+  --sc-ink: #f4efe6;
+  --sc-ink-soft: #a0aec0;
+  --sc-accent: #f5b400;
+  --sc-accent-ink: #1a1f36;
+  --sc-hairline: rgba(255, 255, 255, 0.12);
+  --sc-hairline-strong: rgba(255, 255, 255, 0.24);
+}
+
+/* ============================================================================
+   Paper Day Theme
+   ============================================================================ */
+
+[data-scrollcraft-theme="paper"] {
+  --sc-canvas: #fffdf8;
+  --sc-surface: #ffffff;
+  --sc-ink: #1d1c19;
+  --sc-ink-soft: #6f695d;
+  --sc-accent: #e2ad2f;
+  --sc-accent-ink: #1d1c19;
+}
+
+/* ============================================================================
+   Role-specific accent overrides
+   Apply these data attributes to .sc-act elements
+   ============================================================================ */
+
+[data-role="researcher"] {
+  --sc-accent: var(--ars-researcher, #b45309);
+  --sc-accent-ink: #ffffff;
+}
+
+[data-role="reviewer"] {
+  --sc-accent: var(--ars-reviewer, #065f46);
+  --sc-accent-ink: #ffffff;
+}
+
+[data-role="lecturer"] {
+  --sc-accent: var(--ars-lecturer, #7c2d12);
+  --sc-accent-ink: #ffffff;
+}
+
+[data-role="student"] {
+  --sc-accent: var(--ars-gradstudent, #1e3a8a);
+  --sc-accent-ink: #ffffff;
+}
+
+[data-role="admin"] {
+  --sc-accent: var(--ars-admin, #818cf8);
+  --sc-accent-ink: #1a1f36;
+}
+
+/* ============================================================================
+   Typography alignment with ARS
+   ============================================================================ */
+
+.sc-display {
+  font-family: var(--sc-font-display, var(--font-family-ui));
+  font-weight: 600;
+  color: var(--sc-ink);
+}
+
+.sc-lede {
+  font-family: var(--sc-font-text, var(--font-family-ui));
+  color: var(--sc-ink);
+}
+
+.sc-body {
+  font-family: var(--sc-font-text, var(--font-family-ui));
+  color: var(--sc-ink-soft);
+}
+
+.sc-label {
+  font-family: var(--sc-font-mono, var(--font-family-mono));
+  color: var(--sc-ink-soft);
+}
+
+/* ============================================================================
+   Layout alignment with ARS spacing
+   ============================================================================ */
+
+.sc-section {
+  padding-block: clamp(4rem, 8vw, 10rem);
+}
+
+.sc-wrap {
+  max-width: var(--content-max-width, 82rem);
+  padding-inline: var(--sc-gutter, clamp(1.25rem, 5vw, 5.5rem));
+  margin-inline: auto;
+}
+
+/* ============================================================================
+   Focus states using ARS focus ring
+   ============================================================================ */
+
+.sc-copy a:focus-visible,
+.sc-display a:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--sc-accent));
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================================
+   Selection using ARS accent
+   ============================================================================ */
+
+.scroll-page ::selection,
+.sc-copy ::selection {
+  background: var(--sc-accent);
+  color: var(--sc-accent-ink);
+}
+
+/* ============================================================================
+   Reduced motion - respect user preference
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-page {
+    --sc-d-fast: 0ms;
+    --sc-d-base: 0ms;
+    --sc-d-slow: 0ms;
+  }
+}
