@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Inbox } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import styles from './ContentReports.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { ResolveReportModal } from '../../components/admin/ResolveReportModal';
@@ -49,6 +49,8 @@ const STATUS_TABS: Array<{
 
 export default function ContentReports(): JSX.Element {
   const { t } = useI18n();
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   useAdminGuard();
 
   const [reports, setReports] = useState<ViolationReport[]>([]);
@@ -343,7 +345,7 @@ export default function ContentReports(): JSX.Element {
                       {r.reason}
                     </td>
                     <td>{r.reportedByName}</td>
-                    <td>{new Date(r.date).toLocaleString('vi-VN')}</td>
+                    <td>{new Date(r.date).toLocaleString(intlTag)}</td>
                     <td>
                       <span
                         className={`${styles.statusBadge} ${

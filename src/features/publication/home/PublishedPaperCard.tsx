@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
-import type { PublicationAuthor, PublicationPaper } from '../types/publication';
+import { paperTypeLabel, type PublicationAuthor, type PublicationPaper } from '../types/publication';
 import { CitationActions } from '../components/CitationActions';
 import {
   buildArxivBadge,
@@ -96,7 +96,7 @@ export const PublishedPaperCard = ({
     >
       <header className={card.head}>
         <div className={card.headMeta}>
-          <span className={card.paperType}>{paper.paperType}</span>
+          <span className={card.paperType}>{paperTypeLabel(paper.paperType) || paper.paperType}</span>
           {paper.publishedAt && (
             <time className={card.publishedAt} dateTime={paper.publishedAt}>
               {copy('Published', 'Xuất bản')} {paper.publishedAt.slice(0, 10)}

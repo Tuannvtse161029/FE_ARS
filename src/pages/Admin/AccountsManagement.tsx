@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Inbox, Eye, Pause, Play } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
+import { useLocale } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
@@ -63,10 +64,13 @@ const initialsOf = (name: string) =>
     .toUpperCase()
     .slice(0, 2) || '?';
 
-const formatSuspendedUntil = (iso: string): string => {
+const formatSuspendedUntil = (
+  iso: string,
+  locale: 'vi' | 'en' = 'en',
+): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('vi-VN', {
+  return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -80,6 +84,7 @@ interface ConfirmState {
 
 export const AccountsManagement = () => {
   const { t } = useI18n();
+  const locale = useLocale();
   useAdminGuard();
 
   const { user: currentAuth } = useAuth();
@@ -407,7 +412,7 @@ export const AccountsManagement = () => {
                         </div>
                       </td>
                       <td>
-                        {new Date(a.joinedDate).toLocaleDateString('vi-VN')}
+                        {new Date(a.joinedDate).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN')}
                       </td>
                       <td>
                         <div className={styles.statusCell}>
@@ -421,9 +426,10 @@ export const AccountsManagement = () => {
                               className={styles.suspendedUntilPill}
                               title={`${t('admin.accounts.status.autoLiftedOn')} ${formatSuspendedUntil(
                                 a.suspendedUntil,
+                                locale,
                               )}`}
                             >
-                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.suspendedUntil)}
+                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.suspendedUntil, locale)}
                             </span>
                           ) : null}
                           {a.status === 'TRIAL' && a.trialExpiryAt ? (
@@ -432,9 +438,10 @@ export const AccountsManagement = () => {
                               data-testid="accounts-trial-until-pill"
                               title={`${t('admin.accounts.status.trialEndsOn')} ${formatSuspendedUntil(
                                 a.trialExpiryAt,
+                                locale,
                               )}`}
                             >
-                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.trialExpiryAt)}
+                              {t('admin.accounts.status.until')} {formatSuspendedUntil(a.trialExpiryAt, locale)}
                             </span>
                           ) : null}
                         </div>

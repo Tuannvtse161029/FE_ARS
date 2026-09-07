@@ -357,6 +357,12 @@ export const Landing = () => {
         {t('landing.skipToContent', 'Skip to main content')}
       </a>
 
+      {/* ── Build marker (confirms new code is loaded) ────────────── */}
+      <div className={styles.buildMarker} aria-hidden="true">
+        <span className={styles.buildMarkerDot} />
+        <span>ARS Editorial Build · Image Placeholders Wired · v2026-09-07</span>
+      </div>
+
       {/* ── Header ───────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -461,14 +467,22 @@ export const Landing = () => {
             <div className={styles.heroVisual} aria-hidden="true">
               <div className={styles.heroAcrLabel}>ARS</div>
               <div className={styles.heroConstellation}>
-                {/* AI-generated editorial backdrop, masked to fit constellation frame */}
-                <img
-                  className={styles.heroBackdrop}
-                  src={HERO_BACKDROP_URL}
-                  alt=""
-                  loading="eager"
-                  decoding="async"
-                />
+                {/* AI-generated editorial backdrop — visible primary asset
+                    for the hero right column. Tinted subtly toward the
+                    navy palette so the SVG lines + nodes read on top. */}
+                <div className={styles.heroBackdropFrame}>
+                  <img
+                    className={styles.heroBackdrop}
+                    src={HERO_BACKDROP_URL}
+                    alt="Three Vietnamese researchers collaborating in a warmly lit university library reading room"
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <div className={styles.heroBackdropPlaceholder}>
+                    <span>hero-backdrop.png</span>
+                    <small>Editorial photograph</small>
+                  </div>
+                </div>
                 <div className={styles.heroBackdropTint} aria-hidden="true" />
                 {/* SVG connecting lines */}
                 <svg
@@ -535,15 +549,21 @@ export const Landing = () => {
           </div>
           <div className={styles.statementBody}>
             <figure className={styles.statementFigure}>
-              <img
-                src={STATEMENT_STILL_URL}
-                alt={t(
-                  'landing.statementImageAlt',
-                  'Stacked research journals, manuscripts, and scholarly tools on a parchment desk',
-                )}
-                loading="lazy"
-                decoding="async"
-              />
+              <div className={styles.statementFigureFrame}>
+                <img
+                  src={STATEMENT_STILL_URL}
+                  alt={t(
+                    'landing.statementImageAlt',
+                    'Stacked research journals, manuscripts, and scholarly tools on a parchment desk',
+                  )}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className={styles.statementFigurePlaceholder}>
+                  <span>statement-still.png</span>
+                  <small>Editorial archive still life</small>
+                </div>
+              </div>
               <figcaption className={styles.statementCaption}>
                 {t(
                   'landing.statementCaption',
@@ -761,13 +781,18 @@ export const Landing = () => {
               )}
             </blockquote>
             <div className={styles.testimonialAttribution}>
-              <img
-                className={styles.testimonialPortrait}
-                src={TESTIMONIAL_PORTRAIT_URL}
-                alt=""
-                loading="lazy"
-                decoding="async"
-              />
+              <div className={styles.testimonialPortraitFrame}>
+                <img
+                  className={styles.testimonialPortrait}
+                  src={TESTIMONIAL_PORTRAIT_URL}
+                  alt="Vietnamese female researcher holding an open book"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className={styles.testimonialPortraitPlaceholder}>
+                  <span>testimonial-portrait.png</span>
+                </div>
+              </div>
               <div className={styles.testimonialMeta}>
                 <span className={styles.testimonialName}>
                   {t('landing.testimonialName', 'Dr. Nguyen Minh Anh')}

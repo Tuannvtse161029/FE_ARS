@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inbox, Plus, X } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
@@ -15,6 +15,7 @@ import {
   type SubmittedPaperTone,
 } from '../utils/statusPresentation';
 import {
+  paperTypeLabel,
   type PublicationPaper,
   type PublicationStatus,
 } from '../types/publication';
@@ -63,6 +64,9 @@ export const ResearcherSubmissions = () => {
   /** Single status filter — replaces the old two-row stage + status tab UI. */
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
+  // Ref for keyboard navigation on tab bar
+  const tabListRef = useRef<HTMLDivElement>(null);
+
   // Default sort by submittedAt (newest first) so recently submitted
   // submissions surface at the top. The user can override per column.
   const sort = useTableSort<PublicationPaper, SortColumn>('submittedAt', 'desc');
@@ -109,6 +113,44 @@ export const ResearcherSubmissions = () => {
     }
     return counts;
   }, [papers]);
+
+  // Keyboard navigation handler for tab bar
+  const handleTabKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    const tabs = tabListRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    if (!tabs || tabs.length === 0) return;
+
+    const currentIndex = Array.from(tabs).findIndex(
+      (tab) => tab === document.activeElement,
+    );
+    if (currentIndex === -1) return;
+
+    let nextIndex: number;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        nextIndex = (currentIndex + 1) % tabs.length;
+        tabs[nextIndex].focus();
+        event.preventDefault();
+        break;
+      case 'ArrowLeft':
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        tabs[nextIndex].focus();
+        event.preventDefault();
+        break;
+      case 'Home':
+        tabs[0].focus();
+        event.preventDefault();
+        break;
+      case 'End':
+        tabs[tabs.length - 1].focus();
+        event.preventDefault();
+        break;
+      default:
+        break;
+    }
+  };
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -239,7 +281,7 @@ export const ResearcherSubmissions = () => {
             </section>
           )}
 
-          {/* ── Compact toolbar: search + status filter + clear + count ─── */}
+          {/* ── Compact toolbar: search + status filter tabs + clear + count ─── */}
           <div className={styles.toolbar} role="search" aria-label={t('researcher.submissions.toolbar.aria')}>
             <label className={styles.searchField}>
               <span className={styles.searchLabel} id="researcher-search-label">
@@ -255,25 +297,32 @@ export const ResearcherSubmissions = () => {
               />
             </label>
 
-            <div className={styles.statusField}>
-              <label className={styles.searchLabel} id="researcher-status-label">
-                {t('researcher.submissions.filter.label')}
-              </label>
-              <select
-                className={styles.statusSelect}
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                aria-labelledby="researcher-status-label"
-              >
-                {STATUS_FILTER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+            {/* Status filter tab bar */}
+            <div
+              ref={tabListRef}
+              role="tablist"
+              aria-label={t('researcher.submissions.filter.label')}
+              className={styles.tabBar}
+              onKeyDown={handleTabKeyDown}
+            >
+              {STATUS_FILTER_OPTIONS.map((opt) => {
+                const count = opt.value === 'ALL' ? papers.length : (statusCounts[opt.value] ?? 0);
+                const isSelected = statusFilter === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    role="tab"
+                    type="button"
+                    className={styles.tab}
+                    aria-selected={isSelected}
+                    tabIndex={isSelected ? 0 : -1}
+                    onClick={() => setStatusFilter(opt.value)}
+                  >
                     {t(opt.i18nKey)}
-                    {opt.value !== 'ALL' && statusCounts[opt.value] != null
-                      ? ` (${statusCounts[opt.value]})`
-                      : ` (${papers.length})`}
-                  </option>
-                ))}
-              </select>
+                    <span className={styles.tabCount}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {hasActiveFilter && (
@@ -419,8 +468,8 @@ export const ResearcherSubmissions = () => {
                             {paper.title}
                           </button>
                           <span className={styles.titleMeta}>
-                            {paper.paperType || '—'}
-                            {paper.version != null ? ` · v${paper.version}` : ''}
+                            {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
+                            {paper.version != null ? `v${paper.version}` : ''}
                           </span>
                           <span
                             className={styles.nextAction}

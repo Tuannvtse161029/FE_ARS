@@ -22,6 +22,41 @@
   outline-offset: 3px;
 }
 
+/* ── Build marker (visible proof of new code) ──────────── */
+.buildMarker {
+  position: relative;
+  z-index: 5;
+  width: min(1180px, calc(100% - 48px));
+  margin: 12px auto 0;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-primary) 10%, var(--surface-paper));
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.buildMarkerDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  animation: buildMarkerPulse 2s ease-in-out infinite;
+}
+
+@keyframes buildMarkerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
 /* ── Skip link ──────────────────────────────────────────── */
 .skipLink {
   position: fixed;
@@ -328,18 +363,72 @@
 }
 
 /* AI-generated editorial backdrop, masked to the constellation frame.
-   Tinted navy/amber so it harmonizes with the hero palette and lets the
-   SVG lines + nodes read clearly on top. */
+   Wrapped in a frame that makes the image clearly visible — not just a
+   subtle background tint. The amber accent border + caption label
+   advertise the asset so anyone landing on the page can confirm the
+   placeholder is wired correctly. */
+.heroBackdropFrame {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--accent-primary) 55%, transparent);
+  box-shadow:
+    0 0 0 1px var(--sidebar-bg),
+    0 8px 28px rgba(0, 0, 0, 0.45);
+  background: var(--sidebar-bg);
+}
+
 .heroBackdrop {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px;
-  opacity: 0.55;
-  filter: saturate(0.7) contrast(1.05);
+  display: block;
+  /* High visibility: 88% opacity lets the image dominate. Saturate
+     and contrast slightly bumped to keep it warm and editorial. */
+  opacity: 0.92;
+  filter: saturate(0.95) contrast(1.05);
+  z-index: 1;
 }
+
+.heroBackdropPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sidebar-bg) 92%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 15%, var(--sidebar-bg)) 100%
+  );
+  color: var(--ink-on-dark);
+  font-family: var(--font-family-ui);
+  text-align: center;
+  z-index: 0;
+}
+
+.heroBackdropPlaceholder span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroBackdropPlaceholder small {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
+/* When the <img> actually loads, the placeholder sits behind it (z:0)
+   and the image sits on top (z:1) — image wins. */
 
 .heroBackdropTint {
   position: absolute;
@@ -348,11 +437,12 @@
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--sidebar-bg) 55%, transparent) 0%,
-      color-mix(in srgb, var(--sidebar-bg) 30%, transparent) 60%,
-      color-mix(in srgb, var(--accent-primary) 18%, transparent) 100%
+      color-mix(in srgb, var(--sidebar-bg) 18%, transparent) 0%,
+      color-mix(in srgb, var(--sidebar-bg) 8%, transparent) 60%,
+      color-mix(in srgb, var(--accent-primary) 12%, transparent) 100%
     );
   pointer-events: none;
+  z-index: 2;
 }
 
 .constellationCanvas {
@@ -525,14 +615,58 @@
   opacity: 0.35;
 }
 
-.statementFigure img {
+.statementFigureFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 4px);
+  border: 1px solid var(--border-subtle);
+  background: var(--sidebar-bg);
+}
+
+.statementFigureFrame img {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 3;
+  height: 100%;
   object-fit: cover;
-  border-radius: calc(var(--radius-lg) - 4px);
-  filter: saturate(0.92);
+  filter: saturate(0.95);
+  position: relative;
+  z-index: 1;
+}
+
+.statementFigurePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface-paper) 95%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 18%, var(--surface-paper)) 100%
+  );
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  text-align: center;
+  z-index: 0;
+}
+
+.statementFigurePlaceholder span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.statementFigurePlaceholder small {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  text-transform: uppercase;
 }
 
 .statementCaption {
@@ -715,6 +849,7 @@
 .workflowStep {
   padding: 28px 22px 28px 0;
   border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   animation: stepReveal 480ms var(--motion-ease-standard) both;
 }
@@ -1194,17 +1329,57 @@
   gap: 16px;
 }
 
-/* AI-generated portrait grounds the testimonial quote. Circular crop with
-   a thin amber rule, sized to sit comfortably beside the name/role. */
-.testimonialPortrait {
-  width: 64px;
-  height: 64px;
+/* AI-generated portrait grounds the testimonial quote. Enlarged
+   to 96×96 so the figure reads as a real portrait, not an avatar.
+   Wrapped in a frame so the image source is clearly visible. */
+.testimonialPortraitFrame {
+  position: relative;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--accent-primary);
-  box-shadow: 0 4px 14px var(--shadow-color);
+  border: 3px solid var(--accent-primary);
+  box-shadow: 0 6px 20px var(--shadow-color);
+  overflow: hidden;
   flex-shrink: 0;
+  background: var(--sidebar-bg);
+}
+
+.testimonialPortrait {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
   filter: saturate(0.95);
+  position: relative;
+  z-index: 1;
+}
+
+.testimonialPortraitPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sidebar-bg) 92%, transparent) 0%,
+    color-mix(in srgb, var(--accent-primary) 20%, var(--sidebar-bg)) 100%
+  );
+  color: var(--ink-on-dark);
+  font-family: var(--font-family-ui);
+  z-index: 0;
+}
+
+.testimonialPortraitPlaceholder span {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.2;
 }
 
 .testimonialMeta {
@@ -1545,10 +1720,19 @@
 
   .workflowList {
     grid-template-columns: repeat(3, 1fr);
+    row-gap: var(--space-3);
   }
 
-  .workflowStep:nth-child(3) {
+  .workflowStep {
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .workflowStep:nth-child(3n) {
     border-right: none;
+  }
+
+  .workflowStep:last-child {
+    border-bottom: none;
   }
 
   .flowConstellation {
@@ -1630,14 +1814,34 @@
 
   .workflowList {
     grid-template-columns: 1fr 1fr;
+    row-gap: var(--space-4);
   }
 
+  .workflowStep {
+    padding: 20px 16px 20px 0;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* Remove right border for items at the end of each row */
   .workflowStep:nth-child(2n) {
     border-right: none;
   }
 
+  /* Item 3 is the last in row 2, needs right border */
   .workflowStep:nth-child(3) {
     border-right: 1px solid var(--border-subtle);
+  }
+
+  /* Remove bottom border from last visible item in last row */
+  .workflowStep:last-child,
+  .workflowStep:nth-last-child(2):nth-child(odd) {
+    border-bottom: none;
+  }
+
+  /* Ensure the 5th item (last) has no bottom border */
+  .workflowStep:nth-child(5) {
+    border-bottom: none;
   }
 
   .workspace {
@@ -1653,9 +1857,9 @@
     font-size: 5rem;
   }
 
-  .testimonialPortrait {
-    width: 52px;
-    height: 52px;
+  .testimonialPortraitFrame {
+    width: 80px;
+    height: 80px;
   }
 
   .ctaSection h2 {
@@ -1693,5 +1897,17 @@
 
   .flowNodeNote {
     display: none;
+  }
+
+  .flowConstellation {
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    justify-content: center;
+    padding: var(--space-4) 0;
+  }
+
+  .flowNodeItem {
+    min-width: 80px;
+    max-width: 120px;
   }
 }

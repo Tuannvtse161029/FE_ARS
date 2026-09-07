@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, X } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
@@ -21,6 +21,8 @@ const STATUS_CLASS: Record<RoleRequestStatus, string> = {
 
 export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidCheck }: Props) => {
   const { t } = useI18n();
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
               {t('admin.roleRequests.details.titleReq').replace('{id}', String(request.id))}
             </h2>
             <p className={styles.subtitle}>
-              {t('admin.roleRequests.details.submitted')} {request.submissionDate ? new Date(request.submissionDate).toLocaleString('vi-VN') : t('admin.roleRequests.details.notSupplied')}
+              {t('admin.roleRequests.details.submitted')} {request.submissionDate ? new Date(request.submissionDate).toLocaleString(intlTag) : t('admin.roleRequests.details.notSupplied')}
             </p>
           </div>
           <button ref={closeRef} className={styles.iconButton} onClick={onClose} type="button" aria-label={t('admin.roleRequests.details.closeLabel')}>
@@ -95,7 +97,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
                       isOrcidVerified={request.isOrcidVerified}
                     />
                     {request.orcidVerifiedAt ? (
-                      <span>{t('admin.roleRequests.details.orcidLinked')} {new Date(request.orcidVerifiedAt).toLocaleDateString('vi-VN')}</span>
+                      <span>{t('admin.roleRequests.details.orcidLinked')} {new Date(request.orcidVerifiedAt).toLocaleDateString(intlTag)}</span>
                     ) : null}
                   </dd>
                 ) : (

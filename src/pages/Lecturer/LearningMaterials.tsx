@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
+import { useLocale } from '../../i18n/I18nContext';
 import { learningMaterialService } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import { learningMaterialUsageService, type MaterialUsage } from '../../services/phaseMaterial.service';
@@ -55,6 +56,8 @@ type SortColumn = 'title' | 'subField' | 'updatedAt';
 
 export const LecturerLearningMaterialsPage = () => {
   const { user } = useAuth();
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   const lecturerId = user?.userId ?? null;
   const { materials, isLoading, error, refetch } = useLearningMaterials({
     lecturerId,
@@ -601,7 +604,7 @@ export const LecturerLearningMaterialsPage = () => {
                                         ? styles.usageBadgeExpired
                                         : styles.usageBadgeActive
                                     }
-                                    title={`Deadline: ${u.phaseDeadlineAt ? new Date(u.phaseDeadlineAt).toLocaleDateString('vi-VN') : 'unknown'}`}
+                                    title={`Deadline: ${u.phaseDeadlineAt ? new Date(u.phaseDeadlineAt).toLocaleDateString(intlTag) : 'unknown'}`}
                                   >
                                     {u.isExpired ? '✓ ' : '⚠ '}
                                     Phase {u.phaseNumber} · {u.researchGroupName}
@@ -724,7 +727,7 @@ export const LecturerLearningMaterialsPage = () => {
                               {u.phaseDeadlineAt
                                 ? new Date(
                                     u.phaseDeadlineAt,
-                                  ).toLocaleDateString('vi-VN')
+                                  ).toLocaleDateString(intlTag)
                                 : 'not set'}
                               {u.isExpired && (
                                 <span className={styles.expiredTag}>

@@ -108,12 +108,13 @@ export interface PublicationNotification {
 export interface CatalogQuery {
   page: number;
   pageSize: number;
+  /** Free-text search needle — matches title, abstract, DOI, authors, institutions, topics, and keywords. */
   query?: string;
-  domain?: string;
-  field?: string;
-  subfield?: string;
-  topic?: string;
-  sort?: 'PUBLISHED_DESC' | 'PUBLISHED_ASC' | 'TITLE_ASC';
+  /** MajorField name (MajorField level in the taxonomy). Free-form text since the Paper API does not return a numeric MajorField id. */
+  majorField?: string;
+  /** SubField id (leaf level in the taxonomy) — matches Paper.subFieldId from the BE response. */
+  subFieldId?: number;
+  sort?: 'PUBLISHED_DESC' | 'PUBLISHED_ASC' | 'TITLE_ASC' | 'CITATIONS_DESC';
 }
 
 export interface PagedPublicationResult {
@@ -203,4 +204,18 @@ export const statusLabel = (status: PublicationStatus): string => {
   if (status === 'ADMIN_REJECTED') return 'Rejected';
   if (status === 'INACTIVE') return 'Inactive';
   return status.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+};
+
+/**
+ * Formats a paperType string into a human-readable label.
+ * Falls back to the original value if unknown.
+ */
+export const paperTypeLabel = (paperType: string | null | undefined): string => {
+  if (!paperType || paperType === 'Not supplied') return '';
+  // Known human-readable values from the submission form
+  if (paperType === 'Research article') return 'Research article';
+  if (paperType === 'Methodology article') return 'Methodology article';
+  if (paperType === 'Review article') return 'Review article';
+  // Unknown format — title-case it so it reads as a label
+  return paperType.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 };

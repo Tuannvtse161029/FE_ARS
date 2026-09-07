@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
 import shared from '../components/PublicationShared.module.css';
-import type { PublicationPaper } from '../types/publication';
+import { paperTypeLabel, type PublicationPaper } from '../types/publication';
 import {
   doiHref,
   publicReviewerName,
@@ -44,7 +44,10 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
         <header>
           <div>
             <h2>{paper.title}</h2>
-            <p className={shared.panelSubtitle}>{paper.paperType} · v{paper.version}</p>
+            <p className={shared.panelSubtitle}>
+              {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
+              v{paper.version}
+            </p>
           </div>
           <button
             type="button"

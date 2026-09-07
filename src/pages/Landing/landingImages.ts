@@ -14,9 +14,6 @@
  *   --sidebar-bg:     #1b1a17
  */
 
-// Vite inlines the resolved URL at build time (hashed filename, long-term
-// cacheable). Importing PNG directly works because Landing.tsx uses each
-// export as a plain string `src` prop.
 import heroBackdropSrc from '@/assets/images/hero-backdrop.png';
 import statementStillSrc from '@/assets/images/statement-still.png';
 import testimonialPortraitSrc from '@/assets/images/testimonial-portrait.png';
@@ -25,12 +22,6 @@ import testimonialPortraitSrc from '@/assets/images/testimonial-portrait.png';
  * Hero right-column backdrop. Sits behind the SVG constellation
  * composition, so it is masked to the same rounded frame and
  * tinted toward the navy/amber palette via CSS overlay.
- *
- * AI prompt seed:
- *   "Photorealistic editorial photograph, 3:2 aspect ratio, 1600x1067.
- *    A warm, scholarly scene of three diverse Vietnamese researchers
- *    collaborating around a heavy oak table in a softly lit university
- *    library reading room. ... [full prompt in git history]"
  */
 export const HERO_BACKDROP_URL: string = heroBackdropSrc;
 
@@ -38,11 +29,6 @@ export const HERO_BACKDROP_URL: string = heroBackdropSrc;
  * Statement section still life — fills the previously text-only
  * right column with a research-archive composition that balances
  * the editorial two-column layout.
- *
- * AI prompt seed:
- *   "Photorealistic editorial still life, 4:3 aspect ratio, 1200x900.
- *    An overhead three-quarter angle shot of a researcher's desk
- *    arranged like a quiet museum vitrine. ... [full prompt in git history]"
  */
 export const STATEMENT_STILL_URL: string = statementStillSrc;
 
@@ -50,10 +36,22 @@ export const STATEMENT_STILL_URL: string = statementStillSrc;
  * Testimonial section portrait — scholarly figure that grounds
  * the existing quote block. Rendered as a circular accent above
  * the attribution row.
- *
- * AI prompt seed:
- *   "Photorealistic editorial portrait, 3:2 aspect ratio, 600x400.
- *    A Vietnamese female research scholar in her late 30s, photographed
- *    mid-shot from the chest up. ... [full prompt in git history]"
  */
 export const TESTIMONIAL_PORTRAIT_URL: string = testimonialPortraitSrc;
+
+/**
+ * Debug helper — exposes the resolved image URLs on `window.__ARS_LANDING_IMG__`
+ * so you can confirm in DevTools that the assets are wired to the right files
+ * even before any visual element renders.
+ */
+if (typeof window !== 'undefined') {
+  (window as unknown as { __ARS_LANDING_IMG__: Record<string, string> }).__ARS_LANDING_IMG__ = {
+    HERO_BACKDROP_URL,
+    STATEMENT_STILL_URL,
+    TESTIMONIAL_PORTRAIT_URL,
+  };
+  console.info(
+    '[ARS Landing] image placeholders wired:',
+    { HERO_BACKDROP_URL, STATEMENT_STILL_URL, TESTIMONIAL_PORTRAIT_URL },
+  );
+}

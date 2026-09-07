@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, ExternalLink, FileText, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { statusLabel, reviewTypeLabel, type PublicationPaper } from '../types/publication';
+import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
 import {
   REVIEWER_CRITERIA,
@@ -291,7 +291,7 @@ export const ReviewerAssignmentDetail = () => {
 
   const renderMetadata = (paperToRender: PublicationPaper) => {
     const items: Array<{ label: string; value: string }> = [
-      { label: t('reviewer.detail.metadata.paperType'), value: paperToRender.paperType && paperToRender.paperType !== 'Not supplied' ? paperToRender.paperType : NOT_SUPPLIED },
+      { label: t('reviewer.detail.metadata.paperType'), value: paperTypeLabel(paperToRender.paperType) || NOT_SUPPLIED },
       { label: t('reviewer.detail.metadata.version'), value: paperToRender.version == null ? NOT_SUPPLIED : `v${paperToRender.version}` },
       { label: t('reviewer.detail.metadata.submitted'), value: formatDate(paperToRender.submittedAt) },
       { label: t('reviewer.detail.metadata.deadline'), value: formatDate(paperToRender.reviewDeadline) },

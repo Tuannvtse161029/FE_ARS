@@ -23,7 +23,7 @@ import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLog
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
-import { isAuthorshipAllowed, type PublicationPaper } from '../types/publication';
+import { isAuthorshipAllowed, paperTypeLabel, type PublicationPaper } from '../types/publication';
 import {
   doiHref,
   publicReviewerName,
@@ -433,8 +433,8 @@ export const AdminPaperSubmissions = () => {
                         <div className={adminStyles.titleCell}>
                           <strong>{paper.title}</strong>
                           <small>
-                            {paper.paperType}
-                            {paper.version != null ? ` · v${paper.version}` : ''} ·{' '}
+                            {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
+                            {paper.version != null ? `v${paper.version}` : ''} ·{' '}
                             {paper.authors.map((author) => author.name).join(', ')}
                           </small>
                         </div>

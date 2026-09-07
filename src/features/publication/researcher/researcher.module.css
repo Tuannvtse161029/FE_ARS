@@ -77,36 +77,64 @@
   box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
 }
 
-.statusField {
+/* ── Status Filter Tab Bar ─────────────────────────────────── */
+.tabBar {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--ars-node);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.statusSelect {
-  height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--ars-node);
-  border-radius: var(--radius-md);
-  background: var(--ars-paper);
-  color: var(--ars-ink);
+.tabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ars-ink-muted);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  margin-bottom: -1px;
 }
 
-.statusSelect:hover {
-  border-color: var(--ars-ink-muted);
+.tab:hover {
+  color: var(--ars-ink);
 }
 
-.statusSelect:focus {
-  outline: none;
-  border-color: var(--ars-researcher);
-  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16);
+.tab[aria-selected="true"] {
+  color: var(--ars-researcher);
+  border-bottom-color: var(--ars-researcher);
+  font-weight: var(--font-weight-semibold);
 }
 
+.tab:focus-visible {
+  outline: 2px solid var(--ars-researcher);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.tabCount {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-inset);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ── Clear filters button ─────────────────────────────────── */
 /* Clear filters button — appears only when a filter is active */
 .clearButton {
   display: inline-flex;
@@ -308,9 +336,13 @@
     justify-content: flex-start;
   }
 
-  .searchField,
-  .statusField {
+  .searchField {
     max-width: 100%;
+  }
+
+  /* Tab bar spans full width on mobile */
+  .tabBar {
+    margin-top: var(--space-2);
   }
 
   .table thead th,
@@ -391,6 +423,13 @@
 .fieldRequired {
   color: var(--ars-error);
   margin-left: 2px;
+}
+
+.optionalLabel {
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-normal);
+  margin-left: 4px;
+  font-size: var(--font-size-xs);
 }
 
 .field input,

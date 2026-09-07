@@ -4,7 +4,7 @@ import { Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import reviewer from './reviewer.module.css';
-import { statusLabel, reviewTypeLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
   isAwaitingReviewerResponse,
   isReviewerActionable,
@@ -379,8 +379,8 @@ export const ReviewerAssignments = () => {
                               <div className={reviewer.bucketMain}>
                                 <span className={reviewer.bucketTitleText}>{paper.title}</span>
                                 <span className={reviewer.bucketMeta}>
-                                  {paper.paperType || '—'}
-                                  {paper.reviewType ? ` · ${reviewTypeLabel(paper.reviewType)}` : ''}
+                                  {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
+                                  {paper.reviewType ? reviewTypeLabel(paper.reviewType) : ''}
                                   {aiLabel ? ` · ${aiLabel}` : ''}
                                 </span>
                               </div>

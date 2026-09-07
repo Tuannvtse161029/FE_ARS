@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ExternalLink, FileText, X } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import type { User } from '../../types/auth';
 import { displayAccountTier } from '../../services/user.service';
@@ -24,6 +24,8 @@ export const VerificationDetailsModal = ({
   onClose,
 }: Props) => {
   const { t } = useI18n();
+  const locale = useLocale();
+  const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export const VerificationDetailsModal = ({
               {t('admin.roleRequests.details.title').replace('{id}', String(user.id))}
             </h2>
             <p className={styles.subtitle}>
-              {t('admin.roleRequests.details.submitted')} {user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}
+              {t('admin.roleRequests.details.submitted')} {user.createdAt ? new Date(user.createdAt).toLocaleString(intlTag) : '—'}
             </p>
           </div>
           <button ref={closeRef} className={styles.iconButton} onClick={onClose} type="button" aria-label={t('admin.roleRequests.details.closeLabel')}>
@@ -82,7 +84,7 @@ export const VerificationDetailsModal = ({
                   {t('admin.roleRequests.details.orcidDisclosure')}
                 </p>
               </div>
-              <div><dt>{t('admin.roleRequests.details.created')}</dt><dd>{user.createdAt ? new Date(user.createdAt).toLocaleString('vi-VN') : '—'}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.created')}</dt><dd>{user.createdAt ? new Date(user.createdAt).toLocaleString(intlTag) : '—'}</dd></div>
             </dl>
           </div>
 

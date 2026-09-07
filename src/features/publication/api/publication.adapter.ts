@@ -169,7 +169,7 @@ const toPublicationPaper = (
     })(),
     field: (() => {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const saved = window.localStorage.getItem(`paper_domain_${paper.id}`);
+        const saved = window.localStorage.getItem(`paper_field_${paper.id}`);
         if (saved) return saved;
       }
       return undefined;
@@ -294,10 +294,11 @@ const matchesCatalogQuery = (paper: PublicationPaper, query: CatalogQuery): bool
     if (!searchableText.includes(needle)) return false;
   }
 
-  return (!query.domain || paper.domain === query.domain)
-    && (!query.field || paper.field === query.field)
-    && (!query.subfield || paper.subfield === query.subfield)
-    && (!query.topic || paper.topics.includes(query.topic));
+  // The only taxonomy field exposed by the Paper BE response is `subFieldId`.
+  // MajorField is filtered indirectly: the catalog UI always renders
+  // SubField options scoped under the selected MajorField, so the resulting
+  // subFieldId pick already implies its parent MajorField.
+  return !query.subFieldId || paper.subFieldId === query.subFieldId;
 };
 
 const compareCatalogPapers = (
@@ -471,6 +472,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
     if (typeof window !== 'undefined' && window.localStorage) {
       if (input.subfield) window.localStorage.setItem(`paper_subfield_${created.id}`, input.subfield);
       if (input.domain) window.localStorage.setItem(`paper_domain_${created.id}`, input.domain);
+      if (input.field) window.localStorage.setItem(`paper_field_${created.id}`, input.field);
     }
     return toPublicationPaper(draft);
   }
