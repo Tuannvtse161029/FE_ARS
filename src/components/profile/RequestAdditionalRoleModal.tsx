@@ -120,6 +120,18 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
 
   // Roles available for selection (based on eligibility matrix, excluding currently held roles and Admin)
   const availableRoles = useMemo(() => {
+    const isGraduateStudent = currentRoles.some(
+      (r) => r === 'Graduate Student' || r === 'GraduateStudent',
+    );
+    const hasResearcher = currentRoles.includes('Researcher');
+
+    if (isGraduateStudent) {
+      if (hasResearcher) {
+        return [] as RequestableRole[];
+      }
+      return ['Researcher'] as RequestableRole[];
+    }
+
     const eligiblePool = new Set<RequestableRole>();
     currentRoles.forEach((r) => {
       const allowed = ELIGIBLE_ADDITIONAL_ROLES_MAP[r] || [];
@@ -385,9 +397,14 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
               {isVi ? '1. Chọn vai trò muốn yêu cầu thêm' : '1. Select role to request'}
             </h3>
             {availableRoles.length === 0 ? (
-              <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                {isVi
-                  ? 'Bạn đã sở hữu toàn bộ các vai trò học thuật trên hệ thống.'
+              <p style={{ color: '#64748b', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                {currentRoles.some((r) => r === 'Graduate Student' || r === 'GraduateStudent') &&
+                currentRoles.includes('Researcher')
+                  ? isVi
+                    ? 'Tài khoản Học viên đã được cấp vai trò Nghiên cứu viên (Researcher). Theo quy định học thuật, tài khoản học viên không thể yêu cầu thêm các vai trò khác.'
+                    : 'Graduate Student accounts that advanced to Researcher are not eligible to request further roles under academic governance policies.'
+                  : isVi
+                  ? 'Bạn đã sở hữu toàn bộ các vai trò học thuật hợp lệ trên hệ thống.'
                   : 'You already possess all available academic roles on the platform.'}
               </p>
             ) : (

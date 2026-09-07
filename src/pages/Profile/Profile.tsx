@@ -341,14 +341,28 @@ export const Profile = () => {
   const [isFollowModalOpen, setIsFollowModalOpen] = useState<boolean>(false);
   const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers');
 
-  const canRequestAdditionalRole =
-    isOwner && user?.role !== 'Admin' && user?.effectiveRole !== 'Admin';
-  const [isRoleRequestModalOpen, setIsRoleRequestModalOpen] = useState<boolean>(false);
+  const userRoles = useMemo(() => {
+    if (Array.isArray(user?.roles) && user.roles.length > 0) return user.roles;
+    if (user?.role) return [user.role];
+    return [];
+  }, [user]);
+
+  const isStudentWithResearcher =
+    userRoles.some((r) => r === 'Graduate Student' || r === 'GraduateStudent') &&
+    userRoles.includes('Researcher');
+
   const [pendingRoleRequest, setPendingRoleRequest] =
     useState<UserPendingRoleRequest | null>(null);
   const [roleRequestSuccessMessage, setRoleRequestSuccessMessage] = useState<
     string | null
   >(null);
+  const [isRoleRequestModalOpen, setIsRoleRequestModalOpen] = useState<boolean>(false);
+
+  const canRequestAdditionalRole =
+    isOwner &&
+    user?.role !== 'Admin' &&
+    user?.effectiveRole !== 'Admin' &&
+    (!isStudentWithResearcher || pendingRoleRequest != null);
 
   useEffect(() => {
     if (user?.userId) {
