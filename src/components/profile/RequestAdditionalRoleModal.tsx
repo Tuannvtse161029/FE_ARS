@@ -169,6 +169,9 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     if (currentUser?.userId) {
       const existing = roleRequestService.getPendingRequest(currentUser.userId);
       setPendingRequest(existing);
+      roleRequestService.fetchPendingRequest(currentUser.userId).then((fresh) => {
+        setPendingRequest(fresh);
+      });
     }
   }, [isOpen, currentProfile, currentUser]);
 
@@ -256,7 +259,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
         userId: currentUser.userId,
         userName: currentProfile?.fullName || currentUser.username || currentUser.email,
         email: currentUser.email,
-        phone,
+        phoneNumber: phone,
         affiliation,
         department,
         currentRoles,
@@ -281,9 +284,9 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     }
   };
 
-  const handleCancelPending = () => {
+  const handleCancelPending = async () => {
     if (!currentUser?.userId) return;
-    roleRequestService.clearPendingRequest(currentUser.userId);
+    await roleRequestService.cancelPendingRequest(currentUser.userId, pendingRequest?.id);
     setPendingRequest(null);
   };
 
