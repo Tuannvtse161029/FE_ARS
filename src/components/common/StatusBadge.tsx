@@ -19,12 +19,21 @@ export type StatusBadgeVariant =
   | 'proposed'
   | 'ongoing'
   | 'cancelled'
-  | 'unknown';
+  | 'unknown'
+  // Publication research-paper list statuses (ARS Paper Day design system)
+  | 'pubSubmitted'    // Amber — SUBMITTED
+  | 'pubAssigned'     // Blue  — REVIEWER_ASSIGNED
+  | 'pubPublished'    // Green — PUBLISHED
+  | 'pubRejected'     // Red   — ADMIN_REJECTED
+  | 'pubImprovement'; // Purple — REVIEWER_RECOMMENDED_REJECT
 
 // Map raw status strings (canonical labels AND common synonyms) to a
 // normalised variant. The BE stores these as free-form strings so we accept
 // a wide input range; unknown inputs fall back to `unknown` which renders in
 // muted grey.
+//
+// Publication researcher-paper statuses use `pub*` variants so they can be
+// styled with the ARS Paper Day amber/blue/green/red/purple palette.
 const NORMALISE_TABLE: Record<string, StatusBadgeVariant> = {
   waiting: 'waiting',
   pending: 'waiting',
@@ -45,12 +54,30 @@ const NORMALISE_TABLE: Record<string, StatusBadgeVariant> = {
   proposed: 'proposed',
   ongoing: 'ongoing',
   cancelled: 'cancelled',
+  // Publication researcher-paper list statuses
+  submitted_paper: 'pubSubmitted',
+  reviewer_assigned_paper: 'pubAssigned',
+  published_paper: 'pubPublished',
+  admin_rejected_paper: 'pubRejected',
+  reviewer_recommended_improvement: 'pubImprovement',
 };
 
 const normalise = (raw: string | null | undefined): StatusBadgeVariant => {
   if (!raw) return 'unknown';
   const key = raw.toLowerCase().trim().replace(/[\s-]+/g, '_');
-  return NORMALISE_TABLE[key] ?? 'unknown';
+
+  // Publication researcher-paper statuses — map BE enum tokens directly
+  // so the badge can render correctly when `status` receives a raw
+  // PublicationStatus string and no label override is supplied.
+  switch (key) {
+    case 'submitted':                          return 'pubSubmitted';
+    case 'reviewer_assigned':                  return 'pubAssigned';
+    case 'published':                          return 'pubPublished';
+    case 'admin_rejected':                     return 'pubRejected';
+    case 'reviewer_recommended_reject':         return 'pubImprovement';
+    default:
+      return NORMALISE_TABLE[key] ?? 'unknown';
+  }
 };
 
 export interface StatusBadgeProps {

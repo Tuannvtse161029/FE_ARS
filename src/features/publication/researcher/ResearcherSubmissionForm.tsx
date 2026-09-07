@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, Save, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Save, Send } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
 import { useMajorFields, useSubFields } from '../../../hooks/useMajorFields';
@@ -159,6 +159,7 @@ export const ResearcherSubmissionForm = () => {
   const [openAlexDraft, setOpenAlexDraft] = useState('');
   const [openAlexState, setOpenAlexState] = useState<OpenAlexUiState>({ stage: 'idle' });
   const [openAlexScanning, setOpenAlexScanning] = useState(false);
+  const [openAlexImported, setOpenAlexImported] = useState(false);
 
   const handleScanOpenAlex = async () => {
     if (!openAlexDraft.trim()) {
@@ -212,6 +213,7 @@ export const ResearcherSubmissionForm = () => {
     setInstitution((current) => current || metadata.institutions[0] || '');
     setKeywords((current) => current || metadata.keywords.join(', '));
     setOpenAlexState({ stage: 'confirmed', metadata });
+    setOpenAlexImported(true);
   };
 
   const canSubmit =
@@ -731,6 +733,28 @@ export const ResearcherSubmissionForm = () => {
                   onClick={() => setOpenAlexState({ stage: 'idle' })}
                 >
                   {t('researcher.form.openalex.provideId')}
+                </button>
+              </div>
+            )}
+
+            {openAlexImported && (
+              <div className={styles.openAlexClassificationReminder} data-testid="submission-openalex-classification-reminder">
+                <div className={styles.openAlexReminderContent}>
+                  <Info size={16} aria-hidden className={styles.openAlexReminderIcon} />
+                  <p className={styles.openAlexReminderText}>
+                    {t('researcher.form.openalex.classificationReminder')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.openAlexReminderAction}
+                  onClick={() => {
+                    const target = document.getElementById('submission-major-field');
+                    target?.focus();
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                >
+                  {t('researcher.form.openalex.chooseClassification')}
                 </button>
               </div>
             )}

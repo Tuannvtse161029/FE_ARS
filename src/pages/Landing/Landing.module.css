@@ -327,6 +327,34 @@
   margin-top: 8px;
 }
 
+/* AI-generated editorial backdrop, masked to the constellation frame.
+   Tinted navy/amber so it harmonizes with the hero palette and lets the
+   SVG lines + nodes read clearly on top. */
+.heroBackdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  opacity: 0.55;
+  filter: saturate(0.7) contrast(1.05);
+}
+
+.heroBackdropTint {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--sidebar-bg) 55%, transparent) 0%,
+      color-mix(in srgb, var(--sidebar-bg) 30%, transparent) 60%,
+      color-mix(in srgb, var(--accent-primary) 18%, transparent) 100%
+    );
+  pointer-events: none;
+}
+
 .constellationCanvas {
   position: absolute;
   inset: 0;
@@ -462,6 +490,58 @@
   font-size: 0.98rem;
   line-height: 1.82;
   max-width: 600px;
+}
+
+/* Statement right column wraps an AI-generated still life above the body
+   paragraph. The grid in `.statement` keeps the figure aligned to the top
+   edge of the right column; the image sits in a parchment-toned frame so
+   it reads as a printed plate, not a stock photo. */
+.statementBody {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 28px;
+  max-width: 600px;
+}
+
+.statementFigure {
+  margin: 0;
+  padding: 14px 14px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+
+.statementFigure::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: var(--accent-primary);
+  opacity: 0.35;
+}
+
+.statementFigure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: calc(var(--radius-lg) - 4px);
+  filter: saturate(0.92);
+}
+
+.statementCaption {
+  margin: 12px 4px 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ochre);
 }
 
 /* ── Features section ──────────────────────────────────── */
@@ -921,30 +1001,31 @@
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0;
-  border-top: 1px solid var(--border-subtle);
-  border-left: 1px solid var(--border-subtle);
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
 }
 
 .workspace {
-  min-height: 260px;
-  padding: 32px 32px 28px;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-6);
   background: var(--surface-base);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
   position: relative;
   overflow: hidden;
   transform-origin: 50% 100%;
   transition:
     transform var(--transition-normal) var(--motion-ease-standard),
-    box-shadow var(--transition-slow) var(--motion-ease-standard);
+    box-shadow var(--transition-slow) var(--motion-ease-standard),
+    border-color var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .workspace:hover {
   transform: translateY(-4px);
   box-shadow: 0 14px 36px var(--shadow-color);
-  z-index: 2;
+  border-color: var(--border-strong);
 }
 
 /* Role accent top border */
@@ -962,42 +1043,96 @@
 .workspace[data-role='lecturer']::before  { background: var(--ars-lecturer); }
 .workspace[data-role='student']::before    { background: var(--ars-gradstudent); }
 
-.workspace[data-role='researcher'] svg { color: var(--ars-researcher); }
-.workspace[data-role='reviewer'] svg  { color: var(--ars-reviewer); }
-.workspace[data-role='lecturer'] svg  { color: var(--ars-lecturer); }
-.workspace[data-role='student'] svg    { color: var(--ars-gradstudent); }
+.workspaceIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+  transition: transform var(--transition-fast);
+}
+
+.workspace:hover .workspaceIcon {
+  transform: scale(1.05);
+}
+
+.workspace[data-role='researcher'] .workspaceIcon {
+  background: color-mix(in srgb, var(--ars-researcher) 12%, transparent);
+}
+.workspace[data-role='researcher'] .workspaceIcon svg { color: var(--ars-researcher); }
+
+.workspace[data-role='reviewer'] .workspaceIcon {
+  background: color-mix(in srgb, var(--ars-reviewer) 12%, transparent);
+}
+.workspace[data-role='reviewer'] .workspaceIcon svg { color: var(--ars-reviewer); }
+
+.workspace[data-role='lecturer'] .workspaceIcon {
+  background: color-mix(in srgb, var(--ars-lecturer) 12%, transparent);
+}
+.workspace[data-role='lecturer'] .workspaceIcon svg { color: var(--ars-lecturer); }
+
+.workspace[data-role='student'] .workspaceIcon {
+  background: color-mix(in srgb, var(--ars-gradstudent) 12%, transparent);
+}
+.workspace[data-role='student'] .workspaceIcon svg { color: var(--ars-gradstudent); }
 
 .workspace h3 {
-  margin: 20px 0 10px;
+  margin: 0;
   font-family: var(--font-family-serif);
-  font-size: 1.3rem;
-  font-weight: 750;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: 1.3;
   color: var(--ink-primary);
 }
 
 .workspace p {
   margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.7;
+  font-size: var(--font-size-sm);
+  line-height: 1.65;
   color: var(--ink-muted);
+  flex: 1;
 }
 
-.workspaceArrow {
+/* Explore button */
+.workspaceExploreBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 18px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--ink-muted);
-  transition: color var(--transition-fast), gap var(--transition-fast);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    gap var(--transition-fast);
+  align-self: flex-start;
+  font-family: var(--font-family-ui);
 }
 
-.workspace:hover .workspaceArrow {
-  color: var(--accent-primary);
-  gap: 10px;
+.workspaceExploreBtn:hover {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  color: var(--ink-primary);
+  gap: var(--space-3);
+}
+
+.workspaceExploreBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.workspaceExploreBtn:active {
+  transform: scale(0.98);
 }
 
 /* Workspace card entrance animation */
@@ -1053,9 +1188,30 @@
 .testimonialAttribution {
   margin-top: 32px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* AI-generated portrait grounds the testimonial quote. Circular crop with
+   a thin amber rule, sized to sit comfortably beside the name/role. */
+.testimonialPortrait {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-primary);
+  box-shadow: 0 4px 14px var(--shadow-color);
+  flex-shrink: 0;
+  filter: saturate(0.95);
+}
+
+.testimonialMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .testimonialName {
@@ -1411,7 +1567,7 @@
   }
 
   .workspaceGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .faqSection {
@@ -1488,8 +1644,18 @@
     min-height: 0;
   }
 
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
   .testimonialMark {
     font-size: 5rem;
+  }
+
+  .testimonialPortrait {
+    width: 52px;
+    height: 52px;
   }
 
   .ctaSection h2 {

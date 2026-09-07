@@ -10,7 +10,10 @@
   border-radius: var(--radius-lg);
   background: var(--ars-paper);
   padding: var(--space-5);
-  transition: border-color var(--transition-normal);
+  transition:
+    border-color var(--transition-normal),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
   position: relative;
 }
 
@@ -33,8 +36,11 @@
   border-top-right-radius: var(--radius-lg);
 }
 
+/* Subtle hover lift — transform/opacity only, respects reduced-motion. */
 .paper:hover {
   border-color: var(--card-accent, var(--ars-blue-mid));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 /* ── Card head (paper type / publication date / version / DOI) ── */
@@ -74,15 +80,17 @@
 .mono {
   font-family: var(--font-family-mono);
   color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
 }
 
 .title {
   font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
   color: var(--ars-ink);
   margin: 0;
   word-break: break-word;
+  letter-spacing: -0.005em;
 }
 
 .institutions {
@@ -181,6 +189,7 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
+  transition: color var(--transition-fast);
 }
 
 .detailsToggle:hover {
@@ -230,7 +239,7 @@
   padding: 4px 10px;
 }
 
-/* ── Identifier / classification row (single tight row) ────── */
+/* ── Identifier row (DOI / OpenAlex / arXiv) — only populated entries ── */
 .detailGrid {
   display: flex;
   flex-wrap: wrap;
@@ -272,7 +281,7 @@
   font-size: var(--font-size-xs);
   text-decoration: none;
   border-bottom: 1px solid transparent;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .identifierLink:hover {
@@ -289,17 +298,6 @@
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   color: var(--ars-ink-soft);
-}
-
-.fieldPath {
-  color: var(--ars-ink);
-  font-size: var(--font-size-sm);
-}
-
-.muted {
-  color: var(--ars-ink-muted);
-  font-style: italic;
-  font-size: var(--font-size-sm);
 }
 
 /* ── Reviewer disclosure row ───────────────────────────────── */

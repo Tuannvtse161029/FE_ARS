@@ -111,3 +111,43 @@
   color: var(--ars-ink-muted);
   border-color: var(--ars-network);
 }
+
+/* ── Publication researcher-paper list badges ────────────────────────
+   Used in the Researcher "My Research Papers" listing to present five
+   clear lifecycle states with the ARS Paper Day amber/blue/green/red/purple
+   palette. Color is communicated via label + color + dot (never color alone). */
+
+/* SUBMITTED — amber */
+.pubSubmitted {
+  background-color: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border-color: color-mix(in srgb, var(--ars-warning) 30%, transparent);
+}
+
+/* REVIEWER_ASSIGNED — blue */
+.pubAssigned {
+  background-color: var(--ars-blue-light);
+  color: var(--ars-blue);
+  border-color: color-mix(in srgb, var(--ars-blue) 30%, transparent);
+}
+
+/* PUBLISHED — green */
+.pubPublished {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+/* ADMIN_REJECTED — red */
+.pubRejected {
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
+}
+
+/* REVIEWER_RECOMMENDED_REJECT — purple */
+.pubImprovement {
+  background-color: #f5f3ff;
+  color: #6d28d9;
+  border-color: color-mix(in srgb, #6d28d9 30%, transparent);
+}
