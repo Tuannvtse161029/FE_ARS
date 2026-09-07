@@ -91,7 +91,7 @@ export const detailedEvaluationService = {
         (e) => e.reviewRequestId === reviewRequestId
       ) ?? ({} as DetailedEvaluation);
     }
-    return data;
+    return data?.reviewRequestId === reviewRequestId ? data : {};
   },
 
   create: async (data: DetailedEvaluationCreateRequest): Promise<DetailedEvaluation> => {
@@ -99,7 +99,12 @@ export const detailedEvaluationService = {
       API_ENDPOINTS.DETAILED_EVALUATION.GET_ALL,
       data
     );
-    return response.data;
+    const id = response.data?.detailedEvaluationId;
+    const persisted = id ? (await api.get<DetailedEvaluation>(API_ENDPOINTS.DETAILED_EVALUATION.UPDATE(id))).data : await detailedEvaluationService.getByReviewRequestId(data.reviewRequestId ?? 0);
+    if (!persisted.detailedEvaluationId || persisted.reviewRequestId !== data.reviewRequestId || persisted.finalDecision !== data.finalDecision) {
+      throw new Error('The backend did not confirm the submitted evaluation.');
+    }
+    return persisted;
   },
 
   update: async (

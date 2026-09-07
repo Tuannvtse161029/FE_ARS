@@ -92,8 +92,17 @@ export const reviewRequestService = {
   },
 
   update: async (id: number, data: Partial<ReviewRequestCreateRequest>): Promise<ReviewRequest> => {
-    const response = await api.put<ReviewRequest>(API_ENDPOINTS.REVIEW_REQUEST.UPDATE(id), data);
-    return normalizeReviewRequest(response.data);
+    const current = await reviewRequestService.getById(id);
+    await api.put(API_ENDPOINTS.REVIEW_REQUEST.UPDATE(id), {
+      paperId: current.paperId, reviewerId: current.reviewerId,
+      fee: current.fee, status: current.status, deadline: current.deadline,
+      airecommended: current.airecommended, type: current.type, ...data,
+    });
+    const refreshed = await reviewRequestService.getById(id);
+    if (refreshed.id !== id || (data.status && refreshed.status?.trim().toLowerCase() !== data.status.trim().toLowerCase())) {
+      throw new Error('The backend did not confirm the requested review assignment update.');
+    }
+    return refreshed;
   },
 
   delete: async (id: number): Promise<void> => {

@@ -1,0 +1,135 @@
+/**
+ * PublicationToastViewport — viewport-fixed toast viewport for the
+ * publication lifecycle. The viewport centers horizontally and rides the
+ * top of the visible window, not the scrolled document — a long page
+ * with a submit button near the bottom can fire a success toast that
+ * still appears in the user's natural eye-line.
+ *
+ * Colors are driven by semantic tokens so Paper Day and Archive Dusk both
+ * read correctly. The toast itself uses solid accent fills (success /
+ * error / info surfaces) so it reads as a status affordance, not as
+ * decoration.
+ */
+
+.viewport {
+  position: fixed;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 560px;
+  padding: 0 var(--space-4);
+}
+
+.toast {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background-color: var(--surface-raised);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-lg);
+  min-width: 280px;
+  max-width: 100%;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-medium);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.message {
+  margin: 0;
+  flex: 1;
+  color: inherit;
+}
+
+.closeBtn {
+  background: transparent;
+  border: 0;
+  padding: var(--space-1);
+  cursor: pointer;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.closeBtn:hover {
+  color: var(--ink-primary);
+  background-color: var(--surface-selected);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Status variants ─────────────────────────────────────────────────
+   Each variant pairs a status accent border + icon background so the
+   toast reads as a single status pill. The icon background is the
+   status surface (low chroma), the border is the status text (high
+   chroma) — gives strong contrast against any paper / dusk canvas. */
+
+.toastSuccess {
+  border-color: var(--status-success-text);
+  background-color: var(--status-success-surface);
+  color: var(--status-success-text);
+}
+
+.toastSuccess .icon {
+  color: var(--status-success-text);
+}
+
+.toastError {
+  border-color: var(--status-danger-text);
+  background-color: var(--status-danger-surface);
+  color: var(--status-danger-text);
+}
+
+.toastError .icon {
+  color: var(--status-danger-text);
+}
+
+.toastInfo {
+  border-color: var(--status-info-text);
+  background-color: var(--status-info-surface);
+  color: var(--status-info-text);
+}
+
+.toastInfo .icon {
+  color: var(--status-info-text);
+}
+
+@media (max-width: 680px) {
+  .viewport {
+    top: var(--space-3);
+    padding: 0 var(--space-3);
+  }
+
+  .toast {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .icon,
+  .closeBtn {
+    transition: none !important;
+  }
+}

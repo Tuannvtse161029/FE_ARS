@@ -38,6 +38,12 @@ jobs:
       - name: Critical-flow smoke
         run: npm run test:smoke
 
+      - name: README integration markers present
+        # Fails when the auto-generated block in README.md was removed
+        # by a careless hand-edit. The full regeneration runs on main,
+        # not on PRs (see .github/workflows/auto-update-readme.yml).
+        run: node scripts/update-readme-integrations.mjs --check
+
   pr-unit-full:
     name: Full unit suite
     runs-on: ubuntu-latest

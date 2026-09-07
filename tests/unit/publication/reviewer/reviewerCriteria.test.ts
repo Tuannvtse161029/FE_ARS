@@ -48,13 +48,32 @@ describe('Reviewer criteria module', () => {
     expect(areAllCriterionScoresValid(broken)).toBe(false);
   });
 
-  it('seeds an empty evaluation draft with default recommendation', () => {
+  it('seeds an empty evaluation draft with no default recommendation', () => {
+    // Pre-2026-09 the form defaulted to 'ACCEPT', which caused the Admin
+    // editorial record to surface "Recommendation: ACCEPT" before the
+    // reviewer had actually chosen anything. The recommendation is now
+    // an explicit reviewer-authored choice, so the empty draft starts
+    // blank — submission is blocked until the reviewer picks a real
+    // value in requiredFieldsComplete().
     const draft = buildEmptyEvaluationDraft();
-    expect(draft.recommendation).toBe('ACCEPT');
+    expect(draft.recommendation).toBe('');
     expect(draft.privateComments).toBe('');
     for (const criterion of REVIEWER_CRITERIA) {
       expect(draft.perCriterionNotes[criterion.key]).toBe('');
       expect(draft.scores[criterion.key]).toBe(criterion.min);
+    }
+  });
+
+  it('localizes criterion label and description keys through the i18n dictionary', () => {
+    // The English copy used to ship bilingual labels
+    // ("Originality (Tính độc đáo)"), forcing Vietnamese copy into the
+    // English UI. Labels and descriptions are now dictionary keys so
+    // the active locale controls rendering.
+    for (const criterion of REVIEWER_CRITERIA) {
+      expect(criterion.label).toMatch(/^reviewer\.criterion\.[a-z]+\.label$/);
+      expect(criterion.description).toMatch(
+        /^reviewer\.criterion\.[a-z]+\.description$/,
+      );
     }
   });
 

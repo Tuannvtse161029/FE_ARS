@@ -68,14 +68,51 @@ export default defineConfig({
     exclude: [
       'pdfjs-dist',
       'lucide-react',
+      // Firebase sub-packages are excluded as a GROUP (app + analytics +
+      // firestore + storage) so they share a single raw-ESM module graph.
+      // The `@firebase/component` registry inside firebase requires this:
+      // pre-bundling some sub-packages and serving others raw ESM causes
+      // `getFirestore(app)` to throw `Service firestore is not available`
+      // because the component registry gets duplicated across the two
+      // graphs. Keeping them all out of the optimizer also keeps the
+      // ~180 MB firebase working set out of the dev-server cold start —
+      // firebase is only used by lazy-loaded routes (PDF upload widget,
+      // Forum, Policies editor), so the browser downloads it on demand.
+      'firebase/app',
+      'firebase/analytics',
+      'firebase/firestore',
+      'firebase/storage',
     ],
     // Limit the entry-point scan so Vite does not crawl the entire
     // `src/` tree every time. The cold scan was the single biggest
     // contributor to dev-server startup memory.
+    //
+    // We list the lazy routes that pull in heavy deps (recharts, d3,
+    // firebase) so Vite pre-bundles them at startup instead of
+    // discovering them at request time (each discovery triggers a full
+    // page reload — see dev-out.log "✨ optimized dependencies changed.
+    // reloading" lines).
     entries: [
       'index.html',
       'src/main.tsx',
       'src/App.tsx',
+      // Recharts (used by AdminDashboard) — without this entry the
+      // recharts + d3-* deps are only discovered when the user first
+      // navigates to /admin, which costs ~50 s of optimizer time and
+      // a forced page reload.
+      'src/pages/Admin/AdminDashboard.tsx',
+      // Firebase storage is used by every upload widget (PDF dropzone,
+      // Forum attachments, Learning Materials, Medals artwork). Listing
+      // the routes here keeps Vite from re-running the optimizer the
+      // first time the user opens any upload surface.
+      'src/pages/Forum/Forum.tsx',
+      'src/pages/Register/components/PdfDropzone.tsx',
+      'src/pages/Register/Register.tsx',
+      'src/features/publication/researcher/ResearcherSubmissionForm.tsx',
+      'src/pages/Admin/Policies.tsx',
+      // PdfViewer is lazy-loaded but Vite needs to know it pulls in
+      // pdfjs-dist so the chunk ships on first navigation.
+      'src/components/PdfViewer/PdfViewer.tsx',
     ],
     // Keep these explicit so Vite does not auto-detect them.
     //
@@ -92,14 +129,23 @@ export default defineConfig({
       'react-dom/client',
       'react-router-dom',
       'zustand',
+      // Sub-path used by src/store/authSlice.ts — without this Vite
+      // discovers `zustand/middleware` at request time and triggers a
+      // full reload (see dev-out.log lines 1:27:49 PM).
+      'zustand/middleware',
       'axios',
       'react-hook-form',
       '@hookform/resolvers',
+      // Sub-path used by Login / ForgotPassword / ResetPassword pages.
+      // Without this Vite discovers `@hookform/resolvers/yup` at
+      // request time and triggers a full reload.
+      '@hookform/resolvers/yup',
       'yup',
-      'firebase/app',
-      'firebase/analytics',
-      'firebase/firestore',
-      'firebase/storage',
+      // Recharts is used by AdminDashboard (lazy route). Without this
+      // include Vite discovers `recharts` + `d3-*` only after the user
+      // navigates to /admin, costing ~50 s of optimizer time and a
+      // forced page reload (see dev-out.log line 1:28:41 PM).
+      'recharts',
     ],
   },
   resolve: {

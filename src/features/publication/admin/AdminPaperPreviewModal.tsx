@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FileText } from 'lucide-react';
 import shared from '../components/PublicationShared.module.css';
 import { paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -38,7 +39,7 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
   const reviewerName = publicReviewerName(paper);
   const fileHref = paper.fileUrl?.trim();
 
-  return (
+  return createPortal(
     <div className={adminStyles.previewModalBackdrop} role="dialog" aria-modal="true" aria-label={`Preview ${paper.title}`} onClick={onClose}>
       <div className={adminStyles.previewModal} onClick={(event) => event.stopPropagation()}>
         <header>
@@ -109,7 +110,7 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
           </p>
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 };
 

@@ -37,7 +37,7 @@ export interface PublicationInstitution {
 
 export interface PublicationReview {
   reviewerName: string;
-  recommendation: ReviewerRecommendation;
+  recommendation?: ReviewerRecommendation;
   privateComments: string;
   privateScores: Record<string, number>;
   privateNotes?: Record<string, string>;
@@ -54,6 +54,8 @@ export interface PublicationReview {
 }
 
 export interface PublicationPaper {
+  externalMetadataSource?: 'OpenAlex';
+  metadataWarnings?: string[];
   id: string;
   title: string;
   abstract: string;
@@ -61,10 +63,13 @@ export interface PublicationPaper {
   institutions: PublicationInstitution[];
   subFieldId?: number | null;
   authorId?: number | null;
+  submitterName?: string;
   doi?: string;
   openAlexId?: string;
   externalIdentifier?: string;
   publicationDate?: string;
+  sourceName?: string;
+  issnValue?: string;
   paperType: string;
   domain?: string;
   field?: string;
@@ -84,6 +89,7 @@ export interface PublicationPaper {
   adminNote?: string;
   researcherFeedback?: string;
   reviewRequestId?: number;
+  reviewRequestStatus?: string;
   reviewerId?: number;
   reviewDeadline?: string;
   assignmentCreatedAt?: string;

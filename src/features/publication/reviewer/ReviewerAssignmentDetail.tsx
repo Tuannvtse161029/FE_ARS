@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink, FileText, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, FileText, ClipboardCheck, AlertTriangle } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { publicationToast } from '../utils/publicationToast';
 import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
 import reviewer from './reviewer.module.css';
 import {
@@ -9,7 +11,6 @@ import {
   REVIEWER_RECOMMENDATIONS,
   buildEmptyEvaluationDraft,
   isReviewerActionable,
-  isReviewerSubmitted,
   isAwaitingReviewerResponse,
   type ReviewerEvaluationDraft,
   type ReviewerRecommendationValue,
@@ -59,7 +60,10 @@ import { Link } from 'react-router-dom';
  * REQUIRED FIELDS:
  *   - Each criterion score is required (defaulted to min).
  *   - Private review feedback for Admin is required (no empty submission).
- *   - Editorial recommendation is required (defaults to ACCEPT).
+ *   - Editorial recommendation is required (no default — the reviewer
+ *     must explicitly choose Accept / Revision / Reject before submitting;
+ *     an absent recommendation is rendered as "No recommendation submitted"
+ *     in every downstream view, never as Accept).
  *
  * I18N: All user-facing copy routes through `useT()` so the Reviewer
  * workspace reads correctly in en + vi.
@@ -67,7 +71,7 @@ import { Link } from 'react-router-dom';
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 const POLICY_VERSION = 'v1.0.0';
-const NOT_SUPPLIED = '—';
+const NOT_SUPPLIED = 'Not supplied';
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return NOT_SUPPLIED;
@@ -84,9 +88,11 @@ export const ReviewerAssignmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const t = useT();
+  const notSupplied = t('reviewer.detail.notSupplied', NOT_SUPPLIED);
   const [resolved, setResolved] = useState<ResolvedAssignment>({ status: 'missing' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const mutationPending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ReviewerEvaluationDraft>(buildEmptyEvaluationDraft);
   const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>({
@@ -104,6 +110,7 @@ export const ReviewerAssignmentDetail = () => {
    * protection.
    */
   const hasDraftContent = useMemo(() => {
+    if (draft.recommendation) return true;
     if (draft.privateComments.trim().length > 0) return true;
     for (const value of Object.values(draft.perCriterionNotes)) {
       if (value.trim().length > 0) return true;
@@ -116,13 +123,22 @@ export const ReviewerAssignmentDetail = () => {
 
   /**
    * requiredFieldsComplete — true when every required field is filled.
+   *
+   * Recommendation must be an explicit ACCEPT / REVISION_REQUIRED / REJECT
+   * value, not the empty placeholder — pre-2026-09 the form defaulted to
+   * ACCEPT, which caused every Admin editorial record to display
+   * "Recommendation: ACCEPT" before the reviewer had actually chosen
+   * anything. We now block submission until the reviewer picks a real
+   * value.
    */
   const requiredFieldsComplete = useMemo(() => {
     if (!draft.privateComments.trim()) return false;
+    if (!draft.recommendation) return false;
     for (const criterion of REVIEWER_CRITERIA) {
       const value = draft.scores[criterion.key];
       if (typeof value !== 'number' || !Number.isFinite(value)) return false;
       if (value < criterion.min || value > criterion.max) return false;
+      if (!draft.perCriterionNotes[criterion.key].trim()) return false;
     }
     return true;
   }, [draft]);
@@ -132,10 +148,9 @@ export const ReviewerAssignmentDetail = () => {
     setLoading(true);
     setResolved({ status: 'missing' });
     setError(null);
-    publicationAdapter.getReviewerAssignments()
-      .then((assignments) => {
+    publicationAdapter.getReviewerAssignmentById(id ?? '')
+      .then((found) => {
         if (cancelled) return;
-        const found = assignments.find((paper) => paper.id === id);
         setResolved(found ? { status: 'authorised', paper: found } : { status: 'unauthorised' });
       })
       .catch((caught) => {
@@ -150,13 +165,12 @@ export const ReviewerAssignmentDetail = () => {
   }, [id, t]);
 
   const paper = resolved.status === 'authorised' ? resolved.paper : undefined;
-  const assignedPaperId = paper?.id ?? null;
   const reviewRequestId = paper?.reviewRequestId;
   const awaitingResponse = Boolean(paper && isAwaitingReviewerResponse(paper.status));
-  const canReview = Boolean(paper && isReviewerActionable(paper.status));
-  const submitted = Boolean(paper && isReviewerSubmitted(paper.status));
-  const policyRequired = reviewRequestId != null;
-  const hasPolicyAcceptance = !policyRequired || Boolean(
+  const submitted = Boolean(paper?.reviewer?.recommendation);
+  const evaluationUnavailable = paper?.reviewRequestStatus?.toUpperCase() === 'COMPLETED' && !submitted;
+  const canReview = Boolean(paper && isReviewerActionable(paper.status) && !submitted && !evaluationUnavailable);
+  const hasPolicyAcceptance = reviewRequestId != null && Boolean(
     policyAccepted || hasAcceptedPolicySession(reviewRequestId, POLICY_VERSION),
   );
 
@@ -180,6 +194,10 @@ export const ReviewerAssignmentDetail = () => {
     setError(null);
     setPolicyAccepted(false);
     setConfirmSubmit(false);
+    setPolicyOpen(false);
+  }, [id]);
+
+  useEffect(() => {
     if (!paper) return;
 
     let cancelled = false;
@@ -196,7 +214,7 @@ export const ReviewerAssignmentDetail = () => {
     };
     void loadCriteria();
     return () => { cancelled = true; };
-  }, [assignedPaperId, paper]);
+  }, [paper]);
 
   useEffect(() => {
     if (canReview && reviewRequestId != null && !hasAcceptedPolicySession(reviewRequestId, POLICY_VERSION)) {
@@ -205,16 +223,30 @@ export const ReviewerAssignmentDetail = () => {
   }, [canReview, reviewRequestId]);
 
   const handleAssignmentResponse = async (accepted: boolean) => {
-    if (!paper) return;
+    if (!paper || reviewRequestId == null || mutationPending.current || !awaitingResponse) return;
+    if (accepted && !hasPolicyAcceptance) {
+      setPolicyOpen(true);
+      return;
+    }
+    mutationPending.current = true;
     setSaving(true);
     setError(null);
     try {
-      const updated = await publicationAdapter.respondToAssignment(paper.id, accepted);
+      const updated = await publicationAdapter.respondToAssignment(String(reviewRequestId), accepted);
       setResolved({ status: 'authorised', paper: updated });
+      publicationToast.success(
+        accepted
+          ? t('reviewer.detail.toast.assignmentAccepted', 'Assignment accepted.')
+          : t('reviewer.detail.toast.assignmentDeclined', 'Assignment declined.'),
+        accepted ? 'assignment-accepted' : 'assignment-declined',
+      );
       if (!accepted) navigate('/reviewer/assignments');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('reviewer.detail.final.errorTitle'));
+      const message = caught instanceof Error ? caught.message : t('reviewer.detail.final.errorTitle');
+      setError(message);
+      publicationToast.error(message, 'assignment-response-failed');
     } finally {
+      mutationPending.current = false;
       setSaving(false);
     }
   };
@@ -222,7 +254,6 @@ export const ReviewerAssignmentDetail = () => {
   const handlePolicyAccept = () => {
     setPolicyOpen(false);
     setPolicyAccepted(true);
-    if (awaitingResponse) void handleAssignmentResponse(true);
   };
 
   const handleScoreChange = (key: keyof ReviewerEvaluationDraft['scores'], value: number) => {
@@ -238,9 +269,11 @@ export const ReviewerAssignmentDetail = () => {
 
   const submitEvaluation = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
-    if (!paper) return;
+    if (!paper || reviewRequestId == null || mutationPending.current || !canReview || !hasPolicyAcceptance) return;
     if (!requiredFieldsComplete) {
-      setError(t('reviewer.detail.final.validation'));
+      const message = t('reviewer.detail.final.validation');
+      setError(message);
+      publicationToast.error(message, 'review-validation');
       return;
     }
     // Final confirmation step before the API call.
@@ -249,26 +282,37 @@ export const ReviewerAssignmentDetail = () => {
       return;
     }
     setConfirmSubmit(false);
+    mutationPending.current = true;
     setSaving(true);
     setError(null);
     try {
       const updated = await publicationAdapter.submitReview(
-        paper.id,
-        draft.recommendation,
+        String(reviewRequestId),
+        draft.recommendation as 'ACCEPT' | 'REVISION_REQUIRED' | 'REJECT',
         draft.privateComments.trim(),
         draft.scores,
         draft.perCriterionNotes,
         specializedCriteria,
       );
       setResolved({ status: 'authorised', paper: updated });
+      publicationToast.success(
+        t('reviewer.detail.toast.reviewSubmitted', 'Review submitted to Admin.'),
+        'review-submitted',
+      );
       const user = storage.getUser();
       if (user?.roleName === 'Admin' || user?.roles?.includes('Admin')) navigate('/admin/reviewer-assignments');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('reviewer.detail.final.errorTitle'));
+      const message = caught instanceof Error ? caught.message : t('reviewer.detail.final.errorTitle');
+      setError(message);
+      // DO NOT clear the draft — failed submissions preserve all entered
+      // content (scores, comments, recommendation) so the reviewer can
+      // retry without re-entering their work.
+      publicationToast.error(message, 'review-submit-failed');
     } finally {
+      mutationPending.current = false;
       setSaving(false);
     }
-  }, [paper, draft, specializedCriteria, confirmSubmit, requiredFieldsComplete, navigate, t]);
+  }, [paper, reviewRequestId, canReview, hasPolicyAcceptance, draft, specializedCriteria, confirmSubmit, requiredFieldsComplete, navigate, t]);
 
   const handleAcceptRef = useRef<() => void>(() => undefined);
   handleAcceptRef.current = () => setPolicyOpen(true);
@@ -299,7 +343,7 @@ export const ReviewerAssignmentDetail = () => {
       { label: t('reviewer.detail.metadata.doi'), value: paperToRender.doi && paperToRender.doi.trim() ? paperToRender.doi : NOT_SUPPLIED },
       { label: t('researcher.detail.reviewer.type'), value: paperToRender.reviewType ? reviewTypeLabel(paperToRender.reviewType) || NOT_SUPPLIED : NOT_SUPPLIED },
     ];
-    return <dl className={reviewer.metadataGrid}>{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+    return <dl className={reviewer.metadataGrid}>{items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value === NOT_SUPPLIED ? notSupplied : item.value}</dd></div>)}</dl>;
   };
 
   const renderPdf = () => {
@@ -356,10 +400,10 @@ export const ReviewerAssignmentDetail = () => {
               return (
                 <fieldset key={criterion.key} className={reviewer.criterion}>
                   <legend>
-                    {criterion.label}
+                    {t(criterion.label)}
                     <span className={reviewer.requiredMark} aria-hidden="true">*</span>
                   </legend>
-                  <p>{criterion.description}</p>
+                  <p>{t(criterion.description)}</p>
                   <div className={reviewer.criterionInputs}>
                     <label htmlFor={`score-${criterion.key}`}>
                       {t('reviewer.detail.criterion.score')}
@@ -383,7 +427,7 @@ export const ReviewerAssignmentDetail = () => {
                         value={draft.perCriterionNotes[criterion.key]}
                         onChange={(event) => handleNoteChange(criterion.key, event.target.value)}
                         placeholder={t('reviewer.detail.criterion.notesPlaceholder', undefined, {
-                          label: criterion.label.toLowerCase(),
+                          label: t(criterion.label).toLowerCase(),
                         })}
                         required
                       />
@@ -433,17 +477,28 @@ export const ReviewerAssignmentDetail = () => {
               <select
                 id="recommendation"
                 value={draft.recommendation}
+                aria-invalid={!draft.recommendation}
                 onChange={(event) => setDraft((current) => ({ ...current, recommendation: event.target.value as ReviewerRecommendationValue }))}
               >
-                {REVIEWER_RECOMMENDATIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.value === 'ACCEPT'
-                      ? t('reviewer.detail.final.recommendation.accept')
-                      : option.value === 'REVISION_REQUIRED'
-                        ? t('reviewer.detail.final.recommendation.revision')
-                        : t('reviewer.detail.final.recommendation.reject')}
-                  </option>
-                ))}
+                {REVIEWER_RECOMMENDATIONS.map((option) => {
+                  if (!option.value) {
+                    return (
+                      <option key="placeholder" value="" disabled>
+                        {t('reviewer.detail.final.recommendation.placeholder', 'Select recommendation')}
+                      </option>
+                    );
+                  }
+                  const label = option.value === 'ACCEPT'
+                    ? t('reviewer.detail.final.recommendation.accept')
+                    : option.value === 'REVISION_REQUIRED'
+                      ? t('reviewer.detail.final.recommendation.revision')
+                      : t('reviewer.detail.final.recommendation.reject');
+                  return (
+                    <option key={option.value} value={option.value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
               <span>{t('reviewer.detail.final.recommendationHint')}</span>
             </label>
@@ -488,7 +543,35 @@ export const ReviewerAssignmentDetail = () => {
           ? t('reviewer.detail.final.recommendation.revision')
           : t('reviewer.detail.final.recommendation.reject')
       : '';
-    return (
+    // Render through createPortal so the dialog centres in the visible
+    // viewport regardless of how far the page is scrolled, what
+    // transforms/overflows are on the ancestor chain, or which
+    // stacking context wins. The host element is <body>; if SSR /
+    // test environments omit `document` we fall back to inline rendering.
+    if (typeof document === 'undefined') {
+      return (
+        <div className={reviewer.confirmOverlay} role="dialog" aria-modal="true" aria-labelledby="confirm-submit-title">
+          <div className={reviewer.confirmCard} data-testid="confirm-submit-dialog">
+            <h2 id="confirm-submit-title">{t('reviewer.detail.final.confirmTitle')}</h2>
+            <p>{t('reviewer.detail.final.confirmBody')}</p>
+            <p className={reviewer.confirmSummary}>
+              {t('reviewer.detail.final.confirmSummary', undefined, {
+                recommendation: recommendationHuman,
+              })}
+            </p>
+            <div className={reviewer.confirmActions}>
+              <Button variant="outline" size="md" onClick={() => setConfirmSubmit(false)} disabled={saving}>
+                {t('reviewer.detail.final.cancel')}
+              </Button>
+              <Button variant="primary" size="md" onClick={() => void submitEvaluation()} disabled={saving}>
+                {saving ? t('reviewer.detail.final.submitting') : t('reviewer.detail.final.confirm')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return createPortal(
       <div className={reviewer.confirmOverlay} role="dialog" aria-modal="true" aria-labelledby="confirm-submit-title">
         <div className={reviewer.confirmCard} data-testid="confirm-submit-dialog">
           <h2 id="confirm-submit-title">{t('reviewer.detail.final.confirmTitle')}</h2>
@@ -507,11 +590,18 @@ export const ReviewerAssignmentDetail = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
-  if (loading || resolved.status === 'missing') {
+  // The shared modal overlay sits inside the section that may be scrolled
+  // into view; render it through a portal so viewport centering is
+  // independent of ancestor transforms, scroll position, or stacking
+  // contexts. We mount it once via a stable container; React re-uses the
+  // same DOM node across renders.
+
+  if (loading) {
     return (
       <section className={reviewer.page}>
         <PageHeader
@@ -601,14 +691,14 @@ export const ReviewerAssignmentDetail = () => {
       />
       {error && !canReview && <ErrorBanner tone="error" title={t('reviewer.detail.final.errorTitle')} message={error} />}
       <section className={reviewer.reviewGate} aria-label={t('reviewer.detail.evaluate.heading')}>
-        <div className={reviewer.gateIcon}><ShieldCheck size={22} aria-hidden="true" /></div>
+        <div className={reviewer.gateIcon}><ClipboardCheck size={22} aria-hidden="true" /></div>
         <div>
-          <h2>{hasPolicyAcceptance ? t('reviewer.detail.gate.unlocked') : t('reviewer.detail.gate.locked')}</h2>
-          <p>{hasPolicyAcceptance ? t('reviewer.detail.gate.unlockedDesc') : t('reviewer.detail.gate.lockedDesc')}</p>
+          <h2>{hasPolicyAcceptance ? t('reviewer.detail.policyAcknowledged', 'Responsibilities acknowledged') : t('reviewer.detail.gate.locked')}</h2>
+          <p>{hasPolicyAcceptance ? t('reviewer.detail.policyAcknowledgedHint', 'Acknowledgement does not accept the assignment. Use Accept assignment when ready.') : t('reviewer.detail.gate.lockedDesc')}</p>
         </div>
         {!hasPolicyAcceptance && (
           <Button variant="primary" size="md" disabled={saving} onClick={() => setPolicyOpen(true)}>
-            {awaitingResponse ? t('reviewer.detail.gate.readAccept') : t('reviewer.detail.gate.read')}
+            {t('reviewer.detail.policyRead', 'Read responsibilities')}
           </Button>
         )}
       </section>
@@ -620,19 +710,19 @@ export const ReviewerAssignmentDetail = () => {
           </section>
           <section className={reviewer.detailContext}>
             <h2 className={reviewer.detailHeading}>{t('reviewer.detail.context.abstract')}</h2>
-            <p className={reviewer.contextParagraph}>{paper.abstract}</p>
+            <p className={reviewer.contextParagraph}>{paper.abstract || t('reviewer.detail.notSupplied', 'Not supplied')}</p>
           </section>
           <section className={reviewer.detailContext}>
             <h2 className={reviewer.detailHeading}>{t('reviewer.detail.context.authorsInstitutions')}</h2>
             <p className={reviewer.contextParagraph}>
               <strong>{t('reviewer.detail.context.authors')}</strong>
               <br />
-              {paper.authors.map((author) => author.name).join(', ') || NOT_SUPPLIED}
+              {paper.authors.map((author) => author.name).join(', ') || notSupplied}
             </p>
             <p className={reviewer.contextParagraph}>
               <strong>{t('reviewer.detail.context.institutions')}</strong>
               <br />
-              {paper.institutions.map((institution) => institution.name).join(', ') || NOT_SUPPLIED}
+              {paper.institutions.map((institution) => institution.name).join(', ') || notSupplied}
             </p>
           </section>
         </div>
@@ -646,7 +736,7 @@ export const ReviewerAssignmentDetail = () => {
               <h2 className={reviewer.detailHeading}>{t('reviewer.detail.response.heading')}</h2>
               <p className={reviewer.evaluationHint}>{t('reviewer.detail.response.hint')}</p>
               <div className={reviewer.respondButtons}>
-                <Button variant="primary" size="md" disabled={saving} onClick={() => setPolicyOpen(true)}>
+                <Button variant="primary" size="md" disabled={saving} onClick={() => void handleAssignmentResponse(true)}>
                   {t('reviewer.detail.response.accept')}
                 </Button>
                 <Button variant="outline" size="md" disabled={saving} onClick={() => void handleAssignmentResponse(false)}>
@@ -663,6 +753,9 @@ export const ReviewerAssignmentDetail = () => {
                 {t('reviewer.detail.allAssignments')}
               </Button>
             </section>
+          )}
+          {evaluationUnavailable && (
+            <ErrorBanner tone="warning" title={t('reviewer.detail.evaluationUnavailable', 'Evaluation unavailable')} message={t('reviewer.detail.evaluationUnavailableHint', 'This assignment is marked completed, but its evaluation is unavailable. No recommendation can be shown.')} />
           )}
         </aside>
       </div>

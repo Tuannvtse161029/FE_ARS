@@ -65,10 +65,10 @@
   border-width: 1px;
 }
 
-/* ── Primary Variant (ARS Blue) ─────────────────────────── */
+/* ── Primary Variant (ARS Blue / Paper Day Ochre) ─────────────── */
 .button--primary {
   background-color: var(--action-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   border-color: var(--action-primary);
   box-shadow: 0 1px 2px var(--shadow-color);
 }
@@ -76,25 +76,37 @@
 .button--primary:hover:not(:disabled) {
   background-color: var(--action-primary-hover);
   border-color: var(--action-primary-hover);
+  /* Color stays the same on hover so the text-on-bg contrast ratio does
+     not regress. Pre-2026-09 this rule let `color` fall through to
+     inherit, which made the manuscript-button label unreadable on the
+     hover background. */
+  color: var(--button-primary-ink);
   box-shadow: var(--shadow-sm);
 }
 
+.button--primary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .button--primary:active:not(:disabled) {
-  background-color: var(--accent-ochre);
-  border-color: var(--accent-ochre);
+  background-color: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+  color: var(--button-primary-ink);
 }
 
 /* ── Secondary Variant (Reviewer Green) ────────────────── */
 .button--secondary {
-  background-color: var(--accent-sage);
-  color: var(--ink-on-paper);
-  border-color: var(--accent-sage);
+  background-color: var(--status-success-surface);
+  color: var(--status-success-text);
+  border-color: var(--status-success-text);
   box-shadow: 0 1px 2px var(--shadow-color);
 }
 
 .button--secondary:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--accent-sage) 82%, var(--ink-on-paper));
-  border-color: var(--accent-sage);
+  background-color: var(--status-success-surface);
+  color: var(--status-success-text);
+  border-color: var(--status-success-text);
 }
 
 .button--secondary:active:not(:disabled) {

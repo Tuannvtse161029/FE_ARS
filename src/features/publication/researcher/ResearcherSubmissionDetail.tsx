@@ -19,6 +19,7 @@ import { Button } from '../../../components/Button/Button';
 import { buildSafeResourceLink } from '../home/publicationLinks';
 import { formatDisplayDate } from '../../../utils/datetime';
 import { useT } from '../../../i18n/I18nContext';
+import LazyPdfViewer from '../../../components/PdfViewer/LazyPdfViewer';
 import styles from './researcher.module.css';
 
 // ResearcherSubmissionDetail — Researcher-only view of one manuscript
@@ -429,7 +430,17 @@ export const ResearcherSubmissionDetail = () => {
       <div className={styles.detailLayout}>
         <div className={styles.detailSection}>
           <h2 className={styles.detailHeading}>{t('reviewer.detail.metadata.title')}</h2>
+          {paper.abstract && <p>{paper.abstract}</p>}
           <dl className={styles.detailMeta}>
+            {paper.keywords.length > 0 && (
+              <div><dt>{t('researcher.form.field.keywords', 'Keywords')}</dt><dd>{paper.keywords.join(', ')}</dd></div>
+            )}
+            {paper.topics.length > 0 && (
+              <div><dt>{t('researcher.detail.detail.topics', 'Topics')}</dt><dd>{paper.topics.join(', ')}</dd></div>
+            )}
+            {paper.publicationDate && (
+              <div><dt>{t('researcher.form.field.publicationDate', 'Publication date')}</dt><dd>{formatDate(paper.publicationDate)}</dd></div>
+            )}
             <div>
               <dt>{t('researcher.detail.detail.version')}</dt>
               <dd>{paper.version != null ? `v${paper.version}` : NOT_SUPPLIED}</dd>
@@ -538,6 +549,12 @@ export const ResearcherSubmissionDetail = () => {
           </div>
         </div>
       </div>
+      {safeFileUrl && (
+        <section className={styles.detailSection} aria-label="Manuscript PDF">
+          <h2 className={styles.detailHeading}>{t('researcher.form.file.previewTitle', 'Preview PDF')}</h2>
+          <LazyPdfViewer url={safeFileUrl} />
+        </section>
+      )}
     </section>
   );
 };
