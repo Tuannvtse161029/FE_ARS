@@ -9,12 +9,13 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { getMock, postMock, putMock, deleteMock } = vi.hoisted(() => {
+const { getMock, postMock, putMock, deleteMock, patchMock } = vi.hoisted(() => {
   return {
     getMock: vi.fn(),
     postMock: vi.fn(),
     putMock: vi.fn(),
     deleteMock: vi.fn(),
+    patchMock: vi.fn(),
   };
 });
 
@@ -24,6 +25,7 @@ vi.mock('../../../src/services/axios', () => ({
     post: postMock,
     put: putMock,
     delete: deleteMock,
+    patch: patchMock,
   },
 }));
 
@@ -38,6 +40,7 @@ describe('Research-workflow strict DTO contract integration', () => {
     postMock.mockReset();
     putMock.mockReset();
     deleteMock.mockReset();
+    patchMock.mockReset();
   });
 
   describe('ResearchGroupService', () => {

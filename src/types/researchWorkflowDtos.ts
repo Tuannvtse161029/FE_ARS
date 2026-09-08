@@ -64,10 +64,12 @@ export interface ResearchGroupCreateRequest {
    */
   materialsUrl?: string | null;
   /**
-   * Whether the group is active. Defaults to `true` for newly created groups.
-   * The BE needs to add a `ResearchGroups.is_active` column to expose this.
+   * Whether the group is active. Defaults to `true` for newly created
+   * groups. Persisted on the BE `ResearchGroups.is_active` column (added
+   * via gap ticket BE-RESEARCH-GROUP-ACTIVE-01). Nullable per Swagger
+   * `ResearchGroupCreateRequest`; the FE may omit it.
    */
-  isActive?: boolean;
+  isActive?: boolean | null;
 }
 
 export interface ResearchGroupUpdateRequest {
@@ -85,10 +87,14 @@ export interface ResearchGroupUpdateRequest {
   materialsUrl?: string | null;
   /**
    * Whether the group is active. Toggle this via the UI to archive or
-   * re-activate a group. The BE needs to add a `ResearchGroups.is_active`
-   * column to support this.
+   * re-activate a group. Persisted on the BE `ResearchGroups.is_active`
+   * column (added via gap ticket BE-RESEARCH-GROUP-ACTIVE-01). Omitting the
+   * field preserves the existing value on the BE side; prefer the dedicated
+   * `PATCH /api/ResearchGroup/{id}/active` endpoint (see
+   * `researchGroupService.setActive`) for the toggle flow so concurrent
+   * edits don't fight each other.
    */
-  isActive?: boolean;
+  isActive?: boolean | null;
 }
 
 // ---------- ResearchTopic ----------

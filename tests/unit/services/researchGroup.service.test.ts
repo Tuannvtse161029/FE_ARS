@@ -6,12 +6,13 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { getMock, postMock, putMock, deleteMock } = vi.hoisted(() => {
+const { getMock, postMock, putMock, deleteMock, patchMock } = vi.hoisted(() => {
   return {
     getMock: vi.fn(),
     postMock: vi.fn(),
     putMock: vi.fn(),
     deleteMock: vi.fn(),
+    patchMock: vi.fn(),
   };
 });
 
@@ -21,6 +22,7 @@ vi.mock('../../../src/services/axios', () => ({
     post: postMock,
     put: putMock,
     delete: deleteMock,
+    patch: patchMock,
   },
 }));
 
@@ -36,6 +38,7 @@ describe('researchGroupService', () => {
     postMock.mockReset();
     putMock.mockReset();
     deleteMock.mockReset();
+    patchMock.mockReset();
   });
 
   describe('getAll', () => {
@@ -84,6 +87,41 @@ describe('researchGroupService', () => {
       deleteMock.mockResolvedValueOnce({});
       await researchGroupService.delete(8);
       expect(deleteMock).toHaveBeenCalledWith('/api/ResearchGroup/8');
+    });
+  });
+
+  describe('setActive', () => {
+    it('PATCHes /api/ResearchGroup/:id/active with just { isActive }', async () => {
+      patchMock.mockResolvedValueOnce({
+        data: { researchGroupId: 8, name: 'Group', isActive: false },
+      });
+      const updated = await researchGroupService.setActive(8, false);
+      expect(patchMock).toHaveBeenCalledWith('/api/ResearchGroup/8/active', {
+        isActive: false,
+      });
+      // Response should be normalized so consumers can rely on `.id`.
+      expect(updated.id).toBe(8);
+      expect(updated.isActive).toBe(false);
+    });
+
+    it('re-activates by passing isActive=true', async () => {
+      patchMock.mockResolvedValueOnce({
+        data: { researchGroupId: 42, isActive: true },
+      });
+      const updated = await researchGroupService.setActive(42, true);
+      expect(patchMock).toHaveBeenCalledWith('/api/ResearchGroup/42/active', {
+        isActive: true,
+      });
+      expect(updated.isActive).toBe(true);
+    });
+
+    it('propagates BE rejection (e.g. 403 cross-lecturer)', async () => {
+      patchMock.mockRejectedValueOnce(
+        new Error('Request failed with status code 403'),
+      );
+      await expect(researchGroupService.setActive(8, false)).rejects.toThrow(
+        /403/,
+      );
     });
   });
 

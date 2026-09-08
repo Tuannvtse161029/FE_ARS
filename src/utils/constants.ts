@@ -272,6 +272,11 @@ export const API_ENDPOINTS = {
       DELETE: (id: number) => `/api/ResearchGroup/${id}`,
       MY_GROUPS: '/api/ResearchGroup/my-groups',
       INVITE: (id: number) => `/api/ResearchGroup/${id}/invite`,
+      // PATCH /api/ResearchGroup/{id}/active — BE ships a dedicated toggle
+      // endpoint (gap ticket BE-RESEARCH-GROUP-ACTIVE-01) that flips the
+      // `is_active` column without forcing the caller to PUT the full group
+      // payload. Returns the updated ResearchGroupResponse.
+      TOGGLE_ACTIVE: (id: number) => `/api/ResearchGroup/${id}/active`,
     },
     GROUP_MEMBER: {
       GET_ALL: '/api/GroupMember',

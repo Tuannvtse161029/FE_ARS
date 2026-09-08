@@ -28,7 +28,9 @@ export interface ResearchGroup {
   materialsUrl?: string | null;
   /**
    * Whether this group is active (visible/enabled) or inactive (archived/hidden).
-   * FE-added field pending BE column addition (gap ticket §E.6).
+   * Always returned by the BE on `ResearchGroups.is_active` (gap ticket
+   * BE-RESEARCH-GROUP-ACTIVE-01). Nullable per Swagger only on the request
+   * bodies — the response object always carries a concrete boolean.
    */
   isActive?: boolean | null;
   createdAt?: string;
@@ -118,9 +120,11 @@ export const researchGroupService = {
   /**
    * Toggle the active status of a research group.
    *
-   * Calls PUT /api/ResearchGroup/{id} with the same payload as the current
-   * group but with `isActive` flipped. The BE needs to add a
-   * `ResearchGroups.is_active` column to persist this.
+   * Calls `PATCH /api/ResearchGroup/{id}/active` with just `{ isActive }`.
+   * The BE ships this dedicated toggle endpoint (gap ticket
+   * BE-RESEARCH-GROUP-ACTIVE-01) to avoid the GET-then-PUT dance and to
+   * sidestep the risk of partial-update validation failures on the broader
+   * PUT endpoint.
    *
    * @param groupId    The group to toggle.
    * @param isActive   The desired `isActive` value to set.
@@ -130,18 +134,11 @@ export const researchGroupService = {
     groupId: number,
     isActive: boolean,
   ): Promise<ResearchGroup> => {
-    const existing = await researchGroupService.getById(groupId);
-    const updated = await researchGroupService.update(groupId, {
-      lecturerId: existing?.lecturerId ?? null,
-      topicId: existing?.topicId ?? null,
-      name: existing?.name ?? null,
-      description: existing?.description ?? null,
-      deadline: existing?.deadline ?? null,
-      assignedAt: existing?.assignedAt ?? null,
-      materialsUrl: existing?.materialsUrl ?? null,
-      isActive,
-    });
-    return updated;
+    const response = await api.patch<ResearchGroup>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_GROUP.TOGGLE_ACTIVE(groupId),
+      { isActive },
+    );
+    return normalizeResearchGroup(response.data);
   },
 };
 
@@ -211,8 +208,11 @@ export const assignTopicToGroups = async (
         // AssignTopicModal UI can later pass an explicit override when the
         // lecturer picks a fresh material for the group.
         materialsUrl: existing?.materialsUrl ?? null,
-        // Preserve the existing isActive flag during topic reassignment.
-        isActive: existing?.isActive ?? true,
+        // Intentionally OMIT `isActive` — the BE preserves the existing
+        // value when the field is absent from the PUT body (gap ticket
+        // BE-RESEARCH-GROUP-ACTIVE-01, §1 "Behaviour"). Echoing it back
+        // would risk a stale snapshot overwriting the lecturer's latest
+        // toggle if two tabs raced.
       };
       const updated = await researchGroupService.update(groupId, payload);
       return updated;

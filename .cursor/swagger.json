@@ -1,4 +1,4 @@
-﻿{
+{
   "openapi": "3.0.1",
   "info": {
     "title": "ARSPlatform API",
@@ -4003,6 +4003,120 @@
         }
       }
     },
+    "/api/Lecturer/roster": {
+      "get": {
+        "tags": [
+          "Lecturer"
+        ],
+        "summary": "Lấy danh sách giảng viên đang hoạt động (loại trừ tài khoản hiện tại)",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Lecturer": {
+      "get": {
+        "tags": [
+          "Lecturer"
+        ],
+        "summary": "Lấy danh sách giảng viên đang hoạt động (loại trừ tài khoản hiện tại)",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/MajorField": {
       "get": {
         "tags": [
@@ -4580,15 +4694,25 @@
         "tags": [
           "Medal"
         ],
-        "summary": "Lấy danh sách các huy hiệu đã mở khóa công khai của một người dùng bất kỳ (dùng cho Profile và Forum).",
+        "summary": "Lấy danh sách huy hiệu của người dùng. Mặc định trả về huy hiệu đã mở khóa. Nếu includeLocked=true, trả về toàn bộ tiến trình huy hiệu (yêu cầu quyền Admin, chính chủ, hoặc Giảng viên hướng dẫn).",
         "parameters": [
           {
             "name": "userId",
             "in": "path",
+            "description": "ID của người dùng cần lấy danh sách huy hiệu.",
             "required": true,
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "includeLocked",
+            "in": "query",
+            "description": "Khi true, trả về cả huy hiệu đã khóa và đang tích lũy.",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -4618,6 +4742,493 @@
                   "items": {
                     "$ref": "#/components/schemas/UserMedalResponse"
                   }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Medal/grant": {
+      "post": {
+        "tags": [
+          "Medal"
+        ],
+        "summary": "Admin cấp hoặc cập nhật tiến trình huy hiệu cho người dùng theo cách thủ công. Idempotent per (userId, medalCode).",
+        "requestBody": {
+          "description": "Thông tin cấp huy hiệu (userId, medalCode, forceUnlocked, awardedReason).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalGrantRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalGrantRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalGrantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMedalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Medal/grant/{userMedalId}": {
+      "delete": {
+        "tags": [
+          "Medal"
+        ],
+        "summary": "Admin thu hồi một huy hiệu đã được admin cấp trước đó. Idempotent (gọi lại vẫn trả về 204).",
+        "parameters": [
+          {
+            "name": "userMedalId",
+            "in": "path",
+            "description": "ID bản ghi UserMedal do admin cấp cần thu hồi.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Medal/dev/grant-all-by-role": {
+      "post": {
+        "tags": [
+          "Medal"
+        ],
+        "summary": "[Dev/Staging Helper] Cấp toàn bộ huy hiệu phù hợp với vai trò của người dùng trong một transaction duy nhất. Bị chặn trên môi trường Production (trả về 404).",
+        "requestBody": {
+          "description": "Tham số cấp toàn bộ huy hiệu theo vai trò (userId, includePlatinum, tierFilter, awardedReason).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalDevGrantAllRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalDevGrantAllRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedalDevGrantAllRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevGrantAllResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevGrantAllResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevGrantAllResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Medal/dev/revoke-all/{userId}": {
+      "delete": {
+        "tags": [
+          "Medal"
+        ],
+        "summary": "[Dev/Staging Helper] Thu hồi toàn bộ huy hiệu do admin cấp của một người dùng trong một transaction. Bị chặn trên môi trường Production (trả về 404).",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "ID người dùng cần thu hồi toàn bộ huy hiệu admin cấp.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevRevokeAllResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevRevokeAllResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedalDevRevokeAllResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -7121,6 +7732,66 @@
           }
         }
       },
+      "put": {
+        "tags": [
+          "PremiumPackage"
+        ],
+        "summary": "Cập nhật thông tin gói Premium",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID gói Premium",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Dữ liệu cập nhật",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumPackageUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumPackageUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumPackageUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PremiumPackageResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PremiumPackageResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PremiumPackageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "PremiumPackage"
@@ -7936,7 +8607,142 @@
         }
       }
     },
+    "/api/ViolationReport": {
+      "get": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Lấy toàn bộ danh sách báo cáo vi phạm / tố cáo nội dung",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Gửi báo cáo vi phạm / tố cáo nội dung mới",
+        "requestBody": {
+          "description": "Thông tin báo cáo vi phạm",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Report/paged": {
+      "get": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER , TRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST LÊN DANH SÁCH CÓ PHÂN TRANG",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ViolationReport/paged": {
       "get": {
         "tags": [
           "Report"
@@ -8105,6 +8911,367 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ViolationReport/{id}": {
+      "get": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Lấy chi tiết báo cáo vi phạm theo ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID báo cáo vi phạm",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Cập nhật trạng thái / thông tin xử lý báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID báo cáo cần cập nhật",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Dữ liệu cập nhật",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Xóa một báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID báo cáo cần xóa",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Report/{id}/resolve": {
+      "post": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Giải quyết báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Giải quyết báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ViolationReport/{id}/resolve": {
+      "post": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Giải quyết báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Report"
+        ],
+        "summary": "Giải quyết báo cáo vi phạm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -8466,6 +9633,67 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ResearchGroup/{id}/active": {
+      "patch": {
+        "tags": [
+          "ResearchGroup"
+        ],
+        "summary": "Bật/tắt trạng thái active của nhóm nghiên cứu",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID nhóm nghiên cứu",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleActiveRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleActiveRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleActiveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchGroupResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchGroupResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchGroupResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -9273,6 +10501,134 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Gửi yêu cầu xin cấp thêm vai trò mới",
+        "requestBody": {
+          "description": "Thông tin yêu cầu thêm vai trò",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/RoleRequest/paged": {
@@ -9280,7 +10636,7 @@
         "tags": [
           "RoleRequest"
         ],
-        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER , TRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST LÊN DANH SÁCH CÓ PHÂN TRANG",
+        "summary": "Lấy danh sách yêu cầu cấp quyền có phân trang dành cho Admin",
         "parameters": [
           {
             "name": "PageNumber",
@@ -9362,8 +10718,860 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/additional-role": {
+      "post": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Gửi yêu cầu xin cấp thêm vai trò mới",
+        "requestBody": {
+          "description": "Thông tin yêu cầu thêm vai trò",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdditionalRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/my-pending": {
+      "get": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Lấy yêu cầu cấp vai trò đang ở trạng thái PENDING của người dùng hiện tại",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "ID người dùng (chỉ Admin mới có thể xem của người khác)",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/user/{userId}/pending": {
+      "get": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Lấy yêu cầu cấp vai trò đang ở trạng thái PENDING của người dùng hiện tại",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "ID người dùng (chỉ Admin mới có thể xem của người khác)",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/{requestId}": {
+      "delete": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Hủy yêu cầu cấp vai trò đang ở trạng thái PENDING",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "description": "ID yêu cầu cấp vai trò",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/{requestId}/cancel": {
+      "post": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Hủy yêu cầu cấp vai trò đang ở trạng thái PENDING",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "description": "ID yêu cầu cấp vai trò",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/{requestId}/review": {
+      "put": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Admin duyệt hoặc từ chối yêu cầu cấp vai trò",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "description": "ID yêu cầu cấp vai trò",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Quyết định phê duyệt (status = ACCEPTED hoặc REJECTED)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Admin duyệt hoặc từ chối yêu cầu cấp vai trò",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "description": "ID yêu cầu cấp vai trò",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Quyết định phê duyệt (status = ACCEPTED hoặc REJECTED)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9446,6 +11654,26 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9568,6 +11796,168 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RoleRequest/{id}/reject": {
+      "post": {
+        "tags": [
+          "RoleRequest"
+        ],
+        "summary": "Từ chối yêu cầu cấp vai trò người dùng",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID yêu cầu cấp vai trò",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Lý do từ chối",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleRequestDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10029,7 +12419,7 @@
         "tags": [
           "Seminar"
         ],
-        "summary": "Nộp form đánh giá / feedback cho buổi Seminar",
+        "summary": "Nộp form đánh giá / feedback động cho buổi Seminar",
         "parameters": [
           {
             "name": "id",
@@ -10043,22 +12433,222 @@
           }
         ],
         "requestBody": {
-          "description": "Nội dung đánh giá",
+          "description": "Nội dung đánh giá động (hoặc cấu trúc feedback cũ)",
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
+              "schema": { }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/Seminar/{id}/feedback-form": {
+      "put": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Cấu hình danh sách câu hỏi khảo sát động cho buổi Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Payload chứa câu hỏi (JSON string, object, hoặc array)",
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Cấu hình danh sách câu hỏi khảo sát động cho buổi Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Payload chứa câu hỏi (JSON string, object, hoặc array)",
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Lấy danh sách câu hỏi khảo sát động của buổi Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackFormResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Seminar/{id}/feedback-answers": {
+      "post": {
+        "tags": [
+          "Seminar"
+        ],
+        "summary": "Nộp form đánh giá / feedback động cho buổi Seminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Nội dung đánh giá động (hoặc cấu trúc feedback cũ)",
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
             }
           }
         },
@@ -10510,22 +13100,16 @@
           }
         ],
         "requestBody": {
-          "description": "Nội dung đánh giá",
+          "description": "Nội dung đánh giá động hoặc cấu trúc cũ",
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             }
           }
         },
@@ -10572,22 +13156,72 @@
           }
         ],
         "requestBody": {
-          "description": "Nội dung đánh giá",
+          "description": "Nội dung đánh giá động hoặc cấu trúc cũ",
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
-              }
+              "schema": { }
             },
             "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SeminarFeedbackRequest"
+              "schema": { }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeminarFeedbackResponse"
+                }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/SeminarParticipant/{seminarId}/feedback-answers": {
+      "post": {
+        "tags": [
+          "SeminarParticipant"
+        ],
+        "summary": "Nộp form đánh giá / feedback cho buổi Seminar theo ID Seminar",
+        "parameters": [
+          {
+            "name": "seminarId",
+            "in": "path",
+            "description": "ID buổi Seminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Nội dung đánh giá động hoặc cấu trúc cũ",
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
             }
           }
         },
@@ -10802,7 +13436,39 @@
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "Lấy toàn bộ danh sách tài liệu chia sẻ",
+        "summary": "Lấy danh sách tài liệu chia sẻ của người dùng hiện tại (bao gồm tài liệu tôi gửi hoặc nhận).",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeExpired",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "learningMaterialId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -10839,9 +13505,126 @@
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "Chia sẻ tài liệu mới",
+        "summary": "Tạo lời mời chia sẻ tài liệu học tập với đồng nghiệp (thời hạn 30 ngày)",
         "requestBody": {
-          "description": "Thông tin tài liệu chia sẻ",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/LearningMaterialShare": {
+      "get": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Lấy danh sách tài liệu chia sẻ của người dùng hiện tại (bao gồm tài liệu tôi gửi hoặc nhận).",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeExpired",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "learningMaterialId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SharedMaterialResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SharedMaterialResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SharedMaterialResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Tạo lời mời chia sẻ tài liệu học tập với đồng nghiệp (thời hạn 30 ngày)",
+        "requestBody": {
           "content": {
             "application/json": {
               "schema": {
@@ -10889,7 +13672,55 @@
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER , TRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST LÊN DANH SÁCH CÓ PHÂN TRANG",
+        "summary": "Phân trang danh sách chia sẻ",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/LearningMaterialShare/paged": {
+      "get": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Phân trang danh sách chia sẻ",
         "parameters": [
           {
             "name": "PageNumber",
@@ -10937,12 +13768,11 @@
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "Lấy chi tiết tài liệu chia sẻ theo ID",
+        "summary": "Lấy chi tiết bản ghi chia sẻ",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "ID bản ghi chia sẻ",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10973,16 +13803,15 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "Cập nhật thông tin chia sẻ tài liệu",
+        "summary": "Phản hồi lời mời chia sẻ (Accept / Decline bởi người nhận) hoặc chỉnh sửa",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "ID bản ghi chia sẻ",
             "required": true,
             "schema": {
               "type": "integer",
@@ -10991,7 +13820,64 @@
           }
         ],
         "requestBody": {
-          "description": "Dữ liệu cập nhật",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Phản hồi lời mời chia sẻ (Accept / Decline bởi người nhận) hoặc chỉnh sửa",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
           "content": {
             "application/json": {
               "schema": {
@@ -11037,12 +13923,190 @@
         "tags": [
           "SharedMaterial"
         ],
-        "summary": "Xóa một tài liệu chia sẻ",
+        "summary": "Thu hồi hoặc xóa lời mời chia sẻ tài liệu (Dành cho người gửi hoặc Admin)",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "ID bản ghi chia sẻ",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/LearningMaterialShare/{id}": {
+      "get": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Lấy chi tiết bản ghi chia sẻ",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Phản hồi lời mời chia sẻ (Accept / Decline bởi người nhận) hoặc chỉnh sửa",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Phản hồi lời mời chia sẻ (Accept / Decline bởi người nhận) hoặc chỉnh sửa",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedMaterialUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedMaterialResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SharedMaterial"
+        ],
+        "summary": "Thu hồi hoặc xóa lời mời chia sẻ tài liệu (Dành cho người gửi hoặc Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
@@ -11622,7 +14686,7 @@
         "tags": [
           "User"
         ],
-        "summary": "Lấy danh sách người dùng phân trang (Dành cho Admin)",
+        "summary": "Lấy danh sách người dùng phân trang (Admin hoặc người dùng tìm kiếm đồng nghiệp)",
         "parameters": [
           {
             "name": "PageNumber",
@@ -11638,6 +14702,86 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Lọc theo vai trò (Lecturer, Researcher, v.v.)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "description": "Lọc theo trạng thái kích hoạt",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Account": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lấy danh sách người dùng phân trang (Admin hoặc người dùng tìm kiếm đồng nghiệp)",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Lọc theo vai trò (Lecturer, Researcher, v.v.)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "description": "Lọc theo trạng thái kích hoạt",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -11670,7 +14814,7 @@
         "tags": [
           "User"
         ],
-        "summary": "LẤY DANH SÁCH THEO (ID) CỦA TỪNG CONTROLLER , TRUYỀN VÀO PAGESIZE VÀ PAGENUMBER LÀ SẼ LIST LÊN DANH SÁCH CÓ PHÂN TRANG",
+        "summary": "Lấy danh sách người dùng có phân trang",
         "parameters": [
           {
             "name": "PageNumber",
@@ -11686,6 +14830,20 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -11706,6 +14864,146 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Account/paged": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lấy danh sách người dùng có phân trang",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponsePagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/User/lecturers": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lấy danh sách giảng viên để chia sẻ tài liệu",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Account/lecturers": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lấy danh sách giảng viên để chia sẻ tài liệu",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
                 }
               }
             }
@@ -11834,6 +15132,295 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Account/{id}": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lấy chi tiết thông tin người dùng theo ID (Công khai cho người dùng đã đăng nhập)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID người dùng",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Cập nhật thông tin người dùng (Họ tên, ảnh đại diện, trạng thái)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID người dùng cần cập nhật",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Dữ liệu cập nhật",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Xóa tài khoản người dùng khỏi hệ thống (Chỉ dành cho Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID người dùng cần xóa",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/User/{id}/suspend": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Khóa tài khoản người dùng (Dành cho Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Account/{id}/suspend": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Khóa tài khoản người dùng (Dành cho Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/User/{id}/unsuspend": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Mở khóa tài khoản người dùng (Dành cho Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Account/{id}/unsuspend": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Mở khóa tài khoản người dùng (Dành cho Admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -13352,6 +16939,53 @@
             "minLength": 1,
             "type": "string",
             "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateAdditionalRoleRequest": {
+        "required": [
+          "proofDocumentUrl",
+          "requestedRole"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "requestedRole": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "requestType": {
+            "type": "string",
+            "nullable": true
+          },
+          "affiliation": {
+            "type": "string",
+            "nullable": true
+          },
+          "department": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "proofDocumentUrl": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "orcidId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14941,8 +18575,6 @@
       },
       "MedalCreateRequest": {
         "required": [
-          "criteriaMetric",
-          "imageUrl",
           "tier",
           "title"
         ],
@@ -14988,16 +18620,14 @@
             "format": "int32"
           },
           "imageUrl": {
-            "minLength": 1,
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "criteriaMetric": {
-            "minLength": 1,
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "criteriaThreshold": {
-            "maximum": 2147483647,
-            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },
@@ -15007,6 +18637,123 @@
           },
           "isActive": {
             "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedalDevGrantAllRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "includePlatinum": {
+            "type": "boolean"
+          },
+          "tierFilter": {
+            "type": "string",
+            "nullable": true
+          },
+          "awardedReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedalDevGrantAllResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "awardedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedalDevGrantRow"
+            },
+            "nullable": true
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedalDevGrantRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "medalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "isUnlocked": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedalDevRevokeAllResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "revokedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedalGrantRequest": {
+        "required": [
+          "medalCode",
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "medalCode": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "forceUnlocked": {
+            "type": "boolean"
+          },
+          "awardedReason": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -18178,6 +21925,10 @@
           "materialsUrl": {
             "type": "string",
             "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -18286,6 +22037,9 @@
             "type": "integer",
             "format": "int32"
           },
+          "isActive": {
+            "type": "boolean"
+          },
           "members": {
             "type": "array",
             "items": {
@@ -18367,6 +22121,10 @@
           },
           "materialsUrl": {
             "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -18852,6 +22610,10 @@
             },
             "nullable": true
           },
+          "requestedRole": {
+            "type": "string",
+            "nullable": true
+          },
           "orcidId": {
             "type": "string",
             "nullable": true
@@ -18877,11 +22639,20 @@
             "format": "date-time",
             "nullable": true
           },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "nullable": true
           },
           "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
             "type": "string",
             "nullable": true
           }
@@ -18922,6 +22693,24 @@
           "hasNext": {
             "type": "boolean",
             "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoleRequestReviewRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "adminNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -19072,6 +22861,33 @@
         },
         "additionalProperties": false
       },
+      "SeminarFeedbackAnswerDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "rating": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SeminarFeedbackContentRequest": {
         "type": "object",
         "properties": {
@@ -19134,18 +22950,56 @@
         },
         "additionalProperties": false
       },
-      "SeminarFeedbackRequest": {
+      "SeminarFeedbackFormResponse": {
         "type": "object",
         "properties": {
-          "feedback": {
-            "$ref": "#/components/schemas/SeminarFeedbackContentRequest"
+          "seminarId": {
+            "type": "integer",
+            "format": "int32"
           },
-          "participantEvaluation": {
+          "feedback": {
             "type": "string",
             "nullable": true
           },
-          "invitationStatus": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeminarFeedbackQuestionDto"
+            },
+            "nullable": true
+          },
+          "message": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SeminarFeedbackQuestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "questionText": {
+            "type": "string",
+            "nullable": true
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "maxStar": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -19165,6 +23019,17 @@
           "userId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "feedbackJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeminarFeedbackAnswerDto"
+            },
             "nullable": true
           },
           "feedback": {
@@ -19358,6 +23223,10 @@
             "nullable": true
           },
           "invitationStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "feedbackJson": {
             "type": "string",
             "nullable": true
           },
@@ -19679,6 +23548,11 @@
             "format": "int32",
             "nullable": true
           },
+          "learningMaterialId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "paperId": {
             "type": "integer",
             "format": "int32",
@@ -19690,6 +23564,11 @@
             "nullable": true
           },
           "sharedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -19708,17 +23587,63 @@
             "type": "integer",
             "format": "int32"
           },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "direction": {
+            "type": "string",
+            "nullable": true
+          },
           "lecturerId": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
-          "paperId": {
+          "lecturerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sharedWithColleagueId": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
-          "sharedWithColleagueId": {
+          "sharedWithName": {
+            "type": "string",
+            "nullable": true
+          },
+          "learningMaterialId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "learningMaterialTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "learningMaterialUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "paperId": {
             "type": "integer",
             "format": "int32",
             "nullable": true
@@ -19728,8 +23653,42 @@
             "format": "date-time",
             "nullable": true
           },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "effectiveStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "canRevoke": {
+            "type": "boolean"
+          },
+          "canRespond": {
+            "type": "boolean"
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -19781,6 +23740,11 @@
             "format": "int32",
             "nullable": true
           },
+          "learningMaterialId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "paperId": {
             "type": "integer",
             "format": "int32",
@@ -19792,6 +23756,16 @@
             "nullable": true
           },
           "sharedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "respondedAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -20057,6 +24031,15 @@
         },
         "additionalProperties": false
       },
+      "ToggleActiveRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "TopicMilestonesCreateRequest": {
         "type": "object",
         "properties": {
@@ -20287,12 +24270,33 @@
       "UserMedalResponse": {
         "type": "object",
         "properties": {
-          "medal": {
-            "$ref": "#/components/schemas/MedalSummaryDto"
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "medalId": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
           },
           "currentProgress": {
             "type": "integer",
             "format": "int32"
+          },
+          "criteriaThreshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "criteriaUnit": {
+            "type": "string",
+            "nullable": true
           },
           "isUnlocked": {
             "type": "boolean"
@@ -20305,6 +24309,22 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "awardedByAdminId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "awardedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "medal": {
+            "$ref": "#/components/schemas/MedalSummaryDto"
           }
         },
         "additionalProperties": false
@@ -20381,6 +24401,13 @@
           },
           "roleName": {
             "type": "string",
+            "nullable": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -20656,14 +24683,11 @@
         "additionalProperties": false
       },
       "UserUpdateRequest": {
-        "required": [
-          "fullName"
-        ],
         "type": "object",
         "properties": {
           "fullName": {
-            "minLength": 1,
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "avatarUrl": {
             "type": "string",
