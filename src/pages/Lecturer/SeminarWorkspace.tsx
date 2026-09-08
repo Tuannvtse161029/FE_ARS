@@ -18,6 +18,7 @@ import {
   Users,
   Sliders,
   Sparkles,
+  UserPlus,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { fieldService } from '../../services/field.service';
@@ -48,6 +49,7 @@ import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackMo
 import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
 import { SeminarFeedbackPanel } from '../../components/seminar/SeminarFeedbackPanel';
 import { GoogleMeetCapacityMeter } from '../../components/seminar/GoogleMeetCapacityMeter';
+import { InviteParticipantsModal } from '../../components/seminar/InviteParticipantsModal';
 import { QuestionEditorCard } from '../../components/seminar/QuestionEditorCard';
 import { SeminarFeedbackSetupModal } from '../../components/seminar/SeminarFeedbackSetupModal';
 import type { FeedbackQuestion } from '../../types/seminarFeedback';
@@ -111,6 +113,10 @@ export const SeminarWorkspace = () => {
     useState<SeminarCard | null>(null);
   const [isAttendeeFeedbackPreview, setIsAttendeeFeedbackPreview] =
     useState(false);
+
+  // Invite Participants modal
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteSeminar, setInviteSeminar] = useState<SeminarCard | null>(null);
 
   // Create modal form state
   const [seminarName, setSeminarName] = useState('');
@@ -938,15 +944,13 @@ export const SeminarWorkspace = () => {
                               type="button"
                               className={styles.actionBtnOutline}
                               onClick={() => {
-                                navigator.clipboard.writeText(
-                                  sem.onlineLink ?? '',
-                                );
-                                announce('Invite link copied.');
+                                setInviteSeminar(sem);
+                                setShowInviteModal(true);
                               }}
                               disabled={!isValidMeetLink(sem.onlineLink)}
                             >
-                              <Mail size={14} aria-hidden />
-                              Send Invite Link
+                              <UserPlus size={14} aria-hidden />
+                              {copy('Invite Participants', 'Mời Người Tham Dự')}
                             </button>
                           )}
                           <button
@@ -1278,7 +1282,7 @@ export const SeminarWorkspace = () => {
                                   <span className={styles.suggestedName}>
                                     {inv.fullName}
                                   </span>
-                                  {inv.role && (
+                                  {inv.role && inv.role.trim().toLowerCase() !== 'scholar' && (
                                     <span
                                       className={`${styles.inviteeRoleBadge} ${getRoleClass(
                                         inv.role,
@@ -1664,6 +1668,71 @@ export const SeminarWorkspace = () => {
                 'Feedback questions saved successfully.',
                 'Đã lưu câu hỏi đánh giá thành công.',
               ),
+            );
+          }}
+        />
+      )}
+
+      {/* INVITE PARTICIPANTS MODAL */}
+      {showInviteModal && inviteSeminar && (
+        <InviteParticipantsModal
+          seminarId={inviteSeminar.seminarId}
+          seminarTitle={inviteSeminar.title}
+          subFieldId={inviteSeminar.subFieldId}
+          majorFieldId={
+            inviteSeminar.subFieldId
+              ? (() => {
+                  // Derive majorFieldId from the subFieldId using the already-loaded
+                  // majorFields list. The BE returns subFieldId on the Seminar, but
+                  // not majorFieldId. We look it up here so the modal can group
+                  // users by the seminar's major field.
+                  const sub = majorFields
+                    .flatMap((m) => m.subFields ?? [])
+                    .find((s) => s.id === inviteSeminar.subFieldId);
+                  return sub?.majorFieldId ?? null;
+                })()
+              : null
+          }
+          subFieldName={inviteSeminar.subFieldName}
+          majorFieldName={
+            inviteSeminar.subFieldId
+              ? (() => {
+                  const sub = majorFields
+                    .flatMap((m) => m.subFields ?? [])
+                    .find((s) => s.id === inviteSeminar.subFieldId);
+                  const major = sub?.majorFieldId
+                    ? majorFields.find((m) => m.id === sub.majorFieldId)
+                    : undefined;
+                  return major?.name ?? null;
+                })()
+              : null
+          }
+          participantCount={inviteSeminar.participantCount}
+          maxParticipants={inviteSeminar.maxParticipants}
+          existingEmails={inviteSeminar.participants?.map((p) => p.invitedEmail ?? p.userEmail ?? '').filter(Boolean) ?? []}
+          onClose={() => {
+            setShowInviteModal(false);
+            setInviteSeminar(null);
+          }}
+          onSuccess={(count) => {
+            setShowInviteModal(false);
+            setInviteSeminar(null);
+            void refetch();
+            announce(
+              copy(
+                `Invitations sent to ${count} participant${count !== 1 ? 's' : ''}.`,
+                `Đã gửi lời mời đến ${count} người tham dự.`,
+              ),
+            );
+          }}
+          onError={(msg) => {
+            announce(
+              msg ||
+                copy(
+                  'Failed to send invitations. Please try again.',
+                  'Gửi lời mời thất bại. Vui lòng thử lại.',
+                ),
+              'error',
             );
           }}
         />
