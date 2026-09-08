@@ -40,6 +40,10 @@ import {
 } from '../../services/groupMember.service';
 import type { GroupMember } from '../../services/groupMember.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
+import { GroupStatusBadge } from '../../components/lecturer/GroupStatusBadge';
+import { GroupStatusFilterTabs } from '../../components/lecturer/GroupStatusFilterTabs';
+import type { GroupFilterTab } from '../../components/lecturer/GroupStatusFilterTabs';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { FieldError } from '../../components/FieldError';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
@@ -51,6 +55,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { Button } from '../../components/Button/Button';
 import { ROUTES } from '../../routes/paths';
+import { Power } from 'lucide-react';
 import styles from './ResearchGroup.module.css';
 
 interface BannerState {
@@ -180,11 +185,30 @@ export const ResearchGroup = () => {
 
   const [groupSearch, setGroupSearch] = useState('');
   const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<GroupFilterTab>('all');
+  const [togglingGroupIds, setTogglingGroupIds] = useState<Set<number>>(new Set());
+
+  /** Controls the delete-confirmation modal */
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    groupId: number | null;
+    groupName: string;
+  }>({ open: false, groupId: null, groupName: '' });
+
+  /** Controls the deactivate-confirmation modal */
+  const [deactivateConfirm, setDeactivateConfirm] = useState<{
+    open: boolean;
+    groupId: number | null;
+  }>({ open: false, groupId: null });
 
   const filteredGroups = useMemo(() => {
     const query = groupSearch.trim().toLowerCase();
-    if (!query) return sortedGroups;
     return sortedGroups.filter((g) => {
+      // Status filter
+      if (statusFilter === 'active' && g.isActive === false) return false;
+      if (statusFilter === 'inactive' && g.isActive !== false) return false;
+      // Text search
+      if (!query) return true;
       const t = g.topicId ? topicById.get(g.topicId) : null;
       const topicTitle = t?.title ?? '';
       return [g.name ?? '', g.description ?? '', topicTitle]
@@ -192,7 +216,7 @@ export const ResearchGroup = () => {
         .toLowerCase()
         .includes(query);
     });
-  }, [sortedGroups, groupSearch, topicById]);
+  }, [sortedGroups, groupSearch, topicById, statusFilter]);
 
   const {
     page: groupPage,
@@ -209,7 +233,7 @@ export const ResearchGroup = () => {
 
   useEffect(() => {
     resetGroupPage();
-  }, [groupSearch, resetGroupPage]);
+  }, [groupSearch, statusFilter, resetGroupPage]);
 
   const handleRefreshGroups = async () => {
     if (isRefreshingGroups) return;
@@ -233,16 +257,85 @@ export const ResearchGroup = () => {
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
-    const ok = window.confirm(t('lecturer.researchGroups.deleteConfirm'));
-    if (!ok) return;
+    setDeleteConfirm({ open: true, groupId, groupName: name });
+  };
+
+  const confirmDeleteGroup = async () => {
+    const { groupId } = deleteConfirm;
+    if (groupId === null) return;
+    setDeleteConfirm({ open: false, groupId: null, groupName: '' });
     try {
       await researchGroupService.delete(groupId);
-      showBannerMessage(`"${name}" ${t('lecturer.researchGroups.deleteSuccess')}`);
+      showBannerMessage(
+        `"${deleteConfirm.groupName}" ${t('lecturer.researchGroups.deleteSuccess')}`,
+      );
       await refetchGroups();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : t('lecturer.researchGroups.deleteFailed');
-      showBannerMessage(`${t('lecturer.researchGroups.deleteFailed')} ${message}`, 'error');
+        err instanceof Error
+          ? err.message
+          : t('lecturer.researchGroups.deleteFailed');
+      showBannerMessage(
+        `${t('lecturer.researchGroups.deleteFailed')} ${message}`,
+        'error',
+      );
+    }
+  };
+
+  const handleToggleActive = async (groupId: number, currentIsActive: boolean) => {
+    const newIsActive = !currentIsActive;
+
+    // Deactivation requires explicit confirmation; activation does not.
+    if (!newIsActive) {
+      setDeactivateConfirm({ open: true, groupId });
+      return;
+    }
+
+    setTogglingGroupIds((prev) => new Set(prev).add(groupId));
+    try {
+      await researchGroupService.setActive(groupId, newIsActive);
+      showBannerMessage(
+        newIsActive
+          ? t('lecturer.researchGroups.activateSuccess')
+          : t('lecturer.researchGroups.deactivateSuccess'),
+      );
+      await refetchGroups();
+    } catch (err) {
+      const message = err instanceof Error
+        ? err.message
+        : (newIsActive
+          ? t('lecturer.researchGroups.activateFailed')
+          : t('lecturer.researchGroups.deactivateFailed'));
+      showBannerMessage(message, 'error');
+    } finally {
+      setTogglingGroupIds((prev) => {
+        const next = new Set(prev);
+        next.delete(groupId);
+        return next;
+      });
+    }
+  };
+
+  const confirmDeactivate = async () => {
+    const { groupId } = deactivateConfirm;
+    if (groupId === null) return;
+    setDeactivateConfirm({ open: false, groupId: null });
+    setTogglingGroupIds((prev) => new Set(prev).add(groupId));
+    try {
+      await researchGroupService.setActive(groupId, false);
+      showBannerMessage(t('lecturer.researchGroups.deactivateSuccess'));
+      await refetchGroups();
+    } catch (err) {
+      const message = err instanceof Error
+        ? err.message
+        : t('lecturer.researchGroups.deactivateFailed');
+      showBannerMessage(message, 'error');
+    } finally {
+      setTogglingGroupIds((prev) => {
+        const next = new Set(prev);
+        next.delete(groupId);
+        return next;
+      });
     }
   };
 
@@ -430,7 +523,9 @@ export const ResearchGroup = () => {
           <span className={styles.countBadge}>
             {groupSearch.trim()
               ? `${groupTotalItems} / ${groups.length} ${t('lecturer.researchGroups.statGroups')}`
-              : `${groups.length} ${t('lecturer.researchGroups.statGroups')}`}
+              : statusFilter !== 'all'
+                ? `${filteredGroups.length} / ${groups.length} ${t('lecturer.researchGroups.statGroups')}`
+                : `${groups.length} ${t('lecturer.researchGroups.statGroups')}`}
           </span>
         </div>
       </div>
@@ -462,7 +557,28 @@ export const ResearchGroup = () => {
           </span>
           <span className={styles.statHint}>{t('lecturer.researchGroups.statApproaching')}</span>
         </div>
+        <div className={styles.statCell}>
+          <span className={styles.statLabel}>{t('lecturer.researchGroups.statActive')}</span>
+          <span className={styles.statValue}>
+            {groups.filter((g) => g.isActive !== false).length}
+          </span>
+          <span className={styles.statHint}>{t('lecturer.researchGroups.statActiveHint')}</span>
+        </div>
       </div>
+
+      {/* Status filter tabs — filter by ALL / ACTIVE / INACTIVE */}
+      {!isLoadingGroups && groups.length > 0 && (
+        <GroupStatusFilterTabs
+          value={statusFilter}
+          onChange={setStatusFilter}
+          countAll={groups.length}
+          countActive={groups.filter((g) => g.isActive !== false).length}
+          countInactive={groups.filter((g) => g.isActive === false).length}
+          labelAll={t('lecturer.researchGroups.filterAll')}
+          labelActive={t('lecturer.researchGroups.filterActive')}
+          labelInactive={t('lecturer.researchGroups.filterInactive')}
+        />
+      )}
 
       <TableToolbar
         search={groupSearch}
@@ -504,6 +620,8 @@ export const ResearchGroup = () => {
                   <div className={styles.metaPills}>
                     <span className={styles.idPill}>{idLabel}</span>
                     <StatusBadge status={status} />
+                    {/* ACTIVE / INACTIVE badge — lecturer can toggle this per group */}
+                    <GroupStatusBadge isActive={grp.isActive !== false} size="sm" />
                   </div>
                 </div>
 
@@ -605,6 +723,29 @@ export const ResearchGroup = () => {
 
                 <div className={styles.cardFooter}>
                   <div className={styles.iconBtnGroup}>
+                    {/* Toggle active / inactive — Power icon, same footprint as Trash2 */}
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${grp.isActive === false ? styles.iconBtnInactive : ''}`}
+                      title={
+                        grp.isActive === false
+                          ? t('lecturer.researchGroups.activate')
+                          : t('lecturer.researchGroups.deactivate')
+                      }
+                      aria-label={
+                        grp.isActive === false
+                          ? t('lecturer.researchGroups.activate')
+                          : t('lecturer.researchGroups.deactivate')
+                      }
+                      disabled={togglingGroupIds.has(gid)}
+                      onClick={() => handleToggleActive(gid, grp.isActive !== false)}
+                    >
+                      {togglingGroupIds.has(gid) ? (
+                        <Loader size={14} className={styles.spinning} aria-hidden />
+                      ) : (
+                        <Power size={14} aria-hidden />
+                      )}
+                    </button>
                     <button
                       type="button"
                       className={styles.iconBtn}
@@ -805,6 +946,34 @@ export const ResearchGroup = () => {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <ConfirmModal
+        open={deleteConfirm.open}
+        title={t('common.areYouSure')}
+        description={t('lecturer.researchGroups.deleteConfirm')}
+        variant="destructive"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmDeleteGroup}
+        onClose={() =>
+          setDeleteConfirm({ open: false, groupId: null, groupName: '' })
+        }
+      />
+
+      {/* Deactivate confirmation modal */}
+      <ConfirmModal
+        open={deactivateConfirm.open}
+        title={t('lecturer.researchGroups.deactivateTitle')}
+        description={t('lecturer.researchGroups.confirmDeactivate')}
+        variant="destructive"
+        confirmLabel={t('lecturer.researchGroups.deactivate')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmDeactivate}
+        onClose={() =>
+          setDeactivateConfirm({ open: false, groupId: null })
+        }
+      />
     </div>
   );
 };

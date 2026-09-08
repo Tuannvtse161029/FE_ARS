@@ -72,6 +72,7 @@ import { PhaseTimeline, type PhaseTimelineItem } from '../../components/research
 import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { OpenTopicModal } from '../../components/lecturer/OpenTopicModal';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
 import styles from './GroupDetail.module.css';
@@ -549,32 +550,65 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   const [leaderActionLoading, setLeaderActionLoading] = useState<number | null>(null);
 
+  /** Controls the "replace current leader?" confirmation modal */
+  const [replaceLeaderConfirm, setReplaceLeaderConfirm] = useState<{
+    open: boolean;
+    pendingMember: GroupMember | null;
+    currentName: string;
+    nextName: string;
+  }>({ open: false, pendingMember: null, currentName: '', nextName: '' });
+
   const handleSetLeader = async (member: GroupMember) => {
     const memberId = member.groupMemberId ?? member.id;
     if (!memberId) return;
     const currentLeader = members.find((candidate) => candidate.isLeader);
     if (currentLeader && currentLeader.id !== memberId) {
-      const currentName = currentLeader.studentName || `${t('lecturer.groupDetail.studentPrefix')}${currentLeader.studentId ?? currentLeader.id}`;
-      const nextName = member.studentName || `${t('lecturer.groupDetail.studentPrefix')}${member.studentId ?? member.id}`;
-      if (!window.confirm(t('lecturer.groupDetail.confirmReplaceLeader').replace('{current}', currentName).replace('{next}', nextName))) return;
+      const currentName =
+        currentLeader.studentName ||
+        `${t('lecturer.groupDetail.studentPrefix')}${currentLeader.studentId ?? currentLeader.id}`;
+      const nextName =
+        member.studentName ||
+        `${t('lecturer.groupDetail.studentPrefix')}${member.studentId ?? member.id}`;
+      // Open a modal instead of window.confirm()
+      setReplaceLeaderConfirm({
+        open: true,
+        pendingMember: member,
+        currentName,
+        nextName,
+      });
+      return;
     }
+    await doSetLeader(memberId, member);
+  };
+
+  const doSetLeader = async (memberId: number, member: GroupMember) => {
     setLeaderActionLoading(memberId);
     try {
       await groupMemberService.setLeader(memberId, member.studentId ?? undefined);
       setBanner({
         visible: true,
-        text: t('lecturer.groupDetail.setLeaderSuccess').replace('{name}', member.studentName || `${t('lecturer.groupDetail.studentPrefix')}${member.studentId}`),
+        text: t('lecturer.groupDetail.setLeaderSuccess').replace(
+          '{name}',
+          member.studentName ||
+            `${t('lecturer.groupDetail.studentPrefix')}${member.studentId}`,
+        ),
         variant: 'success',
       });
       await loadMembers();
     } catch (err: unknown) {
-      const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const e = err as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
       const status = e?.response?.status;
-      const msg = status === 401
-        ? t('lecturer.groupDetail.errSessionExpired')
-        : status === 403
-          ? t('lecturer.groupDetail.errLeaderDeny')
-          : e?.response?.data?.message || e?.message || t('lecturer.groupDetail.errLeaderFail');
+      const msg =
+        status === 401
+          ? t('lecturer.groupDetail.errSessionExpired')
+          : status === 403
+            ? t('lecturer.groupDetail.errLeaderDeny')
+            : e?.response?.data?.message ||
+              e?.message ||
+              t('lecturer.groupDetail.errLeaderFail');
       setBanner({ visible: true, text: msg, variant: 'error' });
     } finally {
       setLeaderActionLoading(null);
@@ -1362,6 +1396,28 @@ export const LecturerGroupDetail = (): JSX.Element => {
         }
         currentLecturerId={lecturerId}
         onClose={() => setOpenTopicModalOpen(false)}
+      />
+
+      {/* Replace leader confirmation modal */}
+      <ConfirmModal
+        open={replaceLeaderConfirm.open}
+        title={t('lecturer.groupDetail.confirmReplaceLeader')
+          .replace('{current}', replaceLeaderConfirm.currentName)
+          .replace('{next}', replaceLeaderConfirm.nextName)}
+        variant="default"
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => {
+          const m = replaceLeaderConfirm.pendingMember;
+          setReplaceLeaderConfirm({ open: false, pendingMember: null, currentName: '', nextName: '' });
+          if (m) {
+            const mid = m.groupMemberId ?? m.id;
+            if (mid) void doSetLeader(mid, m);
+          }
+        }}
+        onClose={() =>
+          setReplaceLeaderConfirm({ open: false, pendingMember: null, currentName: '', nextName: '' })
+        }
       />
     </div>
   );

@@ -1,0 +1,53 @@
+/* GroupStatusBadge — ACTIVE / INACTIVE pill.
+ * Color communicates meaning in tandem with the label and the dot; never alone.
+ * Uses the same footprint as the existing StatusBadge so it feels native here.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-family: var(--font-family-ui);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sizeSm {
+  font-size: 0.65rem;
+  height: 20px;
+  padding: 0 8px;
+}
+
+.sizeMd {
+  font-size: 0.6875rem; /* 11px */
+  height: 22px;
+  padding: 0 10px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+/* ACTIVE — green success tone, immediately scannable as "live". */
+.active {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+/* INACTIVE — muted grey, visually de-emphasised so active groups stand out. */
+.inactive {
+  background-color: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-color: var(--ars-network);
+}

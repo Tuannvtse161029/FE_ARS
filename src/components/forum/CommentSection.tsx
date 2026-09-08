@@ -27,6 +27,7 @@ import { ROUTES } from '../../routes/paths';
 import { ErrorBanner } from '../ErrorBanner';
 import { EmptyState } from '../EmptyState';
 import { ReportModal } from './ReportModal';
+import { ConfirmModal } from '../lecturer/ConfirmModal';
 import { Button } from '../Button';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { storage } from '../../utils/storage';
@@ -156,6 +157,11 @@ export const CommentSection = ({
   const [editDraft, setEditDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Controls the delete-confirmation modal */
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    comment: ForumComment | null;
+  }>({ open: false, comment: null });
   const [reportTarget, setReportTarget] = useState<{
     id: number;
     preview: string;
@@ -380,10 +386,16 @@ export const CommentSection = ({
 
   const deleteComment = async (comment: ForumComment) => {
     if (!canInteract) return;
+    // Open the styled confirmation modal instead of window.confirm()
+    setDeleteConfirm({ open: true, comment });
+  };
+
+  const confirmDeleteComment = async () => {
+    const comment = deleteConfirm.comment;
+    if (!comment) return;
+    setDeleteConfirm({ open: false, comment: null });
     const targetId = comment.id || comment.forumCommentId || 0;
     if (!targetId) return;
-    const confirmed = window.confirm('Delete this comment? This cannot be undone.');
-    if (!confirmed) return;
     setSubmitting(true);
     setActionError(null);
     const ok = await remove(targetId);
@@ -713,6 +725,18 @@ export const CommentSection = ({
           )}
         </>
       )}
+
+      {/* Delete comment confirmation modal */}
+      <ConfirmModal
+        open={deleteConfirm.open}
+        title="Delete this comment?"
+        description="This action cannot be undone. The comment will be permanently removed."
+        variant="destructive"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteComment}
+        onClose={() => setDeleteConfirm({ open: false, comment: null })}
+      />
     </div>
   );
 };

@@ -435,20 +435,25 @@
   max-width: 72ch;
 }
 
+/* Google Meet capacity row — shown on non-completed seminars with a meet link.
+   Includes a "Google Meet" label so the "0/100" pill is immediately recognizable
+   as the meeting-room participant count rather than a generic counter. */
 .capacityRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-  font-family: var(--font-family-mono);
+  flex-wrap: wrap;
 }
 
-.capacityWrapper {
-  display: flex;
+.capacityLabel {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-info);
+  font-family: var(--font-family-ui);
+  white-space: nowrap;
 }
 
 /* Google Meet box */
