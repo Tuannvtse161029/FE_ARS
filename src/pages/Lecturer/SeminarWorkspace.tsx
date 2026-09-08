@@ -825,16 +825,19 @@ export const SeminarWorkspace = () => {
                     </p>
 
                     {isValidMeetLink(sem.onlineLink) && !isCompleted && (
-                      <div className={styles.capacityWrapper}>
+                      <div className={styles.capacityRow}>
+                        <span className={styles.capacityLabel}>
+                          <Video size={12} aria-hidden />
+                          {locale === 'vi' ? 'Google Meet' : 'Google Meet'}
+                        </span>
                         <GoogleMeetCapacityMeter
                           current={sem.participantCount || 0}
+                          // The BE may return maxParticipants as null, 0, or 1.
+                          // Always floor at 100 (Google Meet free-account cap) so
+                          // the meter shows the real room capacity, not "0/1".
                           cap={
-                            sem.maxParticipants &&
-                            sem.maxParticipants > 0
-                              ? Math.min(
-                                  sem.maxParticipants,
-                                  GOOGLE_MEET_FREE_PARTICIPANT_CAP,
-                                )
+                            (sem.maxParticipants && sem.maxParticipants > 1)
+                              ? Math.min(sem.maxParticipants, GOOGLE_MEET_FREE_PARTICIPANT_CAP)
                               : GOOGLE_MEET_FREE_PARTICIPANT_CAP
                           }
                           compact

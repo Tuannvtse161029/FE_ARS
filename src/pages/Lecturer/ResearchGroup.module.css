@@ -332,6 +332,19 @@
   outline-offset: 2px;
 }
 
+/* The Power toggle — when the group is inactive, the icon is visually de‑emphasised
+   to signal "off". We reduce its opacity so it reads as "currently inactive". */
+.iconBtnInactive {
+  color: var(--ars-ink-muted);
+  opacity: 0.6;
+}
+
+.iconBtnInactive:hover:not(:disabled) {
+  color: var(--ars-success);
+  opacity: 1;
+  border-color: var(--ars-success);
+}
+
 .viewBtn {
   background: var(--ars-lecturer);
   border: none;

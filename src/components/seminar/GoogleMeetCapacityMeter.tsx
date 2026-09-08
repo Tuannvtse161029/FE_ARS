@@ -40,9 +40,13 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
   compact = false,
 }) => {
   const safeCurrent = Math.max(0, Math.floor(current || 0));
-  const ratio = cap > 0 ? safeCurrent / cap : 0;
-  const state = computeState(safeCurrent, cap);
-  const remaining = Math.max(0, cap - safeCurrent);
+  // Google Meet (free account) enforces a hard floor of 100 participants.
+  // The BE may return maxParticipants: 1 or null; in those cases the cap
+  // must still be 100 so the meter shows the real meeting-room capacity.
+  const safeCap = Math.max(GOOGLE_MEET_FREE_PARTICIPANT_CAP, cap);
+  const ratio = safeCap > 0 ? safeCurrent / safeCap : 0;
+  const state = computeState(safeCurrent, safeCap);
+  const remaining = Math.max(0, safeCap - safeCurrent);
 
   const stateClass =
     state === 'full'
@@ -58,11 +62,11 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
       <span
         className={`${styles.compactMeter} ${stateClass}`}
         role="status"
-        aria-label={`${safeCurrent} of ${cap} Google Meet participant slots filled`}
+        aria-label={`${safeCurrent} of ${safeCap} Google Meet participant slots filled`}
       >
         <Video size={12} aria-hidden />
         <span className={styles.compactMeterValue}>
-          {safeCurrent}/{cap}
+          {safeCurrent}/{safeCap}
         </span>
         {state === 'full' && (
           <span className={styles.compactMeterBadge}>At capacity</span>
@@ -87,7 +91,7 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
         <span className={styles.meterHeaderValue}>
           <strong>{safeCurrent}</strong>
           <span className={styles.meterHeaderSep}>/</span>
-          <span>{cap}</span>
+          <span>{safeCap}</span>
         </span>
       </header>
 
@@ -104,7 +108,7 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
             <AlertTriangle size={13} aria-hidden />
             <span>
               The Google Meet link is at capacity. The free-account cap is{' '}
-              <strong>{cap} participants</strong>. New invitees cannot join this
+              <strong>{safeCap} participants</strong>. New invitees cannot join this
               room.
             </span>
           </span>
@@ -114,7 +118,7 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
             <span>
               Approaching the Google Meet limit — <strong>{remaining}</strong>{' '}
               participant slot{remaining === 1 ? '' : 's'} remaining out of{' '}
-              {cap}.
+              {safeCap}.
             </span>
           </span>
         ) : (
@@ -123,7 +127,7 @@ export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = (
             <span>
               <strong>{remaining}</strong> participant slot
               {remaining === 1 ? '' : 's'} still available (free Google Meet
-              caps at {cap}).
+              caps at {safeCap}).
             </span>
           </span>
         )}

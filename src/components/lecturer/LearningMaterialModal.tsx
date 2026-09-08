@@ -29,6 +29,7 @@ import {
   MaterialSourcePicker,
   type MaterialSourceValue,
 } from './MaterialSourcePicker';
+import { ConfirmModal } from './ConfirmModal';
 import styles from './LearningMaterialModal.module.css';
 
 export interface LearningMaterialModalProps {
@@ -77,6 +78,13 @@ export const LearningMaterialModal = ({
     text: '',
     variant: 'success',
   });
+
+  /** Controls the delete-confirmation modal */
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    materialId: number | null;
+    materialTitle: string;
+  }>({ open: false, materialId: null, materialTitle: '' });
 
   useEffect(() => {
     if (!isOpen) {
@@ -173,12 +181,15 @@ export const LearningMaterialModal = ({
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, title: string) => {
     if (!id) return;
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      const ok = window.confirm('Delete this material? This cannot be undone.');
-      if (!ok) return;
-    }
+    setDeleteConfirm({ open: true, materialId: id, materialTitle: title });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.materialId;
+    if (!id) return;
+    setDeleteConfirm({ open: false, materialId: null, materialTitle: '' });
     try {
       await learningMaterialService.delete(id);
       setBanner({
@@ -320,7 +331,7 @@ export const LearningMaterialModal = ({
                         <button
                           type="button"
                           className={styles.deleteBtn}
-                          onClick={() => void handleDelete(id)}
+                          onClick={() => void handleDelete(id, formatTitle(m))}
                           aria-label={`Delete ${formatTitle(m)}`}
                         >
                           Delete
@@ -415,6 +426,20 @@ export const LearningMaterialModal = ({
           </div>
         </form>
       </div>
+
+      {/* Delete confirmation modal */}
+      <ConfirmModal
+        open={deleteConfirm.open}
+        title="Are you sure?"
+        description={`Delete "${deleteConfirm.materialTitle}"? This action cannot be undone.`}
+        variant="destructive"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onClose={() =>
+          setDeleteConfirm({ open: false, materialId: null, materialTitle: '' })
+        }
+      />
     </div>
   );
 };

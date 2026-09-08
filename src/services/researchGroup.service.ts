@@ -26,6 +26,11 @@ export interface ResearchGroup {
    * Nullable per Swagger.
    */
   materialsUrl?: string | null;
+  /**
+   * Whether this group is active (visible/enabled) or inactive (archived/hidden).
+   * FE-added field pending BE column addition (gap ticket §E.6).
+   */
+  isActive?: boolean | null;
   createdAt?: string;
   updatedAt?: string;
   lecturerName?: string | null;
@@ -109,6 +114,35 @@ export const researchGroupService = {
     );
     return response.data;
   },
+
+  /**
+   * Toggle the active status of a research group.
+   *
+   * Calls PUT /api/ResearchGroup/{id} with the same payload as the current
+   * group but with `isActive` flipped. The BE needs to add a
+   * `ResearchGroups.is_active` column to persist this.
+   *
+   * @param groupId    The group to toggle.
+   * @param isActive   The desired `isActive` value to set.
+   * @returns The updated group on success.
+   */
+  setActive: async (
+    groupId: number,
+    isActive: boolean,
+  ): Promise<ResearchGroup> => {
+    const existing = await researchGroupService.getById(groupId);
+    const updated = await researchGroupService.update(groupId, {
+      lecturerId: existing?.lecturerId ?? null,
+      topicId: existing?.topicId ?? null,
+      name: existing?.name ?? null,
+      description: existing?.description ?? null,
+      deadline: existing?.deadline ?? null,
+      assignedAt: existing?.assignedAt ?? null,
+      materialsUrl: existing?.materialsUrl ?? null,
+      isActive,
+    });
+    return updated;
+  },
 };
 
 export interface ResearchGroupInviteResponse {
@@ -177,6 +211,8 @@ export const assignTopicToGroups = async (
         // AssignTopicModal UI can later pass an explicit override when the
         // lecturer picks a fresh material for the group.
         materialsUrl: existing?.materialsUrl ?? null,
+        // Preserve the existing isActive flag during topic reassignment.
+        isActive: existing?.isActive ?? true,
       };
       const updated = await researchGroupService.update(groupId, payload);
       return updated;

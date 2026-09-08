@@ -1,0 +1,199 @@
+/* ConfirmModal — styled replacement for window.confirm().
+ * Matches the existing modal footprint from ResearchGroup.module.css
+ * so it feels native to the Lecturer workspace. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.card {
+  background: var(--ars-paper);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--ars-network);
+  overflow: hidden;
+  animation: slideUp 0.18s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  flex: 1;
+}
+
+.iconWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.iconWrapDestructive {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+
+.iconWrapDefault {
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  margin: var(--space-1) 0 0;
+  line-height: 1.5;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--ars-ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--ars-network);
+  background: var(--ars-paper-alt);
+}
+
+.cancelBtn {
+  padding: 7px var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-node);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.cancelBtn:hover {
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-node);
+}
+
+.cancelBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* Destructive confirm — red action */
+.confirmBtnDestructive {
+  padding: 7px var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-error);
+  background: var(--ars-error);
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.confirmBtnDestructive:hover {
+  background: #7f1d1d; /* darker red */
+  border-color: #7f1d1d;
+}
+
+.confirmBtnDestructive:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+/* Default confirm — blue primary action */
+.confirmBtnDefault {
+  padding: 7px var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ars-blue-action);
+  background: var(--ars-blue-action);
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.confirmBtnDefault:hover {
+  background: var(--ars-blue-mid);
+  border-color: var(--ars-blue-mid);
+}
+
+.confirmBtnDefault:focus-visible {
+  outline: 2px solid var(--ars-blue-action);
+  outline-offset: 2px;
+}

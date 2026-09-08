@@ -1,0 +1,113 @@
+---
+description: Never use native browser dialogs — use ConfirmModal instead
+alwaysApply: true
+---
+
+# No Native Browser Dialogs
+
+## Rule
+
+**Never use `window.alert()`, `window.confirm()`, or `window.prompt()`** in any source file under version control. These native dialogs:
+
+- Block the browser thread entirely
+- Cannot be styled or themed
+- Are inaccessible on some mobile browsers
+- Break automated testing (Playwright, Cypress)
+- Provide a poor, jarring UX
+
+## Always Do This
+
+When you need user confirmation before an action, use the `ConfirmModal` component from `src/components/lecturer/ConfirmModal.tsx`.
+
+```typescript
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
+
+// State to control the modal
+const [confirmModal, setConfirmModal] = useState({
+  open: false,
+  title: '',
+  description: '',
+  variant: 'destructive' as 'default' | 'destructive',
+  onConfirm: () => {},
+});
+
+// Open the modal instead of window.confirm()
+setConfirmModal({
+  open: true,
+  title: t('common.areYouSure'),
+  description: t('common.destructiveWarning'),
+  variant: 'destructive',
+  onConfirm: () => {
+    // Your destructive action here
+    void performDestructiveAction();
+  },
+});
+
+// Render the modal
+{confirmModal.open && (
+  <ConfirmModal
+    title={confirmModal.title}
+    description={confirmModal.description}
+    variant={confirmModal.variant}
+    confirmLabel={t('common.confirm')}
+    cancelLabel={t('common.cancel')}
+    onConfirm={() => {
+      confirmModal.onConfirm();
+      setConfirmModal((prev) => ({ ...prev, open: false }));
+    }}
+    onClose={() =>
+      setConfirmModal((prev) => ({ ...prev, open: false }))
+    }
+  />
+)}
+```
+
+## Variant Guide
+
+| Situation | Variant |
+|---|---|
+| Delete, deactivate, remove permanent data | `destructive` (red confirm button) |
+| Replace leader, change assignment | `default` (blue confirm button) |
+| Simple yes/no without risk | `default` |
+
+## What to Do When You See `window.confirm()`
+
+1. Replace it with a `ConfirmModal` state + open call
+2. Move the destructive logic into the `onConfirm` callback
+3. Remove the `window.confirm()` line entirely
+
+## Pattern: Replacing `window.confirm()`
+
+**Before (bad):**
+```typescript
+const ok = window.confirm('Delete this item? This cannot be undone.');
+if (!ok) return;
+await deleteItem();
+```
+
+**After (good):**
+```typescript
+const [confirmOpen, setConfirmOpen] = useState(false);
+
+const handleDelete = () => {
+  setConfirmOpen(true); // opens the modal instead of blocking
+};
+
+const confirmDelete = async () => {
+  await deleteItem();
+  setConfirmOpen(false);
+};
+
+// In JSX:
+{confirmOpen && (
+  <ConfirmModal
+    title={t('common.areYouSure')}
+    description={t('common.destructiveWarning')}
+    variant="destructive"
+    confirmLabel={t('common.delete')}
+    cancelLabel={t('common.cancel')}
+    onConfirm={confirmDelete}
+    onClose={() => setConfirmOpen(false)}
+  />
+)}
+```

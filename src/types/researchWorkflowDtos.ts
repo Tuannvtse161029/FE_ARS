@@ -63,6 +63,11 @@ export interface ResearchGroupCreateRequest {
    * Swagger; omit or pass `null` when the group has no materials attached.
    */
   materialsUrl?: string | null;
+  /**
+   * Whether the group is active. Defaults to `true` for newly created groups.
+   * The BE needs to add a `ResearchGroups.is_active` column to expose this.
+   */
+  isActive?: boolean;
 }
 
 export interface ResearchGroupUpdateRequest {
@@ -78,6 +83,12 @@ export interface ResearchGroupUpdateRequest {
    * change it.
    */
   materialsUrl?: string | null;
+  /**
+   * Whether the group is active. Toggle this via the UI to archive or
+   * re-activate a group. The BE needs to add a `ResearchGroups.is_active`
+   * column to support this.
+   */
+  isActive?: boolean;
 }
 
 // ---------- ResearchTopic ----------

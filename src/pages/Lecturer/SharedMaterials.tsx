@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { sharedMaterialService, type SharedMaterial } from '../../services/sharedMaterial.service';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import styles from './SharedMaterials.module.css';
@@ -20,6 +21,10 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
   const [colleagueId, setColleagueId] = useState('');
   const [status, setStatus] = useState('ACTIVE');
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    item: SharedMaterial | null;
+  }>({ open: false, item: null });
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -58,7 +63,21 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
     try { if (editing?.sharedMaterialId) await sharedMaterialService.update(editing.sharedMaterialId, payload); else await sharedMaterialService.create(payload); setOpen(false); await load(); }
     catch { setError('The shared material could not be saved.'); } finally { setSaving(false); }
   };
-  const remove = async (item: SharedMaterial) => { if (!item.sharedMaterialId || !window.confirm('Delete this shared material?')) return; try { await sharedMaterialService.delete(item.sharedMaterialId); await load(); } catch { setError('The shared material could not be deleted.'); } };
+  const remove = (item: SharedMaterial) => {
+    if (!item.sharedMaterialId) return;
+    setDeleteConfirm({ open: true, item });
+  };
+  const confirmRemove = async () => {
+    const item = deleteConfirm.item;
+    setDeleteConfirm({ open: false, item: null });
+    if (!item?.sharedMaterialId) return;
+    try {
+      await sharedMaterialService.delete(item.sharedMaterialId);
+      await load();
+    } catch {
+      setError('The shared material could not be deleted.');
+    }
+  };
 
   return <section className={styles.page}>
     <PageHeader eyebrow="LECTURER WORKSPACE" title="Shared Materials" description="Share research papers with colleagues and keep your study references close at hand." actions={<Button onClick={startCreate}><Plus size={16} /> Share paper</Button>} />
@@ -69,8 +88,18 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
       className={`${styles.card} ${selectedIndex === index ? styles.selectedCard : ''}`}
       key={item.sharedMaterialId}
       data-testid="shared-material-card"
-    ><div className={styles.cardIcon}><FileText size={20} /></div><div className={styles.cardBody}><h2>{item.learningMaterialTitle || item.title || `Paper #${item.paperId ?? 'Not supplied'}`}</h2><p>Shared with colleague #{item.sharedWithColleagueId ?? 'Not supplied'}</p><span className={styles.status}>{item.status ?? 'Unknown'}</span><small>{item.sharedAt ? new Date(item.sharedAt).toLocaleDateString() : 'Date not supplied'}</small></div><div className={styles.cardActions}>{(item.learningMaterialUrl || item.fileUrl || item.url) && <Button variant="ghost" aria-label="Open" onClick={() => window.open(item.learningMaterialUrl || item.fileUrl || item.url || '', '_blank', 'noopener,noreferrer')}><Eye size={16} /></Button>}<Button variant="ghost" aria-label="Edit" onClick={() => startEdit(item)}><Pencil size={16} /></Button><Button variant="ghost" aria-label="Delete" onClick={() => void remove(item)}><Trash2 size={16} /></Button></div></article>)}</div>}
+    ><div className={styles.cardIcon}><FileText size={20} /></div><div className={styles.cardBody}><h2>{item.learningMaterialTitle || item.title || `Paper #${item.paperId ?? 'Not supplied'}`}</h2><p>Shared with colleague #{item.sharedWithColleagueId ?? 'Not supplied'}</p><span className={styles.status}>{item.status ?? 'Unknown'}</span><small>{item.sharedAt ? new Date(item.sharedAt).toLocaleDateString() : 'Date not supplied'}</small></div><div className={styles.cardActions}>{(item.learningMaterialUrl || item.fileUrl || item.url) && <Button variant="ghost" aria-label="Open" onClick={() => window.open(item.learningMaterialUrl || item.fileUrl || item.url || '', '_blank', 'noopener,noreferrer')}><Eye size={16} /></Button>}<Button variant="ghost" aria-label="Edit" onClick={() => startEdit(item)}><Pencil size={16} /></Button><Button variant="ghost" aria-label="Delete" onClick={() => remove(item)}><Trash2 size={16} /></Button></div></article>)}</div>}
     {open && <div className={styles.overlay} role="presentation"><form className={styles.modal} onSubmit={submit}><div className={styles.modalHeader}><h2>{editing ? 'Edit shared paper' : 'Share a paper'}</h2><Button variant="ghost" type="button" aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></Button></div><label>Paper ID<input required inputMode="numeric" value={paperId} onChange={(e) => setPaperId(e.target.value)} /></label><label>Colleague ID<input required inputMode="numeric" value={colleagueId} onChange={(e) => setColleagueId(e.target.value)} /></label><label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label><div className={styles.modalActions}><Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div></form></div>}
+    <ConfirmModal
+      open={deleteConfirm.open}
+      title="Delete this shared material?"
+      description={`This will permanently remove "${deleteConfirm.item?.learningMaterialTitle ?? deleteConfirm.item?.title ?? 'this item'}". This action cannot be undone.`}
+      variant="destructive"
+      confirmLabel="Delete"
+      cancelLabel="Cancel"
+      onConfirm={() => void confirmRemove()}
+      onClose={() => setDeleteConfirm({ open: false, item: null })}
+    />
   </section>;
 };
 

@@ -101,6 +101,19 @@ export function toLocalDateInput(val: string | number | Date | null | undefined)
 /**
  * Converts a datetime input (e.g. '2026-09-15T14:00' or Date) into standard ISO 8601 UTC string
  * for sending in API payloads.
+ *
+ * IMPORTANT: <input type="datetime-local"> produces a local datetime string (e.g.
+ * "2026-09-15T14:00") with NO timezone indicator. The JavaScript Date constructor
+ * interprets bare datetime-local strings as local time in some browsers, then
+ * toISOString() converts to UTC — causing a 7-hour shift for UTC+7 users.
+ *
+ * To preserve the user's LOCAL time as the intended UTC time, we manually parse
+ * the datetime-local components and construct the ISO string without relying on
+ * the Date constructor's ambiguous parsing of bare datetime strings.
+ *
+ * - Date-only string (e.g. '2026-09-15') -> set to end of that day in local time (23:59:59)
+ * - Datetime-local string (e.g. '2026-09-15T14:00') -> preserve local time as-is
+ * - Full ISO or Date object -> fall through to standard parsing
  */
 export function toApiIsoString(val: string | number | Date | null | undefined): string | null {
   if (!val) return null;
@@ -113,6 +126,29 @@ export function toApiIsoString(val: string | number | Date | null | undefined): 
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       const [year, month, day] = trimmed.split('-').map(Number);
       return new Date(year, month - 1, day, 23, 59, 59).toISOString();
+    }
+
+    // Datetime-local string (e.g. '2026-09-15T14:00') — no timezone suffix.
+    // new Date('2026-09-15T14:00') is ambiguous: some browsers parse as local,
+    // others as UTC. We manually extract the components and construct the ISO
+    // string so the user's LOCAL time is stored as the intended UTC time.
+    const DATETIME_LOCAL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+    if (DATETIME_LOCAL_RE.test(trimmed)) {
+      const [yearS, monthS, dayS, hourS, minS] = trimmed.split(/[-\sT:]/);
+      const year = parseInt(yearS, 10);
+      const month = parseInt(monthS, 10) - 1; // JS months are 0-indexed
+      const day = parseInt(dayS, 10);
+      const hour = parseInt(hourS, 10);
+      const min = parseInt(minS, 10);
+      // Construct a local-interpreted Date, then extract its UTC components to
+      // build a Z-suffixed ISO string. This ensures the user's local clock time
+      // is stored as the UTC time — no 7-hour shift for UTC+7 users.
+      const localDate = new Date(year, month, day, hour, min, 0, 0);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return (
+        `${localDate.getUTCFullYear()}-${pad(localDate.getUTCMonth() + 1)}-${pad(localDate.getUTCDate())}T` +
+        `${pad(localDate.getUTCHours())}:${pad(localDate.getUTCMinutes())}:${pad(localDate.getUTCSeconds())}.000Z`
+      );
     }
   }
 

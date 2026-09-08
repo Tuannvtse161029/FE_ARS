@@ -10,6 +10,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import styles from './PremiumPackages.module.css';
 import { adminAuxiliaryService } from '../../services/adminAuxiliary.service';
 import { CreatePackageModal } from '../../components/admin/CreatePackageModal';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import type {
   PremiumPackage,
@@ -42,6 +43,10 @@ export default function PremiumPackages(): JSX.Element {
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [busyPackageId, setBusyPackageId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    package: PremiumPackage | null;
+  }>({ open: false, package: null });
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -86,11 +91,14 @@ export default function PremiumPackages(): JSX.Element {
     }
   };
 
-  const handleDelete = async (pkg: PremiumPackage): Promise<void> => {
-    const ok = window.confirm(
-      t('admin.packages.action.deleteConfirm').replace('{title}', pkg.title),
-    );
-    if (!ok) return;
+  const handleDelete = (pkg: PremiumPackage): void => {
+    setDeleteConfirm({ open: true, package: pkg });
+  };
+
+  const confirmDelete = async (): Promise<void> => {
+    const pkg = deleteConfirm.package;
+    setDeleteConfirm({ open: false, package: null });
+    if (!pkg) return;
     setBusyPackageId(pkg.packageId);
     try {
       await adminAuxiliaryService.deletePremiumPackage(pkg.packageId);
@@ -232,6 +240,24 @@ export default function PremiumPackages(): JSX.Element {
           if (!createSubmitting) setCreateOpen(false);
         }}
         onConfirm={handleCreate}
+      />
+
+      <ConfirmModal
+        open={deleteConfirm.open}
+        title={t('common.areYouSure')}
+        description={
+          deleteConfirm.package
+            ? t('admin.packages.action.deleteConfirm').replace(
+                '{title}',
+                deleteConfirm.package.title,
+              )
+            : t('admin.packages.action.deleteConfirm').replace('{title}', '')
+        }
+        variant="destructive"
+        confirmLabel={t('admin.packages.action.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => void confirmDelete()}
+        onClose={() => setDeleteConfirm({ open: false, package: null })}
       />
     </div>
   );
