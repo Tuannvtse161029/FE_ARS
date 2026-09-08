@@ -4,6 +4,21 @@
    the page never repeats the same idea twice.
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Always-dark cinematic surfaces — see the block at the bottom of the
+   file for the full note explaining why these exist. */
+:root {
+  --sc-stage-bg: #0a0d20;            /* Hero / tension / turn stage base */
+  --sc-stage-bg-2: #0b1238;          /* Lighter midnight highlight */
+  --sc-stage-bg-deep: #050818;       /* Deepest midnight */
+  --sc-card-bg: #0d1326;             /* Substance card base */
+  --sc-card-bg-edge: #050a18;        /* Bottom edge of substance card */
+  --sc-shadow: rgba(0, 0, 0, 0.55);  /* Card lift shadow */
+  --sc-shadow-heavy: rgba(0, 0, 0, 0.7); /* Heavy card shadow (active) */
+  --sc-glass: rgba(13, 19, 38, 0.65);/* Chip / overlay plate */
+  --sc-glass-strong: rgba(13, 19, 38, 0.78);
+  --sc-pill-bg: rgba(8, 12, 24, 0.7);/* Editorial trace pill */
+}
+
 /* ── Base page chrome ─────────────────────────────────────────── */
 .page {
   min-height: 100vh;
@@ -32,7 +47,8 @@
   z-index: 100;
   padding: 10px 14px;
   color: var(--ink-on-paper);
-  background: var(--ink-primary);
+  /* Always-dark plate (keyboard-only on focus). */
+  background: var(--sc-stage-bg);
   text-decoration: none;
   transform: translateY(-180%);
   transition: transform var(--transition-fast);
@@ -73,7 +89,9 @@
   position: absolute;
   inset: 4px -8px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  /* Always-dark glassy pill. Previously used `color-mix(... --ink-primary 70%, transparent)`
+     which became a near-white pill in archive-dusk mode. */
+  background: var(--sc-pill-bg);
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
@@ -186,13 +204,15 @@
   pointer-events: none;
   z-index: 1;
 }
-/* Band: density at the bottom where copy sits on full-width hero */
+/* Band: density at the bottom where copy sits on full-width hero.
+   Scrims are ALWAYS dark — in both themes — so they make text readable
+   on top of bright photos without ever lightening the photo. */
 .scrimBand {
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--ink-primary) 88%, transparent) 0%,
-    color-mix(in srgb, var(--ink-primary) 64%, transparent) 28%,
-    color-mix(in srgb, var(--ink-primary) 24%, transparent) 56%,
+    rgba(8, 12, 24, 0.92) 0%,
+    rgba(8, 12, 24, 0.68) 28%,
+    rgba(8, 12, 24, 0.28) 56%,
     transparent 78%
   );
 }
@@ -204,9 +224,9 @@
 .scrimLead {
   background: linear-gradient(
     to top left,
-    color-mix(in srgb, var(--ink-primary) 78%, transparent) 0%,
-    color-mix(in srgb, var(--ink-primary) 54%, transparent) 32%,
-    color-mix(in srgb, var(--ink-primary) 18%, transparent) 58%,
+    rgba(8, 12, 24, 0.84) 0%,
+    rgba(8, 12, 24, 0.58) 32%,
+    rgba(8, 12, 24, 0.22) 58%,
     transparent 78%
   );
 }
@@ -270,8 +290,13 @@
   z-index: var(--z-index-sticky);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--ink-on-dark);
-  background: color-mix(in srgb, var(--ink-primary) 92%, transparent);
+  /* Always-dark glassy header. Previous build used
+     `color-mix(... --ink-primary 92%, transparent)` which became a
+     near-white frosted plate in archive-dusk — the brand bar floated
+     over photos as a washed-out wash instead of a confident navy rail. */
+  background: var(--sc-glass-strong);
   backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
 }
 
 .headerInner {
@@ -426,7 +451,10 @@
 
 /* Near-camera plane — a thin accent rule that sits a hair in front
    of the copy, anchored to the top edge of the stage. Drifts slightly
-   more than the foreground so the three planes separate visibly. */
+   more than the foreground so the three planes separate visibly. The
+   gradient stops are dark / always-dark so the rule reads as a thin
+   midnight line in both themes (the previous --ink-primary mix made
+   it a near-white stripe in archive-dusk). */
 .heroLayerNear {
   position: absolute;
   inset: 0;
@@ -437,9 +465,9 @@
       to bottom,
       transparent 0%,
       transparent 38%,
-      color-mix(in srgb, var(--ink-primary) 18%, transparent) 41%,
-      color-mix(in srgb, var(--ink-primary) 28%, transparent) 42%,
-      color-mix(in srgb, var(--ink-primary) 18%, transparent) 43%,
+      rgba(8, 12, 24, 0.22) 41%,
+      rgba(8, 12, 24, 0.34) 42%,
+      rgba(8, 12, 24, 0.22) 43%,
       transparent 46%,
       transparent 100%
     );
@@ -596,15 +624,17 @@
   height: calc(100vh - 72px);
   height: calc(100svh - 72px);
   overflow: hidden;
-  /* Cinematic midnight ground — a layered wash of deep navy and
-     ink-black. The two stacked stops give the eye depth even before
-     the parallax planes are applied. */
+  /* Cinematic midnight ground — always dark. Previously built with
+     `color-mix(... --ink-primary 90%, #0b1238 10%)` which evaluates to
+     near-white in archive-dusk (because --ink-primary becomes #f8fafc
+     in dark mode). The act flipped from midnight to parchment and the
+     white-on-light tension copy became unreadable. */
   background:
     radial-gradient(
       120% 90% at 70% 30%,
-      color-mix(in srgb, var(--ink-primary) 90%, #0b1238 10%) 0%,
-      color-mix(in srgb, var(--ink-primary) 96%, #050818 4%) 55%,
-      #050818 100%
+      var(--sc-stage-bg-2) 0%,
+      var(--sc-stage-bg) 55%,
+      var(--sc-stage-bg-deep) 100%
     );
 }
 
@@ -707,11 +737,9 @@
   line-height: 1.04;
   color: var(--ink-on-dark);
   text-wrap: balance;
-  /* A subtle inner highlight + offset shadow give the title presence
-     on the deep midnight backdrop without a full-frame scrim. */
   text-shadow:
-    0 1px 0 color-mix(in srgb, var(--accent-primary) 24%, transparent),
-    0 2px 24px color-mix(in srgb, var(--ink-primary) 60%, transparent);
+    0 1px 0 var(--sc-card-bg-edge),
+    0 2px 24px var(--sc-shadow);
 }
 
 .tensionBody {
@@ -722,8 +750,7 @@
   line-height: 1.72;
   max-width: 50ch;
   font-weight: 500;
-  /* Soft glow under the body so it floats off the midnight ground. */
-  text-shadow: 0 0 18px color-mix(in srgb, var(--surface-paper) 60%, transparent);
+  text-shadow: 0 0 18px var(--sc-card-bg-edge);
 }
 
 /* Editorial quote mark — a large serif glyph anchored above the title
@@ -763,15 +790,16 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  /* Glassy chip: ink-on-dark text on a translucent ink-black plate so
-     the chips float over both the back grid and the mid orb without
-     losing legibility. */
+  /* Always-dark glassy chip. Previously used
+     `color-mix(... --ink-primary 60%, transparent)` which became a
+     near-white plate in archive-dusk — the chips turned into parchment
+     labels floating over a midnight stage. */
   color: var(--ink-on-dark);
-  background: color-mix(in srgb, var(--ink-primary) 60%, transparent);
+  background: var(--sc-glass);
   border: 1px solid color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
   backdrop-filter: blur(8px) saturate(140%);
   box-shadow:
-    0 8px 24px color-mix(in srgb, var(--ink-primary) 50%, transparent),
+    0 8px 24px var(--sc-shadow),
     inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
   will-change: transform;
 }
@@ -811,7 +839,10 @@
   height: calc(100vh - 72px);
   height: calc(100svh - 72px);
   overflow: hidden;
-  background: var(--ink-primary);
+  /* Always-dark. Previously `var(--ink-primary)` — fine in paper-day
+     (near-black) but a near-white panel in archive-dusk, breaking
+     every text contrast and chip color in this act. */
+  background: var(--sc-stage-bg);
   color: var(--ink-on-dark);
   display: flex;
   align-items: stretch;
@@ -862,13 +893,13 @@
   padding: 18px 18px 20px;
   border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  /* Always-dark glassy item plate — see note on the page-root block. */
+  background: var(--sc-glass);
   backdrop-filter: blur(8px);
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 14px;
   align-items: start;
-  /* Cue sets opacity:0 + transform via the engine */
 }
 
 .turnNum {
@@ -912,8 +943,10 @@
   padding: 18px 22px;
   border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  /* Always-dark glassy plate. */
+  background: var(--sc-glass);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .publicationFlowHeading {
@@ -950,36 +983,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--ink-primary) 80%, transparent);
+  /* Always-dark plate so the icon stays high-contrast against the
+     midnight stage in both themes. */
+  background: var(--sc-glass-strong);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   flex-shrink: 0;
 }
 .flowNodeCircle:hover {
   transform: scale(1.12);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 20px var(--sc-shadow);
 }
 
 .flowNodeItem[data-role='researcher'] .flowNodeCircle {
   border-color: var(--ars-researcher);
-  background: color-mix(in srgb, var(--ars-researcher) 12%, var(--ink-primary));
+  background: color-mix(in srgb, var(--ars-researcher) 16%, var(--sc-stage-bg));
 }
 .flowNodeItem[data-role='researcher'] .flowNodeCircle svg { color: var(--ars-researcher); }
 
 .flowNodeItem[data-role='admin'] .flowNodeCircle {
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 14%, var(--ink-primary));
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sc-stage-bg));
 }
 .flowNodeItem[data-role='admin'] .flowNodeCircle svg { color: var(--accent-primary); }
 
 .flowNodeItem[data-role='reviewer'] .flowNodeCircle {
   border-color: var(--ars-reviewer);
-  background: color-mix(in srgb, var(--ars-reviewer) 12%, var(--ink-primary));
+  background: color-mix(in srgb, var(--ars-reviewer) 16%, var(--sc-stage-bg));
 }
 .flowNodeItem[data-role='reviewer'] .flowNodeCircle svg { color: var(--ars-reviewer); }
 
 .flowNodeItem[data-role='catalog'] .flowNodeCircle {
   border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 14%, var(--ink-primary));
+  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sc-stage-bg));
 }
 .flowNodeItem[data-role='catalog'] .flowNodeCircle svg { color: var(--accent-primary); }
 
@@ -1162,15 +1197,18 @@
      mobile breakpoint below takes over and stacks the rail. */
   flex: 0 0 clamp(260px, 22vw, 300px);
   min-height: 0;
-  /* Cap height so the card fits in the sticky stage and the rail can
-     pan naturally without cards being cropped off the bottom. */
   max-height: clamp(440px, 60vh, 540px);
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   border-radius: 16px;
-  /* Glassy dark surface with role-tinted edge light */
+  /* Always-dark glassy surface with role-tinted edge light. Previous
+     build used `var(--ink-primary)` in this gradient which is correct
+     for paper-day but became a near-white card in archive-dusk — the
+     four workspace cards rendered as bright parchment panels instead
+     of dark glass cards. The role accent still tints the top edge so
+     each card still reads as belonging to its role. */
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-role, var(--accent-primary)) 8%, var(--ink-primary)) 0%, color-mix(in srgb, var(--ink-primary) 92%, #050a18 8%) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-role, var(--accent-primary)) 12%, var(--sc-card-bg)) 0%, color-mix(in srgb, var(--sc-card-bg) 88%, var(--sc-card-bg-edge) 12%) 100%);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1178,10 +1216,8 @@
   text-decoration: none;
   color: inherit;
   transition: transform 360ms var(--motion-ease-standard), box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
-  /* Edge light on the top lip — sells the "raised glass" depth cue
-     even before any content is in the card. */
   box-shadow:
-    0 24px 48px color-mix(in srgb, var(--ink-primary) 70%, transparent),
+    0 24px 48px var(--sc-shadow),
     inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
 }
 .substanceCard::before {
@@ -1192,7 +1228,7 @@
   pointer-events: none;
   background: radial-gradient(
     120% 80% at 50% 0%,
-    color-mix(in srgb, var(--accent-role, var(--accent-primary)) 18%, transparent) 0%,
+    color-mix(in srgb, var(--accent-role, var(--accent-primary)) 22%, transparent) 0%,
     transparent 60%
   );
 }
@@ -1200,13 +1236,10 @@
   transform: translateY(-6px) scale(1.012);
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 50%, transparent);
   box-shadow:
-    0 32px 64px color-mix(in srgb, var(--ink-primary) 80%, transparent),
+    0 32px 64px var(--sc-shadow-heavy),
     inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
 }
-/* Whole card is now a Link — give it a hover lift and a visible
-   focus ring for keyboard users. Hover lift matches the data-active
-   transform so the eye reads them as the same affordance. */
 .substanceCard:hover {
   transform: translateY(-4px) scale(1.006);
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 40%, transparent);
@@ -1215,7 +1248,7 @@
   outline: none;
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
   box-shadow:
-    0 24px 48px color-mix(in srgb, var(--ink-primary) 70%, transparent),
+    0 24px 48px var(--sc-shadow),
     inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent),
     0 0 0 3px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 45%, transparent);
 }
@@ -1622,12 +1655,13 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: var(--ink-primary);
+  /* Always-dark CTA. Previous `var(--ink-primary)` flipped to near-white
+     in archive-dusk — the final CTA rendered as a bright parchment
+     slab with white text on it, completely inverted from the dark
+     cinematic feel of the surrounding acts. */
+  background: var(--sc-stage-bg);
   color: var(--ink-on-dark);
   overflow: hidden;
-  /* Default to visible — the JS-driven reveal transition is the only
-     thing keeping this at opacity:0 if the observer misfires. We start
-     visible and the reveal only ADDS the rise animation. */
   opacity: 1;
   transform: translateY(0);
   transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
@@ -1678,7 +1712,9 @@
 /* ── Footer ────────────────────────────────────────────────────── */
 .footer {
   color: var(--ink-on-dark);
-  background: color-mix(in srgb, var(--ink-primary) 88%, transparent);
+  /* Always-dark footer (slightly deeper than the cinematic stage so
+     the page finishes with a confident terminator rail). */
+  background: var(--sc-stage-bg-deep);
   border-top: 1px solid var(--border-subtle);
 }
 .footerInner {
