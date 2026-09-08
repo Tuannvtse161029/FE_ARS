@@ -1,56 +1,76 @@
 #!/usr/bin/env node
 /**
- * scripts/run-all-tests.mjs — orchestrates every required test layer.
+ * run-all-tests.mjs — orchestrator for the full test pipeline.
  *
- * Used by `npm run test:full`. Runs each layer in sequence so a failure in
- * the unit suite halts the pipeline before slow e2e suites are even loaded.
+ * Sequentially runs unit → integration → coverage so a single failing
+ * stage short-circuits the pipeline (no point continuing if unit tests
+ * are red). Used by `npm run test:full` and CI.
  *
- * Order: unit → integration → e2e → coverage.
- *
- * The CI release-verify workflow depends on this orchestrator to keep the
- * matrix of jobs reproducible. Local devs can also invoke it for a one-shot
- * pre-release dry-run.
- *
- * Cross-platform: this is plain Node, not a chained shell command. It
- * works identically on Windows PowerShell and POSIX shells.
+ * Honours the env knobs:
+ *   - SKIP_UNIT / SKIP_INTEGRATION / SKIP_COVERAGE   — skip a stage
+ *   - TEST_FAIL_FAST=0                                — keep going after
+ *                                                      a failure (default
+ *                                                      is fail-fast)
  */
-
-import { spawn } from 'node:child_process';
-import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import process from 'node:process';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const shell = process.platform === 'win32';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = join(__dirname, '..');
 
-function run(cmd, args, env = process.env) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, {
-      cwd: ROOT,
-      stdio: 'inherit',
-      env,
-      shell,
-    });
-    child.on('error', reject);
-    child.on('exit', (code) => resolve(code ?? 1));
-  });
-}
+const failFast = process.env.TEST_FAIL_FAST !== '0';
 
-const steps = [
-  ['unit', ['run', 'test:unit']],
-  ['integration', ['run', 'test:integration']],
-  // e2e is optional at the script level — release.yml gates it explicitly.
-  // We attempt it here so `test:full` mirrors a full release locally.
-  ['e2e', ['run', 'test:e2e']],
-  ['coverage', ['run', 'test:coverage']],
+const stages = [
+  {
+    name: 'unit',
+    cmd: 'vitest',
+    args: ['run', '--config', join(projectRoot, 'vitest.unit.config.ts')],
+    enabled: !process.env.SKIP_UNIT,
+  },
+  {
+    name: 'integration',
+    cmd: 'vitest',
+    args: ['run', '--config', join(projectRoot, 'vitest.integration.config.ts')],
+    enabled: !process.env.SKIP_INTEGRATION,
+  },
+  {
+    name: 'coverage',
+    cmd: 'vitest',
+    args: ['run', '--coverage', '--config', join(projectRoot, 'vitest.config.ts')],
+    enabled: !process.env.SKIP_COVERAGE,
+  },
 ];
 
-for (const [name, args] of steps) {
-  console.log(`\n[test:full] step "${name}" — npm ${args.join(' ')}\n`);
-  const code = await run('npm', args);
-  if (code !== 0) {
-    console.error(`[test:full] step "${name}" failed with exit ${code}.`);
-    process.exit(code);
+const localBin = (cmd) => join(projectRoot, 'node_modules', '.bin', cmd);
+
+let firstFailure = null;
+for (const stage of stages) {
+  if (!stage.enabled) {
+    console.log(`\u23ED ${stage.name}: skipped`);
+    continue;
+  }
+  console.log(`\n\u25B6 ${stage.name} tests starting…`);
+  const start = Date.now();
+  const res = spawnSync(localBin(stage.cmd), stage.args, {
+    stdio: 'inherit',
+    cwd: projectRoot,
+    env: process.env,
+  });
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  if (res.status !== 0) {
+    console.error(`\u274c ${stage.name} failed in ${elapsed}s (exit ${res.status}).`);
+    if (!firstFailure) firstFailure = stage.name;
+    if (failFast) break;
+  } else {
+    console.log(`\u2713 ${stage.name} passed in ${elapsed}s.`);
   }
 }
 
-console.log('[test:full] ALL steps completed.');
+if (firstFailure) {
+  console.error(`\n\u274c Pipeline halted at: ${firstFailure}`);
+  process.exit(1);
+}
+console.log('\n\u2713 All test stages passed.');
+process.exit(0);

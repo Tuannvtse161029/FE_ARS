@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ORCID verified shield" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Verification shield: rounded-top shield with an inner check mark, accent orb above. -->
+  <path d="M32 6 L52 14 V32 C52 44 42 54 32 58 C22 54 12 44 12 32 V14 Z" fill="#dceaff" />
+  <path d="M22 32 L29 39 L43 24" stroke="#0a3a8a" stroke-width="3.5" fill="none" />
+  <circle cx="32" cy="14" r="3.2" fill="#007aff" stroke="#007aff" />
+</svg>

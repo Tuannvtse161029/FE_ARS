@@ -10,7 +10,7 @@ import { ROUTES } from '../../routes/paths';
 import RoleSelectionModal from './components/RoleSelectionModal';
 import styles from './Login.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
@@ -18,6 +18,7 @@ import { authService } from '../../services/auth.service';
 import { roleService, type RoleItem } from '../../services/role.service';
 import { useT } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
+import { useThemeToggle } from '../../hooks/useThemeToggle';
 import { storage } from '../../utils/storage';
 
 const Login = () => {
@@ -35,6 +36,15 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [availableRoles, setAvailableRoles] = useState<RoleItem[]>([]);
   const [rolesError, setRolesError] = useState<string | null>(null);
+
+  // Theme — same hook the MainLayout uses, so the Login page picks up
+  // whatever the user last chose in the workspace (or vice versa) and
+  // persists every toggle. Without this, reloading `/login` while the
+  // workspace is in Archive Dusk would fall back to Paper Day because
+  // the AuthLayout sits OUTSIDE MainLayout and never re-applies the
+  // theme attribute on `<html>`.
+  const { theme, toggleTheme: handleToggleTheme } = useThemeToggle();
+  const isDarkTheme = theme === 'archive-dusk';
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +184,45 @@ const Login = () => {
 
   return (
     <div className={styles.loginPage}>
+      {/* Theme toggle — top-right corner of the page, outside the
+          centered form column so it never shifts the masthead. Same
+          iconography + a11y attributes as the MainLayout header toggle
+          (sun = invite back to light, moon = invite to dark) so the
+          affordance reads identically across the app. */}
+      <div className={styles.themeToggleAnchor}>
+        <button
+          type="button"
+          className={styles.themeToggle}
+          onClick={handleToggleTheme}
+          aria-label={
+            isDarkTheme
+              ? t('header.themeToLight', 'Switch to Paper Day theme')
+              : t('header.themeToDark', 'Switch to Archive Dusk theme')
+          }
+          aria-pressed={isDarkTheme}
+          title={
+            isDarkTheme
+              ? t('header.themeLightTitle', 'Switch to Light')
+              : t('header.themeDarkTitle', 'Switch to Dark')
+          }
+          data-testid="theme-toggle"
+        >
+          {isDarkTheme ? (
+            <Sun
+              size={18}
+              aria-hidden="true"
+              className={styles.themeToggleSunIcon}
+            />
+          ) : (
+            <Moon
+              size={18}
+              aria-hidden="true"
+              className={styles.themeToggleMoonIcon}
+            />
+          )}
+        </button>
+      </div>
+
       {/* ── Compact Masthead — Journal Imprint ───────────────────────── */}
       <header className={styles.logoSection}>
         <div className={styles.logoRow}>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Hosted seminar microphone" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Microphone with stand and broadcast rings -->
+  <rect x="26" y="10" width="12" height="22" rx="6" fill="#007aff" />
+  <rect x="26" y="10" width="12" height="22" rx="6" fill="none" />
+  <path d="M22 22 V30 C22 36 26 40 32 40 C38 40 42 36 42 30 V22" stroke="#2d3561" />
+  <path d="M32 40 V50" stroke="#2d3561" />
+  <path d="M24 52 L40 52" stroke="#2d3561" />
+  <path d="M14 24 C18 18 18 14 16 10" stroke="#007aff" />
+  <path d="M50 24 C46 18 46 14 48 10" stroke="#007aff" />
+  <circle cx="32" cy="32" r="3" fill="#f5b400" stroke="#f5b400" />
+</svg>

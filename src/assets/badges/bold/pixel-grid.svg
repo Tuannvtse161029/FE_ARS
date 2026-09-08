@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold digital pixel art grid" fill="none">
+  <defs>
+    <linearGradient id="bpg-block1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06b6d4" />
+      <stop offset="1" stop-color="#0e7490" />
+    </linearGradient>
+    <linearGradient id="bpg-block2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a855f7" />
+      <stop offset="1" stop-color="#6b21a8" />
+    </linearGradient>
+    <linearGradient id="bpg-block3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24" />
+      <stop offset="1" stop-color="#b45309" />
+    </linearGradient>
+  </defs>
+  <!-- Outer frame -->
+  <rect x="10" y="10" width="76" height="76" rx="6" fill="#0f172a" stroke="#475569" stroke-width="2" />
+  <!-- Inner pixel grid (5x5) -->
+  <g stroke="#1e293b" stroke-width="0.5">
+    <!-- Row 1 -->
+    <rect x="18" y="18" width="12" height="12" fill="url(#bpg-block1)" />
+    <rect x="30" y="18" width="12" height="12" fill="#0f172a" />
+    <rect x="42" y="18" width="12" height="12" fill="url(#bpg-block2)" />
+    <rect x="54" y="18" width="12" height="12" fill="#0f172a" />
+    <rect x="66" y="18" width="12" height="12" fill="url(#bpg-block3)" />
+    <!-- Row 2 -->
+    <rect x="18" y="30" width="12" height="12" fill="#0f172a" />
+    <rect x="30" y="30" width="12" height="12" fill="url(#bpg-block2)" />
+    <rect x="42" y="30" width="12" height="12" fill="#0f172a" />
+    <rect x="54" y="30" width="12" height="12" fill="url(#bpg-block1)" />
+    <rect x="66" y="30" width="12" height="12" fill="#0f172a" />
+    <!-- Row 3 -->
+    <rect x="18" y="42" width="12" height="12" fill="url(#bpg-block3)" />
+    <rect x="30" y="42" width="12" height="12" fill="#0f172a" />
+    <rect x="42" y="42" width="12" height="12" fill="#fef3c7" />
+    <rect x="54" y="42" width="12" height="12" fill="#0f172a" />
+    <rect x="66" y="42" width="12" height="12" fill="url(#bpg-block2)" />
+    <!-- Row 4 -->
+    <rect x="18" y="54" width="12" height="12" fill="#0f172a" />
+    <rect x="30" y="54" width="12" height="12" fill="url(#bpg-block1)" />
+    <rect x="42" y="54" width="12" height="12" fill="#0f172a" />
+    <rect x="54" y="54" width="12" height="12" fill="url(#bpg-block2)" />
+    <rect x="66" y="54" width="12" height="12" fill="#0f172a" />
+    <!-- Row 5 -->
+    <rect x="18" y="66" width="12" height="12" fill="url(#bpg-block2)" />
+    <rect x="30" y="66" width="12" height="12" fill="#0f172a" />
+    <rect x="42" y="66" width="12" height="12" fill="url(#bpg-block3)" />
+    <rect x="54" y="66" width="12" height="12" fill="#0f172a" />
+    <rect x="66" y="66" width="12" height="12" fill="url(#bpg-block1)" />
+  </g>
+  <!-- Scanlines -->
+  <path d="M10 36 H86 M10 60 H86" stroke="#475569" stroke-width="0.5" stroke-opacity="0.5" />
+</svg>

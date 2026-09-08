@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold seminar host microphone" fill="none">
+  <defs>
+    <linearGradient id="bsh-mic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e40af" />
+    </linearGradient>
+    <radialGradient id="bsh-spotlight" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity="0.65" />
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <!-- Spotlight from top -->
+  <ellipse cx="48" cy="20" rx="40" ry="20" fill="url(#bsh-spotlight)" />
+  <!-- Stage sound waves -->
+  <path d="M16 56 C20 50 20 46 16 40" stroke="#fbbf24" stroke-width="2" fill="none" />
+  <path d="M80 56 C76 50 76 46 80 40" stroke="#fbbf24" stroke-width="2" fill="none" />
+  <!-- Mic stand -->
+  <rect x="46" y="64" width="4" height="22" fill="#2d3561" />
+  <rect x="38" y="84" width="20" height="6" rx="2" fill="#2d3561" />
+  <!-- Mic body -->
+  <rect x="38" y="14" width="20" height="44" rx="10" fill="url(#bsh-mic)" stroke="#0a3a8a" stroke-width="2" />
+  <!-- Mic grille -->
+  <path d="M44 22 H52 M44 30 H52 M44 38 H52" stroke="#ffffff" stroke-opacity="0.4" stroke-width="1.5" />
+  <!-- Sound burst rings -->
+  <path d="M30 36 C28 30 28 24 30 18" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+  <path d="M22 38 C18 30 18 22 22 14" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-opacity="0.6" />
+  <path d="M66 36 C68 30 68 24 66 18" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+  <path d="M74 38 C78 30 78 22 74 14" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-opacity="0.6" />
+  <!-- Music notes -->
+  <path d="M64 60 L64 70 C64 72 62 74 60 74 C58 74 56 72 56 70 C56 68 58 66 60 66 C61 66 62 66.5 64 67 Z" fill="#fbbf24" />
+  <path d="M72 56 L72 66 C72 68 70 70 68 70 C66 70 64 68 64 66 C64 64 66 62 68 62 C69 62 70 62.5 72 63 Z" fill="#fbbf24" />
+</svg>

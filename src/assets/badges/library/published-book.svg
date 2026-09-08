@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Published paper book" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Open book with a paper sheet motif and "research line" indicators on the right page. -->
+  <path d="M10 16 C18 12 26 12 32 16 V52 C26 48 18 48 10 52 Z" fill="#ffffff" />
+  <path d="M32 16 C38 12 46 12 54 16 V52 C46 48 38 48 32 52 Z" fill="#fffaf2" />
+  <path d="M14 22 L28 22" stroke="#2d3561" />
+  <path d="M14 28 L26 28" stroke="#2d3561" />
+  <path d="M14 34 L24 34" stroke="#2d3561" />
+  <path d="M38 22 L50 22" stroke="#2d3561" />
+  <path d="M38 28 L48 28" stroke="#2d3561" />
+  <path d="M38 34 L46 34" stroke="#2d3561" />
+  <!-- Bookmark ribbon -->
+  <path d="M44 12 L44 28 L48 24 L52 28 L52 12" fill="#f5b400" stroke="#f5b400" />
+</svg>

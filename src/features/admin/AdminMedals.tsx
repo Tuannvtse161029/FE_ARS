@@ -122,19 +122,29 @@ export const AdminMedals: React.FC = () => {
     }
   };
 
-  const handleSaveQuickImage = async (newImageUrl: string) => {
+  const handleSaveQuickImage = async (next: { imageUrl: string }) => {
     if (!targetMedal) return;
     try {
+      const familyKey = deriveFamilyKeyLocal(targetMedal.code);
       const familyTiers = medals.filter(
-        (m) => deriveFamilyKeyLocal(m.code) === deriveFamilyKeyLocal(targetMedal.code),
+        (m) => deriveFamilyKeyLocal(m.code) === familyKey,
       );
+      // Fan the icon out across every tier in the family when there's
+      // more than one sibling. Single-tier medals (rare, but possible
+      // if the admin only created Bronze) hit the simpler per-id path.
+      // Frame shape is locked to 'circle' — we no longer expose it in
+      // the admin UI — so we just write it alongside the icon update
+      // to keep any BE fan-out consistent with what the renderer shows.
       if (familyTiers.length <= 1) {
-        await medalService.update(targetMedal.id, { imageUrl: newImageUrl });
+        await medalService.update(targetMedal.id, {
+          imageUrl: next.imageUrl,
+          frameShape: 'circle',
+        });
       } else {
-        await medalService.updateMedalFamilyIcon(
-          deriveFamilyKeyLocal(targetMedal.code),
-          newImageUrl,
-        );
+        await Promise.all([
+          medalService.updateMedalFamilyIcon(familyKey, next.imageUrl),
+          medalService.updateMedalFamilyShape(familyKey, 'circle'),
+        ]);
       }
       const medalName = locale === 'vi' ? targetMedal.titleVi : targetMedal.title;
       showNotification(

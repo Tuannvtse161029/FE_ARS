@@ -1,0 +1,204 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.searchRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.searchIconWrap {
+  position: absolute;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-muted, #64748b);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, #cbd5e1);
+  background: var(--surface-raised, #ffffff);
+  color: var(--ink-primary, #0f172a);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-primary, #007aff);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
+}
+
+.clearBtn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--ink-muted, #64748b);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.clearBtn:hover,
+.clearBtn:focus-visible {
+  background: var(--surface-subtle, #f1f5f9);
+  color: var(--ink-primary, #0f172a);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px dashed var(--border-subtle, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #475569);
+}
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted, #475569);
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  padding-bottom: 4px;
+}
+
+.groupHeaderText {
+  display: inline-block;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-raised, #ffffff);
+  color: var(--ink-muted, #475569);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+  font: inherit;
+  text-align: left;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--accent-primary, #007aff);
+  background: var(--status-info-surface, #eff6ff);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.tile:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
+}
+
+.tileActive {
+  border-color: var(--accent-primary, #007aff);
+  background: var(--status-info-surface, #dbeafe);
+  color: var(--ink-primary, #0f172a);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.18);
+}
+
+.tileArtFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  background: var(--surface-subtle, #f8fafc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.tileArt {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  display: block;
+  color: var(--accent-primary, #007aff);
+}
+
+.tileCaption {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+  .tile:hover {
+    transform: none;
+  }
+}

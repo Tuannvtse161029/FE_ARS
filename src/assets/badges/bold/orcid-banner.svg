@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold ORCID achievement banner" fill="none">
+  <defs>
+    <linearGradient id="bos-shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b8def" />
+      <stop offset="1" stop-color="#0a3a8a" />
+    </linearGradient>
+    <linearGradient id="bos-shine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <!-- Outer starburst rays -->
+  <path d="M48 4 L52 28 L76 22 L60 42 L84 48 L60 54 L76 74 L52 68 L48 92 L44 68 L20 74 L36 54 L12 48 L36 42 L20 22 L44 28 Z" fill="#fbbf24" />
+  <path d="M48 4 L52 28 L76 22 L60 42 L84 48 L60 54 L76 74 L52 68 L48 92 L44 68 L20 74 L36 54 L12 48 L36 42 L20 22 L44 28 Z" fill="url(#bos-shine)" />
+  <!-- Shield -->
+  <path d="M48 14 L74 24 V50 C74 64 62 76 48 82 C34 76 22 64 22 50 V24 Z" fill="url(#bos-shield)" stroke="#0a3a8a" stroke-width="2" />
+  <!-- ORCID glyph -->
+  <circle cx="40" cy="48" r="6" fill="#ffffff" />
+  <circle cx="40" cy="36" r="3" fill="#ffffff" />
+  <path d="M50 36 H62 C68 36 72 40 72 48 C72 56 68 60 62 60 H50 Z" fill="#ffffff" />
+  <path d="M55 40 V56 H61 C65 56 67 53 67 48 C67 43 65 40 61 40 Z" fill="#5b8def" />
+  <!-- Crown sparkle -->
+  <path d="M48 24 L50 28 L54 30 L50 32 L48 36 L46 32 L42 30 L46 28 Z" fill="#ffffff" />
+</svg>

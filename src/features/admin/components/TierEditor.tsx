@@ -138,6 +138,11 @@ export const TierEditor: React.FC<TierEditorProps> = ({
       tier: formTier,
       stageLevel: Number(formStageLevel) || 1,
       imageUrl: formImageUrl.trim() || 'lucide:Medal',
+      // The frame-shape picker was removed from the admin UI; circle
+      // is the only supported outline now. The field is still included
+      // here so the existing API contract (`MedalCreateInput.frameShape`)
+      // is unchanged for the backend router.
+      frameShape: 'circle',
       criteriaMetric: formCriteriaMetric.trim() || 'default_metric',
       criteriaThreshold: Number(formCriteriaThreshold) || 1,
       criteriaUnit: formCriteriaUnit,

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Manuscript scroll document" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Rolled scroll / manuscript for paper / publication families -->
+  <path d="M14 16 H40 C44 16 46 18 46 22 V42 C46 46 44 48 40 48 H14" fill="#fffaf2" />
+  <path d="M14 16 C10 16 8 18 8 22 C8 26 10 28 14 28" stroke="#2d3561" fill="#fffaf2" />
+  <path d="M14 48 C10 48 8 46 8 42 C8 38 10 36 14 36" stroke="#2d3561" fill="#fffaf2" />
+  <path d="M20 24 L40 24" stroke="#2d3561" />
+  <path d="M20 32 L40 32" stroke="#2d3561" />
+  <path d="M20 40 L34 40" stroke="#2d3561" />
+  <!-- Seal wax -->
+  <circle cx="46" cy="48" r="6" fill="#b91c1c" stroke="#b91c1c" />
+</svg>

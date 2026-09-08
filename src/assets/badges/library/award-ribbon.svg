@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Citation award ribbon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Award ribbon with citation star  generic academic recognition -->
+  <circle cx="32" cy="22" r="12" fill="#b91c1c" />
+  <path d="M32 30 V56 L26 50 L22 56 V46" fill="#b91c1c" stroke="#b91c1c" />
+  <path d="M32 30 V56 L38 50 L42 56 V46" fill="#b91c1c" stroke="#b91c1c" />
+  <circle cx="32" cy="22" r="12" fill="none" stroke="#7f1d1d" stroke-width="2" />
+  <!-- Star -->
+  <path d="M32 14 L33.5 19 L38.5 19 L34.5 22 L36 27 L32 24 L28 27 L29.5 22 L25.5 19 L30.5 19 Z" fill="#f5b400" stroke="#f5b400" />
+</svg>

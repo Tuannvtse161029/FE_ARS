@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Hourglass with sand" fill="none">
+  <!-- Hourglass with sand - time-based progress -->
+  <!-- Top cap -->
+  <rect x="22" y="10" width="52" height="8" rx="2" fill="#92400e" stroke="#7c2d12" stroke-width="2" />
+  <!-- Bottom cap -->
+  <rect x="22" y="78" width="52" height="8" rx="2" fill="#92400e" stroke="#7c2d12" stroke-width="2" />
+  <!-- Glass body (two triangles) -->
+  <path d="M28 18 L68 18 L48 48 Z" fill="#dceaff" stroke="#0a3a8a" stroke-width="2" stroke-linejoin="round" />
+  <path d="M28 78 L68 78 L48 48 Z" fill="#dceaff" stroke="#0a3a8a" stroke-width="2" stroke-linejoin="round" />
+  <!-- Sand in top (about 60% remaining) -->
+  <path d="M28 18 L68 18 L62 30 L34 30 Z" fill="#fbbf24" stroke="#b45309" stroke-width="1.5" stroke-linejoin="round" />
+  <!-- Sand stream -->
+  <rect x="47" y="30" width="2" height="36" fill="#fbbf24" />
+  <!-- Sand pile at bottom -->
+  <path d="M34 72 C40 64 56 64 62 72 Z" fill="#fbbf24" stroke="#b45309" stroke-width="1.5" stroke-linejoin="round" />
+  <!-- Center pinch -->
+  <circle cx="48" cy="48" r="2" fill="#fbbf24" />
+  <!-- Wood grain -->
+  <line x1="26" y1="14" x2="70" y2="14" stroke="#7c2d12" stroke-width="0.5" />
+  <line x1="26" y1="82" x2="70" y2="82" stroke="#7c2d12" stroke-width="0.5" />
+</svg>

@@ -11,13 +11,20 @@ import {
   UploadCloud,
   ExternalLink,
   HelpCircle,
+  GalleryThumbnails,
+  Sparkles,
 } from 'lucide-react';
-import { type Medal, type MedalTier } from '../../../services/medal.service';
+import {
+  type Medal,
+  type MedalTier,
+} from '../../../services/medal.service';
 import { useFirebaseFileUpload } from '../../../hooks/useFirebaseFileUpload';
 import { useI18n } from '../../../i18n/I18nContext';
 import { Button } from '../../../components/Button/Button';
 import { SafeMedalBadge } from './SafeMedalBadge';
 import { LucideIconPicker } from './LucideIconPicker';
+import { BadgeArtworkPicker } from './BadgeArtworkPicker';
+import { BoldArtworkPicker } from './BoldArtworkPicker';
 import styles from './ArtworkUpload.module.css';
 
 const TIER_PREVIEW: MedalTier[] = ['Bronze', 'Silver', 'Gold', 'Platinum'];
@@ -25,7 +32,7 @@ const TIER_PREVIEW: MedalTier[] = ['Bronze', 'Silver', 'Gold', 'Platinum'];
 export interface ArtworkUploadProps {
   medal: Medal;
   currentImageUrl: string;
-  onSave: (newImageUrl: string) => Promise<void>;
+  onSave: (next: { imageUrl: string }) => Promise<void>;
   onClose: () => void;
   showNotification: (message: string, type?: 'success' | 'error') => void;
   locale: string;
@@ -50,14 +57,20 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
   } = useFirebaseFileUpload('medals/');
 
   const [imageUrl, setImageUrl] = useState(currentImageUrl || `lucide:Medal`);
-  const [activeTab, setActiveTab] = useState<'lucide' | 'upload' | 'url'>('lucide');
+  // The frame-shape picker was removed — every medal renders as a
+  // circle now. We still send `frameShape: 'circle'` in the save
+  // payload (see `handleSave`) so the backend contract stays
+  // unchanged.
+  const [activeTab, setActiveTab] = useState<
+    'library' | 'bold' | 'lucide' | 'upload' | 'url'
+  >('library');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const medalTitle = locale === 'vi' ? medal.titleVi || medal.title : medal.title || medal.titleVi;
 
   const handleSave = async () => {
     const url = imageUrl.trim() || 'lucide:Medal';
-    await onSave(url);
+    await onSave({ imageUrl: url });
   };
 
   const handlePickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,11 +152,27 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
           <div className={styles.tabBar}>
             <button
               type="button"
+              className={`${styles.tabBtn} ${activeTab === 'library' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('library')}
+            >
+              <GalleryThumbnails size={16} />
+              <span>{t('admin.medals.quick.tab.library', 'ARS Library')}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'bold' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('bold')}
+            >
+              <Sparkles size={16} />
+              <span>{t('admin.medals.quick.tab.bold', 'Bold designs')}</span>
+            </button>
+            <button
+              type="button"
               className={`${styles.tabBtn} ${activeTab === 'lucide' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('lucide')}
             >
               <MedalIcon size={16} />
-              <span>{t('admin.medals.quick.tab.lucide', 'Biểu tượng Lucide')}</span>
+              <span>{t('admin.medals.quick.tab.lucide', 'Lucide icons')}</span>
             </button>
             <button
               type="button"
@@ -151,7 +180,7 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
               onClick={() => setActiveTab('upload')}
             >
               <UploadCloud size={16} />
-              <span>{t('admin.medals.quick.tab.upload', 'Tải file ảnh')}</span>
+              <span>{t('admin.medals.quick.tab.upload', 'Upload file')}</span>
             </button>
             <button
               type="button"
@@ -159,9 +188,43 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
               onClick={() => setActiveTab('url')}
             >
               <ExternalLink size={16} />
-              <span>{t('admin.medals.quick.tab.url', 'Link ảnh')}</span>
+              <span>{t('admin.medals.quick.tab.url', 'Image URL')}</span>
             </button>
           </div>
+
+          {/* Curated ARS library */}
+          {activeTab === 'library' && (
+            <div className={styles.iconPickerWrapper}>
+              <span className={styles.iconPickerLabel}>
+                {copy(
+                  'Pick a professional flat-color artwork from the curated ARS library:',
+                  'Chọn biểu tượng flat-color chuyên nghiệp từ thư viện ARS:'
+                )}
+              </span>
+              <BadgeArtworkPicker
+                value={imageUrl}
+                onChange={setImageUrl}
+                id="artworkUploadLibrarySearch"
+              />
+            </div>
+          )}
+
+          {/* Bold / illustrative designs */}
+          {activeTab === 'bold' && (
+            <div className={styles.iconPickerWrapper}>
+              <span className={styles.iconPickerLabel}>
+                {copy(
+                  'Pick a bolder, illustrated artwork with gradients, glow, and dramatic composition:',
+                  'Chọn biểu tượng cá tính hơn với gradient, phát sáng và bố cục ấn tượng:'
+                )}
+              </span>
+              <BoldArtworkPicker
+                value={imageUrl}
+                onChange={setImageUrl}
+                id="artworkUploadBoldSearch"
+              />
+            </div>
+          )}
 
           {/* Lucide icon picker */}
           {activeTab === 'lucide' && (

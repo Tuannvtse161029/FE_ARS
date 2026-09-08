@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold streak flame wings" fill="none">
+  <defs>
+    <linearGradient id="bsw-flame-outer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fb923c" />
+      <stop offset="1" stop-color="#c2410c" />
+    </linearGradient>
+    <linearGradient id="bsw-flame-inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24" />
+      <stop offset="1" stop-color="#f97316" />
+    </linearGradient>
+    <linearGradient id="bsw-flame-core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fef3c7" />
+      <stop offset="1" stop-color="#fbbf24" />
+    </linearGradient>
+    <radialGradient id="bsw-halo" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#fb923c" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#fb923c" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <!-- Halo -->
+  <ellipse cx="48" cy="56" rx="44" ry="36" fill="url(#bsw-halo)" />
+  <!-- Left wing -->
+  <path d="M40 50 C24 36 12 38 6 50 C12 56 22 56 32 60 Z" fill="url(#bsw-flame-outer)" stroke="#9a3412" stroke-width="1.5" />
+  <!-- Right wing -->
+  <path d="M56 50 C72 36 84 38 90 50 C84 56 74 56 64 60 Z" fill="url(#bsw-flame-outer)" stroke="#9a3412" stroke-width="1.5" />
+  <!-- Main flame body -->
+  <path d="M48 12 C56 28 70 32 70 52 C70 70 60 84 48 84 C36 84 26 70 26 52 C26 40 38 36 40 18 C44 26 46 30 48 32 C46 26 46 20 48 12 Z" fill="url(#bsw-flame-outer)" stroke="#9a3412" stroke-width="2" />
+  <!-- Inner flame -->
+  <path d="M48 28 C54 38 62 42 62 56 C62 70 56 78 48 78 C40 78 34 70 34 56 C34 44 42 42 44 32 C46 38 46 42 48 44 Z" fill="url(#bsw-flame-inner)" stroke="#c2410c" stroke-width="1.5" />
+  <!-- Core -->
+  <path d="M48 44 C52 52 56 56 56 64 C56 72 52 76 48 76 C44 76 40 72 40 64 C40 56 44 52 48 44 Z" fill="url(#bsw-flame-core)" stroke="#fbbf24" stroke-width="1" />
+  <!-- Sparks -->
+  <circle cx="22" cy="22" r="1.6" fill="#fbbf24" />
+  <circle cx="74" cy="20" r="1.6" fill="#fbbf24" />
+  <circle cx="14" cy="44" r="1.6" fill="#f97316" />
+  <circle cx="84" cy="46" r="1.6" fill="#f97316" />
+</svg>

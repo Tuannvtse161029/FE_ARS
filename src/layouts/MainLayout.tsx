@@ -14,6 +14,7 @@ import { LanguageToggle } from '../components/i18n/LanguageToggle';
 import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
 import { PublicationToastViewport } from '../features/publication/components/PublicationToastViewport';
 import { useShortcuts } from '../hooks/useShortcuts';
+import { useThemeToggle } from '../hooks/useThemeToggle';
 import { useI18n, useLocale } from '../i18n/I18nContext';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
@@ -83,86 +84,12 @@ const getStoredSidebarCollapsed = (): boolean => {
    leave the localStorage helpers and theme bootstrap alone and
    place their changes ABOVE this banner.
    ─────────────────────────────────────────────────────────────── */
-const THEME_STORAGE_KEY = 'ars_theme';
-type ArchiveThemeName = 'archive-dusk' | 'paper-day';
+// Theme helpers (apply, persist, resolve, type) live in
+// `src/hooks/useThemeToggle.ts` so the Login, Register, and other
+// public pages can share the same single source of truth.
+// `useThemeToggle` is the canonical entry point — components should
+// never inline the `applyThemeToRoot` / `setStoredTheme` dance.
 
-const THEME_VALUES: readonly ArchiveThemeName[] = ['archive-dusk', 'paper-day'] as const;
-
-const isThemeName = (value: unknown): value is ArchiveThemeName =>
-  typeof value === 'string' &&
-  (THEME_VALUES as readonly string[]).includes(value);
-
-/**
- * Read the persisted theme preference. Falls back to `null` so the
- * MainLayout bootstrap effect can apply `prefers-color-scheme` only when
- * the user has not made an explicit choice.
- */
-const getStoredTheme = (): ArchiveThemeName | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  try {
-    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (isThemeName(raw)) return raw;
-    if (raw === 'night') return 'archive-dusk';
-    if (raw === 'light') return 'paper-day';
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Returns the initial theme to apply on first paint. The cascade order is:
- *   1. localStorage explicit choice (user wins).
- *   2. `paper-day` for a consistent bright, welcoming first visit.
- */
-const resolveInitialTheme = (): ArchiveThemeName => {
-  const stored = getStoredTheme();
-  if (stored !== null) {
-    return stored;
-  }
-  return 'paper-day';
-};
-
-/**
- * Persist a theme choice to localStorage. The decision to read
- * `matchMedia` synchronously inside `resolveInitialTheme` (rather than
- * wiring a `change` listener) is intentional: theme changes for an
- * already-mounted session come through the toggle button, and we do
- * not want a foreground OS theme flip to silently override an
- * explicit user preference while they are mid-task.
- */
-const setStoredTheme = (theme: ArchiveThemeName): void => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  } catch {
-    // The layout remains usable when browser storage is unavailable.
-  }
-};
-
-/**
- * Apply the theme to the root `<html>` element. The matching semantic token
- * cascade lives in `src/styles/ars-tokens.css`.
- *
- * Why `<html>` rather than the MainLayout root container?
- *   - Single source of truth shared by every route that renders inside
- *     MainLayout (publication home, profile, dashboard, etc).
- *   - Avoids race conditions where descendant pages render before the
- *     attribute is on the layout wrapper.
- *   - Public pages sit above MainLayout and use the default Archive Dusk token
- *     values when no saved authenticated preference has been applied.
- */
-const applyThemeToRoot = (theme: ArchiveThemeName): void => {
-  if (typeof document === 'undefined') {
-    return;
-  }
-  document.documentElement.setAttribute('data-theme', theme);
-};
-/* === END Collapse + Archive Dusk theme === */
 
 const ProfileDropdown = ({
   username,
@@ -391,19 +318,13 @@ export const MainLayout = () => {
     },
   ]);
 
-  // Theme bootstrap (this worker / Agent 38) — read the persisted choice on
-  // mount and apply it to <html data-theme="..."> so token cascade flips
-  // before the user sees a flash of the wrong background.
-  const [theme, setTheme] = useState<ArchiveThemeName>(() => resolveInitialTheme());
-
-  useEffect(() => {
-    applyThemeToRoot(theme);
-    setStoredTheme(theme);
-  }, [theme]);
-
-  const handleToggleTheme = (): void => {
-    setTheme((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
-  };
+  // Theme — read the persisted choice on mount and apply it to
+  // <html data-theme="..."> via the shared hook so the token cascade
+  // flips before the user sees a flash of the wrong background. The
+  // hook also persists + cross-tab syncs the choice. We keep the
+  // wrapper `data-theme` attribute below so descendants that scope
+  // their selectors to `[data-theme]` still work in isolation.
+  const { theme, toggleTheme: handleToggleTheme } = useThemeToggle();
 
   const { t: tr } = useI18n();
   const locale = useLocale();

@@ -15,6 +15,70 @@ export type MedalCriteriaUnit =
   | 'times'
   | 'verifications';
 
+// ── Border / frame shape ────────────────────────────────────────────────────
+// Shared at the metric-family level, just like `imageUrl`. Each shape maps to
+// a CSS `clip-path` value that `SafeMedalBadge` applies uniformly to its ring +
+// inner bevel + icon container + image element so the tier-coloured frame hugs
+// whichever outline the admin picked. Five shapes covers the variety admins
+// asked for — circle (the legacy default), rounded square, hexagon, shield, and
+// diamond — without ballooning the visual taxonomy on the catalog page.
+export type MedalFrameShape =
+  | 'circle'
+  | 'roundedsquare'
+  | 'hexagon'
+  | 'shield'
+  | 'diamond';
+
+export const MEDAL_FRAME_SHAPES: MedalFrameShape[] = [
+  'circle',
+  'roundedsquare',
+  'hexagon',
+  'shield',
+  'diamond',
+];
+
+export const FRAME_SHAPE_LABEL: Record<MedalFrameShape, { en: string; vi: string }> =
+  {
+    circle: { en: 'Circle', vi: 'Tròn' },
+    roundedsquare: { en: 'Rounded square', vi: 'Vuông bo' },
+    hexagon: { en: 'Hexagon', vi: 'Lục giác' },
+    shield: { en: 'Shield', vi: 'Khiên' },
+    diamond: { en: 'Diamond', vi: 'Kim cương' },
+  };
+
+/**
+ * Returns the CSS clip-path string for a given frame shape, parameterised by
+ * the badge side length so polygon vertices resolve in viewBox-relative units
+ * that survive any rendered size.
+ */
+export const FRAME_SHAPE_CLIP_PATH: Record<MedalFrameShape, string> = {
+  // 50% circle centered → matches the legacy `border-radius: 50%` default
+  circle: 'circle(50% at 50% 50%)',
+  // Squircle — pronounced rounded corner that reads as "app tile"
+  roundedsquare: 'inset(0 round 22%)',
+  // Pointy-top hexagon, edges at 12 / 2 / 4 / 6 / 8 / 10 o'clock
+  hexagon: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+  // Shield — flat top, sides, soft V-point at the bottom
+  shield: 'polygon(0% 0%, 100% 0%, 100% 62%, 50% 100%, 0% 62%)',
+  // True diamond (rotated square)
+  diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+};
+
+/**
+ * Coerces an arbitrary string (admin input, BE payload, legacy localStorage)
+ * to a known `MedalFrameShape`, falling back to `'circle'` when unknown.
+ * Centralised here so every save/update path resolves through the same gate.
+ */
+export const normalizeFrameShape = (
+  raw: string | null | undefined,
+): MedalFrameShape => {
+  if (!raw) return 'circle';
+  // Trim before lowercasing so a stray whitespace from a free-text admin
+  // input or a malformed BE payload doesn't break the lookup.
+  const candidate = raw.trim().toLowerCase() as MedalFrameShape;
+  return MEDAL_FRAME_SHAPES.includes(candidate) ? candidate : 'circle';
+};
+
 export const MEDAL_CRITERIA_UNITS: MedalCriteriaUnit[] = [
   'papers', 'seminars', 'student_groups', 'reviews',
   'account', 'publications', 'phases', 'times', 'verifications',
@@ -59,6 +123,13 @@ export interface Medal {
    * color of the frame (Bronze/Silver/Gold/Platinum).
    */
   imageUrl: string;
+  /**
+   * Shared frame / border shape for the metric family — `'circle'` by
+   * default to preserve the legacy look. Admins pick this in the artwork
+   * picker or the TierEditor; the family-level normaliser keeps every
+   * tier's shape in sync the same way it already does for `imageUrl`.
+   */
+  frameShape: MedalFrameShape;
   criteriaMetric: string;
   criteriaThreshold: number;
   criteriaUnit: MedalCriteriaUnit;
@@ -108,6 +179,12 @@ export interface MedalCreateInput {
   tier: MedalTier;
   stageLevel: number;
   imageUrl: string;
+  /**
+   * Family-level frame shape. Optional on the create input because legacy
+   * callers can rely on the service-level default ('circle'). The service
+   * fills in any missing / unknown value via `normalizeFrameShape()`.
+   */
+  frameShape?: MedalFrameShape;
   criteriaMetric: string;
   criteriaThreshold: number;
   criteriaUnit: MedalCriteriaUnit;
@@ -126,7 +203,7 @@ export interface UserMedal {
   unlockedAt: string | null;
 }
 
-const STORAGE_KEY = 'ars_platform_medals_v1';
+const STORAGE_KEY = 'ars_platform_medals_v2'; // v2 = adds family-level frameShape
 
 export const INITIAL_MEDALS: Medal[] = [
   // 1. ORCID Verified Scholar (All 4 roles)
@@ -141,6 +218,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:ShieldCheck',
+    frameShape: 'circle',
     criteriaMetric: 'orcid_connected',
     criteriaThreshold: 1,
     criteriaUnit: 'account',
@@ -159,6 +237,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:ShieldCheck',
+    frameShape: 'circle',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 1,
     criteriaUnit: 'papers',
@@ -177,6 +256,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:ShieldCheck',
+    frameShape: 'circle',
     criteriaMetric: 'orcid_verified_papers',
     criteriaThreshold: 3,
     criteriaUnit: 'publications',
@@ -197,6 +277,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:BookOpen',
+    frameShape: 'circle',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 1,
     criteriaUnit: 'papers',
@@ -215,6 +296,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:BookOpen',
+    frameShape: 'circle',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 5,
     criteriaUnit: 'papers',
@@ -233,6 +315,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:BookOpen',
+    frameShape: 'circle',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 10,
     criteriaUnit: 'papers',
@@ -251,6 +334,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Platinum',
     stageLevel: 4,
     imageUrl: 'lucide:BookOpen',
+    frameShape: 'circle',
     criteriaMetric: 'published_papers',
     criteriaThreshold: 20,
     criteriaUnit: 'papers',
@@ -271,6 +355,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:Mic',
+    frameShape: 'circle',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 1,
     criteriaUnit: 'seminars',
@@ -289,6 +374,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:Mic',
+    frameShape: 'circle',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 3,
     criteriaUnit: 'seminars',
@@ -307,6 +393,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:Mic',
+    frameShape: 'circle',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 5,
     criteriaUnit: 'seminars',
@@ -325,6 +412,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Platinum',
     stageLevel: 4,
     imageUrl: 'lucide:Mic',
+    frameShape: 'circle',
     criteriaMetric: 'hosted_seminars',
     criteriaThreshold: 10,
     criteriaUnit: 'seminars',
@@ -345,6 +433,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:GraduationCap',
+    frameShape: 'circle',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 1,
     criteriaUnit: 'student_groups',
@@ -363,6 +452,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:GraduationCap',
+    frameShape: 'circle',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 3,
     criteriaUnit: 'student_groups',
@@ -381,6 +471,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:GraduationCap',
+    frameShape: 'circle',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 5,
     criteriaUnit: 'student_groups',
@@ -399,6 +490,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Platinum',
     stageLevel: 4,
     imageUrl: 'lucide:GraduationCap',
+    frameShape: 'circle',
     criteriaMetric: 'guided_groups_completed',
     criteriaThreshold: 10,
     criteriaUnit: 'student_groups',
@@ -419,6 +511,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:ClipboardCheck',
+    frameShape: 'circle',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 5,
     criteriaUnit: 'papers',
@@ -437,6 +530,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:ClipboardCheck',
+    frameShape: 'circle',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 10,
     criteriaUnit: 'papers',
@@ -455,6 +549,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:ClipboardCheck',
+    frameShape: 'circle',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 25,
     criteriaUnit: 'papers',
@@ -473,6 +568,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Platinum',
     stageLevel: 4,
     imageUrl: 'lucide:ClipboardCheck',
+    frameShape: 'circle',
     criteriaMetric: 'completed_reviews',
     criteriaThreshold: 50,
     criteriaUnit: 'papers',
@@ -493,6 +589,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:Headphones',
+    frameShape: 'circle',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 1,
     criteriaUnit: 'seminars',
@@ -511,6 +608,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:Headphones',
+    frameShape: 'circle',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 3,
     criteriaUnit: 'seminars',
@@ -529,6 +627,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:Headphones',
+    frameShape: 'circle',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 5,
     criteriaUnit: 'seminars',
@@ -547,6 +646,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Platinum',
     stageLevel: 4,
     imageUrl: 'lucide:Headphones',
+    frameShape: 'circle',
     criteriaMetric: 'attended_seminars',
     criteriaThreshold: 10,
     criteriaUnit: 'seminars',
@@ -567,6 +667,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Bronze',
     stageLevel: 1,
     imageUrl: 'lucide:Sparkles',
+    frameShape: 'circle',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 1,
     criteriaUnit: 'phases',
@@ -585,6 +686,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Silver',
     stageLevel: 2,
     imageUrl: 'lucide:Sparkles',
+    frameShape: 'circle',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 3,
     criteriaUnit: 'phases',
@@ -603,6 +705,7 @@ export const INITIAL_MEDALS: Medal[] = [
     tier: 'Gold',
     stageLevel: 3,
     imageUrl: 'lucide:Sparkles',
+    frameShape: 'circle',
     criteriaMetric: 'flawless_phases',
     criteriaThreshold: 5,
     criteriaUnit: 'phases',
@@ -612,8 +715,30 @@ export const INITIAL_MEDALS: Medal[] = [
   },
 ];
 
+/**
+ * One-shot migration: if a previous version (v1) of the catalog lives in
+ * localStorage, backfill the family-level `frameShape` so older clients
+ * picking up the new code don't render with an undefined shape. The v1 key
+ * is left in place intentionally so it can serve as an audit trail during
+ * deprecation — `loadLocalMedals()` will overwrite it on the next save.
+ */
+function migrateLegacyCatalog(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const legacy = localStorage.getItem('ars_platform_medals_v1');
+    if (!legacy) return;
+    const parsed = JSON.parse(legacy);
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    const migrated = normalizeMedalFamilies(parsed as Medal[]);
+    saveLocalMedals(migrated);
+  } catch {
+    // best-effort; ignore
+  }
+}
+
 function loadLocalMedals(): Medal[] {
   if (typeof window === 'undefined') return INITIAL_MEDALS;
+  migrateLegacyCatalog();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -638,34 +763,55 @@ function saveLocalMedals(medals: Medal[]): void {
 }
 
 /**
- * Ensures every medal in the same metric family shares the same `imageUrl`.
+ * Ensures every medal in the same metric family shares the same `imageUrl`
+ * AND the same `frameShape`. Both belong to the ACHIEVEMENT (metric family),
+ * not to a single tier. If the Admin previously changed icons or frame
+ * shapes on individual tier variants and they drifted apart, this helper
+ * re-syncs them to the values of the lowest-stage medal in the family —
+ * which is treated as canonical. Returns the input list as a new array
+ * (no in-place mutation of the caller's reference).
  *
- * Background: icons belong to the ACHIEVEMENT (metric family), not to a
- * single tier. If the Admin previously changed icons on individual tier
- * variants and they drifted apart, this helper re-syncs them to the icon
- * of the lowest-stage medal in the family — which is treated as canonical.
- *
- * Returns the input list as a new array (no in-place mutation of the
- * caller's reference).
+ * Legacy medals that pre-date the frame-shape feature get `frameShape`
+ * defaulted to `'circle'` so the in-storage catalog and the live BE JSON
+ * share the same shape without breaking the runtime renderer.
  */
 export function normalizeMedalFamilies(medals: Medal[]): Medal[] {
   if (!Array.isArray(medals) || medals.length === 0) return medals;
 
   const familyIcons = new Map<string, string>();
-  // Pass 1: for each family, pick the canonical icon from the lowest-stage medal.
+  const familyShapes = new Map<string, MedalFrameShape>();
+  // Pass 1: for each family, pick the canonical icon AND frame shape from
+  // the lowest-stage medal. Defaults are applied so legacy entries never
+  // hit the downstream renderer with undefined shape.
   for (const m of medals) {
     const family = deriveMetricFamily(m.code);
     if (!family) continue;
     if (!familyIcons.has(family)) {
       familyIcons.set(family, m.imageUrl || 'lucide:Medal');
     }
+    if (!familyShapes.has(family)) {
+      familyShapes.set(family, normalizeFrameShape(m.frameShape));
+    }
   }
-  // Pass 2: rewrite every medal's imageUrl to the family icon.
+  // Pass 2: rewrite every medal to the family canonical values.
   return medals.map((m) => {
     const family = deriveMetricFamily(m.code);
-    const canonical = familyIcons.get(family);
-    if (canonical && m.imageUrl !== canonical) {
-      return { ...m, imageUrl: canonical };
+    const canonicalIcon = familyIcons.get(family);
+    const canonicalShape = familyShapes.get(family);
+    const normalisedShape = normalizeFrameShape(m.frameShape);
+    const iconChanged = canonicalIcon && m.imageUrl !== canonicalIcon;
+    const shapeChanged = canonicalShape && normalisedShape !== canonicalShape;
+    if (iconChanged || shapeChanged) {
+      return {
+        ...m,
+        imageUrl: canonicalIcon ?? m.imageUrl,
+        frameShape: canonicalShape ?? normalisedShape,
+      };
+    }
+    // Even when the family canonical == local, ensure the shape field is
+    // always present so downstream components can rely on it being a string.
+    if (m.frameShape !== normalisedShape) {
+      return { ...m, frameShape: normalisedShape };
     }
     return m;
   });
@@ -875,6 +1021,7 @@ export const medalService = {
       tier: input.tier,
       stageLevel: Number(input.stageLevel) || 1,
       imageUrl: input.imageUrl?.trim() || 'lucide:Medal',
+      frameShape: normalizeFrameShape(input.frameShape),
       criteriaMetric: input.criteriaMetric.trim(),
       criteriaThreshold: Number(input.criteriaThreshold) || 1,
       criteriaUnit,
@@ -883,33 +1030,48 @@ export const medalService = {
 
     const res = await api.post('/api/Medal', payload);
     if (res.data) {
-      const current = loadLocalMedals();
-      saveLocalMedals([res.data, ...current.filter((m) => m.id !== res.data.id)]);
-      // If the new medal belongs to an existing family, sync the icon to
-      // the family canonical icon (lowest-stage sibling).
       const created = res.data as Medal;
       const family = deriveMetricFamily(created.code);
       if (family) {
         const allNow = loadLocalMedals();
-        const siblings = allNow.filter(
+        const siblingCanonical = allNow
+          .filter((m) => deriveMetricFamily(m.code) === family)
+          .sort((a, b) => (a.stageLevel ?? 0) - (b.stageLevel ?? 0))[0];
+        const canonicalIcon = siblingCanonical?.imageUrl ?? created.imageUrl;
+        const canonicalShape =
+          siblingCanonical?.frameShape ?? created.frameShape ?? 'circle';
+        saveLocalMedals([
+          { ...created, imageUrl: canonicalIcon, frameShape: canonicalShape },
+          ...allNow.filter((m) => m.id !== created.id),
+        ]);
+        // If the new medal belongs to an existing family, sync the icon
+        // and frame shape to the family canonical values (lowest-stage
+        // sibling). They're family-level traits so every tier should
+        // share them.
+        const current = loadLocalMedals();
+        const siblings = current.filter(
           (m) => deriveMetricFamily(m.code) === family,
         );
-        const canonical =
-          siblings
-            .sort((a, b) => (a.stageLevel ?? 0) - (b.stageLevel ?? 0))[0]
-            ?.imageUrl ?? created.imageUrl;
-        if (
-          canonical &&
-          siblings.some((m) => m.imageUrl !== canonical)
-        ) {
+        const drifted = siblings.filter(
+          (m) =>
+            m.imageUrl !== canonicalIcon || m.frameShape !== canonicalShape,
+        );
+        if (drifted.length > 0) {
           await Promise.all(
-            siblings.map((m) =>
-              m.imageUrl !== canonical
-                ? this.update(m.id, { imageUrl: canonical })
-                : Promise.resolve(m),
+            drifted.map((m) =>
+              this.update(m.id, {
+                imageUrl: canonicalIcon,
+                frameShape: canonicalShape,
+              }),
             ),
           );
         }
+      } else {
+        const current = loadLocalMedals();
+        saveLocalMedals([
+          created,
+          ...current.filter((m) => m.id !== created.id),
+        ]);
       }
       return await this.getById(created.id) ?? created;
     }
@@ -939,6 +1101,11 @@ export const medalService = {
       tier: input.tier ?? existing?.tier ?? 'Bronze',
       stageLevel: input.stageLevel ?? existing?.stageLevel ?? 1,
       imageUrl: input.imageUrl !== undefined ? input.imageUrl.trim() : (existing?.imageUrl ?? 'lucide:Medal'),
+      frameShape: normalizeFrameShape(
+        input.frameShape !== undefined
+          ? input.frameShape
+          : (existing?.frameShape ?? 'circle'),
+      ),
       criteriaMetric: input.criteriaMetric !== undefined ? input.criteriaMetric.trim() : (existing?.criteriaMetric ?? 'default_metric'),
       criteriaThreshold: input.criteriaThreshold !== undefined ? Number(input.criteriaThreshold) : (existing?.criteriaThreshold ?? 1),
       criteriaUnit,
@@ -953,6 +1120,12 @@ export const medalService = {
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    // Always normalise the stored shape field — the BE may echo back a
+    // missing or malformed value, but the FE contract is "always defined".
+    if (updated.frameShape !== merged.frameShape) {
+      updated.frameShape = merged.frameShape;
+    }
 
     const current = loadLocalMedals();
     const idx = current.findIndex((m) => m.id === id);
@@ -1001,6 +1174,37 @@ export const medalService = {
     // update endpoint yet.
     const updated = await Promise.all(
       familyMedals.map(async (m) => this.update(m.id, { imageUrl: targetUrl })),
+    );
+    return updated;
+  },
+
+  /**
+   * Update the frame shape for EVERY medal in a metric family. Mirrors
+   * `updateMedalFamilyIcon` — the shape is a family-level visual trait
+   * shared by every tier, so a single call keeps the whole achievement
+   * consistent.
+   */
+  async updateMedalFamilyShape(
+    family: string,
+    frameShape: MedalFrameShape,
+  ): Promise<Medal[]> {
+    if (!family) {
+      throw new Error('Family key is required');
+    }
+    const targetShape = normalizeFrameShape(frameShape);
+
+    const current = await this.getAll();
+    const familyMedals = current.filter(
+      (m) => deriveMetricFamily(m.code) === family.toUpperCase(),
+    );
+    if (familyMedals.length === 0) {
+      throw new Error(`No medals found for family "${family}"`);
+    }
+
+    const updated = await Promise.all(
+      familyMedals.map(async (m) =>
+        this.update(m.id, { frameShape: targetShape }),
+      ),
     );
     return updated;
   },

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Crown jewel distinction medal" fill="none">
+  <!-- Tier-agnostic medal: golden ring with star center, mountable to all four tier families -->
+  <circle cx="32" cy="32" r="24" fill="#fff8e6" />
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#b98a16" stroke-width="2" />
+  <circle cx="32" cy="32" r="18" fill="#f5b400" />
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#a47410" stroke-width="1.5" />
+  <!-- Star -->
+  <path d="M32 20 L35.5 28.5 L44 28.5 L37 34 L40 42 L32 37 L24 42 L27 34 L20 28.5 L28.5 28.5 Z" fill="#fff8e6" stroke="#fff8e6" />
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Peer review clipboard" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Review clipboard with a check list and a pen overlay. -->
+  <rect x="14" y="10" width="36" height="46" rx="4" fill="#ffffff" />
+  <rect x="24" y="6" width="16" height="8" rx="2" fill="#007aff" />
+  <path d="M20 22 H32" stroke="#2d3561" />
+  <path d="M20 30 H40" stroke="#2d3561" />
+  <path d="M20 38 H38" stroke="#2d3561" />
+  <!-- Row check marks -->
+  <path d="M40 22 L42 24 L46 20" stroke="#065f46" stroke-width="2.5" fill="none" />
+  <!-- Pen diagonal -->
+  <path d="M44 42 L52 50" stroke="#0a3a8a" stroke-width="3" />
+  <path d="M52 50 L56 54 L54 56 L50 52 Z" fill="#f5b400" stroke="#f5b400" />
+  <path d="M44 42 L48 38 L52 42 L48 46 Z" fill="#007aff" stroke="#007aff" />
+</svg>

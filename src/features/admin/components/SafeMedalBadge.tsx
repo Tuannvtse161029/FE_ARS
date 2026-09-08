@@ -142,7 +142,11 @@ import {
   KeySquare,
   type LucideIcon,
 } from 'lucide-react';
-import { type MedalTier } from '../../../services/medal.service';
+import {
+  type MedalTier,
+  type MedalFrameShape,
+} from '../../../services/medal.service';
+import { resolveBadgeArtwork } from '../../../assets/badges';
 
 const TIER_NUMERAL: Record<string, string> = {
   Bronze: 'I',
@@ -441,6 +445,13 @@ export const SafeMedalBadge: React.FC<{
   size?: number;
   className?: string;
   alt?: string;
+  /**
+   * @deprecated Frame shape is now fixed to `'circle'`. This prop is kept
+   * for backwards compatibility with existing call sites but the value
+   * is ignored — every badge renders as a circle so the disc look
+   * (lucide + custom-image branches) stays uniform.
+   */
+  frameShape?: MedalFrameShape;
 }> = ({ imageUrl, code, criteriaMetric, tier, size = 72, className, alt }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -449,6 +460,11 @@ export const SafeMedalBadge: React.FC<{
   }, [imageUrl]);
 
   const tierKey = tier.toLowerCase();
+  // The `ShapePicker` UI was removed — admin decided circle is enough
+  // for every medal. We still accept the `frameShape` prop on the
+  // public signature so existing call sites don't have to be edited in
+  // lock-step, but the value is ignored and the disc is self-circular
+  // via `border-radius: 50%` on the BG span.
   const iconName = resolveMedalIconName({ code, imageUrl, criteriaMetric });
   const IconComponent = LUCIDE_ICONS_MAP[iconName] || MedalIcon;
   const numeral = TIER_NUMERAL[tier] ?? 'I';
@@ -459,15 +475,45 @@ export const SafeMedalBadge: React.FC<{
   const iconScale = parseFloat(iconScaleRaw) || 0.52;
   const iconSize = Math.round(size * iconScale);
 
-  const isCustomHttpImage =
-    imageUrl &&
+  // Custom-image predicate: render via <img> when the URL looks like an
+  // asset we can resolve (https / blob / data) OR when it points into our
+  // bundled `/assets/badges/...` namespace AND the registry knows about
+  // the matching key. Unknown local paths fall through to the lucide
+  // default so a broken or stale admin URL still surfaces a recognisable
+  // badge instead of an empty tile.
+  const isCustomImage =
+    !!imageUrl &&
     !imageUrl.startsWith('lucide:') &&
     (imageUrl.startsWith('http://') ||
       imageUrl.startsWith('https://') ||
       imageUrl.startsWith('data:') ||
-      imageUrl.startsWith('blob:'));
+      imageUrl.startsWith('blob:') ||
+      (imageUrl.startsWith('/assets/badges/') &&
+        resolveBadgeArtwork(imageUrl) !== null));
 
-  if (isCustomHttpImage && !imgFailed) {
+  if (isCustomImage && !imgFailed) {
+    // The image branch renders a tier-coloured CIRCULAR disc with the
+    // artwork centred on top. The previous square-BG look came from a
+    // decorative outer ring clipping the visual silhouette; with the
+    // ring removed the disc has to be self-circular (`border-radius:
+    // 50%`).
+    //
+    // The disc gradient comes from `--tier-<key>-bg` so Bronze /
+    // Silver / Gold / Platinum all surface their own tint under the
+    // artwork, matching the lucide branch's "icon-on-coloured-disc"
+    // composition.
+    //
+    // The artwork sits inside the disc with a ~10% inset (floored at
+    // 4px so very small badges don't squash the icon) so a thin ring
+    // of tier colour shows around the icon edge — mirroring how the
+    // lucide branch's <IconComponent> sits smaller than its
+    // container.
+    const ICON_INSET_RATIO = 0.1;
+    const ICON_INSET_MIN_PX = 4;
+    const iconInset = Math.max(
+      ICON_INSET_MIN_PX,
+      Math.round(size * ICON_INSET_RATIO),
+    );
     return (
       <span
         className={className}
@@ -477,21 +523,47 @@ export const SafeMedalBadge: React.FC<{
           width: `${size}px`,
           height: `${size}px`,
           flexShrink: 0,
+          overflow: 'visible',
         }}
       >
+        {/* Tier-coloured background disc — a self-circular span
+            (border-radius: 50%) so the badge keeps its round
+            silhouette without depending on a frame ring to clip the
+            visual. */}
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: `var(--tier-${tierKey}-bg)`,
+          }}
+        />
         <img
-          src={imageUrl}
+          src={(() => {
+            // The /assets/badges/<key>.svg URL stored on the medal is only
+            // a stable identifier — at runtime Vite inlines the SVG as a
+            // `data:image/svg+xml,…` URL on `BADGE_ARTWORK_REGISTRY[key].src`,
+            // so resolve through the registry to render the actual artwork.
+            const entry = resolveBadgeArtwork(imageUrl ?? '');
+            return entry ? entry.src : (imageUrl ?? '');
+          })()}
           alt={alt || 'Medal artwork'}
           loading="lazy"
           style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: `2px solid var(--tier-${tierKey}-border)`,
-            boxShadow: `var(--tier-${tierKey}-halo)`,
+            position: 'absolute',
+            top: `${iconInset}px`,
+            left: `${iconInset}px`,
+            width: `${size - 2 * iconInset}px`,
+            height: `${size - 2 * iconInset}px`,
+            objectFit: 'contain',
           }}
           onError={(e) => {
+            // If the resolved SVG / remote URL is missing or malformed
+            // we fall through to the lucide branch below by flipping
+            // `imgFailed`. The tier-colour disc stays visible during
+            // the brief fallback; we don't unmount it because that
+            // would flash the badge off-screen.
             e.currentTarget.onerror = null;
             setImgFailed(true);
           }}
@@ -500,8 +572,8 @@ export const SafeMedalBadge: React.FC<{
           aria-hidden="true"
           style={{
             position: 'absolute',
-            top: '-2px',
-            right: '-2px',
+            top: '2px',
+            right: '2px',
             minWidth: `${Math.round(size * 0.28)}px`,
             height: `${Math.round(size * 0.28)}px`,
             padding: '0 4px',
@@ -536,33 +608,23 @@ export const SafeMedalBadge: React.FC<{
         height: `${size}px`,
         flexShrink: 0,
         userSelect: 'none',
+        // Default is `visible` but we set it explicitly so a future
+        // ancestor style change (e.g. an outer `overflow: hidden` on a
+        // card) can't accidentally trim the corner numeral.
+        overflow: 'visible',
       }}
       title={alt || iconName}
     >
+      {/* Single tier-coloured disc. The previous build layered an outer
+          ring + inner ring + smaller BG circle, which gave a bordered
+          look the admin asked us to drop. Now the disc fills the full
+          badge bounds and uses `border-radius: 50%` to keep the
+          circular silhouette on its own. */}
       <span
         aria-hidden="true"
         style={{
           position: 'absolute',
           inset: 0,
-          borderRadius: '50%',
-          border: `3px solid var(--tier-${tierKey}-ring-outer)`,
-          boxShadow: `var(--tier-${tierKey}-halo)`,
-        }}
-      />
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: '4px',
-          borderRadius: '50%',
-          border: `2px solid var(--tier-${tierKey}-ring-inner, transparent)`,
-        }}
-      />
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: '7px',
           borderRadius: '50%',
           background: `var(--tier-${tierKey}-bg)`,
           display: 'flex',
@@ -580,8 +642,8 @@ export const SafeMedalBadge: React.FC<{
         aria-hidden="true"
         style={{
           position: 'absolute',
-          top: '-3px',
-          right: '-3px',
+          top: '2px',
+          right: '2px',
           minWidth: `${Math.round(size * 0.3)}px`,
           height: `${Math.round(size * 0.3)}px`,
           padding: '0 5px',

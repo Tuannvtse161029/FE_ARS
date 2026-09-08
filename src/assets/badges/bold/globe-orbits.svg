@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold globe with orbiting knowledge paths" fill="none">
+  <defs>
+    <radialGradient id="bgl-globe" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#bfdbfe" />
+      <stop offset="0.5" stop-color="#60a5fa" />
+      <stop offset="1" stop-color="#1e3a8a" />
+    </radialGradient>
+    <linearGradient id="bgl-ring" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fbbf24" />
+      <stop offset="0.5" stop-color="#f97316" />
+      <stop offset="1" stop-color="#dc2626" />
+    </linearGradient>
+  </defs>
+  <!-- Halo -->
+  <circle cx="48" cy="48" r="44" fill="#fef3c7" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2 3" />
+  <!-- Orbit 1 (tilted) -->
+  <ellipse cx="48" cy="48" rx="44" ry="14" fill="none" stroke="url(#bgl-ring)" stroke-width="3" transform="rotate(-25 48 48)" />
+  <!-- Orbit 2 (tilted other way) -->
+  <ellipse cx="48" cy="48" rx="40" ry="12" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 3" transform="rotate(35 48 48)" />
+  <!-- Globe -->
+  <circle cx="48" cy="48" r="28" fill="url(#bgl-globe)" stroke="#0a3a8a" stroke-width="2" />
+  <!-- Meridians -->
+  <ellipse cx="48" cy="48" rx="12" ry="28" fill="none" stroke="#dbeafe" stroke-width="1.5" stroke-opacity="0.7" />
+  <ellipse cx="48" cy="48" rx="26" ry="10" fill="none" stroke="#dbeafe" stroke-width="1.5" stroke-opacity="0.7" />
+  <line x1="20" y1="48" x2="76" y2="48" stroke="#dbeafe" stroke-width="1.5" stroke-opacity="0.7" />
+  <!-- Continents (stylized) -->
+  <path d="M32 38 C36 34 42 36 44 40 C46 44 38 48 36 46 Z" fill="#10b981" stroke="#047857" stroke-width="1" />
+  <path d="M52 44 C56 42 60 46 58 50 C56 54 50 54 50 50 Z" fill="#10b981" stroke="#047857" stroke-width="1" />
+  <path d="M40 56 C44 54 48 58 46 60 C44 62 38 60 40 56 Z" fill="#10b981" stroke="#047857" stroke-width="1" />
+  <!-- Orbiting nodes -->
+  <circle cx="84" cy="34" r="4" fill="#fbbf24" stroke="#b45309" stroke-width="1.5" />
+  <circle cx="16" cy="60" r="4" fill="#3b82f6" stroke="#1e3a8a" stroke-width="1.5" />
+  <circle cx="72" cy="80" r="4" fill="#10b981" stroke="#047857" stroke-width="1.5" />
+  <!-- Glow highlight -->
+  <ellipse cx="38" cy="38" rx="10" ry="6" fill="#ffffff" fill-opacity="0.35" />
+</svg>

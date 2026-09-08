@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Silver distinction medal" fill="none">
+  <circle cx="32" cy="32" r="24" fill="#f4f6fa" />
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#6c7a90" stroke-width="2" />
+  <circle cx="32" cy="32" r="18" fill="#a5b1c2" />
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#5a6677" stroke-width="1.5" />
+  <path d="M32 20 L35.5 28.5 L44 28.5 L37 34 L40 42 L32 37 L24 42 L27 34 L20 28.5 L28.5 28.5 Z" fill="#f4f6fa" stroke="#f4f6fa" />
+</svg>

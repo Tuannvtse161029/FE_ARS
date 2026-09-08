@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Seminar attendee headphones" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Headphones with a small "learn" star on the cup -->
+  <path d="M14 36 V30 C14 19 22 12 32 12 C42 12 50 19 50 30 V36" stroke="#2d3561" />
+  <rect x="10" y="34" width="10" height="14" rx="3" fill="#007aff" />
+  <rect x="44" y="34" width="10" height="14" rx="3" fill="#007aff" />
+  <path d="M15 41 V44 C15 47 17 49 20 49" stroke="#2d3561" />
+  <path d="M49 41 V44 C49 47 47 49 44 49" stroke="#2d3561" />
+  <!-- Center star -->
+  <path d="M32 36 L33.5 40 L37.5 40 L34.2 42.5 L35.5 46.5 L32 44 L28.5 46.5 L29.8 42.5 L26.5 40 L30.5 40 Z" fill="#f5b400" stroke="#f5b400" />
+</svg>

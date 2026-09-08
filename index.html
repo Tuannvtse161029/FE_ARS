@@ -43,7 +43,48 @@
       name="description"
       content="ARS is a trusted academic platform for research discovery, structured paper review, seminars, and role-based collaboration."
     />
-    <meta name="theme-color" content="#10172b" />
+    <!-- Default browser chrome colour (this worker).
+         Two media-gated tags cover the OS-level light/dark preference
+         so the address bar matches on a fresh visit. A third tag
+         (no media) is overwritten by `useThemeToggle` once the React
+         app mounts and the user's explicit choice wins. -->
+    <meta name="theme-color" content="#f8fafc" />
+    <meta name="theme-color" content="#10172b" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <script>
+      // ── Pre-paint theme bootstrap (this worker) ────────────────
+      // Synchronously apply the user's last-chosen theme to <html>
+      // BEFORE the browser computes any CSS for <body>. Without this,
+      // a user on Archive Dusk sees a flash of cream parchment on
+      // every reload — the `:root` selector in ars-tokens.css defaults
+      // to Paper Day, and `data-theme` only flips once React mounts
+      // (i.e. after the JS bundle parses and the React tree commits).
+      //
+      // This script runs in <head> as a classic (non-module) script,
+      // which executes synchronously before the browser parses the
+      // <body> or fetches the deferred module bundle. We mirror the
+      // same legacy-value migration that `useThemeToggle` performs so
+      // a stored `night` / `light` value from an earlier session
+      // doesn't bounce the user back to the default.
+      //
+      // Wrapped in try/catch because localStorage access can throw in
+      // private-mode browsers, sandboxed iframes, or storage-blocked
+      // environments. If anything fails we fall back to Paper Day,
+      // which matches the `:root` cascade defaults so there is no
+      // visible flash in the failure path either.
+      (function () {
+        try {
+          var raw = localStorage.getItem('ars_theme');
+          var theme = raw;
+          if (raw === 'night') theme = 'archive-dusk';
+          else if (raw === 'light') theme = 'paper-day';
+          else if (raw !== 'archive-dusk' && raw !== 'paper-day') theme = 'paper-day';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'paper-day');
+        }
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:title" content="ARS — Academic Research System" />
     <meta
