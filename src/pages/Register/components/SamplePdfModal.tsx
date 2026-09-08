@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '../../../components/Button';
 import { useI18n } from '../../../i18n/I18nContext';
@@ -155,7 +156,10 @@ export const SamplePdfModal = ({
 
   const profile = PROFILES[activeRole];
 
-  return (
+  // Render at document.body so the fixed overlay covers the FULL screen —
+  // not just the AuthLayout right panel. This is the standard portal
+  // pattern for modals that need to escape constrained parent containers.
+  return createPortal(
     <div
       className={styles.overlay}
       onClick={(e) => {
@@ -269,7 +273,8 @@ export const SamplePdfModal = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

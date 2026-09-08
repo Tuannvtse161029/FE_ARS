@@ -865,6 +865,11 @@ export interface SeminarCard {
    *  can render a "NEW" badge. Not persisted or sent to the BE. */
   isNew?: boolean;
   feedback?: string | null;
+  /** Academic subfield the seminar is scoped to (from SeminarCreateRequest.subFieldId). */
+  subFieldId?: number | null;
+  subFieldName?: string | null;
+  /** Joined participant rows. May be null when the BE does not expose them. */
+  participants?: SeminarParticipant[] | null;
 }
 
 /**
@@ -890,9 +895,12 @@ export const mapSeminarToCard = (s: Seminar): SeminarCard => {
     maxParticipants: s.maxParticipants ?? null,
     aiSummary: s.aiSummary ?? null,
     feedback: s.feedback ?? null,
+    subFieldId: s.subFieldId ?? null,
+    subFieldName: s.subFieldName ?? null,
     participantCount: 0,
     feedbackSubmitted: 0,
     feedbackTotal: 0,
+    participants: null,
   };
 };
 
@@ -911,6 +919,7 @@ export const mapSeminarToCardWithParticipants = (
     participantCount: seminarParticipants.length,
     feedbackSubmitted,
     feedbackTotal: seminarParticipants.length,
+    participants: seminarParticipants,
   };
 };
 
