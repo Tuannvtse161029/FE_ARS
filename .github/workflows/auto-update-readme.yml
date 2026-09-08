@@ -53,8 +53,25 @@ jobs:
 
       - name: Verify the integration markers exist in README.md
         id: check-markers
+        # The script distinguishes two failure modes:
+        #   exit 0 → up to date, nothing to do
+        #   exit 1 → drift, the next --write step will regenerate README
+        #   exit 2 → markers missing, cannot auto-fix (a human must restore them)
+        # PR checks (pr-fast.yml) treat exit 1 and exit 2 both as failure,
+        # which is the right behavior there — a contributor should fix drift
+        # before merge. Here we tolerate exit 1 because this job is the fix.
         run: |
+          set +e
           node scripts/update-readme-integrations.mjs --check
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error::README integration markers are missing from README.md — cannot auto-regenerate. Restore the INTEGRATIONS:START/END markers or revert the change that removed them."
+            exit 1
+          fi
+          if [ "$code" -eq 1 ]; then
+            echo "::notice::README integration block has drifted; the next step will regenerate it."
+          fi
 
       - name: Update README integration block
         # --write always rewrites; the script writes only when the rendered

@@ -25,8 +25,10 @@
  * Usage:
  *   node scripts/update-readme-integrations.mjs [--check] [--write]
  *
- *   --check   exit 0 if README is up to date, exit 1 if it would change
- *   --write   (default) rewrite the README in place
+ *   --check   exit 0 if README is up to date, exit 1 if it drifted (auto-fixable),
+ *             exit 2 if markers are missing (cannot auto-fix)
+ *   --write   (default) rewrite the README in place; exits 2 on missing markers,
+ *             0 otherwise
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -357,11 +359,15 @@ function main() {
   }
   const { content, message } = buildUpdatedReadme(current);
   if (content === null) {
+    // Missing markers is unrecoverable from this script's perspective.
+    // Use a distinct exit code so callers can decide how to react:
+    //   - exit 2 → hard fail ("a human must restore the markers")
+    //   - exit 1 → drift ("the next --write step will regenerate the block")
     console.error(`❌ ${message}`);
     console.error(`Add the following markers to README.md to enable auto-update:`);
     console.error(`  ${START_MARKER}`);
     console.error(`  ${END_MARKER}`);
-    process.exit(1);
+    process.exit(2);
   }
   const changed = content !== current;
   if (!changed) {
