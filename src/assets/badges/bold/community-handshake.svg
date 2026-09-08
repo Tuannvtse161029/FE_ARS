@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold community handshake unity" fill="none">
+  <defs>
+    <linearGradient id="bch-hand-left" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e3a8a" />
+    </linearGradient>
+    <linearGradient id="bch-hand-right" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981" />
+      <stop offset="1" stop-color="#047857" />
+    </linearGradient>
+    <radialGradient id="bch-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fef3c7" stop-opacity="0.7" />
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <!-- Halo -->
+  <circle cx="48" cy="48" r="40" fill="url(#bch-glow)" />
+  <!-- Burst rays -->
+  <path d="M48 6 L52 22 L48 18 L44 22 Z" fill="#fbbf24" />
+  <path d="M48 90 L44 74 L48 78 L52 74 Z" fill="#fbbf24" />
+  <path d="M6 48 L22 44 L18 48 L22 52 Z" fill="#fbbf24" />
+  <path d="M90 48 L74 52 L78 48 L74 44 Z" fill="#fbbf24" />
+  <path d="M16 16 L28 24 L24 22 L28 28 Z" fill="#fbbf24" />
+  <path d="M80 80 L68 72 L72 74 L68 68 Z" fill="#fbbf24" />
+  <!-- Heart center -->
+  <path d="M48 50 C40 42 36 38 36 32 C36 28 40 26 44 28 C46 28 48 30 48 32 C48 30 50 28 52 28 C56 26 60 28 60 32 C60 38 56 42 48 50 Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5" />
+  <!-- Left hand -->
+  <path d="M6 50 C6 40 14 36 22 36 L34 36 L34 50 L22 50 Z" fill="url(#bch-hand-left)" stroke="#1e3a8a" stroke-width="2" />
+  <path d="M22 36 V58" stroke="#1e3a8a" stroke-width="1" stroke-opacity="0.5" />
+  <!-- Right hand -->
+  <path d="M90 50 C90 40 82 36 74 36 L62 36 L62 50 L74 50 Z" fill="url(#bch-hand-right)" stroke="#047857" stroke-width="2" />
+  <path d="M74 36 V58" stroke="#047857" stroke-width="1" stroke-opacity="0.5" />
+  <!-- Cuffs -->
+  <rect x="22" y="44" width="14" height="4" fill="#fbbf24" stroke="#b45309" stroke-width="1" />
+  <rect x="60" y="44" width="14" height="4" fill="#fbbf24" stroke="#b45309" stroke-width="1" />
+  <!-- Handshake line -->
+  <path d="M34 44 L62 44" stroke="#1e293b" stroke-width="3" stroke-linecap="round" />
+  <path d="M30 50 L66 50" stroke="#475569" stroke-width="1.5" stroke-opacity="0.7" />
+  <!-- Sparkle on heart -->
+  <path d="M48 28 L49 30 L51 31 L49 32 L48 34 L47 32 L45 31 L47 30 Z" fill="#fef3c7" stroke="#fef3c7" />
+</svg>

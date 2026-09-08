@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Flawless phase trophy" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Trophy cup with sparkle accents to convey "flawless" -->
+  <path d="M18 12 H46 V22 C46 30 40 36 32 36 C24 36 18 30 18 22 Z" fill="#f5b400" />
+  <path d="M18 16 H10 V20 C10 24 14 26 18 26" stroke="#2d3561" />
+  <path d="M46 16 H54 V20 C54 24 50 26 46 26" stroke="#2d3561" />
+  <path d="M32 36 V44" stroke="#2d3561" />
+  <rect x="22" y="44" width="20" height="6" rx="1.5" fill="#2d3561" />
+  <rect x="18" y="50" width="28" height="6" rx="1.5" fill="#2d3561" />
+  <!-- Sparkles -->
+  <path d="M50 14 L52 18 L56 20 L52 22 L50 26 L48 22 L44 20 L48 18 Z" fill="#007aff" stroke="#007aff" />
+  <circle cx="12" cy="32" r="1.5" fill="#007aff" stroke="#007aff" />
+  <circle cx="54" cy="36" r="1.5" fill="#007aff" stroke="#007aff" />
+</svg>

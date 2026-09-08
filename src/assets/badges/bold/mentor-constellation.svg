@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold mentor graduation constellation" fill="none">
+  <defs>
+    <linearGradient id="bmg-cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e3a8a" />
+    </linearGradient>
+    <radialGradient id="bmg-glow" cx="0.5" cy="0.4" r="0.55">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity="0.7" />
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <!-- Glow halo -->
+  <circle cx="48" cy="44" r="40" fill="url(#bmg-glow)" />
+  <!-- Graduation cap -->
+  <path d="M12 36 L48 18 L84 36 L48 54 Z" fill="url(#bmg-cap)" stroke="#1e3a8a" stroke-width="2" />
+  <path d="M22 44 V60 C22 68 32 74 48 74 C64 74 74 68 74 60 V44" stroke="#1e3a8a" stroke-width="2" fill="none" />
+  <path d="M78 38 V58" stroke="#1e3a8a" stroke-width="2" />
+  <circle cx="78" cy="62" r="3" fill="#fbbf24" stroke="#b45309" stroke-width="1" />
+  <!-- Three students -->
+  <circle cx="22" cy="76" r="5" fill="#a855f7" stroke="#6b21a8" stroke-width="1.5" />
+  <path d="M14 88 C14 82 17 80 22 80 C27 80 30 82 30 88" fill="#a855f7" stroke="#6b21a8" stroke-width="1.5" />
+  <circle cx="48" cy="78" r="5" fill="#ec4899" stroke="#9d174d" stroke-width="1.5" />
+  <path d="M40 90 C40 84 43 82 48 82 C53 82 56 84 56 90" fill="#ec4899" stroke="#9d174d" stroke-width="1.5" />
+  <circle cx="74" cy="76" r="5" fill="#10b981" stroke="#047857" stroke-width="1.5" />
+  <path d="M66 88 C66 82 69 80 74 80 C79 80 82 82 82 88" fill="#10b981" stroke="#047857" stroke-width="1.5" />
+  <!-- Connecting lines (cap to students) -->
+  <path d="M48 54 L22 70 M48 54 L48 72 M48 54 L74 70" stroke="#fbbf24" stroke-width="2" stroke-dasharray="3 2" />
+  <!-- Cap star -->
+  <path d="M48 28 L50 33 L55 34 L51 37 L52 42 L48 39 L44 42 L45 37 L41 34 L46 33 Z" fill="#fbbf24" stroke="#b45309" stroke-width="1" />
+</svg>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold award laurel wreath with star" fill="none">
+  <defs>
+    <linearGradient id="bal-leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10b981" />
+      <stop offset="1" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="bal-ribbon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dc2626" />
+      <stop offset="1" stop-color="#7f1d1d" />
+    </linearGradient>
+    <radialGradient id="bal-star" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fef3c7" />
+      <stop offset="0.6" stop-color="#fbbf24" />
+      <stop offset="1" stop-color="#b45309" />
+    </radialGradient>
+  </defs>
+  <!-- Outer ring glow -->
+  <circle cx="48" cy="48" r="40" fill="none" stroke="#10b981" stroke-width="2" stroke-opacity="0.3" stroke-dasharray="2 3" />
+  <!-- Left laurel branch -->
+  <g fill="url(#bal-leaf)" stroke="#047857" stroke-width="1">
+    <path d="M48 14 C30 18 18 32 18 50 C18 64 28 76 44 80" fill="none" stroke-width="3" />
+    <ellipse cx="36" cy="22" rx="6" ry="3" transform="rotate(-50 36 22)" />
+    <ellipse cx="26" cy="34" rx="7" ry="3" transform="rotate(-65 26 34)" />
+    <ellipse cx="20" cy="48" rx="8" ry="3" transform="rotate(-85 20 48)" />
+    <ellipse cx="22" cy="62" rx="7" ry="3" transform="rotate(70 22 62)" />
+    <ellipse cx="32" cy="74" rx="6" ry="3" transform="rotate(50 32 74)" />
+  </g>
+  <!-- Right laurel branch -->
+  <g fill="url(#bal-leaf)" stroke="#047857" stroke-width="1">
+    <path d="M48 14 C66 18 78 32 78 50 C78 64 68 76 52 80" fill="none" stroke-width="3" />
+    <ellipse cx="60" cy="22" rx="6" ry="3" transform="rotate(50 60 22)" />
+    <ellipse cx="70" cy="34" rx="7" ry="3" transform="rotate(65 70 34)" />
+    <ellipse cx="76" cy="48" rx="8" ry="3" transform="rotate(85 76 48)" />
+    <ellipse cx="74" cy="62" rx="7" ry="3" transform="rotate(-70 74 62)" />
+    <ellipse cx="64" cy="74" rx="6" ry="3" transform="rotate(-50 64 74)" />
+  </g>
+  <!-- Center star -->
+  <circle cx="48" cy="44" r="18" fill="url(#bal-star)" stroke="#b45309" stroke-width="1.5" />
+  <path d="M48 30 L51 38 L60 38 L53 43 L56 52 L48 47 L40 52 L43 43 L36 38 L45 38 Z" fill="#fef3c7" stroke="#b45309" stroke-width="1" />
+  <!-- Ribbon tails -->
+  <path d="M40 56 L34 86 L42 80 L48 88 L46 76 L40 56" fill="url(#bal-ribbon)" stroke="#7f1d1d" stroke-width="1.5" />
+  <path d="M56 56 L62 86 L54 80 L48 88 L50 76 L56 56" fill="url(#bal-ribbon)" stroke="#7f1d1d" stroke-width="1.5" />
+  <path d="M48 56 L48 92" stroke="#7f1d1d" stroke-width="2" />
+</svg>

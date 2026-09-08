@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold calendar streak with flame" fill="none">
+  <defs>
+    <linearGradient id="bcs-flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fb923c" />
+      <stop offset="1" stop-color="#c2410c" />
+    </linearGradient>
+    <linearGradient id="bcs-flame-inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24" />
+      <stop offset="1" stop-color="#f97316" />
+    </linearGradient>
+    <linearGradient id="bcs-bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6" />
+      <stop offset="1" stop-color="#1e3a8a" />
+    </linearGradient>
+    <radialGradient id="bcs-glow" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#fb923c" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#fb923c" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <ellipse cx="48" cy="50" rx="44" ry="34" fill="url(#bcs-glow)" />
+  <!-- Calendar -->
+  <rect x="14" y="22" width="60" height="56" rx="4" fill="#ffffff" stroke="#0a3a8a" stroke-width="2" />
+  <rect x="14" y="22" width="60" height="12" fill="url(#bcs-bar)" />
+  <rect x="26" y="16" width="6" height="14" rx="2" fill="#475569" stroke="#0a3a8a" stroke-width="1.5" />
+  <rect x="56" y="16" width="6" height="14" rx="2" fill="#475569" stroke="#0a3a8a" stroke-width="1.5" />
+  <!-- Day cells with active streak -->
+  <rect x="22" y="42" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="36" y="42" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="50" y="42" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="64" y="42" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="22" y="56" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="36" y="56" width="10" height="10" rx="1.5" fill="#fbbf24" />
+  <rect x="50" y="56" width="10" height="10" rx="1.5" fill="#e2e8f0" stroke="#94a3b8" />
+  <rect x="64" y="56" width="10" height="10" rx="1.5" fill="#e2e8f0" stroke="#94a3b8" />
+  <!-- Flame on top -->
+  <path d="M76 6 C80 14 86 18 86 26 C86 32 82 36 76 36 C70 36 66 32 66 26 C66 22 70 20 70 16 C72 20 74 22 76 24 Z" fill="url(#bcs-flame)" stroke="#9a3412" stroke-width="1.5" stroke-linejoin="round" />
+  <path d="M76 14 C78 18 80 22 80 26 C80 30 78 32 76 32 C74 32 72 30 72 26 C72 22 74 20 76 18 Z" fill="url(#bcs-flame-inner)" stroke="#c2410c" stroke-width="1" />
+  <path d="M76 22 C77 24 78 26 78 28 C78 30 77 31 76 31 C75 31 74 30 74 28 C74 26 75 24 76 22 Z" fill="#fef3c7" />
+</svg>

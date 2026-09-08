@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Comet breakthrough streak" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Comet / streak for rapid progress or breakthrough streaks -->
+  <path d="M10 14 L26 30 L18 38 L30 38 L32 50 L36 38 L48 38 L40 30 L52 14" fill="#007aff" stroke="#0a3a8a" />
+  <circle cx="12" cy="12" r="2" fill="#f5b400" stroke="#f5b400" />
+  <path d="M10 14 L4 8" stroke="#007aff" />
+  <path d="M14 18 L8 14" stroke="#007aff" />
+  <path d="M18 22 L14 22" stroke="#007aff" />
+</svg>

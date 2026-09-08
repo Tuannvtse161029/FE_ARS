@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Artist palette with brush" fill="none">
+  <!-- Painter's palette with paint dots and brush -->
+  <!-- Palette shape (kidney) -->
+  <path d="M20 50 C20 32 36 18 56 18 C76 18 84 32 84 46 C84 58 76 64 66 64 C62 64 60 66 60 70 C60 76 56 80 50 80 C30 80 20 68 20 50 Z" fill="#fef3c7" stroke="#92400e" stroke-width="2" stroke-linejoin="round" />
+  <!-- Thumb hole -->
+  <ellipse cx="46" cy="64" rx="6" ry="4" fill="#ffffff" stroke="#92400e" stroke-width="1.5" />
+  <!-- Paint blobs -->
+  <circle cx="32" cy="40" r="6" fill="#dc2626" stroke="#7f1d1d" stroke-width="1" />
+  <circle cx="50" cy="32" r="5" fill="#007aff" stroke="#0a3a8a" stroke-width="1" />
+  <circle cx="66" cy="36" r="5" fill="#10b981" stroke="#047857" stroke-width="1" />
+  <circle cx="60" cy="50" r="4" fill="#fbbf24" stroke="#b45309" stroke-width="1" />
+  <circle cx="38" cy="58" r="4" fill="#a855f7" stroke="#6b21a8" stroke-width="1" />
+  <!-- Brush -->
+  <rect x="68" y="58" width="6" height="22" fill="#92400e" stroke="#7c2d12" stroke-width="1.5" transform="rotate(20 71 69)" />
+  <ellipse cx="84" cy="86" rx="6" ry="4" fill="#7c2d12" transform="rotate(20 84 86)" />
+  <path d="M68 58 L74 54 L80 60 L74 64 Z" fill="#fbbf24" stroke="#b45309" stroke-width="1.5" transform="rotate(20 74 59)" />
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold holographic cube" fill="none">
+  <defs>
+    <linearGradient id="bhc-top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee" />
+      <stop offset="1" stop-color="#0e7490" />
+    </linearGradient>
+    <linearGradient id="bhc-left" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a855f7" />
+      <stop offset="1" stop-color="#4c1d95" />
+    </linearGradient>
+    <linearGradient id="bhc-right" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ec4899" />
+      <stop offset="1" stop-color="#831843" />
+    </linearGradient>
+    <radialGradient id="bhc-halo" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.45" />
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle cx="48" cy="48" r="42" fill="url(#bhc-halo)" />
+  <!-- Cube faces (isometric) -->
+  <!-- Top face -->
+  <path d="M48 16 L78 30 L48 44 L18 30 Z" fill="url(#bhc-top)" stroke="#0e7490" stroke-width="2" stroke-linejoin="round" />
+  <!-- Left face -->
+  <path d="M18 30 V62 L48 76 V44 Z" fill="url(#bhc-left)" stroke="#4c1d95" stroke-width="2" stroke-linejoin="round" />
+  <!-- Right face -->
+  <path d="M78 30 V62 L48 76 V44 Z" fill="url(#bhc-right)" stroke="#831843" stroke-width="2" stroke-linejoin="round" />
+  <!-- Top edge highlights -->
+  <path d="M48 16 L48 44" stroke="#ffffff" stroke-width="1" stroke-opacity="0.5" />
+  <path d="M18 30 L48 44 L78 30" stroke="#ffffff" stroke-width="1" stroke-opacity="0.5" fill="none" />
+  <!-- Scan lines -->
+  <path d="M22 32 L48 16 M22 32 L48 44" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.4" />
+  <path d="M48 76 V44" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.4" />
+  <!-- Floor reflection -->
+  <ellipse cx="48" cy="86" rx="20" ry="4" fill="#22d3ee" stroke="#0e7490" stroke-width="1" stroke-opacity="0.6" />
+  <!-- Holographic glow dots -->
+  <circle cx="48" cy="30" r="2" fill="#ffffff" />
+  <circle cx="36" cy="40" r="1.5" fill="#ffffff" />
+  <circle cx="60" cy="40" r="1.5" fill="#ffffff" />
+  <circle cx="36" cy="60" r="1" fill="#ffffff" />
+  <circle cx="60" cy="60" r="1" fill="#ffffff" />
+  <circle cx="48" cy="66" r="1.5" fill="#ffffff" />
+</svg>

@@ -148,6 +148,7 @@
 
 .tabBar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   border-bottom: 1px solid var(--border-subtle, #e2e8f0);
   padding-bottom: 4px;

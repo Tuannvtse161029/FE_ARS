@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold flawless trophy on podium" fill="none">
+  <defs>
+    <linearGradient id="bft-cup" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a" />
+      <stop offset="1" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="bft-podium" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1" />
+      <stop offset="1" stop-color="#312e81" />
+    </linearGradient>
+  </defs>
+  <!-- Confetti rays -->
+  <path d="M48 6 L52 22 L48 18 L44 22 Z" fill="#fbbf24" />
+  <circle cx="14" cy="22" r="2" fill="#10b981" />
+  <circle cx="82" cy="18" r="2" fill="#ec4899" />
+  <circle cx="12" cy="58" r="2" fill="#3b82f6" />
+  <circle cx="84" cy="64" r="2" fill="#fbbf24" />
+  <path d="M20 14 L24 18 L20 18 Z" fill="#10b981" />
+  <path d="M76 12 L72 16 L76 16 Z" fill="#ec4899" />
+  <!-- Trophy -->
+  <path d="M26 28 H70 V40 C70 50 62 56 48 56 C34 56 26 50 26 40 Z" fill="url(#bft-cup)" stroke="#7c2d12" stroke-width="2" />
+  <path d="M26 32 H14 V36 C14 42 18 46 26 46" stroke="#7c2d12" stroke-width="2" fill="none" />
+  <path d="M70 32 H82 V36 C82 42 78 46 70 46" stroke="#7c2d12" stroke-width="2" fill="none" />
+  <!-- Trophy star -->
+  <path d="M48 36 L51 42 L57 42 L52 46 L54 52 L48 48 L42 52 L44 46 L39 42 L45 42 Z" fill="#fbbf24" stroke="#b45309" stroke-width="1.5" />
+  <!-- Trophy stem -->
+  <path d="M48 56 V64" stroke="#7c2d12" stroke-width="3" />
+  <!-- Podium base -->
+  <rect x="20" y="64" width="56" height="10" rx="2" fill="url(#bft-podium)" stroke="#1e1b4b" stroke-width="1.5" />
+  <rect x="14" y="74" width="68" height="12" rx="3" fill="url(#bft-podium)" stroke="#1e1b4b" stroke-width="1.5" />
+  <!-- Star on base -->
+  <path d="M48 80 L50 84 L54 84 L51 86 L52 90 L48 88 L44 90 L45 86 L42 84 L46 84 Z" fill="#fbbf24" />
+</svg>

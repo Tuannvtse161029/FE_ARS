@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Bold published hero book" fill="none">
+  <defs>
+    <linearGradient id="bpb-pages" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaf2" />
+      <stop offset="1" stop-color="#f0e0c0" />
+    </linearGradient>
+    <linearGradient id="bpb-cover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dc2626" />
+      <stop offset="1" stop-color="#7f1d1d" />
+    </linearGradient>
+    <radialGradient id="bpb-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity="0.8" />
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <!-- Glow halo -->
+  <circle cx="48" cy="48" r="40" fill="url(#bpb-glow)" />
+  <!-- Diagonal sunburst -->
+  <path d="M0 48 L96 48 M48 0 L48 96 M16 16 L80 80 M80 16 L16 80" stroke="#fbbf24" stroke-width="2" stroke-opacity="0.55" />
+  <!-- Open book pages -->
+  <path d="M14 28 C26 22 38 22 48 28 V76 C38 70 26 70 14 76 Z" fill="url(#bpb-pages)" stroke="#b98a16" stroke-width="1.5" />
+  <path d="M48 28 C58 22 70 22 82 28 V76 C70 70 58 70 48 76 Z" fill="url(#bpb-pages)" stroke="#b98a16" stroke-width="1.5" />
+  <!-- Text lines -->
+  <path d="M22 38 L42 38" stroke="#2d3561" stroke-width="1.5" />
+  <path d="M22 46 L40 46" stroke="#2d3561" stroke-width="1.5" />
+  <path d="M22 54 L36 54" stroke="#2d3561" stroke-width="1.5" />
+  <path d="M54 38 L74 38" stroke="#2d3561" stroke-width="1.5" />
+  <path d="M54 46 L72 46" stroke="#2d3561" stroke-width="1.5" />
+  <path d="M54 54 L66 54" stroke="#2d3561" stroke-width="1.5" />
+  <!-- Gold ribbon bookmark -->
+  <path d="M62 18 L62 50 L70 44 L78 50 L78 18 Z" fill="url(#bpb-cover)" stroke="#7f1d1d" stroke-width="1.5" />
+  <!-- Star above -->
+  <path d="M48 12 L51 17 L56 18 L52 21 L53 26 L48 23 L43 26 L44 21 L40 18 L45 17 Z" fill="#fbbf24" stroke="#fbbf24" />
+</svg>

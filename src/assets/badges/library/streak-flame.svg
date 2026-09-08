@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Streak / consecutive days flame" fill="none">
+  <!-- Flame with inner flame core  for streak / consecutive attendance achievements -->
+  <path d="M32 6 C36 16 46 18 46 32 C46 42 40 50 32 50 C24 50 18 42 18 32 C18 24 26 22 28 12 C30 18 30 20 32 22 C32 18 34 14 32 6 Z" fill="#f5b400" />
+  <path d="M32 6 C36 16 46 18 46 32 C46 42 40 50 32 50 C24 50 18 42 18 32 C18 24 26 22 28 12 C30 18 30 20 32 22 C32 18 34 14 32 6 Z" fill="none" stroke="#b98a16" stroke-width="2" />
+  <path d="M32 22 C36 28 38 32 38 38 C38 44 36 48 32 48 C28 48 26 44 26 38 C26 32 28 28 32 22 Z" fill="#dc2626" stroke="#dc2626" />
+</svg>

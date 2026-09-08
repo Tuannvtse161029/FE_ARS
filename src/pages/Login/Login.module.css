@@ -11,6 +11,97 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* ── Theme toggle (this worker) ─────────────────────────────
+   Anchored to the top-right of the page so it sits at the same
+   corner a logged-in user would expect to find the workspace
+   toggle. Lifted out of the centered form column so adding it
+   never shifts the masthead or the input field row. Visually
+   matches the MainLayout header toggle so the affordance reads
+   identically across authenticated and public routes. */
+.themeToggleAnchor {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--control-bg);
+  color: var(--control-text);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  border-color: var(--border-strong);
+  background-color: var(--control-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px var(--shadow-color, rgba(15, 23, 42, 0.08));
+}
+
+.themeToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.themeToggle:active {
+  transform: translateY(0.5px);
+}
+
+.themeToggle svg {
+  transition: transform var(--transition-fast);
+}
+
+.themeToggle:hover svg {
+  transform: rotate(18deg) scale(1.08);
+}
+
+/* Sun icon (shown when dark theme is active) — amber accent so it
+   matches the warm-tone aesthetic of the Paper Day tokens and reads
+   as "go back to light". */
+.themeToggleSunIcon {
+  color: var(--accent-ochre, #f59e0b);
+}
+
+/* Moon icon (shown when light theme is active) — cool blue accent so
+   the dark-mode invitation picks up the Archive Dusk token colour. */
+.themeToggleMoonIcon {
+  color: var(--accent-primary);
+}
+
+/* In the AuthLayout the form panel is the right half of the screen;
+   the toggle sits over the wall-paper on narrow viewports but the
+   absolute anchor keeps it pinned to the top-right corner regardless
+   of panel split. On small screens we shrink it slightly and lift
+   the masthead to make room for the button. */
+@media (max-width: 640px) {
+  .themeToggleAnchor {
+    top: var(--space-3);
+    right: var(--space-3);
+  }
+  .logoSection {
+    margin-top: var(--space-6);
+  }
 }
 
 /* ── Masthead — Compact, Editorial, Journal-Imprint Style ─── */

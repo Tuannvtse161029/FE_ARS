@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ORCID academic brand" fill="none">
+  <!-- Stylized ORCID iD mark  green ring + iD letters, simplified for badges -->
+  <circle cx="32" cy="32" r="22" fill="#a6ce39" />
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#7aa31f" stroke-width="2" />
+  <!-- i -->
+  <rect x="20" y="22" width="5" height="20" fill="#ffffff" />
+  <circle cx="22.5" cy="18" r="2.5" fill="#ffffff" />
+  <!-- D -->
+  <path d="M30 22 H38 C44 22 46 26 46 32 C46 38 44 42 38 42 H30 Z" fill="#ffffff" />
+  <path d="M33 25 V39 H37 C40 39 42 36 42 32 C42 28 40 25 37 25 Z" fill="#a6ce39" />
+</svg>

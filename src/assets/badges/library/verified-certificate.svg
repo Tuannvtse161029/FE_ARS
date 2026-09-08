@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Verified certificate seal" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Certificate ribbon + medallion seal -->
+  <rect x="12" y="14" width="40" height="32" rx="3" fill="#fffaf2" stroke="#2d3561" />
+  <path d="M20 22 H44" stroke="#2d3561" />
+  <path d="M20 30 H44" stroke="#2d3561" />
+  <path d="M20 38 H36" stroke="#2d3561" />
+  <!-- Medallion -->
+  <circle cx="46" cy="50" r="9" fill="#007aff" />
+  <circle cx="46" cy="50" r="9" fill="none" stroke="#0a3a8a" />
+  <!-- Ribbon tails -->
+  <path d="M42 56 L38 64" stroke="#007aff" stroke-width="2" />
+  <path d="M50 56 L54 64" stroke="#007aff" stroke-width="2" />
+  <path d="M42 50 L50 50" stroke="#ffffff" stroke-width="2" />
+  <path d="M46 46 L50 50 L46 54 L42 50 Z" fill="#ffffff" stroke="#ffffff" />
+</svg>
