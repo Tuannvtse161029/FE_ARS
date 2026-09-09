@@ -1,0 +1,53 @@
+---
+description: Seminar date/time handling — use parseApiDateTimeAsUtc, never silently shift the displayed wall-clock time.
+globs: "**/datetime.ts,**/seminar/**/*.ts*,**/seminars/**/*.ts*,**/useSeminar*.ts*,**/SeminarWorkspace.tsx,**/SeminarFeedback*.ts*"
+alwaysApply: false
+---
+
+# Seminar Date/Time Handling
+
+The ARS backend's serializer occasionally drops the timezone marker on `SeminarResponse.startTime` / `endTime` — the BE returns `"2026-09-09T17:45:00"` instead of `"2026-09-09T17:45:00Z"`. Without the `Z` suffix, `new Date(...)` interprets the bare string in the browser's local timezone, which causes the seminar card to render the wrong **date** and **time** (e.g. `Sep 9, 17:45` for a slot the lecturer picked as `Sep 10, 12:45 AM` ICT) and can also flip the status to `COMPLETED` immediately after creation.
+
+## Required Pattern
+
+Anywhere a seminar `startTime` / `endTime` string is parsed for **display** or **status comparison**, route it through `parseApiDateTimeAsUtc()` from `src/utils/datetime.ts`:
+
+```ts
+import { parseApiDateTimeAsUtc } from '../../../utils/datetime';
+
+const start = parseApiDateTimeAsUtc(sem.startTime);
+const end = parseApiDateTimeAsUtc(sem.endTime);
+
+// Display formatters are safe to call on the result — they use toLocale*String
+// and render the browser's local wall-clock equivalent of the UTC instant.
+const dateLabel = start ? formatDisplayDate(start, locale) : '';
+const timeLabel = start && end
+  ? `${formatDisplayTime(start, locale)} – ${formatDisplayTime(end, locale)}`
+  : '';
+```
+
+The same helper must be used for:
+
+- Status comparison (`deriveEffectiveStatus`, the inline `getMyInvitations` mapper).
+- `<input type="datetime-local">` round-trips in `SeminarWorkspace` (parse first, then `toLocalDatetimeInput`).
+- The seminar subtitle inside `SeminarFeedbackModalShell` / `SeminarFeedbackPanel`.
+
+## Forbidden Patterns
+
+- `new Date(sem.startTime)` / `new Date(sem.endTime)` directly — this is the original bug.
+- `parseApiDate(iso)` for seminar timestamps — it treats bare datetimes as local, not UTC.
+- Adding ±7-hour offsets anywhere to "compensate" — that just moves the bug into the code.
+- Per-call-site one-off fixes that wrap `new Date()` with a manual `Z` — centralise in the helper.
+
+## When Unsure, Ask First
+
+If a seminar time appears wrong, **do not** shift the picked value to fix the display. Two safe paths exist:
+
+1. **Fix the parser**: extend or adjust `parseApiDateTimeAsUtc` in `src/utils/datetime.ts` so all call sites benefit. This is the preferred path.
+2. **Ask the user**: if the BE contract genuinely changed (e.g. it now returns a different shape), confirm with the user before changing the FE conversion direction, since any one-way shift in the UI silently misaligns the user's picked wall-clock time with what's stored on the server.
+
+If the only thing you need to do is "make the displayed number match what the user typed", that is a signal to fix `parseApiDateTimeAsUtc`, not to coerce the value at a call site.
+
+## Update Pattern
+
+If the BE's serialization shape evolves (e.g. it now always emits `Z`, or switches to `±HH:MM`), update `parseApiDateTimeAsUtc` **once** and add a brief comment explaining the new shape. Do not sprinkle one-off fixups in SeminarWorkspace, SeminarFeedbackModalShell, SeminarList, or anywhere else in `src/components/seminar/**` and `src/features/seminars/**`.

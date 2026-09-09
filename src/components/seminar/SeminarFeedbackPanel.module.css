@@ -694,6 +694,50 @@
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.feedbackViewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer);
+  border-radius: var(--radius-md, 8px);
+  color: var(--ars-lecturer);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 120ms ease, color 120ms ease,
+    transform 80ms ease;
+}
+
+.feedbackViewBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer);
+  color: var(--ars-paper);
+}
+
+.feedbackViewBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.feedbackViewBtn:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--ars-lecturer-mid));
+  outline-offset: 2px;
+}
+
+.feedbackViewBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: var(--ars-paper-rule);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-alt);
 }
 
 .feedbackAvatar {

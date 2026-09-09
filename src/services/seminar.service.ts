@@ -9,6 +9,7 @@ import {
   getCachedSeminarQuestions,
   setCachedSeminarQuestions,
 } from '../types/seminarFeedback';
+import { parseApiDateTimeAsUtc } from '../utils/datetime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Semantic seminar status — canonical set for the UI.
@@ -750,7 +751,12 @@ export const seminarService = {
       invitationStatus: row.invitationStatus ?? null,
       participantEvaluation: row.participantEvaluation ?? null,
       rating: row.rating ?? null,
-      status: row.endTime && new Date(row.endTime).getTime() < Date.now() ? 'Completed' : 'Upcoming',
+      status:
+        row.endTime &&
+        (parseApiDateTimeAsUtc(row.endTime)?.getTime() ?? Number.POSITIVE_INFINITY) <
+          Date.now()
+          ? 'Completed'
+          : 'Upcoming',
     }));
   },
 
@@ -858,8 +864,17 @@ export const deriveEffectiveStatus = (
   if (mapped === 'COMPLETED' || mapped === 'DRAFT') return mapped;
   if (!endTime) return mapped;
 
-  const endMs = new Date(endTime).getTime();
-  if (Number.isNaN(endMs)) return mapped;
+  // Parse the BE's `endTime` as UTC. The ASP.NET backend is documented to
+  // return ISO 8601 timestamps, but its serializer sometimes strips the
+  // `Z` (or `±HH:MM`) suffix when the underlying `DateTime.Kind` is
+  // `Unspecified` — e.g. it returns `"2026-09-09T17:50:00"` instead of
+  // `"2026-09-09T17:50:00Z"`. Without the `Z`, plain `new Date(...)` is
+  // interpreted as the browser's LOCAL time, which causes a freshly-
+  // created seminar to be tagged COMPLETED immediately in UTC+7 (and
+  // similar) timezones. `parseApiDateTimeAsUtc` re-adds the `Z` when it's
+  // missing so the timestamp is unambiguous.
+  const endMs = parseApiDateTimeAsUtc(endTime)?.getTime();
+  if (endMs == null || Number.isNaN(endMs)) return mapped;
 
   if (endMs < Date.now()) return 'COMPLETED';
   return mapped;

@@ -29,7 +29,6 @@ import {
   Lightbulb,
   ThumbsUp,
   Wrench,
-  MessageSquareText,
   Quote,
   Eye,
 } from 'lucide-react';
@@ -47,6 +46,7 @@ import {
   type FeedbackQuestion,
 } from '../../types/seminarFeedback';
 import { SeminarFeedbackModal } from './SeminarFeedbackModal';
+import { RawFeedbackViewModal } from './RawFeedbackViewModal';
 import styles from './SeminarFeedbackPanel.module.css';
 
 interface SeminarFeedbackPanelProps {
@@ -548,13 +548,13 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry, questions }) => {
   const answers = parseParticipantAnswers(entry.feedbackJson);
   const initials = initialsOf(entry.userFullName, displayName);
 
-  const questionById = useMemo(() => {
-    const map = new Map<string, FeedbackQuestion>();
-    for (const q of questions ?? []) {
-      if (q.id) map.set(q.id, q);
-    }
-    return map;
-  }, [questions]);
+  // The raw answers live in a pop-up modal so the lecturer's eye can stay
+  // on the list-level signal (who submitted, who hasn't). The button is
+  // disabled when the participant has nothing on file yet.
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const answerCount = answers.length;
+  const hasQuestions = (questions ?? []).length > 0;
 
   return (
     <li className={styles.feedbackCard}>
@@ -569,6 +569,27 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry, questions }) => {
               <span className={styles.feedbackEmail}>{entry.userEmail}</span>
             )}
           </div>
+          <button
+            type="button"
+            className={styles.feedbackViewBtn}
+            onClick={() => setViewerOpen(true)}
+            disabled={!hasSubmission}
+            title={
+              hasSubmission
+                ? `View raw feedback from ${displayName}`
+                : `${displayName} has not submitted yet`
+            }
+            aria-label={
+              hasSubmission
+                ? `View raw feedback from ${displayName}`
+                : `${displayName} has not submitted feedback yet`
+            }
+          >
+            <Eye size={14} aria-hidden />
+            {hasSubmission
+              ? `View${hasQuestions ? ` (${answerCount} ${answerCount === 1 ? 'answer' : 'answers'})` : ''}`
+              : 'View'}
+          </button>
         </div>
         <div className={styles.feedbackMeta}>
           {entry.invitationStatus && (
@@ -599,84 +620,20 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry, questions }) => {
         </div>
       </header>
 
-      {!hasSubmission ? (
+      {!hasSubmission && (
         <div className={styles.feedbackCardEmpty}>
           <Quote size={14} aria-hidden />
           <span>No feedback submitted yet.</span>
         </div>
-      ) : (
-        <div className={styles.feedbackBody}>
-          {answers.map((answer) => {
-            const question = answer.questionId
-              ? questionById.get(answer.questionId)
-              : undefined;
-            const label =
-              question?.questionText ?? `Question (${answer.questionId ?? 'unknown'})`;
-            if (answer.type === 'rating' && typeof answer.rating === 'number') {
-              const max = question?.maxStar ?? 5;
-              return (
-                <FeedbackQuoteSection
-                  key={`${answer.questionId ?? 'q'}-rating`}
-                  icon={<ThumbsUp size={14} aria-hidden />}
-                  label={`${label} · ${answer.rating} / ${max}`}
-                  body={renderStars(answer.rating, max)}
-                />
-              );
-            }
-            if (answer.type === 'text' && (answer.text ?? '').trim().length > 0) {
-              return (
-                <FeedbackQuoteSection
-                  key={`${answer.questionId ?? 'q'}-text`}
-                  icon={<MessageSquareText size={14} aria-hidden />}
-                  label={label}
-                  body={(answer.text ?? '').trim()}
-                />
-              );
-            }
-            return null;
-          })}
-          {answers.length === 0 && (
-            <div className={styles.feedbackCardEmpty}>
-              <Quote size={14} aria-hidden />
-              <span>
-                No answer data found in the submission.
-              </span>
-            </div>
-          )}
-        </div>
       )}
+
+      <RawFeedbackViewModal
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        entry={entry}
+        questions={questions}
+      />
     </li>
-  );
-};
-
-/** Tiny inline renderer used by the FeedbackCard to show a star count. */
-function renderStars(rating: number, max: number): string {
-  const filled = '★'.repeat(Math.max(0, Math.min(max, Math.round(rating))));
-  const empty = '☆'.repeat(Math.max(0, max - Math.round(rating)));
-  return `${filled}${empty}`.trim();
-}
-
-
-
-interface FeedbackQuoteSectionProps {
-  icon: React.ReactNode;
-  label: string;
-  body: string;
-}
-
-const FeedbackQuoteSection: React.FC<FeedbackQuoteSectionProps> = ({
-  icon,
-  label,
-  body,
-}) => {
-  return (
-    <section className={styles.feedbackQuoteSection}>
-      <header className={styles.feedbackBulletHeader}>
-        <span className={styles.feedbackBulletIcon}>{icon}</span>
-        <span className={styles.feedbackBulletLabel}>{label}</span>
-      </header>
-      <blockquote className={styles.feedbackQuote}>{body}</blockquote>
-    </section>
   );
 };
 

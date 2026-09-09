@@ -639,15 +639,27 @@
   align-items: center;
   gap: var(--space-2);
   background: var(--ars-paper);
-  border: var(--border-thin);
+  border: 1px solid var(--ars-lecturer);
   border-radius: var(--radius-md);
-  color: var(--ars-ink-muted);
+  color: var(--ars-lecturer);
   padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  cursor: not-allowed;
+  cursor: pointer;
+  transition: background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback);
   font-family: var(--font-family-ui);
-  opacity: 0.7;
+  opacity: 1;
+}
+
+.actionBtnGhost:hover:not(:disabled) {
+  background: var(--ars-lecturer-light);
+  border-color: var(--ars-lecturer-mid);
+  color: var(--ars-lecturer-mid);
+}
+
+.actionBtnGhost:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
 }
 
 /* ── Modal Overlay ─────────────────────────────────────────────── */

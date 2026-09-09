@@ -1,0 +1,106 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-md, 8px);
+  /* The header is always dark navy glass (see LandingScrollVideo.module.css
+     `.header` rule). Using var(--control-bg) here would inherit #ffffff in
+     light mode — which makes the icon disappear because the icon color is
+     also white. We hard-code a translucent dark plate that holds contrast
+     against the always-dark header regardless of theme. */
+  background: rgba(13, 19, 38, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast, 120ms ease),
+    border-color var(--transition-fast, 120ms ease),
+    color var(--transition-fast, 120ms ease),
+    transform var(--transition-fast, 120ms ease);
+}
+
+.trigger:hover {
+  background: rgba(13, 19, 38, 0.75);
+  border-color: var(--accent-primary, #e2ad2f);
+  color: var(--accent-primary, #e2ad2f);
+  transform: scale(1.05);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--focus-ring, #e2ad2f);
+  outline-offset: 2px;
+}
+
+.trigger:active {
+  transform: scale(0.95);
+}
+
+/* Light theme trigger — the current theme is paper-day.
+   Use a brighter icon color (pure white) and slightly stronger border so
+   the sun reads even at small sizes against the dark navy header.
+   Hover swaps to the yellow accent. */
+.light {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(13, 19, 38, 0.5);
+}
+
+.light:hover {
+  color: var(--accent-primary, #e2ad2f);
+  border-color: var(--accent-primary, #e2ad2f);
+  background: rgba(13, 19, 38, 0.75);
+}
+
+/* Dark theme trigger — the current theme is archive-dusk.
+   Mirror the same dark plate so the button shape is identical across
+   themes, and tint icon + border with the accent color so they read. */
+.dark {
+  color: var(--accent-primary, #e2ad2f);
+  border-color: rgba(226, 173, 47, 0.5);
+  background: rgba(13, 19, 38, 0.7);
+}
+
+.dark:hover {
+  color: var(--accent-hover, #c78e12);
+  border-color: var(--accent-hover, #c78e12);
+  background: rgba(13, 19, 38, 0.85);
+}
+
+/* Icons inherit color from the button. Explicit stroke-width makes them
+   stand a hair bolder at the small 18px size so neither the sun nor the
+   moon reads as a faint outline. */
+.iconSun {
+  color: inherit;
+  stroke-width: 2.25;
+  transition: transform var(--transition-fast, 120ms ease);
+}
+
+.iconMoon {
+  color: inherit;
+  stroke-width: 2.25;
+  transition: transform var(--transition-fast, 120ms ease);
+}
+
+.trigger:hover .iconSun,
+.trigger:hover .iconMoon {
+  transform: rotate(15deg);
+}
+
+/* Disabled state — for completeness in case the button is wired through
+   a parent that disables it. */
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}

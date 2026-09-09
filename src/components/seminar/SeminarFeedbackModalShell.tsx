@@ -11,7 +11,11 @@
 import { useEffect, useRef } from 'react';
 import { X, ClipboardList } from 'lucide-react';
 import { useLocale } from '../../i18n/I18nContext';
-import { formatDisplayDate, formatDisplayTime } from '../../utils/datetime';
+import {
+  formatDisplayDate,
+  formatDisplayTime,
+  parseApiDateTimeAsUtc,
+} from '../../utils/datetime';
 import styles from './SeminarFeedbackModalShell.module.css';
 
 interface SeminarFeedbackModalShellProps {
@@ -114,10 +118,10 @@ export const SeminarFeedbackModalShell: React.FC<
               </h2>
               {startTime && (
                 <p className={styles.modalSubtitle}>
-                  {formatDisplayDate(startTime, locale)}
+                  {formatDisplayDate(parseApiDateTimeAsUtc(startTime), locale)}
                   {endTime
-                    ? ` · ${formatDisplayTime(startTime, locale)} – ${formatDisplayTime(
-                        endTime,
+                    ? ` · ${formatDisplayTime(parseApiDateTimeAsUtc(startTime), locale)} – ${formatDisplayTime(
+                        parseApiDateTimeAsUtc(endTime),
                         locale,
                       )}`
                     : ''}

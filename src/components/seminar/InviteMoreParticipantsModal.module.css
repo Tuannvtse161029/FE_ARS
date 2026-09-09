@@ -1,0 +1,608 @@
+/**
+ * InviteMoreParticipantsModal
+ *
+ * Modal that lets a seminar organiser add new invitees to an existing
+ * seminar. Candidate pool is grouped into three sections:
+ *   1. Same subfield (top priority)
+ *   2. Same major field
+ *   3. Other available accounts (admin excluded)
+ *
+ * Design tokens come from src/styles/ars-tokens.css.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: var(--space-4);
+}
+
+.modal {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-ui);
+  color: var(--ink-primary);
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.headerLeft {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.headerIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--accent-primary);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: var(--font-weight-bold, 600);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  line-height: 1.25;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  line-height: 1.4;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--ink-primary) 60%, transparent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.closeBtn:hover {
+  color: var(--ink-primary);
+  background: var(--surface-sunken);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.closeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Capacity meter ────────────────────────────────────────── */
+.capacityBar {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+
+/* ── Toolbar (search + role filter + selected count) ─────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.searchField {
+  flex: 1 1 240px;
+  position: relative;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: color-mix(in srgb, var(--ink-primary) 50%, transparent);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-base);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: 0.875rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.searchInput::placeholder {
+  color: color-mix(in srgb, var(--ink-primary) 45%, transparent);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+
+.roleFilter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.roleFilterLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink-primary) 75%, transparent);
+}
+
+.roleFilterSelect {
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-base);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.roleFilterSelect:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+}
+
+.selectedCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-paper);
+  border: 1px solid var(--accent-primary);
+  color: var(--ink-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-family-ui);
+}
+
+/* ── Body (grouped sections) ─────────────────────────────────── */
+.body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Required for overflow-y: auto to actually scroll inside a flex
+     column — without it, the body expands beyond its parent. */
+  min-height: 0;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  color: color-mix(in srgb, var(--ink-primary) 60%, transparent);
+  font-size: 0.875rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.spinner {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Grouped section card ────────────────────────────────────── */
+.inviteSection {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+  overflow: hidden;
+  min-width: 0;
+  /* Don't let the flex parent squish each section when content is tall —
+     the body scrolls instead. */
+  flex-shrink: 0;
+}
+
+.inviteSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-paper);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.inviteSectionTitleBlock {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inviteSectionTitle {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /* Keep the title on a single line within the flex block */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inviteSectionTitleBlock .inviteSectionTitleCount {
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+.inviteSectionSubtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--ink-primary) 70%, transparent);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  word-break: break-word;
+}
+
+.inviteSectionToggleBtn {
+  background: var(--surface-base);
+  border: 1px solid var(--border-strong);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: center;
+  min-height: 32px;
+}
+
+.inviteSectionToggleBtn:hover {
+  background: var(--surface-paper);
+  border-color: var(--accent-primary);
+}
+
+.inviteSectionToggleBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.inviteSectionList {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Individual candidate row ────────────────────────────────── */
+.inviteRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 100ms ease;
+  min-height: 56px;
+  background: var(--surface-base);
+}
+
+.inviteRow:last-child {
+  border-bottom: none;
+}
+
+.inviteRow:hover {
+  background: var(--surface-sunken);
+}
+
+.inviteRowActive {
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}
+
+.inviteRowActive:hover {
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+}
+
+.inviteCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.inviteAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-paper-muted);
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+.inviteAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inviteInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inviteName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inviteMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-mono);
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--ink-primary) 60%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inviteRoles {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.inviteRoleChip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+
+.roleChipLecturer {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.32);
+}
+
+.roleChipResearcher {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.32);
+}
+
+.roleChipReviewer {
+  background: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+  border-color: rgba(139, 92, 246, 0.32);
+}
+
+.roleChipGraduate {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.32);
+}
+
+.roleChipDefault {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.32);
+}
+
+/* ── Status banners (error / success) ───────────────────────── */
+.errorBanner,
+.successBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0 var(--space-5) var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.errorBanner {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  color: #b91c1c;
+}
+
+.successBanner {
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.32);
+  color: #15803d;
+}
+
+/* ── Footer (cancel / submit) ────────────────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cancelBtn,
+.submitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease,
+    color 120ms ease;
+}
+
+.cancelBtn {
+  background: var(--surface-base);
+  border: 1px solid var(--border-strong);
+  color: var(--ink-primary);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--accent-primary);
+}
+
+.cancelBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.submitBtn {
+  background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--accent-hover, var(--accent-primary));
+}
+
+.submitBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.submitBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchField {
+    flex-basis: auto;
+  }
+
+  .roleFilter {
+    justify-content: space-between;
+  }
+
+  .inviteRow {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .inviteRoles {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+
+  .inviteRow,
+  .cancelBtn,
+  .submitBtn,
+  .searchInput,
+  .roleFilterSelect,
+  .closeBtn,
+  .inviteSectionToggleBtn {
+    transition: none;
+  }
+}

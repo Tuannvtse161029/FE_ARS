@@ -129,8 +129,8 @@ export const formatRelativeTime = (
   }
 
   return date.toLocaleDateString(tag, {
-    day: '2-digit',
-    month: '2-digit',
+    day: 'numeric',
+    month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',

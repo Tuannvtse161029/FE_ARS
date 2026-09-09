@@ -40,11 +40,26 @@ const toIntlLocaleTag = (locale: 'vi' | 'en'): string =>
 
 /**
  * Safely parse any API or user date/time value into a valid Date object.
+ *
+ * ⚠️  Date-only / domain-form input contract
+ * --------------------------------------------
+ * This helper keeps the long-standing "bare ISO datetime is LOCAL" rule
+ * that the rest of the app (e.g. `normaliseEndAt` in
+ * `researchTopicPhase.service.ts`) depends on. Many of our forms pick a
+ * date in `<input type="datetime-local">`, the value is sent to the BE
+ * without a timezone marker, and on round-trip we want the original local
+ * wall-clock digits to come back unchanged.
+ *
+ * If you have a string from the BE that **must be UTC** (seminar
+ * `startTime` / `endTime`, etc., where the BE sometimes strips the `Z`),
+ * use `parseApiDateTimeAsUtc()` instead — see its docstring for the
+ * exact rule and why it differs.
+ *
  * Handles:
- * - ISO strings with 'Z' (e.g. 2026-09-15T07:00:00.000Z)
- * - ISO strings without timezone (e.g. 2026-09-15T14:00:00.123)
- * - Date-only strings (e.g. 2026-09-15) -> parsed in local time to avoid UTC-midnight day drop
- * - Existing Date objects or timestamps
+ * - ISO strings with `Z` or `±HH:MM` (e.g. `'2026-09-15T07:00:00.000Z'`)
+ * - ISO strings without timezone (e.g. `'2026-09-15T14:00:00'`) → LOCAL
+ * - Date-only strings (e.g. `'2026-09-15'`) → LOCAL midnight
+ * - Existing Date objects or numeric timestamps
  */
 export function parseApiDate(val: string | number | Date | null | undefined): Date | null {
   if (!val) return null;
@@ -62,6 +77,8 @@ export function parseApiDate(val: string | number | Date | null | undefined): Da
     if (!trimmed) return null;
 
     // Date-only string YYYY-MM-DD (e.g. '2026-09-15')
+    // Keep local interpretation to avoid the classic UTC-midnight day
+    // drop for fields like date of birth.
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       const [year, month, day] = trimmed.split('-').map(Number);
       const d = new Date(year, month - 1, day);
@@ -208,4 +225,68 @@ export function formatDisplayTime(
     minute: '2-digit',
     hour12: false,
   });
+}
+
+/**
+ * Parse an ISO 8601 datetime string from the BE as a UTC instant.
+ *
+ * The ARS backend is documented to return `format: "date-time"` (RFC 3339)
+ * timestamps, but the BE's serializer sometimes drops the timezone marker
+ * when the underlying `DateTime.Kind` is `Unspecified` — e.g. it returns
+ * `"2026-09-09T17:50:00"` instead of `"2026-09-09T17:50:00Z"`. Without the
+ * `Z` suffix, JavaScript's `new Date()` interprets the string as the
+ * BROWSER's local time, which causes two visible FE bugs:
+ *
+ *   • Status check:  `endTime < Date.now()` returns true for an upcoming
+ *     seminar (because the "local 17:50" is parsed as 17:50 ICT = 10:50
+ *     UTC, while `Date.now()` is already 12:50 UTC), so it is tagged
+ *     `COMPLETED` immediately after creation.
+ *   • Display:       The seminar card prints the wrong wall-clock time —
+ *     e.g. `17:45 on Sep 9` instead of `00:45 on Sep 10` for a UTC+7
+ *     viewer who picked the latter.
+ *
+ * This helper re-attaches the `Z` when it's missing so the value is
+ * parsed as the UTC instant the BE actually stored. It is the ONLY
+ * function in this module with that semantic — `parseApiDate()` keeps
+ * its long-standing "bare datetime is local" behavior because several
+ * non-seminar domains (research-topic phase deadlines, etc.) rely on
+ * that round-tripping the original local wall-clock digits.
+ *
+ * Used by:
+ *   • `deriveEffectiveStatus()` and `getMyInvitations()` in
+ *     `services/seminar.service.ts` (status comparison).
+ *   • `SeminarWorkspace` and `SeminarFeedbackModalShell` (display +
+ *     `<input type="datetime-local">` round-trip).
+ */
+export function parseApiDateTimeAsUtc(
+  val: string | number | Date | null | undefined,
+): Date | null {
+  if (val == null) return null;
+  if (val instanceof Date) {
+    return Number.isNaN(val.getTime()) ? null : val;
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const trimmed = val.trim();
+  if (!trimmed) return null;
+
+  // Date-only string YYYY-MM-DD — for seminar fields this never occurs
+  // (`SeminarResponse.startTime` / `endTime` are full datetimes), but
+  // we handle it gracefully: a date-only value from the BE is the one
+  // situation where local midnight is the most useful interpretation.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const hasTimezone =
+    trimmed.endsWith('Z') ||
+    /[+-]\d{2}:\d{2}$/.test(trimmed) ||
+    /[+-]\d{4}$/.test(trimmed);
+  const normalized = hasTimezone ? trimmed : `${trimmed}Z`;
+  const d = new Date(normalized);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
