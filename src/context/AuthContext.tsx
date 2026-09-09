@@ -383,6 +383,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           rememberMe: credentials.rememberMe ?? false,
         });
         setIsLoading(false);
+        authStore.setLoading(false);
         return;
       }
 
@@ -398,6 +399,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authStore.setLoading(false);
     } finally {
       setIsLoading(false);
+      authStore.setLoading(false);
     }
   };
 
@@ -864,6 +866,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setError(errorMessage);
       } finally {
         setIsLoading(false);
+        authStore.setLoading(false);
       }
     },
     [pendingRoleSelection, persistAuthAndNavigate],
