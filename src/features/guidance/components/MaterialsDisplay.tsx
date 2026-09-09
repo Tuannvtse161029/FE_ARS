@@ -7,7 +7,7 @@ import { Loader, AlertTriangle, ExternalLink, Library } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
 import type { LearningMaterial } from '../../../services/learningMaterial.service';
 // CSS module kept at the original GroupDetail CSS location for now.
-import styles from '../../pages/Lecturer/GroupDetail.module.css';
+import styles from '../../../pages/Lecturer/GroupDetail.module.css';
 
 export interface MaterialsDisplayProps {
   materials: LearningMaterial[];

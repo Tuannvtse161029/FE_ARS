@@ -8,7 +8,7 @@ import { useI18n } from '../../../i18n/I18nContext';
 import { PhaseTimeline, type PhaseTimelineItem } from '../../../components/research/PhaseTimeline';
 import type { PhasedReport } from '../../../services/phasedReport.service';
 // CSS module kept at the original GroupDetail CSS location for now.
-import styles from '../../pages/Lecturer/GroupDetail.module.css';
+import styles from '../../../pages/Lecturer/GroupDetail.module.css';
 
 export interface GroupPhasesProps {
   reports: PhasedReport[];

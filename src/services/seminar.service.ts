@@ -191,6 +191,7 @@ export interface SuggestedInviteeDto {
   email?: string | null;
   avatarUrl?: string | null;
   role?: string | null;
+  roles?: string[] | null;
   subFieldId?: number | null;
   subFieldName?: string | null;
   orcidId?: string | null;

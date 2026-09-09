@@ -77,6 +77,7 @@ interface InviteeCandidate {
   email: string;
   avatarUrl?: string | null;
   role?: string;
+  roles?: string[];
   subFieldId?: number | null;
   subFieldName?: string | null;
   majorFieldId?: number | null;
@@ -278,7 +279,7 @@ export const SeminarWorkspace = () => {
         const [majors, profRes, usersRes] = await Promise.allSettled([
           fieldService.getAllMajor(),
           api.get('/api/ProfessionalProfile'),
-          api.get('/api/User'),
+          api.get('/api/User', { params: { role: 'ALL', pageSize: 1000 } }),
         ]);
 
         if (cancelled) return;
@@ -290,13 +291,18 @@ export const SeminarWorkspace = () => {
           setMajorFields(loadedMajors);
         }
 
-        // 2. Process Users map for role names
-        const userRoleMap = new Map<number, string>();
+        // 2. Process Users map for multi-role support
+        const userRolesMap = new Map<number, string[]>();
         if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
           const uData = usersRes.value.data;
           const uList = Array.isArray(uData) ? uData : (uData.items || []);
           for (const u of uList) {
-            if (u.id) userRoleMap.set(u.id, u.roleName || u.role || '');
+            if (u && u.id) {
+              const rList: string[] = Array.isArray(u.roles) && u.roles.length > 0
+                ? (u.roles as string[]).map(String)
+                : (u.roleName ? [String(u.roleName)] : (u.role ? [String(u.role)] : []));
+              userRolesMap.set(u.id, rList);
+            }
           }
         }
 
@@ -305,16 +311,22 @@ export const SeminarWorkspace = () => {
           const profiles = profRes.value.data;
           const candidates: InviteeCandidate[] = profiles
             .filter((p: any) => p && p.userId && p.email)
-            .map((p: any) => ({
-              userId: p.userId,
-              fullName: p.fullName || `User #${p.userId}`,
-              email: p.email.trim(),
-              avatarUrl: p.avatarUrl,
-              role: userRoleMap.get(p.userId) || (p.reviewFee ? 'Reviewer' : 'Scholar'),
-              subFieldId: p.subFieldId,
-              subFieldName: p.subFieldName,
-              majorFieldId: p.majorFieldId,
-            }));
+            .map((p: any) => {
+              const uRoles = userRolesMap.get(p.userId) || [];
+              const fallback = p.reviewFee ? 'Reviewer' : 'Scholar';
+              const resolvedRoles = uRoles.length > 0 ? uRoles : [fallback];
+              return {
+                userId: p.userId,
+                fullName: p.fullName || `User #${p.userId}`,
+                email: p.email.trim(),
+                avatarUrl: p.avatarUrl,
+                role: resolvedRoles.join(' • '),
+                roles: resolvedRoles,
+                subFieldId: p.subFieldId,
+                subFieldName: p.subFieldName,
+                majorFieldId: p.majorFieldId,
+              };
+            });
 
           setAllInvitees(candidates);
 
@@ -359,12 +371,16 @@ export const SeminarWorkspace = () => {
             for (const p of prev) map.set(p.userId, p);
             for (const b of beInvitees) {
               if (b.userId && b.email) {
+                const bRoles: string[] = Array.isArray(b.roles) && b.roles.length > 0
+                  ? (b.roles as string[]).map(String)
+                  : (b.role ? b.role.split(' • ').map((s: string) => s.trim()).filter(Boolean) : ['Colleague']);
                 map.set(b.userId, {
                   userId: b.userId,
                   fullName: b.fullName || `User #${b.userId}`,
                   email: b.email.trim(),
                   avatarUrl: b.avatarUrl,
-                  role: b.role || 'Colleague',
+                  role: bRoles.join(' • '),
+                  roles: bRoles,
                   subFieldId: b.subFieldId ?? selectedSubId,
                   subFieldName: b.subFieldName,
                 });
@@ -455,7 +471,35 @@ export const SeminarWorkspace = () => {
     if (r.includes('lecturer') || r.includes('giảng viên')) return styles.roleLecturer;
     if (r.includes('researcher') || r.includes('nghiên cứu')) return styles.roleResearcher;
     if (r.includes('reviewer') || r.includes('phản biện')) return styles.roleReviewer;
+    if (r.includes('graduate') || r.includes('học viên') || r.includes('student')) return styles.roleGraduateStudent;
     return styles.roleDefault;
+  };
+
+  const formatRoleLabel = (roleName: string): string => {
+    const trimmed = (roleName || '').trim();
+    const lower = trimmed.toLowerCase().replace(/\s+/g, '');
+    if (lower === 'graduatestudent') {
+      return copy('Graduate Student', 'Học viên sau đại học');
+    }
+    if (lower === 'researcher') {
+      return copy('Researcher', 'Nhà nghiên cứu');
+    }
+    if (lower === 'lecturer') {
+      return copy('Lecturer', 'Giảng viên');
+    }
+    if (lower === 'reviewer') {
+      return copy('Reviewer', 'Người phản biện');
+    }
+    if (lower === 'admin' || lower === 'administrator') {
+      return copy('Administrator', 'Quản trị viên');
+    }
+    if (lower === 'scholar') {
+      return copy('Scholar', 'Học giả');
+    }
+    if (lower === 'colleague') {
+      return copy('Colleague', 'Đồng nghiệp');
+    }
+    return trimmed;
   };
 
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
@@ -1275,15 +1319,22 @@ export const SeminarWorkspace = () => {
                                   <span className={styles.suggestedName}>
                                     {inv.fullName}
                                   </span>
-                                  {inv.role && (
-                                    <span
-                                      className={`${styles.inviteeRoleBadge} ${getRoleClass(
-                                        inv.role,
-                                      )}`}
-                                    >
-                                      {inv.role}
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const rolesList = (inv.roles && inv.roles.length > 0)
+                                      ? inv.roles
+                                      : (inv.role ? inv.role.split(' • ').map((s) => s.trim()).filter(Boolean) : []);
+                                    if (rolesList.length === 0) {
+                                      rolesList.push('Colleague');
+                                    }
+                                    return rolesList.map((r) => (
+                                      <span
+                                        key={r}
+                                        className={`${styles.inviteeRoleBadge} ${getRoleClass(r)}`}
+                                      >
+                                        {formatRoleLabel(r)}
+                                      </span>
+                                    ));
+                                  })()}
                                 </div>
                                 <span className={styles.suggestedEmail}>
                                   {inv.email}

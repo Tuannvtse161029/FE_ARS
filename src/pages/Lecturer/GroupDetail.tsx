@@ -435,7 +435,14 @@ export const LecturerGroupDetail = (): JSX.Element => {
       const graduateStudents = userList.filter((u) => {
         const roleName = (u.roleName ?? '').toLowerCase();
         const roleId = typeof u.roleId === 'number' ? u.roleId : -1;
+        const hasGraduateRole =
+          Array.isArray(u.roles) &&
+          u.roles.some((r) => {
+            const norm = (r ?? '').toLowerCase().replace(/\s+/g, '');
+            return norm === 'graduatestudent';
+          });
         return (
+          hasGraduateRole ||
           roleName === 'graduate student' ||
           roleName === 'graduatestudent' ||
           roleId === 5 /* ROLE_IDS.GraduateStudent */
