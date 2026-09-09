@@ -243,29 +243,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.trialExpiryAt ??
         freshUser?.trialExpiryAt ??
         null;
-      const userToPersist = freshUser ?? {
+      const userToPersist = {
+        ...(freshUser ?? {}),
         id: userId,
-        username: response.username,
-        email: response.email,
-        fullName: response.username,
-        roleId: response.roleId ?? 0,
+        username: freshUser?.username ?? response.username,
+        email: freshUser?.email ?? response.email,
+        fullName: freshUser?.fullName ?? response.username,
+        roleId: freshUser?.roleId ?? response.roleId ?? 0,
         roleName: roleToUse,
-        isActive: response.isActive ?? false,
-        // Agent 30 (regression) — preserve the BE-supplied
-        // verificationStatus verbatim. A missing value stays `null`
-        // (rather than being coerced to `'Pending'`) so the
-        // null-aware downstream checks can recognise a fresh account
-        // that has not been through the role-request lifecycle yet.
-        verificationStatus: response.verificationStatus ?? null,
-        accountTier: response.accountTier ?? 'Free',
-        // Agent 30 — mirror `AuthResponse.roles` on the persisted user
-        // so `PublicRoute` can enforce the exact approved-role-list
-        // condition at runtime. The list is sourced from the BE (freshUser
-        // or response) and falls back to a single-element array when the
-        // BE omits it so the post-auth resolver doesn't mis-classify an
-        // existing user as "first-time".
+        isActive: freshUser?.isActive ?? response.isActive ?? false,
+        verificationStatus: freshUser?.verificationStatus ?? response.verificationStatus ?? null,
+        accountTier: freshUser?.accountTier ?? response.accountTier ?? 'Free',
         roles: persistedRoles,
         trialExpiryAt: persistedTrialExpiryAt,
+        effectiveRole: (roleToUse as EffectiveRole) || 'Guest',
       };
       storage.setUser(userToPersist);
 
@@ -392,6 +383,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           rememberMe: credentials.rememberMe ?? false,
         });
         setIsLoading(false);
+        authStore.setLoading(false);
         return;
       }
 
@@ -407,6 +399,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authStore.setLoading(false);
     } finally {
       setIsLoading(false);
+      authStore.setLoading(false);
     }
   };
 
@@ -818,22 +811,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const confirmRoleSelection = useCallback(
     async (role: UserRole) => {
       if (!pendingRoleSelection) return;
-      // The live BE exposes a dedicated role-selection endpoint for accounts
-      // with multiple approved roles. Persist the choice before storing the
-      // local session so JWT claims and the UI agree.
-      await authService.selectRole(role);
-      // Persist using the stashed BE response, overriding `role` with the
-      // user's choice. Token/email/username come from the original login.
-      // Forward the original rememberMe choice so multi-role users get the
-      // same storage-bucket behavior as single-role users.
-      await persistAuthAndNavigate(
-        pendingRoleSelection.authResponse,
-        role,
-        pendingRoleSelection.rememberMe
-      );
-      setPendingRoleSelection(null);
+      setIsLoading(true);
+      setError(null);
+      try {
+        const originalToken = pendingRoleSelection.authResponse.token;
+        let finalAuthResponse: AuthResponse = {
+          ...pendingRoleSelection.authResponse,
+          role,
+          effectiveRole: role,
+        };
+
+        try {
+          // The live BE exposes a dedicated role-selection endpoint for accounts
+          // with multiple approved roles. Forward the authenticated JWT token from login.
+          const selectResult = (await authService.selectRole(
+            role,
+            originalToken,
+          )) as Record<string, unknown> | null | undefined;
+
+          if (selectResult && typeof selectResult === 'object') {
+            const returnedToken =
+              (selectResult.token as string) || (selectResult.accessToken as string);
+            finalAuthResponse = {
+              ...pendingRoleSelection.authResponse,
+              ...(selectResult as Partial<AuthResponse>),
+              token: returnedToken || originalToken,
+              role: (selectResult.role as UserRole) || role,
+              effectiveRole:
+                (selectResult.effectiveRole as EffectiveRole) || role,
+            };
+          }
+        } catch (beErr) {
+          // Non-fatal: if BE select-role call fails, proceed with the client-side role choice
+          console.warn(
+            'Backend select-role call failed, falling back to local role selection:',
+            beErr,
+          );
+        }
+
+        // Persist using the updated response (with valid token and chosen role).
+        // Forward the original rememberMe choice so multi-role users get the
+        // same storage-bucket behavior as single-role users.
+        await persistAuthAndNavigate(
+          finalAuthResponse,
+          role,
+          pendingRoleSelection.rememberMe,
+        );
+        setPendingRoleSelection(null);
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Failed to confirm role selection.';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+        authStore.setLoading(false);
+      }
     },
-    [pendingRoleSelection, persistAuthAndNavigate]
+    [pendingRoleSelection, persistAuthAndNavigate],
   );
 
   const cancelRoleSelection = useCallback(() => {

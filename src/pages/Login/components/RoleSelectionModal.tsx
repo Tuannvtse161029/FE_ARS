@@ -8,6 +8,8 @@ interface RoleSelectionModalProps {
   open: boolean;
   username?: string;
   roles: UserRole[];
+  isLoading?: boolean;
+  error?: string | null;
   onConfirm: (role: UserRole) => void;
   onCancel: () => void;
 }
@@ -39,6 +41,8 @@ const RoleSelectionModal = ({
   open,
   username,
   roles,
+  isLoading = false,
+  error = null,
   onConfirm,
   onCancel,
 }: RoleSelectionModalProps) => {
@@ -53,7 +57,7 @@ const RoleSelectionModal = ({
   if (!open) return null;
 
   const handleConfirm = () => {
-    if (selected) onConfirm(selected);
+    if (selected && !isLoading) onConfirm(selected);
   };
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -64,7 +68,7 @@ const RoleSelectionModal = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="role-selection-title"
-      onClick={onCancel}
+      onClick={isLoading ? undefined : onCancel}
     >
       <div className={styles.content} onClick={stop}>
         <div className={styles.header}>
@@ -80,6 +84,7 @@ const RoleSelectionModal = ({
             type="button"
             className={styles.closeBtn}
             onClick={onCancel}
+            disabled={isLoading}
             aria-label={t('common.cancel')}
           >
             <X size={20} />
@@ -91,6 +96,23 @@ const RoleSelectionModal = ({
             {username ? <>{t('login.roleSelection.welcome')} <b>{username}</b>. </> : null}
             {t('login.roleSelection.description')}
           </p>
+
+          {error && (
+            <div
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                marginBottom: '16px',
+              }}
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
 
           <div className={styles.roleList} role="radiogroup" aria-label="Assigned roles">
             {roles.map((role) => {
@@ -106,6 +128,7 @@ const RoleSelectionModal = ({
                     value={role}
                     checked={isSelected}
                     onChange={() => setSelected(role)}
+                    disabled={isLoading}
                     className={styles.roleOptionRadio}
                   />
                   <span className={styles.roleOptionLabel}>{t(`role.${role}`, ROLE_LABELS[role])}</span>
@@ -122,16 +145,23 @@ const RoleSelectionModal = ({
         </div>
 
         <div className={styles.footer}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={onCancel}
+            disabled={isLoading}
+          >
             {t('common.cancel')}
           </button>
           <button
             type="button"
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={!selected}
+            disabled={!selected || isLoading}
           >
-            {t('login.roleSelection.continueAs')} {selected ? t(`role.${selected}`) : '...'}
+            {isLoading
+              ? t('common.loading', 'Loading...')
+              : `${t('login.roleSelection.continueAs')} ${selected ? t(`role.${selected}`) : '...'}`}
           </button>
         </div>
       </div>
