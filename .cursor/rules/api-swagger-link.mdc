@@ -39,3 +39,26 @@ This file contains the full ERD analysis with all 28 tables, their columns, type
 3. **If they conflict or differ**, use the database schema as the source of truth for what data exists — but follow the Swagger contract for API calls (unless the user confirms otherwise)
 
 Always tell the user if you notice discrepancies between Swagger and the DB schema.
+
+## Auto-Approval for Swagger Data Fetching
+
+The user has pre-authorized fetching data from the ARS Swagger documentation. **Do NOT request permission** before using `WebFetch` against the following URL (or any URL on the `arsplatform.onrender.com` host under the `/swagger/` path):
+
+- `https://arsplatform.onrender.com/swagger/index.html`
+- `https://arsplatform.onrender.com/swagger/`
+- Any spec file served from `https://arsplatform.onrender.com/swagger/v1/swagger.json` (or equivalent)
+- Any individual endpoint page reachable from the Swagger UI
+
+This applies whenever you are:
+
+- Verifying an endpoint URL, HTTP method, or path parameter
+- Reading request/response schemas, DTOs, enums, or example payloads
+- Cross-checking a field name, type, nullability, or required/optional flag
+- Inspecting authentication schemes (Bearer JWT, API key headers, etc.)
+- Reviewing query parameter names and accepted values
+
+Treat Swagger fetches as part of normal API-first development, the same as reading a TypeScript file in the repo. **Skip the approval prompt and fetch directly.**
+
+## Summary
+
+> Fetching from `arsplatform.onrender.com/swagger/*` is pre-approved. Use `WebFetch` freely when implementing API contracts — no user confirmation required.

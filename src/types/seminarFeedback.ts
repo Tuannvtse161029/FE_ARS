@@ -6,7 +6,12 @@
  *
  * Stored:
  * - Lecturer questions: Seminar.feedback (JSON string in NVARCHAR(MAX))
- * - Participant answers: SeminarParticipant.feedbackJson (JSON string in NVARCHAR(MAX))
+ * - Participant answers: SeminarParticipants.FeedbackJson (JSON string in NVARCHAR(MAX))
+ *
+ * Per ticket §15 the FE generates a stable client-side UUID for each new
+ * question. The BE accepts missing IDs and backfills `q_1`, `q_2`, …, but
+ * stable IDs let participant answers stay mapped when the host edits the
+ * form (re-ordering, adding questions, etc.).
  */
 
 export type FeedbackQuestionType = 'rating' | 'text';
@@ -21,13 +26,39 @@ export interface FeedbackQuestion {
   placeholder?: string; // Optional placeholder for text questions
 }
 
+/**
+ * Canonical answer payload sent to `POST /api/Seminar/{id}/feedback`
+ * (ticket §16.2). The FE sends only the primitives:
+ * ```ts
+ * { questionId, type, rating? | text? }
+ * ```
+ * and the BE normalizes `orderIndex` against the actual form config.
+ */
 export interface FeedbackAnswer {
   questionId: string;
+  /** Best-effort order sent so newly-added questions stay ordered. The BE
+   * re-orders against the form config when it persists (ticket §16). */
   orderIndex: number;
   type: FeedbackQuestionType;
   rating?: number;
   text?: string;
 }
+
+/**
+ * Generate a stable client-side question ID per ticket §15. Uses
+ * `crypto.randomUUID()` when available (modern browsers + secure contexts)
+ * and falls back to a timestamp+random string for legacy environments.
+ */
+export const generateStableQuestionId = (): string => {
+  if (
+    typeof globalThis !== 'undefined' &&
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.randomUUID === 'function'
+  ) {
+    return `q_${globalThis.crypto.randomUUID()}`;
+  }
+  return `q_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+};
 
 /**
  * Standard default ARS feedback questions used for the "General Feedback Form".

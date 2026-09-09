@@ -6,7 +6,6 @@ import {
   type FeedbackAnswer,
   DEFAULT_GENERAL_QUESTIONS,
   parseSeminarQuestions,
-  serializeSeminarQuestions,
   getCachedSeminarQuestions,
   setCachedSeminarQuestions,
 } from '../types/seminarFeedback';
@@ -38,10 +37,21 @@ export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT'
 // synthesize access.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Roles that may create / update / delete seminars and send reminders. */
+/** Roles that may create / update / delete seminars, configure the feedback
+ * form, and trigger feedback reminders. Ticket §4 widens ownership to
+ * Researcher alongside Lecturer. */
 export const SEMINAR_MUTATOR_ROLES: readonly UserRole[] = ['Lecturer', 'Researcher'] as const;
 
-/** Roles that may view the seminar list (read-only). Includes the mutator. */
+/**
+ * Roles that may view their personal seminar surface (invitations +
+ * seminars they organize).
+ *
+ * Per ticket §4, Admin does NOT own seminars; Admin keeps per-seminar
+ * access through the dedicated feedback endpoints
+ * (`GET /api/Seminar/{id}/feedback`, `GET|...|/feedback-form`) but is
+ * intentionally excluded from the bulk listing so the Admin console does
+ * not become another entrypoint for the global organizer list.
+ */
 export const SEMINAR_VIEWER_ROLES: readonly UserRole[] = [
   'Lecturer',
   'Graduate Student',
@@ -94,6 +104,14 @@ export const ownsSeminar = (
  * Filter a seminar list for callers that already have participant rows. The
  * production hooks prefer the live participant-scoped endpoints and use this
  * helper only when joining an independently fetched list.
+ *
+ * Roles per ticket §4:
+ *   • Lecturer  — owns all seminars globally (no filter).
+ *   • Researcher — owns the seminars they organize PLUS the ones they are
+ *     invited to (matches the participant-scoped `useSeminars` path).
+ *   • Reviewer / Graduate Student — read-only, sees seminars they are
+ *     invited to.
+ *   • Anything else — returns [] (no seminar access).
  */
 export const filterSeminarsForViewer = (
   seminars: Seminar[],
@@ -101,18 +119,33 @@ export const filterSeminarsForViewer = (
   currentUserId: number | null | undefined,
   role: UserRole | string | null | undefined,
 ): Seminar[] => {
-  if (canMutateSeminar(role)) return seminars;
-  if (!canViewSeminar(role)) return [];
-  if (currentUserId == null) return [];
+  if (!role || !canViewSeminar(role)) return [];
+  if (role === 'Lecturer') return seminars;
+
+  // Build the set of seminarIds where the current user is a participant.
   const invitedSeminarIds = new Set<number>();
-  for (const p of participants) {
-    if (p.userId === currentUserId && p.seminarId != null) {
-      invitedSeminarIds.add(p.seminarId);
+  if (currentUserId != null) {
+    for (const p of participants) {
+      if (p.userId === currentUserId && p.seminarId != null) {
+        invitedSeminarIds.add(p.seminarId);
+      }
     }
   }
-  if (invitedSeminarIds.size === 0) {
-    return [];
+
+  // Researcher also owns the seminars they organize.
+  if (role === 'Researcher' && currentUserId != null) {
+    const organizedIds = new Set<number>();
+    for (const s of seminars) {
+      if (s.organizerId === currentUserId) organizedIds.add(s.seminarId);
+    }
+    const allowed = new Set<number>([...organizedIds, ...invitedSeminarIds]);
+    if (allowed.size === 0) return [];
+    return seminars.filter((s) => allowed.has(s.seminarId));
   }
+
+  // Reviewer / Graduate Student: participant-scoped only.
+  if (currentUserId == null) return [];
+  if (invitedSeminarIds.size === 0) return [];
   return seminars.filter((s) => invitedSeminarIds.has(s.seminarId));
 };
 
@@ -127,17 +160,19 @@ export type ParticipantUiStatus = 'PENDING' | 'INVITED' | 'SUBMITTED' | 'DECLINE
 // Fields are optional so a partial BE payload never crashes the page.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Mirror of `GET /api/Seminar` + `GET /api/Seminar/{id}` row.
- * Swagger declares "200 OK" with no schema — fields are inferred from the live
- * response. `title` is a FE-only convenience not returned by the BE.
+/**
+ * Mirror of `GET /api/Seminar` + `GET /api/Seminar/{id}` row (ticket §6).
  *
  * NOTE — `organizerId` is nullable. The BE may return null when the JWT
- * claim is not yet wired. See Backend Team Request BE-S2.
+ * claim is not yet wired.
  * NOTE — `onlineLink` is nullable. The BE may return null when Google Meet
- * generation is not yet wired. See Backend Team Request BE-S1.
- * NOTE — `aiSummary` is NOT in the GET response per Swagger. It is only
- * returned by `POST /api/Seminar/{id}/summarize-audio`. We include it here
- * defensively so a future BE change can populate it without a FE bump.
+ * generation is not yet wired.
+ * NOTE — `aiSummary` is nulled intentionally by the BE in list responses
+ * (ticket §7). Use `GET /api/Seminar/{id}` to fetch the full AI summary
+ * alongside the rest of the seminar state.
+ * NOTE — `feedback` is the JSON-stringified dynamic feedback form config;
+ * `feedbackJson` is the JSON-stringified AI aggregate of participant text
+ * feedback (ticket §2). They are completely different fields.
  */
 export interface Seminar {
   seminarId: number;
@@ -147,18 +182,38 @@ export interface Seminar {
   title?: string;
   content?: string | null;
   startTime: string;   // ISO 8601
-  endTime: string;     // ISO 8601
+  /**
+   * ISO 8601 end time. Currently REQUIRED on POST, but the BE ticket
+   * `BE_SEMINAR_NULLABLE_ENDTIME.md` will make this nullable. Once that
+   * ships, a `null` endTime means "the seminar is still open-ended;
+   * the lecturer will end it explicitly." FE consumers must use
+   * `effectiveStatus` (not raw endTime) for tab filtering.
+   */
+  endTime: string | null;
   onlineLink?: string | null;
   maxParticipants?: number | null;
+  /** LEGACY — see ticket §10:
+   *   • on CREATE  — enables reminder scheduling at creation time
+   *   • on UPDATE  — triggers an immediate SendFeedbackRemindersAsync call
+   *     (NOT just a flag). Use `reminderEnabled` for the new event-reminder
+   *     scheduling. */
   isReminderSent?: boolean | null;
   status?: string | null;  // free-form BE status
   createdAt?: string;
   updatedAt?: string;
-  /** Defensive: may be present in a future BE response. */
+  /** AI summary of the seminar audio/video file.
+   * Null in `GET /api/Seminar` (list) responses — only `GET /api/Seminar/{id}`
+   * (and `POST /api/Seminar/{id}/summarize-audio`) populate it. */
   aiSummary?: string | null;
   reminderEnabled?: boolean;
   reminderSentAt?: string | null;
+  /** Dynamic feedback form config stored as JSON (ticket §3.1, §6). */
   feedback?: string | null;
+  /** AI aggregate feedback summary stored as JSON (ticket §3.1, §6).
+   * Distinct from `feedback` (form config) and `aiSummary` (audio summary). */
+  feedbackJson?: string | null;
+  /** When the AI feedback summary was generated. */
+  aiFeedbackGeneratedAt?: string | null;
   participants?: SeminarParticipant[] | null;
   organizerName?: string | null;
   invitationStatus?: string | null;
@@ -174,7 +229,7 @@ export interface SeminarInvitationResponse {
   seminarParticipantId?: number | null;
   title?: string | null;
   startTime: string;
-  endTime: string;
+  endTime: string | null;
   onlineLink?: string | null;
   organizerName?: string | null;
   invitationStatus?: string | null;
@@ -198,13 +253,25 @@ export interface SuggestedInviteeDto {
   publicationCount?: number | null;
 }
 
-/** Mirror of `POST /api/Seminar` / `PUT /api/Seminar/{id}` request body.
- * All fields are nullable except `startTime` / `endTime`.
- * `organizerId` is filled server-side from the JWT in production.
+/**
+ * Mirror of `POST /api/Seminar` / `PUT /api/Seminar/{id}` request body.
+ *
+ * Field-nullability status (ticket §9 / §10):
+ *   • `startTime`     — REQUIRED (BE rejects without it).
+ *   • `endTime`       — REQUIRED on the BE today, but will become nullable
+ *                       once BE ships the "Mark as Completed" endpoint
+ *                       (see tickets/backend/BE_SEMINAR_NULLABLE_ENDTIME.md).
+ *                       The FE types it as `string | null` so the moment
+ *                       that BE change lands, callers can omit the field
+ *                       without a type rewrite.
+ *   • `organizerId`   — filled server-side from the JWT in production.
+ *
+ * Until then, the FE passes `startTime + SEMINAR_PLACEHOLDER_DURATION_MS`
+ * as a visible placeholder. See §55.5 of the FE ticket.
  */
 export interface SeminarCreateRequest {
-  startTime: string;   // required
-  endTime: string;     // required
+  startTime: string;            // required
+  endTime: string | null;       // required today, nullable post-BE-fix
   content: string;
   onlineLink?: string | null;
   maxParticipants?: number | null;
@@ -217,23 +284,57 @@ export interface SeminarCreateRequest {
 
 export type SeminarUpdateRequest = Partial<SeminarCreateRequest>;
 
+/** Generic paged wrapper returned by `GET /api/Seminar/paged` (ticket §8). */
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
+/**
+ * Canonical alias for a participant row that the BE returns in
+ * `GET /api/Seminar/{id}` and `GET /api/Seminar/{id}/feedback` (ticket §12).
+ * Kept as a type alias of `SeminarParticipant` so existing code keeps
+ * compiling while the canonical ticket vocabulary is now first-class.
+ */
+export type SeminarParticipantResponse = SeminarParticipant;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Participant shapes
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Mirror of `GET /api/SeminarParticipant` row.
- * Swagger declares "200 OK" with no schema. `userId` may be null for
- * email-only invitations pending user resolution.
+/**
+ * Mirror of a participant row returned by the canonical Seminar Detail
+ * (`GET /api/Seminar/{id}`, ticket §12) and the owner-only raw feedback
+ * list (`GET /api/Seminar/{id}/feedback`).
+ *
+ * The dynamic answers live in `feedbackJson` (raw JSON string). The legacy
+ * `feedback` field (typed `unknown` here) is returned as a structured object
+ * only and is NOT the source of truth for the dynamic-feedback surface —
+ * never render answers from `feedback` directly (ticket §41, §50).
  */
 export interface SeminarParticipant {
   seminarParticipantId?: number;
   seminarId?: number | null;
   userId?: number | null;
   invitationStatus?: string | null;
+  /** SOURCE OF TRUTH for this participant's dynamic answers (ticket §12). */
+  feedbackJson?: string | null;
+  /** First-submission timestamp; null until participant submits (ticket §18). */
+  feedbackSubmittedAt?: string | null;
+  /** Last-submission timestamp; updated on every edit (ticket §18). */
+  feedbackUpdatedAt?: string | null;
+  /** Legacy structured object — only kept for compatibility. Render via
+   * `parseParticipantAnswers(row.feedbackJson)`, never via this field. */
+  feedback?: unknown;
   participantEvaluation?: string | null;
   createdAt?: string;
   updatedAt?: string;
-  // Joined fields (if BE ever adds them):
+  // Joined fields (if BE adds them):
   userFullName?: string | null;
   userEmail?: string | null;
   invitedEmail?: string | null;
@@ -287,7 +388,13 @@ export interface SeminarFeedbackResponse {
   participantEvaluation?: string | null;
 }
 
-/** Item in the owner-only raw feedback list (GET /api/Seminar/{id}/feedback). */
+/**
+ * Item in the owner-only raw feedback list (`GET /api/Seminar/{id}/feedback`,
+ * ticket §21). Each row is a participant on the seminar plus their
+ * submission state. The dynamic answers live in `feedbackJson` (parse via
+ * `parseParticipantAnswers(row.feedbackJson)`) — never render from the
+ * legacy `feedback` or `participantEvaluation` fields (ticket §21, §41, §50).
+ */
 export interface SeminarParticipantFeedback {
   seminarParticipantId: number;
   seminarId?: number | null;
@@ -296,17 +403,36 @@ export interface SeminarParticipantFeedback {
   userEmail?: string | null;
   invitedEmail?: string | null;
   invitationStatus?: string | null;
-  feedback?: SeminarFeedbackContent | null;
+  /** SOURCE OF TRUTH for this participant's dynamic answers (ticket §12). */
+  feedbackJson?: string | null;
   feedbackSubmittedAt?: string | null;
   feedbackUpdatedAt?: string | null;
   invitationSentAt?: string | null;
   eventReminderSentAt?: string | null;
   feedbackReminderSentAt?: string | null;
+  /** Legacy structured fields — kept only for compatibility (ticket §41). */
+  feedback?: unknown;
   participantEvaluation?: string | null;
 }
 
 /** Response of GET /api/Seminar/{id}/feedback (owner only). */
 export type SeminarFeedbackListResponse = SeminarParticipantFeedback[];
+
+/**
+ * True if the participant has actually submitted dynamic feedback (ticket
+ * §19). USE THIS instead of `invitationStatus === 'SUBMITTED'` to render
+ * "Đã đánh giá" / "Feedback submitted" UI.
+ */
+export const hasSubmittedFeedback = (
+  participant?: Pick<SeminarParticipant, 'feedbackJson' | 'feedbackSubmittedAt'> | null,
+): boolean => {
+  if (!participant) return false;
+  if (participant.feedbackSubmittedAt) return true;
+  if (participant.feedbackJson && participant.feedbackJson.trim().length > 0) {
+    return true;
+  }
+  return false;
+};
 
 /** Owner-only completion metrics from GET /api/Seminar/{id}/stats. */
 export interface SeminarStats {
@@ -393,6 +519,15 @@ export const seminarService = {
     return response.data;
   },
 
+  /**
+   * @deprecated The canonical submit/edit endpoint is
+   * `POST /api/Seminar/{id}/feedback` with the dynamic feedback answer
+   * array (see `submitDynamicFeedback`). This legacy payload — the
+   * structured `{ overallComment, strengths, improvements, suggestions }`
+   * shape — is no longer the dynamic-feedback surface (ticket §13-16, §41).
+   * Kept here only for back-compat with old callers; new code must NOT
+   * use it. The BE 4xxs any non-`{ answers }` POST.
+   */
   submitFeedback: async (
     seminarId: number,
     payload: SeminarFeedbackRequest,
@@ -405,43 +540,35 @@ export const seminarService = {
   },
 
   /**
-   * Save dynamic feedback questions configured by the Lecturer (Host).
-   * Stored in Seminar.feedback (JSON string in NVARCHAR(MAX)).
-   * Caches in localStorage for instant resilience.
+   * Save the dynamic feedback form configured by the host (Lecturer or
+   * Researcher). Stored in `Seminars.feedback` (NVARCHAR(MAX) JSON).
+   *
+   * Per ticket §14 the canonical request body is the questions array
+   * directly. The legacy `{ questions, feedback }` wrapper is still
+   * accepted by the BE — we send the array directly so the FE/BE contract
+   * stays simple.
    */
   saveFeedbackQuestions: async (
     seminarId: number,
     questions: FeedbackQuestion[],
   ): Promise<void> => {
-    const serialized = serializeSeminarQuestions(questions);
-    setCachedSeminarQuestions(seminarId, questions);
-    try {
-      await api.put(API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId), {
-        questions,
-        feedback: serialized,
-      });
-      return;
-    } catch {
-      try {
-        await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId), {
-          questions,
-          feedback: serialized,
-        });
-        return;
-      } catch {
-        try {
-          await api.put(API_ENDPOINTS.SEMINAR.UPDATE(seminarId), {
-            feedback: serialized,
-          });
-        } catch {
-          // Preserved in localStorage
-        }
-      }
-    }
+    const normalizedQuestions = questions.map((q, idx) => ({
+      ...q,
+      orderIndex: idx,
+    }));
+    setCachedSeminarQuestions(seminarId, normalizedQuestions);
+    await api.put(
+      API_ENDPOINTS.SEMINAR.FEEDBACK_FORM(seminarId),
+      normalizedQuestions,
+    );
   },
 
   /**
-   * Fetch dynamic feedback questions for a seminar.
+   * Fetch dynamic feedback questions for a seminar. The canonical source
+   * is `GET /api/Seminar/{id}/feedback-form`, which returns
+   * `{ seminarId, feedback, questions: SeminarFeedbackQuestion[], message }`
+   * (ticket §13.1). When `questions` is populated we use it directly; when
+   * only the raw `feedback` string is present we parse it as a fallback.
    */
   getFeedbackQuestions: async (
     seminarId: number,
@@ -466,7 +593,7 @@ export const seminarService = {
         }
       }
     } catch {
-      // ignore
+      // ignore — try fallback below
     }
 
     try {
@@ -491,47 +618,33 @@ export const seminarService = {
   },
 
   /**
-   * Submit dynamic feedback answers from a participant.
-   * Stores in SeminarParticipant.feedbackJson (JSON string in NVARCHAR(MAX)).
+   * Submit / edit dynamic feedback answers from a participant (ticket §16).
+   *
+   * Canonical request body per ticket:
+   * ```json
+   * { "answers": [
+   *     { "questionId": "q-rating", "type": "rating", "rating": 5 },
+   *     { "questionId": "q-improve", "type": "text", "text": "..." }
+   *   ] }
+   * ```
+   *
+   * The BE normalizes `orderIndex` against the actual form config, ignores
+   * any extra fields, and validates that every questionId exists in the
+   * seminar's feedback form (ticket §17).
+   *
+   * Stores in `SeminarParticipants.FeedbackJson` (NVARCHAR(MAX) JSON).
    */
   submitDynamicFeedback: async (
     seminarId: number,
     answers: FeedbackAnswer[],
-    overallNote?: string,
   ): Promise<unknown> => {
-    const feedbackJson = JSON.stringify(answers);
-    const textAnswers = answers
-      .filter((a) => a.type === 'text' && a.text)
-      .map((a) => a.text)
-      .join(' | ');
-    const ratingAnswers = answers.filter((a) => a.type === 'rating' && a.rating);
-    const avgRating = ratingAnswers.length > 0
-      ? ratingAnswers.reduce((sum, a) => sum + (a.rating || 0), 0) / ratingAnswers.length
-      : undefined;
-
-    const payload = {
-      answers,
-      feedbackJson,
-      feedback: {
-        overallComment: overallNote || textAnswers || 'Submitted via ARS dynamic feedback form',
-        strengths: [],
-        improvements: [],
-        suggestions: [],
-      },
-      rating: avgRating ? Math.round(avgRating) : undefined,
-    };
-
-    try {
-      const resp = await api.post(API_ENDPOINTS.SEMINAR_PARTICIPANT.FEEDBACK(seminarId), payload);
-      return resp.data;
-    } catch {
-      try {
-        const resp = await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK_ANSWERS(seminarId), payload);
-        return resp.data;
-      } catch {
-        return await api.post(API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId), payload);
-      }
-    }
+    const payload = { answers };
+    // Primary canonical endpoint.
+    const response = await api.post(
+      API_ENDPOINTS.SEMINAR.FEEDBACK(seminarId),
+      payload,
+    );
+    return response.data;
   },
 
   /**
@@ -579,7 +692,7 @@ export const seminarService = {
 
   /**
    * Owner-only — generate (or regenerate) AI feedback summary. The BE
-   * overwrites the previous summary on every call.
+   * overwrites the previous summary on every call (ticket §28-31).
    */
   summarizeFeedback: async (
     seminarId: number,
@@ -591,25 +704,33 @@ export const seminarService = {
   },
 
   /**
-   * Owner-only — explicitly persist the AI audio-summary text for a seminar.
-   * Calls `PUT /api/Seminar/{id}/ai-summary` with `{ aiSummary }`. The BE
-   * overwrites the previously stored summary on every successful call.
-   *
-   * NOTE — the BE Swagger `SeminarUpdateRequest` schema does not currently
-   * expose `aiSummary` as an editable field, so this endpoint may not yet be
-   * implemented on the BE side. If the BE returns 404 / 405, the caller
-   * should surface the error and ask the host to re-run `summarize-audio`
-   * instead. See the schema-drift note in `docs/local-only/erd-schema-reference.md`.
+   * Paged owner list of seminars (ticket §8). Returns a `PagedResult`
+   * wrapper plus the raw `Seminar[]` is also accessible via
+   * `getAll()`. Backed by `GET /api/Seminar/paged`.
    */
-  saveAiSummary: async (
-    seminarId: number,
-    aiSummary: string,
-  ): Promise<SeminarAudioSummaryResponse> => {
-    const response = await api.put<SeminarAudioSummaryResponse>(
-      API_ENDPOINTS.SEMINAR.SAVE_AI_SUMMARY(seminarId),
-      { aiSummary },
+  getPaged: async (
+    pageNumber: number,
+    pageSize: number,
+  ): Promise<PagedResult<Seminar>> => {
+    const response = await api.get<PagedResult<Seminar>>(
+      API_ENDPOINTS.SEMINAR.PAGED,
+      { params: { pageNumber, pageSize } },
     );
-    return response.data;
+    if (!response.data) {
+      return {
+        items: [],
+        totalCount: 0,
+        pageNumber,
+        pageSize,
+        totalPages: 0,
+        hasPrevious: false,
+        hasNext: false,
+      };
+    }
+    return {
+      ...response.data,
+      items: Array.isArray(response.data.items) ? response.data.items : [],
+    };
   },
 
   getMyInvitations: async (): Promise<Seminar[]> => {
@@ -660,6 +781,13 @@ export const seminarParticipantService = {
       participantEvaluation: row.participantEvaluation ?? null,
       createdAt: undefined,
       updatedAt: undefined,
+      // NOTE: dynamic FeedbackJson is NOT exposed by `GET /my-seminars`
+      // per ticket §20. To prefill edit-flow answers, fetch the full
+      // Seminar Detail (`GET /api/Seminar/{id}`) and read the matching
+      // participant's `feedbackJson` from there.
+      feedbackJson: undefined,
+      feedbackSubmittedAt: undefined,
+      feedbackUpdatedAt: undefined,
     }));
   },
 
@@ -844,7 +972,12 @@ export interface SeminarCard {
   title: string;
   content: string;
   startTime: string;
-  endTime: string;
+  /**
+   * ISO 8601 end time. Nullable after the BE ships the
+   * "Mark as Completed" endpoint — a `null` here means the seminar
+   * is still open-ended (see BE_SEMINAR_NULLABLE_ENDTIME.md).
+   */
+  endTime: string | null;
   /** Empty string when BE returns null. Check with `isValidMeetLink()`. */
   onlineLink: string;
   /** Raw normalized status from `mapSeminarStatus()`. */

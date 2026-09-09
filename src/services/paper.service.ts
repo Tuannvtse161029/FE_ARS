@@ -114,6 +114,16 @@ export const paperService = {
     const response = await api.post(API_ENDPOINTS.PAPER.VERIFY_AUTHORSHIP(id), { openAlexWorkId });
     return response.data;
   },
+  testUpdateNoVerify: async (id: number | string): Promise<{
+    paperId: number;
+    authorshipVerificationStatus?: string | null;
+    authorshipVerificationReason?: string | null;
+    authorshipVerifiedAt?: string | null;
+  }> => {
+    const response = await api.put(API_ENDPOINTS.PAPER.TEST_UPDATE_NO_VERIFY(id));
+    return response.data;
+  },
+
   getAll: async (
     params?: GetPapersParams,
     config?: AxiosRequestConfig,

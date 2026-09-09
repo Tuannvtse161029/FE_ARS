@@ -41,8 +41,8 @@ const baseParticipant: SeminarParticipant = {
 };
 
 describe('SEMINAR_MUTATOR_ROLES / SEMINAR_VIEWER_ROLES', () => {
-  it('includes only Lecturer as a mutator', () => {
-    expect(SEMINAR_MUTATOR_ROLES).toEqual(['Lecturer']);
+  it('includes Lecturer and Researcher as mutators (ticket §4 widened ownership)', () => {
+    expect(SEMINAR_MUTATOR_ROLES).toEqual(['Lecturer', 'Researcher']);
   });
 
   it('includes Lecturer, Graduate Student, Researcher and Reviewer as viewers', () => {
@@ -54,19 +54,19 @@ describe('SEMINAR_MUTATOR_ROLES / SEMINAR_VIEWER_ROLES', () => {
     ]);
   });
 
-  it('does NOT include Admin in either role set (Admin does not own seminars)', () => {
+  it('does NOT include Admin in either role set (Admin uses dedicated feedback endpoints)', () => {
     expect(SEMINAR_MUTATOR_ROLES).not.toContain('Admin');
     expect(SEMINAR_VIEWER_ROLES).not.toContain('Admin');
   });
 });
 
 describe('canMutateSeminar', () => {
-  it('returns true for Lecturer', () => {
+  it('returns true for Lecturer and Researcher', () => {
     expect(canMutateSeminar('Lecturer')).toBe(true);
+    expect(canMutateSeminar('Researcher')).toBe(true);
   });
 
-  it('returns false for every non-Lecturer role', () => {
-    expect(canMutateSeminar('Researcher')).toBe(false);
+  it('returns false for every other role', () => {
     expect(canMutateSeminar('Reviewer')).toBe(false);
     expect(canMutateSeminar('Graduate Student')).toBe(false);
     expect(canMutateSeminar('Admin')).toBe(false);
@@ -82,17 +82,14 @@ describe('canMutateSeminar', () => {
 });
 
 describe('canViewSeminar', () => {
-  it('returns true for Lecturer', () => {
+  it('returns true for Lecturer, Researcher, Reviewer, and Graduate Student', () => {
     expect(canViewSeminar('Lecturer')).toBe(true);
-  });
-
-  it('returns true for Graduate Student, Researcher, and Reviewer', () => {
-    expect(canViewSeminar('Graduate Student')).toBe(true);
     expect(canViewSeminar('Researcher')).toBe(true);
     expect(canViewSeminar('Reviewer')).toBe(true);
+    expect(canViewSeminar('Graduate Student')).toBe(true);
   });
 
-  it('returns false for Admin and Guest', () => {
+  it('returns false for Admin (uses dedicated feedback endpoints) and Guest', () => {
     expect(canViewSeminar('Admin')).toBe(false);
     expect(canViewSeminar('Guest')).toBe(false);
     expect(canViewSeminar(null)).toBe(false);
@@ -106,12 +103,15 @@ describe('ownsSeminar', () => {
     expect(ownsSeminar(baseSeminar, 42, 'Lecturer')).toBe(true);
   });
 
+  it('returns true when the Researcher userId matches the organizerId (ticket §4)', () => {
+    expect(ownsSeminar(baseSeminar, 42, 'Researcher')).toBe(true);
+  });
+
   it('returns false when the Lecturer userId does NOT match the organizerId', () => {
     expect(ownsSeminar(baseSeminar, 99, 'Lecturer')).toBe(false);
   });
 
-  it('returns false for any non-Lecturer role even when the userId matches', () => {
-    expect(ownsSeminar(baseSeminar, 42, 'Researcher')).toBe(false);
+  it('returns false for read-only roles even when the userId matches', () => {
     expect(ownsSeminar(baseSeminar, 42, 'Reviewer')).toBe(false);
     expect(ownsSeminar(baseSeminar, 42, 'Graduate Student')).toBe(false);
     expect(ownsSeminar(baseSeminar, 42, 'Admin')).toBe(false);

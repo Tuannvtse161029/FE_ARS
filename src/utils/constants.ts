@@ -10,6 +10,31 @@ export const API_BASE_URL =
 // Override in .env.production with VITE_APP_URL=https://your-app.vercel.app
 export const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
 
+/**
+ * BE gap — temporary FE placeholder for `Seminar.endTime` on create.
+ *
+ * The current BE contract (Swagger `POST /api/Seminar` §9, ticket
+ * `TICKET_SEMINAR_FE_INTEGRATION.md` §55.5) marks `endTime` as REQUIRED.
+ * The lecturer has no "Mark as Completed" affordance yet, so without a
+ * placeholder the BE rejects the create call entirely. We send
+ * `startTime + PLACEHOLDER_DURATION_MS` as a stand-in and surface that
+ * fact in the form helper copy.
+ *
+ * Once the BE team ships:
+ *   • nullable `endTime` on `SeminarCreateRequest`, AND
+ *   • a `POST /api/Seminar/{id}/complete` (or equivalent) that sets
+ *     `endTime = DateTime.UtcNow` and flips status to `Completed`,
+ * the FE will:
+ *   • stop sending the placeholder (omit `endTime` entirely), and
+ *   • call the new "complete" endpoint from a lecturer-only button.
+ *
+ * Until then, this constant is the single source of truth for the
+ * placeholder duration so the two create-form copies stay in sync.
+ *
+ * See: tickets/backend/BE_SEMINAR_NULLABLE_ENDTIME.md
+ */
+export const SEMINAR_PLACEHOLDER_DURATION_MS = 60 * 60 * 1000;
+
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
@@ -54,6 +79,7 @@ export const API_ENDPOINTS = {
   },
   PAPER: {
     VERIFY_AUTHORSHIP: (id: number | string) => `/api/Paper/${id}/verify-authorship`,
+    TEST_UPDATE_NO_VERIFY: (id: number | string) => `/api/Paper/test-update-no-verify/${id}`,
     BASE: '/api/paper',
     GET_ALL: '/api/paper',
     GET_BY_ID: (id: number | string) => `/api/paper/${id}`,
@@ -96,22 +122,33 @@ export const API_ENDPOINTS = {
   SEMINAR: {
     BASE: '/api/Seminar',
     GET_ALL: '/api/Seminar',
+    /** Paged owner list — ticket §8. Backed by `GET /api/Seminar/paged`. */
+    PAGED: '/api/Seminar/paged',
     CREATE: '/api/Seminar',
     GET_BY_ID: (id: number) => `/api/Seminar/${id}`,
     UPDATE: (id: number) => `/api/Seminar/${id}`,
     DELETE: (id: number) => `/api/Seminar/${id}`,
     INVITE: (id: number) => `/api/Seminar/${id}/invite`,
+    /** Canonical participant submit/edit endpoint — ticket §16. */
     FEEDBACK: (id: number) => `/api/Seminar/${id}/feedback`,
+    /** Owner-only raw feedback list — ticket §21. */
     GET_FEEDBACK: (id: number) => `/api/Seminar/${id}/feedback`,
-    SUMMARIZE_FEEDBACK: (id: number) => `/api/Seminar/${id}/summarize-feedback`,
-    MY_INVITATIONS: '/api/Seminar/my-invitations',
-    STATS: (id: number) => `/api/Seminar/${id}/stats`,
-    SEND_REMINDERS: (id: number) => `/api/Seminar/${id}/reminders/send`,
-    SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
-    SAVE_AI_SUMMARY: (id: number) => `/api/Seminar/${id}/ai-summary`,
+    /** Optional suggested-invitees grouping for the owner (ticket §25). */
     SUGGESTED_INVITEES: '/api/Seminar/suggested-invitees',
+    /** Owner-only feedback-form save / read — ticket §13-14. */
     FEEDBACK_FORM: (id: number) => `/api/Seminar/${id}/feedback-form`,
+    /** Legacy alias — kept only for back-compat (ticket §16). */
     FEEDBACK_ANSWERS: (id: number) => `/api/Seminar/${id}/feedback-answers`,
+    /** Owner-only completion stats — ticket §23. */
+    STATS: (id: number) => `/api/Seminar/${id}/stats`,
+    /** Owner-only manual feedback reminder — ticket §24. */
+    SEND_REMINDERS: (id: number) => `/api/Seminar/${id}/reminders/send`,
+    /** Owner-only AI feedback summary regeneration — ticket §28-31. */
+    SUMMARIZE_FEEDBACK: (id: number) => `/api/Seminar/${id}/summarize-feedback`,
+    /** Owner-only AI audio summary upload — ticket §34-37. */
+    SUMMARIZE_AUDIO: (id: number) => `/api/Seminar/${id}/summarize-audio`,
+    /** My-invitations list (participant) — ticket §27. */
+    MY_INVITATIONS: '/api/Seminar/my-invitations',
   },
   SEMINAR_PARTICIPANT: {
     BASE: '/api/SeminarParticipant',
@@ -120,7 +157,14 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/SeminarParticipant/${id}`,
     UPDATE: (id: number) => `/api/SeminarParticipant/${id}`,
     DELETE: (id: number) => `/api/SeminarParticipant/${id}`,
+    /** My-seminars participant-scoped list. */
     MY_SEMINARS: '/api/SeminarParticipant/my-seminars',
+    /**
+     * @deprecated Per ticket §40 the canonical submit/edit feedback endpoint
+     * is `POST /api/Seminar/{seminarId}/feedback`. The BE 400s any feedback
+     * payload submitted through these legacy SeminarParticipant paths.
+     * Kept only so existing legacy callers still find the constant.
+     */
     FEEDBACK: (seminarId: number) => `/api/SeminarParticipant/${seminarId}/feedback`,
     FEEDBACK_ANSWERS: (seminarId: number) => `/api/SeminarParticipant/${seminarId}/feedback-answers`,
   },

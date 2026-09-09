@@ -18,6 +18,9 @@ import {
   mapSeminarToCard,
   mapSeminarToCardWithParticipants,
   deriveEffectiveStatus,
+  hasSubmittedFeedback,
+  parseAiFeedback,
+  type SeminarCreateRequest,
 } from '../../../src/services/seminar.service';
 
 vi.mock('../../../src/services/axios', () => ({
@@ -311,5 +314,244 @@ describe('deriveEffectiveStatus', () => {
     expect(deriveEffectiveStatus('Upcoming', null)).toBe('UPCOMING');
     expect(deriveEffectiveStatus('Upcoming', undefined)).toBe('UPCOMING');
     expect(deriveEffectiveStatus('Upcoming', 'not-a-date')).toBe('UPCOMING');
+  });
+});
+
+// ── Ticket contract — hasSubmittedFeedback & parseAiFeedback (ticket §19, §32)
+
+describe('hasSubmittedFeedback (ticket §19)', () => {
+  it('returns false when participant is null or empty', () => {
+    expect(hasSubmittedFeedback(null)).toBe(false);
+    expect(hasSubmittedFeedback(undefined)).toBe(false);
+    expect(hasSubmittedFeedback({})).toBe(false);
+  });
+
+  it('returns true when feedbackSubmittedAt is set, even if feedbackJson is missing', () => {
+    expect(
+      hasSubmittedFeedback({ feedbackSubmittedAt: '2026-09-01T10:00:00Z' }),
+    ).toBe(true);
+  });
+
+  it('returns true when feedbackJson is a non-empty string', () => {
+    expect(
+      hasSubmittedFeedback({
+        feedbackJson: '[{"questionId":"q1","type":"rating","rating":5}]',
+      }),
+    ).toBe(true);
+  });
+
+  it('returns false when feedbackJson is null or whitespace', () => {
+    expect(hasSubmittedFeedback({ feedbackJson: null })).toBe(false);
+    expect(hasSubmittedFeedback({ feedbackJson: '' })).toBe(false);
+    expect(hasSubmittedFeedback({ feedbackJson: '   ' })).toBe(false);
+  });
+});
+
+describe('parseAiFeedback (ticket §32)', () => {
+  const goodJson = JSON.stringify({
+    overallAssessment: 'Overall good.',
+    commonStrengths: ['Clear', 'Concise'],
+    areasForImprovement: ['Pacing'],
+    commonSuggestions: ['Send slides'],
+    conflictingFeedback: [],
+    recommendedActions: ['Add Q&A'],
+  });
+
+  it('returns null for null / empty / invalid JSON', () => {
+    expect(parseAiFeedback(null)).toBeNull();
+    expect(parseAiFeedback('')).toBeNull();
+    expect(parseAiFeedback('not-json')).toBeNull();
+    expect(parseAiFeedback('{}')).toBeNull();
+  });
+
+  it('returns null when overallAssessment is missing or wrong type', () => {
+    expect(parseAiFeedback(JSON.stringify({}))).toBeNull();
+    expect(
+      parseAiFeedback(JSON.stringify({ overallAssessment: 123 })),
+    ).toBeNull();
+  });
+
+  it('parses a well-formed AI feedback summary, filtering non-string entries', () => {
+    const parsed = parseAiFeedback(
+      JSON.stringify({
+        overallAssessment: 'Mixed.',
+        commonStrengths: ['A', null, 1, 'B'],
+        areasForImprovement: ['C'],
+        commonSuggestions: [],
+        conflictingFeedback: ['Some disagreement'],
+        recommendedActions: ['Add slides', 'Longer Q&A'],
+      }),
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed?.overallAssessment).toBe('Mixed.');
+    expect(parsed?.commonStrengths).toEqual(['A', 'B']);
+    expect(parsed?.commonSuggestions).toEqual([]);
+  });
+});
+
+describe('seminarService — ticket canonical endpoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('getPaged calls /api/Seminar/paged with pageNumber/pageSize (ticket §8)', async () => {
+    mockedApi.get.mockResolvedValueOnce({
+      data: {
+        items: [mockSeminar],
+        totalCount: 1,
+        pageNumber: 1,
+        pageSize: 10,
+        totalPages: 1,
+        hasPrevious: false,
+        hasNext: false,
+      },
+    });
+    const page = await seminarService.getPaged(1, 10);
+    expect(mockedApi.get).toHaveBeenCalledWith('/api/Seminar/paged', {
+      params: { pageNumber: 1, pageSize: 10 },
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page.totalCount).toBe(1);
+  });
+
+  it('getPaged returns an empty paged result when BE returns null (ticket §8)', async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: null });
+    const page = await seminarService.getPaged(2, 25);
+    expect(page.items).toEqual([]);
+    expect(page.totalCount).toBe(0);
+    expect(page.pageNumber).toBe(2);
+    expect(page.pageSize).toBe(25);
+  });
+
+  it('submitDynamicFeedback sends canonical { answers } only (ticket §16)', async () => {
+    mockedApi.post.mockResolvedValueOnce({
+      data: {
+        seminarId: 5,
+        seminarParticipantId: 11,
+        feedbackSubmittedAt: '2026-09-09T10:00:00Z',
+      },
+    });
+    await seminarService.submitDynamicFeedback(5, [
+      {
+        questionId: 'q1',
+        orderIndex: 0,
+        type: 'rating',
+        rating: 5,
+      },
+      {
+        questionId: 'q2',
+        orderIndex: 1,
+        type: 'text',
+        text: 'Great session!',
+      },
+    ]);
+    expect(mockedApi.post).toHaveBeenCalledTimes(1);
+    expect(mockedApi.post).toHaveBeenCalledWith('/api/Seminar/5/feedback', {
+      answers: [
+        {
+          questionId: 'q1',
+          orderIndex: 0,
+          type: 'rating',
+          rating: 5,
+        },
+        {
+          questionId: 'q2',
+          orderIndex: 1,
+          type: 'text',
+          text: 'Great session!',
+        },
+      ],
+    });
+  });
+
+  it('saveFeedbackQuestions sends the array directly via PUT (ticket §14)', async () => {
+    mockedApi.put.mockResolvedValueOnce({ data: undefined });
+    const questions = [
+      { id: 'q1', orderIndex: 0, type: 'rating', questionText: 'Rate', isRequired: true, maxStar: 5 },
+    ];
+    await seminarService.saveFeedbackQuestions(7, questions);
+    expect(mockedApi.put).toHaveBeenCalledWith(
+      '/api/Seminar/7/feedback-form',
+      [
+        { id: 'q1', orderIndex: 0, type: 'rating', questionText: 'Rate', isRequired: true, maxStar: 5 },
+      ],
+    );
+  });
+});
+
+// ── BE-SEMINAR-ENDTIME-01 — nullable endTime
+
+describe('SeminarCreateRequest — nullable endTime (BE-SEMINAR-ENDTIME-01)', () => {
+  /**
+   * The current BE contract requires endTime on POST, but the BE team is
+   * shipping a fix (BE-SEMINAR-ENDTIME-01) to make it nullable. The FE
+   * types it as `string | null` in anticipation. These tests assert that
+   * the create() call passes a payload with `endTime: null` through to
+   * axios without throwing a type error and without modifying the payload.
+   */
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('create() accepts a payload with endTime: null (type compile guard)', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { seminarId: 99, startTime: '2026-09-20T02:00:00Z', endTime: null } });
+    // This assertion exists to prove the TypeScript type `endTime: string | null`
+    // compiles and does not reject a null value at the call site.
+    const payload: SeminarCreateRequest = {
+      startTime: '2026-09-20T02:00:00Z',
+      endTime: null,
+      content: 'Test seminar',
+    };
+    const result = await seminarService.create(payload);
+    expect(result.seminarId).toBe(99);
+    expect(result.endTime).toBeNull();
+    expect(mockedApi.post).toHaveBeenCalledWith('/api/Seminar', {
+      startTime: '2026-09-20T02:00:00Z',
+      endTime: null,
+      content: 'Test seminar',
+    });
+  });
+
+  it('create() still accepts endTime as a string (backward compat)', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { seminarId: 77, startTime: '2026-09-20T02:00:00Z', endTime: '2026-09-20T03:00:00Z' } });
+    const payload: SeminarCreateRequest = {
+      startTime: '2026-09-20T02:00:00Z',
+      endTime: '2026-09-20T03:00:00Z',
+      content: 'Test seminar with end',
+    };
+    const result = await seminarService.create(payload);
+    expect(result.seminarId).toBe(77);
+    expect(mockedApi.post).toHaveBeenCalledWith('/api/Seminar', {
+      startTime: '2026-09-20T02:00:00Z',
+      endTime: '2026-09-20T03:00:00Z',
+      content: 'Test seminar with end',
+    });
+  });
+});
+
+describe('deriveEffectiveStatus — null endTime means open-ended (BE-SEMINAR-ENDTIME-01)', () => {
+  const NOW = new Date('2026-09-20T12:00:00Z').getTime();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns raw status when endTime is null (open-ended seminar)", () => {
+    expect(deriveEffectiveStatus('Upcoming', null)).toBe('UPCOMING');
+    expect(deriveEffectiveStatus('InProgress', null)).toBe('IN PROGRESS');
+    expect(deriveEffectiveStatus('Draft', null)).toBe('DRAFT');
+  });
+
+  it("returns COMPLETED when endTime is null but raw status is 'Completed'", () => {
+    // Even with null endTime, an already-completed seminar stays completed.
+    expect(deriveEffectiveStatus('Completed', null)).toBe('COMPLETED');
+  });
+
+  it('does NOT fall back to endTime when endTime is null', () => {
+    // Confirms the function short-circuits on null endTime before any time comparison.
+    expect(deriveEffectiveStatus('Upcoming', null)).toBe('UPCOMING');
   });
 });

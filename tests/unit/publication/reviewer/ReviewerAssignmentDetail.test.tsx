@@ -233,7 +233,9 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // New behavior: a confirmation dialog appears before the API call.
-    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    // The shared ConfirmModal exposes itself via role="dialog" so we
+    // query by role + accessible title instead of a custom testid.
+    const confirmDialog = await screen.findByRole('dialog', { name: /Submit private review to Admin/i });
     expect(confirmDialog).toBeInTheDocument();
     await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
@@ -287,7 +289,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // Confirmation dialog appears before the API call.
-    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    const confirmDialog = await screen.findByRole('dialog', { name: /Submit private review to Admin/i });
     await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
     const banner = await screen.findByTestId('submitted-banner');
@@ -330,7 +332,7 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // Confirmation dialog appears before the API call.
-    const confirmDialog = await screen.findByTestId('confirm-submit-dialog');
+    const confirmDialog = await screen.findByRole('dialog', { name: /Submit private review to Admin/i });
     await user.click(within(confirmDialog).getByRole('button', { name: /Confirm submission/i }));
 
     const banner = await screen.findByTestId('submitted-banner');

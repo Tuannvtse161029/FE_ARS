@@ -25,11 +25,22 @@
 }
 
 /* ── Disabled State ─────────────────────────────────────── */
+/* Pre-2026-09 all disabled buttons used opacity: 0.5, which made
+   ochre primary buttons (--accent-primary) unreadable at a glance.
+   We now use an explicit sunken-background swap that stays legible
+   across all accent colours. The blanket opacity rule is removed so
+   each variant controls its own disabled appearance. */
 .button:disabled {
-  opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Primary disabled — explicit sunken look so the ochre label stays readable */
+.button--primary:disabled {
+  background-color: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border-subtle);
 }
 
 /* ── Focus Visible (keyboard) ───────────────────────────── */

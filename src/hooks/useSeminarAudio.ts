@@ -159,11 +159,37 @@ export function useSeminarAudio(): UseSeminarAudioResult {
         setProgress(100);
         return response;
       } catch (err) {
-        const message =
-          (err as { message?: string })?.message ??
+        // Surface the BE's `message` (ticket §36) verbatim so the FE can
+        // show the same wording the host would otherwise see in Swagger.
+        const ax = err as {
+          response?: {
+            status?: number;
+            data?: { code?: string; message?: string } | string;
+          };
+          message?: string;
+        };
+        const beCode =
+          (typeof ax.response?.data === 'object'
+            ? ax.response?.data?.code
+            : undefined) ?? null;
+        const beMessage =
+          (typeof ax.response?.data === 'object'
+            ? ax.response?.data?.message
+            : undefined) ??
+          (typeof ax.response?.data === 'string'
+            ? ax.response.data
+            : undefined) ??
+          ax.message ??
           'Upload failed. Check your connection and try again.';
+
+        // Tag the message with the BE error code so callers (UI) can
+        // branch on it (e.g. open the 409 replace confirm flow).
+        const friendly = beCode
+          ? `${beMessage} [${beCode}]`
+          : beMessage;
+
         setStatus('failed');
-        setError(message);
+        setError(friendly);
         throw err;
       }
     },
