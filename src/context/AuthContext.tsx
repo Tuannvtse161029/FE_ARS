@@ -243,29 +243,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response.trialExpiryAt ??
         freshUser?.trialExpiryAt ??
         null;
-      const userToPersist = freshUser ?? {
+      const userToPersist = {
+        ...(freshUser ?? {}),
         id: userId,
-        username: response.username,
-        email: response.email,
-        fullName: response.username,
-        roleId: response.roleId ?? 0,
+        username: freshUser?.username ?? response.username,
+        email: freshUser?.email ?? response.email,
+        fullName: freshUser?.fullName ?? response.username,
+        roleId: freshUser?.roleId ?? response.roleId ?? 0,
         roleName: roleToUse,
-        isActive: response.isActive ?? false,
-        // Agent 30 (regression) — preserve the BE-supplied
-        // verificationStatus verbatim. A missing value stays `null`
-        // (rather than being coerced to `'Pending'`) so the
-        // null-aware downstream checks can recognise a fresh account
-        // that has not been through the role-request lifecycle yet.
-        verificationStatus: response.verificationStatus ?? null,
-        accountTier: response.accountTier ?? 'Free',
-        // Agent 30 — mirror `AuthResponse.roles` on the persisted user
-        // so `PublicRoute` can enforce the exact approved-role-list
-        // condition at runtime. The list is sourced from the BE (freshUser
-        // or response) and falls back to a single-element array when the
-        // BE omits it so the post-auth resolver doesn't mis-classify an
-        // existing user as "first-time".
+        isActive: freshUser?.isActive ?? response.isActive ?? false,
+        verificationStatus: freshUser?.verificationStatus ?? response.verificationStatus ?? null,
+        accountTier: freshUser?.accountTier ?? response.accountTier ?? 'Free',
         roles: persistedRoles,
         trialExpiryAt: persistedTrialExpiryAt,
+        effectiveRole: (roleToUse as EffectiveRole) || 'Guest',
       };
       storage.setUser(userToPersist);
 
