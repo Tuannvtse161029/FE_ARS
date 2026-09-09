@@ -91,7 +91,7 @@ export const SharedSection = ({
                     {expiry.iso && (
                       <span>
                         <span className={styles.sharedRowLabel}>{t('lecturer.materials.shared.expires', 'Expires')}:</span>{' '}
-                        {expiry.daysRemaining !== null ? `${expiry.daysRemaining}d` : new Date(expiry.iso).toLocaleDateString()}
+                        {expiry.daysRemaining !== null ? `${expiry.daysRemaining}d` : new Date(expiry.iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </span>
                     )}
                   </div>

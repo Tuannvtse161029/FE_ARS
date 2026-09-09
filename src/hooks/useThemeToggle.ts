@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
  * Theme toggle — shared by every page that needs the dark/light flip
  * (MainLayout, Login, Register, etc.).
  *
- * The hook centralises three responsibilities that were previously
- * inlined in `MainLayout.tsx`:
+ * The hook centralises three responsibilities:
  *
  *   1. **Persistence** — read/write the user's choice in `localStorage`
  *      under `ars_theme`. The legacy values `night` / `light` are
@@ -16,17 +15,28 @@ import { useCallback, useEffect, useState } from 'react';
  *   3. **Cross-tab sync** — listen for `storage` events so a flip in
  *      one tab is mirrored in another without forcing a reload.
  *
- * Important: this hook is intentionally SSR-safe. `resolveInitialTheme`
- * returns `'paper-day'` when `window` / `document` aren't defined, and
- * the `useEffect` calls are no-ops on the server. Both `setStoredTheme`
- * and `applyThemeToRoot` early-return when the corresponding globals
- * aren't present.
+ * ── IMPORTANT: shared module-level state ──────────────────────────
+ * This hook is consumed by many components simultaneously
+ * (`ThemeToggle` in the header, `HeroAct` for the lamp gate, and
+ * the layout itself). If each call to `useThemeToggle()` owned its
+ * own `useState`, a toggle in one component would update only that
+ * instance's state — every other instance would keep its stale
+ * initial value, and conditional renders gated on `theme === …`
+ * would silently fail to re-render until the user refreshed.
  *
- * The single source of truth lives in `localStorage`. The `data-theme`
- * attribute on `<html>` is a render-side projection of that value, not
- * a separate state. If you ever need to seed the theme from another
- * place (e.g. a backend profile preference), call `setTheme(next)` —
- * the persistence + apply side-effects run automatically.
+ * To prevent that, we keep a single `currentTheme` value at module
+ * scope, with a small subscriber set. Every hook instance subscribes
+ * on mount, receives updates whenever `toggleTheme()` / `setTheme()`
+ * fires anywhere, and unsubscribes on unmount. Initial state for
+ * every instance comes from the same module-level read of
+ * `localStorage`, so the first render is always consistent across
+ * the tree.
+ *
+ * The hook is SSR-safe: `currentTheme` initialises to `'paper-day'`
+ * when `window` is not defined, and the `useEffect` listeners
+ * short-circuit on the server. The pre-paint script in `index.html`
+ * independently sets `<html data-theme>` from `localStorage`, so the
+ * CSS cascade matches the React state on first paint.
  */
 export type ArchiveThemeName = 'archive-dusk' | 'paper-day';
 
@@ -145,6 +155,76 @@ const syncMetaThemeColor = (): void => {
   }
 };
 
+// ── Shared module-level state ────────────────────────────────────
+// All `useThemeToggle()` instances read from and write to this single
+// object. That way toggling in `ThemeToggle` updates `HeroAct`'s
+// `theme` value synchronously, and any other consumer in the tree.
+// See the IMPORTANT block at the top of this file for why this exists.
+
+/** The single theme value shared across every hook instance. */
+let currentTheme: ArchiveThemeName =
+  typeof window === 'undefined' ? 'paper-day' : resolveInitialTheme();
+
+/** Subscribers are notified on every theme change. */
+const subscribers = new Set<(theme: ArchiveThemeName) => void>();
+
+/** Read the current shared theme value (used outside React). */
+export const getCurrentTheme = (): ArchiveThemeName => currentTheme;
+
+/**
+ * Set the shared theme and notify every subscriber. Side effects:
+ *  - apply `<html data-theme>`
+ *  - persist to `localStorage`
+ *  - sync the mobile browser chrome
+ *  - notify subscribers so React components re-render
+ */
+const setSharedTheme = (next: ArchiveThemeName): void => {
+  if (next === currentTheme) {
+    // Still run apply/persist so the DOM and storage match the
+    // declared value even when called from a storage event in another
+    // tab (where the value is already what the other tab wrote).
+    applyThemeToRoot(next);
+    setStoredTheme(next);
+    syncMetaThemeColor();
+    return;
+  }
+  currentTheme = next;
+  applyThemeToRoot(next);
+  setStoredTheme(next);
+  syncMetaThemeColor();
+  // Notify AFTER state + DOM updates so subscribers that read the DOM
+  // (e.g. for analytics) see the new attribute.
+  subscribers.forEach((cb) => cb(next));
+};
+
+// First-paint sync: the inline script in `index.html` already set
+// `<html data-theme>` from `localStorage`, but if this module is the
+// first to read the theme (e.g. the hook is invoked before the
+// pre-paint script has run for any reason), re-apply to guarantee the
+// DOM matches `currentTheme`.
+if (typeof document !== 'undefined') {
+  applyThemeToRoot(currentTheme);
+  // Cross-tab sync: when another tab flips the theme, mirror it here.
+  window.addEventListener('storage', (event: StorageEvent) => {
+    if (event.key !== THEME_STORAGE_KEY) return;
+    const incoming = event.newValue;
+    if (incoming === null) {
+      // Another tab cleared storage — fall back to the default.
+      setSharedTheme('paper-day');
+      return;
+    }
+    if (isThemeName(incoming)) {
+      setSharedTheme(incoming);
+    } else if (incoming === 'night') {
+      setSharedTheme('archive-dusk');
+    } else if (incoming === 'light') {
+      setSharedTheme('paper-day');
+    } else {
+      setSharedTheme('paper-day');
+    }
+  });
+}
+
 export interface UseThemeToggleReturn {
   /** Current theme (`'archive-dusk'` = dark, `'paper-day'` = light). */
   theme: ArchiveThemeName;
@@ -155,51 +235,32 @@ export interface UseThemeToggleReturn {
 }
 
 /**
- * Subscribe to the persisted theme and expose `{ theme, setTheme,
+ * Subscribe to the shared theme and expose `{ theme, setTheme,
  * toggleTheme }`. Every change persists to `localStorage` AND applies
  * to `<html data-theme>`. A `storage` listener keeps multiple tabs
  * in sync without a reload.
  */
 export function useThemeToggle(): UseThemeToggleReturn {
-  const [theme, setThemeState] = useState<ArchiveThemeName>(() => resolveInitialTheme());
+  // `useState` initialiser reads the module-level value that the
+  // pre-paint script in `index.html` already synchronised to the DOM.
+  const [theme, setThemeState] = useState<ArchiveThemeName>(() => currentTheme);
 
-  // Apply + persist on every change. The initial render already reads
-  // the correct value from `localStorage`, so this effect runs once
-  // with the resolved value (no-op) and again on each toggle.
   useEffect(() => {
-    applyThemeToRoot(theme);
-    setStoredTheme(theme);
-    syncMetaThemeColor();
-  }, [theme]);
-
-  // Cross-tab sync: when another tab flips the theme, mirror it here
-  // so the user's preference stays consistent across the app.
-  useEffect(() => {
-    const onStorage = (event: StorageEvent): void => {
-      if (event.key !== THEME_STORAGE_KEY) {
-        return;
-      }
-      if (isThemeName(event.newValue)) {
-        setThemeState(event.newValue);
-        applyThemeToRoot(event.newValue);
-      } else {
-        // Another tab cleared storage — fall back to the default.
-        setThemeState('paper-day');
-        applyThemeToRoot('paper-day');
-      }
-      // Browser chrome needs to follow along too.
-      syncMetaThemeColor();
+    const cb = (next: ArchiveThemeName): void => {
+      setThemeState(next);
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    subscribers.add(cb);
+    return () => {
+      subscribers.delete(cb);
+    };
   }, []);
 
   const setTheme = useCallback((next: ArchiveThemeName): void => {
-    setThemeState(next);
+    setSharedTheme(next);
   }, []);
 
   const toggleTheme = useCallback((): void => {
-    setThemeState((current) => (current === 'archive-dusk' ? 'paper-day' : 'archive-dusk'));
+    setSharedTheme(currentTheme === 'archive-dusk' ? 'paper-day' : 'archive-dusk');
   }, []);
 
   return { theme, setTheme, toggleTheme };

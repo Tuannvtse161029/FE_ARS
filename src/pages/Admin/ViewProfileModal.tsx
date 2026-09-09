@@ -105,8 +105,8 @@ const formatDate = (iso: string | null | undefined, localeTag: 'en' | 'vi') => {
   try {
     return d.toLocaleDateString(localeTag === 'vi' ? 'vi-VN' : 'en-US', {
       year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+      month: 'short',
+      day: 'numeric',
     });
   } catch {
     return iso;

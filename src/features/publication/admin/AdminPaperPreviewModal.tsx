@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, FileText } from 'lucide-react';
 import shared from '../components/PublicationShared.module.css';
 import { paperTypeLabel, type PublicationPaper } from '../types/publication';
+import { formatDisplayDate } from '../../../utils/datetime';
 import {
   doiHref,
   publicReviewerName,
@@ -95,9 +96,9 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
             <dt>Reviewer identity public</dt>
             <dd>{paper.reviewerIdentityPublic ? 'Yes' : 'No (private)'}</dd>
             <dt>Submitted</dt>
-            <dd>{paper.submittedAt ? paper.submittedAt.slice(0, 10) : '—'}</dd>
+            <dd>{paper.submittedAt ? formatDisplayDate(paper.submittedAt) : '—'}</dd>
             <dt>Published</dt>
-            <dd>{paper.publishedAt ? paper.publishedAt.slice(0, 10) : '—'}</dd>
+            <dd>{paper.publishedAt ? formatDisplayDate(paper.publishedAt) : '—'}</dd>
             <dt>Manuscript</dt>
             <dd>
               {fileHref

@@ -23,7 +23,11 @@ import {
   type SeminarCard,
 } from '../../../services/seminar.service';
 import type { SeminarBackendAvailability } from '../../../hooks/useSeminar';
-import { formatDisplayDate, formatDisplayTime } from '../../../utils/datetime';
+import {
+  formatDisplayDate,
+  formatDisplayTime,
+  parseApiDateTimeAsUtc,
+} from '../../../utils/datetime';
 import { EmptyState } from '../../../components/EmptyState';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { GoogleMeetCapacityMeter } from '../../../components/seminar/GoogleMeetCapacityMeter';
@@ -100,8 +104,8 @@ export const SeminarList: React.FC<SeminarListProps> = ({
       ) : (
         <ul className={styles.list}>
           {paginatedSeminars.map((sem) => {
-            const seminarStartDate = sem.startTime ? new Date(sem.startTime) : null;
-            const seminarEndDate = sem.endTime ? new Date(sem.endTime) : null;
+            const seminarStartDate = sem.startTime ? parseApiDateTimeAsUtc(sem.startTime) : null;
+            const seminarEndDate = sem.endTime ? parseApiDateTimeAsUtc(sem.endTime) : null;
             const dateLabel = seminarStartDate ? formatDisplayDate(seminarStartDate, locale) : '';
             const timeLabel = seminarStartDate && seminarEndDate && !Number.isNaN(seminarStartDate.getTime())
               ? `${formatDisplayTime(seminarStartDate, locale)} – ${formatDisplayTime(seminarEndDate, locale)}`

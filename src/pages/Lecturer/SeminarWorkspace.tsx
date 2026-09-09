@@ -24,8 +24,8 @@ import { fieldService } from '../../services/field.service';
 import type { MajorField } from '../../types/domain';
 import { useLocale } from '../../i18n/I18nContext';
 import {
+  parseApiDateTimeAsUtc,
   toLocalDatetimeInput,
-  toApiIsoString,
   formatDisplayDate,
   formatDisplayTime,
 } from '../../utils/datetime';
@@ -56,6 +56,8 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
+import { InviteMoreParticipantsModal } from '../../components/seminar/InviteMoreParticipantsModal';
+import { SeminarDetailModal } from '../../components/seminar/SeminarDetailModal';
 import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
@@ -106,6 +108,12 @@ export const SeminarWorkspace = () => {
   );
   const [selectedSeminarForFeedback, setSelectedSeminarForFeedback] =
     useState<SeminarCard | null>(null);
+
+  const [showInviteMoreModal, setShowInviteMoreModal] = useState(false);
+  const [inviteMoreSeminar, setInviteMoreSeminar] = useState<SeminarCard | null>(null);
+
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailSeminar, setDetailSeminar] = useState<SeminarCard | null>(null);
 
   const [showAiModal, setShowAiModal] = useState(false);
   const [selectedSeminarForAi, setSelectedSeminarForAi] =
@@ -530,10 +538,26 @@ export const SeminarWorkspace = () => {
       );
       return;
     }
-    const startTime = toApiIsoString(dateTime) || new Date(dateTime).toISOString();
-    const endTime =
-      toApiIsoString(new Date(new Date(dateTime).getTime() + 60 * 60 * 1000)) ||
-      new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
+    // Compute `startTime` and `endTime` using the SAME conversion:
+    // both interpret the datetime-local input as the user's LOCAL clock
+    // time and convert to the corresponding UTC ISO instant. Previously
+    // `startTime` used `toApiIsoString()` (which preserves the local
+    // clock digits and appends `Z` — treating the user's local clock
+    // as UTC), while `endTime` used `new Date(...).toISOString()` (which
+    // properly applies the browser's timezone offset to the parsed
+    // local time). For a user in UTC+7 picking "01:59", the two
+    // approaches produced values 7 hours apart, so `endTime` ended up
+    // EARLIER than `startTime` in UTC and the BE rejected the create
+    // with "EndTime must be later than StartTime". Using one conversion
+    // path for both fields keeps the 1-hour gap intact.
+    //
+    // The default `minTime` validation above already confirms the
+    // datetime string parses to a real Date, so `new Date(dateTime)`
+    // here is safe.
+    const startDate = new Date(dateTime);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    const startTime = startDate.toISOString();
+    const endTime = endDate.toISOString();
     const fullContent = seminarName.trim()
       ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
       : seminarDetails.trim();
@@ -802,10 +826,19 @@ export const SeminarWorkspace = () => {
       ) : (
         <ul className={styles.list}>
           {paginatedSeminars.map((sem) => {
+            // Parse the BE's seminar timestamps as UTC so the wall-clock
+            // display matches what the lecturer originally picked. The
+            // BE sometimes strips the timezone marker (`Z` / `±HH:MM`)
+            // when serializing, which would otherwise push the rendered
+            // date and time onto the UTC literal digits instead of the
+            // actual UTC → local conversion (e.g. `"17:45 on Sep 9"`
+            // instead of `"00:45 on Sep 10"` for a UTC+7 viewer).
             const seminarStartDate = sem.startTime
-              ? new Date(sem.startTime)
+              ? parseApiDateTimeAsUtc(sem.startTime)
               : null;
-            const seminarEndDate = sem.endTime ? new Date(sem.endTime) : null;
+            const seminarEndDate = sem.endTime
+              ? parseApiDateTimeAsUtc(sem.endTime)
+              : null;
             const dateLabel = seminarStartDate
               ? formatDisplayDate(seminarStartDate, locale)
               : '';
@@ -960,6 +993,20 @@ export const SeminarWorkspace = () => {
                               Submit Feedback
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className={styles.actionBtnGhost}
+                            onClick={() => {
+                              setDetailSeminar(sem);
+                              setShowDetailModal(true);
+                            }}
+                            aria-label={`View seminar details for ${formatBytesTitle(
+                              sem.title,
+                            )}`}
+                          >
+                            <Eye size={14} aria-hidden />
+                            {copy('Seminar Detail', 'Chi tiết hội thảo')}
+                          </button>
                         </>
                       ) : (
                         <>
@@ -979,15 +1026,13 @@ export const SeminarWorkspace = () => {
                               type="button"
                               className={styles.actionBtnOutline}
                               onClick={() => {
-                                navigator.clipboard.writeText(
-                                  sem.onlineLink ?? '',
-                                );
-                                announce('Invite link copied.');
+                                setInviteMoreSeminar(sem);
+                                setShowInviteMoreModal(true);
                               }}
                               disabled={!isValidMeetLink(sem.onlineLink)}
                             >
                               <Mail size={14} aria-hidden />
-                              Send Invite Link
+                              {copy('Invite more participants', 'Mời thêm người tham dự')}
                             </button>
                           )}
                           <button
@@ -1021,6 +1066,20 @@ export const SeminarWorkspace = () => {
                               {copy('Setup Feedback', 'Cấu hình Feedback')}
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className={styles.actionBtnGhost}
+                            onClick={() => {
+                              setDetailSeminar(sem);
+                              setShowDetailModal(true);
+                            }}
+                            aria-label={`View seminar details for ${formatBytesTitle(
+                              sem.title,
+                            )}`}
+                          >
+                            <Eye size={14} aria-hidden />
+                            {copy('Seminar Detail', 'Chi tiết hội thảo')}
+                          </button>
                         </>
                       )}
                     </div>
@@ -1716,6 +1775,39 @@ export const SeminarWorkspace = () => {
           }}
         />
       )}
+
+      {/* INVITE MORE PARTICIPANTS MODAL */}
+      {showInviteMoreModal && inviteMoreSeminar && (
+        <InviteMoreParticipantsModal
+          isOpen={showInviteMoreModal}
+          onClose={() => {
+            setShowInviteMoreModal(false);
+            setInviteMoreSeminar(null);
+          }}
+          seminar={inviteMoreSeminar}
+          currentUserId={currentUserId}
+          onSuccess={(added) => {
+            void refetch();
+            announce(
+              copy(
+                `Invitation${added === 1 ? '' : 's'} sent to ${added} participant${added === 1 ? '' : 's'}.`,
+                `Đã gửi lời mời đến ${added} người tham dự.`,
+              ),
+            );
+          }}
+        />
+      )}
+
+      {/* SEMINAR DETAIL MODAL — read-only pop-up for the new
+          "Seminar Detail" action button on each seminar card. */}
+      <SeminarDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setDetailSeminar(null);
+        }}
+        seminar={detailSeminar}
+      />
     </div>
   );
 };

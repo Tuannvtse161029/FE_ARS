@@ -72,8 +72,8 @@ const formatSuspendedUntil = (
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    month: 'short',
+    day: 'numeric',
   });
 };
 

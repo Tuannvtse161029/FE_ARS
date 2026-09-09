@@ -426,26 +426,42 @@
   transform: scale(1.06);
   transform-origin: center 60%;
   will-change: transform;
-  transition: opacity 380ms var(--motion-ease-standard);
+  transition:
+    opacity 380ms var(--motion-ease-standard),
+    filter 320ms ease;
 }
 .heroStage[data-sc-has-clip] .heroPoster,
 .heroPoster[data-sc-ready='true'] { opacity: 0; }
 
-/* Foreground layer — a soft warm light streak that catches the eye
-   at the bottom edge of the frame. Drifts opposite to the photo so
-   the two read as separate planes. Sits above the photo, below the
-   scrim. */
+/* Darken the photo in archive-dusk so the warm spotlight cone reads
+   clearly against a darker base. Without this, the photo's natural
+   interior lighting dominates and the lamp overlay blends into the
+   existing warmth rather than reading as a distinct overhead light.
+   The (data-theme='archive-dusk') selector is on <html>; a separate
+   .heroStage[data-dark-mode='true'] doesn't exist since we drive the
+   gating off the root attribute. */
+:global(html[data-theme='archive-dusk']) .heroPoster {
+  filter: brightness(0.55) saturate(0.85);
+}
+
+/* Foreground layer — a parallax plane that drifts opposite to the
+   photo so the two read as separate depths. Originally this layer
+   also tinted the bottom of the hero with a warm --accent-primary
+   glow (a "desk-lamp streak"), which leaked into light mode where
+   --accent-primary is a warm ochre and made the paper-day hero
+   itself look lit by a lamp.
+
+   The lamp effect is now its own set of gated layers (.heroLampGlow
+   family, dark-only), so this plane no longer needs its own
+   background — leaving it transparent lets the photo breathe in
+   paper-day without any colored wash, while preserving the parallax
+   drift behaviour that React drives from the same scroll handler. */
 .heroLayerForeground {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      50% 28% at 50% 100%,
-      color-mix(in srgb, var(--accent-primary) 18%, transparent),
-      transparent 70%
-    );
+  background: transparent;
   will-change: transform;
 }
 
@@ -1821,126 +1837,208 @@
   .footerCopy { padding-top: 16px; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   FEATURE SPLIT SECTIONS
-   Two-column layouts for peer review and seminars sections.
-   ═══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   LAMP LIGHT — Dark Mode Hero Effect (ceiling spotlight from above)
 
-/* ── Feature Split Section ─────────────────────────────────── */
-.featureSplitSection {
-  padding: clamp(60px, 9vh, 100px) 0;
-  background: var(--surface-paper);
-  border-top: 1px solid var(--border-subtle);
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
-}
-.featureSplitSection:not(.revealed) {
-  opacity: 0;
-  transform: translateY(24px);
-}
+   The user-facing reference is the gallery/document shots in
+   `src/assets/images/Codex Image Sep 9, 2026, 05_17_*.png`:
+   a focused bright beam coming from above the frame, a warm cone
+   of light sweeping down and outward, and shadow gathering at the
+   lower / side edges. The previous version was a centered radial
+   that read as a desk lamp glowing in the middle of the room —
+   this version is a top-down cone instead.
 
-.featureSplitSection {
-  width: 100%;
-}
+   Four stacked layers, all gated by React's `isDarkMode` so they
+   never render in paper-day:
 
-.featureSplitSection .featureSplitContent,
-.featureSplitSection .featureSplitImage {
-  width: min(1180px, calc(100% - 48px));
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(48px, 6vw, 96px);
-  align-items: center;
-}
+     .heroVignette         — bottom + side darkening so the lit
+        center reads as the brightest part of the frame
+     .heroLampGlow         — narrow warm cone anchored at the top
+        center, brighter near the source, fading DOWNWARD
+     .heroLampCore         — the actual lamp bulb — bright spot
+        at top center, half above frame so it reads as "off-screen
+        above"
+     .heroLightRays        — subtle downward beam from the bulb,
+        clipped via mask into a conical shape
 
-.featureSplitSection .featureSplitContent {
-  display: flex;
-  flex-direction: column;
-}
+   The .heroLayerForeground change above means paper-day shows ZERO
+   lamp effect (no overlay wash anywhere).
+   ══════════════════════════════════════════════════════════════════ */
 
-.featureSplitSectionReverse .featureSplitContent {
-  order: 2;
-}
-
-.featureSplitSectionReverse .featureSplitImage {
-  order: 1;
-}
-
-.featureSplitTitle {
-  margin: 16px 0 0;
-  padding-left: 17px;
-  font-family: var(--font-family-serif);
-  font-size: clamp(1.8rem, 3vw, 3rem);
-  font-weight: 750;
-  letter-spacing: 0;
-  line-height: 1.06;
-  color: var(--ink-primary);
-}
-
-.featureSplitBody {
-  margin: 20px 0 0;
-  color: var(--ink-secondary);
-  font-size: 0.95rem;
-  line-height: 1.7;
-  max-width: 540px;
+/* Vignette: heavy horizontal + vertical shadows so the lit center
+   reads as a bright spot against darkness — same effect as image
+   2, where the framed picture is brightly lit while the wall
+   around it stays dark. Bottom edge anchors the brightest part of
+   the page below into near-black; sides pull the corners inward. */
+.heroVignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(
+      to top,
+      rgba(6, 9, 15, 0.95) 0%,
+      rgba(6, 9, 15, 0.7) 25%,
+      rgba(6, 9, 15, 0.25) 50%,
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      rgba(6, 9, 15, 0.85) 0%,
+      rgba(6, 9, 15, 0.3) 16%,
+      transparent 32%,
+      transparent 68%,
+      rgba(6, 9, 15, 0.3) 84%,
+      rgba(6, 9, 15, 0.85) 100%
+    );
 }
 
-.featureSplitList {
-  margin: 24px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Main warm cone — the visible ceiling spotlight beam. We make it
+   a focused, narrow cone anchored at the top center, with the
+   brightest stop very near the source so it reads as a clear
+   cone of light descending. Wider at the bottom than the top —
+   natural spotlight shape. Intensity drops sharply past the
+   upper third of the hero so the lamp doesn't wash out the
+   copy area at the bottom. */
+.heroLampGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(
+    ellipse 26% 85% at 50% 0%,
+    rgba(255, 230, 150, 0.55) 0%,
+    rgba(255, 215, 110, 0.36) 8%,
+    rgba(245, 180, 0, 0.22) 20%,
+    rgba(234, 173, 47, 0.10) 36%,
+    rgba(180, 130, 30, 0.04) 55%,
+    transparent 72%
+  );
+  animation: lampFlicker 4s ease-in-out infinite;
 }
 
-.featureSplitItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--ink-primary);
-  font-size: 0.88rem;
-  font-weight: 600;
+/* The lamp bulb — the bright source. Pushed half above the frame
+   so it reads as "from above". We keep the bulb compact and warm
+   (near-white core fading through pale gold to amber at the edge)
+   so it reads as a real incandescent spotlight rather than a
+   glowing disc painted on the photo. */
+.heroLampCore {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(180px, 18vw);
+  height: min(180px, 18vw);
+  transform: translate(-50%, -55%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 250, 235, 0.95) 0%,
+    rgba(255, 235, 175, 0.65) 16%,
+    rgba(255, 210, 110, 0.32) 40%,
+    rgba(245, 180, 0, 0.12) 64%,
+    rgba(180, 130, 30, 0.05) 78%,
+    transparent 90%
+  );
+  pointer-events: none;
+  z-index: 4;
+  animation: lampPulse 3s ease-in-out infinite;
 }
 
-.featureSplitItem svg {
-  flex-shrink: 0;
-  color: var(--accent-primary);
+/* Visible light beams descending from the bulb. We tune this as a
+   subtle cone of haze falling from the bulb — narrower than the
+   lamp glow so it reads as a defined shaft of light, with the
+   bottom edge held well above the copy so the beam doesn't
+   obscure the text. Subtle horizontal sway mimics dust drifting
+   through a real stationary spotlight. */
+.heroLightRays {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  width: min(360px, 38vw);
+  height: 60%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.6;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 245, 200, 0.65) 0%,
+    rgba(255, 222, 130, 0.32) 18%,
+    rgba(245, 180, 0, 0.12) 45%,
+    rgba(226, 173, 47, 0.04) 70%,
+    transparent 95%
+  );
+  mask: radial-gradient(
+    ellipse 100% 75% at 50% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.75) 22%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 85%
+  );
+  -webkit-mask: radial-gradient(
+    ellipse 100% 75% at 50% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.75) 22%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 85%
+  );
+  animation: raysSway 9s ease-in-out infinite;
 }
 
-.featureSplitImage {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Flicker — gentle breathing on the warm haze. We don't touch
+   scale because the lamp no longer has a single point of
+   reference; the warm halo just gets slightly brighter and
+   dimmer over time. */
+@keyframes lampFlicker {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.85; }
 }
 
-.featureSplitImage img {
-  width: 100%;
-  height: auto;
-  max-height: 420px;
-  object-fit: cover;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-/* ── Responsive — Feature Split ──────────────────────────────── */
-@media (max-width: 900px) {
-  .featureSplitSection .featureSplitContent,
-  .featureSplitSection .featureSplitImage {
-    grid-template-columns: 1fr;
-    gap: 36px;
+/* Pulse on the bulb — slight scale + glow change only. Position
+   transform stays translate(-50%, -55%) so the bulb stays
+   anchored at the top of the frame. */
+@keyframes lampPulse {
+  0%, 100% {
+    transform: translate(-50%, -55%) scale(1);
+    opacity: 0.95;
   }
-  
-  .featureSplitSectionReverse .featureSplitContent,
-  .featureSplitSectionReverse .featureSplitImage {
-    order: unset;
+  50% {
+    transform: translate(-50%, -55%) scale(1.08);
+    opacity: 1;
   }
-  
-  .featureSplitImage {
-    order: -1;
+}
+
+/* Sway on the beam — gentle opacity + horizontal drift to mimic
+   dust drifting through a real spotlight. No rotation by
+   design — the bulb stays anchored at the top so the room
+   reads as still, while the dust drifts. */
+@keyframes raysSway {
+  0%, 100% { transform: translateX(-50%) translateX(0); opacity: 0.65; }
+  50%      { transform: translateX(-50%) translateX(8px); opacity: 0.8; }
+}
+
+/* Mobile adjustments: the cone narrows more, the bulb shrinks
+   proportionally, and the rays narrow so they fit on a small
+   viewport without dominating the frame. */
+@media (max-width: 640px) {
+  .heroLampGlow {
+    background:
+      radial-gradient(
+        ellipse 50% 90% at 50% 0%,
+        rgba(255, 222, 130, 0.42) 0%,
+        rgba(245, 180, 0, 0.26) 14%,
+        rgba(234, 173, 47, 0.14) 32%,
+        transparent 75%
+      );
   }
-  
-  .featureSplitBody {
-    max-width: 100%;
+
+  .heroLampCore {
+    width: min(150px, 38vw);
+    height: min(150px, 38vw);
+  }
+
+  .heroLightRays {
+    width: min(380px, 90vw);
   }
 }

@@ -26,6 +26,7 @@ import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { friendlyAuthorshipVerificationError } from '../utils/authorshipVerificationCopy';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
+import { formatDisplayDate } from '../../../utils/datetime';
 import {
   statusLabel,
   isAuthorshipAllowed,
@@ -363,9 +364,9 @@ export const AdminPaperSubmissionDetail = () => {
           <dt>Visibility</dt>
           <dd>{paper.visibility}</dd>
           <dt>Submitted</dt>
-          <dd>{paper.submittedAt?.slice(0, 10) ?? '—'}</dd>
+          <dd>{paper.submittedAt ? formatDisplayDate(paper.submittedAt) : '—'}</dd>
           <dt>Published</dt>
-          <dd>{paper.publishedAt?.slice(0, 10) ?? '—'}</dd>
+          <dd>{paper.publishedAt ? formatDisplayDate(paper.publishedAt) : '—'}</dd>
           <dt>Authors</dt>
           <dd>
             {paper.authors
@@ -473,7 +474,7 @@ export const AdminPaperSubmissionDetail = () => {
               </span>
             </dd>
             <dt>Submitted</dt>
-            <dd>{paper.reviewer.submittedAt?.slice(0, 10) ?? '—'}</dd>
+            <dd>{paper.reviewer.submittedAt ? formatDisplayDate(paper.reviewer.submittedAt) : '—'}</dd>
             <dt>Private comments</dt>
             <dd>{paper.reviewer.privateComments || '—'}</dd>
           </dl>

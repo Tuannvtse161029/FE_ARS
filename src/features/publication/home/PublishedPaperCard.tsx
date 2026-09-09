@@ -10,6 +10,7 @@ import {
 } from './publicationLinks';
 import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
 import { useLocale } from '../../../i18n/I18nContext';
+import { formatDisplayDate } from '../../../utils/datetime';
 import card from './PublishedPaperCard.module.css';
 
 export interface PublishedPaperCardProps {
@@ -99,7 +100,7 @@ export const PublishedPaperCard = ({
           <span className={card.paperType}>{paperTypeLabel(paper.paperType) || paper.paperType}</span>
           {paper.publishedAt && (
             <time className={card.publishedAt} dateTime={paper.publishedAt}>
-              {copy('Published', 'Xuất bản')} {paper.publishedAt.slice(0, 10)}
+              {copy('Published', 'Xuất bản')} {formatDisplayDate(paper.publishedAt)}
             </time>
           )}
           {typeof paper.version === 'number' && (
