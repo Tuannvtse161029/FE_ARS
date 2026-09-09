@@ -87,25 +87,6 @@
   border-color: var(--ars-network);
 }
 
-/* GuidanceProject variants */
-.proposed {
-  background-color: var(--ars-info-bg);
-  color: var(--ars-info);
-  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
-}
-
-.ongoing {
-  background-color: var(--ars-success-bg);
-  color: var(--ars-success);
-  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
-}
-
-.cancelled {
-  background-color: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
-}
-
 .unknown {
   background-color: var(--ars-paper-inset);
   color: var(--ars-ink-muted);

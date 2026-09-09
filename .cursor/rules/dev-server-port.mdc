@@ -1,0 +1,50 @@
+# Dev Server Port Configuration
+
+## Rule
+
+This project **only runs on specific ports**. When running `npm run dev`, the Vite dev server must be accessed on:
+
+- **localhost:3000** — Primary development port
+- **Official production/preview URL** — When deployed (e.g., `arsplatform.onrender.com`)
+
+## Why
+
+The application is configured with hardcoded or environment-specific API base URLs and CORS policies that only allow these origins. Other ports will cause:
+
+- **CORS errors** when calling backend APIs
+- **Authentication failures** because the allowed origins don't include the port
+- **Environment variable mismatches** if VITE_API_BASE_URL is scoped to specific domains
+
+## What NOT to Do
+
+```bash
+# ❌ WRONG — These ports will NOT work
+npm run dev  # (if it starts on 5173)
+npm run dev -- --port 3001
+npm run dev -- --port 5173
+npm run dev -- --port 8080
+
+# The app may load visually but API calls will fail
+```
+
+## How to Run Correctly
+
+```bash
+# ✅ CORRECT — Always use port 3000
+npm run dev  # Starts on localhost:3000 by default
+
+# If Vite starts on a different port, kill and restart with:
+npm run dev -- --port 3000
+```
+
+## Port 3000 Specifics
+
+The project is configured in `vite.config.ts` to use port 3000 as the default dev server port. Do not change this without also updating:
+
+- CORS configuration in the backend
+- Environment variables (`VITE_API_BASE_URL`)
+- Any allowed-origin policies on the server
+
+## Remember
+
+> When testing or debugging, always ensure you're accessing the app on **localhost:3000**, not any other port. If you see CORS errors or 401/403 responses, first verify you're on the correct port.

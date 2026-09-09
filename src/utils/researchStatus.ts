@@ -2,31 +2,13 @@
 // Source of truth: docs/local-only/research-workflow-contract.md §3.
 //
 // Agent 2 (GradStudent) ONLY uses PhasedReportStatus transitions; the
-// GuidanceProject and ResearchTopic transition tables are exported for
-// Agent 1 and the dashboard to share.
+// ResearchTopic transition table is exported for Agent 1 and the dashboard
+// to share.
 
 import type {
-  GuidanceProjectStatus,
   PhasedReportStatus,
   ResearchTopicStatus,
 } from '../types/research';
-
-// ---------- GuidanceProject ----------
-
-const GUIDANCE_PROJECT_TRANSITIONS: Record<
-  GuidanceProjectStatus,
-  ReadonlyArray<GuidanceProjectStatus>
-> = {
-  PROPOSED: ['ONGOING', 'CANCELLED'],
-  ONGOING: ['COMPLETED', 'CANCELLED'],
-  COMPLETED: [],
-  CANCELLED: [],
-};
-
-export const canTransitionGuidanceProject = (
-  from: GuidanceProjectStatus,
-  to: GuidanceProjectStatus,
-): boolean => GUIDANCE_PROJECT_TRANSITIONS[from].includes(to);
 
 // ---------- ResearchTopic ----------
 //
@@ -90,18 +72,6 @@ export const normalizePhasedReportStatus = (
   if (v === 'EVALUATED' || v === 'APPROVED' || v === 'REVIEWED') return 'EVALUATED';
   if (v === 'REJECTED') return 'REJECTED';
   return 'WAITING';
-};
-
-export const normalizeGuidanceProjectStatus = (
-  raw: string | null | undefined,
-): GuidanceProjectStatus => {
-  if (!raw) return 'PROPOSED';
-  const v = raw.toUpperCase().trim();
-  if (v === 'PROPOSED') return 'PROPOSED';
-  if (v === 'ONGOING') return 'ONGOING';
-  if (v === 'COMPLETED' || v === 'DONE') return 'COMPLETED';
-  if (v === 'CANCELLED' || v === 'CANCELED') return 'CANCELLED';
-  return 'PROPOSED';
 };
 
 export const normalizeResearchTopicStatus = (

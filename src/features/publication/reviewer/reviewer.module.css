@@ -618,6 +618,61 @@
   font-family: var(--font-family-mono);
 }
 
+/* ── Evaluable specialized rubric rows ───────────────────────── */
+.specializedCriterion {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent-primary);
+}
+.specializedCriterion legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+.specializedCriterion > p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+.specializedCode {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-raised));
+  color: var(--ink-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  white-space: nowrap;
+}
+.specializedTitle {
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+.specializedStandards {
+  display: block;
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  font-family: var(--font-family-ui);
+}
+
 /* ── Discipline-specific guide (above form, collapsible) ─────── */
 .disciplineGuide {
   display: grid;

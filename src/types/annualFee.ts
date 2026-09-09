@@ -1,47 +1,87 @@
-// Strict DTOs that mirror the planned Swagger contract for the
-// admin Annual-Fees resource. These are the *single source of truth*
-// for what the FE expects the BE to publish; service-layer code must
-// use these types instead of inline `Record<string, unknown>` blobs.
-//
-// Each interface is named after the BE-facing resource it mirrors:
-//
-//   - AnnualFeeDto          — read shape (response)
-//   - AnnualFeeUpsertRequest — write shape (request) for create / update
-//
-// Every property is `T | null` (or `number | null`) because the planned
-// Swagger spec marks each field as `nullable: true`. The FE therefore
-// treats "absent" and "null" identically on both request and response
-// shapes — see the BE gap ticket for the documented gaps.
-//
-// The live backend has not yet published this resource. The production FE
-// therefore renders an explicit unavailable state until the backend ticket is
-// implemented; it never fabricates fee rows.
+/**
+ * Annual Fee types.
+ *
+ * Core concepts:
+ *   - AnnualFee: Admin-configured fee plans (price, billing cycle, features)
+ *   - AnnualFeePurchase: User's purchase record with expiry tracking
+ */
 
 export type AnnualFeeBillingCycle = 'Quarterly' | 'SixMonth' | 'Annual';
 
-export interface AnnualFeeDto {
+export type AnnualFeeTargetRole = 'Researcher' | 'Lecturer';
+
+export type AnnualFeePurchaseStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PENDING_PAYMENT';
+
+/** Admin-managed annual fee plan definition */
+export interface AnnualFee {
   id: number;
-  /** The role this fee is targeted at (Researcher / Lecturer). */
-  targetRole: string;
-  /** Human-readable plan title — e.g. "Researcher Annual Fee". */
+  /** Human-readable plan title — e.g. "Researcher Annual Fee" */
   title: string;
+  /** The role this fee applies to */
+  targetRole: AnnualFeeTargetRole;
   /** Price in VND. Whole-number currency units, no decimals. */
   priceVnd: number;
-  /** Annual (12 months) or six-month (6 months) billing cadence. */
-  billingCycle: AnnualFeeBillingCycle | string;
-  /** Free-form bullet list shown in the Admin Annual Fees table. */
-  features?: string[] | null;
-  /** Whether new purchases are currently accepted for this fee. */
+  /** Billing cadence: Quarterly (3mo), SixMonth (6mo), Annual (12mo) */
+  billingCycle: AnnualFeeBillingCycle;
+  /** Feature bullet list displayed in the subscription UI */
+  features: string[];
+  /** Whether new purchases are currently accepted for this plan */
   isActive: boolean;
-  /** ISO timestamp of the last write. */
-  updatedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
+/** Request body for admin to create/update an annual fee plan */
 export interface AnnualFeeUpsertRequest {
-  targetRole: string;
   title: string;
+  targetRole: AnnualFeeTargetRole;
   priceVnd: number;
   billingCycle: AnnualFeeBillingCycle;
-  features: null;
+  features: string[];
   isActive: boolean;
+}
+
+/** User's annual fee purchase record */
+export interface AnnualFeePurchase {
+  id: number;
+  userId: number;
+  annualFeeId: number;
+  /** Reference to the plan that was purchased */
+  annualFee?: AnnualFee;
+  /** When the user purchased this plan */
+  purchaseDate: string;
+  /** When this subscription expires */
+  expiryDate: string;
+  /** Current status: ACTIVE, EXPIRED, CANCELLED, PENDING_PAYMENT */
+  status: AnnualFeePurchaseStatus;
+  /** Payment method used: PayOS, etc. */
+  paymentMethod?: string;
+  /** External transaction/payment reference */
+  transactionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Request to initiate an annual fee purchase (creates PayOS payment link) */
+export interface AnnualFeePurchaseRequest {
+  annualFeeId: number;
+  returnUrl: string;
+  cancelUrl: string;
+}
+
+/** Response from initiating a purchase (contains PayOS checkout URL) */
+export interface AnnualFeePurchaseResponse {
+  checkoutUrl: string;
+  orderCode: string;
+  /** The created purchase record (may be in PENDING_PAYMENT status) */
+  purchase: AnnualFeePurchase;
+}
+
+/** User's current active subscription (or null if none) */
+export interface CurrentAnnualFeeSubscription {
+  purchase: AnnualFeePurchase;
+  annualFee: AnnualFee;
+  /** Days remaining until expiry (negative if already expired) */
+  daysRemaining: number;
+  isExpired: boolean;
 }

@@ -57,7 +57,6 @@ const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilesto
 const EvaluateReports = lazy(() => import('./pages/Lecturer/EvaluateReports').then((m) => ({ default: m.EvaluateReports })));
 const PhaseReports = lazy(() => import('./pages/Lecturer/PhaseReports').then((m) => ({ default: m.PhaseReports })));
 const LecturerGroupDetail = lazy(() => import('./pages/Lecturer/GroupDetail').then((m) => ({ default: m.LecturerGroupDetail })));
-const GuidanceProjects = lazy(() => import('./pages/Lecturer/GuidanceProjects').then((m) => ({ default: m.GuidanceProjects })));
 // Agent lecturer-navigation — top-level Lecturer surface for Research Topics.
 // Shared, additive registration: see BACKEND_REQUESTS.md "Coordination".
 const ResearchTopicsPage = lazy(() => import('./pages/Lecturer/ResearchTopics').then((m) => ({ default: m.ResearchTopicsPage })));
@@ -78,11 +77,7 @@ const TransactionsManagement = lazy(() => import('./pages/Admin/TransactionsMana
 // to `{ default: <Component> }`, so we map it back to a real ESM module
 // shape via `.then(m => ({ default: m.default }))`.
 const ContentReports = lazy(() => import('./pages/Admin/ContentReports').then((m) => ({ default: m.default })));
-const PremiumPackages = lazy(() => import('./pages/Admin/PremiumPackages').then((m) => ({ default: m.default })));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ default: m.default })));
-// Admin Annual Fees tab. It renders an honest backend-unavailable state
-// until the AnnualFee API ticket is implemented.
-const AnnualFees = lazy(() => import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })));
 // Agent admin-policies — Admin tab for managing the four platform
 // policy documents. Loads Firestore directly through `policyService`;
 // there is no BE endpoint.
@@ -209,7 +204,6 @@ const App = () => {
                     <Route path={ROUTES.LECTURER_EVALUATE_REPORTS} element={<EvaluateReports />} />
                     <Route path={ROUTES.LECTURER_PHASE_REPORTS} element={<PhaseReports />} />
                     <Route path={ROUTES.LECTURER_GROUP_DETAIL} element={<LecturerGroupDetail />} />
-                    <Route path={ROUTES.LECTURER_GUIDANCE_PROJECTS} element={<GuidanceProjects />} />
                     <Route path={ROUTES.LECTURER_RESEARCH_TOPICS} element={<ResearchTopicsPage />} />
                     <Route path={ROUTES.LECTURER_MATERIALS} element={<LecturerMaterialsPage />} />
                     {/* Backward compatibility: old routes redirect to the new combined page */}
@@ -296,8 +290,6 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_ACCOUNTS} element={<AccountsManagement />} />
                   <Route path={ROUTES.ADMIN_TRANSACTIONS} element={<TransactionsManagement />} />
                   <Route path={ROUTES.ADMIN_REPORTS} element={<ContentReports />} />
-                  <Route path={ROUTES.ADMIN_PACKAGES} element={<PremiumPackages />} />
-                  <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                   <Route path={ROUTES.ADMIN_MEDALS} element={<AdminMedals />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                   <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />

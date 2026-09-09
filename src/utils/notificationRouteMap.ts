@@ -166,7 +166,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     kind: 'student-topic-requested',
     prefix: '[Lecturer] topic requested',
     spec: {
-      path: ROUTES.LECTURER_GUIDANCE_PROJECTS,
+      path: ROUTES.LECTURER_RESEARCH_TOPICS,
       roles: ['Lecturer', 'Admin'],
     },
   },

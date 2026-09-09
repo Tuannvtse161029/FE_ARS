@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ClipboardCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { publicationToast } from '../utils/publicationToast';
 import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -17,8 +17,8 @@ import {
 } from './reviewerCriteria';
 import {
   resolveCriteriaForPaper,
-  type FormattedRubricReference,
   type SpecializedCriteriaBundle,
+  type SpecializedItem,
 } from './evaluationCriteriaResolver';
 import { ManuscriptViewer } from './ManuscriptViewer';
 import { fieldService } from '../../../services/field.service';
@@ -53,9 +53,12 @@ import { Link } from 'react-router-dom';
  *      sticky progress footer with live completion + Submit
  *
  * BUG FIXES (2026-09):
- *   - Vietnamese taxonomy string leak: `formatRubricReferences` now returns
- *     structured `{ maxScore, standardReferences }` and the page formats
- *     through i18n. The BE payload is stringified by the adapter.
+ *   - Vietnamese taxonomy string leak: the discipline-specific rubric items
+ *     from the BE's `gradingRubric[]` are now surfaced as evaluable form
+ *     rows (score + notes) instead of a collapsible guide that leaked
+ *     Vietnamese taxonomy copy into the English UI. The page formats
+ *     standards through i18n and the adapter sends `specializedEvaluation[]`
+ *     to the BE.
  *   - Manuscript iframe: replaced with `ManuscriptViewer` that HEAD-checks
  *     the URL and shows an `ErrorBanner` fallback with Retry / Open / Download.
  *   - Hand-rolled submit dialog: replaced with the shared `ConfirmModal`
@@ -92,6 +95,7 @@ interface ResolvedAssignment {
 }
 
 const emptyBundle = (): SpecializedCriteriaBundle => ({
+  items: [],
   criteria1: '', expandedCriteria1: '', evaluationCriteria1: { maxScore: 10, standardReferences: [] },
   criteria2: '', expandedCriteria2: '', evaluationCriteria2: { maxScore: 10, standardReferences: [] },
   criteria3: '', expandedCriteria3: '', evaluationCriteria3: { maxScore: 10, standardReferences: [] },
@@ -109,7 +113,8 @@ export const ReviewerAssignmentDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ReviewerEvaluationDraft>(buildEmptyEvaluationDraft);
   const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>(emptyBundle());
-  const [expandedGuide, setExpandedGuide] = useState<Set<1 | 2 | 3>>(new Set());
+  const [specializedScores, setSpecializedScores] = useState<Record<string, number | undefined>>({});
+  const [specializedNotes, setSpecializedNotes] = useState<Record<string, string>>({});
   const [policyOpen, setPolicyOpen] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
@@ -128,8 +133,13 @@ export const ReviewerAssignmentDetail = () => {
     for (const criterion of REVIEWER_CRITERIA) {
       if (draft.scores[criterion.key] !== criterion.min) return true;
     }
+    // Discipline-specific rubric items count as draft content too.
+    for (const item of specializedCriteria.items) {
+      if (typeof specializedScores[item.code] === 'number') return true;
+      if ((specializedNotes[item.code] ?? '').trim().length > 0) return true;
+    }
     return false;
-  }, [draft]);
+  }, [draft, specializedCriteria.items, specializedScores, specializedNotes]);
 
   /**
    * requiredFieldsComplete — true when every required field is filled.
@@ -140,6 +150,10 @@ export const ReviewerAssignmentDetail = () => {
    * "Recommendation: ACCEPT" before the reviewer had actually chosen
    * anything. We now block submission until the reviewer picks a real
    * value.
+   *
+   * Discipline-specific rubric items count as required when the sub-field
+   * exposes them (items[]). Reviewers must score each item (1..maxScore)
+   * and write per-item notes — these are evaluated fields, not a guide.
    */
   const requiredFieldsComplete = useMemo(() => {
     if (!draft.privateComments.trim()) return false;
@@ -149,24 +163,39 @@ export const ReviewerAssignmentDetail = () => {
       if (!isCriterionScoreValid(criterion, value)) return false;
       if (!draft.perCriterionNotes[criterion.key].trim()) return false;
     }
+    for (const item of specializedCriteria.items) {
+      const score = specializedScores[item.code];
+      if (typeof score !== 'number' || !Number.isFinite(score)) return false;
+      if (score < 1 || score > item.maxScore) return false;
+      if ((specializedNotes[item.code] ?? '').trim().length === 0) return false;
+    }
     return true;
-  }, [draft]);
+  }, [draft, specializedCriteria.items, specializedScores, specializedNotes]);
 
   /**
    * completion — live progress used by the sticky form footer.
    *
    * Counts scores (1 per criterion), notes (1 per criterion), and the
-   * "final review" pair (private comments + recommendation = 1 unit).
-   * Rendered as "{done} of {total} fields complete · {percent}%".
+   * "final review" pair (private comments + recommendation = 1 unit),
+   * plus per-item scores + notes for every discipline-specific rubric
+   * item. The total includes all evaluable fields so the percentage
+   * reflects how much of the review is actually done.
    */
   const completion = useMemo(() => {
-    const totalScores = REVIEWER_CRITERIA.length;
-    const scoredCount = REVIEWER_CRITERIA.filter((c) =>
-      isCriterionScoreValid(c, draft.scores[c.key]),
-    ).length;
-    const notesCount = REVIEWER_CRITERIA.filter(
-      (c) => draft.perCriterionNotes[c.key].trim().length > 0,
-    ).length;
+    const totalScores = REVIEWER_CRITERIA.length + specializedCriteria.items.length;
+    const scoredCount =
+      REVIEWER_CRITERIA.filter((c) => isCriterionScoreValid(c, draft.scores[c.key])).length +
+      specializedCriteria.items.filter((item) => {
+        const v = specializedScores[item.code];
+        return typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= item.maxScore;
+      }).length;
+    const notesCount =
+      REVIEWER_CRITERIA.filter(
+        (c) => draft.perCriterionNotes[c.key].trim().length > 0,
+      ).length +
+      specializedCriteria.items.filter(
+        (item) => (specializedNotes[item.code] ?? '').trim().length > 0,
+      ).length;
     const finalTouched =
       draft.privateComments.trim().length > 0 && Boolean(draft.recommendation);
     const totalDone = scoredCount + notesCount + (finalTouched ? 1 : 0);
@@ -181,7 +210,7 @@ export const ReviewerAssignmentDetail = () => {
       total,
       percent,
     };
-  }, [draft]);
+  }, [draft, specializedCriteria.items, specializedScores, specializedNotes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +264,8 @@ export const ReviewerAssignmentDetail = () => {
     setPolicyAccepted(false);
     setConfirmSubmit(false);
     setPolicyOpen(false);
-    setExpandedGuide(new Set());
+    setSpecializedScores({});
+    setSpecializedNotes({});
   }, [id]);
 
   useEffect(() => {
@@ -251,7 +281,25 @@ export const ReviewerAssignmentDetail = () => {
           // The domain-specific preset is used when no persisted rubric is available.
         }
       }
-      if (!cancelled) setSpecializedCriteria(resolveCriteriaForPaper(paper, subFieldData));
+      if (cancelled) return;
+      const bundle = resolveCriteriaForPaper(paper, subFieldData);
+      setSpecializedCriteria(bundle);
+      // Seed specialized score / note maps keyed by item code so the
+      // reviewer can fill them in (or leave them blank until required).
+      setSpecializedScores((prev) => {
+        const next: Record<string, number | undefined> = {};
+        for (const item of bundle.items) {
+          next[item.code] = prev[item.code];
+        }
+        return next;
+      });
+      setSpecializedNotes((prev) => {
+        const next: Record<string, string> = {};
+        for (const item of bundle.items) {
+          next[item.code] = prev[item.code] ?? '';
+        }
+        return next;
+      });
     };
     void loadCriteria();
     return () => { cancelled = true; };
@@ -308,30 +356,31 @@ export const ReviewerAssignmentDetail = () => {
     }));
   };
 
-  /**
-   * Format a structured `FormattedRubricReference` through i18n.
-   *
-   * Pre-2026-09 this rendered the raw `"Thang điểm: ... | Quy chuẩn: ..."`
-   * template in English UIs. Now we build a localized label and only show
-   * the standard references when there is at least one (so empty arrays
-   * fall back to a generic "International academic peer-review standards"
-   * line in the active locale).
-   */
-  const rubricLabel = (ref: FormattedRubricReference | undefined): string => {
-    if (!ref) return '';
-    const std = ref.standardReferences.length > 0
-      ? ref.standardReferences.join(', ')
-      : t('reviewer.detail.specialized.defaultStandard', 'International academic peer-review standards');
-    return `${t('reviewer.detail.specialized.maxScore', 'Max score')}: ${ref.maxScore} · ${t('reviewer.detail.specialized.standard', 'Standard')}: ${std}`;
+  const handleSpecializedScoreChange = (code: string, value: number) => {
+    setSpecializedScores((current) => ({ ...current, [code]: value }));
   };
 
-  const toggleGuide = (index: 1 | 2 | 3) => {
-    setExpandedGuide((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+  const handleSpecializedNoteChange = (code: string, value: string) => {
+    setSpecializedNotes((current) => ({ ...current, [code]: value }));
+  };
+
+  /**
+   * Format a discipline-specific criterion's standards for display.
+   *
+   * Each `SpecializedItem` carries its own `standardReferences[]` from the
+   * sub-field's gradingRubric. We render them as a small chip row under
+   * the criterion title so the reviewer can quickly see which standards
+   * the criterion is anchored to. When the array is empty we fall back
+   * to a generic standards label so the page never reads "undefined".
+   */
+  const specializedStandardsLine = (item: SpecializedItem): string => {
+    if (item.standardReferences.length === 0) {
+      return t(
+        'reviewer.detail.specialized.defaultStandard',
+        'International academic peer-review standards',
+      );
+    }
+    return item.standardReferences.join(' · ');
   };
 
   const submitEvaluation = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
@@ -360,6 +409,8 @@ export const ReviewerAssignmentDetail = () => {
         draft.scores,
         draft.perCriterionNotes,
         specializedCriteria,
+        specializedScores,
+        specializedNotes,
       );
       setResolved({ status: 'authorised', paper: updated });
       publicationToast.success(
@@ -379,7 +430,7 @@ export const ReviewerAssignmentDetail = () => {
       mutationPending.current = false;
       setSaving(false);
     }
-  }, [paper, reviewRequestId, canReview, hasPolicyAcceptance, draft, specializedCriteria, confirmSubmit, requiredFieldsComplete, navigate, t]);
+  }, [paper, reviewRequestId, canReview, hasPolicyAcceptance, draft, specializedCriteria, specializedScores, specializedNotes, confirmSubmit, requiredFieldsComplete, navigate, t]);
 
   const handleAcceptRef = useRef<() => void>(() => undefined);
   handleAcceptRef.current = () => setPolicyOpen(true);
@@ -423,70 +474,111 @@ export const ReviewerAssignmentDetail = () => {
   };
 
   /**
-   * Render the discipline guide cards. Each card is collapsed by default
-   * (only the title + footer line visible); the reviewer clicks the
-   * chevron to expand the full guidance. This reduces first-load visual
-   * noise while still giving quick access to standards before scoring.
+   * Render the discipline-specific rubric items.
+   *
+   * Each item in `specializedCriteria.items[]` is an evaluable criterion
+   * — the reviewer scores it (1..maxScore) and writes per-item notes,
+   * exactly like the 5 standard criteria. Items appear in the same
+   * form-style card as the standard criteria so reviewers can fill
+   * them in alongside the rest of the review.
+   *
+   * Each item header shows:
+   *   - item title + code (so the reviewer can identify it later),
+   *   - the description as the criterion guidance,
+   *   - the standard-references chip row (so they remember the anchor),
+   *   - max score chip.
+   *
+   * Below: score dropdown (1..maxScore) + notes textarea (required).
    */
-  const renderDisciplineGuide = () => {
-    const disciplineLine = [paper?.domain, paper?.field, paper?.subfield]
-      .filter(Boolean)
-      .join(' / ') || notSupplied;
+  const renderSpecializedCriteria = () => {
+    if (specializedCriteria.items.length === 0) return null;
     return (
-      <section
-        className={reviewer.disciplineGuide}
-        aria-labelledby="specialized-criteria-title"
-        data-testid="discipline-guide"
-      >
-        <header className={reviewer.disciplineGuideHeader}>
-          <div>
-            <h2 id="specialized-criteria-title">
-              {t('reviewer.detail.specialized.title')}
-            </h2>
-            <p>{t('reviewer.detail.specialized.subtitle')}</p>
-          </div>
-          <small className={reviewer.disciplineGuideCaption}>
-            {t('reviewer.detail.specialized.discipline', 'Discipline')}: {disciplineLine}
-          </small>
-        </header>
-        <div className={reviewer.disciplineList}>
-          {[1, 2, 3].map((index) => {
-            const i = index as 1 | 2 | 3;
-            const item = specializedCriteria[`criteria${i}` as keyof SpecializedCriteriaBundle] as string;
-            const guidance = specializedCriteria[`expandedCriteria${i}` as keyof SpecializedCriteriaBundle] as string;
-            const standard = specializedCriteria[`evaluationCriteria${i}` as keyof SpecializedCriteriaBundle] as FormattedRubricReference;
-            const isOpen = expandedGuide.has(i);
-            return (
-              <article
-                key={i}
-                className={`${reviewer.disciplineCard} ${isOpen ? reviewer.disciplineCardOpen : ''}`}
-              >
-                <button
-                  type="button"
-                  className={reviewer.disciplineCardToggle}
-                  onClick={() => toggleGuide(i)}
-                  aria-expanded={isOpen}
-                  aria-controls={`discipline-card-body-${i}`}
-                >
-                  <span className={reviewer.disciplineCardNumber}>0{i}</span>
-                  <span className={reviewer.disciplineCardTitle}>{item}</span>
-                  {isOpen
-                    ? <ChevronUp size={16} aria-hidden="true" />
-                    : <ChevronDown size={16} aria-hidden="true" />}
-                </button>
-                {isOpen && (
-                  <div id={`discipline-card-body-${i}`} className={reviewer.disciplineCardBody}>
-                    <p>{guidance}</p>
-                  </div>
-                )}
-                <footer className={reviewer.disciplineCardFooter}>
-                  {rubricLabel(standard)}
-                </footer>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+      <div className={reviewer.criteriaList} data-testid="specialized-criteria">
+        {specializedCriteria.items.map((item) => {
+          const values = Array.from(
+            { length: item.maxScore },
+            (_, idx) => idx + 1,
+          );
+          const currentScore = specializedScores[item.code];
+          const currentNote = specializedNotes[item.code] ?? '';
+          const scoreValid = typeof currentScore === 'number'
+            && Number.isFinite(currentScore)
+            && currentScore >= 1
+            && currentScore <= item.maxScore;
+          const anchors = values.map((v) =>
+            t(`reviewer.detail.criterion.anchor`, undefined, {
+              value: v,
+              label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
+            }),
+          ).join(' · ');
+          return (
+            <fieldset key={item.code} className={reviewer.specializedCriterion}>
+              <legend>
+                <span className={reviewer.specializedCode}>{item.code}</span>
+                <span className={reviewer.specializedTitle}>{item.title}</span>
+                <span className={reviewer.requiredMark} aria-hidden="true">*</span>
+              </legend>
+              <p>{item.description}</p>
+              <small className={reviewer.specializedStandards}>
+                {specializedStandardsLine(item)}
+              </small>
+              <div className={reviewer.criterionInputs}>
+                <label htmlFor={`spec-score-${item.code}`}>
+                  <span className={reviewer.criterionLabelRow}>
+                    {t('reviewer.detail.criterion.score')}
+                    <span className={reviewer.requiredHint}>
+                      {t('reviewer.detail.criterion.specializedMax', 'Required · 1–{max}', { max: item.maxScore })}
+                    </span>
+                  </span>
+                  <span className={reviewer.criterionScoreRow}>
+                    <select
+                      id={`spec-score-${item.code}`}
+                      value={typeof currentScore === 'number' ? currentScore : ''}
+                      aria-invalid={!scoreValid}
+                      onChange={(event) =>
+                        handleSpecializedScoreChange(item.code, Number(event.target.value))
+                      }
+                    >
+                      <option value="" disabled>
+                        {t('reviewer.detail.criterion.placeholder', 'Select…')}
+                      </option>
+                      {values.map((value) => (
+                        <option key={value} value={value}>{value} / {item.maxScore}</option>
+                      ))}
+                    </select>
+                    <span className={reviewer.criterionScoreChip} aria-hidden="true">
+                      {typeof currentScore === 'number'
+                        ? `${currentScore} / ${item.maxScore}`
+                        : `— / ${item.maxScore}`}
+                    </span>
+                  </span>
+                  <small className={reviewer.criterionAnchorRow}>
+                    {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
+                  </small>
+                </label>
+                <label htmlFor={`spec-note-${item.code}`}>
+                  <span className={reviewer.criterionLabelRow}>
+                    {t('reviewer.detail.criterion.notes')}
+                    <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+                  </span>
+                  <textarea
+                    id={`spec-note-${item.code}`}
+                    value={currentNote}
+                    onChange={(event) =>
+                      handleSpecializedNoteChange(item.code, event.target.value)
+                    }
+                    placeholder={t(
+                      'reviewer.detail.criterion.specializedPlaceholder',
+                      'Explain your score against the standards above.',
+                    )}
+                    required
+                  />
+                </label>
+              </div>
+            </fieldset>
+          );
+        })}
+      </div>
     );
   };
 
@@ -645,6 +737,23 @@ export const ReviewerAssignmentDetail = () => {
           <h3 id="criteria-rubric-title" className={reviewer.formSectionTitle}>{t('reviewer.detail.criteria.title')}</h3>
           {renderCriteriaList()}
         </section>
+
+        {/* ── Section: Discipline-specific rubric (evaluable) ────── */}
+        {specializedCriteria.items.length > 0 && (
+          <section
+            aria-labelledby="specialized-criteria-title"
+            className={reviewer.formSection}
+            data-testid="specialized-criteria-section"
+          >
+            <h3 id="specialized-criteria-title" className={reviewer.formSectionTitle}>
+              {t('reviewer.detail.specialized.title')}
+            </h3>
+            <p className={reviewer.formSectionSubtitle}>
+              {t('reviewer.detail.specialized.subtitle')}
+            </p>
+            {renderSpecializedCriteria()}
+          </section>
+        )}
 
         {/* ── Section: Final review ───────────────────────────────── */}
         <section aria-labelledby="final-review-title" className={reviewer.formSection}>
@@ -893,7 +1002,9 @@ export const ReviewerAssignmentDetail = () => {
       </div>
       {/* Discipline-specific review guide — moved ABOVE the form so
           first-timers read the standards before scoring. */}
-      {canReview && hasPolicyAcceptance && renderDisciplineGuide()}
+      {/* Discipline-specific rubric items now live inside the form
+          above so the reviewer can score + write notes against them
+          alongside the standard criteria. */}
       {renderEvaluationForm()}
       <ConfirmModal
         open={confirmSubmit}

@@ -41,7 +41,6 @@ export const ROUTES = {
   LECTURER_EVALUATE_REPORTS: '/lecturer/evaluate-reports',
   LECTURER_PHASE_REPORTS: '/lecturer/phase-reports',
   LECTURER_GROUP_DETAIL: '/lecturer/groups/:groupId',
-  LECTURER_GUIDANCE_PROJECTS: '/lecturer/guidance-projects',
   // Agent lecturer-navigation — top-level Lecturer surface for the Research
   // Topics CRUD (previously a nested section inside Research Groups).
   // Shared edit: only an additive constant was appended. See
@@ -64,12 +63,6 @@ export const ROUTES = {
   ADMIN_ACCOUNTS: '/admin/accounts',
   ADMIN_TRANSACTIONS: '/admin/transactions',
   ADMIN_REPORTS: '/admin/reports',
-  ADMIN_PACKAGES: '/admin/packages',
-  // Agent admin-annual-fees — Admin Annual Fees tab. Mounted at
-  // /admin/annual-fees and exposed only when the Admin user is signed
-  // in; other roles cannot reach this route. Backend request:
-  // tickets/backend/BE_ANNUAL_FEE_API_TICKET.md.
-  ADMIN_ANNUAL_FEES: '/admin/annual-fees',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   // Agent admin-policies — Admin tab for editing platform policy
   // documents (Privacy Policy, Terms of Service, Researcher & Reviewer

@@ -4,12 +4,12 @@
 // The live Swagger at https://arsplatform.onrender.com/swagger/v1/swagger.json was
 // inspected on 2026-08-22. The complete list of tags/controllers is:
 //   Analytics · AuditLog · Auth · CommentVote · DetailedEvaluation · Email ·
-//   Follower · ForumComment · ForumPost · GroupMember · GuidanceProject ·
+//   Follower · ForumComment · ForumPost · GroupMember ·
 //   LearningMaterial · MajorField · MembershipPackage · MembershipPurchase ·
 //   Notification · Paper · Payment · PhasedReport · PremiumPackage ·
 //   ProfessionalProfile · Profile · Report · ResearchGroup · ResearchTopic ·
 //   ReviewRequest · Role · Seminar · SeminarParticipant · SharedMaterial ·
-//   SubField · Transaction · User · UserRole · UserToken · Wallet ·
+//   SubField · Transaction · User · UserRole · UserToken ·
 //   WithdrawalRequest
 //
 // The live API now exposes POST /api/Admin/orcid-lookup. It accepts a

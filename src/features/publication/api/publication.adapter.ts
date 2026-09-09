@@ -24,6 +24,7 @@ import {
   friendlyAuthorshipVerificationError,
 } from '../utils/authorshipVerificationCopy';
 import { enrichPublicationMetadata } from './publicationMetadata';
+import type { SpecializedEvaluationItem } from '../../../services/detailedEvaluation.service';
 
 /**
  * Stringify a structured `FormattedRubricReference` for the BE payload.
@@ -73,6 +74,8 @@ export interface PublicationAdapter {
     privateScores?: Record<string, number>,
     privateNotes?: Record<string, string>,
     specializedCriteria?: Partial<SpecializedCriteriaBundle>,
+    specializedScores?: Record<string, number | undefined>,
+    specializedNotes?: Record<string, string>,
   ): Promise<PublicationPaper>;
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
   assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper>;
@@ -553,11 +556,31 @@ class ApiPublicationAdapter implements PublicationAdapter {
     privateScores: Record<string, number> = {},
     privateNotes: Record<string, string> = {},
     specializedCriteria?: Partial<SpecializedCriteriaBundle>,
+    specializedScores?: Record<string, number>,
+    specializedNotes?: Record<string, string>,
   ): Promise<PublicationPaper> {
     const request = await this.findCurrentReviewerRequest(id);
     if (normalizeReviewRequestStatus(request.status) !== 'IN_PROGRESS') {
       throw new PublicationBackendContractError('Only an accepted, in-progress assignment can be submitted.');
     }
+
+    // Build the BE-shape specializedEvaluation[] from the resolver's items[].
+    // Each item carries its own code/title/maxScore from the BE's gradingRubric,
+    // and the reviewer's score + notes (or null if they skipped a row).
+    const specializedEvaluation: SpecializedEvaluationItem[] = Array.isArray(
+      specializedCriteria?.items,
+    )
+      ? specializedCriteria!.items.map((item) => ({
+          criterionCode: item.code,
+          criterionTitle: item.title,
+          maxScore: item.maxScore,
+          score: specializedScores?.[item.code] ?? null,
+          notes: specializedNotes?.[item.code] ?? null,
+          standardReferences:
+            item.standardReferences.length > 0 ? item.standardReferences : null,
+        }))
+      : [];
+
     const evaluation = await detailedEvaluationService.create({
       reviewRequestId: request.id,
       reviewerId: request.reviewerId,
@@ -573,6 +596,17 @@ class ApiPublicationAdapter implements PublicationAdapter {
       notesFormatting: privateNotes.clarity,
       generalComments: privateComments,
       finalDecision: recommendation,
+      // BE-native specialized evaluation array — each row carries its
+      // own code, title, maxScore, and the reviewer's score + notes.
+      // Pre-2026-09 we only populated the 3-item legacy shape (criteria1..3)
+      // which forced all rubric items into the same row regardless of
+      // how many the sub-field actually had. The array shape is the
+      // contract the BE schema exposes and matches the screenshot
+      // the reviewer sees (one score dropdown + one notes textarea
+      // per discipline-specific criterion).
+      specializedEvaluation: specializedEvaluation.length > 0 ? specializedEvaluation : null,
+      // Legacy 3-item shape still populated for backwards-compat
+      // (the BE DetailedEvaluation columns remain on the response).
       criteria1: specializedCriteria?.criteria1 ?? null,
       expandedCriteria1: specializedCriteria?.expandedCriteria1 ?? null,
       evaluationCriteria1: stringifyRubricReference(specializedCriteria?.evaluationCriteria1),

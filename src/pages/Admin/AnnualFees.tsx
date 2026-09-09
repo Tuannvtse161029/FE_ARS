@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { annualFeeService } from '../../services/annualFee.service';
-import type { AnnualFeeDto } from '../../types/annualFee';
+import type { AnnualFee } from '../../types/annualFee';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useTableSort } from '../../hooks/useTableSort';
 import { TableToolbar } from '../../components/table/TableToolbar';
@@ -49,7 +49,7 @@ const AnnualFees = (): JSX.Element => {
       ? `${priceVnd.toLocaleString('vi-VN')} ${t('admin.annualFees.vnd')}`
       : t('admin.annualFees.notSupplied');
 
-  const [fees, setFees] = useState<AnnualFeeDto[]>([]);
+  const [fees, setFees] = useState<AnnualFee[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +57,13 @@ const AnnualFees = (): JSX.Element => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   // Default sort by id (newest first) so newly created fee tiers surface at top.
-  const sort = useTableSort<AnnualFeeDto, SortColumn>('status', 'desc');
+  const sort = useTableSort<AnnualFee, SortColumn>('status', 'desc');
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      setFees(await annualFeeService.listAnnualFees());
+      setFees(await annualFeeService.listAnnualFeePlans());
     } catch (loadError) {
       setFees([]);
       setError(

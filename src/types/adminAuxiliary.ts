@@ -58,30 +58,6 @@ export interface ResolveReportPayload {
   resolutionNotes?: string;
 }
 
-// ── Subscription packages (Figma screens 9 + 10) ───────────────────────────
-export type PremiumPackageTargetRole = 'RESEARCHER' | 'LECTURER';
-export type PremiumPackageBillingCycle = 'SixMonth' | 'Annual';
-
-export interface PremiumPackage {
-  packageId: number;
-  title: string;
-  targetRole: PremiumPackageTargetRole;
-  priceVnd: number;
-  billingCycle: PremiumPackageBillingCycle;
-  features: string[];
-  subscriberCount: number;
-  isActive: boolean;
-}
-
-export interface PremiumPackageInput {
-  title: string;
-  targetRole: PremiumPackageTargetRole;
-  priceVnd: number;
-  billingCycle: PremiumPackageBillingCycle;
-  features: string[];
-  isActive: boolean;
-}
-
 // ── Audit logs (Figma screen 11) ───────────────────────────────────────────
 // action values must stay in sync with the Figma color tags:
 //   green = APPROVED_*, COMPLETED_*

@@ -263,15 +263,15 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/ViolationReport/${id}`,
       RESOLVE: (id: number) => `/api/ViolationReport/${id}/resolve`,
     },
-    PACKAGES: {
-      GET_ALL: '/api/PremiumPackage',
-      CREATE: '/api/PremiumPackage',
-      UPDATE: (id: number) => `/api/PremiumPackage/${id}`,
-      DELETE: (id: number) => `/api/PremiumPackage/${id}`,
-      TOGGLE: (id: number) => `/api/PremiumPackage/${id}/toggle`,
-    },
-    // Annual Fees contract is pending; the service surfaces an unavailable
-    // state until the backend ticket is implemented.
+    // ⚠️ BE BACKLOG: AnnualFee controller was dropped. FE keeps this contract
+    // as a placeholder — the UI still needs to collect fees from researchers
+    // and lecturers. BE team must re-implement /api/AnnualFee endpoints:
+    //   GET /api/AnnualFee          — List all fee plans
+    //   GET /api/AnnualFee/{id}     — Get single plan
+    //   POST /api/AnnualFee         — Admin create
+    //   PUT /api/AnnualFee/{id}     — Admin update
+    //   DELETE /api/AnnualFee/{id}  — Admin delete
+    //   POST /api/AnnualFee/{id}/toggle — Admin toggle active
     ANNUAL_FEES: {
       GET_ALL: '/api/AnnualFee',
       GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,
@@ -289,17 +289,9 @@ export const API_ENDPOINTS = {
     SUMMARY: '/api/Analytics/summary',
     TIMESERIES: '/api/Analytics/timeseries',
   },
-  // Lecturer ↔ Graduate Student workflow surface — see
-  // docs/local-only/research-workflow-contract.md §1. Agent 1 and Agent 2
-  // both write to these paths; the contract is the single source of truth.
   RESEARCH_WORKFLOW: {
-    GUIDANCE_PROJECT: {
-      GET_ALL: '/api/GuidanceProject',
-      GET_BY_ID: (id: number) => `/api/GuidanceProject/${id}`,
-      CREATE: '/api/GuidanceProject',
-      UPDATE: (id: number) => `/api/GuidanceProject/${id}`,
-      DELETE: (id: number) => `/api/GuidanceProject/${id}`,
-    },
+    // NOTE: GuidanceProject feature has been removed from the backend.
+    // Research workflow now uses ResearchGroup and ResearchTopic only.
     RESEARCH_TOPIC: {
       GET_ALL: '/api/ResearchTopic',
       GET_BY_ID: (id: number) => `/api/ResearchTopic/${id}`,

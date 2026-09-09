@@ -3,8 +3,6 @@ import { API_ENDPOINTS, REPORT } from '../utils/constants';
 import type {
   ViolationReport,
   ViolationReportsQuery,
-  PremiumPackage,
-  PremiumPackageInput,
   AuditLogEntry,
   AuditLogQuery,
   ResolveReportPayload,
@@ -26,17 +24,6 @@ interface ReportApiRow {
   status?: string | null;
   violationNotes?: string | null;
   createdAt?: string | null;
-}
-
-interface PremiumPackageApiRow {
-  id: number;
-  title?: string | null;
-  targetRole?: string | null;
-  priceVnd: number;
-  billingCycle?: string | null;
-  features?: string[] | null;
-  isActive: boolean;
-  subscriberCount: number;
 }
 
 const mapReport = (row: ReportApiRow): ViolationReport => ({
@@ -62,31 +49,6 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
         ? 'DISMISSED'
         : 'PENDING',
 });
-
-const mapPremiumPackage = (row: PremiumPackageApiRow): PremiumPackage | null => {
-  const targetRole = row.targetRole?.toUpperCase();
-  // Annual Fees only apply to RESEARCHER and LECTURER; REVIEWER was
-  // intentionally removed from the FE contract — see CreatePackageModal
-  // and the PremiumPackageTargetRole type in adminAuxiliary.ts.
-  if (targetRole !== 'RESEARCHER' && targetRole !== 'LECTURER') return null;
-  if (row.billingCycle !== 'SixMonth' && row.billingCycle !== 'Annual') return null;
-  return {
-    packageId: row.id,
-    title: row.title?.trim() || `Package #${row.id}`,
-    targetRole,
-    priceVnd: row.priceVnd,
-    billingCycle: row.billingCycle,
-    features: row.features ?? [],
-    subscriberCount: row.subscriberCount,
-    isActive: row.isActive,
-  };
-};
-
-const requirePremiumPackage = (row: PremiumPackageApiRow): PremiumPackage => {
-  const mapped = mapPremiumPackage(row);
-  if (!mapped) throw new AdminBackendContractError('The backend returned an invalid subscription package.');
-  return mapped;
-};
 
 // ── Violation reports ─────────────────────────────────────────────────────
 async function getViolationReports(query: ViolationReportsQuery = {}): Promise<ViolationReport[]> {
@@ -133,43 +95,6 @@ async function resolveViolationByPayload(
     { status: 'Dismissed', violationNotes: resolutionNotes ?? '' },
   );
   return mapReport(response.data);
-}
-
-// ── Subscription packages ──────────────────────────────────────────────────
-async function getPremiumPackages(): Promise<PremiumPackage[]> {
-  const response = await api.get<PremiumPackageApiRow[]>(API_ENDPOINTS.ADMIN.PACKAGES.GET_ALL);
-  return (response.data ?? []).map(mapPremiumPackage).filter((item): item is PremiumPackage => item !== null);
-}
-
-async function createPremiumPackage(input: PremiumPackageInput): Promise<PremiumPackage> {
-  const response = await api.post<PremiumPackageApiRow>(
-    API_ENDPOINTS.ADMIN.PACKAGES.CREATE,
-    input,
-  );
-  return requirePremiumPackage(response.data);
-}
-
-async function updatePremiumPackage(
-  id: number,
-  patch: Partial<PremiumPackageInput>,
-): Promise<PremiumPackage> {
-  const response = await api.patch<PremiumPackageApiRow>(
-    API_ENDPOINTS.ADMIN.PACKAGES.UPDATE(id),
-    patch,
-  );
-  return requirePremiumPackage(response.data);
-}
-
-async function togglePremiumPackage(id: number, isActive: boolean): Promise<PremiumPackage> {
-  const response = await api.post<PremiumPackageApiRow>(
-    API_ENDPOINTS.ADMIN.PACKAGES.TOGGLE(id),
-    { isActive },
-  );
-  return requirePremiumPackage(response.data);
-}
-
-async function deletePremiumPackage(id: number): Promise<void> {
-  await api.delete(API_ENDPOINTS.ADMIN.PACKAGES.DELETE(id));
 }
 
 // ── Audit logs ────────────────────────────────────────────────────────────
@@ -241,11 +166,6 @@ async function exportAuditLogsCsv(query: AuditLogQuery = {}): Promise<string> {
 export const adminAuxiliaryService = {
   getViolationReports,
   resolveViolation,
-  getPremiumPackages,
-  createPremiumPackage,
-  updatePremiumPackage,
-  togglePremiumPackage,
-  deletePremiumPackage,
   getAuditLogs,
   exportAuditLogsCsv,
   // Legacy test doubles may call this name; runtime data is API-backed.
