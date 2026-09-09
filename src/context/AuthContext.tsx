@@ -818,22 +818,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const confirmRoleSelection = useCallback(
     async (role: UserRole) => {
       if (!pendingRoleSelection) return;
-      // The live BE exposes a dedicated role-selection endpoint for accounts
-      // with multiple approved roles. Persist the choice before storing the
-      // local session so JWT claims and the UI agree.
-      await authService.selectRole(role);
-      // Persist using the stashed BE response, overriding `role` with the
-      // user's choice. Token/email/username come from the original login.
-      // Forward the original rememberMe choice so multi-role users get the
-      // same storage-bucket behavior as single-role users.
-      await persistAuthAndNavigate(
-        pendingRoleSelection.authResponse,
-        role,
-        pendingRoleSelection.rememberMe
-      );
-      setPendingRoleSelection(null);
+      setIsLoading(true);
+      setError(null);
+      try {
+        const originalToken = pendingRoleSelection.authResponse.token;
+        let finalAuthResponse: AuthResponse = {
+          ...pendingRoleSelection.authResponse,
+          role,
+          effectiveRole: role,
+        };
+
+        try {
+          // The live BE exposes a dedicated role-selection endpoint for accounts
+          // with multiple approved roles. Forward the authenticated JWT token from login.
+          const selectResult = (await authService.selectRole(
+            role,
+            originalToken,
+          )) as Record<string, unknown> | null | undefined;
+
+          if (selectResult && typeof selectResult === 'object') {
+            const returnedToken =
+              (selectResult.token as string) || (selectResult.accessToken as string);
+            finalAuthResponse = {
+              ...pendingRoleSelection.authResponse,
+              ...(selectResult as Partial<AuthResponse>),
+              token: returnedToken || originalToken,
+              role: (selectResult.role as UserRole) || role,
+              effectiveRole:
+                (selectResult.effectiveRole as EffectiveRole) || role,
+            };
+          }
+        } catch (beErr) {
+          // Non-fatal: if BE select-role call fails, proceed with the client-side role choice
+          console.warn(
+            'Backend select-role call failed, falling back to local role selection:',
+            beErr,
+          );
+        }
+
+        // Persist using the updated response (with valid token and chosen role).
+        // Forward the original rememberMe choice so multi-role users get the
+        // same storage-bucket behavior as single-role users.
+        await persistAuthAndNavigate(
+          finalAuthResponse,
+          role,
+          pendingRoleSelection.rememberMe,
+        );
+        setPendingRoleSelection(null);
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Failed to confirm role selection.';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [pendingRoleSelection, persistAuthAndNavigate]
+    [pendingRoleSelection, persistAuthAndNavigate],
   );
 
   const cancelRoleSelection = useCallback(() => {

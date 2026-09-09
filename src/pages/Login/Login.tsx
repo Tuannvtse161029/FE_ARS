@@ -426,6 +426,8 @@ const Login = () => {
         open={Boolean(pendingRoleSelection)}
         username={user?.username ?? pendingRoleSelection?.authResponse.username}
         roles={pendingRoleSelection?.roles ?? []}
+        isLoading={isLoading}
+        error={error}
         onConfirm={confirmRoleSelection}
         onCancel={cancelRoleSelection}
       />

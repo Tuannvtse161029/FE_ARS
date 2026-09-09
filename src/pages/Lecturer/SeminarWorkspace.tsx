@@ -18,7 +18,6 @@ import {
   Users,
   Sliders,
   Sparkles,
-  UserPlus,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { fieldService } from '../../services/field.service';
@@ -39,9 +38,6 @@ import {
   type SeminarCard,
 } from '../../services/seminar.service';
 import {
-  SEMINAR_PLACEHOLDER_DURATION_MS,
-} from '../../utils/constants';
-import {
   useSeminars,
   useCreateSeminar,
   useSendReminder,
@@ -52,7 +48,6 @@ import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackMo
 import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
 import { SeminarFeedbackPanel } from '../../components/seminar/SeminarFeedbackPanel';
 import { GoogleMeetCapacityMeter } from '../../components/seminar/GoogleMeetCapacityMeter';
-import { InviteParticipantsModal } from '../../components/seminar/InviteParticipantsModal';
 import { QuestionEditorCard } from '../../components/seminar/QuestionEditorCard';
 import { SeminarFeedbackSetupModal } from '../../components/seminar/SeminarFeedbackSetupModal';
 import type { FeedbackQuestion } from '../../types/seminarFeedback';
@@ -82,6 +77,7 @@ interface InviteeCandidate {
   email: string;
   avatarUrl?: string | null;
   role?: string;
+  roles?: string[];
   subFieldId?: number | null;
   subFieldName?: string | null;
   majorFieldId?: number | null;
@@ -116,10 +112,6 @@ export const SeminarWorkspace = () => {
     useState<SeminarCard | null>(null);
   const [isAttendeeFeedbackPreview, setIsAttendeeFeedbackPreview] =
     useState(false);
-
-  // Invite Participants modal
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteSeminar, setInviteSeminar] = useState<SeminarCard | null>(null);
 
   // Create modal form state
   const [seminarName, setSeminarName] = useState('');
@@ -287,7 +279,7 @@ export const SeminarWorkspace = () => {
         const [majors, profRes, usersRes] = await Promise.allSettled([
           fieldService.getAllMajor(),
           api.get('/api/ProfessionalProfile'),
-          api.get('/api/User'),
+          api.get('/api/User', { params: { role: 'ALL', pageSize: 1000 } }),
         ]);
 
         if (cancelled) return;
@@ -299,13 +291,18 @@ export const SeminarWorkspace = () => {
           setMajorFields(loadedMajors);
         }
 
-        // 2. Process Users map for role names
-        const userRoleMap = new Map<number, string>();
+        // 2. Process Users map for multi-role support
+        const userRolesMap = new Map<number, string[]>();
         if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
           const uData = usersRes.value.data;
           const uList = Array.isArray(uData) ? uData : (uData.items || []);
           for (const u of uList) {
-            if (u.id) userRoleMap.set(u.id, u.roleName || u.role || '');
+            if (u && u.id) {
+              const rList: string[] = Array.isArray(u.roles) && u.roles.length > 0
+                ? (u.roles as string[]).map(String)
+                : (u.roleName ? [String(u.roleName)] : (u.role ? [String(u.role)] : []));
+              userRolesMap.set(u.id, rList);
+            }
           }
         }
 
@@ -314,16 +311,22 @@ export const SeminarWorkspace = () => {
           const profiles = profRes.value.data;
           const candidates: InviteeCandidate[] = profiles
             .filter((p: any) => p && p.userId && p.email)
-            .map((p: any) => ({
-              userId: p.userId,
-              fullName: p.fullName || `User #${p.userId}`,
-              email: p.email.trim(),
-              avatarUrl: p.avatarUrl,
-              role: userRoleMap.get(p.userId) || (p.reviewFee ? 'Reviewer' : 'Scholar'),
-              subFieldId: p.subFieldId,
-              subFieldName: p.subFieldName,
-              majorFieldId: p.majorFieldId,
-            }));
+            .map((p: any) => {
+              const uRoles = userRolesMap.get(p.userId) || [];
+              const fallback = p.reviewFee ? 'Reviewer' : 'Scholar';
+              const resolvedRoles = uRoles.length > 0 ? uRoles : [fallback];
+              return {
+                userId: p.userId,
+                fullName: p.fullName || `User #${p.userId}`,
+                email: p.email.trim(),
+                avatarUrl: p.avatarUrl,
+                role: resolvedRoles.join(' • '),
+                roles: resolvedRoles,
+                subFieldId: p.subFieldId,
+                subFieldName: p.subFieldName,
+                majorFieldId: p.majorFieldId,
+              };
+            });
 
           setAllInvitees(candidates);
 
@@ -368,12 +371,16 @@ export const SeminarWorkspace = () => {
             for (const p of prev) map.set(p.userId, p);
             for (const b of beInvitees) {
               if (b.userId && b.email) {
+                const bRoles: string[] = Array.isArray(b.roles) && b.roles.length > 0
+                  ? (b.roles as string[]).map(String)
+                  : (b.role ? b.role.split(' • ').map((s: string) => s.trim()).filter(Boolean) : ['Colleague']);
                 map.set(b.userId, {
                   userId: b.userId,
                   fullName: b.fullName || `User #${b.userId}`,
                   email: b.email.trim(),
                   avatarUrl: b.avatarUrl,
-                  role: b.role || 'Colleague',
+                  role: bRoles.join(' • '),
+                  roles: bRoles,
                   subFieldId: b.subFieldId ?? selectedSubId,
                   subFieldName: b.subFieldName,
                 });
@@ -464,7 +471,35 @@ export const SeminarWorkspace = () => {
     if (r.includes('lecturer') || r.includes('giảng viên')) return styles.roleLecturer;
     if (r.includes('researcher') || r.includes('nghiên cứu')) return styles.roleResearcher;
     if (r.includes('reviewer') || r.includes('phản biện')) return styles.roleReviewer;
+    if (r.includes('graduate') || r.includes('học viên') || r.includes('student')) return styles.roleGraduateStudent;
     return styles.roleDefault;
+  };
+
+  const formatRoleLabel = (roleName: string): string => {
+    const trimmed = (roleName || '').trim();
+    const lower = trimmed.toLowerCase().replace(/\s+/g, '');
+    if (lower === 'graduatestudent') {
+      return copy('Graduate Student', 'Học viên sau đại học');
+    }
+    if (lower === 'researcher') {
+      return copy('Researcher', 'Nhà nghiên cứu');
+    }
+    if (lower === 'lecturer') {
+      return copy('Lecturer', 'Giảng viên');
+    }
+    if (lower === 'reviewer') {
+      return copy('Reviewer', 'Người phản biện');
+    }
+    if (lower === 'admin' || lower === 'administrator') {
+      return copy('Administrator', 'Quản trị viên');
+    }
+    if (lower === 'scholar') {
+      return copy('Scholar', 'Học giả');
+    }
+    if (lower === 'colleague') {
+      return copy('Colleague', 'Đồng nghiệp');
+    }
+    return trimmed;
   };
 
   const handleCreateSeminarSubmit = async (e: React.FormEvent) => {
@@ -496,16 +531,9 @@ export const SeminarWorkspace = () => {
       return;
     }
     const startTime = toApiIsoString(dateTime) || new Date(dateTime).toISOString();
-    // BE gap (see SEMINAR_PLACEHOLDER_DURATION_MS in utils/constants.ts):
-    // the current BE contract requires `endTime` on POST /api/Seminar, but
-    // there is no "Mark as Completed" endpoint yet. We send a clearly-
-    // labelled 1-hour placeholder so the BE accepts the create call. The
-    // helper copy under the Date & Time input tells the lecturer this is
-    // a stand-in duration. When the BE ships nullable endTime + a manual
-    // complete endpoint, drop this block and call that endpoint instead.
-    const endTimeDate = new Date(startTime);
-    endTimeDate.setTime(endTimeDate.getTime() + SEMINAR_PLACEHOLDER_DURATION_MS);
-    const endTime = endTimeDate.toISOString();
+    const endTime =
+      toApiIsoString(new Date(new Date(dateTime).getTime() + 60 * 60 * 1000)) ||
+      new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
     const fullContent = seminarName.trim()
       ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
       : seminarDetails.trim();
@@ -557,8 +585,8 @@ export const SeminarWorkspace = () => {
         'Failed to create seminar.';
       if (status === 403) {
         msg = copy(
-          'Your account is not authorized by the Backend to create Seminars (403 Forbidden). Please sign in with a Lecturer or Researcher account, or contact the BE team to widen authorization.',
-          'Tài khoản của bạn chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Vui lòng đăng nhập bằng tài khoản Giảng viên hoặc Nghiên cứu sinh, hoặc liên hệ BE team.'
+          'Your account (Researcher) is not authorized by the Backend to create Seminars (403 Forbidden). Backend endpoint POST /api/Seminar currently requires Lecturer ([Authorize(Roles = "Lecturer")]). Please ask Backend to add Researcher ([Authorize(Roles = "Lecturer,Researcher")]) or sign in with a Lecturer account.',
+          'Tài khoản của bạn (Researcher) chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Endpoint POST /api/Seminar hiện chỉ cấp quyền cho Giảng viên ([Authorize(Roles = "Lecturer")]). Vui lòng nhờ Backend mở thêm quyền cho Researcher ([Authorize(Roles = "Lecturer,Researcher")]) hoặc đăng nhập bằng tài khoản Giảng viên.'
         );
       }
       setCreateModalError(msg);
@@ -841,19 +869,16 @@ export const SeminarWorkspace = () => {
                     </p>
 
                     {isValidMeetLink(sem.onlineLink) && !isCompleted && (
-                      <div className={styles.capacityRow}>
-                        <span className={styles.capacityLabel}>
-                          <Video size={12} aria-hidden />
-                          {locale === 'vi' ? 'Google Meet' : 'Google Meet'}
-                        </span>
+                      <div className={styles.capacityWrapper}>
                         <GoogleMeetCapacityMeter
                           current={sem.participantCount || 0}
-                          // The BE may return maxParticipants as null, 0, or 1.
-                          // Always floor at 100 (Google Meet free-account cap) so
-                          // the meter shows the real room capacity, not "0/1".
                           cap={
-                            (sem.maxParticipants && sem.maxParticipants > 1)
-                              ? Math.min(sem.maxParticipants, GOOGLE_MEET_FREE_PARTICIPANT_CAP)
+                            sem.maxParticipants &&
+                            sem.maxParticipants > 0
+                              ? Math.min(
+                                  sem.maxParticipants,
+                                  GOOGLE_MEET_FREE_PARTICIPANT_CAP,
+                                )
                               : GOOGLE_MEET_FREE_PARTICIPANT_CAP
                           }
                           compact
@@ -954,13 +979,15 @@ export const SeminarWorkspace = () => {
                               type="button"
                               className={styles.actionBtnOutline}
                               onClick={() => {
-                                setInviteSeminar(sem);
-                                setShowInviteModal(true);
+                                navigator.clipboard.writeText(
+                                  sem.onlineLink ?? '',
+                                );
+                                announce('Invite link copied.');
                               }}
                               disabled={!isValidMeetLink(sem.onlineLink)}
                             >
-                              <UserPlus size={14} aria-hidden />
-                              {copy('Invite Participants', 'Mời Người Tham Dự')}
+                              <Mail size={14} aria-hidden />
+                              Send Invite Link
                             </button>
                           )}
                           <button
@@ -1152,12 +1179,6 @@ export const SeminarWorkspace = () => {
                   onChange={(e) => setDateTime(e.target.value)}
                   required
                 />
-                <span className={styles.helperText}>
-                  {copy(
-                    'End time is currently a 1-hour placeholder. The seminar will not auto-end — the BE team is shipping a manual "Mark as Completed" action.',
-                    'Thời điểm kết thúc hiện đang là giá trị tạm 1 giờ. Hội thảo sẽ không tự kết thúc — BE đang phát triển nút "Đánh dấu đã hoàn thành" cho giảng viên.'
-                  )}
-                </span>
               </div>
 
               <div className={styles.formGroup}>
@@ -1298,15 +1319,22 @@ export const SeminarWorkspace = () => {
                                   <span className={styles.suggestedName}>
                                     {inv.fullName}
                                   </span>
-                                  {inv.role && inv.role.trim().toLowerCase() !== 'scholar' && (
-                                    <span
-                                      className={`${styles.inviteeRoleBadge} ${getRoleClass(
-                                        inv.role,
-                                      )}`}
-                                    >
-                                      {inv.role}
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const rolesList = (inv.roles && inv.roles.length > 0)
+                                      ? inv.roles
+                                      : (inv.role ? inv.role.split(' • ').map((s) => s.trim()).filter(Boolean) : []);
+                                    if (rolesList.length === 0) {
+                                      rolesList.push('Colleague');
+                                    }
+                                    return rolesList.map((r) => (
+                                      <span
+                                        key={r}
+                                        className={`${styles.inviteeRoleBadge} ${getRoleClass(r)}`}
+                                      >
+                                        {formatRoleLabel(r)}
+                                      </span>
+                                    ));
+                                  })()}
                                 </div>
                                 <span className={styles.suggestedEmail}>
                                   {inv.email}
@@ -1684,71 +1712,6 @@ export const SeminarWorkspace = () => {
                 'Feedback questions saved successfully.',
                 'Đã lưu câu hỏi đánh giá thành công.',
               ),
-            );
-          }}
-        />
-      )}
-
-      {/* INVITE PARTICIPANTS MODAL */}
-      {showInviteModal && inviteSeminar && (
-        <InviteParticipantsModal
-          seminarId={inviteSeminar.seminarId}
-          seminarTitle={inviteSeminar.title}
-          subFieldId={inviteSeminar.subFieldId}
-          majorFieldId={
-            inviteSeminar.subFieldId
-              ? (() => {
-                  // Derive majorFieldId from the subFieldId using the already-loaded
-                  // majorFields list. The BE returns subFieldId on the Seminar, but
-                  // not majorFieldId. We look it up here so the modal can group
-                  // users by the seminar's major field.
-                  const sub = majorFields
-                    .flatMap((m) => m.subFields ?? [])
-                    .find((s) => s.id === inviteSeminar.subFieldId);
-                  return sub?.majorFieldId ?? null;
-                })()
-              : null
-          }
-          subFieldName={inviteSeminar.subFieldName}
-          majorFieldName={
-            inviteSeminar.subFieldId
-              ? (() => {
-                  const sub = majorFields
-                    .flatMap((m) => m.subFields ?? [])
-                    .find((s) => s.id === inviteSeminar.subFieldId);
-                  const major = sub?.majorFieldId
-                    ? majorFields.find((m) => m.id === sub.majorFieldId)
-                    : undefined;
-                  return major?.name ?? null;
-                })()
-              : null
-          }
-          participantCount={inviteSeminar.participantCount}
-          maxParticipants={inviteSeminar.maxParticipants}
-          existingEmails={inviteSeminar.participants?.map((p) => p.invitedEmail ?? p.userEmail ?? '').filter(Boolean) ?? []}
-          onClose={() => {
-            setShowInviteModal(false);
-            setInviteSeminar(null);
-          }}
-          onSuccess={(count) => {
-            setShowInviteModal(false);
-            setInviteSeminar(null);
-            void refetch();
-            announce(
-              copy(
-                `Invitations sent to ${count} participant${count !== 1 ? 's' : ''}.`,
-                `Đã gửi lời mời đến ${count} người tham dự.`,
-              ),
-            );
-          }}
-          onError={(msg) => {
-            announce(
-              msg ||
-                copy(
-                  'Failed to send invitations. Please try again.',
-                  'Gửi lời mời thất bại. Vui lòng thử lại.',
-                ),
-              'error',
             );
           }}
         />

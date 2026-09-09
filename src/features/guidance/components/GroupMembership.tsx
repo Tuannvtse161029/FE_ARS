@@ -24,7 +24,7 @@ import { InlineNotice } from '../../../components/InlineNotice/InlineNotice';
 import { researchGroupService } from '../../../services/researchGroup.service';
 import type { ResearchGroup } from '../../../services/researchGroup.service';
 // CSS module kept at the original GroupDetail CSS location for now.
-import styles from '../../pages/Lecturer/GroupDetail.module.css';
+import styles from '../../../pages/Lecturer/GroupDetail.module.css';
 
 export interface GroupMembershipProps {
   members: GroupMember[];
@@ -138,7 +138,14 @@ export const GroupMembership: React.FC<GroupMembershipProps> = ({
       const graduateStudents = userList.filter((u) => {
         const roleName = (u.roleName ?? '').toLowerCase();
         const roleId = typeof u.roleId === 'number' ? u.roleId : -1;
+        const hasGraduateRole =
+          Array.isArray(u.roles) &&
+          u.roles.some((r) => {
+            const norm = (r ?? '').toLowerCase().replace(/\s+/g, '');
+            return norm === 'graduatestudent';
+          });
         return (
+          hasGraduateRole ||
           roleName === 'graduate student' ||
           roleName === 'graduatestudent' ||
           roleId === 5

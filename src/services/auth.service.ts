@@ -378,8 +378,17 @@ export const authService = {
   },
 
   /** Persist the active role for a multi-role session through the BE. */
-  selectRole: async (role: UserRole): Promise<unknown> => {
-    const response = await api.post(API_ENDPOINTS.AUTH.SELECT_ROLE, { role });
+  selectRole: async (role: UserRole, token?: string): Promise<unknown> => {
+    const bearerToken = token || storage.getToken();
+    const headers: Record<string, string> = {};
+    if (bearerToken) {
+      headers.Authorization = `Bearer ${bearerToken}`;
+    }
+    const response = await api.post(
+      API_ENDPOINTS.AUTH.SELECT_ROLE,
+      { role },
+      headers.Authorization ? { headers } : undefined,
+    );
     return response.data;
   },
 
