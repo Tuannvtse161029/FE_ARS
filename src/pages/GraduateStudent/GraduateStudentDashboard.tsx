@@ -33,9 +33,6 @@ import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import { getPrimaryMembershipId } from '../../components/gradstudent/utils';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
-import type {
-  GuidanceProjectStatus,
-} from '../../types/research';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
@@ -56,13 +53,6 @@ const DEFAULT_FOLDER_KEY = 'milestone';
 // Role accent — Graduate Student workspace uses the shared gold action color.
 const ROLE_ACCENT = 'var(--accent-primary)';
 
-const GUIDANCE_STATUS_PALETTE: Record<GuidanceProjectStatus, string> = {
-  PROPOSED: styles.statusSubmitted,
-  ONGOING: styles.statusWaiting,
-  COMPLETED: styles.statusEvaluated,
-  CANCELLED: styles.statusRejected,
-};
-
 export const GraduateStudentDashboard = (): JSX.Element => {
   const { t } = useI18n();
   const locale = useLocale();
@@ -71,7 +61,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
   const studentId = user?.userId ?? null;
 
   const {
-    guidanceProject,
     joinedGroups,
     primaryGroup,
     primaryTopic,
@@ -101,7 +90,8 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
   const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
-  const lecturerId = guidanceProject?.lecturerId ?? primaryGroup?.lecturerId ?? null;
+  // Lecturer is resolved from the primary group's lecturerId
+  const lecturerId = primaryGroup?.lecturerId ?? null;
 
   useEffect(() => {
     if (typeof lecturerId === 'number' && lecturerId > 0) {
@@ -211,7 +201,7 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     );
   }
 
-  if (isLoading && !guidanceProject && joinedGroups.length === 0) {
+  if (isLoading && joinedGroups.length === 0) {
     return (
       <div className={styles.page}>
         <PageHeader
@@ -230,32 +220,38 @@ export const GraduateStudentDashboard = (): JSX.Element => {
   // Build metric cards data
   const metricCards = [
     {
-      label: copy('Guidance Project', 'Dự án hướng dẫn'),
-      value: guidanceProject?.title ?? copy('No active project', 'Chưa có dự án'),
-      annotation: guidanceProject?.status
-        ? `${copy('Status', 'Trạng thái')}: ${guidanceProject.status}`
-        : copy('Awaiting lecturer confirmation', 'Đang chờ giảng viên xác nhận'),
+      label: copy('Research Group', 'Nhóm nghiên cứu'),
+      value: primaryGroup?.name ?? copy('No group joined', 'Chưa tham gia nhóm'),
+      annotation: primaryGroup?.description
+        ? primaryGroup.description
+        : copy('Join a research group to begin', 'Hãy tham gia nhóm nghiên cứu để bắt đầu'),
       icon: <Microscope size={16} />,
-      empty: !guidanceProject,
+      empty: !primaryGroup,
     },
     {
       label: copy('Supervising Lecturer', 'Giảng viên hướng dẫn'),
       value: lecturerName,
-      annotation: primaryGroup?.name ? `${copy('Group', 'Nhóm')}: ${primaryGroup.name}` : copy('No group joined yet', 'Chưa tham gia nhóm nào'),
+      annotation: primaryGroup?.name
+        ? `${copy('Group', 'Nhóm')}: ${primaryGroup.name}`
+        : copy('No group joined yet', 'Chưa tham gia nhóm nào'),
       icon: <Users size={16} />,
-      empty: !lecturerId && !primaryGroup,
+      empty: !primaryGroup,
     },
     {
       label: copy('Assigned Topic', 'Đề tài được phân công'),
       value: primaryTopic?.title ?? copy('No topic assigned', 'Chưa có đề tài'),
-      annotation: primaryTopic?.status ? `${copy('Status', 'Trạng thái')}: ${primaryTopic.status}` : copy('Awaiting lecturer assignment', 'Đang chờ giảng viên giao đề tài'),
+      annotation: primaryTopic?.status
+        ? `${copy('Status', 'Trạng thái')}: ${primaryTopic.status}`
+        : copy('Awaiting lecturer assignment', 'Đang chờ giảng viên giao đề tài'),
       icon: <FileText size={16} />,
       empty: !primaryTopic,
     },
     {
       label: copy('Joined Groups', 'Nhóm đã tham gia'),
       value: `${joinedGroups.length} ${copy('active', 'hoạt động')}`,
-      annotation: joinedGroups[0] ? `${copy('Most recent', 'Gần nhất')}: ${joinedGroups[0].name}` : copy('Join a research group to begin', 'Hãy tham gia nhóm nghiên cứu để bắt đầu'),
+      annotation: joinedGroups[0]
+        ? `${copy('Most recent', 'Gần nhất')}: ${joinedGroups[0].name}`
+        : copy('Join a research group to begin', 'Hãy tham gia nhóm nghiên cứu để bắt đầu'),
       icon: <Layers size={16} />,
       empty: joinedGroups.length === 0,
     },
@@ -267,7 +263,7 @@ export const GraduateStudentDashboard = (): JSX.Element => {
       <PageHeader
         eyebrow={t('student.dashboard.eyebrow', 'RESEARCH JOURNEY')}
         title={`${user.username}'s ${t('student.dashboard.journey', 'Research Journey')}`}
-        description={t('student.dashboard.description', 'Track your guidance project, milestones, and lecturer feedback.')}
+        description={t('student.dashboard.description', 'Track your research group, milestones, and lecturer feedback.')}
         accent={ROLE_ACCENT}
         actions={
           <Button
@@ -309,9 +305,10 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
         {/* ── Current milestone: primary student task ────── */}
         <div className={styles.primaryTask}>
-          <GuidanceProjectCard
-            guidanceProject={guidanceProject}
+          <ResearchGroupCard
             isLoading={reportsLoading}
+            groupName={primaryGroup?.name ?? undefined}
+            topicTitle={primaryTopic?.title ?? undefined}
             lecturerName={lecturerName}
             hasGroup={joinedGroups.length > 0}
             hasTopic={primaryTopic !== null}
@@ -347,8 +344,8 @@ export const GraduateStudentDashboard = (): JSX.Element => {
               emptyMessage={copy('No submissions recorded yet.', 'Chưa có lượt nộp báo cáo nào.')}
             />
 
-            {/* Current status callout */}
-            {guidanceProject?.status === 'ONGOING' && currentMilestone && (
+            {/* Current status callout - show when there's a pending submission */}
+            {currentMilestone && (
               <div className={styles.statusCallout}>
                 <div className={styles.calloutHeader}>
                   <span className={styles.calloutMarker}>{copy('CURRENT STATUS', 'TRẠNG THÁI HIỆN TẠI')}</span>
@@ -410,9 +407,10 @@ export const GraduateStudentDashboard = (): JSX.Element => {
 
 // ── Sub-components ────────────────────────────────────────────────
 
-interface GuidanceProjectCardProps {
-  guidanceProject: import('../../types/research').GuidanceProject | null;
+interface ResearchGroupCardProps {
   isLoading: boolean;
+  groupName?: string;
+  topicTitle?: string;
   lecturerName: string;
   hasGroup: boolean;
   hasTopic: boolean;
@@ -421,30 +419,31 @@ interface GuidanceProjectCardProps {
   onResubmit: (report: SubmittedPhasedReport) => void;
 }
 
-function GuidanceProjectCard({
-  guidanceProject,
+function ResearchGroupCard({
   isLoading: _isLoading,
+  groupName,
+  topicTitle: _topicTitle,
   lecturerName,
   hasGroup,
   hasTopic,
   onOpenSubmit,
   currentMilestone,
   onResubmit,
-}: GuidanceProjectCardProps): JSX.Element {
+}: ResearchGroupCardProps): JSX.Element {
   const locale = useLocale();
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
 
-  if (!guidanceProject) {
+  if (!groupName) {
     return (
       <section className={styles.projectCard}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardMarker}>{copy('02 / GUIDANCE PROJECT', '02 / DỰ ÁN HƯỚNG DẪN')}</span>
-          <h2 className={styles.cardTitle}>{copy('Current Project', 'Dự án hiện tại')}</h2>
+          <span className={styles.cardMarker}>{copy('02 / RESEARCH GROUP', '02 / NHÓM NGHIÊN CỨU')}</span>
+          <h2 className={styles.cardTitle}>{copy('Current Group', 'Nhóm hiện tại')}</h2>
         </div>
         <EmptyState
           icon={<Inbox size={24} />}
-          title={copy('No active guidance project', 'Chưa có dự án hướng dẫn nào')}
-          description={copy('Once a lecturer invites you, a card will appear here.', 'Khi giảng viên mời bạn vào dự án, thông tin sẽ xuất hiện tại đây.')}
+          title={copy('No active research group', 'Chưa tham gia nhóm nghiên cứu nào')}
+          description={copy('Once you join a research group, a card will appear here.', 'Khi bạn tham gia một nhóm nghiên cứu, thông tin sẽ xuất hiện tại đây.')}
           compact
         />
         <div className={styles.actionRow}>
@@ -453,183 +452,84 @@ function GuidanceProjectCard({
             size="sm"
             leftIcon={<HelpCircle size={13} />}
             disabled
-            aria-label="Request supervision"
-            aria-describedby="request-supervision-unavailable"
-            title={copy('Request supervision is not yet available.', 'Tính năng yêu cầu hướng dẫn đang được cập nhật.')}
+            aria-label="Request group"
+            aria-describedby="request-group-unavailable"
+            title={copy('Request group is not yet available.', 'Tính năng yêu cầu tham gia nhóm đang được cập nhật.')}
           >
-            {copy('Request supervision', 'Yêu cầu hướng dẫn')}
+            {copy('Find a group', 'Tìm nhóm')}
           </Button>
-          <p id="request-supervision-unavailable" className={styles.actionHint}>
-            {copy('Supervision requests will be available after the backend adds the student-initiated request endpoint.', 'Tính năng yêu cầu hướng dẫn sẽ khả dụng trong bản cập nhật tới.')}
+          <p id="request-group-unavailable" className={styles.actionHint}>
+            {copy('Group discovery will be available in a future update.', 'Tính năng tìm nhóm sẽ khả dụng trong bản cập nhật tới.')}
           </p>
         </div>
       </section>
     );
   }
 
-  // PROPOSED
-  if (guidanceProject.status === 'PROPOSED') {
-    return (
-      <section className={styles.projectCard}>
-        <div className={styles.cardHeader}>
-          <span className={styles.cardMarker}>{copy('02 / GUIDANCE PROJECT', '02 / DỰ ÁN HƯỚNG DẪN')}</span>
-          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
-        </div>
-        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.PROPOSED}`}>
-          {copy('PROPOSED', 'ĐỀ XUẤT')}
-        </span>
-        <div className={styles.infoCard}>
-          <Clock size={14} className={styles.infoIcon} />
-          <div>
-            <p className={styles.infoTitle}>{copy('Awaiting lecturer confirmation', 'Đang chờ giảng viên xác nhận')}</p>
-            <p className={styles.infoBody}>
-              {copy(
-                `Your lecturer (${lecturerName}) has proposed this guidance project. They will move it to ONGOING once both of you agree on milestones.`,
-                `Giảng viên (${lecturerName}) đã đề xuất dự án hướng dẫn này. Dự án sẽ chuyển sang ĐANG TIẾN HÀNH khi hai bên thống nhất các mốc tiến độ.`
-              )}
-            </p>
-          </div>
-        </div>
-        <div className={styles.actionRow}>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-            title={copy('Withdraw is disabled in the PROPOSED state.', 'Không thể rút lui ở trạng thái ĐỀ XUẤT.')}
-          >
-            {copy('Withdraw', 'Rút lui')}
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
-  // ONGOING
-  if (guidanceProject.status === 'ONGOING') {
-    return (
-      <section className={styles.projectCard}>
-        <div className={styles.cardHeader}>
-          <span className={styles.cardMarker}>{copy('02 / CURRENT MILESTONE', '02 / MỐC TIẾN ĐỘ HIỆN TẠI')}</span>
-          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
-          <p className={styles.cardSubtitle}>{`${copy('Supervised by', 'Giảng viên hướng dẫn')}: ${lecturerName}`}</p>
-        </div>
-        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.ONGOING}`}>
-          {copy('ONGOING', 'ĐANG TIẾN HÀNH')}
-        </span>
-
-        {currentMilestone?.status === 'REJECTED' ? (
-          <RejectionFeedbackBanner
-            report={currentMilestone}
-            onResubmit={(report) => {
-              onResubmit(report);
-            }}
-          />
-        ) : currentMilestone?.status === 'SUBMITTED' ? (
-          <div className={styles.infoCard}>
-            <Clock size={14} className={styles.infoIcon} />
-            <div>
-              <p className={styles.infoTitle}>{copy('Awaiting lecturer review', 'Đang chờ giảng viên xem xét')}</p>
-              <p className={styles.infoBody}>
-                {`${copy('Submitted on', 'Đã nộp vào')} ${
-                  currentMilestone.submittedAt
-                    ? formatDateTime(currentMilestone.submittedAt)
-                    : copy('an unknown date', 'thời gian chưa xác định')
-                }. ${copy('You will be notified once feedback is available.', 'Bạn sẽ nhận được thông báo khi có nhận xét.')}`}
-              </p>
-            </div>
-          </div>
-        ) : currentMilestone?.status === 'EVALUATED' ? (
-          <div className={styles.successCard}>
-            <CheckCircle2 size={14} className={styles.successIcon} />
-            <div>
-              <p className={styles.successTitle}>{copy('Milestone approved', 'Mốc tiến độ đã được phê duyệt')}</p>
-              <p className={styles.successBody}>
-                {`${copy('Report', 'Báo cáo')} #${currentMilestone.id} ${copy('was approved', 'đã được phê duyệt')}${
-                  typeof currentMilestone.lectureFeedback === 'number'
-                    ? ` ${copy('with a grade of', 'với số điểm')} ${currentMilestone.lectureFeedback}/10`
-                    : ''
-                }.`}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            icon={<Calendar size={24} />}
-            title={copy('No active milestone', 'Chưa có mốc tiến độ nào')}
-            description={copy('Click Submit milestone to upload your first report.', 'Nhấn Nộp mốc tiến độ để tải lên báo cáo đầu tiên.')}
-            compact
-          />
-        )}
-
-        <div className={styles.actionRow}>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<FileText size={13} />}
-            onClick={onOpenSubmit}
-            disabled={!hasGroup || !hasTopic}
-            aria-label="Submit milestone report"
-          >
-            {currentMilestone ? copy('Update submission', 'Cập nhật bài nộp') : copy('Submit milestone', 'Nộp mốc tiến độ')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-            title={copy('Withdraw is disabled in this build.', 'Tính năng rút lui tạm khóa trong phiên bản này.')}
-          >
-            {copy('Withdraw', 'Rút lui')}
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
-  // COMPLETED
-  if (guidanceProject.status === 'COMPLETED') {
-    return (
-      <section className={styles.projectCard}>
-        <div className={styles.cardHeader}>
-          <span className={styles.cardMarker}>{copy('02 / GUIDANCE PROJECT', '02 / DỰ ÁN HƯỚNG DẪN')}</span>
-          <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
-        </div>
-        <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.COMPLETED}`}>
-          {copy('COMPLETED', 'ĐÃ HOÀN THÀNH')}
-        </span>
-        <div className={styles.successCard}>
-          <CheckCircle2 size={14} className={styles.successIcon} />
-          <div>
-            <p className={styles.successTitle}>{copy('Project completed by your lecturer', 'Dự án đã được giảng viên hoàn thành')}</p>
-            <p className={styles.successBody}>
-              {guidanceProject.updatedAt
-                ? `${copy('Completed on', 'Hoàn thành vào')} ${formatDateTime(guidanceProject.updatedAt)}.`
-                : copy('Your lecturer has marked this project as completed.', 'Giảng viên đã đánh dấu dự án này hoàn thành.')}
-              {currentMilestone?.lectureFeedback !== undefined &&
-              currentMilestone?.lectureFeedback !== null
-                ? ` ${copy('Final grade:', 'Điểm tổng kết:')} ${currentMilestone.lectureFeedback}/10.`
-                : ''}
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  // CANCELLED
   return (
     <section className={styles.projectCard}>
       <div className={styles.cardHeader}>
-        <span className={styles.cardMarker}>{copy('02 / GUIDANCE PROJECT', '02 / DỰ ÁN HƯỚNG DẪN')}</span>
-        <h2 className={styles.cardTitle}>{guidanceProject.title}</h2>
+        <span className={styles.cardMarker}>{copy('02 / CURRENT MILESTONE', '02 / MỐC TIẾN ĐỘ HIỆN TẠI')}</span>
+        <h2 className={styles.cardTitle}>{groupName}</h2>
+        <p className={styles.cardSubtitle}>{`${copy('Supervised by', 'Giảng viên hướng dẫn')}: ${lecturerName}`}</p>
       </div>
-      <span className={`${styles.statusBadge} ${GUIDANCE_STATUS_PALETTE.CANCELLED}`}>
-        {copy('CANCELLED', 'ĐÃ HỦY')}
-      </span>
-      <ErrorBanner
-        tone="warning"
-        title={copy('Project cancelled', 'Dự án đã bị hủy')}
-        message={copy('Either you or your lecturer withdrew from this guidance project.', 'Bạn hoặc giảng viên đã rút khỏi dự án hướng dẫn này.')}
-      />
+
+      {currentMilestone?.status === 'REJECTED' ? (
+        <RejectionFeedbackBanner
+          report={currentMilestone}
+          onResubmit={(report) => {
+            onResubmit(report);
+          }}
+        />
+      ) : currentMilestone?.status === 'SUBMITTED' ? (
+        <div className={styles.infoCard}>
+          <Clock size={14} className={styles.infoIcon} />
+          <div>
+            <p className={styles.infoTitle}>{copy('Awaiting lecturer review', 'Đang chờ giảng viên xem xét')}</p>
+            <p className={styles.infoBody}>
+              {`${copy('Submitted on', 'Đã nộp vào')} ${
+                currentMilestone.submittedAt
+                  ? formatDateTime(currentMilestone.submittedAt)
+                  : copy('an unknown date', 'thời gian chưa xác định')
+              }. ${copy('You will be notified once feedback is available.', 'Bạn sẽ nhận được thông báo khi có nhận xét.')}`}
+            </p>
+          </div>
+        </div>
+      ) : currentMilestone?.status === 'EVALUATED' ? (
+        <div className={styles.successCard}>
+          <CheckCircle2 size={14} className={styles.successIcon} />
+          <div>
+            <p className={styles.successTitle}>{copy('Milestone approved', 'Mốc tiến độ đã được phê duyệt')}</p>
+            <p className={styles.successBody}>
+              {`${copy('Report', 'Báo cáo')} #${currentMilestone.id} ${copy('was approved', 'đã được phê duyệt')}${
+                typeof currentMilestone.lectureFeedback === 'number'
+                  ? ` ${copy('with a grade of', 'với số điểm')} ${currentMilestone.lectureFeedback}/10`
+                  : ''
+              }.`}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <EmptyState
+          icon={<Calendar size={24} />}
+          title={copy('No active milestone', 'Chưa có mốc tiến độ nào')}
+          description={copy('Click Submit milestone to upload your first report.', 'Nhấn Nộp mốc tiến độ để tải lên báo cáo đầu tiên.')}
+          compact
+        />
+      )}
+
+      <div className={styles.actionRow}>
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<FileText size={13} />}
+          onClick={onOpenSubmit}
+          disabled={!hasGroup || !hasTopic}
+          aria-label="Submit milestone report"
+        >
+          {currentMilestone ? copy('Update submission', 'Cập nhật bài nộp') : copy('Submit milestone', 'Nộp mốc tiến độ')}
+        </Button>
+      </div>
     </section>
   );
 }

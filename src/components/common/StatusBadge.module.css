@@ -87,23 +87,11 @@
   border-color: color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
 }
 
-/* GuidanceProject variants */
-.proposed {
-  background-color: var(--ars-info-bg);
-  color: var(--ars-info);
-  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
-}
-
-.ongoing {
-  background-color: var(--ars-success-bg);
-  color: var(--ars-success);
-  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
-}
-
-.cancelled {
-  background-color: var(--status-inactive-surface);
-  color: var(--status-inactive-text);
-  border-color: color-mix(in srgb, var(--status-inactive-text) 30%, transparent);
+/* ResearchTopic variants */
+.open {
+  background-color: var(--status-info-surface);
+  color: var(--status-info-text);
+  border-color: color-mix(in srgb, var(--status-info-text) 30%, transparent);
 }
 
 .unknown {

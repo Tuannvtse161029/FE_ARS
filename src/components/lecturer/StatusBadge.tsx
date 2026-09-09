@@ -37,10 +37,6 @@ const NORMALISE_TABLE: Record<string, StatusBadgeVariant> = {
   assigned: 'assigned',
   completed: 'completed',
   closed: 'closed',
-  // GuidanceProject statuses
-  proposed: 'proposed',
-  ongoing: 'ongoing',
-  cancelled: 'cancelled',
 };
 
 const normalise = (raw: string | null | undefined): StatusBadgeVariant => {

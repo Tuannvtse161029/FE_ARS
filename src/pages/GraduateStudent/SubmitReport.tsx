@@ -56,7 +56,6 @@ export const SubmitReport = (): JSX.Element => {
   const {
     primaryGroup,
     primaryTopic,
-    guidanceProject,
     joinedGroups,
     isLoading,
     error,
@@ -85,7 +84,7 @@ export const SubmitReport = (): JSX.Element => {
   const [topicMembers, setTopicMembers] = useState<GroupMember[]>([]);
   const [isLoadingTopicDetails, setIsLoadingTopicDetails] = useState<boolean>(false);
 
-  const lecturerId = guidanceProject?.lecturerId ?? primaryGroup?.lecturerId ?? null;
+  const lecturerId = primaryGroup?.lecturerId ?? null;
 
   // Load 5 topic phases & members when topicId is available
   const loadTopicDetails = async (tId: number) => {

@@ -3,11 +3,10 @@
 // Lead-owned; consumed by both Agent 1 (lecturer) and Agent 2 (grad student).
 // If you need a new field, file a ticket — do not extend locally.
 
-export type GuidanceProjectStatus = 'PROPOSED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED';
 // CLOSED was removed: a topic no longer has a separate "closed" state —
 // once it's done, it transitions to COMPLETED. See utils/researchStatus.ts
 // for the canonical transition table.
-export type ResearchTopicStatus = 'OPEN' | 'ASSIGNED' | 'COMPLETED';
 export type PhasedReportStatus =
   | 'WAITING'
   | 'SUBMITTED'
@@ -17,19 +16,6 @@ export type PhasedReportStatus =
   | 'OnTime'
   | 'Overdue'
   | 'Passed';
-
-export interface GuidanceProject {
-  id: number;
-  lecturerId: number | null;
-  studentId: number | null;
-  title: string;
-  description?: string;
-  status: GuidanceProjectStatus;
-  createdAt?: string;
-  updatedAt?: string;
-  researchGroupId?: number;
-  researchGroupName?: string;
-}
 
 export interface ResearchTopic {
   id: number;

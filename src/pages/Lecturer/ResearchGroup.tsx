@@ -28,7 +28,6 @@ import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { toApiIsoString, formatDisplayDate } from '../../utils/datetime';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
-import { useGuidanceProjects } from '../../hooks/useGuidanceProjects';
 import {
   researchGroupService,
   deriveGroupStatus,
@@ -126,8 +125,6 @@ export const ResearchGroup = () => {
     error: topicsError,
     refetch: refetchTopics,
   } = useResearchTopics();
-
-  const { refetch: refetchProjects } = useGuidanceProjects();
 
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
@@ -391,7 +388,6 @@ export const ResearchGroup = () => {
     await Promise.all([
       refetchGroups(),
       refetchTopics(),
-      refetchProjects(),
       loadMembers(),
     ]);
   };

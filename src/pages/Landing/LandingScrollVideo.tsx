@@ -22,6 +22,7 @@ import {
   FileText,
   Globe,
   GraduationCap,
+  Calendar,
   MessageSquare,
   Network,
   Scale,
@@ -33,7 +34,11 @@ import { useT } from '../../i18n/I18nContext';
 import { LanguageToggle } from '../../components/i18n/LanguageToggle';
 import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
-import heroPoster from '../../assets/images/login_wallpaper.jpg';
+import {
+  HERO_ACADEMIC_URL,
+  PEER_REVIEW_WORKFLOW_URL,
+  SEMINARS_COMMUNITY_URL,
+} from './landingImages';
 import styles from './LandingScrollVideo.module.css';
 
 // ── Static content (i18n keys + English fallbacks) ──────────────
@@ -396,6 +401,8 @@ const TRACE_ACTS = [
   { id: 'tension', label: 'The Problem' },
   { id: 'turn', label: 'The Workflow' },
   { id: 'substance', label: 'Workspaces' },
+  { id: 'peer-review', label: 'Peer Review' },
+  { id: 'seminars', label: 'Seminars' },
   { id: 'commitment', label: 'The Catalog' },
 ] as const;
 
@@ -540,12 +547,13 @@ const HeroAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string | 
             rates (driven from the same scroll listener below) so the
             hero reads as a layered scene rather than a single image.
             No video is loaded — the only video in /public was a test
-            asset for the AI summary feature, not for the landing. */}
+            asset for the AI summary feature, not for the landing.
+            Using AI-generated academic knowledge image from Codex. */}
         <img
           ref={posterRef}
           className={styles.heroPoster}
-          src={heroPoster}
-          alt=""
+          src={HERO_ACADEMIC_URL}
+          alt="Academic researchers collaborating in a university library setting"
           aria-hidden="true"
         />
         <div ref={foregroundRef} className={styles.heroLayerForeground} aria-hidden="true" />
@@ -1023,6 +1031,120 @@ const SubstanceAct: React.FC<{ t: (k: string, f: string, p?: Record<string, stri
 };
 
 // ════════════════════════════════════════════════════════════════
+// PEER REVIEW FEATURE SECTION
+// Supporting visual for structured expert review process
+// ════════════════════════════════════════════════════════════════
+const PeerReviewSection: React.FC<{ t: (k: string, f: string, p?: Record<string, string | number>) => string }> = ({ t }) => {
+  const { ref, seen } = useReveal<HTMLElement>(0.15);
+
+  return (
+    <section
+      ref={ref}
+      id="peer-review"
+      className={`${styles.featureSplitSection} ${seen ? styles.revealed : ''}`}
+      aria-labelledby="peer-review-title"
+    >
+      <div className={styles.featureSplitContent}>
+        <p className={styles.issueLine}>
+          {t('landing.peerReviewKicker', 'Structured peer review')}
+        </p>
+        <h2 id="peer-review-title" className={styles.featureSplitTitle}>
+          {t(
+            'landing.peerReviewTitle',
+            'Expert evaluation that strengthens research.',
+          )}
+        </h2>
+        <p className={styles.featureSplitBody}>
+          {t(
+            'landing.peerReviewBody',
+            'Reviewers provide structured recommendations based on evaluation criteria. Their expertise shapes the publication decision, but the final choice rests with the editorial administration — ensuring accountability and consistency across all submissions.',
+          )}
+        </p>
+        <div className={styles.featureSplitList}>
+          <div className={styles.featureSplitItem}>
+            <ClipboardCheck size={20} aria-hidden="true" />
+            <span>{t('landing.peerReviewFeature1', 'Structured evaluation criteria')}</span>
+          </div>
+          <div className={styles.featureSplitItem}>
+            <MessageSquare size={20} aria-hidden="true" />
+            <span>{t('landing.peerReviewFeature2', 'Clear, actionable feedback')}</span>
+          </div>
+          <div className={styles.featureSplitItem}>
+            <Scale size={20} aria-hidden="true" />
+            <span>{t('landing.peerReviewFeature3', 'Auditable decision record')}</span>
+          </div>
+        </div>
+      </div>
+      <div className={styles.featureSplitImage}>
+        <img
+          src={PEER_REVIEW_WORKFLOW_URL}
+          alt={t('landing.peerReviewImageAlt', 'Illustration showing structured peer review workflow with reviewer recommendations and editorial decisions')}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </section>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// SEMINARS & COMMUNITY FEATURE SECTION
+// Supporting visual for academic seminars and collaboration
+// ════════════════════════════════════════════════════════════════
+const SeminarsSection: React.FC<{ t: (k: string, f: string, p?: Record<string, string | number>) => string }> = ({ t }) => {
+  const { ref, seen } = useReveal<HTMLElement>(0.15);
+
+  return (
+    <section
+      ref={ref}
+      id="seminars"
+      className={`${styles.featureSplitSection} ${styles.featureSplitSectionReverse} ${seen ? styles.revealed : ''}`}
+      aria-labelledby="seminars-title"
+    >
+      <div className={styles.featureSplitContent}>
+        <p className={styles.issueLine}>
+          {t('landing.seminarsKicker', 'Academic seminars & collaboration')}
+        </p>
+        <h2 id="seminars-title" className={styles.featureSplitTitle}>
+          {t(
+            'landing.seminarsTitle',
+            'Research communities that meet regularly.',
+          )}
+        </h2>
+        <p className={styles.featureSplitBody}>
+          {t(
+            'landing.seminarsBody',
+            'Lecturers create and manage seminars with Google Meet integration. Students join research groups, submit phased reports, and track their learning milestones — all within a collaborative academic environment.',
+          )}
+        </p>
+        <div className={styles.featureSplitList}>
+          <div className={styles.featureSplitItem}>
+            <Calendar size={20} aria-hidden="true" />
+            <span>{t('landing.seminarsFeature1', 'Scheduled seminars with Meet links')}</span>
+          </div>
+          <div className={styles.featureSplitItem}>
+            <Network size={20} aria-hidden="true" />
+            <span>{t('landing.seminarsFeature2', 'Research group collaboration')}</span>
+          </div>
+          <div className={styles.featureSplitItem}>
+            <GraduationCap size={20} aria-hidden="true" />
+            <span>{t('landing.seminarsFeature3', 'Phased report submissions')}</span>
+          </div>
+        </div>
+      </div>
+      <div className={styles.featureSplitImage}>
+        <img
+          src={SEMINARS_COMMUNITY_URL}
+          alt={t('landing.seminarsImageAlt', 'Illustration showing researchers and students collaborating in an academic seminar environment')}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </section>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
 // ACT 5 — COMMITMENT (flow + spotlight): Public access + final CTA
 // ════════════════════════════════════════════════════════════════
 const CommitmentSection: React.FC<{ t: (k: string, f: string, p?: Record<string, string | number>) => string }> = ({ t }) => {
@@ -1247,6 +1369,8 @@ export const LandingScrollVideo = () => {
         <TensionAct t={t} />
         <TurnAct t={t} />
         <SubstanceAct t={t} />
+        <PeerReviewSection t={t} />
+        <SeminarsSection t={t} />
         <CommitmentSection t={t} />
       </main>
 

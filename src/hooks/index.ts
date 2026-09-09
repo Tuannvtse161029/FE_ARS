@@ -21,7 +21,6 @@ export { usePermissions } from './usePermissions';
 export { usePhasedReports } from './usePhasedReports';
 export { useSubmitPhasedReport } from './useSubmitPhasedReport';
 export { useStudentGroups } from './useStudentGroups';
-export { useGuidanceProjects } from './useGuidanceProjects';
 export { useResearchTopics } from './useResearchTopics';
 export { useResearchGroups } from './useResearchGroups';
 export { useEvaluatePhasedReport } from './useEvaluatePhasedReport';

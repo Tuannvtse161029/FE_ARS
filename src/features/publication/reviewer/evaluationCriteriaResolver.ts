@@ -1,6 +1,38 @@
 import type { PublicationPaper } from '../types/publication';
 
+/**
+ * Single discipline-specific rubric item returned by the resolver.
+ *
+ * Pre-2026-09 these were rendered as passive reference strings; the
+ * reviewer now scores each item (1..maxScore) and writes notes, just like
+ * the 5 standard criteria. The `code` comes from the BE's grading rubric
+ * and identifies the item in the BE's SpecializedEvaluationItem array.
+ */
+export interface SpecializedItem {
+  code: string;
+  title: string;
+  description: string;
+  /** e.g. 5 for Engineering rubric, 10 for general. */
+  maxScore: number;
+  standardReferences: string[];
+}
+
+/**
+ * Resolved discipline-specific criteria for a paper.
+ *
+ * `items` is the primary field — an ordered array of rubric items
+ * from the sub-field's gradingRubric[]. Each item is an evaluable
+ * criterion: the reviewer scores it (1..maxScore) and writes notes.
+ *
+ * The 3-item legacy shape (criteria1/2/3 + evaluationCriteria1/2/3) is
+ * retained for the adapter's stringifyRubricReference pass; it maps
+ * items[0..2] into those slots so the BE's legacy DetailedEvaluation
+ * columns are populated alongside the modern specializedEvaluation[].
+ */
 export interface SpecializedCriteriaBundle {
+  items: SpecializedItem[];
+
+  // Legacy 3-item shape — used by adapter.stringifyRubricReference()
   criteria1: string;
   expandedCriteria1: string;
   evaluationCriteria1: FormattedRubricReference;
@@ -40,7 +72,26 @@ export interface SubFieldEntity {
  * Domain-specific preset rubrics for subfields / topics when database rubrics are incomplete
  * or paper has no subFieldId explicitly linked.
  */
-const DOMAIN_CRITERIA_PRESETS: Record<string, SpecializedCriteriaBundle> = {
+/**
+ * Domain-preset shape: only the fields a preset needs to describe its
+ * three fallback criteria. The full `SpecializedCriteriaBundle` is
+ * derived from this in `resolveCriteriaForPaper`.
+ */
+interface DomainPreset {
+  criteria1: string;
+  expandedCriteria1: string;
+  evaluationCriteria1: FormattedRubricReference;
+
+  criteria2: string;
+  expandedCriteria2: string;
+  evaluationCriteria2: FormattedRubricReference;
+
+  criteria3: string;
+  expandedCriteria3: string;
+  evaluationCriteria3: FormattedRubricReference;
+}
+
+const DOMAIN_CRITERIA_PRESETS: Record<string, DomainPreset> = {
   ai_machine_learning: {
     criteria1: 'Dataset Integrity, Preprocessing & Ethical Fairness',
     expandedCriteria1:
@@ -255,30 +306,6 @@ const DOMAIN_CRITERIA_PRESETS: Record<string, SpecializedCriteriaBundle> = {
 };
 
 /**
- * Extract the structured reference data from a rubric item.
- *
- * Pre-2026-09 this helper returned a pre-formatted Vietnamese-templated
- * string (`"Thang điểm: ... | Quy chuẩn: ..."`) that was rendered
- * directly into the page, leaking Vietnamese taxonomy copy into the
- * English UI. The function now returns a structured object so the page
- * can format it through i18n and stay correct in both languages.
- */
-const formatRubricReferences = (
-  item?: SubFieldGradingRubricItem | null,
-  fallbackScore = 10,
-): FormattedRubricReference => {
-  if (!item) {
-    return { maxScore: fallbackScore, standardReferences: [] };
-  }
-  return {
-    maxScore: item.maxScore ?? fallbackScore,
-    standardReferences: Array.isArray(item.standardReferences)
-      ? item.standardReferences.filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0)
-      : [],
-  };
-};
-
-/**
  * Auto-detect domain key from text.
  */
 function detectDomain(text: string): keyof typeof DOMAIN_CRITERIA_PRESETS {
@@ -350,23 +377,38 @@ export function resolveCriteriaForPaper(
 ): SpecializedCriteriaBundle {
   const rubric = subField?.gradingRubric;
 
-  // If subfield has at least 3 rubric items in database:
-  if (Array.isArray(rubric) && rubric.length >= 3) {
+  // Helper: convert a single rubric item to a SpecializedItem.
+  // Uses the BE-provided code if available, falls back to a generated one.
+  const rubricToItem = (item: SubFieldGradingRubricItem, index: number): SpecializedItem => ({
+    code: item.code?.trim() || `SPECIALIZED_${index + 1}`,
+    title: item.title?.trim() || `Domain Criterion ${index + 1}`,
+    description: item.description?.trim() || 'Evaluate this criterion using the standards and max score provided.',
+    maxScore: item.maxScore ?? 10,
+    standardReferences: Array.isArray(item.standardReferences)
+      ? item.standardReferences.filter((r): r is string => typeof r === 'string' && r.trim().length > 0)
+      : [],
+  });
+
+  // 1. Build items[] from the rubric if available.
+  if (Array.isArray(rubric) && rubric.length > 0) {
+    const items = rubric.map(rubricToItem);
+    const [r1, r2, r3] = items;
     return {
-      criteria1: rubric[0].title?.trim() || 'Specialized Domain Criterion 1',
-      expandedCriteria1: rubric[0].description?.trim() || 'Evaluation of primary specialized criterion.',
-      evaluationCriteria1: formatRubricReferences(rubric[0]),
-
-      criteria2: rubric[1].title?.trim() || 'Specialized Domain Criterion 2',
-      expandedCriteria2: rubric[1].description?.trim() || 'Evaluation of secondary specialized criterion.',
-      evaluationCriteria2: formatRubricReferences(rubric[1]),
-
-      criteria3: rubric[2].title?.trim() || 'Specialized Domain Criterion 3',
-      expandedCriteria3: rubric[2].description?.trim() || 'Evaluation of tertiary specialized criterion.',
-      evaluationCriteria3: formatRubricReferences(rubric[2]),
+      items,
+      // Legacy 3-item shape for adapter.stringifyRubricReference():
+      criteria1: r1.title,
+      expandedCriteria1: r1.description,
+      evaluationCriteria1: { maxScore: r1.maxScore, standardReferences: r1.standardReferences },
+      criteria2: r2?.title ?? '',
+      expandedCriteria2: r2?.description ?? '',
+      evaluationCriteria2: r2 ? { maxScore: r2.maxScore, standardReferences: r2.standardReferences } : { maxScore: 10, standardReferences: [] },
+      criteria3: r3?.title ?? '',
+      expandedCriteria3: r3?.description ?? '',
+      evaluationCriteria3: r3 ? { maxScore: r3.maxScore, standardReferences: r3.standardReferences } : { maxScore: 10, standardReferences: [] },
     };
   }
 
+  // 2. No rubric from BE — fall back to domain-preset (3 items).
   const textContext = [
     subField?.name,
     subField?.description,
@@ -381,17 +423,23 @@ export function resolveCriteriaForPaper(
   const presetKey = detectDomain(textContext);
   const fallback = DOMAIN_CRITERIA_PRESETS[presetKey];
 
+  // Build items[] from the 3 fallback criteria.
+  const fallbackItems: SpecializedItem[] = [
+    { code: 'SPECIALIZED_1', title: fallback.criteria1, description: fallback.expandedCriteria1, maxScore: fallback.evaluationCriteria1.maxScore, standardReferences: fallback.evaluationCriteria1.standardReferences },
+    { code: 'SPECIALIZED_2', title: fallback.criteria2, description: fallback.expandedCriteria2, maxScore: fallback.evaluationCriteria2.maxScore, standardReferences: fallback.evaluationCriteria2.standardReferences },
+    { code: 'SPECIALIZED_3', title: fallback.criteria3, description: fallback.expandedCriteria3, maxScore: fallback.evaluationCriteria3.maxScore, standardReferences: fallback.evaluationCriteria3.standardReferences },
+  ];
+
   return {
-    criteria1: rubric?.[0]?.title?.trim() || fallback.criteria1,
-    expandedCriteria1: rubric?.[0]?.description?.trim() || fallback.expandedCriteria1,
-    evaluationCriteria1: rubric?.[0] ? formatRubricReferences(rubric[0]) : fallback.evaluationCriteria1,
-
-    criteria2: rubric?.[1]?.title?.trim() || fallback.criteria2,
-    expandedCriteria2: rubric?.[1]?.description?.trim() || fallback.expandedCriteria2,
-    evaluationCriteria2: rubric?.[1] ? formatRubricReferences(rubric[1]) : fallback.evaluationCriteria2,
-
-    criteria3: rubric?.[2]?.title?.trim() || fallback.criteria3,
-    expandedCriteria3: rubric?.[2]?.description?.trim() || fallback.expandedCriteria3,
-    evaluationCriteria3: rubric?.[2] ? formatRubricReferences(rubric[2]) : fallback.evaluationCriteria3,
+    items: fallbackItems,
+    criteria1: fallback.criteria1,
+    expandedCriteria1: fallback.expandedCriteria1,
+    evaluationCriteria1: fallback.evaluationCriteria1,
+    criteria2: fallback.criteria2,
+    expandedCriteria2: fallback.expandedCriteria2,
+    evaluationCriteria2: fallback.evaluationCriteria2,
+    criteria3: fallback.criteria3,
+    expandedCriteria3: fallback.expandedCriteria3,
+    evaluationCriteria3: fallback.evaluationCriteria3,
   };
 }

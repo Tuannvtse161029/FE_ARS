@@ -105,7 +105,7 @@ export const StudentResearchGroups = (): JSX.Element => {
   const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
   const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
-  const { joinedGroups, guidanceProject, isLoading, error, refetch } =
+  const { joinedGroups, isLoading, error, refetch } =
     useStudentGroups(studentId);
   const {
     reports,
@@ -268,11 +268,8 @@ export const StudentResearchGroups = (): JSX.Element => {
     if (selectedGroup && typeof selectedGroup.lecturerId === 'number') {
       ids.add(selectedGroup.lecturerId);
     }
-    if (guidanceProject && typeof guidanceProject.lecturerId === 'number') {
-      ids.add(guidanceProject.lecturerId);
-    }
     return Array.from(ids);
-  }, [joinedGroups, selectedGroup, guidanceProject]);
+  }, [joinedGroups, selectedGroup]);
 
   useEffect(() => {
     uniqueLecturerIds.forEach((id) => {
@@ -379,9 +376,9 @@ export const StudentResearchGroups = (): JSX.Element => {
         eyebrow={copy('RESEARCH GROUPS', 'NHÓM NGHIÊN CỨU')}
         title={copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
         description={
-          guidanceProject
-            ? `${copy('Active guidance project', 'Dự án hướng dẫn đang thực hiện')}: ${guidanceProject.title}`
-            : copy('You have not yet started a guidance project.', 'Bạn chưa tham gia dự án hướng dẫn nào.')
+          joinedGroups.length > 0
+            ? `${copy('You have joined', 'Bạn đã tham gia')} ${joinedGroups.length} ${copy('research group(s).', 'nhóm nghiên cứu.')}`
+            : copy('Join a research group to begin your journey.', 'Hãy tham gia một nhóm nghiên cứu để bắt đầu.')
         }
         accent={ROLE_ACCENT}
         actions={

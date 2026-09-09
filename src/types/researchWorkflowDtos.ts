@@ -4,7 +4,6 @@
 // types instead of inline `Record<string, unknown>` blobs.
 //
 // Each interface is named after the Swagger schema it mirrors:
-//   - GuidanceProjectCreateRequest / GuidanceProjectUpdateRequest
 //   - ResearchGroupCreateRequest / ResearchGroupUpdateRequest
 //   - ResearchTopicCreateRequest / ResearchTopicUpdateRequest
 //   - GroupMemberCreateRequest / GroupMemberUpdateRequest
@@ -17,26 +16,6 @@
 //
 // Do NOT add fields that the BE does not expose — see BE gap ticket for the
 // list of documented gaps (e.g. PhasedReport.lecturerId, FeedbackComment).
-
-// ---------- GuidanceProject ----------
-
-export interface GuidanceProjectCreateRequest {
-  lecturerId: number | null;
-  title: string | null;
-  description: string | null;
-  status: string | null;
-  studentId: number | null;
-  researchGroupId?: number | null;
-}
-
-export interface GuidanceProjectUpdateRequest {
-  lecturerId: number | null;
-  title: string | null;
-  description: string | null;
-  status: string | null;
-  studentId: number | null;
-  researchGroupId?: number | null;
-}
 
 // ---------- ResearchGroup ----------
 //

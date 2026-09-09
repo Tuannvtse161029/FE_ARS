@@ -26,9 +26,11 @@ import { RoleExploreModal, type ExploreRole } from '../../components/RoleExplore
 import arsLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Landing.module.css';
 import {
-  HERO_BACKDROP_URL,
+  HERO_ACADEMIC_URL,
   STATEMENT_STILL_URL,
   TESTIMONIAL_PORTRAIT_URL,
+  PEER_REVIEW_WORKFLOW_URL,
+  SEMINARS_COMMUNITY_URL,
 } from './landingImages';
 
 // ── Hero social proof metrics ────────────────────────────────
@@ -469,18 +471,19 @@ export const Landing = () => {
               <div className={styles.heroConstellation}>
                 {/* AI-generated editorial backdrop — visible primary asset
                     for the hero right column. Tinted subtly toward the
-                    navy palette so the SVG lines + nodes read on top. */}
+                    navy palette so the SVG lines + nodes read on top.
+                    Using new Codex-generated academic knowledge image. */}
                 <div className={styles.heroBackdropFrame}>
                   <img
                     className={styles.heroBackdrop}
-                    src={HERO_BACKDROP_URL}
-                    alt="Three Vietnamese researchers collaborating in a warmly lit university library reading room"
+                    src={HERO_ACADEMIC_URL}
+                    alt="Academic researchers collaborating in a university library setting"
                     loading="eager"
                     decoding="async"
                   />
                   <div className={styles.heroBackdropPlaceholder}>
-                    <span>hero-backdrop.png</span>
-                    <small>Editorial photograph</small>
+                    <span>hero-academic-knowledge.png</span>
+                    <small>Academic knowledge visual</small>
                   </div>
                 </div>
                 <div className={styles.heroBackdropTint} aria-hidden="true" />
@@ -767,6 +770,92 @@ export const Landing = () => {
                 </button>
               </article>
             ))}
+          </div>
+        </section>
+
+        {/* ── Peer Review Feature ───────────────────────── */}
+        <section className={styles.featureSplitSection} aria-labelledby="peer-review-title">
+          <div className={styles.featureSplitContent}>
+            <p className={styles.issueLine}>
+              {t('landing.peerReviewKicker', 'Structured peer review')}
+            </p>
+            <h2 id="peer-review-title" className={styles.featureSplitTitle}>
+              {t(
+                'landing.peerReviewTitle',
+                'Expert evaluation that strengthens research.',
+              )}
+            </h2>
+            <p className={styles.featureSplitBody}>
+              {t(
+                'landing.peerReviewBody',
+                'Reviewers provide structured recommendations based on evaluation criteria. Their expertise shapes the publication decision, but the final choice rests with the editorial administration — ensuring accountability and consistency across all submissions.',
+              )}
+            </p>
+            <div className={styles.featureSplitList}>
+              <div className={styles.featureSplitItem}>
+                <ClipboardCheck size={20} aria-hidden="true" />
+                <span>{t('landing.peerReviewFeature1', 'Structured evaluation criteria')}</span>
+              </div>
+              <div className={styles.featureSplitItem}>
+                <MessageSquare size={20} aria-hidden="true" />
+                <span>{t('landing.peerReviewFeature2', 'Clear, actionable feedback')}</span>
+              </div>
+              <div className={styles.featureSplitItem}>
+                <Scale size={20} aria-hidden="true" />
+                <span>{t('landing.peerReviewFeature3', 'Auditable decision record')}</span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.featureSplitImage}>
+            <img
+              src={PEER_REVIEW_WORKFLOW_URL}
+              alt={t('landing.peerReviewImageAlt', 'Illustration showing structured peer review workflow')}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        </section>
+
+        {/* ── Seminars Feature ───────────────────────────── */}
+        <section className={`${styles.featureSplitSection} ${styles.featureSplitSectionReverse}`} aria-labelledby="seminars-title">
+          <div className={styles.featureSplitContent}>
+            <p className={styles.issueLine}>
+              {t('landing.seminarsKicker', 'Academic seminars & collaboration')}
+            </p>
+            <h2 id="seminars-title" className={styles.featureSplitTitle}>
+              {t(
+                'landing.seminarsTitle',
+                'Research communities that meet regularly.',
+              )}
+            </h2>
+            <p className={styles.featureSplitBody}>
+              {t(
+                'landing.seminarsBody',
+                'Lecturers create and manage seminars with Google Meet integration. Students join research groups, submit phased reports, and track their learning milestones — all within a collaborative academic environment.',
+              )}
+            </p>
+            <div className={styles.featureSplitList}>
+              <div className={styles.featureSplitItem}>
+                <Calendar size={20} aria-hidden="true" />
+                <span>{t('landing.seminarsFeature1', 'Scheduled seminars with Meet links')}</span>
+              </div>
+              <div className={styles.featureSplitItem}>
+                <Network size={20} aria-hidden="true" />
+                <span>{t('landing.seminarsFeature2', 'Research group collaboration')}</span>
+              </div>
+              <div className={styles.featureSplitItem}>
+                <GraduationCap size={20} aria-hidden="true" />
+                <span>{t('landing.seminarsFeature3', 'Phased report submissions')}</span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.featureSplitImage}>
+            <img
+              src={SEMINARS_COMMUNITY_URL}
+              alt={t('landing.seminarsImageAlt', 'Illustration showing academic seminar environment')}
+              loading="lazy"
+              decoding="async"
+            />
           </div>
         </section>
 
