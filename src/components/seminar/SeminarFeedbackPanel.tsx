@@ -34,12 +34,18 @@ import {
   Eye,
 } from 'lucide-react';
 import {
+  hasSubmittedFeedback,
+  parseAiFeedback,
   seminarService,
   type SeminarFeedbackAiContent,
   type SeminarFeedbackAiSummary,
   type SeminarParticipantFeedback,
   type SeminarStats,
 } from '../../services/seminar.service';
+import {
+  parseParticipantAnswers,
+  type FeedbackQuestion,
+} from '../../types/seminarFeedback';
 import { SeminarFeedbackModal } from './SeminarFeedbackModal';
 import styles from './SeminarFeedbackPanel.module.css';
 
@@ -52,6 +58,13 @@ interface SeminarFeedbackPanelProps {
   initialAiSummaryJson?: string | null;
   /** Optional pre-loaded AI summary timestamp. */
   initialAiGeneratedAt?: string | null;
+  /**
+   * Optional pre-loaded dynamic questions (ticket §22). When provided, the
+   * raw feedback render joins each participant `feedbackJson` answer with
+   * its matching question so the host can show the question text instead of
+   * raw `questionId` keys.
+   */
+  initialQuestions?: FeedbackQuestion[];
   /** Surfaced back up so the page can refresh related cards. */
   onRefreshSeminar?: () => void;
 }
@@ -73,17 +86,14 @@ const initialsOf = (name: string | null | undefined, fallback: string): string =
     .slice(0, 2) || fallback.slice(0, 2).toUpperCase();
 };
 
-const isFeedbackContentEmpty = (
-  content?: SeminarParticipantFeedback['feedback'],
-): boolean => {
-  if (!content) return true;
-  if (content.overallComment && content.overallComment.trim().length > 0)
-    return false;
-  if (content.strengths?.some((s) => s.trim().length > 0)) return false;
-  if (content.improvements?.some((s) => s.trim().length > 0)) return false;
-  if (content.suggestions?.some((s) => s.trim().length > 0)) return false;
-  return true;
-};
+/**
+ * True when the participant has at least one text or rating answer (parsed
+ * from `feedbackJson`). Per ticket §19/§22, NEVER use `invitationStatus`
+ * alone — `feedbackJson` is the source of truth.
+ */
+const isParticipantSubmitted = (
+  row?: Pick<SeminarParticipantFeedback, 'feedbackJson' | 'feedbackSubmittedAt'>,
+): boolean => hasSubmittedFeedback(row);
 
 export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
   seminarId,
@@ -91,6 +101,7 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
   initialStats = null,
   initialAiSummaryJson = null,
   initialAiGeneratedAt = null,
+  initialQuestions,
   onRefreshSeminar,
 }) => {
   const [stats, setStats] = useState<SeminarStats | null>(initialStats);
@@ -112,14 +123,16 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
 
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  // Hydrate the AI summary from the Seminar.feedback JSON string when the
-  // page opens, so the panel can show "last generated" before any click.
+  // Hydrate the AI summary from the Seminar.feedbackJson string (ticket §32)
+  // when the page opens, so the panel can show "last generated" before any
+  // click. The BE returns this in `GET /api/Seminar/{id}` and we parse it
+  // via the canonical `parseAiFeedback` helper.
   useEffect(() => {
     if (!initialAiSummaryJson) {
       setAiSummary(null);
       return;
     }
-    const parsedContent = seminarServiceLikeParse(initialAiSummaryJson);
+    const parsedContent = parseAiFeedback(initialAiSummaryJson);
     if (!parsedContent) return;
     setAiSummary({
       seminarId,
@@ -162,7 +175,7 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
 
   const submittedCount = useMemo(
     () =>
-      feedback.filter((row) => !isFeedbackContentEmpty(row.feedback)).length,
+      feedback.filter((row) => isParticipantSubmitted(row)).length,
     [feedback],
   );
 
@@ -467,7 +480,11 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
         ) : (
           <ul className={styles.feedbackList}>
             {feedback.map((row) => (
-              <FeedbackCard key={row.seminarParticipantId} entry={row} />
+              <FeedbackCard
+                key={row.seminarParticipantId}
+                entry={row}
+                questions={initialQuestions}
+              />
             ))}
           </ul>
         )}
@@ -516,17 +533,28 @@ const StatCell: React.FC<StatCellProps> = ({
 
 interface FeedbackCardProps {
   entry: SeminarParticipantFeedback;
+  /** Optional list of seminar questions so we can render the question text
+   *  next to each answer (ticket §22). */
+  questions?: FeedbackQuestion[];
 }
 
-const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry }) => {
+const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry, questions }) => {
   const displayName =
     entry.userFullName ??
     entry.invitedEmail ??
     entry.userEmail ??
     `Participant #${entry.seminarParticipantId}`;
-  const content = entry.feedback;
-  const empty = isFeedbackContentEmpty(content);
+  const hasSubmission = isParticipantSubmitted(entry);
+  const answers = parseParticipantAnswers(entry.feedbackJson);
   const initials = initialsOf(entry.userFullName, displayName);
+
+  const questionById = useMemo(() => {
+    const map = new Map<string, FeedbackQuestion>();
+    for (const q of questions ?? []) {
+      if (q.id) map.set(q.id, q);
+    }
+    return map;
+  }, [questions]);
 
   return (
     <li className={styles.feedbackCard}>
@@ -547,7 +575,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry }) => {
             <span
               className={`${styles.feedbackStatusPill} ${
                 entry.invitationStatus.toLowerCase() === 'submitted' ||
-                !empty
+                hasSubmission
                   ? styles.feedbackStatusSubmitted
                   : entry.invitationStatus.toLowerCase() === 'declined'
                     ? styles.feedbackStatusDeclined
@@ -571,44 +599,49 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry }) => {
         </div>
       </header>
 
-      {empty ? (
+      {!hasSubmission ? (
         <div className={styles.feedbackCardEmpty}>
           <Quote size={14} aria-hidden />
-          <span>No structured feedback submitted yet.</span>
+          <span>No feedback submitted yet.</span>
         </div>
       ) : (
         <div className={styles.feedbackBody}>
-          {content?.overallComment &&
-            content.overallComment.trim().length > 0 && (
-              <FeedbackQuoteSection
-                icon={<MessageSquareText size={14} aria-hidden />}
-                label="Overall comment"
-                body={content.overallComment.trim()}
-              />
-            )}
-          {content?.strengths && content.strengths.length > 0 && (
-            <FeedbackBulletSection
-              icon={<ThumbsUp size={14} aria-hidden />}
-              label="Strengths"
-              items={content.strengths.filter((s) => s.trim().length > 0)}
-              variant="strength"
-            />
-          )}
-          {content?.improvements && content.improvements.length > 0 && (
-            <FeedbackBulletSection
-              icon={<Wrench size={14} aria-hidden />}
-              label="Areas for improvement"
-              items={content.improvements.filter((s) => s.trim().length > 0)}
-              variant="improvement"
-            />
-          )}
-          {content?.suggestions && content.suggestions.length > 0 && (
-            <FeedbackBulletSection
-              icon={<Lightbulb size={14} aria-hidden />}
-              label="Suggestions"
-              items={content.suggestions.filter((s) => s.trim().length > 0)}
-              variant="suggestion"
-            />
+          {answers.map((answer) => {
+            const question = answer.questionId
+              ? questionById.get(answer.questionId)
+              : undefined;
+            const label =
+              question?.questionText ?? `Question (${answer.questionId ?? 'unknown'})`;
+            if (answer.type === 'rating' && typeof answer.rating === 'number') {
+              const max = question?.maxStar ?? 5;
+              return (
+                <FeedbackQuoteSection
+                  key={`${answer.questionId ?? 'q'}-rating`}
+                  icon={<ThumbsUp size={14} aria-hidden />}
+                  label={`${label} · ${answer.rating} / ${max}`}
+                  body={renderStars(answer.rating, max)}
+                />
+              );
+            }
+            if (answer.type === 'text' && (answer.text ?? '').trim().length > 0) {
+              return (
+                <FeedbackQuoteSection
+                  key={`${answer.questionId ?? 'q'}-text`}
+                  icon={<MessageSquareText size={14} aria-hidden />}
+                  label={label}
+                  body={(answer.text ?? '').trim()}
+                />
+              );
+            }
+            return null;
+          })}
+          {answers.length === 0 && (
+            <div className={styles.feedbackCardEmpty}>
+              <Quote size={14} aria-hidden />
+              <span>
+                No answer data found in the submission.
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -616,37 +649,14 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ entry }) => {
   );
 };
 
-interface FeedbackBulletSectionProps {
-  icon: React.ReactNode;
-  label: string;
-  items: string[];
-  variant: 'strength' | 'improvement' | 'suggestion';
+/** Tiny inline renderer used by the FeedbackCard to show a star count. */
+function renderStars(rating: number, max: number): string {
+  const filled = '★'.repeat(Math.max(0, Math.min(max, Math.round(rating))));
+  const empty = '☆'.repeat(Math.max(0, max - Math.round(rating)));
+  return `${filled}${empty}`.trim();
 }
 
-const FeedbackBulletSection: React.FC<FeedbackBulletSectionProps> = ({
-  icon,
-  label,
-  items,
-  variant,
-}) => {
-  if (items.length === 0) return null;
-  return (
-    <section
-      className={`${styles.feedbackBulletSection} ${styles[`feedbackVariant_${variant}`]}`}
-    >
-      <header className={styles.feedbackBulletHeader}>
-        <span className={styles.feedbackBulletIcon}>{icon}</span>
-        <span className={styles.feedbackBulletLabel}>{label}</span>
-        <span className={styles.feedbackBulletCount}>{items.length}</span>
-      </header>
-      <ul className={styles.feedbackBulletList}>
-        {items.map((item, i) => (
-          <li key={i}>{item}</li>
-        ))}
-      </ul>
-    </section>
-  );
-};
+
 
 interface FeedbackQuoteSectionProps {
   icon: React.ReactNode;
@@ -764,37 +774,5 @@ const AiSummaryList: React.FC<AiSummaryListProps> = ({
     </ul>
   </section>
 );
-
-// ── Internal helpers ───────────────────────────────────────────────
-
-// Local re-export of parseAiFeedback so we don't need to import the service
-// directly in two places — keeps the panel self-contained for the JSX.
-function seminarServiceLikeParse(value: string): SeminarFeedbackAiContent | null {
-  try {
-    const parsed = JSON.parse(value) as Partial<SeminarFeedbackAiContent>;
-    if (!parsed || typeof parsed !== 'object') return null;
-    if (typeof parsed.overallAssessment !== 'string') return null;
-    return {
-      overallAssessment: parsed.overallAssessment,
-      commonStrengths: Array.isArray(parsed.commonStrengths)
-        ? (parsed.commonStrengths.filter((x) => typeof x === 'string') as string[])
-        : [],
-      areasForImprovement: Array.isArray(parsed.areasForImprovement)
-        ? (parsed.areasForImprovement.filter((x) => typeof x === 'string') as string[])
-        : [],
-      commonSuggestions: Array.isArray(parsed.commonSuggestions)
-        ? (parsed.commonSuggestions.filter((x) => typeof x === 'string') as string[])
-        : [],
-      conflictingFeedback: Array.isArray(parsed.conflictingFeedback)
-        ? (parsed.conflictingFeedback.filter((x) => typeof x === 'string') as string[])
-        : [],
-      recommendedActions: Array.isArray(parsed.recommendedActions)
-        ? (parsed.recommendedActions.filter((x) => typeof x === 'string') as string[])
-        : [],
-    };
-  } catch {
-    return null;
-  }
-}
 
 export default SeminarFeedbackPanel;

@@ -217,6 +217,14 @@
   --z-index-popover: 600;
   --z-index-tooltip: 700;
 
+  /* ── Overlay & Dialog ───────────────────────────────────── */
+  /* Centralises the hard-coded rgba values that previously appeared in
+     ConfirmModal, ReviewerPolicyModal, and the reviewer page's
+     submit-confirm dialog. Both light and dark themes are covered so
+     the dialog scrim reads correctly regardless of which theme is active. */
+  --overlay-scrim: rgba(15, 23, 42, 0.45);
+  --shadow-overlay: 0 12px 32px rgba(15, 23, 42, 0.18);
+
   /* ── Section Marker Style ───────────────────────────────── */
   --section-marker: 0.65rem;
   --section-marker-color: var(--ars-ink-muted);
@@ -596,6 +604,10 @@
   --ars-error-bg: rgba(239, 68, 68, 0.18);
   --ars-info: #60a5fa;
   --ars-info-bg: rgba(59, 130, 246, 0.18);
+
+  /* ── Overlay & Dialog (dark mode) ───────────────────────── */
+  --overlay-scrim: rgba(0, 0, 0, 0.65);
+  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme='paper-day'] {

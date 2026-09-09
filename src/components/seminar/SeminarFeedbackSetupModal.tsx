@@ -29,6 +29,7 @@ import {
   parseSeminarQuestions,
   getCachedSeminarQuestions,
   setCachedSeminarQuestions,
+  generateStableQuestionId,
 } from '../../types/seminarFeedback';
 import { DynamicQuestionRenderer } from './DynamicQuestionRenderer';
 import { QuestionEditorCard } from './QuestionEditorCard';
@@ -93,11 +94,13 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
         setCustomQuestions(initial);
       }
     } else {
-      // Default to custom form riêng cho seminar
+      // Default to custom form riêng cho seminar. Use a stable UUID
+      // (ticket §15) so participant answers map back to the same question
+      // when the host reorders or duplicates.
       setFormMode('custom');
       setCustomQuestions([
         {
-          id: `q_${Date.now()}_1`,
+          id: generateStableQuestionId(),
           orderIndex: 0,
           type: 'rating',
           questionText: copy(
@@ -108,7 +111,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
           maxStar: 5,
         },
         {
-          id: `q_${Date.now()}_2`,
+          id: generateStableQuestionId(),
           orderIndex: 1,
           type: 'text',
           questionText: copy(
@@ -131,7 +134,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
   // Question editing handlers
   const handleAddQuestion = () => {
     const newQ: FeedbackQuestion = {
-      id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: generateStableQuestionId(),
       orderIndex: customQuestions.length,
       type: 'rating',
       questionText: '',
@@ -228,10 +231,12 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
       formMode === 'general' ? [...DEFAULT_GENERAL_QUESTIONS] : customQuestions;
 
     try {
-      // 1. Cache to local storage immediately
+      // 1. Cache locally so the form remains usable even during transient
+      //    network failures. The canonical request body is the array of
+      //    questions (ticket §14) and is sent via PUT in the service.
       setCachedSeminarQuestions(seminarId, questionsToSave);
 
-      // 2. Call service to persist to BE (Seminar.feedback NVARCHAR(MAX))
+      // 2. Persist to the BE (canonical PUT /api/Seminar/{id}/feedback-form).
       await seminarService.saveFeedbackQuestions(seminarId, questionsToSave);
 
       setGeneralStatusMsg({
@@ -244,27 +249,30 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
 
       onSuccess?.(questionsToSave);
 
-      // Close modal after brief success confirmation
+      // Close modal after brief success confirmation.
       setTimeout(() => {
         onClose();
       }, 1200);
     } catch (err: unknown) {
-      // If BE endpoint returns 404 or 400 because BE update column isn't deployed yet,
-      // still keep the local persistence and notify user
-      setCachedSeminarQuestions(seminarId, questionsToSave);
-      onSuccess?.(questionsToSave);
-
+      // Surface the BE error so the host knows the form did not persist.
+      // Local cache is retained as a safety net but the canonical record
+      // lives on the server (ticket §14).
+      const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
+      const status = resp?.status;
+      const serverMsg =
+        resp?.data?.message || resp?.data?.title ||
+        (err instanceof Error ? err.message : '');
+      const friendly = status === 404 || status === 405
+        ? copy(
+          'The backend does not yet expose PUT /api/Seminar/{id}/feedback-form. Please ask the BE team to publish it; locally cached questions will be replayed next time the form loads.',
+          'Backend chưa publish PUT /api/Seminar/{id}/feedback-form. Vui lòng báo BE team; bộ câu hỏi đã được cache cục bộ để khôi phục khi form load lại.'
+        )
+        : serverMsg ||
+          copy('Failed to save the feedback form.', 'Không thể lưu biểu mẫu đánh giá.');
       setGeneralStatusMsg({
-        type: 'success',
-        text: copy(
-          'Feedback form configured and stored locally for this seminar.',
-          'Biểu mẫu đánh giá đã được lưu và sẵn sàng cho buổi hội thảo này.'
-        ),
+        type: 'error',
+        text: friendly,
       });
-
-      setTimeout(() => {
-        onClose();
-      }, 1400);
     } finally {
       setIsSaving(false);
     }

@@ -39,6 +39,9 @@ import {
   type SeminarCard,
 } from '../../services/seminar.service';
 import {
+  SEMINAR_PLACEHOLDER_DURATION_MS,
+} from '../../utils/constants';
+import {
   useSeminars,
   useCreateSeminar,
   useSendReminder,
@@ -493,9 +496,16 @@ export const SeminarWorkspace = () => {
       return;
     }
     const startTime = toApiIsoString(dateTime) || new Date(dateTime).toISOString();
-    const endTime =
-      toApiIsoString(new Date(new Date(dateTime).getTime() + 60 * 60 * 1000)) ||
-      new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
+    // BE gap (see SEMINAR_PLACEHOLDER_DURATION_MS in utils/constants.ts):
+    // the current BE contract requires `endTime` on POST /api/Seminar, but
+    // there is no "Mark as Completed" endpoint yet. We send a clearly-
+    // labelled 1-hour placeholder so the BE accepts the create call. The
+    // helper copy under the Date & Time input tells the lecturer this is
+    // a stand-in duration. When the BE ships nullable endTime + a manual
+    // complete endpoint, drop this block and call that endpoint instead.
+    const endTimeDate = new Date(startTime);
+    endTimeDate.setTime(endTimeDate.getTime() + SEMINAR_PLACEHOLDER_DURATION_MS);
+    const endTime = endTimeDate.toISOString();
     const fullContent = seminarName.trim()
       ? `[${seminarName.trim()}] ${seminarDetails.trim()}`
       : seminarDetails.trim();
@@ -547,8 +557,8 @@ export const SeminarWorkspace = () => {
         'Failed to create seminar.';
       if (status === 403) {
         msg = copy(
-          'Your account (Researcher) is not authorized by the Backend to create Seminars (403 Forbidden). Backend endpoint POST /api/Seminar currently requires Lecturer ([Authorize(Roles = "Lecturer")]). Please ask Backend to add Researcher ([Authorize(Roles = "Lecturer,Researcher")]) or sign in with a Lecturer account.',
-          'Tài khoản của bạn (Researcher) chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Endpoint POST /api/Seminar hiện chỉ cấp quyền cho Giảng viên ([Authorize(Roles = "Lecturer")]). Vui lòng nhờ Backend mở thêm quyền cho Researcher ([Authorize(Roles = "Lecturer,Researcher")]) hoặc đăng nhập bằng tài khoản Giảng viên.'
+          'Your account is not authorized by the Backend to create Seminars (403 Forbidden). Please sign in with a Lecturer or Researcher account, or contact the BE team to widen authorization.',
+          'Tài khoản của bạn chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Vui lòng đăng nhập bằng tài khoản Giảng viên hoặc Nghiên cứu sinh, hoặc liên hệ BE team.'
         );
       }
       setCreateModalError(msg);
@@ -1142,6 +1152,12 @@ export const SeminarWorkspace = () => {
                   onChange={(e) => setDateTime(e.target.value)}
                   required
                 />
+                <span className={styles.helperText}>
+                  {copy(
+                    'End time is currently a 1-hour placeholder. The seminar will not auto-end — the BE team is shipping a manual "Mark as Completed" action.',
+                    'Thời điểm kết thúc hiện đang là giá trị tạm 1 giờ. Hội thảo sẽ không tự kết thúc — BE đang phát triển nút "Đánh dấu đã hoàn thành" cho giảng viên.'
+                  )}
+                </span>
               </div>
 
               <div className={styles.formGroup}>

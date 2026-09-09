@@ -1,13 +1,24 @@
 /**
- * Structured participant feedback form (replaces the legacy star rating +
- * free-text `participantEvaluation` UI per tickets/frontend/ticket.md).
+ * SeminarFeedbackModal — participant dynamic feedback form.
  *
- * - At least ONE of (overallComment / strengths / improvements / suggestions)
- *   must be non-empty for the submit button to enable.
- * - The form prefills from existing feedback when editing.
- * - Owners (Lecturer/Researcher who organized the seminar) MUST NOT see this
- *   modal — the workspace routes them to the owner feedback panel instead.
- * - No `rating` field. No `averageScore`. No star widget.
+ * Replaces the legacy "structured" 4-section form
+ * (overallComment / strengths / improvements / suggestions) with the
+ * canonical dynamic feedback surface per ticket §13-17.
+ *
+ *   • Mounts only when `isOpen` is true.
+ *   • Fetches the host-configured form via
+ *     `seminarService.getFeedbackQuestions(seminarId)` (ticket §13.1).
+ *   • Submits / edits answers through
+ *     `seminarService.submitDynamicFeedback(seminarId, answers)`
+ *     which calls `POST /api/Seminar/{id}/feedback` with the canonical
+ *     `{ answers: [...] }` body (ticket §16).
+ *   • Prefills on edit using the participant's stored
+ *     `FeedbackJson` (ticket §20) when supplied via
+ *     `existingDynamicAnswers`.
+ *   • Hosts (Lecturer / Researcher) call this with `previewMode` to see
+ *     exactly what participants will receive.
+ *   • Required validation: rating must be ≥ 1, text answers must be
+ *     non-blank — matches BE behavior (ticket §17).
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,19 +28,15 @@ import {
   Loader,
   CheckCircle2,
   AlertCircle,
-  Plus,
   Sparkles,
-  MessageSquareText,
-  ThumbsUp,
-  Wrench,
-  Lightbulb,
 } from 'lucide-react';
-import {
-  seminarService,
-  type SeminarFeedbackContent,
-} from '../../services/seminar.service';
+import { seminarService } from '../../services/seminar.service';
 import { DynamicQuestionRenderer } from './DynamicQuestionRenderer';
-import type { FeedbackQuestion, FeedbackAnswer } from '../../types/seminarFeedback';
+import {
+  parseParticipantAnswers,
+  type FeedbackAnswer,
+  type FeedbackQuestion,
+} from '../../types/seminarFeedback';
 import styles from './SeminarFeedbackModal.module.css';
 
 interface SeminarFeedbackModalProps {
@@ -37,31 +44,24 @@ interface SeminarFeedbackModalProps {
   onClose: () => void;
   seminarId: number;
   seminarTitle?: string;
-  /** Existing feedback payload from BE — when present, the form runs in
-   *  "edit" mode and prefills every field. */
-  existingFeedback?: SeminarFeedbackContent | null;
-  /** When true, the form treats existing feedback as having been submitted
-   *  at least once. Toggle: "Submit Feedback" → "Edit Feedback". */
+  /**
+   * Raw FeedbackJson stored on the seminar participant row (ticket §20).
+   * When present, the modal prefills the form for "edit" mode. Pass the
+   * canonical string returned by `GET /api/Seminar/{id}` →
+   * `participants[i].feedbackJson`.
+   */
+  existingDynamicAnswersRaw?: string | null;
+  /**
+   * Sets the toggle: "Submit Feedback" → "Edit Feedback" when true.
+   * Driven by `participant.feedbackSubmittedAt != null` (ticket §19).
+   */
   hasSubmittedBefore?: boolean;
-  /** Host preview mode — renders the same form layout but disables inputs
-   *  and replaces the submit button with a "Close Preview" action so the
-   *  organizer can see exactly what participants receive. */
+  /** Host preview mode — disables inputs and replaces the submit button
+   *  with a "Close Preview" action so the organizer can see exactly what
+   *  participants receive. */
   previewMode?: boolean;
   onSuccess?: () => void;
 }
-
-interface BulletState {
-  id: string;
-  text: string;
-}
-
-const makeBulletId = (): string =>
-  `b_${Math.random().toString(36).slice(2, 10)}`;
-
-const bulletsFromArray = (items: string[] | undefined): BulletState[] =>
-  (items ?? [])
-    .filter((s) => typeof s === 'string' && s.trim().length > 0)
-    .map((text) => ({ id: makeBulletId(), text }));
 
 const useDialogFocus = (
   isOpen: boolean,
@@ -120,19 +120,36 @@ const useDialogFocus = (
   return dialogRef;
 };
 
-const countNonEmptyChars = (value: string): number => value.trim().length;
-
-const isFeedbackNonEmpty = (
-  overallComment: string,
-  strengths: BulletState[],
-  improvements: BulletState[],
-  suggestions: BulletState[],
-): boolean => {
-  if (countNonEmptyChars(overallComment) > 0) return true;
-  if (strengths.some((b) => countNonEmptyChars(b.text) > 0)) return true;
-  if (improvements.some((b) => countNonEmptyChars(b.text) > 0)) return true;
-  if (suggestions.some((b) => countNonEmptyChars(b.text) > 0)) return true;
-  return false;
+/**
+ * Build an initial `answers` map from the canonical list of
+ * `FeedbackQuestion`s. Used on first open.
+ */
+const buildInitialAnswers = (
+  questions: FeedbackQuestion[],
+  prefilled: FeedbackAnswer[] = [],
+): Record<string, FeedbackAnswer> => {
+  const initial: Record<string, FeedbackAnswer> = {};
+  for (const q of questions) {
+    const existing = prefilled.find((a) => a.questionId === q.id);
+    if (existing) {
+      initial[q.id] = {
+        questionId: q.id,
+        orderIndex: existing.orderIndex ?? q.orderIndex,
+        type: existing.type ?? q.type,
+        rating: existing.rating,
+        text: existing.text,
+      };
+    } else {
+      initial[q.id] = {
+        questionId: q.id,
+        orderIndex: q.orderIndex,
+        type: q.type,
+        rating: q.type === 'rating' ? 0 : undefined,
+        text: q.type === 'text' ? '' : undefined,
+      };
+    }
+  }
+  return initial;
 };
 
 export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
@@ -140,208 +157,138 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
   onClose,
   seminarId,
   seminarTitle,
-  existingFeedback,
+  existingDynamicAnswersRaw,
   hasSubmittedBefore = false,
   previewMode = false,
   onSuccess,
 }) => {
-  const [overallComment, setOverallComment] = useState('');
-  const [strengths, setStrengths] = useState<BulletState[]>([]);
-  const [improvements, setImprovements] = useState<BulletState[]>([]);
-  const [suggestions, setSuggestions] = useState<BulletState[]>([]);
+  const [questions, setQuestions] = useState<FeedbackQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, FeedbackAnswer>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [dynamicQuestions, setDynamicQuestions] = useState<FeedbackQuestion[]>([]);
-  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, FeedbackAnswer>>({});
-  const [dynamicErrors, setDynamicErrors] = useState<Record<string, string>>({});
-  const [isDynamicMode, setIsDynamicMode] = useState(false);
   const dialogRef = useDialogFocus(isOpen, isSubmitting, onClose);
 
-  // Prefill when opening or when the existing payload changes.
+  // Prefill / fetch questions whenever the modal opens.
   useEffect(() => {
     if (!isOpen) return;
-    setOverallComment(existingFeedback?.overallComment ?? '');
-    setStrengths(bulletsFromArray(existingFeedback?.strengths));
-    setImprovements(bulletsFromArray(existingFeedback?.improvements));
-    setSuggestions(bulletsFromArray(existingFeedback?.suggestions));
     setErrorMsg(null);
     setIsSuccess(false);
-    setDynamicErrors({});
+    setErrors({});
+    setIsLoading(true);
+
+    const prefilled = parseParticipantAnswers(existingDynamicAnswersRaw);
 
     let isMounted = true;
     seminarService
       .getFeedbackQuestions(seminarId)
-      .then((questions) => {
+      .then((loaded) => {
         if (!isMounted) return;
-        if (questions && questions.length > 0) {
-          setDynamicQuestions(questions);
-          setIsDynamicMode(true);
-          const initAnswers: Record<string, FeedbackAnswer> = {};
-          questions.forEach((q) => {
-            initAnswers[q.id] = {
-              questionId: q.id,
-              orderIndex: q.orderIndex,
-              type: q.type,
-              rating: q.type === 'rating' ? 0 : undefined,
-              text: q.type === 'text' ? '' : undefined,
-            };
-          });
-          setDynamicAnswers(initAnswers);
-        } else {
-          setIsDynamicMode(false);
-        }
+        setQuestions(loaded);
+        setAnswers(buildInitialAnswers(loaded, prefilled));
       })
       .catch(() => {
-        if (isMounted) setIsDynamicMode(false);
+        if (!isMounted) return;
+        setQuestions([]);
+        setAnswers({});
+        setErrorMsg(
+          'Could not load the feedback form. Please try again or contact the host.',
+        );
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen, existingFeedback, seminarId]);
+  }, [isOpen, existingDynamicAnswersRaw, seminarId]);
 
-  const isValid = useMemo(
-    () =>
-      isFeedbackNonEmpty(overallComment, strengths, improvements, suggestions),
-    [overallComment, strengths, improvements, suggestions],
-  );
+  const answeredCount = useMemo(() => {
+    return Object.values(answers).filter((a) => {
+      if (a.type === 'rating') return typeof a.rating === 'number' && a.rating > 0;
+      if (a.type === 'text') return typeof a.text === 'string' && a.text.trim().length > 0;
+      return false;
+    }).length;
+  }, [answers]);
 
-  const isEditing = hasSubmittedBefore || Boolean(existingFeedback);
+  const isEditing = hasSubmittedBefore || Boolean(existingDynamicAnswersRaw);
 
   if (!isOpen) return null;
-
-  const addBullet = (
-    setter: React.Dispatch<React.SetStateAction<BulletState[]>>,
-  ) => {
-    setter((prev) => [...prev, { id: makeBulletId(), text: '' }]);
-  };
-
-  const updateBullet = (
-    setter: React.Dispatch<React.SetStateAction<BulletState[]>>,
-    id: string,
-    text: string,
-  ) => {
-    setter((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, text } : b)),
-    );
-  };
-
-  const removeBullet = (
-    setter: React.Dispatch<React.SetStateAction<BulletState[]>>,
-    id: string,
-  ) => {
-    setter((prev) => prev.filter((b) => b.id !== id));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isDynamicMode) {
-      const errs: Record<string, string> = {};
-      dynamicQuestions.forEach((q) => {
-        const ans = dynamicAnswers[q.id];
-        if (q.isRequired) {
-          if (q.type === 'rating' && (!ans?.rating || ans.rating <= 0)) {
-            errs[q.id] = 'Vui lòng chọn số sao đánh giá / Please select a star rating.';
-          } else if (q.type === 'text' && (!ans?.text || !ans.text.trim())) {
-            errs[q.id] = 'Vui lòng trả lời câu hỏi này / Please provide your answer.';
-          }
+    // Validate required questions per ticket §17.
+    const localErrors: Record<string, string> = {};
+    for (const q of questions) {
+      const ans = answers[q.id];
+      if (!ans) continue;
+      if (q.isRequired) {
+        if (q.type === 'rating' && (!ans.rating || ans.rating <= 0)) {
+          localErrors[q.id] =
+            'Vui lòng chọn số sao đánh giá / Please select a star rating.';
+        } else if (
+          q.type === 'text' &&
+          (!ans.text || !ans.text.trim())
+        ) {
+          localErrors[q.id] =
+            'Vui lòng trả lời câu hỏi này / Please provide your answer.';
         }
-      });
-
-      if (Object.keys(errs).length > 0) {
-        setDynamicErrors(errs);
-        setErrorMsg('Vui lòng hoàn thành các câu hỏi bắt buộc / Please answer all required questions.');
-        return;
       }
-
-      setDynamicErrors({});
-      setIsSubmitting(true);
-      setErrorMsg(null);
-
-      try {
-        await seminarService.submitDynamicFeedback(seminarId, Object.values(dynamicAnswers));
-        setIsSuccess(true);
-        onSuccess?.();
-      } catch (err: unknown) {
-        const responseData = (
-          err as {
-            response?: { data?: { message?: string } | string; status?: number };
-          }
-        )?.response?.data;
-        const rawMsg =
-          typeof responseData === 'string'
-            ? responseData
-            : responseData?.message ??
-              (err instanceof Error ? err.message : '') ??
-              '';
-        setErrorMsg(rawMsg || 'Could not submit feedback. Please try again.');
-      } finally {
-        setIsSubmitting(false);
-      }
-      return;
     }
-
-    if (!isValid) {
+    if (Object.keys(localErrors).length > 0) {
+      setErrors(localErrors);
       setErrorMsg(
-        'Please share at least one item across any of the four sections.',
+        'Vui lòng hoàn thành các câu hỏi bắt buộc / Please answer all required questions.',
       );
       return;
     }
+
+    setErrors({});
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    const clean = (items: BulletState[]): string[] =>
-      items
-        .map((b) => b.text.trim())
-        .filter((s) => s.length > 0);
-
-    const payload: SeminarFeedbackContent = {
-      overallComment: overallComment.trim(),
-      strengths: clean(strengths),
-      improvements: clean(improvements),
-      suggestions: clean(suggestions),
-    };
-
     try {
-      await seminarService.submitFeedback(seminarId, {
-        feedback: payload,
-      });
+      // Canonical payload per ticket §16: `{ answers: [{ questionId, type, rating? | text? }] }`
+      const payload = Object.values(answers)
+        .map((a) => ({
+          questionId: a.questionId,
+          orderIndex: a.orderIndex,
+          type: a.type,
+          rating: a.type === 'rating' ? a.rating : undefined,
+          text: a.type === 'text' ? (a.text ?? '').trim() : undefined,
+        }))
+        .filter((a) => {
+          if (a.type === 'rating') return typeof a.rating === 'number' && a.rating > 0;
+          if (a.type === 'text') return typeof a.text === 'string' && a.text.length > 0;
+          return false;
+        });
+
+      await seminarService.submitDynamicFeedback(seminarId, payload);
       setIsSuccess(true);
       onSuccess?.();
     } catch (err: unknown) {
-      const responseData = (
-        err as {
-          response?: { data?: { message?: string } | string; status?: number };
-        }
-      )?.response?.data;
-      const status = (
-        err as { response?: { status?: number } }
-      )?.response?.status;
+      const ax = err as {
+        response?: { status?: number; data?: { message?: string } | string };
+      };
+      const responseData = ax?.response?.data;
+      const status = ax?.response?.status;
       const rawMsg =
         typeof responseData === 'string'
           ? responseData
           : responseData?.message ??
             (err instanceof Error ? err.message : '') ??
             '';
-
-      let friendlyMsg = 'Could not submit feedback. Please try again.';
-      if (status === 403) {
-        friendlyMsg =
-          rawMsg ||
-          'You are not authorized to submit feedback for this seminar.';
-      } else if (
-        rawMsg.toLowerCase().includes('not registered') ||
-        rawMsg.toLowerCase().includes('not invited')
-      ) {
-        friendlyMsg =
-          'Your account is not on the invitee list for this seminar.';
-      } else if (rawMsg) {
-        friendlyMsg = rawMsg;
-      }
-
-      setErrorMsg(friendlyMsg);
+      const friendly =
+        (status === 403
+          ? rawMsg ||
+            'You are not authorized to submit feedback for this seminar.'
+          : rawMsg ||
+            'Could not submit feedback. Please try again.') as string;
+      setErrorMsg(friendly);
     } finally {
       setIsSubmitting(false);
     }
@@ -408,7 +355,6 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
                 </span>
               </div>
             )}
-
             {errorMsg && (
               <div className={styles.errorBanner} role="alert">
                 <AlertCircle size={16} />
@@ -416,112 +362,56 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               </div>
             )}
 
-            {isDynamicMode ? (
-              <div style={{ marginTop: 'var(--space-2)' }}>
-                <DynamicQuestionRenderer
-                  questions={dynamicQuestions}
-                  answers={dynamicAnswers}
-                  onAnswerChange={(qId, ans) => {
-                    setDynamicAnswers((prev) => ({
-                      ...prev,
-                      [qId]: ans,
-                    }));
-                    if (dynamicErrors[qId]) {
-                      setDynamicErrors((prev) => {
-                        const next = { ...prev };
-                        delete next[qId];
-                        return next;
-                      });
-                    }
-                  }}
-                  errors={dynamicErrors}
-                  previewMode={previewMode}
-                  disabled={previewMode || isSubmitting}
-                />
+            {isLoading ? (
+              <div className={styles.feedbackLoading}>
+                <Loader size={16} className={styles.spinningIcon} aria-hidden />
+                Loading the feedback form…
+              </div>
+            ) : questions.length === 0 ? (
+              <div className={styles.feedbackEmpty}>
+                <Sparkles size={20} aria-hidden />
+                <div>
+                  <strong>
+                    The host has not configured a feedback form yet.
+                  </strong>
+                  <span>
+                    You'll be able to share your feedback once the seminar
+                    organizer publishes the form for this session.
+                  </span>
+                </div>
               </div>
             ) : (
-              <>
-                <p className={styles.introHint}>
-                  Fill any combination of the four sections below — at least one
-                  needs a response before you can submit.
-                </p>
-
-                {/* Overall Comment */}
-                <section className={styles.fieldSection}>
-                  <header className={styles.fieldHeader}>
-                    <span className={styles.fieldIcon}>
-                      <MessageSquareText size={15} aria-hidden />
-                    </span>
-                    <label htmlFor="feedback-overall" className={styles.fieldLabel}>
-                      Overall Comment
-                    </label>
-                    <span className={styles.fieldOptional}>Optional</span>
-                  </header>
-                  <p className={styles.fieldHint}>
-                    A short paragraph on what you took away from the seminar.
-                  </p>
-                  <textarea
-                    id="feedback-overall"
-                    className={styles.textarea}
-                    value={overallComment}
-                    onChange={(e) => setOverallComment(e.target.value)}
-                    placeholder="The session was clear and well-paced; I left with a working mental model of the topic."
-                    disabled={isSubmitting || isSuccess || previewMode}
-                    rows={4}
-                  />
-                </section>
-
-                {/* Strengths */}
-                <BulletListField
-                  icon={<ThumbsUp size={15} aria-hidden />}
-                  label="Strengths"
-                  helperText="What worked well — content, format, delivery, examples."
-                  bullets={strengths}
-                  placeholder="Concrete examples grounded in the talk."
-                  disabled={isSubmitting || isSuccess || previewMode}
-                  variant="strength"
-                  onAdd={() => addBullet(setStrengths)}
-                  onChange={(id, text) => updateBullet(setStrengths, id, text)}
-                  onRemove={(id) => removeBullet(setStrengths, id)}
-                />
-
-                {/* Improvements */}
-                <BulletListField
-                  icon={<Wrench size={15} aria-hidden />}
-                  label="Areas for Improvement"
-                  helperText="Constructive critique — pacing, depth, Q&A, slides, anything that did not land."
-                  bullets={improvements}
-                  placeholder="Pacing in the second half felt rushed."
-                  disabled={isSubmitting || isSuccess || previewMode}
-                  variant="improvement"
-                  onAdd={() => addBullet(setImprovements)}
-                  onChange={(id, text) => updateBullet(setImprovements, id, text)}
-                  onRemove={(id) => removeBullet(setImprovements, id)}
-                />
-
-                {/* Suggestions */}
-                <BulletListField
-                  icon={<Lightbulb size={15} aria-hidden />}
-                  label="Suggestions"
-                  helperText="Forward-looking ideas — follow-up topics, formats, resources."
-                  bullets={suggestions}
-                  placeholder="Send the slide deck + reading list after the talk."
-                  disabled={isSubmitting || isSuccess || previewMode}
-                  variant="suggestion"
-                  onAdd={() => addBullet(setSuggestions)}
-                  onChange={(id, text) => updateBullet(setSuggestions, id, text)}
-                  onRemove={(id) => removeBullet(setSuggestions, id)}
-                />
-              </>
+              <DynamicQuestionRenderer
+                questions={questions}
+                answers={answers}
+                onAnswerChange={(qId, ans) => {
+                  setAnswers((prev) => ({
+                    ...prev,
+                    [qId]: ans,
+                  }));
+                  if (errors[qId]) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next[qId];
+                      return next;
+                    });
+                  }
+                }}
+                errors={errors}
+                previewMode={previewMode}
+                disabled={previewMode || isSubmitting}
+              />
             )}
 
-            <div className={styles.guidanceNote}>
-              <Sparkles size={14} aria-hidden />
-              <span>
-                Your response is private to the seminar organizer — other
-                participants will never see it.
-              </span>
-            </div>
+            {!isLoading && questions.length > 0 && (
+              <div className={styles.guidanceNote}>
+                <Sparkles size={14} aria-hidden />
+                <span>
+                  {answeredCount} / {questions.length} answered — your
+                  responses are private to the seminar organizer.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -538,7 +428,12 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               <button
                 type="submit"
                 className={styles.submitBtn}
-                disabled={isSubmitting || isSuccess || (isDynamicMode ? false : !isValid)}
+                disabled={
+                  isSubmitting ||
+                  isSuccess ||
+                  questions.length === 0 ||
+                  isLoading
+                }
               >
                 {isSubmitting ? (
                   <>
@@ -561,86 +456,6 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
         </form>
       </div>
     </div>
-  );
-};
-
-interface BulletListFieldProps {
-  icon: React.ReactNode;
-  label: string;
-  helperText: string;
-  bullets: BulletState[];
-  placeholder: string;
-  disabled: boolean;
-  variant: 'strength' | 'improvement' | 'suggestion';
-  onAdd: () => void;
-  onChange: (id: string, text: string) => void;
-  onRemove: (id: string) => void;
-}
-
-const BulletListField: React.FC<BulletListFieldProps> = ({
-  icon,
-  label,
-  helperText,
-  bullets,
-  placeholder,
-  disabled,
-  variant,
-  onAdd,
-  onChange,
-  onRemove,
-}) => {
-  const variantClass =
-    variant === 'strength'
-      ? styles.fieldVariantStrength
-      : variant === 'improvement'
-        ? styles.fieldVariantImprovement
-        : styles.fieldVariantSuggestion;
-  return (
-    <section
-      className={`${styles.fieldSection} ${styles.fieldSectionBullets} ${variantClass}`}
-    >
-      <header className={styles.fieldHeader}>
-        <span className={styles.fieldIcon}>{icon}</span>
-        <span className={styles.fieldLabel}>{label}</span>
-        <span className={styles.fieldOptional}>Optional</span>
-      </header>
-      <p className={styles.fieldHint}>{helperText}</p>
-      <ul className={styles.bulletList}>
-        {bullets.map((b) => (
-          <li key={b.id} className={styles.bulletRow}>
-            <span className={styles.bulletDot} aria-hidden>
-              •
-            </span>
-            <input
-              type="text"
-              className={styles.bulletInput}
-              value={b.text}
-              onChange={(e) => onChange(b.id, e.target.value)}
-              placeholder={placeholder}
-              disabled={disabled}
-            />
-            <button
-              type="button"
-              className={styles.bulletRemoveBtn}
-              onClick={() => onRemove(b.id)}
-              disabled={disabled}
-              aria-label="Remove this item"
-            >
-              <X size={13} aria-hidden />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        className={styles.addBulletBtn}
-        onClick={onAdd}
-        disabled={disabled}
-      >
-        <Plus size={13} aria-hidden />
-        Add another {label.toLowerCase().slice(0, -1) || 'item'}
-      </button>
-    </section>
   );
 };
 

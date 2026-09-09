@@ -19,6 +19,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.headerStatusActive {
+  background: color-mix(in srgb, var(--ars-reviewer) 15%, var(--surface-raised));
+  color: var(--ars-reviewer);
+  border-color: color-mix(in srgb, var(--ars-reviewer) 40%, transparent);
 }
 
 /* ── Tab Filter Bar ────────────────────────────────────── */
@@ -113,7 +120,9 @@
 .titleMeta { display: block; margin-top: var(--space-1); }
 .mono { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.reviewGate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) var(--space-5); background: var(--status-info-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+.reviewGate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) var(--space-5); background: var(--status-info-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transition: background-color var(--transition-fast), border-color var(--transition-fast); }
+.reviewGateAccepted { background: var(--status-success-surface); border-color: color-mix(in srgb, var(--status-success-text) 40%, transparent); }
+.reviewGateAccepted .gateIcon { background: var(--surface-raised); border-color: color-mix(in srgb, var(--status-success-text) 30%, transparent); color: var(--status-success-text); }
 .gateIcon { display: grid; place-items: center; width: 42px; height: 42px; color: var(--status-info-text); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
 .assignmentAbstract { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--ink-secondary); font-size: var(--text-sm); line-height: 1.5; }
 .reviewGate h2 { margin: 0 0 var(--space-1); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }
@@ -417,6 +426,66 @@
 .pdfFrame iframe { width: 100%; height: min(68vh, 680px); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-raised); }
 .pdfUnavailable { margin: 0; padding: var(--space-3) var(--space-4); background: var(--status-warning-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); color: var(--status-warning-text); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 
+/* ── ManuscriptViewer fallback (loading + error states) ────── */
+.manuscriptFallback {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  min-height: 240px;
+  place-content: center;
+  color: var(--ink-secondary);
+}
+
+.manuscriptFallback > svg {
+  justify-self: center;
+  color: var(--ink-muted);
+}
+
+.manuscriptFallback p {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+}
+
+.manuscriptFallbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.manuscriptDownloadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  min-height: var(--control-height-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent-primary);
+  background: var(--surface-raised);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.manuscriptDownloadLink:hover {
+  background: var(--surface-selected);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.manuscriptDownloadLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .formCard { display: grid; gap: var(--space-5); padding: var(--space-6); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
 .formSection { display: grid; gap: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
 .formSection:first-of-type { padding-top: 0; border-top: 0; }
@@ -455,7 +524,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--overlay-scrim);
   z-index: 50;
   padding: var(--space-4);
 }
@@ -468,7 +537,7 @@
   border-radius: var(--radius-lg);
   max-width: 480px;
   width: 100%;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--shadow-overlay);
 }
 .confirmCard h2 {
   margin: 0;
@@ -491,8 +560,8 @@
 .confirmActions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; }
 
 .formHeader { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
-.formHeader h2, .specializedSection h2 { margin: 0 0 var(--space-2); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-xl); }
-.formHeader p, .specializedSection > div > p { margin: 0; max-width: 70ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+.formHeader h2 { margin: 0 0 var(--space-2); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-xl); }
+.formHeader p { margin: 0; max-width: 70ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 .requiredLegend { flex: 0 0 180px; padding: var(--space-2) var(--space-3); background: var(--surface-paper); color: var(--ink-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
 .criteriaList { display: grid; gap: var(--space-3); }
 .criterion { display: grid; gap: var(--space-3); margin: 0; padding: var(--space-4); background: var(--surface-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
@@ -505,16 +574,275 @@
 .criterionInputs textarea, .reviewField textarea { min-height: 86px; padding: var(--space-3); resize: vertical; line-height: var(--line-height-normal); }
 .criterionInputs textarea::placeholder, .reviewField textarea::placeholder { color: var(--ink-muted); }
 .criterionInputs select:focus-visible, .criterionInputs textarea:focus-visible, .reviewField select:focus-visible, .reviewField textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-color: var(--focus-ring); }
-.specializedSection { display: grid; gap: var(--space-4); padding: var(--space-5); background: var(--surface-paper); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
-.specializedList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
-.specializedCard { display: grid; align-content: start; gap: var(--space-2); padding: var(--space-4); background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
-.specializedCard h3 { margin: 0; color: var(--ink-primary); font-size: var(--font-size-sm); }
-.specializedCard p { margin: 0; color: var(--ink-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
-.specializedCard small { color: var(--ink-muted); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+
+/* ── Score input enhancements — chip + verbal anchor ─────────── */
+.criterionLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.criterionScoreRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.criterionScoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ars-reviewer) 15%, var(--surface-raised));
+  color: var(--ars-reviewer);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  border: 1px solid color-mix(in srgb, var(--ars-reviewer) 30%, transparent);
+  white-space: nowrap;
+  min-width: 44px;
+}
+
+.criterionAnchorRow {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  font-family: var(--font-family-mono);
+}
+
+/* ── Discipline-specific guide (above form, collapsible) ─────── */
+.disciplineGuide {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.disciplineGuideHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.disciplineGuideHeader > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.disciplineGuideHeader h2 {
+  margin: 0;
+  color: var(--ink-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+}
+
+.disciplineGuideHeader > div > p {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.disciplineGuideCaption {
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.disciplineList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.disciplineCard {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.disciplineCardOpen {
+  border-color: color-mix(in srgb, var(--ars-reviewer) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ars-reviewer) 20%, transparent);
+}
+
+.disciplineCardToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: var(--ink-primary);
+  font-family: var(--font-family-ui);
+  transition: background-color var(--transition-fast);
+}
+
+.disciplineCardToggle:hover {
+  background: var(--surface-sunken);
+}
+
+.disciplineCardToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.disciplineCardToggle > svg {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--ink-muted);
+}
+
+.disciplineCardNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ars-reviewer) 18%, var(--surface-raised));
+  color: var(--ars-reviewer);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  border: 1px solid color-mix(in srgb, var(--ars-reviewer) 35%, transparent);
+  flex-shrink: 0;
+}
+
+.disciplineCardTitle {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  line-height: var(--line-height-tight);
+}
+
+.disciplineCardBody {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.disciplineCardBody > p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+.disciplineCardFooter {
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Sticky evaluation footer with live progress ─────────────── */
+.evaluationStickyBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: color-mix(in srgb, var(--surface-raised) 95%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border-strong);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  z-index: 5;
+}
+
+.evaluationProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.progressText {
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.progressSummary {
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.progressBar {
+  height: 6px;
+  max-width: 280px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--ars-reviewer);
+  border-radius: 999px;
+  transition: width var(--transition-medium);
+}
+
+.submitBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* ── Unsaved row (replaces bare footer note) ─────────────────── */
+.unsavedRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-4);
+}
+
+.unsavedRow > p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
 .finalReviewGrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: var(--space-4); }
 .reviewField > span { color: var(--ink-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); line-height: var(--line-height-normal); }
-.evaluationActions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
-.evaluationActions p, .evaluationHint { margin: 0; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 .respondButtons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .submittedBanner { display: grid; gap: var(--space-3); padding: var(--space-5); background: var(--status-success-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
 .submittedBanner h2 { margin: 0; color: var(--status-success-text); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }
@@ -523,6 +851,68 @@
 .unauthorizedNotice h2 { margin: 0; color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }
 .unauthorizedNotice p { margin: 0; color: var(--ink-secondary); line-height: var(--line-height-normal); }
 
-@media (max-width: 960px) { .detailLayout, .finalReviewGrid { grid-template-columns: 1fr; } .specializedList { grid-template-columns: 1fr; } }
-@media (max-width: 680px) { .toolbar, .reviewGate, .formHeader, .evaluationActions { align-items: stretch; } .reviewGate { grid-template-columns: auto 1fr; } .reviewGate > .button, .reviewGate button { grid-column: 1 / -1; } .formHeader { flex-direction: column; } .requiredLegend { flex-basis: auto; } .criterionInputs { grid-template-columns: 1fr; } .pdfActions { align-items: start; flex-direction: column; } .detailContext, .formCard { padding: var(--space-4); } .pdfFrame iframe { height: 58vh; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto; } }
+@media (max-width: 960px) {
+  .detailLayout,
+  .finalReviewGrid {
+    grid-template-columns: 1fr;
+  }
+  .disciplineList {
+    grid-template-columns: 1fr;
+  }
+  .disciplineGuideHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .disciplineGuideCaption {
+    align-self: flex-start;
+  }
+  .evaluationStickyBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  .progressBar {
+    max-width: 100%;
+  }
+  .submitBar {
+    width: 100%;
+  }
+  .submitBar > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .toolbar,
+  .formHeader {
+    align-items: stretch;
+  }
+  .formHeader {
+    flex-direction: column;
+  }
+  .requiredLegend {
+    flex-basis: auto;
+  }
+  .criterionInputs {
+    grid-template-columns: 1fr;
+  }
+  .pdfActions {
+    align-items: start;
+    flex-direction: column;
+  }
+  .detailContext,
+  .formCard {
+    padding: var(--space-4);
+  }
+  .pdfFrame iframe {
+    height: 58vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+  }
+}

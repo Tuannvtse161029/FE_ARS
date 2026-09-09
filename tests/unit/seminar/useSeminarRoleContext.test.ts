@@ -47,7 +47,7 @@ describe('useSeminarRoleContext', () => {
     expect(result.current.backendAvailability).toBe('full');
   });
 
-  it('returns canModify=false and canView=true for a Researcher', () => {
+  it('returns canModify=true and canView=true for a Researcher (ticket §4 widened ownership)', () => {
     authState.user = {
       id: 7,
       roleId: 1,
@@ -56,9 +56,9 @@ describe('useSeminarRoleContext', () => {
     };
     const { result } = renderHook(() => useSeminarRoleContext());
     expect(result.current.currentRole).toBe('Researcher');
-    expect(result.current.canModify).toBe(false);
+    expect(result.current.canModify).toBe(true);
     expect(result.current.canView).toBe(true);
-    expect(result.current.isReadOnlyForViewer).toBe(true);
+    expect(result.current.isReadOnlyForViewer).toBe(false);
     expect(result.current.backendAvailability).toBe('full');
   });
 

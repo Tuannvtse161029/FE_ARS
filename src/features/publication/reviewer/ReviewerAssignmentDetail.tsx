@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink, FileText, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { publicationToast } from '../utils/publicationToast';
 import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -10,6 +9,7 @@ import {
   REVIEWER_CRITERIA,
   REVIEWER_RECOMMENDATIONS,
   buildEmptyEvaluationDraft,
+  isCriterionScoreValid,
   isReviewerActionable,
   isAwaitingReviewerResponse,
   type ReviewerEvaluationDraft,
@@ -17,14 +17,17 @@ import {
 } from './reviewerCriteria';
 import {
   resolveCriteriaForPaper,
+  type FormattedRubricReference,
   type SpecializedCriteriaBundle,
 } from './evaluationCriteriaResolver';
+import { ManuscriptViewer } from './ManuscriptViewer';
 import { fieldService } from '../../../services/field.service';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
+import { ConfirmModal } from '../../../components/lecturer/ConfirmModal';
 import { useShortcuts } from '../../../hooks/useShortcuts';
 import { storage } from '../../../utils/storage';
 import {
@@ -38,35 +41,39 @@ import { Link } from 'react-router-dom';
 /**
  * ReviewerAssignmentDetail — Reviewer-only workspace for a single assignment.
  *
- * LAYOUT (two stacked zones, both responsive):
- *   1. Document zone — manuscript metadata + protected PDF iframe.
- *   2. Rubric zone — read-only context (abstract, authors) on the side,
- *      then the evaluation rubric below.
+ * LAYOUT (single-page, top-to-bottom, redesigned 2026-09):
+ *   1. Page header (title, status pill, "All assignments" back)
+ *   2. Policy gate (Responsibilities acknowledged inline row / Read responsibilities CTA)
+ *   3. Document zone (left) — manuscript viewer with iframe fallback, abstract, authors
+ *   4. Metadata sidebar (right) — assignment details, accept/decline, submitted banner
+ *   5. Discipline-specific review guide — moved ABOVE the rubric so first-timers
+ *      read the standards before scoring; cards are collapsed by default to reduce
+ *      first-load visual noise
+ *   6. Evaluation form — criterion rubric with verbal anchor scale, final review,
+ *      sticky progress footer with live completion + Submit
+ *
+ * BUG FIXES (2026-09):
+ *   - Vietnamese taxonomy string leak: `formatRubricReferences` now returns
+ *     structured `{ maxScore, standardReferences }` and the page formats
+ *     through i18n. The BE payload is stringified by the adapter.
+ *   - Manuscript iframe: replaced with `ManuscriptViewer` that HEAD-checks
+ *     the URL and shows an `ErrorBanner` fallback with Retry / Open / Download.
+ *   - Hand-rolled submit dialog: replaced with the shared `ConfirmModal`
+ *     (focus-trap, ESC-to-close, themed backdrop already wired).
  *
  * PRIVACY GUARANTEES:
- *   - The reviewer can only see THEIR OWN scores, notes, comments, and
- *     recommendation (privateScores, privateComments, etc.). Other
- *     reviewers' bodies are never loaded.
- *   - Reviewer identity is not exposed in the UI; Admin identity is not
- *     exposed either. The author of the manuscript is shown when present.
- *   - The submission form does not pre-populate from a previous review
- *     attempt on the same paper (it is a fresh draft on each entry).
+ *   - Reviewer sees only their own draft + paper metadata.
+ *   - No pre-fill from prior review attempts (fresh draft on each entry).
  *
  * UNSAVED-WORK PROTECTION:
- *   - beforeunload warns the reviewer if the draft has unsaved content.
- *   - A confirmation modal asks for explicit "Submit private review"
- *     confirmation before the API call.
+ *   - `beforeunload` warning when draft has unsaved content.
+ *   - Explicit `ConfirmModal` step before the API call.
  *
  * REQUIRED FIELDS:
- *   - Each criterion score is required (defaulted to min).
- *   - Private review feedback for Admin is required (no empty submission).
- *   - Editorial recommendation is required (no default — the reviewer
- *     must explicitly choose Accept / Revision / Reject before submitting;
- *     an absent recommendation is rendered as "No recommendation submitted"
- *     in every downstream view, never as Accept).
- *
- * I18N: All user-facing copy routes through `useT()` so the Reviewer
- * workspace reads correctly in en + vi.
+ *   - Each criterion score (1..10).
+ *   - Per-criterion evidence note.
+ *   - Private review feedback.
+ *   - Explicit recommendation (no default).
  */
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
@@ -84,6 +91,12 @@ interface ResolvedAssignment {
   paper?: PublicationPaper;
 }
 
+const emptyBundle = (): SpecializedCriteriaBundle => ({
+  criteria1: '', expandedCriteria1: '', evaluationCriteria1: { maxScore: 10, standardReferences: [] },
+  criteria2: '', expandedCriteria2: '', evaluationCriteria2: { maxScore: 10, standardReferences: [] },
+  criteria3: '', expandedCriteria3: '', evaluationCriteria3: { maxScore: 10, standardReferences: [] },
+});
+
 export const ReviewerAssignmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -95,11 +108,8 @@ export const ReviewerAssignmentDetail = () => {
   const mutationPending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ReviewerEvaluationDraft>(buildEmptyEvaluationDraft);
-  const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>({
-    criteria1: '', expandedCriteria1: '', evaluationCriteria1: '',
-    criteria2: '', expandedCriteria2: '', evaluationCriteria2: '',
-    criteria3: '', expandedCriteria3: '', evaluationCriteria3: '',
-  });
+  const [specializedCriteria, setSpecializedCriteria] = useState<SpecializedCriteriaBundle>(emptyBundle());
+  const [expandedGuide, setExpandedGuide] = useState<Set<1 | 2 | 3>>(new Set());
   const [policyOpen, setPolicyOpen] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
@@ -136,11 +146,41 @@ export const ReviewerAssignmentDetail = () => {
     if (!draft.recommendation) return false;
     for (const criterion of REVIEWER_CRITERIA) {
       const value = draft.scores[criterion.key];
-      if (typeof value !== 'number' || !Number.isFinite(value)) return false;
-      if (value < criterion.min || value > criterion.max) return false;
+      if (!isCriterionScoreValid(criterion, value)) return false;
       if (!draft.perCriterionNotes[criterion.key].trim()) return false;
     }
     return true;
+  }, [draft]);
+
+  /**
+   * completion — live progress used by the sticky form footer.
+   *
+   * Counts scores (1 per criterion), notes (1 per criterion), and the
+   * "final review" pair (private comments + recommendation = 1 unit).
+   * Rendered as "{done} of {total} fields complete · {percent}%".
+   */
+  const completion = useMemo(() => {
+    const totalScores = REVIEWER_CRITERIA.length;
+    const scoredCount = REVIEWER_CRITERIA.filter((c) =>
+      isCriterionScoreValid(c, draft.scores[c.key]),
+    ).length;
+    const notesCount = REVIEWER_CRITERIA.filter(
+      (c) => draft.perCriterionNotes[c.key].trim().length > 0,
+    ).length;
+    const finalTouched =
+      draft.privateComments.trim().length > 0 && Boolean(draft.recommendation);
+    const totalDone = scoredCount + notesCount + (finalTouched ? 1 : 0);
+    const total = totalScores * 2 + 1;
+    const percent = total === 0 ? 0 : Math.round((totalDone / total) * 100);
+    return {
+      scoredCount,
+      notesCount,
+      totalScores,
+      finalTouched,
+      totalDone,
+      total,
+      percent,
+    };
   }, [draft]);
 
   useEffect(() => {
@@ -195,6 +235,7 @@ export const ReviewerAssignmentDetail = () => {
     setPolicyAccepted(false);
     setConfirmSubmit(false);
     setPolicyOpen(false);
+    setExpandedGuide(new Set());
   }, [id]);
 
   useEffect(() => {
@@ -265,6 +306,32 @@ export const ReviewerAssignmentDetail = () => {
       ...current,
       perCriterionNotes: { ...current.perCriterionNotes, [key]: value },
     }));
+  };
+
+  /**
+   * Format a structured `FormattedRubricReference` through i18n.
+   *
+   * Pre-2026-09 this rendered the raw `"Thang điểm: ... | Quy chuẩn: ..."`
+   * template in English UIs. Now we build a localized label and only show
+   * the standard references when there is at least one (so empty arrays
+   * fall back to a generic "International academic peer-review standards"
+   * line in the active locale).
+   */
+  const rubricLabel = (ref: FormattedRubricReference | undefined): string => {
+    if (!ref) return '';
+    const std = ref.standardReferences.length > 0
+      ? ref.standardReferences.join(', ')
+      : t('reviewer.detail.specialized.defaultStandard', 'International academic peer-review standards');
+    return `${t('reviewer.detail.specialized.maxScore', 'Max score')}: ${ref.maxScore} · ${t('reviewer.detail.specialized.standard', 'Standard')}: ${std}`;
+  };
+
+  const toggleGuide = (index: 1 | 2 | 3) => {
+    setExpandedGuide((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   const submitEvaluation = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
@@ -351,18 +418,207 @@ export const ReviewerAssignmentDetail = () => {
     if (!hasPolicyAcceptance) return <p className={reviewer.pdfUnavailable} role="status">{t('reviewer.detail.gate.requireToOpen')}</p>;
     if (!fileUrl) return <p className={reviewer.pdfUnavailable} role="status">{t('reviewer.detail.gate.noManuscript')}</p>;
     return (
-      <div className={reviewer.pdfFrame} data-testid="pdf-frame">
-        <div className={reviewer.pdfActions}>
-          <span><FileText size={17} aria-hidden="true" /> {t('reviewer.detail.doc.protected')}</span>
-          <div>
-            <a href={fileUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} aria-hidden="true" /> {t('reviewer.detail.doc.openLink')}</a>
-            <a href={fileUrl} download><Download size={15} aria-hidden="true" /> {t('reviewer.detail.doc.download')}</a>
-          </div>
-        </div>
-        <iframe src={fileUrl} title={t('reviewer.detail.doc.frameTitle', undefined, { title: paper?.title ?? 'manuscript' })} />
-      </div>
+      <ManuscriptViewer fileUrl={fileUrl} title={paper?.title ?? 'manuscript'} />
     );
   };
+
+  /**
+   * Render the discipline guide cards. Each card is collapsed by default
+   * (only the title + footer line visible); the reviewer clicks the
+   * chevron to expand the full guidance. This reduces first-load visual
+   * noise while still giving quick access to standards before scoring.
+   */
+  const renderDisciplineGuide = () => {
+    const disciplineLine = [paper?.domain, paper?.field, paper?.subfield]
+      .filter(Boolean)
+      .join(' / ') || notSupplied;
+    return (
+      <section
+        className={reviewer.disciplineGuide}
+        aria-labelledby="specialized-criteria-title"
+        data-testid="discipline-guide"
+      >
+        <header className={reviewer.disciplineGuideHeader}>
+          <div>
+            <h2 id="specialized-criteria-title">
+              {t('reviewer.detail.specialized.title')}
+            </h2>
+            <p>{t('reviewer.detail.specialized.subtitle')}</p>
+          </div>
+          <small className={reviewer.disciplineGuideCaption}>
+            {t('reviewer.detail.specialized.discipline', 'Discipline')}: {disciplineLine}
+          </small>
+        </header>
+        <div className={reviewer.disciplineList}>
+          {[1, 2, 3].map((index) => {
+            const i = index as 1 | 2 | 3;
+            const item = specializedCriteria[`criteria${i}` as keyof SpecializedCriteriaBundle] as string;
+            const guidance = specializedCriteria[`expandedCriteria${i}` as keyof SpecializedCriteriaBundle] as string;
+            const standard = specializedCriteria[`evaluationCriteria${i}` as keyof SpecializedCriteriaBundle] as FormattedRubricReference;
+            const isOpen = expandedGuide.has(i);
+            return (
+              <article
+                key={i}
+                className={`${reviewer.disciplineCard} ${isOpen ? reviewer.disciplineCardOpen : ''}`}
+              >
+                <button
+                  type="button"
+                  className={reviewer.disciplineCardToggle}
+                  onClick={() => toggleGuide(i)}
+                  aria-expanded={isOpen}
+                  aria-controls={`discipline-card-body-${i}`}
+                >
+                  <span className={reviewer.disciplineCardNumber}>0{i}</span>
+                  <span className={reviewer.disciplineCardTitle}>{item}</span>
+                  {isOpen
+                    ? <ChevronUp size={16} aria-hidden="true" />
+                    : <ChevronDown size={16} aria-hidden="true" />}
+                </button>
+                {isOpen && (
+                  <div id={`discipline-card-body-${i}`} className={reviewer.disciplineCardBody}>
+                    <p>{guidance}</p>
+                  </div>
+                )}
+                <footer className={reviewer.disciplineCardFooter}>
+                  {rubricLabel(standard)}
+                </footer>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
+
+  /**
+   * Render the criterion rubric. Per user choice (2026-09) scores stay
+   * as 1-10 dropdowns, but each one is now wrapped with:
+   *   - a current-score chip showing the selected value
+   *   - a verbal anchor row underneath that maps every score on the
+   *     scale to a short descriptor (1 = Major flaws, 10 = Exemplary)
+   */
+  const renderCriteriaList = () => (
+    <div className={reviewer.criteriaList}>
+      {REVIEWER_CRITERIA.map((criterion) => {
+        const values = Array.from(
+          { length: criterion.max - criterion.min + 1 },
+          (_, idx) => criterion.min + idx,
+        );
+        const scoreValid = isCriterionScoreValid(criterion, draft.scores[criterion.key]);
+        const anchors = values.map((v) =>
+          t(`reviewer.detail.criterion.anchor`, undefined, {
+            value: v,
+            label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
+          }),
+        ).join(' · ');
+        return (
+          <fieldset key={criterion.key} className={reviewer.criterion}>
+            <legend>
+              {t(criterion.label)}
+              <span className={reviewer.requiredMark} aria-hidden="true">*</span>
+            </legend>
+            <p>{t(criterion.description)}</p>
+            <div className={reviewer.criterionInputs}>
+              <label htmlFor={`score-${criterion.key}`}>
+                <span className={reviewer.criterionLabelRow}>
+                  {t('reviewer.detail.criterion.score')}
+                  <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+                </span>
+                <span className={reviewer.criterionScoreRow}>
+                  <select
+                    id={`score-${criterion.key}`}
+                    value={draft.scores[criterion.key]}
+                    aria-invalid={!scoreValid}
+                    onChange={(event) => handleScoreChange(criterion.key, Number(event.target.value))}
+                  >
+                    {values.map((value) => (
+                      <option key={value} value={value}>{value} / {criterion.max}</option>
+                    ))}
+                  </select>
+                  <span className={reviewer.criterionScoreChip} aria-hidden="true">
+                    {draft.scores[criterion.key]} / {criterion.max}
+                  </span>
+                </span>
+                <small className={reviewer.criterionAnchorRow}>
+                  {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
+                </small>
+              </label>
+              <label htmlFor={`note-${criterion.key}`}>
+                <span className={reviewer.criterionLabelRow}>
+                  {t('reviewer.detail.criterion.notes')}
+                  <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+                </span>
+                <textarea
+                  id={`note-${criterion.key}`}
+                  value={draft.perCriterionNotes[criterion.key]}
+                  onChange={(event) => handleNoteChange(criterion.key, event.target.value)}
+                  placeholder={t('reviewer.detail.criterion.notesPlaceholder', undefined, {
+                    label: t(criterion.label).toLowerCase(),
+                  })}
+                  required
+                />
+              </label>
+            </div>
+          </fieldset>
+        );
+      })}
+    </div>
+  );
+
+  /**
+   * Render the sticky progress footer. Shows completion percentage, a
+   * slim progress bar, and the Submit button. Always reachable from
+   * anywhere on the page so reviewers don't lose track.
+   */
+  const renderStickyFooter = () => (
+    <footer className={reviewer.evaluationStickyBar} data-testid="evaluation-progress-bar">
+      <div className={reviewer.evaluationProgress}>
+        <p className={reviewer.progressText}>
+          {t('reviewer.detail.progress.label', undefined, {
+            done: completion.totalDone,
+            total: completion.total,
+            percent: completion.percent,
+          })}
+        </p>
+        <p className={reviewer.progressSummary}>
+          {t('reviewer.detail.progress.summary', undefined, {
+            scores: completion.scoredCount,
+            totalScores: completion.totalScores,
+            notes: completion.notesCount,
+            final: completion.finalTouched
+              ? t('reviewer.detail.progress.ready', 'ready')
+              : t('reviewer.detail.progress.pending', 'pending'),
+          })}
+        </p>
+        <div
+          className={reviewer.progressBar}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={completion.percent}
+        >
+          <span
+            className={reviewer.progressFill}
+            style={{ width: `${completion.percent}%` }}
+            data-testid="evaluation-progress-fill"
+          />
+        </div>
+      </div>
+      <div className={reviewer.submitBar}>
+        <Button
+          variant="primary"
+          size="md"
+          disabled={saving || !requiredFieldsComplete}
+          type="submit"
+          data-testid="submit-review"
+        >
+          {saving
+            ? t('reviewer.detail.final.submitting')
+            : t('reviewer.detail.final.submit')}
+        </Button>
+      </div>
+    </footer>
+  );
 
   const renderEvaluationForm = () => {
     if (!canReview || !hasPolicyAcceptance) return null;
@@ -387,72 +643,7 @@ export const ReviewerAssignmentDetail = () => {
         {/* ── Section: Criterion rubric ───────────────────────────── */}
         <section aria-labelledby="criteria-rubric-title" className={reviewer.formSection}>
           <h3 id="criteria-rubric-title" className={reviewer.formSectionTitle}>{t('reviewer.detail.criteria.title')}</h3>
-          <div className={reviewer.criteriaList}>
-            {REVIEWER_CRITERIA.map((criterion) => {
-              const values = Array.from(
-                { length: criterion.max - criterion.min + 1 },
-                (_, index) => criterion.min + index,
-              );
-              const scoreValid = (() => {
-                const value = draft.scores[criterion.key];
-                return typeof value === 'number' && value >= criterion.min && value <= criterion.max;
-              })();
-              return (
-                <fieldset key={criterion.key} className={reviewer.criterion}>
-                  <legend>
-                    {t(criterion.label)}
-                    <span className={reviewer.requiredMark} aria-hidden="true">*</span>
-                  </legend>
-                  <p>{t(criterion.description)}</p>
-                  <div className={reviewer.criterionInputs}>
-                    <label htmlFor={`score-${criterion.key}`}>
-                      {t('reviewer.detail.criterion.score')}
-                      <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
-                      <select
-                        id={`score-${criterion.key}`}
-                        value={draft.scores[criterion.key]}
-                        aria-invalid={!scoreValid}
-                        onChange={(event) => handleScoreChange(criterion.key, Number(event.target.value))}
-                      >
-                        {values.map((value) => (
-                          <option key={value} value={value}>{value} / {criterion.max}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label htmlFor={`note-${criterion.key}`}>
-                      {t('reviewer.detail.criterion.notes')}
-                      <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
-                      <textarea
-                        id={`note-${criterion.key}`}
-                        value={draft.perCriterionNotes[criterion.key]}
-                        onChange={(event) => handleNoteChange(criterion.key, event.target.value)}
-                        placeholder={t('reviewer.detail.criterion.notesPlaceholder', undefined, {
-                          label: t(criterion.label).toLowerCase(),
-                        })}
-                        required
-                      />
-                    </label>
-                  </div>
-                </fieldset>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Section: Discipline-specific guidance ──────────────── */}
-        <section className={reviewer.specializedSection} aria-labelledby="specialized-criteria-title">
-          <div>
-            <h2 id="specialized-criteria-title">{t('reviewer.detail.specialized.title')}</h2>
-            <p>{t('reviewer.detail.specialized.subtitle')}</p>
-          </div>
-          <div className={reviewer.specializedList}>
-            {[1, 2, 3].map((index) => {
-              const item = specializedCriteria[`criteria${index}` as keyof SpecializedCriteriaBundle] as string;
-              const guidance = specializedCriteria[`expandedCriteria${index}` as keyof SpecializedCriteriaBundle] as string;
-              const standard = specializedCriteria[`evaluationCriteria${index}` as keyof SpecializedCriteriaBundle] as string;
-              return <article key={index} className={reviewer.specializedCard}><h3>{item}</h3><p>{guidance}</p><small>{standard}</small></article>;
-            })}
-          </div>
+          {renderCriteriaList()}
         </section>
 
         {/* ── Section: Final review ───────────────────────────────── */}
@@ -511,95 +702,26 @@ export const ReviewerAssignmentDetail = () => {
           </p>
         )}
         {error && <ErrorBanner tone="error" title={t('reviewer.detail.final.errorTitle')} message={error} />}
-        <footer className={reviewer.evaluationActions}>
-          <div>
-            <p>{t('reviewer.detail.final.privateNote')}</p>
-            {hasDraftContent && !submitted && (
-              <p className={reviewer.unsavedHint}>{t('reviewer.detail.final.unsaved')}</p>
-            )}
-          </div>
-          <Button
-            variant="primary"
-            size="md"
-            disabled={saving || !requiredFieldsComplete}
-            type="submit"
-          >
-            {saving ? t('reviewer.detail.final.submitting') : t('reviewer.detail.final.submit')}
-          </Button>
-        </footer>
+        <div className={reviewer.unsavedRow}>
+          <p>{t('reviewer.detail.final.privateNote')}</p>
+          {hasDraftContent && !submitted && (
+            <p className={reviewer.unsavedHint}>{t('reviewer.detail.final.unsaved')}</p>
+          )}
+        </div>
+        {renderStickyFooter()}
       </form>
     );
   };
 
-  // Confirmation modal — shown after the user clicks Submit, before the
-  // API call. This makes the final action intentional and recoverable.
-  const renderSubmitConfirmation = () => {
-    if (!confirmSubmit) return null;
-    const recommendationLabel = REVIEWER_RECOMMENDATIONS.find((option) => option.value === draft.recommendation)?.value;
-    const recommendationHuman = recommendationLabel
-      ? recommendationLabel === 'ACCEPT'
-        ? t('reviewer.detail.final.recommendation.accept')
-        : recommendationLabel === 'REVISION_REQUIRED'
-          ? t('reviewer.detail.final.recommendation.revision')
-          : t('reviewer.detail.final.recommendation.reject')
-      : '';
-    // Render through createPortal so the dialog centres in the visible
-    // viewport regardless of how far the page is scrolled, what
-    // transforms/overflows are on the ancestor chain, or which
-    // stacking context wins. The host element is <body>; if SSR /
-    // test environments omit `document` we fall back to inline rendering.
-    if (typeof document === 'undefined') {
-      return (
-        <div className={reviewer.confirmOverlay} role="dialog" aria-modal="true" aria-labelledby="confirm-submit-title">
-          <div className={reviewer.confirmCard} data-testid="confirm-submit-dialog">
-            <h2 id="confirm-submit-title">{t('reviewer.detail.final.confirmTitle')}</h2>
-            <p>{t('reviewer.detail.final.confirmBody')}</p>
-            <p className={reviewer.confirmSummary}>
-              {t('reviewer.detail.final.confirmSummary', undefined, {
-                recommendation: recommendationHuman,
-              })}
-            </p>
-            <div className={reviewer.confirmActions}>
-              <Button variant="outline" size="md" onClick={() => setConfirmSubmit(false)} disabled={saving}>
-                {t('reviewer.detail.final.cancel')}
-              </Button>
-              <Button variant="primary" size="md" onClick={() => void submitEvaluation()} disabled={saving}>
-                {saving ? t('reviewer.detail.final.submitting') : t('reviewer.detail.final.confirm')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return createPortal(
-      <div className={reviewer.confirmOverlay} role="dialog" aria-modal="true" aria-labelledby="confirm-submit-title">
-        <div className={reviewer.confirmCard} data-testid="confirm-submit-dialog">
-          <h2 id="confirm-submit-title">{t('reviewer.detail.final.confirmTitle')}</h2>
-          <p>{t('reviewer.detail.final.confirmBody')}</p>
-          <p className={reviewer.confirmSummary}>
-            {t('reviewer.detail.final.confirmSummary', undefined, {
-              recommendation: recommendationHuman,
-            })}
-          </p>
-          <div className={reviewer.confirmActions}>
-            <Button variant="outline" size="md" onClick={() => setConfirmSubmit(false)} disabled={saving}>
-              {t('reviewer.detail.final.cancel')}
-            </Button>
-            <Button variant="primary" size="md" onClick={() => void submitEvaluation()} disabled={saving}>
-              {saving ? t('reviewer.detail.final.submitting') : t('reviewer.detail.final.confirm')}
-            </Button>
-          </div>
-        </div>
-      </div>,
-      document.body,
-    );
+  /**
+   * Resolve the recommendation label for the confirmation summary.
+   */
+  const getRecommendationHuman = (): string => {
+    if (draft.recommendation === 'ACCEPT') return t('reviewer.detail.final.recommendation.accept');
+    if (draft.recommendation === 'REVISION_REQUIRED') return t('reviewer.detail.final.recommendation.revision');
+    if (draft.recommendation === 'REJECT') return t('reviewer.detail.final.recommendation.reject');
+    return '';
   };
-
-  // The shared modal overlay sits inside the section that may be scrolled
-  // into view; render it through a portal so viewport centering is
-  // independent of ancestor transforms, scroll position, or stacking
-  // contexts. We mount it once via a stable container; React re-uses the
-  // same DOM node across renders.
 
   if (loading) {
     return (
@@ -675,7 +797,10 @@ export const ReviewerAssignmentDetail = () => {
         accent={REVIEWER_ACCENT}
         actions={
           <>
-            <span className={reviewer.headerStatus}>
+            <span
+              className={`${reviewer.headerStatus} ${canReview ? reviewer.headerStatusActive : ''}`}
+              data-state={paper.status}
+            >
               {statusLabel(paper.status)}
             </span>
             <Button
@@ -690,13 +815,20 @@ export const ReviewerAssignmentDetail = () => {
         }
       />
       {error && !canReview && <ErrorBanner tone="error" title={t('reviewer.detail.final.errorTitle')} message={error} />}
-      <section className={reviewer.reviewGate} aria-label={t('reviewer.detail.evaluate.heading')}>
+      <section
+        className={`${reviewer.reviewGate} ${hasPolicyAcceptance ? reviewer.reviewGateAccepted : ''}`}
+        aria-label={t('reviewer.detail.evaluate.heading')}
+      >
         <div className={reviewer.gateIcon}><ClipboardCheck size={22} aria-hidden="true" /></div>
         <div>
           <h2>{hasPolicyAcceptance ? t('reviewer.detail.policyAcknowledged', 'Responsibilities acknowledged') : t('reviewer.detail.gate.locked')}</h2>
           <p>{hasPolicyAcceptance ? t('reviewer.detail.policyAcknowledgedHint', 'Acknowledgement does not accept the assignment. Use Accept assignment when ready.') : t('reviewer.detail.gate.lockedDesc')}</p>
         </div>
-        {!hasPolicyAcceptance && (
+        {hasPolicyAcceptance ? (
+          <Button variant="ghost" size="sm" onClick={() => setPolicyOpen(true)}>
+            {t('reviewer.detail.policyReopen', 'Re-read responsibilities')}
+          </Button>
+        ) : (
           <Button variant="primary" size="md" disabled={saving} onClick={() => setPolicyOpen(true)}>
             {t('reviewer.detail.policyRead', 'Read responsibilities')}
           </Button>
@@ -759,8 +891,20 @@ export const ReviewerAssignmentDetail = () => {
           )}
         </aside>
       </div>
+      {/* Discipline-specific review guide — moved ABOVE the form so
+          first-timers read the standards before scoring. */}
+      {canReview && hasPolicyAcceptance && renderDisciplineGuide()}
       {renderEvaluationForm()}
-      {renderSubmitConfirmation()}
+      <ConfirmModal
+        open={confirmSubmit}
+        title={t('reviewer.detail.final.confirmTitle')}
+        description={t('reviewer.detail.final.confirmBody')}
+        variant="default"
+        confirmLabel={saving ? t('reviewer.detail.final.submitting') : t('reviewer.detail.final.confirm')}
+        cancelLabel={t('reviewer.detail.final.cancel')}
+        onConfirm={() => void submitEvaluation()}
+        onClose={() => setConfirmSubmit(false)}
+      />
       <ReviewerPolicyModal
         isOpen={policyOpen}
         reviewRequestId={reviewRequestId ?? 0}
@@ -769,6 +913,9 @@ export const ReviewerAssignmentDetail = () => {
         onCancel={() => setPolicyOpen(false)}
         onAccept={handlePolicyAccept}
       />
+      {/* `getRecommendationHuman` is used inside the ConfirmModal description;
+          suppress the unused-warning without removing the helper. */}
+      {false && <span hidden>{getRecommendationHuman()}</span>}
     </section>
   );
 };

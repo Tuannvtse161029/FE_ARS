@@ -34,12 +34,36 @@ describe('datetime utility', () => {
     expect(toLocalDatetimeInput(d)).toBe('2026-09-15T14:30');
   });
 
-  it('preserves local time through toApiIsoString and back toLocalDatetimeInput', () => {
-    const localInput = '2026-09-15T14:30';
-    const apiIso = toApiIsoString(localInput);
-    expect(apiIso).not.toBeNull();
-    const restored = toLocalDatetimeInput(apiIso);
-    expect(restored).toBe(localInput);
+  it('encodes a datetime-local input as if its clock time were UTC', () => {
+    // ARS convention: when the user picks "2026-09-15T14:30" in their local
+    // timezone (UTC+7), we store it as `2026-09-15T14:30:00.000Z` on the BE
+    // so that other surfaces (date pickers, list displays) round-trip the
+    // same clock time back to the user regardless of where they are viewing
+    // the data from.
+    expect(toApiIsoString('2026-09-15T14:30')).toBe('2026-09-15T14:30:00.000Z');
+    expect(toApiIsoString('2026-09-20T09:00')).toBe('2026-09-20T09:00:00.000Z');
+  });
+
+  it('does NOT subtract the local timezone offset from a datetime-local input (regression)', () => {
+    // A user in UTC+7 picks "2026-09-20T14:00". The helper is supposed to
+    // preserve that local clock time and emit it as the UTC value, so the
+    // BE stores `2026-09-20T14:00:00.000Z`. A previous bug round-tripped
+    // through `new Date(...)` + `getUTC*()`, which silently shifted the
+    // time by -7h and caused the seminar to flip straight into COMPLETED.
+    expect(toApiIsoString('2026-09-20T14:00')).toBe('2026-09-20T14:00:00.000Z');
+    expect(toApiIsoString('2026-09-20T09:00')).toBe('2026-09-20T09:00:00.000Z');
+    expect(toApiIsoString('2026-09-20T23:59')).toBe('2026-09-20T23:59:00.000Z');
+  });
+
+  it('still respects the offset for full ISO strings that include a timezone', () => {
+    // A real ISO string with 'Z' or an offset must be parsed in UTC so the
+    // DB stores the actual point in time the BE returned.
+    expect(toApiIsoString('2026-09-15T07:00:00.000Z')).toBe(
+      '2026-09-15T07:00:00.000Z',
+    );
+    expect(toApiIsoString(new Date('2026-09-15T07:00:00.000Z'))).toBe(
+      '2026-09-15T07:00:00.000Z',
+    );
   });
 
   it('formats display dates in local time', () => {

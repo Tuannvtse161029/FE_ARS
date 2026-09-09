@@ -22,6 +22,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Button } from '../../components/Button/Button';
 import { deriveEffectiveStatus, seminarService } from '../../services/seminar.service';
+import { SEMINAR_PLACEHOLDER_DURATION_MS } from '../../utils/constants';
 import {
   useSeminars,
   useCreateSeminar,
@@ -183,8 +184,14 @@ export const SeminarWorkspace = () => {
       announce('Seminars must be scheduled at least 5 minutes in advance.', 'error');
       return;
     }
+    // BE gap (see SEMINAR_PLACEHOLDER_DURATION_MS in utils/constants.ts):
+    // the current BE contract requires `endTime` on POST /api/Seminar, but
+    // there is no "Mark as Completed" endpoint yet. We send a clearly-
+    // labelled 1-hour placeholder so the BE accepts the create call. When
+    // the BE ships nullable endTime + a manual complete endpoint, drop this
+    // block and call that endpoint instead.
     const startTime = new Date(dateTime).toISOString();
-    const endTime = new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString();
+    const endTime = new Date(new Date(dateTime).getTime() + SEMINAR_PLACEHOLDER_DURATION_MS).toISOString();
     const fullContent = seminarName.trim() ? `[${seminarName.trim()}] ${seminarDetails.trim()}` : seminarDetails.trim();
 
     if (createCustomQuestions.length > 0) {
@@ -394,6 +401,12 @@ export const SeminarWorkspace = () => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-date">{copy('Date & Time', 'Ngày & Giờ')}</label>
                 <input id="seminar-date" type="datetime-local" className={styles.formInput} value={dateTime} min={minDateTime} onChange={(e) => setDateTime(e.target.value)} required />
+                <span className={styles.helperText}>
+                  {copy(
+                    'End time is currently a 1-hour placeholder. The seminar will not auto-end — the BE team is shipping a manual "Mark as Completed" action.',
+                    'Thời điểm kết thúc hiện đang là giá trị tạm 1 giờ. Hội thảo sẽ không tự kết thúc — BE đang phát triển nút "Đánh dấu đã hoàn thành" cho giảng viên.'
+                  )}
+                </span>
               </div>
 
               <div className={styles.formGroup}>

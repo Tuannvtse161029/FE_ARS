@@ -19,11 +19,34 @@ import {
   type SubmissionInput,
 } from '../types/publication';
 import { notificationService } from '../../../services/notification.service';
-import type { SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
+import type { FormattedRubricReference, SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
 import {
   friendlyAuthorshipVerificationError,
 } from '../utils/authorshipVerificationCopy';
 import { enrichPublicationMetadata } from './publicationMetadata';
+
+/**
+ * Stringify a structured `FormattedRubricReference` for the BE payload.
+ *
+ * Pre-2026-09 the BE schema (`DetailedEvaluation.evaluationCriteria1..3`)
+ * stored a single free-form string. We upgraded the FE to a structured
+ * object so we can localize the rendering without Vietnamese leaks, but
+ * the BE contract still expects a string. This helper joins the
+ * standard references with a localised separator while the page renders
+ * them through `useT()` on its own. The reviewer sees i18n-correct copy
+ * and the BE continues to receive the canonical string.
+ */
+const stringifyRubricReference = (ref: FormattedRubricReference | undefined | null): string | null => {
+  if (!ref) return null;
+  const parts: string[] = [];
+  if (Array.isArray(ref.standardReferences) && ref.standardReferences.length > 0) {
+    parts.push(ref.standardReferences.join('; '));
+  }
+  if (typeof ref.maxScore === 'number') {
+    parts.push(`max=${ref.maxScore}`);
+  }
+  return parts.length > 0 ? parts.join(' | ') : null;
+};
 export class PublicationBackendContractError extends Error {
   constructor(message: string) {
     super(message);
@@ -552,13 +575,13 @@ class ApiPublicationAdapter implements PublicationAdapter {
       finalDecision: recommendation,
       criteria1: specializedCriteria?.criteria1 ?? null,
       expandedCriteria1: specializedCriteria?.expandedCriteria1 ?? null,
-      evaluationCriteria1: specializedCriteria?.evaluationCriteria1 ?? null,
+      evaluationCriteria1: stringifyRubricReference(specializedCriteria?.evaluationCriteria1),
       criteria2: specializedCriteria?.criteria2 ?? null,
       expandedCriteria2: specializedCriteria?.expandedCriteria2 ?? null,
-      evaluationCriteria2: specializedCriteria?.evaluationCriteria2 ?? null,
+      evaluationCriteria2: stringifyRubricReference(specializedCriteria?.evaluationCriteria2),
       criteria3: specializedCriteria?.criteria3 ?? null,
       expandedCriteria3: specializedCriteria?.expandedCriteria3 ?? null,
-      evaluationCriteria3: specializedCriteria?.evaluationCriteria3 ?? null,
+      evaluationCriteria3: stringifyRubricReference(specializedCriteria?.evaluationCriteria3),
     });
     await reviewRequestService.update(request.id!, {
       status: 'Completed',
@@ -625,12 +648,11 @@ class ApiPublicationAdapter implements PublicationAdapter {
     return paperService.assignReviewers(id, reviewerCount);
   }
 
-  async verifyAuthorship(id: string, allow = true): Promise<PublicationPaper> {
-    if (!allow) {
-      throw new PublicationBackendContractError('Manual authorship rejection is not supported by the automatic verification endpoint. No decision was sent.');
-    }
-    const current = await paperService.getById(id);
-    const verification = await paperService.verifyAuthorship(id, current.openAlexWorkId ?? null);
+  async verifyAuthorship(id: string, _allow = true): Promise<PublicationPaper> {
+    // Uses PUT /api/Paper/test-update-no-verify/{id} — a manual verification
+    // endpoint that bypasses OpenAlex/ORCID checks, allowing admins to verify
+    // authorship for papers that have no OpenAlex ID.
+    const verification = await paperService.testUpdateNoVerify(id);
     if (verification.paperId !== Number(id)) {
       throw new PublicationBackendContractError('The verification response did not identify the requested paper. Refresh the paper before retrying.');
     }
@@ -638,10 +660,6 @@ class ApiPublicationAdapter implements PublicationAdapter {
     const decision = normalizedText(updated.authorshipVerificationStatus);
     const confirmed = ['ALLOW', 'ALLOWED', 'VERIFIED'].includes(decision);
     if (!confirmed) {
-      // Surface the BE's structured verification tokens (e.g.
-      // `PENDING_ADMIN_REVIEW__ORCID_NOT_IN_AUTHORSHIP`) as a friendly
-      // human-readable phrase — never as a `CAPITALIZED__UNDERSCORED`
-      // raw token, which is unreadable in the admin error banner.
       const rawStatus =
         updated.authorshipVerificationStatus ??
         verification.authorshipVerificationStatus ??

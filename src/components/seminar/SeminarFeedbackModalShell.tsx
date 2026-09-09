@@ -16,8 +16,11 @@ import styles from './SeminarFeedbackModalShell.module.css';
 
 interface SeminarFeedbackModalShellProps {
   seminarTitle: string;
-  startTime?: string;
-  endTime?: string;
+  /** Nullable — `null` means the seminar has no scheduled end time yet
+   * (open-ended; lecturer will end it manually once BE-SEMINAR-ENDTIME-01 ships). */
+  startTime?: string | null;
+  /** Nullable — `null` means the seminar is still open-ended. */
+  endTime?: string | null;
   onClose: () => void;
   children: React.ReactNode;
 }
