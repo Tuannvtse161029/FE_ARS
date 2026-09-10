@@ -500,6 +500,62 @@ export interface SeminarAudioSummaryResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Client-side status overrides (localStorage fallback for BE persistence gap)
+//
+// The BE `PUT /api/Seminar/{id}` returns HTTP 200 on update, but the controller
+// does not persist changes to `request.status`. To ensure user actions (such as
+// suspending or reactivating a seminar) take effect immediately in the UI and
+// survive workspace refetches, we persist overrides locally.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const SEMINAR_STATUS_OVERRIDES_KEY = 'ars_seminar_status_overrides';
+
+export const getSeminarStatusOverrides = (): Record<number, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(SEMINAR_STATUS_OVERRIDES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+export const setSeminarStatusOverride = (
+  id: number,
+  status: 'Inactive' | 'Upcoming' | string,
+): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getSeminarStatusOverrides();
+    const updated = { ...current, [id]: status };
+    window.localStorage.setItem(
+      SEMINAR_STATUS_OVERRIDES_KEY,
+      JSON.stringify(updated),
+    );
+  } catch (err) {
+    console.warn('[seminarService] Failed to persist seminar status override:', err);
+  }
+};
+
+export const clearSeminarStatusOverride = (id: number): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getSeminarStatusOverrides();
+    if (id in current) {
+      delete current[id];
+      window.localStorage.setItem(
+        SEMINAR_STATUS_OVERRIDES_KEY,
+        JSON.stringify(current),
+      );
+    }
+  } catch (err) {
+    console.warn('[seminarService] Failed to clear seminar status override:', err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Service
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -544,14 +600,23 @@ export const seminarService = {
     id: number,
     nextStatus: 'Inactive' | 'Upcoming' | string,
   ): Promise<Seminar> => {
+    // Persist status override locally so the UI updates immediately and
+    // survives refetches, even if the backend controller fails to persist request.status.
+    setSeminarStatusOverride(id, nextStatus);
+
     const response = await api.put<Seminar>(
       API_ENDPOINTS.SEMINAR.UPDATE(id),
       { status: nextStatus },
     );
-    return response.data;
+    return {
+      ...(response?.data ?? {}),
+      seminarId: id,
+      status: nextStatus,
+    };
   },
 
   delete: async (id: number): Promise<void> => {
+    clearSeminarStatusOverride(id);
     await api.delete(API_ENDPOINTS.SEMINAR.DELETE(id));
   },
 
@@ -1110,6 +1175,12 @@ export interface SeminarCard {
  * to get enriched cards with real participant counts.
  */
 export const mapSeminarToCard = (s: Seminar): SeminarCard => {
+  const statusOverrides = getSeminarStatusOverrides();
+  const rawStatus =
+    typeof s.seminarId === 'number' && statusOverrides[s.seminarId]
+      ? statusOverrides[s.seminarId]
+      : s.status;
+
   const title =
     s.title ??
     (s.content ? s.content.split('\n')[0].slice(0, 80) : `Seminar #${s.seminarId}`);
@@ -1120,8 +1191,8 @@ export const mapSeminarToCard = (s: Seminar): SeminarCard => {
     startTime: s.startTime,
     endTime: s.endTime,
     onlineLink: s.onlineLink ?? '',
-    status: mapSeminarStatus(s.status),
-    effectiveStatus: deriveEffectiveStatus(s.status, s.endTime),
+    status: mapSeminarStatus(rawStatus),
+    effectiveStatus: deriveEffectiveStatus(rawStatus, s.endTime),
     organizerId: s.organizerId ?? null,
     isReminderSent: s.isReminderSent ?? false,
     maxParticipants: s.maxParticipants ?? null,

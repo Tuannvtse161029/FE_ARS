@@ -127,6 +127,7 @@ export const SeminarWorkspace = () => {
     setSelectedSeminarForAttendeeFeedback,
   ] = useState<SeminarCard | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [bannerTitle, setBannerTitle] = useState('');
   const [bannerText, setBannerText] = useState('');
   const [bannerVariant, setBannerVariant] = useState<'success' | 'error'>(
     'success',
@@ -191,15 +192,36 @@ export const SeminarWorkspace = () => {
 
   const { currentRole, currentUserId, canModify } = useSeminarRoleContext();
 
+  const announce = useCallback(
+    (
+      message: string,
+      variant: 'success' | 'error' = 'success',
+      title?: string,
+    ) => {
+      setBannerText(message);
+      setBannerVariant(variant);
+      setBannerTitle(
+        title ??
+          (variant === 'success'
+            ? copy('Success', 'Thành công')
+            : copy('Action Failed', 'Thao tác thất bại')),
+      );
+      setShowSuccessBanner(true);
+    },
+    [copy],
+  );
+
   const handleCreateSuccess = useCallback(
     async (created: { seminarId: number; onlineLink?: string | null }) => {
       setLastCreatedSeminarId(created.seminarId);
       setGeneratedMeetLink(created.onlineLink ?? '');
-      setBannerText(
-        `"${seminarName || 'Seminar'}" has been created.`,
+      announce(
+        isVi
+          ? `"${seminarName || 'Hội thảo'}" đã được tạo thành công.`
+          : `"${seminarName || 'Seminar'}" has been created.`,
+        'success',
+        copy('Seminar Created Successfully', 'Tạo hội thảo thành công'),
       );
-      setBannerVariant('success');
-      setShowSuccessBanner(true);
       setShowCreateModal(false);
       setShowGeneratedModal(true);
 
@@ -214,7 +236,7 @@ export const SeminarWorkspace = () => {
         }
       }
     },
-    [seminarName, createCustomQuestions],
+    [announce, copy, isVi, seminarName, createCustomQuestions],
   );
 
   const { createSeminar, isCreating: isCreatingSeminar } =
@@ -227,16 +249,25 @@ export const SeminarWorkspace = () => {
 
   // Lifecycle (Suspend / Reactivate) hook. The `announce` callback is
   // shared with the create flow so the success banner copy stays
-  // consistent ("Action Failed" / "Seminar Created Successfully" — for
-  // lifecycle flips we re-use the same banner slot with a tailored
-  // message).
+  // consistent. For lifecycle flips we pass explicit localized titles
+  // ("Seminar Suspended" / "Seminar Reactivated").
   const { updateStatus: updateSeminarStatus, isUpdating: isUpdatingStatus } =
     useUpdateSeminarStatus(
       (id, action) => {
-        const verb = action === 'suspend' ? 'suspended' : 'reactivated';
+        const verb =
+          action === 'suspend'
+            ? copy('suspended', 'tạm dừng')
+            : copy('reactivated', 'kích hoạt lại');
         const seminar = seminars.find((s) => s.seminarId === id);
-        const title = seminar?.title ?? 'Seminar';
-        announce(`"${title}" has been ${verb}.`);
+        const title = seminar?.title ?? copy('Seminar', 'Hội thảo');
+        const bannerActionTitle =
+          action === 'suspend'
+            ? copy('Seminar Suspended', 'Đã tạm dừng hội thảo')
+            : copy('Seminar Reactivated', 'Đã kích hoạt lại hội thảo');
+        const msg = isVi
+          ? `"${title}" đã được ${verb}.`
+          : `"${title}" has been ${verb}.`;
+        announce(msg, 'success', bannerActionTitle);
       },
       refetch,
     );
@@ -251,10 +282,9 @@ export const SeminarWorkspace = () => {
     () =>
       seminars.reduce(
         (counts, seminar) => {
-          const effective = deriveEffectiveStatus(
-            seminar.status,
-            seminar.endTime,
-          );
+          const effective =
+            seminar.effectiveStatus ||
+            deriveEffectiveStatus(seminar.status, seminar.endTime);
           if (effective === 'UPCOMING' || effective === 'IN PROGRESS') {
             counts.upcoming += 1;
           } else if (effective === 'COMPLETED') {
@@ -273,7 +303,8 @@ export const SeminarWorkspace = () => {
 
   const filteredSeminars = useMemo(() => {
     return seminars.filter((sem) => {
-      const effective = deriveEffectiveStatus(sem.status, sem.endTime);
+      const effective =
+        sem.effectiveStatus || deriveEffectiveStatus(sem.status, sem.endTime);
       if (activeTab === 'upcoming') {
         return effective === 'UPCOMING' || effective === 'IN PROGRESS';
       }
@@ -303,15 +334,6 @@ export const SeminarWorkspace = () => {
     [],
   );
 
-  const announce = useCallback(
-    (message: string, variant: 'success' | 'error' = 'success') => {
-      setBannerText(message);
-      setBannerVariant(variant);
-      setShowSuccessBanner(true);
-    },
-    [],
-  );
-
   // ── Lifecycle handlers (Suspend / Reactivate) ───────────────────
   // The owner triggers the modal from the seminar card; we capture the
   // target + the action id (so the modal title/copy adapt) and the hook
@@ -333,11 +355,11 @@ export const SeminarWorkspace = () => {
         const msg =
           err instanceof Error
             ? err.message
-            : 'Failed to reactivate the seminar.';
-        announce(msg, 'error');
+            : copy('Failed to reactivate the seminar.', 'Không thể kích hoạt lại hội thảo.');
+        announce(msg, 'error', copy('Action Failed', 'Thao tác thất bại'));
       }
     },
-    [announce, updateSeminarStatus],
+    [announce, copy, updateSeminarStatus],
   );
 
   const closeLifecycleModal = useCallback(() => {
@@ -359,13 +381,13 @@ export const SeminarWorkspace = () => {
         err instanceof Error
           ? err.message
           : lifecycleAction === 'suspend'
-            ? 'Failed to suspend the seminar.'
-            : 'Failed to reactivate the seminar.';
-      announce(msg, 'error');
+            ? copy('Failed to suspend the seminar.', 'Không thể tạm dừng hội thảo.')
+            : copy('Failed to reactivate the seminar.', 'Không thể kích hoạt lại hội thảo.');
+      announce(msg, 'error', copy('Action Failed', 'Thao tác thất bại'));
       // Keep the modal open on error so the user can retry without
       // re-clicking the card button.
     }
-  }, [announce, closeLifecycleModal, lifecycleAction, lifecycleTarget, updateSeminarStatus]);
+  }, [announce, closeLifecycleModal, copy, lifecycleAction, lifecycleTarget, updateSeminarStatus]);
 
   // ── Create form helpers ─────────────────────────────────────────
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -857,9 +879,10 @@ export const SeminarWorkspace = () => {
           </span>
           <div className={styles.bannerBody}>
             <span className={styles.bannerTitle}>
-              {bannerVariant === 'success'
-                ? 'Seminar Created Successfully'
-                : 'Action Failed'}
+              {bannerTitle ||
+                (bannerVariant === 'success'
+                  ? copy('Success', 'Thành công')
+                  : copy('Action Failed', 'Thao tác thất bại'))}
             </span>
             <span className={styles.bannerText}>{bannerText}</span>
           </div>
