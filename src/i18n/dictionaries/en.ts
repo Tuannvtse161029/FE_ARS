@@ -1290,6 +1290,8 @@ export const dictionary: Dictionary = {
     // ── Materials page (My Materials + Shared Materials)
     'lecturer.materials.tab.myMaterials': 'My Materials',
     'lecturer.materials.tab.sharedMaterials': 'Shared Materials',
+    'lecturer.materials.tab.sharedByMe': 'Shared by me',
+    'lecturer.materials.tab.sharedWithMe': 'Shared with me',
     'lecturer.materials.source.file': 'File',
     'lecturer.materials.source.link': 'Link',
     'lecturer.materials.usage.none': 'Not used',

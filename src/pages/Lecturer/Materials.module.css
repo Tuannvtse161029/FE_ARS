@@ -108,6 +108,30 @@
   background: var(--ars-paper-inset);
 }
 
+.tabCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-bold, 700);
+  line-height: 1;
+  background: var(--ars-paper-inset, #f3f4f6);
+  color: var(--ars-ink-muted, #6b7280);
+  border: 1px solid var(--ars-border, #e5e7eb);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.tabBtnActive .tabCountBadge {
+  background: var(--ars-lecturer, #d97706);
+  color: #ffffff;
+  border-color: var(--ars-lecturer, #d97706);
+}
+
 /* ── Tab Panels ─────────────────────────────────────────────── */
 .tabPanel {
   display: flex;

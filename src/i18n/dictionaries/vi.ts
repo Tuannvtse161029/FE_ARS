@@ -2133,6 +2133,8 @@ export const dictionary: Dictionary = {
     // ── Materials page (My Materials + Shared Materials)
     'lecturer.materials.tab.myMaterials': 'Tài liệu của tôi',
     'lecturer.materials.tab.sharedMaterials': 'Tài liệu chia sẻ',
+    'lecturer.materials.tab.sharedByMe': 'Tôi đã chia sẻ',
+    'lecturer.materials.tab.sharedWithMe': 'Được chia sẻ với tôi',
     'lecturer.materials.source.file': 'Tệp',
     'lecturer.materials.source.link': 'Liên kết',
     'lecturer.materials.usage.none': 'Chưa sử dụng',

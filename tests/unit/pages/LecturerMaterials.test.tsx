@@ -106,13 +106,13 @@ describe('LecturerMaterialsPage — no hardcoded demo data', () => {
     getAllLearningMock.mockResolvedValueOnce([]);
     getAllSharedMock.mockResolvedValue([]);
     renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: /Shared Materials|Tài liệu chia sẻ/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /Shared by me|Tôi đã chia sẻ|Shared Materials|Tài liệu chia sẻ/i }));
     await waitFor(() =>
       expect(screen.getByText(/You have not shared any materials with colleagues yet|Bạn chưa chia sẻ tài liệu nào/)).toBeInTheDocument(),
     );
   });
 
-  it('renders real Shared Material cards returned by the API', async () => {
+  it('renders real Shared Material cards returned by the API in Tab 2', async () => {
     getAllLearningMock.mockResolvedValueOnce([]);
     getAllSharedMock.mockResolvedValue([
       {
@@ -125,8 +125,25 @@ describe('LecturerMaterialsPage — no hardcoded demo data', () => {
       },
     ]);
     renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: /Shared Materials|Tài liệu chia sẻ/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /Shared by me|Tôi đã chia sẻ|Shared Materials|Tài liệu chia sẻ/i }));
     await waitFor(() => expect(screen.getByText('Material #123')).toBeInTheDocument());
     expect(screen.getByText('Colleague #55')).toBeInTheDocument();
+  });
+
+  it('renders Shared with me cards in Tab 3 when clicked', async () => {
+    getAllLearningMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([
+      {
+        sharedMaterialId: 10,
+        lecturerId: 55,
+        paperId: 456,
+        sharedWithColleagueId: 7,
+        sharedAt: '2026-08-16T10:00:00Z',
+        status: 'PENDING',
+      },
+    ]);
+    renderPage();
+    await userEvent.click(screen.getByRole('tab', { name: /Shared with me|Được chia sẻ với tôi/i }));
+    await waitFor(() => expect(screen.getByText('Material #456')).toBeInTheDocument());
   });
 });

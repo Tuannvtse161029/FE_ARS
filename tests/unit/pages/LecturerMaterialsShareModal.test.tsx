@@ -176,7 +176,7 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     openSpy.mockRestore();
   });
 
-  it('provides View and Preview buttons in Shared Materials tab', async () => {
+  it('provides View in Tab 2 and Preview in Tab 3', async () => {
     const user = userEvent.setup();
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
@@ -186,12 +186,12 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
       expect(screen.getByText('Advanced AI Architectures Guide')).toBeInTheDocument();
     });
 
-    const sharedTab = screen.getByRole('tab', { name: /shared materials|tài liệu chia sẻ/i });
-    await user.click(sharedTab);
+    // 1. Click Tab 2: Shared by me
+    const sharedByMeTab = screen.getByRole('tab', { name: /shared by me|tôi đã chia sẻ/i });
+    await user.click(sharedByMeTab);
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
     });
 
     const viewButtons = screen.getAllByRole('button', { name: /^view$|^xem$/i });
@@ -203,6 +203,14 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
       '_blank',
       'noopener,noreferrer',
     );
+
+    // 2. Click Tab 3: Shared with me
+    const sharedWithMeTab = screen.getByRole('tab', { name: /shared with me|được chia sẻ với tôi/i });
+    await user.click(sharedWithMeTab);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
+    });
 
     const previewBtn = screen.getByRole('button', { name: /preview|xem trước/i });
     expect(previewBtn).toBeInTheDocument();
@@ -242,7 +250,7 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     expect(shareButtons).toHaveLength(1);
   });
 
-  it('renders "Shared with me" section above "Shared by me" section in Tab 2', async () => {
+  it('renders Tab 2 for Shared by me and Tab 3 for Shared with me as separate clickable tabs', async () => {
     const user = userEvent.setup();
     renderComponent();
 
@@ -250,17 +258,22 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
       expect(screen.getByText('Advanced AI Architectures Guide')).toBeInTheDocument();
     });
 
-    const sharedTab = screen.getByRole('tab', { name: /shared materials|tài liệu chia sẻ/i });
-    await user.click(sharedTab);
+    const byMeTab = screen.getByRole('tab', { name: /shared by me|tôi đã chia sẻ/i });
+    const withMeTab = screen.getByRole('tab', { name: /shared with me|được chia sẻ với tôi/i });
 
+    expect(byMeTab).toBeInTheDocument();
+    expect(withMeTab).toBeInTheDocument();
+
+    // Click Tab 2
+    await user.click(byMeTab);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i })).toBeInTheDocument();
     });
 
-    // Verify ordering: "Shared with me" header appears in DOM before "Shared by me" header
-    const withMeHeader = screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i });
-    const byMeHeader = screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i });
-    expect(withMeHeader.compareDocumentPosition(byMeHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Click Tab 3
+    await user.click(withMeTab);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
+    });
   });
 });
