@@ -100,7 +100,11 @@ export function ResolveReportModal({
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>Report type</span>
                 <span className={styles.metaValue}>
-                  {report.type === 'FORUM_COMMENT' ? 'Forum Comment' : 'Research Paper'}
+                  {report.type === 'FORUM_POST'
+                    ? 'Forum Post'
+                    : report.type === 'FORUM_COMMENT'
+                      ? 'Forum Comment'
+                      : 'Research Paper'}
                 </span>
               </div>
               <div className={styles.metaItem}>

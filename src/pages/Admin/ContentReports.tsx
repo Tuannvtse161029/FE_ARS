@@ -330,14 +330,18 @@ export default function ContentReports(): JSX.Element {
                     <td>
                       <span
                         className={`${styles.typeBadge} ${
-                          r.type === 'FORUM_COMMENT'
-                            ? styles.typeBadgeForum
-                            : styles.typeBadgePaper
+                          r.type === 'FORUM_POST'
+                            ? styles.typeBadgeForumPost
+                            : r.type === 'FORUM_COMMENT'
+                              ? styles.typeBadgeForum
+                              : styles.typeBadgePaper
                         }`}
                       >
-                        {r.type === 'FORUM_COMMENT'
-                          ? t('admin.contentReports.table.typeForumComment')
-                          : t('admin.contentReports.table.typeResearchPaper')}
+                        {r.type === 'FORUM_POST'
+                          ? t('admin.contentReports.table.typeForumPost', 'Forum Post')
+                          : r.type === 'FORUM_COMMENT'
+                            ? t('admin.contentReports.table.typeForumComment', 'Forum Comment')
+                            : t('admin.contentReports.table.typeResearchPaper', 'Research Paper')}
                       </span>
                     </td>
                     <td>{r.targetAuthorName}</td>

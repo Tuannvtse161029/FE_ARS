@@ -287,6 +287,12 @@
   background-color: color-mix(in srgb, var(--status-info-text) 6%, transparent);
 }
 
+.typeBadgeForumPost {
+  color: var(--ars-accent-yellow, #d97706);
+  border-color: color-mix(in srgb, var(--ars-accent-yellow, #d97706) 40%, transparent);
+  background-color: color-mix(in srgb, var(--ars-accent-yellow, #d97706) 10%, transparent);
+}
+
 .typeBadgePaper {
   color: var(--ars-reviewer);
   border-color: color-mix(in srgb, var(--ars-reviewer) 35%, transparent);

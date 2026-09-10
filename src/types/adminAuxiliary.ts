@@ -4,7 +4,7 @@
 // surface an explicit unavailable state when a contract is missing.
 
 // ── Violation reports (Figma screens 7 + 8) ─────────────────────────────────
-export type ViolationReportType = 'FORUM_COMMENT' | 'RESEARCH_PAPER';
+export type ViolationReportType = 'FORUM_COMMENT' | 'FORUM_POST' | 'RESEARCH_PAPER';
 export type ViolationReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
 
 export type ViolationResolutionAction =

@@ -3,6 +3,7 @@ import { Flag, X, AlertCircle, Loader2 } from 'lucide-react';
 import { reportService, ReportTargetType } from '../../services/report.service';
 import { ErrorBanner } from '../ErrorBanner';
 import { Button } from '../Button';
+import { useI18n } from '../../i18n/I18nContext';
 import styles from './ReportModal.module.css';
 
 interface ReportModalProps {
@@ -12,6 +13,7 @@ interface ReportModalProps {
   targetPreview: string;
   targetId: number;
   reporterId: number;
+  onSuccess?: () => void;
 }
 
 const MIN_REASON_LENGTH = 10;
@@ -23,7 +25,9 @@ export const ReportModal = ({
   targetPreview,
   targetId,
   reporterId,
+  onSuccess,
 }: ReportModalProps) => {
+  const { t } = useI18n();
   const [reason, setReason] = useState('');
   const [violationNotes, setViolationNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +39,9 @@ export const ReportModal = ({
   const isSubmittingRef = useRef(false);
 
   const isReasonValid = reason.trim().length >= MIN_REASON_LENGTH;
-  const targetLabel = targetType === 'ForumPost' ? 'Forum Post' : 'Comment';
+  const targetLabel = targetType === 'ForumPost'
+    ? t('forum.report.targetPost', 'Forum Post')
+    : t('forum.report.targetComment', 'Comment');
 
   const closeDialog = (): void => {
     onClose();
@@ -103,7 +109,9 @@ export const ReportModal = ({
     if (isSubmittingRef.current) return;
 
     if (!isReasonValid) {
-      setValidationError(`Please provide at least ${MIN_REASON_LENGTH} characters explaining the issue.`);
+      setValidationError(
+        t('forum.report.validationMinLength', `Please provide at least ${MIN_REASON_LENGTH} characters explaining the issue.`, { min: MIN_REASON_LENGTH }),
+      );
       reasonTextareaRef.current?.focus();
       return;
     }
@@ -121,12 +129,13 @@ export const ReportModal = ({
         reason: reason.trim(),
         violationNotes: violationNotes.trim() || undefined,
       });
+      onSuccess?.();
       closeDialog();
     } catch (err: unknown) {
       const message =
         (err as { message?: string })?.message ||
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Failed to submit report. Please try again.';
+        t('forum.report.errorFallback', 'Failed to submit report. Please try again.');
       setApiError(message);
     } finally {
       isSubmittingRef.current = false;
@@ -142,11 +151,13 @@ export const ReportModal = ({
         {/* Header */}
         <div className={styles.header}>
           <Flag size={20} className={styles.headerIcon} />
-          <h2 id="report-modal-title" className={styles.headerTitle}>Report {targetLabel}</h2>
+          <h2 id="report-modal-title" className={styles.headerTitle}>
+            {t('forum.report.modalTitle', `Report ${targetLabel}`, { targetLabel })}
+          </h2>
           <button
             onClick={closeDialog}
             className={`${styles.cancelBtn} ${styles.closeBtn}`}
-            aria-label="Close modal"
+            aria-label={t('common.closeModal', 'Close modal')}
           >
             <X size={18} />
           </button>
@@ -163,20 +174,20 @@ export const ReportModal = ({
           {/* Reason Field */}
           <div className={styles.fieldGroup}>
             <label htmlFor="report-reason" className={styles.fieldLabel}>
-              Reason <span className={styles.requiredMark}>*</span>
+              {t('forum.report.reasonLabel', 'Reason')} <span className={styles.requiredMark}>*</span>
             </label>
             <textarea
               id="report-reason"
               ref={reasonTextareaRef}
               className={`${styles.textarea} ${validationError ? styles.textareaError : ''}`}
-              placeholder="Describe why you're reporting this content (min 10 characters)..."
+              placeholder={t('forum.report.reasonPlaceholder', "Describe why you're reporting this content (min 10 characters)...")}
               rows={4}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={isSubmitting}
             />
             <div className={`${styles.charCount} ${reason.length < MIN_REASON_LENGTH ? styles.charCountError : ''}`}>
-              {reason.length}/{MIN_REASON_LENGTH} characters minimum
+              {t('forum.report.minChars', `${reason.length}/${MIN_REASON_LENGTH} characters minimum`, { count: reason.length, min: MIN_REASON_LENGTH })}
             </div>
             {validationError && (
               <div className={styles.validationError}>
@@ -189,12 +200,12 @@ export const ReportModal = ({
           {/* Additional Details Field */}
           <div className={styles.fieldGroup}>
             <label htmlFor="report-notes" className={styles.fieldLabel}>
-              Additional Details <span className={styles.optionalLabel}>(optional)</span>
+              {t('forum.report.additionalDetails', 'Additional Details')} <span className={styles.optionalLabel}>{t('forum.report.optional', '(optional)')}</span>
             </label>
             <textarea
               id="report-notes"
               className={styles.textarea}
-              placeholder="Provide any additional context that might help administrators..."
+              placeholder={t('forum.report.detailsPlaceholder', 'Provide any additional context that might help administrators...')}
               rows={3}
               value={violationNotes}
               onChange={(e) => setViolationNotes(e.target.value)}
@@ -206,7 +217,7 @@ export const ReportModal = ({
           {apiError && (
             <ErrorBanner
               tone="error"
-              title="Couldn't submit report"
+              title={t('forum.report.errorTitle', "Couldn't submit report")}
               message={apiError}
             />
           )}
@@ -220,7 +231,7 @@ export const ReportModal = ({
             onClick={closeDialog}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('forum.report.cancel', 'Cancel')}
           </Button>
           {/* The shared <Button isLoading> pattern shows a spinner over the
               same label; the original "Submitting…" copy is preserved here
@@ -235,12 +246,12 @@ export const ReportModal = ({
             {isSubmitting ? (
               <>
                 <Loader2 size={14} className={styles.spinner} aria-hidden />
-                Submitting…
+                {t('forum.report.submitting', 'Submitting…')}
               </>
             ) : (
               <>
                 <Flag size={14} aria-hidden />
-                Submit Report
+                {t('forum.report.submitReport', 'Submit Report')}
               </>
             )}
           </button>
