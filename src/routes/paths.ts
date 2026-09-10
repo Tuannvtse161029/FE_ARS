@@ -12,6 +12,12 @@ export const ROUTES = {
   REVIEWERS: '/reviewers',
   EVALUATION: '/evaluation',
   SEMINAR_WORKSPACE: '/seminar-workspace',
+  // Agent seminar-participations — top-level surface for invited roles
+  // (Reviewer, Graduate Student, Researcher as attendee). For Lecturer /
+  // Researcher it co-exists with SEMINAR_WORKSPACE and is also reachable
+  // as an in-page tab there. Live data via GET /api/Seminar/my-invitations
+  // and PUT /api/SeminarParticipant/{id}; no mock fallbacks.
+  SEMINAR_PARTICIPATIONS: '/seminar-participations',
   RESEARCH_GROUP: '/research-group',
   CONFIGURE_MILESTONES: '/configure-milestones',
   // Equivalent deep-link URL for the Lecturer "Manage Phases" button on

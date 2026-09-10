@@ -24,7 +24,6 @@ import {
   FileText as PapersIcon,
   Calendar as SeminarIcon,
   Users as GroupIcon,
-  Settings,
   User,
   ChevronDown,
   LogOut,
@@ -43,6 +42,7 @@ import {
   BriefcaseBusiness,
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
+  CalendarCheck as SeminarParticipationIcon,
   FileCheck2 as PublicationIcon,
   Menu as MenuIcon,
   Search,
@@ -539,6 +539,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: copy('Review Assignments', 'Nhiệm vụ phản biện'), icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
         ];
@@ -548,15 +549,15 @@ export const MainLayout = () => {
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
+          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
 
           // PhasedReport core flow — read top-to-bottom in workflow order:
-          // define a Topic → assign Groups → configure Milestones for a
-          // Topic/Group → review Phase Reports submitted against those
+          // define a Topic → assign Groups → manage Phases inline in the
+          // topic table → review Phase Reports submitted against those
           // milestones → manage reference Materials used by all of the
           // above.
           { to: ROUTES.LECTURER_RESEARCH_TOPICS, label: copy('Research Topics', 'Đề tài nghiên cứu'), icon: <GroupIcon size={20} /> },
           { to: ROUTES.RESEARCH_GROUP, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} />, activeFor: ['/lecturer/groups'] },
-          { to: ROUTES.CONFIGURE_MILESTONES, label: copy('Milestones', 'Mốc tiến độ'), icon: <Settings size={20} /> },
           { to: ROUTES.LECTURER_PHASE_REPORTS, label: copy('Phase Reports', 'Báo cáo giai đoạn'), icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_MATERIALS, label: copy('Materials', 'Tài liệu học tập'), icon: <Library size={20} /> },
         ];
@@ -564,6 +565,7 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: copy('Submit Report', 'Nộp báo cáo'), icon: <Upload size={20} /> },
         ];
@@ -573,6 +575,7 @@ export const MainLayout = () => {
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
+          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: copy('My Research Papers', 'Bài báo của tôi'), icon: <PapersIcon size={20} /> },
         ];
     }

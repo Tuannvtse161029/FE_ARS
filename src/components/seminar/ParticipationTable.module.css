@@ -1,0 +1,428 @@
+/* ParticipationTable — Paper Day tokens (warm paper / amber accents).
+   Used by both the standalone /seminar-participations page and the
+   in-page "My Participations" tab in SeminarWorkspace. */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+/* ── Toolbar (search + refresh + status tabs) ──────────────────────── */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--ars-surface-toolbar-border);
+  background: var(--ars-surface-toolbar);
+}
+
+.toolbarTopRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1 1 240px;
+  min-width: 220px;
+}
+
+.searchIcon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--ars-ink-muted);
+  pointer-events: none;
+  display: inline-flex;
+}
+
+.searchInput {
+  width: 100%;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  padding: 10px var(--space-3) 10px calc(var(--space-6));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.searchInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.searchInput:hover {
+  border-color: var(--ars-ink-soft);
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.refreshBtn:hover {
+  background: var(--surface-subtle);
+  border-color: var(--ars-ink-soft);
+}
+
+.refreshBtn:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.refreshBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Status filter tabs ─────────────────────────────────────────── */
+.statusTabs {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.statusTabBtn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.statusTabBtn:hover {
+  color: var(--ars-ink);
+}
+
+.statusTabBtn:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.statusTabActive {
+  color: var(--accent-primary);
+}
+
+.statusTabActive::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 1px;
+}
+
+.statusTabCount {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  background: var(--surface-sunken);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.statusTabActive .statusTabCount {
+  background: var(--status-warning-surface);
+  color: var(--ars-ink);
+}
+
+.toolbarMeta {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  margin-left: auto;
+}
+
+/* ── Table ─────────────────────────────────────────────────────── */
+.tableWrap {
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+.table thead th {
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ars-ink-muted);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-subtle);
+}
+
+.cellTitle {
+  font-family: var(--font-family-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ars-ink);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cellSub {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.cellDetail {
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  max-width: 320px;
+}
+
+.cellTime {
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
+.cellTime strong {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.cellTime span {
+  display: block;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ── Status pills ────────────────────────────────────────────────── */
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  white-space: nowrap;
+}
+
+.statusPulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-warning-text);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.statusPillPending {
+  background: var(--status-info-surface);
+  color: var(--status-info-text);
+  border: 1px solid color-mix(in srgb, var(--status-info-text) 20%, transparent);
+}
+
+.statusPillInvited {
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+  border: 1px solid color-mix(in srgb, var(--status-success-text) 20%, transparent);
+}
+
+.statusPillInProgress {
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+  border: 1px solid color-mix(in srgb, var(--status-warning-text) 20%, transparent);
+}
+
+.statusPillCompleted {
+  background: var(--surface-sunken);
+  color: var(--ars-ink-soft);
+  border: 1px solid var(--border-subtle);
+}
+
+.statusPillDeclined {
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border: 1px solid color-mix(in srgb, var(--status-danger-text) 20%, transparent);
+}
+
+/* ── Action buttons (per row) ────────────────────────────────────── */
+.actionsCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  min-width: 160px;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  min-width: 130px;
+}
+
+.actionBtnPrimary {
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  border-color: var(--accent-primary);
+}
+
+.actionBtnPrimary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.actionBtnPrimary:disabled {
+  background: var(--surface-sunken);
+  border-color: var(--border-subtle);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.actionBtnOutline {
+  background: var(--surface-raised);
+  color: var(--ars-ink);
+  border-color: var(--border-strong);
+}
+
+.actionBtnOutline:hover {
+  background: var(--surface-subtle);
+  border-color: var(--ars-ink-soft);
+}
+
+.actionBtnOutline:disabled {
+  background: var(--surface-sunken);
+  color: var(--ars-ink-muted);
+  cursor: not-allowed;
+}
+
+.actionBtnDestructive {
+  background: var(--surface-raised);
+  color: var(--status-danger-text);
+  border-color: color-mix(in srgb, var(--status-danger-text) 30%, transparent);
+}
+
+.actionBtnDestructive:hover {
+  background: var(--status-danger-surface);
+  border-color: var(--status-danger-text);
+}
+
+.actionBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.actionBtnTooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.actionBtnTooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ars-ink);
+  color: var(--surface-raised);
+  font-size: var(--font-size-xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}

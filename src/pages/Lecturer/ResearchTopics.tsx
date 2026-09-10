@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -45,6 +45,7 @@ import { researchGroupService, type ResearchGroup } from '../../services/researc
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { LearningMaterialModal } from '../../components/lecturer/LearningMaterialModal';
 import { AssignTopicModal } from '../../components/lecturer/AssignTopicModal';
+import { ManagePhasesModal } from '../../components/lecturer/ManagePhasesModal';
 import { MaterialSourcePicker, type MaterialSourceValue } from '../../components/lecturer/MaterialSourcePicker';
 import { FieldError } from '../../components/FieldError';
 import { TableToolbar } from '../../components/table/TableToolbar';
@@ -57,7 +58,6 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
 import {
-  buildConfigureMilestonesUrl,
   parseHighlightFlag,
   parseIdFromSearch,
 } from '../../utils/topicRouting';
@@ -83,7 +83,6 @@ const formatTopicId = (id: number): string =>
   `RT-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 export const ResearchTopicsPage = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { t } = useI18n();
@@ -167,6 +166,9 @@ export const ResearchTopicsPage = () => {
 
   // ── Manage Materials modal state ───────────────────────────────────
   const [topicForMaterials, setTopicForMaterials] = useState<ResearchTopic | null>(null);
+
+  // ── Manage Phases modal state ─────────────────────────────────────
+  const [topicForManagePhases, setTopicForManagePhases] = useState<ResearchTopic | null>(null);
 
   // ── Status-transition inflight ──────────────────────────────────────
   const [topicTransition, setTopicTransition] = useState<{
@@ -280,18 +282,16 @@ export const ResearchTopicsPage = () => {
   }, [highlightedTopicId, isLoading, topics]);
 
   // Part 3 — keyboard shortcuts for the research-topics table.
-  // j/k navigate rows, Enter opens the topic's milestones page,
+  // j/k navigate rows, Enter opens the manage phases modal,
   // n opens the create-topic modal, f focuses the search input.
   const { selectedIndex } = useListShortcuts({
     itemCount: pageItems.length,
     onOpen: (index) => {
       const topic = pageItems[index];
       if (!topic || typeof topic.id !== 'number') return;
-      // "Open" maps to the topic's milestone-config page, matching the
-      // "Manage Phases" affordance in the row's action stack. The
-      // topic id travels in the URL so refresh / direct links land on
-      // the exact same topic, never on a default or unrelated one.
-      navigate(buildConfigureMilestonesUrl(topic.id));
+      // "Open" maps to the Manage Phases modal, matching the
+      // "Manage Phases" button in the row's action stack.
+      setTopicForManagePhases(topic);
     },
     onNew: () => setShowCreateModal(true),
   });
@@ -785,13 +785,10 @@ export const ResearchTopicsPage = () => {
                                </span>
                               </button>
                             ) : (
-                              <Link
-                                to={
-                                  typeof topic.id === 'number'
-                                    ? buildConfigureMilestonesUrl(topic.id)
-                                    : ROUTES.CONFIGURE_MILESTONES
-                                }
+                              <button
+                                type="button"
                                 className={styles.managePhasesBtn}
+                                onClick={() => setTopicForManagePhases(topic)}
                                 title={t('lecturer.topics.managePhasesHint')}
                                 data-testid="topic-manage-phases"
                                 data-topic-id={topic.id ?? ''}
@@ -801,7 +798,7 @@ export const ResearchTopicsPage = () => {
                                 <span className={styles.managePhasesCount}>
                                   {t('lecturer.topics.groupCount').replace('{count}', String(groupCount))}
                                 </span>
-                              </Link>
+                              </button>
                             )}
                             <div className={styles.topicSecondaryCluster}>
                               <button
@@ -1132,6 +1129,17 @@ export const ResearchTopicsPage = () => {
               : t('lecturer.topics.assignNone'),
           );
           void refetchTopics();
+        }}
+      />
+
+      {/* MANAGE PHASES MODAL */}
+      <ManagePhasesModal
+        isOpen={topicForManagePhases !== null}
+        topicId={topicForManagePhases?.id ?? 0}
+        topicTitle={topicForManagePhases?.title ?? ''}
+        onClose={() => setTopicForManagePhases(null)}
+        onSaved={() => {
+          showBanner(t('lecturer.topics.phasesSavedSuccess') ?? 'Phases saved successfully.');
         }}
       />
     </div>

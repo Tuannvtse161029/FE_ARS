@@ -1,0 +1,51 @@
+/* SeminarParticipationsPage — top-level page surface that hosts the
+   shared ParticipationTable. Uses Paper Day tokens for the chrome
+   (warm paper / amber accent) so it matches the rest of the workspace. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+  padding-block: var(--space-4);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.noticeBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--status-info-surface);
+  border: 1px solid color-mix(in srgb, var(--status-info-text) 25%, transparent);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+}
+
+.noticeBanner strong {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 2px;
+  color: var(--ars-ink);
+}
+
+.noticeBanner span {
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.noticeBannerIcon {
+  color: var(--status-info-text);
+  margin-top: 2px;
+  flex-shrink: 0;
+}

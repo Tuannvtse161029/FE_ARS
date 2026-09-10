@@ -14,7 +14,6 @@ import {
   ClipboardList,
   Mail,
   AlertTriangle,
-  Lock,
   Users,
   Sliders,
   Sparkles,
@@ -58,11 +57,13 @@ import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
 import { InviteMoreParticipantsModal } from '../../components/seminar/InviteMoreParticipantsModal';
 import { SeminarDetailModal } from '../../components/seminar/SeminarDetailModal';
+import { ParticipationTable } from '../../components/seminar/ParticipationTable';
 import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
 
 type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts';
+type WorkspaceTab = 'manage' | 'participate';
 
 const formatSeminarId = (id: number): string =>
   `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
@@ -85,12 +86,31 @@ interface InviteeCandidate {
   majorFieldId?: number | null;
 }
 
+/**
+ * Resolve the current user's role into a human-readable label for the
+ * 403 error message. Falls back to "this account" so the message still
+ * reads naturally when the role is unknown or absent.
+ */
+const roleLabelForError = (
+  role: string | null | undefined,
+  isVi: boolean,
+): string => {
+  const key = (role ?? '').trim().toLowerCase().replace(/\s+/g, '');
+  if (key === 'lecturer') return isVi ? 'Giảng viên' : 'Lecturer';
+  if (key === 'researcher') return isVi ? 'Nhà nghiên cứu' : 'Researcher';
+  if (key === 'reviewer') return isVi ? 'Người phản biện' : 'Reviewer';
+  if (key === 'graduatestudent')
+    return isVi ? 'Học viên sau đại học' : 'Graduate Student';
+  return isVi ? 'tài khoản của bạn' : 'this account';
+};
+
 export const SeminarWorkspace = () => {
   const locale = useLocale();
   const isVi = locale === 'vi';
   const copy = (en: string, vi: string) => (isVi ? vi : en);
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<WorkspaceTab>('manage');
   const [currentSeminarPage, setCurrentSeminarPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
@@ -153,7 +173,6 @@ export const SeminarWorkspace = () => {
     isLoading: isLoadingSeminars,
     error: loadSeminarsError,
     refetch,
-    backendAvailability,
   } = useSeminars();
 
   const { currentRole, currentUserId, canModify } = useSeminarRoleContext();
@@ -608,9 +627,15 @@ export const SeminarWorkspace = () => {
         (err instanceof Error ? err.message : '') ||
         'Failed to create seminar.';
       if (status === 403) {
+        // Role-aware copy: surface the actual account role so a
+        // Lecturer whose subscription has lapsed (or whose JWT claim is
+        // stale) does not see a message claiming the account is a
+        // Researcher. The BE endpoint requirement is also phrased to
+        // match the canonical ticket §4 authorization scope.
+        const roleLabel = roleLabelForError(currentRole, isVi);
         msg = copy(
-          'Your account (Researcher) is not authorized by the Backend to create Seminars (403 Forbidden). Backend endpoint POST /api/Seminar currently requires Lecturer ([Authorize(Roles = "Lecturer")]). Please ask Backend to add Researcher ([Authorize(Roles = "Lecturer,Researcher")]) or sign in with a Lecturer account.',
-          'Tài khoản của bạn (Researcher) chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Endpoint POST /api/Seminar hiện chỉ cấp quyền cho Giảng viên ([Authorize(Roles = "Lecturer")]). Vui lòng nhờ Backend mở thêm quyền cho Researcher ([Authorize(Roles = "Lecturer,Researcher")]) hoặc đăng nhập bằng tài khoản Giảng viên.'
+          `Your account (${roleLabel}) is not authorized by the Backend to create Seminars (403 Forbidden). Backend endpoint POST /api/Seminar currently requires Lecturer ([Authorize(Roles = "Lecturer")]). Please ask Backend to add Researcher ([Authorize(Roles = "Lecturer,Researcher")]) or sign in with a Lecturer account.`,
+          `Tài khoản ${roleLabel} chưa có quyền tạo Seminar trên Backend (Lỗi 403 Forbidden). Endpoint POST /api/Seminar hiện chỉ cấp quyền cho Giảng viên ([Authorize(Roles = "Lecturer")]). Vui lòng nhờ Backend mở thêm quyền cho Researcher ([Authorize(Roles = "Lecturer,Researcher")]) hoặc đăng nhập bằng tài khoản Giảng viên.`
         );
       }
       setCreateModalError(msg);
@@ -666,7 +691,7 @@ export const SeminarWorkspace = () => {
       >
         {isLoadingSeminars ? 'Refreshing…' : 'Refresh'}
       </Button>
-      {canModify && (
+      {canModify && activeWorkspaceTab === 'manage' && (
         <Button
           variant="primary"
           size="md"
@@ -683,7 +708,7 @@ export const SeminarWorkspace = () => {
   return (
     <div
       className={styles.page}
-      data-testid="lecturer-seminar-workspace"
+      data-testid="seminar-workspace"
     >
       <PageHeader
         eyebrow={currentRole ? `${currentRole.toUpperCase()} WORKSPACE` : 'WORKSPACE'}
@@ -697,6 +722,31 @@ export const SeminarWorkspace = () => {
         accent="var(--ars-lecturer)"
       />
 
+      <div className={styles.workspaceTabs} role="tablist" aria-label="Switch between manage and participate views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeWorkspaceTab === 'manage'}
+          className={`${styles.tabBtn} ${activeWorkspaceTab === 'manage' ? styles.tabActive : ''}`}
+          onClick={() => setActiveWorkspaceTab('manage')}
+        >
+          {copy('Manage Seminars', 'Quản lý hội thảo')}
+          <span className={styles.tabCount}>{seminars.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeWorkspaceTab === 'participate'}
+          className={`${styles.tabBtn} ${activeWorkspaceTab === 'participate' ? styles.tabActive : ''}`}
+          onClick={() => setActiveWorkspaceTab('participate')}
+        >
+          <ClipboardList size={14} aria-hidden style={{ marginRight: 4 }} />
+          {copy('My Participations', 'Lượt tham gia của tôi')}
+        </button>
+      </div>
+
+      {activeWorkspaceTab === 'manage' ? (
+        <>
       {/* BANNERS */}
       {showSuccessBanner && (
         <div
@@ -748,26 +798,13 @@ export const SeminarWorkspace = () => {
         />
       )}
 
-      {backendAvailability !== 'full' && (
-        <div className={styles.backendBanner} role="status" aria-live="polite">
-          <span className={styles.backendBannerIcon}>
-            <Lock size={14} aria-hidden />
-          </span>
-          <div className={styles.backendBannerBody}>
-            <span className={styles.backendBannerTitle}>
-              Seminar list unavailable for your role
-            </span>
-            <p className={styles.backendBannerText}>
-              The seminar list is currently only available to the seminar
-              organizer (Lecturer role). Showing the BE-wide seminar and
-              participant rows to a Researcher, Reviewer, or Graduate Student
-              would expose every participant's name and email across the
-              platform. Once the BE ships a participant-scoped read, this
-              surface will populate automatically — no FE change required.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Note: the prior `<Lock />` "Seminar list unavailable for your role"
+          banner was removed. `useSeminars().backendAvailability` is always
+          `'full'` (see `getSeminarBackendAvailability`), so the banner was
+          dead code that claimed non-Lecturer roles could not see their list.
+          If a future BE change reintroduces a degraded state, replace this
+          comment with the same `<div className={styles.backendBanner}>`
+          block. */}
 
       {/* Tabs row */}
       <div className={styles.toolbarRow}>
@@ -801,12 +838,6 @@ export const SeminarWorkspace = () => {
       {/* List */}
       {isLoadingSeminars ? (
         <SkeletonRow count={4} withHeader />
-      ) : backendAvailability !== 'full' ? (
-        <EmptyState
-          icon={<Lock size={20} aria-hidden />}
-          title="Seminars are temporarily unavailable"
-          description="The backend did not provide a readable seminar list for this session."
-        />
       ) : activeTab === 'drafts' && filteredSeminars.length === 0 ? (
         <EmptyState
           icon={<FileText size={20} aria-hidden />}
@@ -1113,6 +1144,10 @@ export const SeminarWorkspace = () => {
             Next
           </button>
         </div>
+      )}
+        </>
+      ) : (
+        <ParticipationTable embedded />
       )}
 
       {/* CREATE SEMINAR MODAL */}

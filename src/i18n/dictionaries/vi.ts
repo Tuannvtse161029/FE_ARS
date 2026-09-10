@@ -1959,6 +1959,7 @@ export const dictionary: Dictionary = {
     'lecturer.topics.errTransFail': 'Chuyển đổi thất bại: {msg}',
     'lecturer.topics.assignSuccess': 'Đã giao đề tài cho {count} nhóm thành công.',
     'lecturer.topics.assignNone': 'Không có nhóm nào được giao.',
+    'lecturer.topics.phasesSavedSuccess': 'Đã lưu các giai đoạn thành công.',
 
     // ── Lecturer — Configure Milestones
     'lecturer.milestones.breadcrumbParent': 'Đề tài Nghiên cứu',
