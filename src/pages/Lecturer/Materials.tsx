@@ -44,6 +44,7 @@ import {
   Code2,
   Eye,
   Clock,
+  User,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -255,7 +256,7 @@ const fetchLecturerRoster = async (
 
 export const LecturerMaterialsPage = () => {
   const { user } = useAuth();
-  const lecturerId = user?.userId ?? null;
+  const lecturerId = user?.userId ?? (user as { id?: number } | undefined)?.id ?? null;
   const t = useT();
   const navigate = useNavigate();
 
@@ -585,7 +586,8 @@ export const LecturerMaterialsPage = () => {
     setSharedLoading(true);
     setSharedError(null);
     try {
-      setSharedItems(await sharedMaterialService.getAll());
+      const res = await sharedMaterialService.getAll();
+      setSharedItems(Array.isArray(res) ? res : []);
     } catch {
       setSharedError('Shared materials could not be loaded.');
     } finally {
@@ -602,12 +604,67 @@ export const LecturerMaterialsPage = () => {
   // find a LearningMaterial whose numeric id matches `paperId` we treat that
   // as the underlying row. We also keep a fallback map for unmatched ids.
   const sharedByMe = useMemo(() => {
-    return sharedItems.filter((s) => s.lecturerId === lecturerId);
+    return (Array.isArray(sharedItems) ? sharedItems : []).filter(
+      (s) => s.lecturerId === lecturerId,
+    );
   }, [sharedItems, lecturerId]);
 
   const sharedWithMe = useMemo(() => {
-    return sharedItems.filter((s) => s.sharedWithColleagueId === lecturerId);
+    return (Array.isArray(sharedItems) ? sharedItems : []).filter(
+      (s) => s.sharedWithColleagueId === lecturerId,
+    );
   }, [sharedItems, lecturerId]);
+
+  // Active/pending shares initiated by current lecturer, indexed by material id and url
+  const activeSharesByMaterial = useMemo(() => {
+    const idMap = new Map<number, SharedMaterial[]>();
+    const urlMap = new Map<string, SharedMaterial[]>();
+    for (const s of sharedByMe) {
+      const status = resolveUiStatus(s);
+      if (status === 'ACTIVE' || status === 'ACCEPTED' || status === 'PENDING') {
+        const mid =
+          typeof s.learningMaterialId === 'number'
+            ? s.learningMaterialId
+            : typeof s.paperId === 'number'
+            ? s.paperId
+            : null;
+        if (mid !== null) {
+          const list = idMap.get(mid) ?? [];
+          list.push(s);
+          idMap.set(mid, list);
+        }
+        const sUrl = (s.learningMaterialUrl || s.fileUrl || s.url || '').trim();
+        if (sUrl) {
+          const list = urlMap.get(sUrl) ?? [];
+          list.push(s);
+          urlMap.set(sUrl, list);
+        }
+      }
+    }
+    return { idMap, urlMap };
+  }, [sharedByMe]);
+
+  // Shares received by current lecturer, indexed by material id and url
+  const sharedWithMeByMaterial = useMemo(() => {
+    const idMap = new Map<number, SharedMaterial>();
+    const urlMap = new Map<string, SharedMaterial>();
+    for (const s of sharedWithMe) {
+      const mid =
+        typeof s.learningMaterialId === 'number'
+          ? s.learningMaterialId
+          : typeof s.paperId === 'number'
+          ? s.paperId
+          : null;
+      if (mid !== null && !idMap.has(mid)) {
+        idMap.set(mid, s);
+      }
+      const sUrl = (s.learningMaterialUrl || s.fileUrl || s.url || '').trim();
+      if (sUrl && !urlMap.has(sUrl)) {
+        urlMap.set(sUrl, s);
+      }
+    }
+    return { idMap, urlMap };
+  }, [sharedWithMe]);
 
   const learningById = useMemo(() => {
     const map = new Map<number, LearningMaterial>();
@@ -1296,6 +1353,38 @@ export const LecturerMaterialsPage = () => {
               const isSharedFromColleague =
                 typeof material.lecturerId === 'number' &&
                 material.lecturerId !== lecturerId;
+
+              const activeShares = (() => {
+                if (isSharedFromColleague) return [];
+                const byId =
+                  typeof material.id === 'number'
+                    ? activeSharesByMaterial.idMap.get(material.id)
+                    : undefined;
+                if (byId && byId.length > 0) return byId;
+                const matUrl = material.fileUrl?.trim();
+                if (matUrl) {
+                  const byUrl = activeSharesByMaterial.urlMap.get(matUrl);
+                  if (byUrl && byUrl.length > 0) return byUrl;
+                }
+                return [];
+              })();
+
+              const isCurrentlyShared =
+                !isSharedFromColleague && activeShares.length > 0;
+
+              const shareRecordWithMe = isSharedFromColleague
+                ? (typeof material.id === 'number'
+                    ? sharedWithMeByMaterial.idMap.get(material.id)
+                    : undefined) ??
+                  (material.fileUrl
+                    ? sharedWithMeByMaterial.urlMap.get(material.fileUrl.trim())
+                    : undefined)
+                : undefined;
+
+              const sharedByColleagueName = shareRecordWithMe
+                ? resolveColleagueName(shareRecordWithMe, rosterIndex)
+                : null;
+
               return (
                 <li
                   key={String(material.id ?? id)}
@@ -1303,9 +1392,24 @@ export const LecturerMaterialsPage = () => {
                   data-testid="learning-material-card"
                 >
                   <header className={styles.materialCardHeader}>
-                    <h3 className={styles.materialCardTitle} title={formatTitle(material)}>
-                      {formatTitle(material)}
-                    </h3>
+                    <div className={styles.materialCardTitleWrapper}>
+                      <h3 className={styles.materialCardTitle} title={formatTitle(material)}>
+                        {formatTitle(material)}
+                      </h3>
+                      {isCurrentlyShared && (
+                        <span
+                          className={styles.materialSharingBadge}
+                          title={t(
+                            'lecturer.materials.card.currentlySharedText',
+                            'Bài đang được chia sẻ ({count} đồng nghiệp)',
+                            { count: activeShares.length },
+                          )}
+                        >
+                          <Share2 size={11} aria-hidden />
+                          <span>{t('lecturer.materials.card.currentlySharedBadge', 'Đang chia sẻ')}</span>
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`${styles.materialSourceChip} ${
                         isSharedFromColleague
@@ -1316,7 +1420,7 @@ export const LecturerMaterialsPage = () => {
                       }`}
                     >
                       {isSharedFromColleague
-                        ? t('lecturer.materials.source.shared', 'Shared')
+                        ? t('lecturer.materials.source.sharedWithMe', 'Shared with me')
                         : fileLike
                         ? t('lecturer.materials.source.file', 'File')
                         : t('lecturer.materials.source.link', 'Link')}
@@ -1344,6 +1448,37 @@ export const LecturerMaterialsPage = () => {
                     >
                       {material.description}
                     </p>
+                  )}
+
+                  {isCurrentlyShared && (
+                    <div className={styles.materialSharingStatusRow}>
+                      <Share2 size={13} className={styles.materialSharingStatusIcon} aria-hidden />
+                      <span>
+                        {activeShares.length > 1
+                          ? t(
+                              'lecturer.materials.card.currentlySharedText',
+                              'Bài đang được chia sẻ ({count} đồng nghiệp)',
+                              { count: activeShares.length },
+                            )
+                          : t(
+                              'lecturer.materials.card.currentlySharedTextSingle',
+                              'Bài đang được chia sẻ',
+                            )}
+                      </span>
+                    </div>
+                  )}
+
+                  {isSharedFromColleague && sharedByColleagueName && (
+                    <div className={styles.materialSharedByRow}>
+                      <User size={13} className={styles.materialSharedByIcon} aria-hidden />
+                      <span>
+                        {t(
+                          'lecturer.materials.card.sharedFromColleagueText',
+                          'Được chia sẻ bởi {name}',
+                          { name: sharedByColleagueName },
+                        )}
+                      </span>
+                    </div>
                   )}
 
                   <div className={styles.materialCardUsage}>
@@ -1395,18 +1530,20 @@ export const LecturerMaterialsPage = () => {
                       <ExternalLink size={14} aria-hidden />
                       {t('lecturer.materials.action.open', 'Open')}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.materialShareBtn}
-                      onClick={() => openShareModal(material)}
-                      aria-label={t(
-                        'lecturer.materials.card.shareAria',
-                        'Share material',
-                      )}
-                    >
-                      <Share2 size={14} aria-hidden />
-                      {t('lecturer.materials.action.share', 'Share')}
-                    </button>
+                    {!isSharedFromColleague && (
+                      <button
+                        type="button"
+                        className={styles.materialShareBtn}
+                        onClick={() => openShareModal(material)}
+                        aria-label={t(
+                          'lecturer.materials.card.shareAria',
+                          'Share material',
+                        )}
+                      >
+                        <Share2 size={14} aria-hidden />
+                        {t('lecturer.materials.action.share', 'Share')}
+                      </button>
+                    )}
                     {!isSharedFromColleague && (
                       <button
                         type="button"
@@ -1515,73 +1652,6 @@ export const LecturerMaterialsPage = () => {
 
         <SharedSection
           title={t(
-            'lecturer.materials.shared.sectionByMe',
-            'Shared by me',
-          )}
-          emptyText={t(
-            'lecturer.materials.shared.emptyByMe',
-            'You have not shared any materials with colleagues yet.',
-          )}
-          loading={sharedLoading}
-          items={sharedByMe}
-          learningById={learningById}
-          resolveExpiry={resolveSharedExpiry}
-          resolveTitle={resolveSharedTitle}
-          resolveColleagueName={(item) =>
-            resolveColleagueName(item, rosterIndex)
-          }
-          renderAction={(item) => {
-            const status = resolveUiStatus(item);
-            if (
-              status === 'PENDING' ||
-              status === 'ACCEPTED' ||
-              status === 'EXPIRED'
-            ) {
-              const targetId =
-                typeof item.learningMaterialId === 'number'
-                  ? item.learningMaterialId
-                  : typeof item.paperId === 'number'
-                  ? item.paperId
-                  : null;
-              const foundMaterial =
-                targetId !== null ? learningById.get(targetId) : null;
-              const openUrl =
-                item.learningMaterialUrl ||
-                item.fileUrl ||
-                item.url ||
-                foundMaterial?.fileUrl;
-
-              return (
-                <div className={styles.sharedRowActionButtons}>
-                  {openUrl && (
-                    <button
-                      type="button"
-                      className={styles.sharedViewBtn}
-                      onClick={() => {
-                        window.open(openUrl, '_blank', 'noopener,noreferrer');
-                      }}
-                      title={t('lecturer.materials.action.view', 'Xem')}
-                    >
-                      <Eye size={14} aria-hidden />
-                      <span>{t('lecturer.materials.action.view', 'Xem')}</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.sharedEndBtn}
-                    onClick={() => void updateSharedStatus(item, 'ENDED')}
-                  >
-                    {t('lecturer.materials.shared.endSharing', 'End sharing')}
-                  </button>
-                </div>
-              );
-            }
-            return null;
-          }}
-        />
-
-        <SharedSection
-          title={t(
             'lecturer.materials.shared.sectionWithMe',
             'Shared with me',
           )}
@@ -1666,6 +1736,73 @@ export const LecturerMaterialsPage = () => {
                   <Eye size={14} aria-hidden />{' '}
                   {t('lecturer.materials.shared.open', 'Open')}
                 </button>
+              );
+            }
+            return null;
+          }}
+        />
+
+        <SharedSection
+          title={t(
+            'lecturer.materials.shared.sectionByMe',
+            'Shared by me',
+          )}
+          emptyText={t(
+            'lecturer.materials.shared.emptyByMe',
+            'You have not shared any materials with colleagues yet.',
+          )}
+          loading={sharedLoading}
+          items={sharedByMe}
+          learningById={learningById}
+          resolveExpiry={resolveSharedExpiry}
+          resolveTitle={resolveSharedTitle}
+          resolveColleagueName={(item) =>
+            resolveColleagueName(item, rosterIndex)
+          }
+          renderAction={(item) => {
+            const status = resolveUiStatus(item);
+            if (
+              status === 'PENDING' ||
+              status === 'ACCEPTED' ||
+              status === 'EXPIRED'
+            ) {
+              const targetId =
+                typeof item.learningMaterialId === 'number'
+                  ? item.learningMaterialId
+                  : typeof item.paperId === 'number'
+                  ? item.paperId
+                  : null;
+              const foundMaterial =
+                targetId !== null ? learningById.get(targetId) : null;
+              const openUrl =
+                item.learningMaterialUrl ||
+                item.fileUrl ||
+                item.url ||
+                foundMaterial?.fileUrl;
+
+              return (
+                <div className={styles.sharedRowActionButtons}>
+                  {openUrl && (
+                    <button
+                      type="button"
+                      className={styles.sharedViewBtn}
+                      onClick={() => {
+                        window.open(openUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      title={t('lecturer.materials.action.view', 'Xem')}
+                    >
+                      <Eye size={14} aria-hidden />
+                      <span>{t('lecturer.materials.action.view', 'Xem')}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.sharedEndBtn}
+                    onClick={() => void updateSharedStatus(item, 'ENDED')}
+                  >
+                    {t('lecturer.materials.shared.endSharing', 'End sharing')}
+                  </button>
+                </div>
               );
             }
             return null;

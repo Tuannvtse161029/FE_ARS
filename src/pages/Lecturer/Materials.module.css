@@ -1194,6 +1194,74 @@
   border: 1px solid color-mix(in srgb, #6d28d9 30%, transparent);
 }
 
+.materialCardTitleWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.materialSharingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  width: fit-content;
+  line-height: 1.2;
+}
+
+.materialSharingStatusRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px dashed #fcd34d;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-sm);
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.materialSharingStatusIcon {
+  flex-shrink: 0;
+  color: #b45309;
+}
+
+.materialSharedByRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: #6d28d9;
+  background: #f5f3ff;
+  border: 1px dashed #ddd6fe;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-sm);
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.materialSharedByIcon {
+  flex-shrink: 0;
+  color: #6d28d9;
+}
+
 .materialCardUrl {
   margin: 0;
   font-family: var(--font-family-mono);

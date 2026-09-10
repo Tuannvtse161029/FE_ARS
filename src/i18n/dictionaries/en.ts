@@ -1348,6 +1348,11 @@ export const dictionary: Dictionary = {
     'lecturer.materials.shared.decline': 'Decline',
     'lecturer.materials.shared.open': 'Open',
     'lecturer.materials.source.shared': 'Shared',
+    'lecturer.materials.source.sharedWithMe': 'Shared with me',
+    'lecturer.materials.card.currentlySharedBadge': 'Sharing',
+    'lecturer.materials.card.currentlySharedText': 'Currently shared ({count} colleague(s))',
+    'lecturer.materials.card.currentlySharedTextSingle': 'Currently shared',
+    'lecturer.materials.card.sharedFromColleagueText': 'Shared by {name}',
     'lecturer.materials.shared.gapBanner.field': 'SharedMaterial.learningMaterialId, status enum, expiry',
     'lecturer.materials.shared.gapBanner.feature': 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
 

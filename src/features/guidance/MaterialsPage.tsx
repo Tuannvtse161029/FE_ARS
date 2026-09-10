@@ -184,7 +184,7 @@ const fetchLecturerRoster = async (
 
 export const LecturerMaterialsPage = () => {
   const { user } = useAuth();
-  const lecturerId = user?.userId ?? null;
+  const lecturerId = user?.userId ?? (user as { id?: number } | undefined)?.id ?? null;
   const t = useT();
 
   const [activeTab, setActiveTab] = useState<TabId>('my-materials');
@@ -393,7 +393,8 @@ export const LecturerMaterialsPage = () => {
     setSharedLoading(true);
     setSharedError(null);
     try {
-      setSharedItems(await sharedMaterialService.getAll());
+      const res = await sharedMaterialService.getAll();
+      setSharedItems(Array.isArray(res) ? res : []);
     } catch {
       setSharedError('Shared materials could not be loaded.');
     } finally {
@@ -405,8 +406,14 @@ export const LecturerMaterialsPage = () => {
     void loadShared();
   }, [loadShared]);
 
-  const sharedByMe = useMemo(() => sharedItems.filter((s) => s.lecturerId === lecturerId), [sharedItems, lecturerId]);
-  const sharedWithMe = useMemo(() => sharedItems.filter((s) => s.sharedWithColleagueId === lecturerId), [sharedItems, lecturerId]);
+  const sharedByMe = useMemo(
+    () => (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => s.lecturerId === lecturerId),
+    [sharedItems, lecturerId],
+  );
+  const sharedWithMe = useMemo(
+    () => (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => s.sharedWithColleagueId === lecturerId),
+    [sharedItems, lecturerId],
+  );
 
   const learningById = useMemo(() => {
     const map = new Map<number, LearningMaterial>();
@@ -652,10 +659,12 @@ export const LecturerMaterialsPage = () => {
                       <ExternalLink size={14} aria-hidden />
                       {t('lecturer.materials.action.open', 'Open')}
                     </button>
-                    <button type="button" className={styles.materialShareBtn} aria-label="Share material">
-                      <Share2 size={14} aria-hidden />
-                      {t('lecturer.materials.action.share', 'Share')}
-                    </button>
+                    {!isSharedFromColleague && (
+                      <button type="button" className={styles.materialShareBtn} aria-label="Share material">
+                        <Share2 size={14} aria-hidden />
+                        {t('lecturer.materials.action.share', 'Share')}
+                      </button>
+                    )}
                     {!isSharedFromColleague && (
                       <button
                         type="button"
@@ -699,27 +708,6 @@ export const LecturerMaterialsPage = () => {
         )}
 
         <SharedSection
-          title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
-          emptyText={t('lecturer.materials.shared.emptyByMe', 'You have not shared any materials with colleagues yet.')}
-          loading={sharedLoading}
-          items={sharedByMe}
-          resolveExpiry={resolveSharedExpiry}
-          resolveTitle={resolveSharedTitle}
-          resolveColleagueName={(item) => resolveColleagueName(item, rosterIndex)}
-          renderAction={(item) => {
-            const status = resolveUiStatus(item);
-            if (status === 'PENDING' || status === 'ACCEPTED' || status === 'EXPIRED') {
-              return (
-                <button type="button" className={styles.sharedEndBtn} onClick={() => void updateSharedStatus(item, 'ENDED')}>
-                  {t('lecturer.materials.shared.endSharing', 'End sharing')}
-                </button>
-              );
-            }
-            return null;
-          }}
-        />
-
-        <SharedSection
           title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
           emptyText={t('lecturer.materials.shared.emptyWithMe', 'No colleagues have shared a material with you yet.')}
           loading={sharedLoading}
@@ -744,6 +732,27 @@ export const LecturerMaterialsPage = () => {
               return (
                 <button type="button" className={`${styles.materialOpenBtn} ${styles.sharedOpenBtn}`} disabled={!openUrl} onClick={() => { if (openUrl) window.open(openUrl, '_blank', 'noopener,noreferrer'); }} title={openUrl ? t('lecturer.materials.action.open', 'Open') : 'No URL available'}>
                   <Eye size={14} aria-hidden /> {t('lecturer.materials.shared.open', 'Open')}
+                </button>
+              );
+            }
+            return null;
+          }}
+        />
+
+        <SharedSection
+          title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
+          emptyText={t('lecturer.materials.shared.emptyByMe', 'You have not shared any materials with colleagues yet.')}
+          loading={sharedLoading}
+          items={sharedByMe}
+          resolveExpiry={resolveSharedExpiry}
+          resolveTitle={resolveSharedTitle}
+          resolveColleagueName={(item) => resolveColleagueName(item, rosterIndex)}
+          renderAction={(item) => {
+            const status = resolveUiStatus(item);
+            if (status === 'PENDING' || status === 'ACCEPTED' || status === 'EXPIRED') {
+              return (
+                <button type="button" className={styles.sharedEndBtn} onClick={() => void updateSharedStatus(item, 'ENDED')}>
+                  {t('lecturer.materials.shared.endSharing', 'End sharing')}
                 </button>
               );
             }

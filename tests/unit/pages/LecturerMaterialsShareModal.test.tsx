@@ -89,6 +89,16 @@ const mockMaterials = [
     createdAt: '2026-09-01T08:00:00Z',
     updatedAt: '2026-09-01T08:00:00Z',
   },
+  {
+    id: 202,
+    learningMaterialId: 202,
+    lecturerId: 9,
+    title: 'Quantum Computing Fundamentals',
+    description: 'Shared material from colleague Dr. Bob Jones.',
+    fileUrl: 'https://firebasestorage.googleapis.com/v0/b/ars.appspot.com/o/quantum.pdf',
+    createdAt: '2026-09-08T10:00:00Z',
+    updatedAt: '2026-09-08T10:00:00Z',
+  },
 ];
 
 const mockSharedMaterials = [
@@ -180,8 +190,8 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     await user.click(sharedTab);
 
     await waitFor(() => {
-      expect(screen.getByText(/Shared by me|Tôi đã chia sẻ/i)).toBeInTheDocument();
-      expect(screen.getByText(/Shared with me|Được chia sẻ với tôi/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
     });
 
     const viewButtons = screen.getAllByRole('button', { name: /^view$|^xem$/i });
@@ -205,5 +215,52 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     );
 
     openSpy.mockRestore();
+  });
+
+  it('displays sharing status for owner and hides share button for recipient', async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Advanced AI Architectures Guide')).toBeInTheDocument();
+      expect(screen.getByText('Quantum Computing Fundamentals')).toBeInTheDocument();
+    });
+
+    // 1. Owner card (#101 owned by lecturerId: 7) has active shares
+    // Shows exact "Sharing" / "Đang chia sẻ" badge
+    expect(screen.getByText(/^Sharing$|^Đang chia sẻ$/i)).toBeInTheDocument();
+    // Shows "Currently shared" / "Bài đang được chia sẻ" status row
+    expect(screen.getByText(/Currently shared|Bài đang được chia sẻ/i)).toBeInTheDocument();
+
+    // 2. Colleague shared card (#202 owned by lecturerId: 9)
+    // Recipient chip displays "Shared with me" / "Được chia sẻ với tôi"
+    expect(screen.getAllByText(/Shared with me|Được chia sẻ với tôi/i).length).toBeGreaterThanOrEqual(1);
+    // Shows who shared it
+    expect(screen.getByText(/Dr\. Bob Jones/i)).toBeInTheDocument();
+
+    // 3. Share buttons: exactly 1 exists on page (for the owner's material #101, NOT for #202)
+    const shareButtons = screen.getAllByRole('button', { name: /share material|chia sẻ tài liệu/i });
+    expect(shareButtons).toHaveLength(1);
+  });
+
+  it('renders "Shared with me" section above "Shared by me" section in Tab 2', async () => {
+    const user = userEvent.setup();
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Advanced AI Architectures Guide')).toBeInTheDocument();
+    });
+
+    const sharedTab = screen.getByRole('tab', { name: /shared materials|tài liệu chia sẻ/i });
+    await user.click(sharedTab);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i })).toBeInTheDocument();
+    });
+
+    // Verify ordering: "Shared with me" header appears in DOM before "Shared by me" header
+    const withMeHeader = screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i });
+    const byMeHeader = screen.getByRole('heading', { name: /shared by me|tôi đã chia sẻ/i });
+    expect(withMeHeader.compareDocumentPosition(byMeHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
