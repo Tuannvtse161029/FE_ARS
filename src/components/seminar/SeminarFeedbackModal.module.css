@@ -27,11 +27,11 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: var(--space-8) var(--space-4);
-  overflow-y: auto;
+  padding: var(--space-4);
+  overflow: hidden;
   font-family: var(--font-family-ui);
 }
 
@@ -44,7 +44,7 @@
   flex-direction: column;
   box-shadow: var(--shadow-lg);
   animation: modalCardIn 0.18s var(--motion-ease-out, ease-out);
-  max-height: calc(100vh - var(--space-8));
+  max-height: min(90vh, calc(100dvh - 32px));
   overflow: hidden;
 }
 

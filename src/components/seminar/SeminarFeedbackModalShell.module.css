@@ -32,11 +32,11 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: var(--space-6) var(--space-4);
-  overflow-y: auto;
+  padding: var(--space-4);
+  overflow: hidden;
   font-family: var(--font-family-ui);
   animation: modalScrimIn 0.18s var(--motion-ease-out, ease-out);
 }
@@ -46,7 +46,7 @@
   border: 1px solid var(--ars-paper-rule);
   border-radius: var(--radius-md);
   width: min(960px, 100%);
-  max-height: calc(100vh - var(--space-12));
+  max-height: min(90vh, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);

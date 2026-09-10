@@ -502,8 +502,9 @@
   }
 
   .overlay {
-    padding: 0;
-    align-items: flex-end;
+    padding: var(--space-2);
+    align-items: center;
+    justify-content: center;
   }
 
   .userName {
