@@ -32,7 +32,9 @@ import {
   MessageSquareText,
   Quote,
   Eye,
+  Sliders,
 } from 'lucide-react';
+import { useLocale } from '../../i18n/I18nContext';
 import {
   hasSubmittedFeedback,
   parseAiFeedback,
@@ -47,6 +49,7 @@ import {
   type FeedbackQuestion,
 } from '../../types/seminarFeedback';
 import { SeminarFeedbackModal } from './SeminarFeedbackModal';
+import { SeminarFeedbackSetupModal } from './SeminarFeedbackSetupModal';
 import styles from './SeminarFeedbackPanel.module.css';
 
 interface SeminarFeedbackPanelProps {
@@ -104,10 +107,17 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
   initialQuestions,
   onRefreshSeminar,
 }) => {
+  const locale = useLocale();
+  const isVi = locale === 'vi';
+  const copy = (en: string, vi: string) => (isVi ? vi : en);
+
   const [stats, setStats] = useState<SeminarStats | null>(initialStats);
   const [feedback, setFeedback] = useState<SeminarParticipantFeedback[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  const [questions, setQuestions] = useState<FeedbackQuestion[]>(initialQuestions ?? []);
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   const [reminderSending, setReminderSending] = useState(false);
   const [reminderMessage, setReminderMessage] = useState<{
@@ -122,6 +132,23 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
 
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Fetch dynamic questions if not provided
+  useEffect(() => {
+    let isMounted = true;
+    if (initialQuestions && initialQuestions.length > 0) {
+      setQuestions(initialQuestions);
+      return;
+    }
+    void seminarService.getFeedbackQuestions(seminarId).then((qs) => {
+      if (isMounted && qs && qs.length > 0) {
+        setQuestions(qs);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [seminarId, initialQuestions]);
 
   // Hydrate the AI summary from the Seminar.feedbackJson string (ticket §32)
   // when the page opens, so the panel can show "last generated" before any
@@ -313,12 +340,21 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
         <div className={styles.actionRow}>
           <button
             type="button"
+            className={styles.setupBtn}
+            onClick={() => setShowSetupModal(true)}
+            data-testid="setup-feedback-form"
+          >
+            <Sliders size={14} aria-hidden />
+            {copy('Configure Questions', 'Cấu hình câu hỏi')}
+          </button>
+          <button
+            type="button"
             className={styles.previewBtn}
             onClick={() => setShowPreviewModal(true)}
             data-testid="preview-feedback-form"
           >
             <Eye size={14} aria-hidden />
-            Preview Form
+            {copy('Preview Form', 'Xem trước form')}
           </button>
           <button
             type="button"
@@ -483,7 +519,7 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
               <FeedbackCard
                 key={row.seminarParticipantId}
                 entry={row}
-                questions={initialQuestions}
+                questions={questions}
               />
             ))}
           </ul>
@@ -498,6 +534,20 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
         seminarTitle={seminarTitle}
         previewMode
       />
+
+      {/* ── Configure questions modal (host-only) ──────────── */}
+      {showSetupModal && (
+        <SeminarFeedbackSetupModal
+          isOpen={showSetupModal}
+          onClose={() => setShowSetupModal(false)}
+          seminarId={seminarId}
+          seminarTitle={seminarTitle}
+          onSuccess={(updated) => {
+            setQuestions(updated);
+            onRefreshSeminar?.();
+          }}
+        />
+      )}
     </div>
   );
 };

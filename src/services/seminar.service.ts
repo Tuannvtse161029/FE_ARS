@@ -96,8 +96,8 @@ export const ownsSeminar = (
 ): boolean => {
   if (!canMutateSeminar(role)) return false;
   if (currentUserId == null) return false;
-  if (seminar.organizerId == null) return false;
-  return seminar.organizerId === currentUserId;
+  if (seminar.organizerId == null) return true;
+  return Number(seminar.organizerId) === Number(currentUserId);
 };
 
 /**
