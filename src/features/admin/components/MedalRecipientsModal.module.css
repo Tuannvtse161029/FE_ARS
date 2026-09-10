@@ -8,6 +8,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .modal {
@@ -15,7 +16,8 @@
   border-radius: var(--radius-xl, 16px);
   width: 100%;
   max-width: 840px;
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 32px));
+  margin: auto;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   display: flex;

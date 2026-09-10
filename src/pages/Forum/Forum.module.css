@@ -549,8 +549,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: 1000;
   padding: var(--space-4);
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -565,7 +566,8 @@
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 560px;
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 32px));
+  margin: auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;

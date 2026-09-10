@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Search,
@@ -83,9 +84,12 @@ export const MedalRecipientsModal: React.FC<MedalRecipientsModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="recipients-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -93,7 +97,7 @@ export const MedalRecipientsModal: React.FC<MedalRecipientsModalProps> = ({
       <div className={styles.modal}>
         {/* Header */}
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>
+          <h3 id="recipients-modal-title" className={styles.modalTitle}>
             {t('admin.medals.recipients.modalTitle', 'Danh sách người dùng đạt huy hiệu')}
           </h3>
           <button
@@ -291,7 +295,8 @@ export const MedalRecipientsModal: React.FC<MedalRecipientsModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

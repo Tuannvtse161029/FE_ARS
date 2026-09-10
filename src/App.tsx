@@ -10,7 +10,6 @@ import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
 import { DelayedLoadingOverlay } from './components/DelayedLoadingOverlay';
 import { GlobalLoadingOverlay } from './components/GlobalLoadingOverlay';
-import { useModalScrollLock, useFormFieldAutoCenter } from './hooks';
 import './styles/globals.css';
 
 // Public auth pages — kept as eager imports because every cold-load starts
@@ -141,22 +140,10 @@ const TopicMilestonesRedirect = () => {
   return <Navigate to={buildConfigureMilestonesUrl(parsed)} replace />;
 };
 
-/**
- * Global manager for auto-centering popups, modals, and interactive form fields.
- * Ensures background body scroll is locked while any modal is mounted and that
- * focused or clicked form fields glide smoothly into the vertical center.
- */
-const FormAndPopupCenterManager = () => {
-  useModalScrollLock();
-  useFormFieldAutoCenter();
-  return null;
-};
-
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <FormAndPopupCenterManager />
         <GlobalLoadingOverlay />
         <Suspense fallback={<RouteFallback />}>
           <Routes>

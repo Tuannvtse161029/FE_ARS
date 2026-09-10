@@ -9,6 +9,7 @@
  *   - SafeMedalBadge (badge rendering)
  */
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   RotateCcw,
@@ -377,10 +378,15 @@ export const AdminMedals: React.FC = () => {
       )}
 
       {/* Delete confirmation */}
-      {activeModal === 'delete' && targetMedal && (
-        <div className={styles.confirmOverlay}>
+      {activeModal === 'delete' && targetMedal && createPortal(
+        <div
+          className={styles.confirmOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="medal-delete-title"
+        >
           <div className={styles.confirmModal}>
-            <h3>{t('admin.medals.delete.title', 'Xác nhận xóa')}</h3>
+            <h3 id="medal-delete-title">{t('admin.medals.delete.title', 'Xác nhận xóa')}</h3>
             <p>
               {copy(
                 `Are you sure you want to delete "${targetMedal.title}"?`,
@@ -403,14 +409,20 @@ export const AdminMedals: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Reset confirmation */}
-      {activeModal === 'reset' && (
-        <div className={styles.confirmOverlay}>
+      {activeModal === 'reset' && createPortal(
+        <div
+          className={styles.confirmOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="medal-reset-title"
+        >
           <div className={styles.confirmModal}>
-            <h3>{t('admin.medals.reset.title', 'Khôi phục mẫu chuẩn')}</h3>
+            <h3 id="medal-reset-title">{t('admin.medals.reset.title', 'Khôi phục mẫu chuẩn')}</h3>
             <p>
               {copy(
                 'This will reset all medals to their default values. Are you sure?',
@@ -430,7 +442,8 @@ export const AdminMedals: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
