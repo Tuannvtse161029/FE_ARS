@@ -75,54 +75,81 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
     setValidationErrors({});
     setGeneralStatusMsg(null);
 
-    // Try parsing from prop, then localStorage
-    const fromProp = parseSeminarQuestions(existingFeedbackRaw);
-    const cached = getCachedSeminarQuestions(seminarId);
-    const initial = fromProp.length > 0 ? fromProp : cached;
+    let isMounted = true;
 
-    if (initial && initial.length > 0) {
-      // If matches default exactly, preserve general, else custom
+    const applyQuestions = (questionsList: FeedbackQuestion[]) => {
       const isDefault =
-        initial.length === DEFAULT_GENERAL_QUESTIONS.length &&
-        initial.every((q, i) => q.id === DEFAULT_GENERAL_QUESTIONS[i].id);
+        questionsList.length === DEFAULT_GENERAL_QUESTIONS.length &&
+        questionsList.every((q, i) => q.id === DEFAULT_GENERAL_QUESTIONS[i].id);
 
       if (isDefault) {
         setFormMode('general');
         setCustomQuestions([...DEFAULT_GENERAL_QUESTIONS]);
       } else {
         setFormMode('custom');
-        setCustomQuestions(initial);
+        setCustomQuestions(questionsList);
       }
-    } else {
-      // Default to custom form riêng cho seminar. Use a stable UUID
-      // (ticket §15) so participant answers map back to the same question
-      // when the host reorders or duplicates.
-      setFormMode('custom');
-      setCustomQuestions([
-        {
-          id: generateStableQuestionId(),
-          orderIndex: 0,
-          type: 'rating',
-          questionText: copy(
-            'How relevant and insightful was this seminar?',
-            'Mức độ hữu ích và thực tế của buổi hội thảo này đối với bạn?'
-          ),
-          isRequired: true,
-          maxStar: 5,
-        },
-        {
-          id: generateStableQuestionId(),
-          orderIndex: 1,
-          type: 'text',
-          questionText: copy(
-            'What key takeaways or constructive feedback do you have for the speaker?',
-            'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?'
-          ),
-          isRequired: false,
-          placeholder: copy('Enter your response...', 'Nhập câu trả lời...'),
-        },
-      ]);
+    };
+
+    // 1. Try parsing from prop
+    const fromProp = parseSeminarQuestions(existingFeedbackRaw);
+    if (fromProp.length > 0) {
+      applyQuestions(fromProp);
+      return;
     }
+
+    // 2. Try fetching from live backend
+    seminarService
+      .getFeedbackQuestions(seminarId)
+      .then((liveQuestions) => {
+        if (!isMounted) return;
+        if (liveQuestions && liveQuestions.length > 0) {
+          applyQuestions(liveQuestions);
+        } else {
+          // 3. Fallback to cached or fresh custom template
+          const cached = getCachedSeminarQuestions(seminarId);
+          if (cached && cached.length > 0) {
+            applyQuestions(cached);
+          } else {
+            setFormMode('custom');
+            setCustomQuestions([
+              {
+                id: generateStableQuestionId(),
+                orderIndex: 0,
+                type: 'rating',
+                questionText: copy(
+                  'How relevant and insightful was this seminar?',
+                  'Mức độ hữu ích và thực tế của buổi hội thảo này đối với bạn?'
+                ),
+                isRequired: true,
+                maxStar: 5,
+              },
+              {
+                id: generateStableQuestionId(),
+                orderIndex: 1,
+                type: 'text',
+                questionText: copy(
+                  'What key takeaways or constructive feedback do you have for the speaker?',
+                  'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?'
+                ),
+                isRequired: false,
+                placeholder: copy('Enter your response...', 'Nhập câu trả lời...'),
+              },
+            ]);
+          }
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        const cached = getCachedSeminarQuestions(seminarId);
+        if (cached && cached.length > 0) {
+          applyQuestions(cached);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, seminarId, existingFeedbackRaw]);
 
   if (!isOpen) return null;
@@ -254,21 +281,12 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
         onClose();
       }, 1200);
     } catch (err: unknown) {
-      // Surface the BE error so the host knows the form did not persist.
-      // Local cache is retained as a safety net but the canonical record
-      // lives on the server (ticket §14).
       const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
-      const status = resp?.status;
       const serverMsg =
         resp?.data?.message || resp?.data?.title ||
         (err instanceof Error ? err.message : '');
-      const friendly = status === 404 || status === 405
-        ? copy(
-          'The backend does not yet expose PUT /api/Seminar/{id}/feedback-form. Please ask the BE team to publish it; locally cached questions will be replayed next time the form loads.',
-          'Backend chưa publish PUT /api/Seminar/{id}/feedback-form. Vui lòng báo BE team; bộ câu hỏi đã được cache cục bộ để khôi phục khi form load lại.'
-        )
-        : serverMsg ||
-          copy('Failed to save the feedback form.', 'Không thể lưu biểu mẫu đánh giá.');
+      const friendly = serverMsg ||
+        copy('Failed to save the feedback form. Please try again.', 'Không thể lưu biểu mẫu đánh giá. Vui lòng thử lại.');
       setGeneralStatusMsg({
         type: 'error',
         text: friendly,

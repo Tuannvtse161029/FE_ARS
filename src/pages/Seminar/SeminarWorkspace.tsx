@@ -998,7 +998,7 @@ export const SeminarWorkspace = () => {
                               onClick={() => handleOpenAiSummary(sem)}
                             >
                               <Eye size={14} aria-hidden />
-                              View Notes
+                              {copy('View Notes', 'Xem ghi chú')}
                             </button>
                           )}
                           {showFeedbackOrganizer ? (
@@ -1008,7 +1008,7 @@ export const SeminarWorkspace = () => {
                               onClick={() => handleOpenFeedbackModal(sem)}
                             >
                               <ClipboardList size={14} aria-hidden />
-                              Feedback &amp; Grading
+                              {copy('Feedback & Grading', 'Đánh giá & Phản hồi')}
                             </button>
                           ) : (
                             <button
@@ -1021,7 +1021,23 @@ export const SeminarWorkspace = () => {
                               }}
                             >
                               <ClipboardList size={14} aria-hidden />
-                              Submit Feedback
+                              {copy('Submit Feedback', 'Gửi đánh giá')}
+                            </button>
+                          )}
+                          {canModify && owns && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => {
+                                setFeedbackSetupSeminar({
+                                  id: sem.seminarId,
+                                  title: sem.title,
+                                  feedbackRaw: sem.feedback ?? null,
+                                });
+                              }}
+                            >
+                              <Sliders size={14} aria-hidden />
+                              {copy('Setup Feedback', 'Cấu hình Feedback')}
                             </button>
                           )}
                           <button
@@ -1050,7 +1066,7 @@ export const SeminarWorkspace = () => {
                             disabled={!isValidMeetLink(sem.onlineLink)}
                           >
                             <Video size={14} aria-hidden />
-                            Join Google Meet
+                            {copy('Join Google Meet', 'Tham gia Google Meet')}
                           </button>
                           {canModify && owns && (
                             <button
@@ -1060,7 +1076,6 @@ export const SeminarWorkspace = () => {
                                 setInviteMoreSeminar(sem);
                                 setShowInviteMoreModal(true);
                               }}
-                              disabled={!isValidMeetLink(sem.onlineLink)}
                             >
                               <Mail size={14} aria-hidden />
                               {copy('Invite more participants', 'Mời thêm người tham dự')}
@@ -1079,7 +1094,7 @@ export const SeminarWorkspace = () => {
                             )}`}
                           >
                             <ClipboardList size={14} aria-hidden />
-                            Preview feedback form
+                            {copy('Preview feedback form', 'Xem trước form')}
                           </button>
                           {canModify && owns && (
                             <button

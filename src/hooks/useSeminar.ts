@@ -464,9 +464,10 @@ export function useSeminarRoleContext(): UseSeminarRoleContextResult {
   }, [effectiveRole, user?.roleName]);
 
   const currentUserId = useMemo<number | null>(() => {
-    const id = user?.id;
-    if (typeof id !== 'number' || !Number.isFinite(id) || id <= 0) return null;
-    return id;
+    const raw = user?.id;
+    const num = Number(raw);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return num;
   }, [user?.id]);
 
   const canModify = canMutateSeminar(currentRole);
