@@ -1,12 +1,22 @@
-/**
- * TierEditor — medal create/edit form modal
- *
- * Extracted from src/pages/Admin/AdminMedals.tsx
- */
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import {
   X,
   UploadCloud,
+  Lock,
+  Unlock,
+  Sparkles,
+  Award,
+  Trophy,
+  GraduationCap,
+  BookOpen,
+  Mic,
+  Headphones,
+  ClipboardCheck,
+  ShieldCheck,
+  Users,
+  Flame,
+  Star,
+  FileText,
 } from 'lucide-react';
 import {
   type Medal,
@@ -16,6 +26,8 @@ import {
   MEDAL_CRITERIA_UNITS,
   criteriaUnitLabel,
   type MedalCriteriaUnit,
+  PREDEFINED_METRICS,
+  getAutoUnitForMetric,
 } from '../../../services/medal.service';
 import { useFirebaseFileUpload } from '../../../hooks/useFirebaseFileUpload';
 import { useI18n } from '../../../i18n/I18nContext';
@@ -41,6 +53,22 @@ const TIER_LABEL_KEY: Record<MedalTier, string> = {
   Gold: 'admin.medals.tier.gold',
   Platinum: 'admin.medals.tier.platinum',
 };
+
+const ACADEMIC_ICON_PRESETS = [
+  { name: 'BookOpen', label: 'Bài báo', icon: BookOpen },
+  { name: 'GraduationCap', label: 'Giảng dạy', icon: GraduationCap },
+  { name: 'Award', label: 'Vinh danh', icon: Award },
+  { name: 'Trophy', label: 'Thành tựu', icon: Trophy },
+  { name: 'Mic', label: 'Diễn thuyết', icon: Mic },
+  { name: 'Headphones', label: 'Tham dự', icon: Headphones },
+  { name: 'ClipboardCheck', label: 'Thẩm định', icon: ClipboardCheck },
+  { name: 'ShieldCheck', label: 'Xác thực', icon: ShieldCheck },
+  { name: 'Sparkles', label: 'Xuất sắc', icon: Sparkles },
+  { name: 'Users', label: 'Cộng đồng', icon: Users },
+  { name: 'Flame', label: 'Tương tác', icon: Flame },
+  { name: 'FileText', label: 'Đề tài', icon: FileText },
+  { name: 'Star', label: 'Ngôi sao', icon: Star },
+];
 
 export interface TierEditorProps {
   mode: 'create' | 'edit';
@@ -73,11 +101,13 @@ export const TierEditor: React.FC<TierEditorProps> = ({
   const [formDescriptionVi, setFormDescriptionVi] = useState('');
   const [formRoles, setFormRoles] = useState<RoleTarget[]>([]);
   const [formTier, setFormTier] = useState<MedalTier>('Bronze');
+  const [previewTier, setPreviewTier] = useState<MedalTier>('Bronze');
   const [formStageLevel, setFormStageLevel] = useState<number>(1);
   const [formImageUrl, setFormImageUrl] = useState('lucide:Medal');
   const [formCriteriaMetric, setFormCriteriaMetric] = useState('');
   const [formCriteriaThreshold, setFormCriteriaThreshold] = useState<number>(1);
   const [formCriteriaUnit, setFormCriteriaUnit] = useState<MedalCriteriaUnit>('times');
+  const [isUnitLocked, setIsUnitLocked] = useState<boolean>(true);
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
   const [titleError, setTitleError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +122,7 @@ export const TierEditor: React.FC<TierEditorProps> = ({
       setFormDescriptionVi(medal.descriptionVi);
       setFormRoles(medal.roles);
       setFormTier(medal.tier);
+      setPreviewTier(medal.tier);
       setFormStageLevel(medal.stageLevel);
       setFormImageUrl(medal.imageUrl || 'lucide:' + resolveMedalIconName(medal));
       setFormCriteriaMetric(medal.criteriaMetric);
@@ -105,6 +136,7 @@ export const TierEditor: React.FC<TierEditorProps> = ({
       setFormDescriptionVi('');
       setFormRoles(['Researcher', 'Lecturer', 'Reviewer', 'Graduate Student']);
       setFormTier('Bronze');
+      setPreviewTier('Bronze');
       setFormStageLevel(1);
       setFormImageUrl('lucide:Medal');
       setFormCriteriaMetric('');
@@ -112,8 +144,23 @@ export const TierEditor: React.FC<TierEditorProps> = ({
       setFormCriteriaUnit('times');
       setFormIsActive(true);
     }
+    setIsUnitLocked(true);
     setTitleError('');
   }, [mode, medal]);
+
+  // Handle metric change with auto-filled locked unit
+  const handleMetricChange = (metricVal: string) => {
+    setFormCriteriaMetric(metricVal);
+    if (isUnitLocked) {
+      const autoUnit = getAutoUnitForMetric(metricVal);
+      setFormCriteriaUnit(autoUnit);
+    }
+  };
+
+  const handleTierSelect = (tier: MedalTier) => {
+    setFormTier(tier);
+    setPreviewTier(tier);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -138,10 +185,6 @@ export const TierEditor: React.FC<TierEditorProps> = ({
       tier: formTier,
       stageLevel: Number(formStageLevel) || 1,
       imageUrl: formImageUrl.trim() || 'lucide:Medal',
-      // The frame-shape picker was removed from the admin UI; circle
-      // is the only supported outline now. The field is still included
-      // here so the existing API contract (`MedalCreateInput.frameShape`)
-      // is unchanged for the backend router.
       frameShape: 'circle',
       criteriaMetric: formCriteriaMetric.trim() || 'default_metric',
       criteriaThreshold: Number(formCriteriaThreshold) || 1,
@@ -179,19 +222,34 @@ export const TierEditor: React.FC<TierEditorProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className={styles.modalBody}>
-            {/* Section 1: Identity */}
+            {/* Section 1: Identity & Tier Preview */}
             <div className={styles.formGroup}>
               <span className={styles.sectionLabel}>
-                {t('admin.medals.modal.identity', 'Nhận diện')}
+                {t('admin.medals.modal.identity', 'Nhận diện & Khung xem trước')}
               </span>
             </div>
             <div className={styles.imageSectionCard}>
-              <SafeMedalBadge
-                imageUrl={formImageUrl}
-                tier={formTier}
-                size={112}
-                alt="Preview"
-              />
+              <div className={styles.previewContainer}>
+                <SafeMedalBadge
+                  imageUrl={formImageUrl}
+                  tier={previewTier}
+                  size={104}
+                  alt="Preview"
+                />
+                <div className={styles.tierPills} title={copy('Preview badge across tier frames', 'Xem trước viền khung theo từng Tier')}>
+                  {TIER_OPTIONS.map((tier) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      className={`${styles.tierPillBtn} ${previewTier === tier ? styles.tierPillBtnActive : ''}`}
+                      onClick={() => setPreviewTier(tier)}
+                    >
+                      {tier}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className={styles.imageUploadControls}>
                 <label htmlFor="formImageUrlInput" className={styles.formLabel}>
                   {t('admin.medals.modal.artworkUrl', 'Biểu tượng / Hình ảnh (Mã Lucide hoặc URL)')}
@@ -230,6 +288,31 @@ export const TierEditor: React.FC<TierEditorProps> = ({
                   </button>
                 </div>
 
+                {/* Curated Academic Icon Shortcuts */}
+                <div className={styles.quickIconsGroup}>
+                  <span className={styles.quickIconsLabel}>
+                    {copy('Curated Academic Icons:', 'Biểu tượng học thuật nhanh:')}
+                  </span>
+                  <div className={styles.quickIconsRow}>
+                    {ACADEMIC_ICON_PRESETS.map((item) => {
+                      const IconComp = item.icon;
+                      const isSelected = formImageUrl === `lucide:${item.name}`;
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          className={`${styles.quickIconBtn} ${isSelected ? styles.quickIconBtnActive : ''}`}
+                          onClick={() => setFormImageUrl(`lucide:${item.name}`)}
+                          title={item.label}
+                        >
+                          <IconComp size={14} />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className={styles.iconPickerGrid}>
                   <LucideIconPicker
                     value={formImageUrl}
@@ -240,10 +323,10 @@ export const TierEditor: React.FC<TierEditorProps> = ({
               </div>
             </div>
 
-            {/* Section 2: Naming */}
+            {/* Section 2: Naming & Public Meta Description */}
             <div className={styles.formGroup}>
               <span className={styles.sectionLabel}>
-                {t('admin.medals.modal.naming', 'Đặt tên')}
+                {t('admin.medals.modal.naming', 'Đặt tên & Mô tả công khai')}
               </span>
             </div>
             <div className={styles.formGridTwo}>
@@ -255,7 +338,7 @@ export const TierEditor: React.FC<TierEditorProps> = ({
                   type="text"
                   id="formTitleViInput"
                   required
-                  placeholder="vd: Học giả xác thực ORCID (Cấp 1 - Đồng)"
+                  placeholder="vd: Tác giả năng suất (Cấp 1 - Khởi đầu)"
                   value={formTitleVi}
                   onChange={(e) => {
                     setFormTitleVi(e.target.value);
@@ -271,7 +354,7 @@ export const TierEditor: React.FC<TierEditorProps> = ({
                 <input
                   type="text"
                   id="formTitleEnInput"
-                  placeholder="e.g.: ORCID Verified Scholar (Bronze)"
+                  placeholder="e.g.: Prolific Author (Bronze)"
                   value={formTitle}
                   onChange={(e) => {
                     setFormTitle(e.target.value);
@@ -287,15 +370,16 @@ export const TierEditor: React.FC<TierEditorProps> = ({
               </div>
             )}
 
+            {/* Public Meta Description */}
             <div className={styles.formGridTwo}>
               <div className={styles.formGroup}>
                 <label htmlFor="formDescViInput" className={styles.formLabel}>
-                  {t('admin.medals.modal.descVi', 'Mô tả điều kiện (Tiếng Việt)')}
+                  {t('admin.medals.modal.descVi', 'Mô tả công khai (Tiếng Việt - Public Meta Description)')}
                 </label>
                 <textarea
                   id="formDescViInput"
                   rows={2}
-                  placeholder="vd: Đã liên kết và xác minh định danh khoa học quốc tế ORCID iD thành công."
+                  placeholder="vd: Xuất bản thành công bài báo khoa học đầu tiên trên hệ thống."
                   value={formDescriptionVi}
                   onChange={(e) => setFormDescriptionVi(e.target.value)}
                   className={styles.formTextarea}
@@ -303,23 +387,29 @@ export const TierEditor: React.FC<TierEditorProps> = ({
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="formDescEnInput" className={styles.formLabel}>
-                  {t('admin.medals.modal.descEn', 'Mô tả điều kiện (English)')}
+                  {t('admin.medals.modal.descEn', 'Public Meta Description (English)')}
                 </label>
                 <textarea
                   id="formDescEnInput"
                   rows={2}
-                  placeholder="e.g.: Successfully connected and verified an international ORCID iD."
+                  placeholder="e.g.: First research paper published on the ARS platform."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   className={styles.formTextarea}
                 />
               </div>
             </div>
+            <p className={styles.fieldHint}>
+              {t(
+                'admin.medals.modal.descHint',
+                'Mô tả công khai lý do và giá trị của huy hiệu để người dùng có động lực phấn đấu.'
+              )}
+            </p>
 
-            {/* Section 3: Rules */}
+            {/* Section 3: Tier & Stage Level */}
             <div className={styles.formGroup}>
               <span className={styles.sectionLabel}>
-                {t('admin.medals.modal.rules', 'Quy tắc')}
+                {t('admin.medals.modal.rules', 'Cấp bậc & Tiến trình')}
               </span>
             </div>
             <div className={styles.formGridTwo}>
@@ -330,7 +420,7 @@ export const TierEditor: React.FC<TierEditorProps> = ({
                 <select
                   id="formTierSelect"
                   value={formTier}
-                  onChange={(e) => setFormTier(e.target.value as MedalTier)}
+                  onChange={(e) => handleTierSelect(e.target.value as MedalTier)}
                   className={styles.formSelect}
                 >
                   {TIER_OPTIONS.map((tier) => (
@@ -356,53 +446,104 @@ export const TierEditor: React.FC<TierEditorProps> = ({
               </div>
             </div>
 
-            <div className={styles.formGridTwo}>
-              <div className={styles.formGroup}>
-                <label htmlFor="formCriteriaMetricInput" className={styles.formLabel}>
-                  {t('admin.medals.modal.metric', 'Mã chỉ số tự động (Metric Code) *')}
-                </label>
-                <input
-                  type="text"
-                  id="formCriteriaMetricInput"
-                  required
-                  placeholder="e.g.: orcid_connected, published_papers..."
-                  value={formCriteriaMetric}
-                  onChange={(e) => setFormCriteriaMetric(e.target.value)}
-                  className={styles.formInput}
-                />
+            {/* Section 4: Activation Rules (Grouped Section) */}
+            <div className={styles.activationRulesCard}>
+              <div className={styles.activationRulesHeader}>
+                <div>
+                  <h4 className={styles.activationRulesTitle}>
+                    {t('admin.medals.modal.activationRules', 'Quy tắc kích hoạt tự động (Activation Rules)')}
+                  </h4>
+                  <p className={styles.fieldHint}>
+                    {t(
+                      'admin.medals.modal.activationRulesHint',
+                      'Cấu hình điều kiện để hệ thống tự động ghi nhận tiến trình và mở khóa huy hiệu.'
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className={styles.thresholdRow}>
+
+              <div className={styles.formGridTwo}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="formCriteriaThresholdInput" className={styles.formLabel}>
-                    {t('admin.medals.modal.threshold', 'Ngưỡng đạt >=')}
+                  <label htmlFor="formCriteriaMetricInput" className={styles.formLabel}>
+                    {t('admin.medals.modal.metric', 'Mã chỉ số tự động (Metric Code) *')}
                   </label>
                   <input
-                    type="number"
-                    id="formCriteriaThresholdInput"
-                    min={1}
-                    value={formCriteriaThreshold}
-                    onChange={(e) => setFormCriteriaThreshold(parseInt(e.target.value, 10) || 1)}
+                    type="text"
+                    id="formCriteriaMetricInput"
+                    list="predefinedMetricsList"
+                    required
+                    placeholder="vd: published_papers, hosted_seminars..."
+                    value={formCriteriaMetric}
+                    onChange={(e) => handleMetricChange(e.target.value)}
                     className={styles.formInput}
                   />
-                </div>
-                <div className={styles.formGroup}>
-                  <label htmlFor="formCriteriaUnitSelect" className={styles.formLabel}>
-                    {t('admin.medals.modal.unit', 'Đơn vị tính')}
-                  </label>
-                  <select
-                    id="formCriteriaUnitSelect"
-                    value={formCriteriaUnit}
-                    onChange={(e) => setFormCriteriaUnit(e.target.value as MedalCriteriaUnit)}
-                    className={styles.formSelect}
-                  >
-                    {MEDAL_CRITERIA_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {criteriaUnitLabel(unit, locale as 'vi' | 'en')}
-                      </option>
+                  <datalist id="predefinedMetricsList">
+                    {PREDEFINED_METRICS.map((pm) => (
+                      <option
+                        key={pm.metric}
+                        value={pm.metric}
+                        label={locale === 'vi' ? pm.labelVi : pm.labelEn}
+                      />
                     ))}
-                  </select>
+                  </datalist>
+                </div>
+
+                <div className={styles.thresholdRow}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="formCriteriaThresholdInput" className={styles.formLabel}>
+                      {t('admin.medals.modal.threshold', 'Ngưỡng đạt >=')}
+                    </label>
+                    <input
+                      type="number"
+                      id="formCriteriaThresholdInput"
+                      min={1}
+                      value={formCriteriaThreshold}
+                      onChange={(e) => setFormCriteriaThreshold(parseInt(e.target.value, 10) || 1)}
+                      className={styles.formInput}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label htmlFor="formCriteriaUnitSelect" className={styles.formLabel}>
+                        {t('admin.medals.modal.unit', 'Đơn vị tính')}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsUnitLocked(!isUnitLocked)}
+                        className={styles.unitLockToggleBtn}
+                        title={isUnitLocked ? copy('Click to unlock unit', 'Bấm để mở khóa đơn vị') : copy('Click to auto-lock unit', 'Bấm để khóa tự động theo chỉ số')}
+                      >
+                        {isUnitLocked ? <Lock size={12} className={styles.unitLockActiveIcon} /> : <Unlock size={12} />}
+                        <span>{isUnitLocked ? copy('Locked', 'Đã khóa') : copy('Unlocked', 'Mở')}</span>
+                      </button>
+                    </div>
+
+                    <div className={styles.unitSelectWrapper}>
+                      <select
+                        id="formCriteriaUnitSelect"
+                        value={formCriteriaUnit}
+                        disabled={isUnitLocked}
+                        onChange={(e) => setFormCriteriaUnit(e.target.value as MedalCriteriaUnit)}
+                        className={`${styles.formSelect} ${isUnitLocked ? styles.unitSelectLocked : ''}`}
+                      >
+                        {MEDAL_CRITERIA_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {criteriaUnitLabel(unit, locale as 'vi' | 'en')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {isUnitLocked && (
+                <div className={styles.lockedUnitIndicator}>
+                  <Lock size={12} />
+                  <span>{t('admin.medals.modal.unitLockedHint', 'Đơn vị tính được khóa và tự động liên kết theo mã chỉ số đo lường.')}</span>
+                </div>
+              )}
             </div>
 
             {/* Roles */}
