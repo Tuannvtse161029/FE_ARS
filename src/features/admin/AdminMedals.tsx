@@ -14,6 +14,9 @@ import {
   RotateCcw,
   CheckCircle2,
   XCircle,
+  BarChart3,
+  Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { medalService, type Medal, type MedalCreateInput } from '../../services/medal.service';
 import { useI18n } from '../../i18n/I18nContext';
@@ -23,6 +26,8 @@ import { MedalCatalog } from './components/MedalCatalog';
 import { TierEditor } from './components/TierEditor';
 import { ArtworkUpload } from './components/ArtworkUpload';
 import { SafeMedalBadge, LUCIDE_ICONS_MAP, LUCIDE_ICONS_LIST, resolveMedalIconName } from './components/SafeMedalBadge';
+import { MedalAnalyticsDashboard } from './components/MedalAnalyticsDashboard';
+import { GrantMedalModal } from './components/GrantMedalModal';
 import { invalidateFlairCache } from '../../hooks/useAuthorFlair';
 // CSS module kept alongside the refactored component so the stale
 // `src/pages/Admin/AdminMedals.tsx` duplicate can be deleted without
@@ -38,6 +43,8 @@ export const AdminMedals: React.FC = () => {
 
   const [medals, setMedals] = useState<Medal[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'catalog' | 'analytics'>('catalog');
+  const [isGrantModalOpen, setIsGrantModalOpen] = useState<boolean>(false);
   const [activeModal, setActiveModal] = useState<'create' | 'edit' | 'quickImage' | 'delete' | 'reset' | null>(null);
   const [targetMedal, setTargetMedal] = useState<Medal | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -258,6 +265,15 @@ export const AdminMedals: React.FC = () => {
             <button
               type="button"
               className={styles.btnAction}
+              onClick={() => setIsGrantModalOpen(true)}
+              title={t('admin.medals.action.grantMedal', 'Trao huy hiệu')}
+            >
+              <ShieldCheck size={16} color="#0284c7" />
+              <span>{t('admin.medals.action.grantMedal', 'Trao huy hiệu')}</span>
+            </button>
+            <button
+              type="button"
+              className={styles.btnAction}
               onClick={() => setActiveModal('reset')}
               title={t('admin.medals.reset', 'Khôi phục mẫu chuẩn')}
             >
@@ -275,18 +291,61 @@ export const AdminMedals: React.FC = () => {
         }
       />
 
-      {/* Catalog (stats, filters, grid/table) */}
-      <MedalCatalog
-        medals={medals}
-        isLoading={isLoading}
-        onRefetch={loadMedals}
-        onOpenQuickImage={handleOpenQuickImage}
-        onOpenEdit={handleOpenEdit}
-        onDelete={handleDelete}
-        onToggleStatus={handleToggleStatus}
-        showNotification={showNotification}
-        locale={locale}
-      />
+      {/* Navigation Tabs */}
+      <div className={styles.tabsContainer} role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'catalog'}
+          className={`${styles.tabButton} ${activeTab === 'catalog' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('catalog')}
+        >
+          <Layers size={16} />
+          <span>{t('admin.medals.tabs.catalog', 'Danh mục Huy hiệu')}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'analytics'}
+          className={`${styles.tabButton} ${activeTab === 'analytics' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          <BarChart3 size={16} />
+          <span>{t('admin.medals.tabs.analytics', 'Bảng phân tích & Người sở hữu')}</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Catalog View */}
+      {activeTab === 'catalog' && (
+        <MedalCatalog
+          medals={medals}
+          isLoading={isLoading}
+          onRefetch={loadMedals}
+          onOpenQuickImage={handleOpenQuickImage}
+          onOpenEdit={handleOpenEdit}
+          onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
+          showNotification={showNotification}
+          locale={locale}
+        />
+      )}
+
+      {/* Tab 2: Analytics Dashboard View */}
+      {activeTab === 'analytics' && (
+        <MedalAnalyticsDashboard locale={locale} />
+      )}
+
+      {/* Grant Medal Modal */}
+      {isGrantModalOpen && (
+        <GrantMedalModal
+          onClose={() => setIsGrantModalOpen(false)}
+          onSuccess={(msg) => {
+            showNotification(msg, 'success');
+            void loadMedals();
+          }}
+          locale={locale}
+        />
+      )}
 
       {/* Modals */}
       {(activeModal === 'create' || activeModal === 'edit') && (
