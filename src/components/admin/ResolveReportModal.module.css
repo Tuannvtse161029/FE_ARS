@@ -368,6 +368,85 @@
   display: none;
 }
 
+.contentSingleCol {
+  grid-template-columns: 1fr;
+}
+
+.viewContentLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--ars-admin, #8b5cf6);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+}
+
+.viewContentLink:hover {
+  color: var(--ars-admin-mid, #7c3aed);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  width: fit-content;
+}
+
+.status_PENDING {
+  color: var(--status-warning-text, #d97706);
+  background-color: var(--status-warning-surface, rgba(217, 119, 6, 0.1));
+}
+
+.status_RESOLVED {
+  color: var(--status-success-text, #059669);
+  background-color: var(--status-success-surface, rgba(5, 150, 105, 0.1));
+}
+
+.status_DISMISSED {
+  color: var(--ink-muted, #64748b);
+  background-color: var(--surface-sunken, rgba(100, 116, 139, 0.1));
+}
+
+.resolutionCard {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.resolutionCardTitle {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.resolutionCardNotes {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 720px) {
   .content {
     grid-template-columns: 1fr;

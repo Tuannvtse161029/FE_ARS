@@ -359,6 +359,36 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.viewButton {
+  background-color: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--ink-secondary);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: 28px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.viewButton:hover {
+  background-color: var(--surface-selected);
+  border-color: var(--ars-admin, #8b5cf6);
+  color: var(--ink-primary);
+}
+
+.viewButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ── States ─────────────────────────────────────────────── */
 .errorWrap,
 .emptyWrap {
