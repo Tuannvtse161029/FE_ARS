@@ -1,7 +1,22 @@
 /**
  * ProfessionalProfile — ARS Research Constellation
- * Reviewer role accent: var(--ars-reviewer, #065f46)
- * Tokens are globally available via src/styles/globals.css
+ *
+ * The page is now reachable by Researcher, Reviewer, and Lecturer (see
+ * `App.tsx` route guard). The visual accent for each role is sourced
+ * from CSS custom properties written by the component:
+ *
+ *   --profile-accent        primary tone (header rule, avatar, button bg)
+ *   --profile-accent-mid    hover tone (button hover)
+ *   --profile-accent-light  chip / badge background
+ *
+ * Reviewer  → `--ars-reviewer`        (forest green, default)
+ * Researcher→ `--ars-researcher`      (warm amber)
+ * Lecturer  → `--ars-lecturer`        (burgundy)
+ *
+ * Every color reference in this file uses `var(--profile-accent, var(--ars-reviewer, #065f46))`
+ * so the Reviewer fallback still applies if the inline style is somehow
+ * dropped (e.g. unit-test renders without style prop). Tokens themselves
+ * are globally available via src/styles/globals.css.
  */
 
 @keyframes fadeIn {
@@ -51,7 +66,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
   border-radius: 0 2px 2px 0;
 }
 
@@ -159,12 +174,12 @@
 .formInput:focus,
 .formTextarea:focus {
   outline: none;
-  border-color: var(--ars-reviewer, #065f46);
+  border-color: var(--profile-accent, var(--ars-reviewer, #065f46));
 }
 
 .formInput:focus-visible,
 .formTextarea:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 
@@ -214,7 +229,7 @@
 }
 
 .toggle.on {
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
 }
 
 .toggle.on::after {
@@ -222,7 +237,7 @@
 }
 
 .toggle:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 
@@ -234,7 +249,7 @@
 }
 
 .saveBtn {
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
   border: none;
   border-radius: var(--radius-md);
   color: #ffffff;
@@ -249,11 +264,11 @@
 }
 
 .saveBtn:hover {
-  background: var(--ars-reviewer-mid, #047857);
+  background: var(--profile-accent-mid, var(--ars-reviewer-mid, #047857));
 }
 
 .saveBtn:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 
@@ -290,7 +305,7 @@
   top: var(--space-3);
   bottom: var(--space-3);
   width: 3px;
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
   border-radius: 999px;
 }
 
@@ -304,7 +319,7 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   font-family: var(--font-family-mono);
-  color: var(--ars-reviewer, #065f46);
+  color: var(--profile-accent, var(--ars-reviewer, #065f46));
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin: 0;
@@ -339,7 +354,7 @@
 }
 
 .secondaryButton:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 
@@ -365,7 +380,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
   color: #ffffff;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
@@ -402,9 +417,9 @@
   font-weight: var(--font-weight-bold);
   padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--ars-reviewer-light, #d1fae5);
-  border: 1px solid var(--ars-reviewer, #065f46);
-  color: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent-light, var(--ars-reviewer-light, #d1fae5));
+  border: 1px solid var(--profile-accent, var(--ars-reviewer, #065f46));
+  color: var(--profile-accent, var(--ars-reviewer, #065f46));
   width: fit-content;
 }
 
@@ -550,11 +565,11 @@
 
 .formField select:focus {
   outline: none;
-  border-color: var(--ars-reviewer, #065f46);
+  border-color: var(--profile-accent, var(--ars-reviewer, #065f46));
 }
 
 .formField select:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 
@@ -627,7 +642,7 @@
 
 /* Primary button — shared */
 .primaryButton {
-  background: var(--ars-reviewer, #065f46);
+  background: var(--profile-accent, var(--ars-reviewer, #065f46));
   border: none;
   border-radius: var(--radius-md);
   color: #ffffff;
@@ -643,11 +658,11 @@
 }
 
 .primaryButton:hover {
-  background: var(--ars-reviewer-mid, #047857);
+  background: var(--profile-accent-mid, var(--ars-reviewer-mid, #047857));
 }
 
 .primaryButton:focus-visible {
-  outline: 2px solid var(--ars-reviewer, #065f46);
+  outline: 2px solid var(--profile-accent, var(--ars-reviewer, #065f46));
   outline-offset: 2px;
 }
 

@@ -7,13 +7,11 @@ import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } f
 import reviewer from './reviewer.module.css';
 import {
   REVIEWER_CRITERIA,
-  REVIEWER_RECOMMENDATIONS,
   buildEmptyEvaluationDraft,
   isCriterionScoreValid,
   isReviewerActionable,
   isAwaitingReviewerResponse,
   type ReviewerEvaluationDraft,
-  type ReviewerRecommendationValue,
 } from './reviewerCriteria';
 import {
   resolveCriteriaForPaper,
@@ -144,16 +142,15 @@ export const ReviewerAssignmentDetail = () => {
   /**
    * requiredFieldsComplete — true when every required field is filled.
    *
-   * Recommendation must be an explicit ACCEPT / REVISION_REQUIRED / REJECT
-   * value, not the empty placeholder — pre-2026-09 the form defaulted to
-   * ACCEPT, which caused every Admin editorial record to display
-   * "Recommendation: ACCEPT" before the reviewer had actually chosen
-   * anything. We now block submission until the reviewer picks a real
-   * value.
+   * Recommendation must be an explicit ACCEPT or REVISION_REQUIRED
+   * value, not the empty placeholder. The form defaults to empty so
+   * an absent recommendation reads as "No recommendation submitted" in
+   * every downstream view, and the submission flow validates that a real
+   * value is picked before allowing the API call.
    *
    * Discipline-specific rubric items count as required when the sub-field
    * exposes them (items[]). Reviewers must score each item (1..maxScore)
-   * and write per-item notes — these are evaluated fields, not a guide.
+   * and write per-item notes — these are evaluated fields.
    */
   const requiredFieldsComplete = useMemo(() => {
     if (!draft.privateComments.trim()) return false;
@@ -588,74 +585,94 @@ export const ReviewerAssignmentDetail = () => {
    *   - a current-score chip showing the selected value
    *   - a verbal anchor row underneath that maps every score on the
    *     scale to a short descriptor (1 = Major flaws, 10 = Exemplary)
+   *   - restructured grid layout with score block + notes block
    */
-  const renderCriteriaList = () => (
-    <div className={reviewer.criteriaList}>
-      {REVIEWER_CRITERIA.map((criterion) => {
-        const values = Array.from(
-          { length: criterion.max - criterion.min + 1 },
-          (_, idx) => criterion.min + idx,
-        );
-        const scoreValid = isCriterionScoreValid(criterion, draft.scores[criterion.key]);
-        const anchors = values.map((v) =>
-          t(`reviewer.detail.criterion.anchor`, undefined, {
-            value: v,
-            label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
-          }),
-        ).join(' · ');
-        return (
-          <fieldset key={criterion.key} className={reviewer.criterion}>
-            <legend>
-              {t(criterion.label)}
-              <span className={reviewer.requiredMark} aria-hidden="true">*</span>
-            </legend>
-            <p>{t(criterion.description)}</p>
-            <div className={reviewer.criterionInputs}>
-              <label htmlFor={`score-${criterion.key}`}>
-                <span className={reviewer.criterionLabelRow}>
-                  {t('reviewer.detail.criterion.score')}
-                  <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+  const renderCriteriaList = () => {
+    // Get index for visual numbering (1-based)
+    const criterionIndexMap: Record<string, number> = {};
+    REVIEWER_CRITERIA.forEach((c, i) => { criterionIndexMap[c.key] = i + 1; });
+
+    return (
+      <div className={reviewer.criteriaList}>
+        {REVIEWER_CRITERIA.map((criterion) => {
+          const values = Array.from(
+            { length: criterion.max - criterion.min + 1 },
+            (_, idx) => criterion.min + idx,
+          );
+          const scoreValid = isCriterionScoreValid(criterion, draft.scores[criterion.key]);
+          const anchors = values.map((v) =>
+            t(`reviewer.detail.criterion.anchor`, undefined, {
+              value: v,
+              label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
+            }),
+          ).join(' · ');
+          const criterionIndex = criterionIndexMap[criterion.key];
+
+          return (
+            <fieldset key={criterion.key} className={reviewer.criterion}>
+              <legend>
+                <span className={reviewer.criterionLegendLabel}>
+                  <span className={reviewer.criterionIndex}>{criterionIndex}</span>
+                  {t(criterion.label)}
                 </span>
-                <span className={reviewer.criterionScoreRow}>
-                  <select
-                    id={`score-${criterion.key}`}
-                    value={draft.scores[criterion.key]}
-                    aria-invalid={!scoreValid}
-                    onChange={(event) => handleScoreChange(criterion.key, Number(event.target.value))}
-                  >
-                    {values.map((value) => (
-                      <option key={value} value={value}>{value} / {criterion.max}</option>
-                    ))}
-                  </select>
-                  <span className={reviewer.criterionScoreChip} aria-hidden="true">
-                    {draft.scores[criterion.key]} / {criterion.max}
-                  </span>
-                </span>
-                <small className={reviewer.criterionAnchorRow}>
-                  {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
-                </small>
-              </label>
-              <label htmlFor={`note-${criterion.key}`}>
-                <span className={reviewer.criterionLabelRow}>
-                  {t('reviewer.detail.criterion.notes')}
-                  <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
-                </span>
-                <textarea
-                  id={`note-${criterion.key}`}
-                  value={draft.perCriterionNotes[criterion.key]}
-                  onChange={(event) => handleNoteChange(criterion.key, event.target.value)}
-                  placeholder={t('reviewer.detail.criterion.notesPlaceholder', undefined, {
-                    label: t(criterion.label).toLowerCase(),
-                  })}
-                  required
-                />
-              </label>
-            </div>
-          </fieldset>
-        );
-      })}
-    </div>
-  );
+                <span className={reviewer.requiredMark} aria-hidden="true">*</span>
+              </legend>
+              <p>{t(criterion.description)}</p>
+              <div className={reviewer.criterionInputs}>
+                {/* Score Block */}
+                <div className={reviewer.scoreBlock}>
+                  <div className={reviewer.scoreBlockHeader}>
+                    <span className={reviewer.scoreBlockLabel}>
+                      {t('reviewer.detail.criterion.score')}
+                      <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+                    </span>
+                  </div>
+                  <div className={reviewer.scoreDropdownWrap}>
+                    <select
+                      id={`score-${criterion.key}`}
+                      value={draft.scores[criterion.key]}
+                      aria-invalid={!scoreValid}
+                      aria-label={t('reviewer.detail.criterion.score')}
+                      onChange={(event) => handleScoreChange(criterion.key, Number(event.target.value))}
+                    >
+                      {values.map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                    <span className={reviewer.criterionScoreChip} aria-hidden="true">
+                      {draft.scores[criterion.key]} / {criterion.max}
+                    </span>
+                  </div>
+                  <small className={reviewer.criterionAnchorRow}>
+                    {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
+                  </small>
+                </div>
+                {/* Notes Block */}
+                <div className={reviewer.notesBlock}>
+                  <div className={reviewer.notesBlockHeader}>
+                    <span className={reviewer.notesBlockLabel}>
+                      {t('reviewer.detail.criterion.notes')}
+                      <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+                    </span>
+                  </div>
+                  <textarea
+                    id={`note-${criterion.key}`}
+                    value={draft.perCriterionNotes[criterion.key]}
+                    onChange={(event) => handleNoteChange(criterion.key, event.target.value)}
+                    placeholder={t('reviewer.detail.criterion.notesPlaceholder', undefined, {
+                      label: t(criterion.label).toLowerCase(),
+                    })}
+                    required
+                    aria-label={t('reviewer.detail.criterion.notes')}
+                  />
+                </div>
+              </div>
+            </fieldset>
+          );
+        })}
+      </div>
+    );
+  };
 
   /**
    * Render the sticky progress footer. Shows completion percentage, a
@@ -771,37 +788,33 @@ export const ReviewerAssignmentDetail = () => {
                 required
               />
             </label>
-            <label className={reviewer.reviewField} htmlFor="recommendation">
-              {t('reviewer.detail.final.recommendation')}
-              <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
-              <select
-                id="recommendation"
-                value={draft.recommendation}
-                aria-invalid={!draft.recommendation}
-                onChange={(event) => setDraft((current) => ({ ...current, recommendation: event.target.value as ReviewerRecommendationValue }))}
-              >
-                {REVIEWER_RECOMMENDATIONS.map((option) => {
-                  if (!option.value) {
-                    return (
-                      <option key="placeholder" value="" disabled>
-                        {t('reviewer.detail.final.recommendation.placeholder', 'Select recommendation')}
-                      </option>
-                    );
-                  }
-                  const label = option.value === 'ACCEPT'
-                    ? t('reviewer.detail.final.recommendation.accept')
-                    : option.value === 'REVISION_REQUIRED'
-                      ? t('reviewer.detail.final.recommendation.revision')
-                      : t('reviewer.detail.final.recommendation.reject');
-                  return (
-                    <option key={option.value} value={option.value}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
-              <span>{t('reviewer.detail.final.recommendationHint')}</span>
-            </label>
+            <div className={reviewer.recommendationGroup}>
+              <span className={reviewer.recommendationLabel}>
+                {t('reviewer.detail.final.recommendation')}
+                <span className={reviewer.requiredHint}>{t('reviewer.detail.criterion.required')}</span>
+              </span>
+              <div className={reviewer.recommendationButtons} role="group" aria-label={t('reviewer.detail.final.recommendation')}>
+                <button
+                  type="button"
+                  className={`${reviewer.recommendationBtn} ${reviewer.recommendationBtnApproved} ${draft.recommendation === 'ACCEPT' ? reviewer.selected : ''}`}
+                  onClick={() => setDraft((current) => ({ ...current, recommendation: 'ACCEPT' }))}
+                  aria-pressed={draft.recommendation === 'ACCEPT'}
+                >
+                  {t('reviewer.detail.final.recommendation.accept')}
+                </button>
+                <button
+                  type="button"
+                  className={`${reviewer.recommendationBtn} ${reviewer.recommendationBtnRevision} ${draft.recommendation === 'REVISION_REQUIRED' ? reviewer.selected : ''}`}
+                  onClick={() => setDraft((current) => ({ ...current, recommendation: 'REVISION_REQUIRED' }))}
+                  aria-pressed={draft.recommendation === 'REVISION_REQUIRED'}
+                >
+                  {t('reviewer.detail.final.recommendation.revision')}
+                </button>
+              </div>
+              <span className={reviewer.recommendationHint}>
+                {t('reviewer.detail.final.recommendationHint')}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -828,7 +841,6 @@ export const ReviewerAssignmentDetail = () => {
   const getRecommendationHuman = (): string => {
     if (draft.recommendation === 'ACCEPT') return t('reviewer.detail.final.recommendation.accept');
     if (draft.recommendation === 'REVISION_REQUIRED') return t('reviewer.detail.final.recommendation.revision');
-    if (draft.recommendation === 'REJECT') return t('reviewer.detail.final.recommendation.reject');
     return '';
   };
 
