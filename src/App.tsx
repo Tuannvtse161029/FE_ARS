@@ -51,7 +51,16 @@ const AdminPaperSubmissions = lazy(() => import('./features/publication/admin/Ad
 const AdminPaperSubmissionDetail = lazy(() => import('./features/publication/admin/AdminPaperSubmissionDetail'));
 const AdminReviewerAssignments = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminReviewerAssignments })));
 const AdminPublishedPapers = lazy(() => import('./features/publication/admin/AdminPublicationLists').then((m) => ({ default: m.AdminPublishedPapers })));
-const SeminarWorkspace = lazy(() => import('./pages/Lecturer/SeminarWorkspace').then((m) => ({ default: m.SeminarWorkspace })));
+const SeminarWorkspace = lazy(() => import('./pages/Seminar/SeminarWorkspace').then((m) => ({ default: m.SeminarWorkspace })));
+// Agent seminar-participations — top-level surface for invited roles
+// (Reviewer / Graduate Student / Researcher / Lecturer). The page is
+// a thin wrapper that mounts the shared ParticipationTable used by the
+// in-page "My Participations" tab in SeminarWorkspace.
+const SeminarParticipationsPage = lazy(() =>
+  import('./pages/Seminar/SeminarParticipationsPage').then((m) => ({
+    default: m.SeminarParticipationsPage,
+  })),
+);
 const ResearchGroup = lazy(() => import('./pages/Lecturer/ResearchGroup').then((m) => ({ default: m.ResearchGroup })));
 const ConfigureMilestones = lazy(() => import('./pages/Lecturer/ConfigureMilestones').then((m) => ({ default: m.ConfigureMilestones })));
 const EvaluateReports = lazy(() => import('./pages/Lecturer/EvaluateReports').then((m) => ({ default: m.EvaluateReports })));
@@ -224,6 +233,20 @@ const App = () => {
                 <Route element={<RoleRouteGuard allow={['Lecturer', 'Researcher']} />}>
                   <Route element={<SubscriptionRouteGuard />}>
                     <Route path={ROUTES.SEMINAR_WORKSPACE} element={<SeminarWorkspace />} />
+                  </Route>
+                </Route>
+
+                {/* Seminar Participations — top-level surface for invited
+                    roles (Reviewer / Graduate Student / Researcher-as-
+                    attendee) and Lecturer / Researcher (organizers can
+                    also accept invites extended to them). Behind the
+                    subscription gate to keep behaviour consistent with
+                    SEMINAR_WORKSPACE for paid roles; Reviewer / Graduate
+                    Student are not on paid plans but the gate is a
+                    no-op for them. */}
+                <Route element={<RoleRouteGuard allow={['Reviewer', 'Graduate Student', 'Researcher', 'Lecturer']} />}>
+                  <Route element={<SubscriptionRouteGuard />}>
+                    <Route path={ROUTES.SEMINAR_PARTICIPATIONS} element={<SeminarParticipationsPage />} />
                   </Route>
                 </Route>
 

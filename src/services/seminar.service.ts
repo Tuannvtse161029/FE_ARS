@@ -827,6 +827,37 @@ export const seminarParticipantService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(API_ENDPOINTS.SEMINAR_PARTICIPANT.DELETE(id));
   },
+
+  /**
+   * Accept an invitation by writing the participant row's
+   * `invitationStatus` to `Accepted`.
+   *
+   * Backed by `PUT /api/SeminarParticipant/{id}` with the body
+   * `{ invitationStatus: 'Accepted' }` (see ticket §1 q1a). On success the
+   * caller is expected to refetch the participation list so the table
+   * flips the row from `PENDING` → `INVITED`.
+   */
+  acceptInvitation: async (id: number): Promise<SeminarParticipant> => {
+    const response = await api.put<SeminarParticipant>(
+      API_ENDPOINTS.SEMINAR_PARTICIPANT.UPDATE(id),
+      { invitationStatus: 'Accepted' },
+    );
+    return response.data;
+  },
+
+  /**
+   * Decline an invitation by writing the participant row's
+   * `invitationStatus` to `Declined`. See `acceptInvitation()` for the
+   * contract; both wrap `PUT /api/SeminarParticipant/{id}` with the
+   * `invitationStatus` field.
+   */
+  declineInvitation: async (id: number): Promise<SeminarParticipant> => {
+    const response = await api.put<SeminarParticipant>(
+      API_ENDPOINTS.SEMINAR_PARTICIPANT.UPDATE(id),
+      { invitationStatus: 'Declined' },
+    );
+    return response.data;
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

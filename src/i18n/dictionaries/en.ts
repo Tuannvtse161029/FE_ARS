@@ -1116,6 +1116,7 @@ export const dictionary: Dictionary = {
     'lecturer.topics.errTransFail': 'Transition failed: {msg}',
     'lecturer.topics.assignSuccess': 'Topic assigned to {count} group{s} successfully.',
     'lecturer.topics.assignNone': 'No groups were assigned.',
+    'lecturer.topics.phasesSavedSuccess': 'Phases saved successfully.',
 
     // ── Lecturer — Configure Milestones
     'lecturer.milestones.breadcrumbParent': 'Research Topics',

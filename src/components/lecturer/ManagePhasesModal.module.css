@@ -1,0 +1,393 @@
+/**
+ * ManagePhasesModal — CSS Module
+ *
+ * Two-panel layout: group list on the left, phase editor on the right.
+ * Mobile-first responsive: panels stack vertically on small screens.
+ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinningIcon {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinningIcon {
+    animation-duration: 1s;
+  }
+}
+
+/* ── Modal Overlay ─────────────────────────────────────────── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay {
+    animation: none;
+  }
+}
+
+/* ── Modal Card ──────────────────────────────────────────── */
+.modalCard {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Modal Header ────────────────────────────────────────── */
+.modalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ars-network);
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.modalTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.modalIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.modalSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-family-mono);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--ars-ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Modal Body ──────────────────────────────────────────── */
+.modalBody {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Group Panel (Left) ──────────────────────────────────── */
+.groupPanel {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--ars-network);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ars-paper-alt);
+  transition: opacity 0.2s ease;
+}
+
+.groupPanelHidden {
+  display: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--ars-paper-rule);
+  flex-shrink: 0;
+}
+
+.panelHeaderLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ars-ink-muted);
+}
+
+.panelHeaderCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-2);
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+}
+
+.groupList {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  text-align: left;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  gap: var(--space-3);
+}
+
+.groupCard:hover {
+  border-color: var(--ars-lecturer-mid);
+  background: var(--ars-lecturer-light);
+}
+
+.groupCard:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.groupCardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.groupName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupMeta {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.groupCardRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.phaseCountBadge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  border-radius: 999px;
+  padding: 2px var(--space-2);
+  font-size: 0.7rem;
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 30%, transparent);
+}
+
+.groupCardRight svg {
+  color: var(--ars-ink-muted);
+}
+
+/* ── Phase Panel (Right) ─────────────────────────────────── */
+.phasePanel {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.phasePanelHidden {
+  display: none;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+  align-self: flex-start;
+}
+
+.backBtn:hover {
+  border-color: var(--ars-lecturer);
+  color: var(--ars-lecturer);
+  background: var(--ars-lecturer-light);
+}
+
+.backBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.phaseEditorWrapper {
+  flex: 1;
+}
+
+/* ── Loading / Error / Empty States ──────────────────────── */
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  color: var(--ars-error);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin: var(--space-3);
+}
+
+.emptyState {
+  padding: var(--space-6) var(--space-4);
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  line-height: var(--line-height-normal);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .modalCard {
+    max-height: 100vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-width: 100%;
+    margin-top: auto;
+  }
+
+  .modalBody {
+    flex-direction: column;
+  }
+
+  .groupPanel {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--ars-network);
+    max-height: 40vh;
+  }
+
+  .groupPanelHidden {
+    display: none;
+  }
+
+  .phasePanel {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .phasePanelHidden {
+    display: none;
+  }
+}

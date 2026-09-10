@@ -68,6 +68,16 @@ export function useSeminars(): UseSeminarsResult {
     return candidate;
   });
 
+  // Read the user id here so the filter helper can merge
+  // "organized + invited" for the Researcher case. Falls back to null
+  // (treated as "no viewer identity") which is what `filterSeminarsForViewer`
+  // expects for read-only viewers.
+  const currentUserId = useAuthStore((s) => {
+    const id = s.user?.id;
+    if (typeof id !== 'number' || !Number.isFinite(id) || id <= 0) return null;
+    return id;
+  });
+
   const backendAvailability = useMemo<SeminarBackendAvailability>(
     () => getSeminarBackendAvailability(currentRole),
     [currentRole]
@@ -83,13 +93,22 @@ export function useSeminars(): UseSeminarsResult {
         setParticipants([]);
         return;
       }
-      // Lecturer hits the global organizer endpoints; everyone else (incl.
-      // Researcher, who can mutate-but-only-their-own seminars) reads through
-      // the participant-scoped endpoints so a 403 from the organizer-only
-      // routes never reaches the page.
+      // Privacy contract:
+      //   • Lecturer — read through the global organizer endpoints (covers
+      //     every seminar they own), with a participant-scoped fallback so
+      //     a stale JWT or a missing `[Authorize]` on the BE never strands
+      //     the page.
+      //   • Researcher — read through the participant-scoped endpoints
+      //     (own seminars + invitations), with an organizer-endpoint
+      //     fallback for the day the BE widens `GET /api/Seminar` to
+      //     Researcher. The fallback is gated on `canMutateSeminar` so it
+      //     never fires for read-only roles like Reviewer/Graduate Student.
+      //   • Everyone else — participant-scoped only.
       let rawSeminars: Seminar[];
       let participantsData: SeminarParticipant[];
-      if (canMutateSeminar(currentRole) && currentRole === 'Lecturer') {
+      if (canMutateSeminar(currentRole)) {
+        // First try the organizer endpoints (works for Lecturer today, and
+        // for Researcher the moment the BE authorization is widened).
         try {
           const [seminarsResult, participantsResult] = await Promise.all([
             seminarService.getAll(),
@@ -98,10 +117,11 @@ export function useSeminars(): UseSeminarsResult {
           rawSeminars = seminarsResult;
           participantsData = participantsResult;
         } catch (primaryErr) {
-          // If the organizer-only endpoint rejects us (e.g. Researcher with
-          // stale token, or BE hasn't yet widened authorization), transparently
-          // fall back to the participant-scoped reads so the workspace still
-          // populates. We never surface a hard error here for permissions.
+          // Organizer endpoint rejected us (most often because the BE
+          // still scopes it to Lecturer only). Transparently fall back to
+          // the participant-scoped reads so the page still populates. We
+          // never surface this fallback as a hard error for permissions —
+          // it's the same outcome the user would have seen anyway.
           console.warn(
             '[useSeminars] Organizer endpoint rejected, falling back to participant scope:',
             primaryErr,
@@ -121,7 +141,20 @@ export function useSeminars(): UseSeminarsResult {
         rawSeminars = rawInvitations;
         participantsData = participantsFromMySeminars;
       }
-      setSeminars(rawSeminars);
+
+      // Merge organized + invited for a Researcher so they see every
+      // seminar they own AND every one they were invited to. Lecturer is
+      // already authoritative (organizer endpoints return all of theirs);
+      // Reviewer / Graduate Student already only see invitations via the
+      // participant-scoped read. See `filterSeminarsForViewer` in
+      // `src/services/seminar.service.ts`.
+      const filtered = filterSeminarsForViewer(
+        rawSeminars,
+        participantsData,
+        currentUserId,
+        currentRole,
+      );
+      setSeminars(filtered);
       setParticipants(participantsData);
     } catch (err: unknown) {
       setSeminars([]);
@@ -130,7 +163,7 @@ export function useSeminars(): UseSeminarsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [currentRole]);
+  }, [currentRole, currentUserId]);
 
   useEffect(() => {
     void fetchAll();
