@@ -46,6 +46,31 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
   const rolesText = (roles?: string[]) =>
     roles ? (roles.length > 0 ? roles.join(', ') : t('admin.roleRequests.details.none')) : t('admin.roleRequests.approve.unavailableApi');
 
+  /**
+   * Resolve the requested-role display string for the "Requested role(s)"
+   * row. The BE may surface the request in three different shapes:
+   * `requestedAdditionalRoles` (array), `requestedRole` (singular
+   * string for INITIAL_REGISTRATION rows), or the legacy `requestedRoles`
+   * (array). Try each in order so an INITIAL_REGISTRATION row — e.g. a
+   * freshly-registered Graduate Student — renders the role name instead
+   * of an em-dash. Mirrors the helper used by the user-side
+   * `roleRequest.service.ts::fetchPendingRequest` so the two views
+   * never disagree about what role a row is asking for.
+   */
+  const requestedRolesForDisplay = (req: RoleRequest): string[] => {
+    const additional = Array.isArray(req.requestedAdditionalRoles)
+      ? req.requestedAdditionalRoles.filter((value) => typeof value === 'string' && value.length > 0)
+      : [];
+    if (additional.length > 0) return additional;
+    if (typeof req.requestedRole === 'string' && req.requestedRole.trim().length > 0) {
+      return [req.requestedRole];
+    }
+    const legacy = Array.isArray(req.requestedRoles)
+      ? req.requestedRoles.filter((value) => typeof value === 'string' && value.length > 0)
+      : [];
+    return legacy;
+  };
+
   return (
     <div
       className={styles.overlay}
@@ -81,7 +106,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
               <div><dt>{t('admin.roleRequests.details.affiliation')}</dt><dd>{request.affiliation}</dd></div>
               <div><dt>{t('admin.roleRequests.details.department')}</dt><dd>{request.department}</dd></div>
               <div><dt>{t('admin.roleRequests.details.initialCurrentRole')}</dt><dd>{rolesText(request.currentRoles)}</dd></div>
-              <div><dt>{t('admin.roleRequests.details.requestedAdditionalRole')}</dt><dd>{rolesText(request.requestedAdditionalRoles)}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.requestedAdditionalRole')}</dt><dd>{rolesText(requestedRolesForDisplay(request))}</dd></div>
               <div><dt>{t('admin.roleRequests.details.requestType')}</dt><dd>{requestTypeLabel(request)}</dd></div>
               <div>
                 <dt>{t('admin.roleRequests.details.status')}</dt>

@@ -1,38 +1,56 @@
 /**
  * Subscription — Researcher / Lecturer paid-access page.
  *
- * Renders the user's current subscription status and the available
- * plans (6 months / 12 months) sourced from the BE. The page calls
- * `POST /api/Subscription/order` exactly once when the user clicks
- * `Proceed to Pay`, then redirects the browser to the returned PayOS
- * checkout URL.
+ * Wires the live BE AnnualFees + PayOS flow (BE-ANNUAL-FEE-01). The page
+ * renders:
  *
- * TEMPORARY DISABLED STATE: when `AppConfig.features.enableSubscriptionAccess`
- * is `false`, the page shows a "feature disabled" banner and does not
- * render plan selection or the PayOS `Proceed to Pay` button. Researcher
- * and Lecturer access is unlocked at the `useSubscription` hook level.
- * See `src/config/app.ts` and `docs/BACKEND_ANNUAL_SUBSCRIPTION_API_TICKET.md`.
+ *   - Current subscription card (or "No active subscription" placeholder)
+ *   - Plan catalogue sourced from `GET /api/AnnualFees/active` filtered
+ *     by the user's role
+ *   - "Pay with PayOS" button per plan that calls
+ *     `POST /api/AnnualFees/{id}/purchase` and redirects to the returned
+ *     `checkoutUrl`
+ *   - Purchase history table from `GET /api/AnnualFees/my-purchases`
+ *
+ * No mock plans. No fabricated VND amounts. All prices come from the BE.
+ *
+ * When the user lands here after PayOS returns, the page re-fetches
+ * the current subscription so the card reflects the BE's authoritative
+ * state.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  CreditCard,
+  Loader,
+  XCircle,
+  Clock,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useLocale } from '../../i18n/I18nContext';
-import { subscriptionService } from '../../services/subscription.service';
+import { annualFeeService } from '../../services/annualFee.service';
 import { PageHeader } from '../../components/PageHeader';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { SubscriptionBackendUnavailableError } from '../../types/subscription';
-import type {
-  SubscriptionPlan,
-  SubscriptionStatus,
-} from '../../types/subscription';
+import { Button } from '../../components/Button/Button';
 import { ROUTES } from '../../routes/paths';
 import { AppConfig } from '../../config/app';
+import type {
+  AnnualFee,
+  AnnualFeeBillingCycle,
+  AnnualFeePurchase,
+  AnnualFeePurchaseStatus,
+} from '../../types/annualFee';
 import styles from './Subscription.module.css';
 
-const formatVnd = (value: number): string =>
-  new Intl.NumberFormat('vi-VN').format(value);
+const formatVnd = (value: number | undefined | null): string => {
+  if (typeof value !== 'number') return '—';
+  return new Intl.NumberFormat('vi-VN').format(value);
+};
 
 const formatDate = (
   iso: string | undefined | null,
@@ -49,32 +67,56 @@ const formatDate = (
   });
 };
 
-const STATUS_LABEL: Record<SubscriptionStatus, string> = {
-  ACTIVE: 'Active',
-  EXPIRED: 'Expired',
-  PENDING_PAYMENT: 'Pending payment',
-  CANCELLED: 'Cancelled',
+const formatDateTime = (
+  iso: string | undefined | null,
+  locale: 'vi' | 'en' = 'en',
+): string => {
+  if (!iso) return '—';
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return iso;
+  const tag = locale === 'vi' ? 'vi-VN' : 'en-US';
+  return new Date(ts).toLocaleString(tag, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
-const STATUS_CLASS: Record<SubscriptionStatus, string> = {
-  ACTIVE: styles.statusTagActive ?? '',
-  EXPIRED: styles.statusTagExpired ?? '',
-  PENDING_PAYMENT: styles.statusTagPending ?? '',
-  CANCELLED: styles.statusTagExpired ?? '',
+const STATUS_LABEL: Record<AnnualFeePurchaseStatus, string> = {
+  Pending: 'Pending payment',
+  Paid: 'Paid',
+  Failed: 'Failed',
+  Cancelled: 'Cancelled',
 };
 
-const FEATURE_LINES: Record<number, string[]> = {
-  6: [
-    'Full Researcher / Lecturer workspace access for 6 months',
-    'Forum read + interact',
-    'Submit, edit, and manage your materials and submissions',
-  ],
-  12: [
-    'Full Researcher / Lecturer workspace access for 12 months',
-    'Forum read + interact',
-    'Submit, edit, and manage your materials and submissions',
-    'Save vs the 6-month plan',
-  ],
+const STATUS_ICON: Record<AnnualFeePurchaseStatus, React.ReactNode> = {
+  Pending: <Clock size={14} aria-hidden />,
+  Paid: <CheckCircle2 size={14} aria-hidden />,
+  Failed: <XCircle size={14} aria-hidden />,
+  Cancelled: <XCircle size={14} aria-hidden />,
+};
+
+const billingCycleMonths = (cycle: AnnualFeeBillingCycle): number => {
+  switch (cycle) {
+    case 'SixMonth':
+      return 6;
+    case 'Annual':
+      return 12;
+    default:
+      return 12;
+  }
+};
+
+const billingCycleLabel = (
+  cycle: AnnualFeeBillingCycle | string | null | undefined,
+): string => {
+  if (!cycle) return '—';
+  const months = billingCycleMonths(cycle as AnnualFeeBillingCycle);
+  if (cycle === 'Annual') return `${months} months (Yearly)`;
+  if (cycle === 'SixMonth') return `${months} months`;
+  return cycle;
 };
 
 export const Subscription = () => {
@@ -88,12 +130,15 @@ export const Subscription = () => {
     refetch: refetchSubscription,
   } = useSubscription();
 
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plans, setPlans] = useState<AnnualFee[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<Error | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderError, setOrderError] = useState<Error | null>(null);
+
+  const [history, setHistory] = useState<AnnualFeePurchase[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const userFullName = user?.username || user?.email || 'Account';
 
@@ -101,31 +146,27 @@ export const Subscription = () => {
     setPlansLoading(true);
     setPlansError(null);
     try {
-      const list = await subscriptionService.listPlans();
-      const active = (list ?? []).filter((plan) => plan.isActive);
-      const sorted = [...active].sort(
-        (a, b) => a.durationMonths - b.durationMonths,
-      );
-      setPlans(sorted);
-      if (sorted.length > 0) {
+      const result = await annualFeeService.listActiveAnnualFeePlans({
+        page: 1,
+        pageSize: 20,
+      });
+      const list = result.items ?? [];
+      setPlans(list);
+      if (list.length > 0) {
         setSelectedPlanId((prev) =>
-          prev != null && sorted.some((p) => p.id === prev)
+          prev != null && list.some((p) => p.id === prev)
             ? prev
-            : sorted[0].id,
+            : list[0].id,
         );
       } else {
         setSelectedPlanId(null);
       }
     } catch (caught) {
-      if (caught instanceof SubscriptionBackendUnavailableError) {
-        setPlansError(caught);
-      } else {
-        const wrapped =
-          caught instanceof Error
-            ? caught
-            : new Error('Failed to load subscription plans.');
-        setPlansError(wrapped);
-      }
+      const wrapped =
+        caught instanceof Error
+          ? caught
+          : new Error('Failed to load subscription plans.');
+      setPlansError(wrapped);
       setPlans([]);
       setSelectedPlanId(null);
     } finally {
@@ -133,9 +174,25 @@ export const Subscription = () => {
     }
   }, []);
 
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const result = await annualFeeService.getMyPurchaseHistory({
+        page: 1,
+        pageSize: 10,
+      });
+      setHistory(result.items ?? []);
+    } catch {
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchPlans();
-  }, [fetchPlans]);
+    void fetchHistory();
+  }, [fetchPlans, fetchHistory]);
 
   // When the user lands here after PayOS returns, force a fresh fetch of
   // both plans and current subscription so the page reflects the BE's
@@ -143,10 +200,11 @@ export const Subscription = () => {
   useEffect(() => {
     if (location.pathname === ROUTES.SUBSCRIPTION) {
       void refetchSubscription();
+      void fetchHistory();
     }
-  }, [location.pathname, refetchSubscription]);
+  }, [location.pathname, refetchSubscription, fetchHistory]);
 
-  const selectedPlan = useMemo<SubscriptionPlan | null>(
+  const selectedPlan = useMemo<AnnualFee | null>(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? null,
     [plans, selectedPlanId],
   );
@@ -156,15 +214,14 @@ export const Subscription = () => {
     setIsOrdering(true);
     setOrderError(null);
     try {
-      const order = await subscriptionService.createOrder({
-        planId: selectedPlan.id,
+      const order = await annualFeeService.purchaseAnnualFee(selectedPlan.id, {
         returnUrl:
           typeof window !== 'undefined'
-            ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}`
+            ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success`
             : null,
         cancelUrl:
           typeof window !== 'undefined'
-            ? `${window.location.origin}${ROUTES.SUBSCRIPTION}`
+            ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled`
             : null,
       });
       if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
@@ -175,34 +232,30 @@ export const Subscription = () => {
       }
       throw new Error('Backend did not return a PayOS checkout URL.');
     } catch (caught) {
-      if (caught instanceof SubscriptionBackendUnavailableError) {
-        setOrderError(caught);
-      } else if (caught instanceof Error) {
-        setOrderError(caught);
-      } else {
-        setOrderError(new Error('Failed to start subscription payment.'));
-      }
+      setOrderError(
+        caught instanceof Error ? caught : new Error('Failed to start subscription payment.'),
+      );
     } finally {
       setIsOrdering(false);
     }
   }, [selectedPlan]);
 
-  const awaitingApi =
-    subscriptionError instanceof SubscriptionBackendUnavailableError ||
-    plansError instanceof SubscriptionBackendUnavailableError;
-
-  // Feature is temporarily disabled. Researcher / Lecturer retain full access.
-  // The page is kept to avoid breaking the /subscription route; no payment
-  // UI is rendered until the BE contract is published and the flag is
-  // enabled.
   const featureDisabled = !AppConfig.features.enableSubscriptionAccess;
+  // True when the BE has returned a valid subscription that is not expired.
+  // These users should see their active status — not plan selection or a pay
+  // button — so they are never asked to re-subscribe.
+  const hasActiveSubscription = !featureDisabled && current != null && !current.isExpired;
 
   return (
     <div className={styles.page} data-component="SubscriptionPage">
       <PageHeader
         eyebrow="ARS subscription"
         title="Researcher / Lecturer access"
-        description={`Signed in as ${userFullName}. Renew your subscription to keep full Researcher and Lecturer features.`}
+        description={
+          hasActiveSubscription
+            ? `Signed in as ${userFullName}. Your subscription is active — all features are unlocked.`
+            : `Signed in as ${userFullName}. Subscribe to unlock full Researcher and Lecturer features.`
+        }
       />
 
       {featureDisabled && (
@@ -218,17 +271,18 @@ export const Subscription = () => {
         </div>
       )}
 
-      {subscriptionError && !awaitingApi && (
+      {subscriptionError && (
         <ErrorBanner
           message={subscriptionError.message}
-          retry={(
+          retry={
             <button type="button" onClick={() => void refetchSubscription()}>
               Retry
             </button>
-          )}
+          }
         />
       )}
 
+      {/* CURRENT SUBSCRIPTION */}
       <section
         className={styles.statusCard}
         aria-labelledby="subscription-current-status"
@@ -239,26 +293,51 @@ export const Subscription = () => {
             {isSubscriptionLoading
               ? 'Loading subscription…'
               : current
-                ? STATUS_LABEL[current.status]
+                ? current.annualFee?.name ?? 'Active subscription'
                 : 'No active subscription'}
           </h2>
         </div>
         {current && (
-          <div className={styles.statusRow}>
-            <span
-              className={`${styles.statusTag} ${STATUS_CLASS[current.status] ?? ''}`}
-            >
-              {current.status}
-            </span>
-            <span className={styles.statusMeta}>
-              Started {formatDate(current.startsAt, locale)} · Expires{' '}
-              {formatDate(current.expiresAt, locale)}
-            </span>
+          <>
+            <div className={styles.statusRow}>
+              <span
+                className={`${styles.statusTag} ${
+                  current.isExpired ? styles.statusTagExpired : styles.statusTagActive
+                }`}
+              >
+                {current.isExpired ? 'EXPIRED' : 'ACTIVE'}
+              </span>
+              <span className={styles.statusMeta}>
+                {current.daysRemaining > 0
+                  ? `${current.daysRemaining} days remaining`
+                  : 'Expired'}
+              </span>
+            </div>
+            {/* Show dates only when the BE surfaces them */}
+            {(current.purchase?.createdAt ||
+              current.expiresAt ||
+              current.purchase?.expiryDate) && (
+              <div className={styles.statusMeta}>
+                <Calendar size={14} aria-hidden /> Started{' '}
+                {formatDate(current.purchase?.createdAt ?? null, locale)} · Expires{' '}
+                {formatDate(
+                  current.expiresAt ?? current.purchase?.expiryDate ?? null,
+                  locale,
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {!current && !isSubscriptionLoading && (
+          <div className={styles.statusMeta}>
+            <AlertTriangle size={14} aria-hidden /> You don't have an active
+            annual subscription. Pick a plan below to get started.
           </div>
         )}
       </section>
 
-      {!featureDisabled && (
+      {/* PLAN CATALOGUE — hidden for users with an active subscription */}
+      {!featureDisabled && !hasActiveSubscription && (
         <section aria-labelledby="subscription-plans-title">
           <div className={styles.headerBlock}>
             <span className={styles.eyebrow}>Choose a plan</span>
@@ -277,18 +356,18 @@ export const Subscription = () => {
               <SkeletonRow />
               <SkeletonRow />
             </div>
-          ) : plansError && !awaitingApi ? (
+          ) : plansError ? (
             <ErrorBanner
               message={plansError.message}
-              retry={(
+              retry={
                 <button type="button" onClick={() => void fetchPlans()}>
                   Retry
                 </button>
-              )}
+              }
             />
           ) : plans.length === 0 ? (
             <div className={styles.empty}>
-              No subscription plans are available right now.
+              No subscription plans are available for your role right now.
             </div>
           ) : (
             <div className={styles.plansGrid}>
@@ -298,30 +377,35 @@ export const Subscription = () => {
                   <button
                     key={plan.id}
                     type="button"
-                    className={`${styles.planCard} ${selected ? styles.planCardSelected : ''}`}
+                    className={`${styles.planCard} ${
+                      selected ? styles.planCardSelected : ''
+                    }`}
                     onClick={() => setSelectedPlanId(plan.id)}
                     aria-pressed={selected}
-                    data-testid={`plan-card-${plan.durationMonths}`}
+                    data-testid={`plan-card-${plan.billingCycle}`}
                     data-plan-id={plan.id}
-                    data-price-vnd={plan.priceVnd}
+                    data-price-vnd={plan.price}
                   >
                     <span className={styles.planDuration}>
-                      {plan.durationMonths} months
+                      {billingCycleLabel(plan.billingCycle)}
                     </span>
                     <span className={styles.planPrice}>
-                      {formatVnd(plan.priceVnd)}{' '}
-                      <span className={styles.planPriceCurrency}>
-                        {plan.currency}
-                      </span>
+                      {formatVnd(plan.price)}{' '}
+                      <span className={styles.planPriceCurrency}>VND</span>
                     </span>
+                    <span className={styles.planRolePill}>{plan.userRole}</span>
                     <ul className={styles.planFeatures}>
-                      {(FEATURE_LINES[plan.durationMonths] ?? [
-                        'Full Researcher / Lecturer workspace access',
-                      ]).map((line) => (
-                        <li key={line} className={styles.planFeature}>
-                          {line}
-                        </li>
-                      ))}
+                      <li className={styles.planFeature}>
+                        Full Researcher / Lecturer workspace access for{' '}
+                        {billingCycleMonths(plan.billingCycle)} month
+                        {billingCycleMonths(plan.billingCycle) !== 1 ? 's' : ''}
+                      </li>
+                      <li className={styles.planFeature}>
+                        Forum read + interact
+                      </li>
+                      <li className={styles.planFeature}>
+                        Submit, edit, and manage your materials and submissions
+                      </li>
                     </ul>
                   </button>
                 );
@@ -331,30 +415,93 @@ export const Subscription = () => {
         </section>
       )}
 
-      {!featureDisabled && (
+      {/* ACTION ROW — hidden for users with an active subscription */}
+      {!featureDisabled && !hasActiveSubscription && (
         <div className={styles.actionRow}>
-          <button
-            type="button"
-            className={styles.proceedButton}
+          <Button
             onClick={() => void handleProceedToPay()}
             disabled={
-              !selectedPlan ||
-              isOrdering ||
-              plansLoading ||
-              plansError !== null
+              !selectedPlan || isOrdering || plansLoading || plansError !== null
             }
             data-testid="proceed-to-pay"
           >
-            {isOrdering ? 'Starting PayOS checkout…' : 'Proceed to Pay'}
-          </button>
+            {isOrdering ? (
+              <>
+                <Loader size={14} className={styles.spinningIcon} aria-hidden />{' '}
+                Starting PayOS checkout…
+              </>
+            ) : (
+              <>
+                <CreditCard size={14} aria-hidden /> Pay with PayOS
+              </>
+            )}
+          </Button>
         </div>
       )}
 
       {orderError && (
         <div className={styles.errorBox} role="alert">
-          {orderError.message}
+          <AlertTriangle size={14} aria-hidden /> {orderError.message}
         </div>
       )}
+
+      {/* PURCHASE HISTORY */}
+      <section aria-labelledby="subscription-history-title">
+        <div className={styles.headerBlock}>
+          <span className={styles.eyebrow}>Purchase history</span>
+          <h2 id="subscription-history-title" className={styles.title}>
+            Recent purchases
+          </h2>
+        </div>
+        {historyLoading ? (
+          <SkeletonRow count={3} rowHeight={28} />
+        ) : history.length === 0 ? (
+          <div className={styles.empty}>No purchases yet.</div>
+        ) : (
+          <div className={styles.historyTableWrap}>
+            <table className={styles.historyTable}>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Amount</th>
+                  <th>Transaction</th>
+                  <th>Created</th>
+                  <th>Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((purchase) => (
+                  <tr
+                    key={purchase.transactionId}
+                    data-testid="history-row"
+                  >
+                    <td>
+                      <span
+                        className={`${styles.statusTag} ${
+                          purchase.status === 'Paid'
+                            ? styles.statusTagActive
+                            : purchase.status === 'Pending'
+                              ? styles.statusTagPending
+                              : styles.statusTagExpired
+                        }`}
+                      >
+                        {STATUS_ICON[purchase.status]}
+                        {STATUS_LABEL[purchase.status]}
+                      </span>
+                    </td>
+                    <td>{formatVnd(purchase.amount)} VND</td>
+                    <td className={styles.transactionIdCell}>
+                      {purchase.transactionId}
+                    </td>
+                    <td>{formatDateTime(purchase.createdAt, locale)}</td>
+                    <td>{formatDate(purchase.expiryDate ?? null, locale)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 };

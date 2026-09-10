@@ -169,6 +169,21 @@ describe('mapSeminarStatus', () => {
     expect(mapSeminarStatus('Draft')).toBe('DRAFT');
   });
 
+  // BTR — INACTIVE / Suspend lifecycle. The owner can flip a seminar
+  // from Upcoming to Inactive via the new Suspend button; the mapper
+  // must recognise any BE-serialised synonym so future BE renames do
+  // not break the FE.
+  it('maps "Inactive" / "Suspended" / "Suspend" to INACTIVE (case + whitespace tolerant)', () => {
+    expect(mapSeminarStatus('Inactive')).toBe('INACTIVE');
+    expect(mapSeminarStatus('inactive')).toBe('INACTIVE');
+    expect(mapSeminarStatus('INACTIVE')).toBe('INACTIVE');
+    expect(mapSeminarStatus(' Suspended ')).toBe('INACTIVE');
+    expect(mapSeminarStatus('Suspended')).toBe('INACTIVE');
+    expect(mapSeminarStatus('suspended')).toBe('INACTIVE');
+    expect(mapSeminarStatus('Suspend')).toBe('INACTIVE');
+    expect(mapSeminarStatus('suspend')).toBe('INACTIVE');
+  });
+
   it('treats unknown values as UPCOMING', () => {
     expect(mapSeminarStatus('unknown')).toBe('UPCOMING');
     expect(mapSeminarStatus('')).toBe('UPCOMING');
@@ -304,6 +319,16 @@ describe('deriveEffectiveStatus', () => {
   it("returns 'DRAFT' unchanged regardless of endTime", () => {
     expect(deriveEffectiveStatus('Draft', pastEndTime)).toBe('DRAFT');
     expect(deriveEffectiveStatus('Draft', futureEndTime)).toBe('DRAFT');
+  });
+
+  // BTR — INACTIVE lifecycle. An owner-suspended seminar must NEVER
+  // auto-promote to COMPLETED just because its endTime has passed —
+  // the user explicitly asked to take it offline, so it stays in the
+  // Inactive tab.
+  it("returns 'INACTIVE' unchanged regardless of endTime (owner-suspended seminars never auto-complete)", () => {
+    expect(deriveEffectiveStatus('Inactive', pastEndTime)).toBe('INACTIVE');
+    expect(deriveEffectiveStatus('Inactive', futureEndTime)).toBe('INACTIVE');
+    expect(deriveEffectiveStatus('Suspended', pastEndTime)).toBe('INACTIVE');
   });
 
   it("returns 'IN PROGRESS' unchanged when endTime is still in the future", () => {

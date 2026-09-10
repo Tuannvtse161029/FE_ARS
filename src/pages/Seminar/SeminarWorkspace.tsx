@@ -17,6 +17,8 @@ import {
   Users,
   Sliders,
   Sparkles,
+  Ban,
+  RotateCcw,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { fieldService } from '../../services/field.service';
@@ -41,6 +43,8 @@ import {
   useCreateSeminar,
   useSendReminder,
   useSeminarRoleContext,
+  useUpdateSeminarStatus,
+  type SeminarLifecycleAction,
 } from '../../hooks/useSeminar';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
@@ -51,6 +55,7 @@ import { QuestionEditorCard } from '../../components/seminar/QuestionEditorCard'
 import { SeminarFeedbackSetupModal } from '../../components/seminar/SeminarFeedbackSetupModal';
 import type { FeedbackQuestion } from '../../types/seminarFeedback';
 import { PageHeader } from '../../components/PageHeader';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { SkeletonRow } from '../../components/SkeletonRow';
@@ -62,7 +67,7 @@ import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
 
-type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts';
+type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts' | 'inactive';
 type WorkspaceTab = 'manage' | 'participate';
 
 const formatSeminarId = (id: number): string =>
@@ -134,6 +139,15 @@ export const SeminarWorkspace = () => {
 
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailSeminar, setDetailSeminar] = useState<SeminarCard | null>(null);
+
+  // Lifecycle (Suspend / Reactivate) modal — opened by the owner from the
+  // seminar card. The modal is destructive when suspending and non-destructive
+  // when reactivating. The action id (suspend vs. reactivate) drives the
+  // copy + the ConfirmModal variant.
+  const [lifecycleTarget, setLifecycleTarget] = useState<SeminarCard | null>(null);
+  const [lifecycleAction, setLifecycleAction] =
+    useState<SeminarLifecycleAction | null>(null);
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
 
   const [showAiModal, setShowAiModal] = useState(false);
   const [selectedSeminarForAi, setSelectedSeminarForAi] =
@@ -211,6 +225,22 @@ export const SeminarWorkspace = () => {
     refetch,
   );
 
+  // Lifecycle (Suspend / Reactivate) hook. The `announce` callback is
+  // shared with the create flow so the success banner copy stays
+  // consistent ("Action Failed" / "Seminar Created Successfully" — for
+  // lifecycle flips we re-use the same banner slot with a tailored
+  // message).
+  const { updateStatus: updateSeminarStatus, isUpdating: isUpdatingStatus } =
+    useUpdateSeminarStatus(
+      (id, action) => {
+        const verb = action === 'suspend' ? 'suspended' : 'reactivated';
+        const seminar = seminars.find((s) => s.seminarId === id);
+        const title = seminar?.title ?? 'Seminar';
+        announce(`"${title}" has been ${verb}.`);
+      },
+      refetch,
+    );
+
   // Note: participant list is now fetched inside `SeminarFeedbackPanel`
   // when the owner opens the feedback view. We no longer need to preload it
   // here.
@@ -231,10 +261,12 @@ export const SeminarWorkspace = () => {
             counts.completed += 1;
           } else if (effective === 'DRAFT') {
             counts.drafts += 1;
+          } else if (effective === 'INACTIVE') {
+            counts.inactive += 1;
           }
           return counts;
         },
-        { upcoming: 0, completed: 0, drafts: 0 },
+        { upcoming: 0, completed: 0, drafts: 0, inactive: 0 },
       ),
     [seminars],
   );
@@ -247,6 +279,7 @@ export const SeminarWorkspace = () => {
       }
       if (activeTab === 'completed') return effective === 'COMPLETED';
       if (activeTab === 'drafts') return effective === 'DRAFT';
+      if (activeTab === 'inactive') return effective === 'INACTIVE';
       return true;
     });
   }, [activeTab, seminars]);
@@ -278,6 +311,61 @@ export const SeminarWorkspace = () => {
     },
     [],
   );
+
+  // ── Lifecycle handlers (Suspend / Reactivate) ───────────────────
+  // The owner triggers the modal from the seminar card; we capture the
+  // target + the action id (so the modal title/copy adapt) and the hook
+  // performs the actual PUT once the user confirms. Reactivation is a
+  // safe, non-destructive action so it skips the confirm modal and runs
+  // immediately. Both paths share the same hook — only the destination
+  // status differs.
+  const openSuspendConfirm = useCallback((sem: SeminarCard) => {
+    setLifecycleTarget(sem);
+    setLifecycleAction('suspend');
+    setLifecycleModalOpen(true);
+  }, []);
+
+  const handleReactivate = useCallback(
+    async (sem: SeminarCard) => {
+      try {
+        await updateSeminarStatus(sem.seminarId, 'reactivate');
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Failed to reactivate the seminar.';
+        announce(msg, 'error');
+      }
+    },
+    [announce, updateSeminarStatus],
+  );
+
+  const closeLifecycleModal = useCallback(() => {
+    setLifecycleModalOpen(false);
+    setLifecycleTarget(null);
+    setLifecycleAction(null);
+  }, []);
+
+  const handleConfirmLifecycle = useCallback(async () => {
+    if (!lifecycleTarget || !lifecycleAction) {
+      closeLifecycleModal();
+      return;
+    }
+    try {
+      await updateSeminarStatus(lifecycleTarget.seminarId, lifecycleAction);
+      closeLifecycleModal();
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : lifecycleAction === 'suspend'
+            ? 'Failed to suspend the seminar.'
+            : 'Failed to reactivate the seminar.';
+      announce(msg, 'error');
+      // Keep the modal open on error so the user can retry without
+      // re-clicking the card button.
+    }
+  }, [announce, closeLifecycleModal, lifecycleAction, lifecycleTarget, updateSeminarStatus]);
 
   // ── Create form helpers ─────────────────────────────────────────
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -671,6 +759,11 @@ export const SeminarWorkspace = () => {
       count: seminarCounts.completed,
     },
     { key: 'drafts', label: 'Drafts', count: seminarCounts.drafts },
+    {
+      key: 'inactive',
+      label: copy('Inactive', 'Đã tạm dừng'),
+      count: seminarCounts.inactive,
+    },
   ];
 
   const headerActions = (
@@ -844,6 +937,15 @@ export const SeminarWorkspace = () => {
           title="No drafts"
           description="Saved drafts will appear here once the BE exposes draft lifecycle."
         />
+      ) : activeTab === 'inactive' && filteredSeminars.length === 0 ? (
+        <EmptyState
+          icon={<Ban size={20} aria-hidden />}
+          title={copy('No inactive seminars', 'Chưa có hội thảo nào tạm dừng')}
+          description={copy(
+            'Seminars you suspend (Upcoming or In Progress) appear here. You can reactivate any of them later.',
+            'Các hội thảo bạn tạm dừng (Sắp diễn ra hoặc Đang diễn ra) sẽ hiển thị tại đây. Bạn có thể kích hoạt lại sau.'
+          )}
+        />
       ) : filteredSeminars.length === 0 ? (
         <EmptyState
           icon={<Inbox size={20} aria-hidden />}
@@ -881,10 +983,23 @@ export const SeminarWorkspace = () => {
             const isCompleted =
               sem.effectiveStatus === 'COMPLETED' ||
               sem.status === 'COMPLETED';
+            const isInactive =
+              sem.effectiveStatus === 'INACTIVE' ||
+              sem.status === 'INACTIVE';
+            const isUpcomingish =
+              sem.effectiveStatus === 'UPCOMING' ||
+              sem.effectiveStatus === 'IN PROGRESS';
             const owns = ownsSeminar(sem, currentUserId, currentRole);
             const showAi = canModify && owns && isCompleted;
             const showFeedbackOrganizer =
               canModify && owns && isCompleted;
+            // Owner-only lifecycle gates:
+            //   - "Suspend" shows on upcoming / in-progress rows so the
+            //     owner can take the seminar offline before it starts.
+            //   - "Reactivate" shows on INACTIVE rows so the owner can
+            //     flip the seminar back to Upcoming from the same card.
+            const showSuspend = canModify && owns && isUpcomingish;
+            const showReactivate = canModify && owns && isInactive;
             return (
                   <li className={styles.seminarCard} key={sem.seminarId}>
                     <div className={styles.cardTopRow}>
@@ -1110,6 +1225,38 @@ export const SeminarWorkspace = () => {
                             >
                               <Sliders size={14} aria-hidden />
                               {copy('Setup Feedback', 'Cấu hình Feedback')}
+                            </button>
+                          )}
+                          {showSuspend && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnDangerOutline}
+                              onClick={() => openSuspendConfirm(sem)}
+                              disabled={isUpdatingStatus}
+                              data-testid="seminar-suspend-button"
+                              title={copy(
+                                'Take this seminar offline. You can reactivate it from the Inactive tab.',
+                                'Tạm dừng hội thảo này. Bạn có thể kích hoạt lại từ tab Đã tạm dừng.'
+                              )}
+                            >
+                              <Ban size={14} aria-hidden />
+                              {copy('Suspend', 'Tạm dừng')}
+                            </button>
+                          )}
+                          {showReactivate && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => void handleReactivate(sem)}
+                              disabled={isUpdatingStatus}
+                              data-testid="seminar-reactivate-button"
+                              title={copy(
+                                'Put this seminar back in the upcoming queue.',
+                                'Đưa hội thảo này trở lại hàng đợi sắp diễn ra.'
+                              )}
+                            >
+                              <RotateCcw size={14} aria-hidden />
+                              {copy('Reactivate', 'Kích hoạt lại')}
                             </button>
                           )}
                           <button
@@ -1858,6 +2005,29 @@ export const SeminarWorkspace = () => {
         }}
         seminar={detailSeminar}
       />
+
+      {/* LIFECYCLE CONFIRM MODAL — owner-only Suspend confirmation.
+          Reactivation bypasses this modal and runs immediately because
+          reversing a Suspend is a safe action. The modal title / copy /
+          variant adapt based on `lifecycleAction`. */}
+      {lifecycleModalOpen && lifecycleTarget && lifecycleAction === 'suspend' && (
+        <ConfirmModal
+          open={lifecycleModalOpen}
+          title={copy(
+            'Suspend this seminar?',
+            'Tạm dừng hội thảo này?',
+          )}
+          description={copy(
+            `"${lifecycleTarget.title}" will be moved to the Inactive tab. Guests keep their invitations but the meeting is no longer promoted in your active list. You can reactivate it at any time.`,
+            `"${lifecycleTarget.title}" sẽ được chuyển sang tab Đã tạm dừng. Khách mời vẫn giữ lời mời nhưng buổi họp sẽ không còn xuất hiện trong danh sách đang hoạt động. Bạn có thể kích hoạt lại bất cứ lúc nào.`
+          )}
+          variant="destructive"
+          confirmLabel={copy('Suspend seminar', 'Tạm dừng hội thảo')}
+          cancelLabel={copy('Cancel', 'Huỷ')}
+          onConfirm={() => void handleConfirmLifecycle()}
+          onClose={closeLifecycleModal}
+        />
+      )}
     </div>
   );
 };

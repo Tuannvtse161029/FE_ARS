@@ -85,6 +85,41 @@ const formatDateTime = (iso: string | undefined): string => {
   }
 };
 
+/**
+ * Resolve the requested-role display string for a `RoleRequest`.
+ *
+ * The BE surfaces the requested role in one of three shapes depending on
+ * the `requestType` and the endpoint that produced the row:
+ *
+ *   - `requestedAdditionalRoles` (string[])  — ADDITIONAL_ROLE flows
+ *   - `requestedRole`         (string)     — INITIAL_REGISTRATION flows
+ *                                            (e.g. a brand-new user who
+ *                                            registered as Graduate Student)
+ *   - `requestedRoles`        (string[])  — legacy contract
+ *
+ * Prefer the modern `requestedAdditionalRoles` array; if it is empty,
+ * fall back to the singular `requestedRole` string, then the legacy
+ * `requestedRoles` array. Returning an empty array signals "the row has
+ * no requested role on record" — callers should render "None" in that case.
+ *
+ * Mirrors `roleRequest.service.ts::fetchPendingRequest` so the user-side
+ * pending view and the Admin verification queue never disagree about
+ * which role a row is actually asking for.
+ */
+const resolveRequestedRoles = (row: RoleRequest): string[] => {
+  const additional = Array.isArray(row.requestedAdditionalRoles)
+    ? row.requestedAdditionalRoles.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  if (additional.length > 0) return additional;
+  if (typeof row.requestedRole === 'string' && row.requestedRole.trim().length > 0) {
+    return [row.requestedRole];
+  }
+  const legacy = Array.isArray(row.requestedRoles)
+    ? row.requestedRoles.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  return legacy;
+};
+
 export const RoleRequests = () => {
   const { t } = useI18n();
   useAdminGuard();
@@ -150,7 +185,8 @@ export const RoleRequests = () => {
         String(row.id),
         String(row.userId),
         ...(row.currentRoles ?? []),
-        ...(row.requestedAdditionalRoles ?? []),
+        ...resolveRequestedRoles(row),
+        row.requestedRole ?? '',
         row.requestType ?? '',
       ]
         .join(' ')
@@ -172,7 +208,7 @@ export const RoleRequests = () => {
         case 'submittedAt':
           return row.submissionDate ?? null;
         case 'requestedRole':
-          return (row.requestedAdditionalRoles ?? []).join(', ');
+          return resolveRequestedRoles(row).join(', ');
         case 'requestType':
           return row.requestType ?? '';
         case 'verification':
@@ -398,7 +434,7 @@ export const RoleRequests = () => {
                 <tbody>
                   {pageItems.map((row) => {
                     const verificationLabel = VERIFICATION_STATUS_LABEL[row.status] ?? VERIFICATION_STATUS_LABEL.UNKNOWN;
-                    const requestedRoles = row.requestedAdditionalRoles ?? [];
+                    const requestedRoles = resolveRequestedRoles(row);
                     const isPending = row.status === 'PENDING';
                     const requestedRolesText = requestedRoles.length > 0
                       ? requestedRoles.join(', ')

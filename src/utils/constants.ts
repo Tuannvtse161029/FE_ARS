@@ -263,22 +263,26 @@ export const API_ENDPOINTS = {
       GET_BY_ID: (id: number) => `/api/ViolationReport/${id}`,
       RESOLVE: (id: number) => `/api/ViolationReport/${id}/resolve`,
     },
-    // ⚠️ BE BACKLOG: AnnualFee controller was dropped. FE keeps this contract
-    // as a placeholder — the UI still needs to collect fees from researchers
-    // and lecturers. BE team must re-implement /api/AnnualFee endpoints:
-    //   GET /api/AnnualFee          — List all fee plans
-    //   GET /api/AnnualFee/{id}     — Get single plan
-    //   POST /api/AnnualFee         — Admin create
-    //   PUT /api/AnnualFee/{id}     — Admin update
-    //   DELETE /api/AnnualFee/{id}  — Admin delete
-    //   POST /api/AnnualFee/{id}/toggle — Admin toggle active
+    // AnnualFee endpoints — plural `/api/AnnualFees` per BE ticket BE-ANNUAL-FEE-01.
+    // The legacy `/api/AnnualFee` (singular) controller is no longer published.
     ANNUAL_FEES: {
-      GET_ALL: '/api/AnnualFee',
-      GET_BY_ID: (id: number) => `/api/AnnualFee/${id}`,
-      CREATE: '/api/AnnualFee',
-      UPDATE: (id: number) => `/api/AnnualFee/${id}`,
-      TOGGLE: (id: number) => `/api/AnnualFee/${id}/toggle`,
-      DELETE: (id: number) => `/api/AnnualFee/${id}`,
+      GET_ALL: '/api/AnnualFees',
+      GET_ACTIVE: '/api/AnnualFees/active',
+      GET_BY_ID: (id: number) => `/api/AnnualFees/${id}`,
+      CREATE: '/api/AnnualFees',
+      UPDATE: (id: number) => `/api/AnnualFees/${id}`,
+      TOGGLE: (id: number) => `/api/AnnualFees/${id}/toggle`,
+      DELETE: (id: number) => `/api/AnnualFees/${id}`,
+      PURCHASE: (id: number) => `/api/AnnualFees/${id}/purchase`,
+      PAYOS_WEBHOOK: '/api/AnnualFees/payos-webhook',
+      MY_SUBSCRIPTION: '/api/AnnualFees/my-subscription',
+      MY_PURCHASES: '/api/AnnualFees/my-purchases',
+      /**
+       * Admin — list all users currently subscribed to a plan.
+       * `GET /api/AnnualFees/{id}/subscribers`
+       * Returns `AnnualFeeSubscriberResponsePagedResult`.
+       */
+      SUBSCRIBERS: (id: number) => `/api/AnnualFees/${id}/subscribers`,
     },
     AUDIT_LOGS: {
       GET_ALL: '/api/AuditLog',

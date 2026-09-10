@@ -135,6 +135,67 @@ describe('adminService (mock data path)', () => {
         adminService.decideRoleRequest(99999, { status: 'APPROVED' }),
       ).rejects.toThrow(/not found/);
     });
+
+    // BTR — BTR-AGENT29-INITIAL-ROLE-REQUEST-FIX:
+    // The BE returns the requested role as a singular `requestedRole`
+    // string for INITIAL_REGISTRATION rows (e.g. a brand-new Graduate
+    // Student registration). The normalizer must surface it so the
+    // Admin "Requested role" column can render the role name instead
+    // of "—" / "None" — which was the original defect.
+    it('captures the singular `requestedRole` field from INITIAL_REGISTRATION rows', async () => {
+      axiosGetSpy.mockResolvedValue({
+        data: [
+          {
+            id: 8101,
+            userId: 901,
+            userName: 'Nguyen Thi Graduate',
+            email: 'graduate@example.com',
+            affiliation: 'HCMUS',
+            department: 'CS',
+            currentRoles: [],
+            requestedAdditionalRoles: [],
+            requestedRole: 'Graduate Student',
+            requestType: 'INITIAL_REGISTRATION',
+            proofDocumentUrl: 'https://example.com/g.pdf',
+            submissionDate: '2026-08-10T00:00:00Z',
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const list = await adminService.getRoleRequests();
+      expect(list).toHaveLength(1);
+      const row = list[0];
+      expect(row.requestedRole).toBe('Graduate Student');
+      expect(row.requestedAdditionalRoles).toEqual([]);
+      expect(row.requestType).toBe('INITIAL_REGISTRATION');
+    });
+
+    it('keeps the singular `requestedRole` empty string for ADDITIONAL_ROLE rows', async () => {
+      axiosGetSpy.mockResolvedValue({
+        data: [
+          {
+            id: 8102,
+            userId: 902,
+            userName: 'Le Van A',
+            email: 'a.le@example.com',
+            affiliation: 'HUST',
+            department: 'CS',
+            currentRoles: ['GRADUATE_STUDENT'],
+            requestedAdditionalRoles: ['RESEARCHER'],
+            requestType: 'ADDITIONAL_ROLE',
+            proofDocumentUrl: 'https://example.com/a2.pdf',
+            submissionDate: '2026-08-10T00:00:00Z',
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const list = await adminService.getRoleRequests();
+      expect(list).toHaveLength(1);
+      expect(list[0].requestedRole).toBe('');
+      expect(list[0].requestedAdditionalRoles).toEqual(['RESEARCHER']);
+    });
   });
 
   describe('accounts', () => {

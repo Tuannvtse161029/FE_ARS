@@ -71,7 +71,15 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
         <div className={styles.content}>
           <div className={styles.summaryBox}>
             <span>{t('admin.roleRequests.approve.requestedRole')}</span>
-            <strong>{request.requestedAdditionalRoles?.join(', ') || t('admin.roleRequests.approve.unavailableApi')}</strong>
+            <strong>
+              {request.requestedAdditionalRoles?.length
+                ? request.requestedAdditionalRoles.join(', ')
+                : request.requestedRole?.trim()
+                    ? request.requestedRole
+                    : request.requestedRoles?.length
+                      ? request.requestedRoles.join(', ')
+                      : t('admin.roleRequests.approve.unavailableApi')}
+            </strong>
           </div>
           <label className={styles.fieldLabel} htmlFor="role-approval-notes">{t('admin.roleRequests.approve.notesLabel')}</label>
           <textarea ref={notesRef} id="role-approval-notes" className={styles.textarea} rows={5} maxLength={1500} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={submitting} />

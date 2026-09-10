@@ -14,8 +14,20 @@ import { parseApiDateTimeAsUtc } from '../utils/datetime';
 // ─────────────────────────────────────────────────────────────────────────────
 // Semantic seminar status — canonical set for the UI.
 // The BE stores this as a free-form string. Normalize via `mapSeminarStatus()`.
+//
+// `INACTIVE` is the canonical state for seminars the owner has suspended
+// from the `SeminarWorkspace` (e.g. the lecturer changed their mind
+// before the start time). The BE does not enumerate the underlying
+// string — `mapSeminarStatus()` recognises a small set of synonyms
+// (`Inactive`, `Suspended`, `Suspend`) so any future BE rename does not
+// break the FE.
 // ─────────────────────────────────────────────────────────────────────────────
-export type SeminarUiStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT';
+export type SeminarUiStatus =
+  | 'UPCOMING'
+  | 'IN PROGRESS'
+  | 'COMPLETED'
+  | 'DRAFT'
+  | 'INACTIVE';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role-aware access predicates.
@@ -512,6 +524,33 @@ export const seminarService = {
     return response.data;
   },
 
+  /**
+   * Toggle a seminar's lifecycle status on the BE.
+   *
+   * Used by the owner's "Suspend" / "Reactivate" affordance on
+   * `SeminarWorkspace`. We deliberately go through the existing
+   * `PUT /api/Seminar/{id}` endpoint (whose `SeminarUpdateRequest.status`
+   * field is documented as a free-form string) instead of inventing a
+   * dedicated `suspend` route — the BE is the source of truth for the
+   * lifecycle vocabulary, and this keeps the FE tolerant of any future
+   * rename (e.g. `Inactive` → `Suspended` → `Cancelled`).
+   *
+   * The recognised values for the workshop surface today are
+   * `'Inactive'` (suspend) and `'Upcoming'` (reactivate). The mapper in
+   * `mapSeminarStatus()` recognises `Inactive` / `Suspended` / `Suspend`
+   * as synonyms so we do not need to coordinate vocabulary with the BE.
+   */
+  setStatus: async (
+    id: number,
+    nextStatus: 'Inactive' | 'Upcoming' | string,
+  ): Promise<Seminar> => {
+    const response = await api.put<Seminar>(
+      API_ENDPOINTS.SEMINAR.UPDATE(id),
+      { status: nextStatus },
+    );
+    return response.data;
+  },
+
   delete: async (id: number): Promise<void> => {
     await api.delete(API_ENDPOINTS.SEMINAR.DELETE(id));
   },
@@ -871,7 +910,12 @@ export const seminarParticipantService = {
 // persistence (BE-S5) remains a backend-owned requirement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type EffectiveSeminarStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 'DRAFT';
+export type EffectiveSeminarStatus =
+  | 'UPCOMING'
+  | 'IN PROGRESS'
+  | 'COMPLETED'
+  | 'DRAFT'
+  | 'INACTIVE';
 
 /**
  * Derive the effective seminar status for UI display.
@@ -881,7 +925,9 @@ export type EffectiveSeminarStatus = 'UPCOMING' | 'IN PROGRESS' | 'COMPLETED' | 
  * This fixes the BE-S5 gap without requiring a DB write.
  *
  * Rules:
- *   - If raw status is COMPLETED/DRAFT → use raw status
+ *   - If raw status is COMPLETED/DRAFT/INACTIVE → use raw status verbatim
+ *     (an INACTIVE seminar must never auto-promote to COMPLETED just because
+ *     its endTime passed — the owner explicitly asked to take it offline)
  *   - If raw status is UPCOMING/IN_PROGRESS → check endTime
  *   - endTime < now  →  COMPLETED
  *   - endTime >= now →  use raw status
@@ -892,7 +938,7 @@ export const deriveEffectiveStatus = (
 ): EffectiveSeminarStatus => {
   const mapped = mapSeminarStatus(rawStatus);
 
-  if (mapped === 'COMPLETED' || mapped === 'DRAFT') return mapped;
+  if (mapped === 'COMPLETED' || mapped === 'DRAFT' || mapped === 'INACTIVE') return mapped;
   if (!endTime) return mapped;
 
   // Parse the BE's `endTime` as UTC. The ASP.NET backend is documented to
@@ -921,6 +967,11 @@ export const deriveEffectiveStatus = (
  * 'Completed'/'Complete'/'Done' maps to COMPLETED.
  * 'InProgress'/'In Progress'/'In-Progress'/'Live' maps to IN PROGRESS.
  * 'Draft' maps to DRAFT.
+ * 'Inactive'/'Suspended'/'Suspend' maps to INACTIVE — the owner has
+ * taken the seminar offline (e.g. changed their mind before the start
+ * time). The first form is what `SeminarWorkspace` writes; the others
+ * are tolerated so the BE can rename the underlying literal without
+ * breaking the FE.
  */
 export const mapSeminarStatus = (raw: string | null | undefined): SeminarUiStatus => {
   if (!raw) return 'UPCOMING';
@@ -930,6 +981,7 @@ export const mapSeminarStatus = (raw: string | null | undefined): SeminarUiStatu
     return 'IN PROGRESS';
   }
   if (v === 'draft') return 'DRAFT';
+  if (v === 'inactive' || v === 'suspended' || v === 'suspend') return 'INACTIVE';
   return 'UPCOMING';
 };
 

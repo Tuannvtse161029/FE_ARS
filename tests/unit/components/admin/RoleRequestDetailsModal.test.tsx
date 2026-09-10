@@ -98,4 +98,35 @@ describe('<RoleRequestDetailsModal>', () => {
     renderModal({ request: { ...withoutPhone, phone: undefined } });
     expect(screen.getByText('—')).toBeInTheDocument();
   });
+
+  // BTR — INITIAL_REGISTRATION rows have the role name in the BE's
+  // singular `requestedRole` field, not in the `requestedAdditionalRoles`
+  // array. The modal MUST resolve the singular field so the
+  // "Requested additional role" row reads "Graduate Student" instead
+  // of falling through to the "None" placeholder.
+  it('shows the singular `requestedRole` value for INITIAL_REGISTRATION rows', () => {
+    const initialRegistrationRequest: RoleRequest = {
+      ...REQUEST,
+      requestType: 'INITIAL_REGISTRATION',
+      requestedAdditionalRoles: [],
+      requestedRoles: [],
+      requestedRole: 'Graduate Student',
+    };
+    renderModal({ request: initialRegistrationRequest });
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Graduate Student')).toBeInTheDocument();
+  });
+
+  it('falls back to the legacy `requestedRoles` array when both modern fields are empty', () => {
+    const legacyRequest: RoleRequest = {
+      ...REQUEST,
+      requestType: 'INITIAL_REGISTRATION',
+      requestedAdditionalRoles: [],
+      requestedRole: '',
+      requestedRoles: ['Reviewer'],
+    };
+    renderModal({ request: legacyRequest });
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Reviewer')).toBeInTheDocument();
+  });
 });

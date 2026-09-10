@@ -17,8 +17,25 @@ export interface RoleRequest {
   department: string;
   /** Roles already assigned when the request was submitted. */
   currentRoles?: string[];
-  /** Roles requested by this specific verification request. */
+  /**
+   * Roles requested by this specific verification request.
+   *
+   * The BE surfaces an array here for `ADDITIONAL_ROLE` flows (a user
+   * already in the system asks for one or more extra roles). The legacy
+   * `requestedRoles` field (see below) carries the same payload for
+   * older endpoints.
+   */
   requestedAdditionalRoles?: string[];
+  /**
+   * Singular requested role returned by the BE for `INITIAL_REGISTRATION`
+   * rows — i.e. a brand-new user who just registered as Graduate
+   * Student / Researcher / Reviewer / Lecturer. The Admin UI MUST fall
+   * back to this field when `requestedAdditionalRoles` is empty,
+   * otherwise the verification queue renders "None" for every freshly
+   * registered account. Mirrored by `roleRequest.service.ts` which
+   * already reads it for the user-side pending view.
+   */
+  requestedRole?: string;
   /** Must be supplied explicitly by BE; FE never derives this from array order. */
   requestType?: RoleRequestType;
   /** Legacy contract field retained only for compatibility; never used to infer role intent. */

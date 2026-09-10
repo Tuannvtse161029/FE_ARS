@@ -66,6 +66,13 @@ function normalizeRoleRequest(item: any): RoleRequest | null {
     department: typeof item.department === 'string' ? item.department : '',
     currentRoles: Array.isArray(item.currentRoles) ? item.currentRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
     requestedAdditionalRoles: Array.isArray(item.requestedAdditionalRoles) ? item.requestedAdditionalRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
+    // BE surfaces the requested role as a singular string for
+    // INITIAL_REGISTRATION rows (e.g. a brand-new user registering as
+    // Graduate Student). Capture it so the Admin UI can render the role
+    // name instead of "None" for that flow. ADDITIONAL_ROLE rows will
+    // carry an empty string here; the UI prefers `requestedAdditionalRoles`
+    // first and only falls back to this when that array is empty.
+    requestedRole: typeof item.requestedRole === 'string' ? item.requestedRole : '',
     requestType: item.requestType === 'ADDITIONAL_ROLE' ? 'ADDITIONAL_ROLE' : item.requestType === 'INITIAL_REGISTRATION' ? 'INITIAL_REGISTRATION' : undefined,
     requestedRoles: Array.isArray(item.requestedRoles) ? item.requestedRoles.filter((value: unknown): value is string => typeof value === 'string') : [],
     orcidId: typeof item.orcidId === 'string' ? item.orcidId : null,

@@ -202,3 +202,85 @@
   color: var(--ars-ink-muted);
   text-align: center;
 }
+
+/* ── Role pill on plan cards ───────────────────────────── */
+.planRolePill {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--ars-admin-light, var(--ars-paper-inset));
+  color: var(--ars-admin);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--ars-admin) 25%, transparent);
+}
+
+/* ── Purchase history table ────────────────────────────── */
+.historyTableWrap {
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  overflow-x: auto;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.historyTable thead th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--ars-paper-inset);
+  white-space: nowrap;
+}
+
+.historyTable tbody td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  vertical-align: middle;
+}
+
+.historyTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.historyTable tbody tr:hover {
+  background: var(--ars-paper-inset);
+}
+
+.transactionIdCell {
+  font-family: var(--font-family-mono);
+  font-size: 0.78rem;
+  color: var(--ars-ink-muted);
+  word-break: break-all;
+}
+
+/* ── Spinner ──────────────────────────────────────────── */
+.spinningIcon {
+  animation: subscriptionSpin 0.9s linear infinite;
+}
+
+@keyframes subscriptionSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinningIcon {
+    animation-duration: 1s;
+  }
+}

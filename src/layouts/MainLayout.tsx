@@ -10,6 +10,7 @@ import { useVerifiedGuard } from '../hooks/useVerifiedGuard';
 import { landingRouteForRoleName } from '../utils/roleNormalizer';
 import { NotificationCenter } from '../components/notification/NotificationCenter';
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
+import { SubscriptionBadge } from '../components/subscription/SubscriptionBadge';
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
 import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
 import { PublicationToastViewport } from '../features/publication/components/PublicationToastViewport';
@@ -30,6 +31,7 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  CreditCard as PaymentIcon,
   LayoutDashboard as DashboardIcon,
   UserCheck as RoleRequestsIcon,
   UserCog as AccountsIcon,
@@ -38,6 +40,7 @@ import {
   Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
   ShieldCheck as PoliciesIcon,
+  Receipt as AnnualFeesIcon,
   Upload,
   BriefcaseBusiness,
   Home as HomeIcon,
@@ -164,6 +167,14 @@ const ProfileDropdown = ({
 
       {isOpen && (
         <div id={menuId} className={styles.profileDropdownMenu} role="menu" aria-label={copy('Account menu', 'Menu tài khoản')}>
+          {/* Subscription badge — surfaces the user's annual-fee
+              subscription state directly in the header. Powers the
+              visibility requirement from BE-ANNUAL-FEE-01 §"Subscription
+              visibility". */}
+          <div className={styles.dropdownSection} role="presentation">
+            <SubscriptionBadge />
+          </div>
+          <div className={styles.dropdownDivider} aria-hidden></div>
           {showProfileAction ? (
             <>
               <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
@@ -223,6 +234,7 @@ interface NavItem {
 const SECTION_LABELS: Record<string, string> = {
   review: 'admin.nav.section.review',
   people: 'admin.nav.section.people',
+  payment: 'admin.nav.section.payment',
   platform: 'admin.nav.section.platform',
 };
 
@@ -528,9 +540,13 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_ACCOUNTS, label: copy('Accounts', 'Tài khoản'), icon: <AccountsIcon size={20} /> },
           { to: ROUTES.ADMIN_ROLE_REQUESTS, label: copy('User Verification', 'Xác thực người dùng'), icon: <RoleRequestsIcon size={20} /> },
 
-          // ── Platform section ─────────────────────────────
-          { to: '#', label: copy('Platform', 'Nền tảng'), icon: <TransactionsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.platform },
+          // ── Payment section ────────────────────────────
+          { to: '#', label: copy('Payment', 'Thanh toán'), icon: <PaymentIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.payment },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
+          { to: ROUTES.ADMIN_ANNUAL_FEES, label: copy('Annual Fees', 'Phí thường niên'), icon: <AnnualFeesIcon size={20} /> },
+
+          // ── Platform section ──────────────────────────
+          { to: '#', label: copy('Platform', 'Nền tảng'), icon: <TransactionsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.platform },
           { to: ROUTES.ADMIN_REPORTS, label: copy('Reports', 'Báo cáo vi phạm'), icon: <ReportsIcon size={20} /> },
           { to: ROUTES.ADMIN_AUDIT_LOGS, label: copy('Audit Logs', 'Nhật ký kiểm tra'), icon: <AuditLogsIcon size={20} /> },
           { to: ROUTES.ADMIN_POLICIES, label: copy('Policies', 'Chính sách'), icon: <PoliciesIcon size={20} /> },

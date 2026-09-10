@@ -1,16 +1,16 @@
 // useSubscription — single source of truth for the current user's
-// subscription state.
+// annual-fee subscription state.
 //
 // Responsibilities:
 //   • Decide whether the subscription gate applies to the current user
 //     (Researcher or Lecturer only).
-//   • Fetch the BE's authoritative subscription snapshot on mount and
-//     expose a `refetch` so callers can re-sync after PayOS returns.
-//   • Derive `isActive` from the BE status AND an in-the-future
-//     `expiresAt` — never trust the cached blob alone.
-//   • Surface a stable, typed `SubscriptionBackendUnavailableError` so
-//     pages render the documented banner instead of pretending the API
-//     works.
+//   • Fetch the BE's authoritative subscription snapshot on mount via
+//     `annualFeeService.getMyCurrentSubscription()` and expose a `refetch`
+//     so callers can re-sync after PayOS returns.
+//   • Derive `isActive` from the BE response (status + `daysRemaining`)
+//     — never trust the cached blob alone.
+//   • Surface normal network errors so pages render the documented
+//     error banner instead of pretending the API works.
 //
 // Admins, Reviewers, Graduate Students, and Guests are never blocked by
 // this hook — `isApplicable` returns `false` for them and `isActive`
@@ -19,48 +19,49 @@
 // TEMPORARY DISABLED STATE: when `AppConfig.features.enableSubscriptionAccess`
 // is `false`, `isActive` always returns `true` so Researcher and Lecturer
 // retain full access. See `src/config/app.ts` for the feature flag.
-//
-// The backend ticket at `docs/BACKEND_ANNUAL_SUBSCRIPTION_API_TICKET.md`
-// tracks the work required before this feature can be re-enabled.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
-import { subscriptionService } from '../services/subscription.service';
-import type { UserSubscription } from '../types/subscription';
-import { SubscriptionBackendUnavailableError } from '../types/subscription';
+import { annualFeeService } from '../services/annualFee.service';
+import type { CurrentAnnualFeeSubscription } from '../types/annualFee';
 import { AppConfig } from '../config/app';
 
 export interface UseSubscriptionResult {
   /** Initial subscription fetch in flight. */
   isLoading: boolean;
-  /** Network / parse error, or a typed `SubscriptionBackendUnavailableError`. */
+  /** Network / parse error from the BE. */
   error: Error | null;
   /** Whether the subscription gate applies to the current user's role. */
   isApplicable: boolean;
   /** True only when the user has an ACTIVE subscription that has not expired. */
   isActive: boolean;
-  /** True when the user has a subscription row but it is past `expiresAt`. */
+  /**
+   * Whether the subscription is expired.
+   *
+   * Trust the BE's `isExpired` flag first. When that is absent (e.g. older BE
+   * or test mock), fall back to client-side date math using:
+   *   1. `expiresAt` — the new canonical field from `UserSubscriptions`
+   *      (the BE migrated `ExpiresAt` here from the `User` / purchase row).
+   *   2. `purchase?.expiryDate` — the legacy field; retained for backward
+   *      compatibility when the BE still returns a purchase row.
+   *
+   * Both date reads are guarded against null/undefined so this never crashes
+   * even when `purchase` is `null` or the date field is absent.
+   */
   isExpired: boolean;
   /** True when the BE returned no subscription at all. */
   isMissing: boolean;
   /** Force a refetch (e.g. after PayOS returns). */
   refetch: () => Promise<void>;
   /** Latest BE-derived subscription snapshot, or null when none. */
-  current: UserSubscription | null;
+  current: CurrentAnnualFeeSubscription | null;
 }
 
 const SUBSCRIBED_ROLES: ReadonlySet<UserRole> = new Set([
   'Researcher',
   'Lecturer',
 ]);
-
-const isInFuture = (iso: string | undefined | null): boolean => {
-  if (!iso) return false;
-  const ts = Date.parse(iso);
-  if (Number.isNaN(ts)) return false;
-  return ts > Date.now();
-};
 
 export const useSubscription = (): UseSubscriptionResult => {
   const { user, effectiveRole } = useAuth();
@@ -73,7 +74,9 @@ export const useSubscription = (): UseSubscriptionResult => {
 
   const isApplicable = role !== null && SUBSCRIBED_ROLES.has(role);
 
-  const [current, setCurrent] = useState<UserSubscription | null>(null);
+  const [current, setCurrent] = useState<CurrentAnnualFeeSubscription | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -90,24 +93,16 @@ export const useSubscription = (): UseSubscriptionResult => {
     setIsLoading(true);
     setError(null);
     try {
-      const subscription = await subscriptionService.getCurrentSubscription();
-      if (!subscription) {
-        setCurrent(null);
-      } else {
-        setCurrent(subscription);
-      }
+      const subscription =
+        await annualFeeService.getMyCurrentSubscription();
+      setCurrent(subscription ?? null);
     } catch (caught) {
-      if (caught instanceof SubscriptionBackendUnavailableError) {
-        setError(caught);
-        setCurrent(null);
-      } else {
-        const wrapped =
-          caught instanceof Error
-            ? caught
-            : new Error('Failed to load subscription state.');
-        setError(wrapped);
-        setCurrent(null);
-      }
+      setCurrent(null);
+      setError(
+        caught instanceof Error
+          ? caught
+          : new Error('Failed to load subscription state.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -117,11 +112,24 @@ export const useSubscription = (): UseSubscriptionResult => {
     void refetch();
   }, [refetch]);
 
+  /**
+   * isExpired — derive from BE flag first; fall back to client date math.
+   *
+   * The BE migrated `ExpiresAt` from `User` / `AnnualFeePurchase` onto the
+   * `UserSubscriptions` row surfaced as `expiresAt` in the
+   * `MySubscriptionResponse`. Read that field as the canonical signal.
+   * The legacy `purchase?.expiryDate` is kept as a backward-compat fallback.
+   */
   const isExpired = useMemo<boolean>(() => {
     if (!current) return false;
-    if (current.status === 'EXPIRED') return true;
-    if (current.status !== 'ACTIVE') return false;
-    return !isInFuture(current.expiresAt);
+    // BE-authoritative flag always wins.
+    if (current.isExpired) return true;
+    // Primary: expiresAt from UserSubscriptions (the new canonical location).
+    const expiresAt = current.expiresAt ?? current.purchase?.expiryDate ?? null;
+    if (expiresAt) {
+      return Date.parse(expiresAt) <= Date.now();
+    }
+    return false;
   }, [current]);
 
   const isMissing = !current;
@@ -132,7 +140,7 @@ export const useSubscription = (): UseSubscriptionResult => {
   // requiring changes to either.
   const isActive = useMemo<boolean>(() => {
     if (!AppConfig.features.enableSubscriptionAccess) return true;
-    return !isApplicable || (current?.status === 'ACTIVE' && isInFuture(current.expiresAt));
+    return !isApplicable || (current != null && !current.isExpired);
   }, [isApplicable, current]);
 
   return {
