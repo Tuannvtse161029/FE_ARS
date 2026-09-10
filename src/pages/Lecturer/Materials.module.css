@@ -953,14 +953,18 @@
   font-size: 0.85rem;
 }
 
-/* ── Modal overlay (Shared Materials) ─────────────────────── */
+/* ── Modal overlay (Materials & Share) ──────────────────────── */
 .overlay {
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / 0.55);
-  display: grid;
-  place-items: center;
-  z-index: 20;
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow-y: auto;
+  z-index: 1000;
 }
 
 .modal {
@@ -1667,25 +1671,176 @@
 
 /* ── Share modal ────────────────────────────────────────── */
 .shareModal {
-  width: min(92vw, 560px);
+  width: min(92vw, 620px);
   max-height: calc(100vh - var(--space-8));
   overflow-y: auto;
+  margin: auto;
   background: var(--ars-paper);
   border: var(--border-thin);
   border-radius: var(--radius-lg);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   box-shadow: var(--shadow-lg);
   animation: fadeIn 0.25s ease-out;
 }
 
-.shareModalSubtitle {
-  margin: 0;
-  font-size: var(--font-size-sm);
+/* Material Showcase Card (inside Share Modal) */
+.shareShowcaseCard {
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shareShowcaseHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.shareShowcaseBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.shareShowcaseDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
   color: var(--ars-ink-muted);
+}
+
+.shareShowcaseActionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.shareViewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer, #d97706);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-lecturer, #b45309);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 30px;
+}
+
+.shareViewBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-light, #fef3c7);
+  border-color: var(--ars-lecturer-mid, #92400e);
+}
+
+.shareViewBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shareViewBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.shareShowcaseTitle {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  line-height: var(--line-height-tight);
+}
+
+.shareShowcaseDesc {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
   line-height: var(--line-height-normal);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.shareShowcaseDesc p {
+  margin: 0;
+}
+
+.shareShowcaseNoDesc {
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  font-size: var(--font-size-xs);
+}
+
+.shareShowcaseMetaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+}
+
+.shareShowcaseMetaItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.shareShowcaseMetaLabel {
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.shareShowcaseMetaVal {
+  color: var(--ars-ink);
+  font-family: var(--font-family-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Share Policy Banner */
+.sharePolicyBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-warning-bg);
+  border: 1px solid var(--ars-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink);
+  line-height: var(--line-height-normal);
+}
+
+.sharePolicyIcon {
+  color: var(--ars-warning);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sharePolicyText {
+  flex: 1;
 }
 
 .shareApiContractLink {
@@ -1720,6 +1875,27 @@
 .shareApiContractLink:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Recipient Selection Section */
+.shareRecipientSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shareRecipientHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shareRecipientTitle {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
 }
 
 .shareSearchBar {
@@ -1777,11 +1953,12 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  max-height: 320px;
+  gap: 1px;
+  max-height: 240px;
   overflow-y: auto;
   border: 1px solid var(--ars-network);
   border-radius: var(--radius-md);
+  background: var(--ars-paper-inset);
 }
 
 .shareRosterEmpty {
@@ -1791,9 +1968,6 @@
   font-size: var(--font-size-sm);
 }
 
-/* Backend-gap banner — sits between the search bar and the recipient
- * list so the lecturer understands why the list is empty (BE feature
- * pending) and is not tempted to type into a dead-end UI. */
 .shareRosterGap {
   margin: 0;
 }
@@ -1803,7 +1977,10 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
+  background: var(--ars-paper);
   border-bottom: 1px solid var(--ars-network);
+  cursor: pointer;
+  user-select: none;
   transition: background var(--transition-fast);
 }
 
@@ -1835,6 +2012,22 @@
   background: var(--ars-paper);
 }
 
+.shareRosterAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .shareRosterInfo {
   display: flex;
   flex-direction: column;
@@ -1860,6 +2053,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Tab 2: Shared Rows action enhancements */
+.sharedRowActionButtons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.sharedViewBtn,
+.sharedPreviewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer, #d97706);
+  border-radius: var(--radius-sm);
+  color: var(--ars-lecturer, #b45309);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  min-height: 28px;
+  transition: all var(--transition-fast);
+}
+
+.sharedViewBtn:hover,
+.sharedPreviewBtn:hover {
+  background: var(--ars-lecturer-light, #fef3c7);
+  border-color: var(--ars-lecturer-mid, #92400e);
+}
+
+.sharedViewBtn:focus-visible,
+.sharedPreviewBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
