@@ -362,9 +362,12 @@ export default function ContentReports(): JSX.Element {
                     <td className={styles.actionCell}>
                       <button
                         type="button"
-                        className={styles.reviewButton}
+                        className={
+                          r.status === 'PENDING'
+                            ? styles.reviewButton
+                            : styles.viewButton
+                        }
                         onClick={() => openReport(r)}
-                        disabled={r.status !== 'PENDING'}
                       >
                         {r.status === 'PENDING'
                           ? t('admin.contentReports.action.reviewViolation')
