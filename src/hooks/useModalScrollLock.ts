@@ -1,23 +1,21 @@
 import { useEffect } from 'react';
 
 /**
- * Checks if any modal or dialog overlay is currently rendered in the DOM.
+ * Checks if any genuine blocking modal/dialog is currently rendered in the DOM.
+ *
+ * Strategy: require BOTH role="dialog" AND aria-modal="true".
+ * - role="dialog" alone is used by dropdowns (e.g. NotificationCenter) — excluded.
+ * - aria-modal="true" alone could appear on non-blocking panels — excluded.
+ * - Only elements declaring BOTH attributes are true full-screen-blocking modals.
+ *
+ * The old class-name fallback ([class*="overlay"], [class*="backdrop"]) was
+ * removed because it caused false positives on pages like Forum that use
+ * CSS classes containing "overlay" for non-modal purposes.
  */
 const hasActiveModalInDom = (): boolean => {
-  const dialog = document.querySelector('[role="dialog"], [aria-modal="true"]');
-  if (dialog) return true;
-
-  // Fallback for overlays with common modal overlay classes
-  const customOverlay = document.querySelector(
-    '[class*="modalOverlay"], [class*="overlay"], [class*="backdrop"], [class*="confirmOverlay"]',
+  return Boolean(
+    document.querySelector('[role="dialog"][aria-modal="true"]'),
   );
-  if (customOverlay) {
-    const style = window.getComputedStyle(customOverlay);
-    if (style.position === 'fixed' || style.position === 'absolute') {
-      return true;
-    }
-  }
-  return false;
 };
 
 /**

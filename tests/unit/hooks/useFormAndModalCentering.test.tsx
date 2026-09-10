@@ -16,8 +16,10 @@ describe('useModalScrollLock', () => {
   });
 
   it('locks body scroll when modal is mounted in DOM', () => {
+    // Detection requires BOTH role="dialog" AND aria-modal="true"
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
     document.body.appendChild(dialog);
 
     syncModalBodyScrollLock();
@@ -28,6 +30,7 @@ describe('useModalScrollLock', () => {
   it('restores body scroll when modal is removed from DOM', () => {
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
     document.body.appendChild(dialog);
 
     syncModalBodyScrollLock();
