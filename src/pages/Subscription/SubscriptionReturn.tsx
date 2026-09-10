@@ -65,7 +65,8 @@ export const SubscriptionReturn = () => {
       const payosSaysCancelled = cancelFlag || payosStatus === 'cancelled' || payosStatus === 'failed' ||
         (payosCode !== null && payosCode !== '00');
 
-      if (sub && !sub.isExpired && sub.purchase?.status === 'Paid') {
+      const isPaid = sub?.purchase == null || sub.purchase.status === 'Paid';
+      if (sub && !sub.isExpired && isPaid) {
         setState('active');
         setMessage(
           'Payment confirmed. Your subscription is active — you can return to your workspace.',

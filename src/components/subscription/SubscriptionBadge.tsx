@@ -101,8 +101,8 @@ export const SubscriptionBadge = () => {
 
   // Primary source: expiresAt from UserSubscriptions (the BE's new canonical
   // expiry field). Fall back to purchase.expiryDate for backward compatibility.
-  const planName = current.annualFee?.name ?? 'Annual Fee';
-  const expiresOn = current.expiresAt ?? current.purchase?.expiryDate ?? null;
+  const planName = current.annualFee?.name ?? (current.daysRemaining > 0 ? `${current.daysRemaining}d Subscription` : 'Annual Fee');
+  const expiresOn = current.expiresAt ?? current.purchase?.expiryDate ?? (current.daysRemaining > 0 ? new Date(Date.now() + current.daysRemaining * 86400000).toISOString() : null);
   const expired = current.isExpired;
   const daysLeft = current.daysRemaining;
 

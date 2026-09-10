@@ -63,48 +63,123 @@ const SUBSCRIBED_ROLES: ReadonlySet<UserRole> = new Set([
   'Lecturer',
 ]);
 
+// Module-level shared subscription cache & in-flight promise to avoid
+// duplicate network fetches and prevent false-positive lockout redirects
+// across route transitions.
+let memoryCache: CurrentAnnualFeeSubscription | null | undefined = undefined;
+let cachedUserId: number | string | null = null;
+let inFlightPromise: Promise<CurrentAnnualFeeSubscription | null> | null = null;
+const subscribers = new Set<() => void>();
+
+export const clearSubscriptionCache = (): void => {
+  memoryCache = undefined;
+  cachedUserId = null;
+  inFlightPromise = null;
+  subscribers.forEach((notify) => notify());
+};
+
 export const useSubscription = (): UseSubscriptionResult => {
   const { user, effectiveRole } = useAuth();
+
+  const currentUserId = user?.userId ?? user?.email ?? null;
+
+  // Invalidate cache if user changes
+  if (currentUserId !== cachedUserId) {
+    memoryCache = undefined;
+    cachedUserId = currentUserId;
+    inFlightPromise = null;
+  }
 
   const role: UserRole | null =
     (effectiveRole as UserRole | null) ??
     (typeof user?.role === 'string' && user.role.length > 0
       ? (user.role as UserRole)
-      : null);
+      : Array.isArray(user?.roles) && user.roles.length > 0
+        ? (user.roles[0] as UserRole)
+        : null);
 
   const isApplicable = role !== null && SUBSCRIBED_ROLES.has(role);
 
   const [current, setCurrent] = useState<CurrentAnnualFeeSubscription | null>(
-    null,
+    memoryCache !== undefined ? memoryCache : null,
   );
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // If role is applicable and we don't have a cached value yet, we MUST start in loading state
+  // so route guards do not prematurely redirect before the initial fetch completes.
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (!isApplicable) return false;
+    return memoryCache === undefined;
+  });
   const [error, setError] = useState<Error | null>(null);
+
+  // Sync component state when module memoryCache changes from any subscriber
+  useEffect(() => {
+    const onCacheUpdate = () => {
+      if (memoryCache !== undefined) {
+        setCurrent(memoryCache);
+        setIsLoading(false);
+      }
+    };
+    subscribers.add(onCacheUpdate);
+    return () => {
+      subscribers.delete(onCacheUpdate);
+    };
+  }, []);
 
   const refetch = useCallback(async (): Promise<void> => {
     if (!isApplicable) {
-      // Non-applicable roles always see an active gate (lockout-safe
-      // default that does not change behavior for Admin / Reviewer /
-      // Graduate Student / Guest).
+      memoryCache = null;
       setCurrent(null);
       setError(null);
       setIsLoading(false);
       return;
     }
+
+    // If there is already a fetch in flight, await it
+    if (inFlightPromise) {
+      try {
+        const existing = await inFlightPromise;
+        setCurrent(existing);
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        // Continue to fresh fetch below if previous failed
+      }
+    }
+
     setIsLoading(true);
     setError(null);
+
+    const fetchTask = annualFeeService
+      .getMyCurrentSubscription()
+      .then((subscription) => {
+        const normalized = subscription ?? null;
+        memoryCache = normalized;
+        setCurrent(normalized);
+        setError(null);
+        subscribers.forEach((notify) => notify());
+        return normalized;
+      })
+      .catch((caught) => {
+        const err =
+          caught instanceof Error
+            ? caught
+            : new Error('Failed to load subscription state.');
+        memoryCache = null;
+        setCurrent(null);
+        setError(err);
+        throw err;
+      })
+      .finally(() => {
+        inFlightPromise = null;
+        setIsLoading(false);
+      });
+
+    inFlightPromise = fetchTask;
+
     try {
-      const subscription =
-        await annualFeeService.getMyCurrentSubscription();
-      setCurrent(subscription ?? null);
-    } catch (caught) {
-      setCurrent(null);
-      setError(
-        caught instanceof Error
-          ? caught
-          : new Error('Failed to load subscription state.'),
-      );
-    } finally {
-      setIsLoading(false);
+      await fetchTask;
+    } catch {
+      // Handled in catch block above
     }
   }, [isApplicable]);
 
@@ -114,11 +189,6 @@ export const useSubscription = (): UseSubscriptionResult => {
 
   /**
    * isExpired — derive from BE flag first; fall back to client date math.
-   *
-   * The BE migrated `ExpiresAt` from `User` / `AnnualFeePurchase` onto the
-   * `UserSubscriptions` row surfaced as `expiresAt` in the
-   * `MySubscriptionResponse`. Read that field as the canonical signal.
-   * The legacy `purchase?.expiryDate` is kept as a backward-compat fallback.
    */
   const isExpired = useMemo<boolean>(() => {
     if (!current) return false;
@@ -135,13 +205,12 @@ export const useSubscription = (): UseSubscriptionResult => {
   const isMissing = !current;
 
   // When the feature flag is off, always return `true` so Researcher and
-  // Lecturer retain full access. This covers both SubscriptionRouteGuard
-  // (redirect) and SubscriptionAccessGuard (locked fallback) without
-  // requiring changes to either.
+  // Lecturer retain full access.
   const isActive = useMemo<boolean>(() => {
     if (!AppConfig.features.enableSubscriptionAccess) return true;
-    return !isApplicable || (current != null && !current.isExpired);
-  }, [isApplicable, current]);
+    if (!isApplicable) return true;
+    return current != null && !isExpired;
+  }, [isApplicable, current, isExpired]);
 
   return {
     isLoading,

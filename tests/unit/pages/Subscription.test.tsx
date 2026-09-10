@@ -55,6 +55,25 @@ vi.mock('../../../src/hooks/useSubscription', () => ({
   useSubscription: () => mockSubscriptionHook,
 }));
 
+// Mock AppConfig with disabled flag to test disabled state
+vi.mock('../../../src/config/app', () => ({
+  AppConfig: {
+    features: {
+      enableSubscriptionAccess: false,
+    },
+  },
+}));
+
+// Mock annualFeeService used by Subscription component
+vi.mock('../../../src/services/annualFee.service', () => ({
+  annualFeeService: {
+    listActiveAnnualFeePlans: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getMyPurchaseHistory: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getMyCurrentSubscription: vi.fn().mockResolvedValue(null),
+    purchaseAnnualFee: vi.fn(),
+  },
+}));
+
 // Service mocks
 const mockListPlans = vi.fn();
 const mockCreateOrder = vi.fn();

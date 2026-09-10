@@ -209,17 +209,66 @@ export const purchaseAnnualFee = async (
  * Powers both the header profile badge and the Subscription tab.
  */
 export const getMyCurrentSubscription = async (): Promise<CurrentAnnualFeeSubscription | null> => {
-  const response = await api.get<CurrentAnnualFeeSubscription | { message: string }>(
-    ENDPOINTS.MY_SUBSCRIPTION,
-  );
+  let data: any = null;
+  try {
+    const response = await api.get<any>(ENDPOINTS.MY_SUBSCRIPTION);
+    data = response.data;
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      try {
+        const fallbackRes = await api.get<any>('/api/annual-fees/my-current-subscription');
+        data = fallbackRes.data;
+      } catch {
+        return null;
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  if (!data || typeof data !== 'object') return null;
+
   // The BE returns `{ message: "No active subscription." }` (HTTP 200) when
   // the user has no active subscription. Normalise this to `null`.
-  const data = response.data;
-  if (data === null) return null;
-  if ('message' in data && !('purchase' in data)) {
+  if (
+    'message' in data &&
+    !('purchase' in data && data.purchase != null) &&
+    !('annualFee' in data && data.annualFee != null) &&
+    !('isExpired' in data) &&
+    !('daysRemaining' in data) &&
+    !('expiresAt' in data)
+  ) {
     return null;
   }
-  return data as CurrentAnnualFeeSubscription;
+
+  // Extract authoritative expired flag & daysRemaining
+  const isExplicitlyExpired = Boolean(data.isExpired);
+  const daysRemaining = typeof data.daysRemaining === 'number' ? data.daysRemaining : 0;
+  const isExpired = isExplicitlyExpired || (typeof data.daysRemaining === 'number' && data.daysRemaining <= 0);
+
+  // Derive or preserve expiresAt
+  let expiresAt = data.expiresAt ?? data.purchase?.expiryDate ?? null;
+  if (!expiresAt && daysRemaining > 0) {
+    expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
+  }
+
+  // Normalize annualFee plan object
+  const annualFee = data.annualFee ?? {
+    id: data.purchase?.annualFeeId ?? 0,
+    name: daysRemaining > 0 ? `${daysRemaining}-Day Subscription` : 'Active Subscription',
+    userRole: 'Researcher',
+    price: data.purchase?.amount ?? 0,
+    billingCycle: 'Annual',
+    status: true,
+  };
+
+  return {
+    purchase: data.purchase ?? null,
+    annualFee,
+    daysRemaining,
+    isExpired,
+    expiresAt,
+  };
 };
 
 /**

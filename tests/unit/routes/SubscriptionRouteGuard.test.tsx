@@ -135,6 +135,76 @@ describe('SubscriptionRouteGuard', () => {
     expect(screen.queryByTestId('subscription-page')).toBeNull();
   });
 
+  it('does NOT redirect while isLoading is true — displays checking subscription indicator (Bug Ticket Q6)', async () => {
+    const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
+    setAuth('Lecturer');
+    mockSubscription = { isApplicable: true, isActive: false, isLoading: true, refetch: async () => {} };
+
+    const screen = render(
+      <MemoryRouter initialEntries={['/lecturer/papers']}>
+        <Routes>
+          <Route element={<SubscriptionRouteGuard />}>
+            <Route path="/lecturer/papers" element={<div data-testid="inner-page">Inner</div>} />
+          </Route>
+          <Route path="/subscription" element={<div data-testid="subscription-page">Subscription</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Crucial check for Bug Ticket Q6: Never redirect while isLoading is true!
+    expect(screen.queryByTestId('subscription-page')).toBeNull();
+    expect(screen.getByText(/Checking subscription…/i)).toBeInTheDocument();
+  });
+
+  it('redirects to /subscription when isActive is false and isLoading is false', async () => {
+    const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
+    setAuth('Lecturer');
+    mockSubscription = { isApplicable: true, isActive: false, isLoading: false, refetch: async () => {} };
+
+    const screen = render(
+      <MemoryRouter initialEntries={['/lecturer/papers']}>
+        <Routes>
+          <Route element={<SubscriptionRouteGuard />}>
+            <Route path="/lecturer/papers" element={<div data-testid="inner-page">Inner</div>} />
+          </Route>
+          <Route path="/subscription" element={<div data-testid="subscription-page">Subscription</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('inner-page')).toBeNull();
+    expect(screen.queryByTestId('subscription-page')).not.toBeNull();
+  });
+
+  it('does NOT redirect when there is a network error fetching subscription', async () => {
+    const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
+    setAuth('Researcher');
+    mockSubscription = {
+      isApplicable: true,
+      isActive: false,
+      isLoading: false,
+      error: new Error('Network timeout'),
+      current: null,
+      refetch: async () => {},
+    } as any;
+
+    const screen = render(
+      <MemoryRouter initialEntries={['/researcher/submissions']}>
+        <Routes>
+          <Route element={<SubscriptionRouteGuard />}>
+            <Route path="/researcher/submissions" element={<div data-testid="researcher-inner">Researcher</div>} />
+          </Route>
+          <Route path="/subscription" element={<div data-testid="subscription-page">Subscription</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Should NOT redirect to /subscription
+    expect(screen.queryByTestId('subscription-page')).toBeNull();
+    expect(screen.getByText(/Unable to verify subscription/i)).toBeInTheDocument();
+    expect(screen.getByText(/Retry/i)).toBeInTheDocument();
+  });
+
   it('does NOT block Reviewer / Admin / Graduate Student even with no subscription', async () => {
     const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
     for (const role of ['Reviewer', 'Admin', 'Graduate Student']) {

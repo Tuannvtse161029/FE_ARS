@@ -282,6 +282,30 @@ export const Subscription = () => {
         />
       )}
 
+      {/* ACTIVE CONFIRMATION BANNER */}
+      {hasActiveSubscription && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3, 12px)',
+            padding: 'var(--space-4, 16px)',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: 'var(--radius-md, 8px)',
+            color: '#065f46',
+            marginBottom: 'var(--space-6, 24px)',
+          }}
+          role="status"
+          data-testid="subscription-active-banner"
+        >
+          <CheckCircle2 size={20} style={{ flexShrink: 0 }} aria-hidden />
+          <div>
+            <strong>Subscription active.</strong> All workspace features (Seminar, Research Topics, Research Groups, Phase Reports, Materials, and Research Papers) are fully accessible.
+          </div>
+        </div>
+      )}
+
       {/* CURRENT SUBSCRIPTION */}
       <section
         className={styles.statusCard}
@@ -293,7 +317,7 @@ export const Subscription = () => {
             {isSubscriptionLoading
               ? 'Loading subscription…'
               : current
-                ? current.annualFee?.name ?? 'Active subscription'
+                ? current.annualFee?.name ?? (current.daysRemaining > 0 ? `${current.daysRemaining}-Day Subscription` : 'Active subscription')
                 : 'No active subscription'}
           </h2>
         </div>
@@ -313,13 +337,16 @@ export const Subscription = () => {
                   : 'Expired'}
               </span>
             </div>
-            {/* Show dates only when the BE surfaces them */}
+            {/* Show dates only when the BE surfaces them or derived */}
             {(current.purchase?.createdAt ||
               current.expiresAt ||
               current.purchase?.expiryDate) && (
               <div className={styles.statusMeta}>
-                <Calendar size={14} aria-hidden /> Started{' '}
-                {formatDate(current.purchase?.createdAt ?? null, locale)} · Expires{' '}
+                <Calendar size={14} aria-hidden />
+                {current.purchase?.createdAt
+                  ? ` Started ${formatDate(current.purchase.createdAt, locale)} · `
+                  : ' '}
+                Expires{' '}
                 {formatDate(
                   current.expiresAt ?? current.purchase?.expiryDate ?? null,
                   locale,
@@ -336,8 +363,8 @@ export const Subscription = () => {
         )}
       </section>
 
-      {/* PLAN CATALOGUE — hidden for users with an active subscription */}
-      {!featureDisabled && !hasActiveSubscription && (
+      {/* PLAN CATALOGUE — hidden for users with an active subscription and while loading */}
+      {!featureDisabled && !isSubscriptionLoading && !hasActiveSubscription && (
         <section aria-labelledby="subscription-plans-title">
           <div className={styles.headerBlock}>
             <span className={styles.eyebrow}>Choose a plan</span>
@@ -415,8 +442,8 @@ export const Subscription = () => {
         </section>
       )}
 
-      {/* ACTION ROW — hidden for users with an active subscription */}
-      {!featureDisabled && !hasActiveSubscription && (
+      {/* ACTION ROW — hidden for users with an active subscription and while loading */}
+      {!featureDisabled && !isSubscriptionLoading && !hasActiveSubscription && (
         <div className={styles.actionRow}>
           <Button
             onClick={() => void handleProceedToPay()}
