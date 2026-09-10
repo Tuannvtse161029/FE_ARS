@@ -5,6 +5,7 @@ import {
   Image as ImageIcon,
   MoreHorizontal,
   Flag,
+  CheckCircle2,
 } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { FollowButton } from './FollowButton';
@@ -13,6 +14,7 @@ import { ForumPostEngagementRow } from './ForumPostEngagementRow';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { useForumComments } from '../../hooks/useForumComments';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
+import { useI18n } from '../../i18n/I18nContext';
 import { forumPostService } from '../../services/forumPost.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
@@ -33,7 +35,9 @@ export const ForumPostCard = ({
   currentUserName,
 }: ForumPostCardProps) => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const [reportTarget, setReportTarget] = useState<{
     id: number;
     preview: string;
@@ -174,7 +178,7 @@ export const ForumPostCard = ({
                 type="button"
                 className={styles.menuTrigger}
                 onClick={() => setMenuOpen((prev) => !prev)}
-                aria-label="More options"
+                aria-label={t('forum.post.moreOptions', 'More options')}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
@@ -195,7 +199,7 @@ export const ForumPostCard = ({
                     role="menuitem"
                   >
                     <Flag size={16} className={styles.menuIcon} />
-                    Report this post
+                    {t('forum.post.reportPost', 'Report this post')}
                   </button>
                 </div>
               )}
@@ -203,6 +207,13 @@ export const ForumPostCard = ({
           </div>
         )}
       </div>
+
+      {reportSuccess && (
+        <div className={styles.reportSuccessBanner} role="status">
+          <CheckCircle2 size={14} />
+          <span>{t('forum.report.successToast', 'Your report has been submitted to moderators.')}</span>
+        </div>
+      )}
 
       {/* Title */}
       {post.title && <h3 className={styles.title}>{post.title}</h3>}
@@ -280,6 +291,10 @@ export const ForumPostCard = ({
         <ReportModal
           isOpen={true}
           onClose={() => setReportTarget(null)}
+          onSuccess={() => {
+            setReportSuccess(true);
+            setTimeout(() => setReportSuccess(false), 5000);
+          }}
           targetType="ForumPost"
           targetId={reportTarget.id}
           targetPreview={reportTarget.preview}

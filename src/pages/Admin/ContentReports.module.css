@@ -287,6 +287,12 @@
   background-color: color-mix(in srgb, var(--status-info-text) 6%, transparent);
 }
 
+.typeBadgeForumPost {
+  color: var(--ars-accent-yellow, #d97706);
+  border-color: color-mix(in srgb, var(--ars-accent-yellow, #d97706) 40%, transparent);
+  background-color: color-mix(in srgb, var(--ars-accent-yellow, #d97706) 10%, transparent);
+}
+
 .typeBadgePaper {
   color: var(--ars-reviewer);
   border-color: color-mix(in srgb, var(--ars-reviewer) 35%, transparent);
@@ -351,6 +357,36 @@
   text-transform: none;
   letter-spacing: 0.01em;
   font-weight: var(--font-weight-semibold);
+}
+
+.viewButton {
+  background-color: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--ink-secondary);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: 28px;
+  font-family: var(--font-family-ui);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.viewButton:hover {
+  background-color: var(--surface-selected);
+  border-color: var(--ars-admin, #8b5cf6);
+  color: var(--ink-primary);
+}
+
+.viewButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ── States ─────────────────────────────────────────────── */

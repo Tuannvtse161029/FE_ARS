@@ -290,7 +290,21 @@
 }
 
 .menuItemReport:hover {
-  background-color: var(--ars-error-bg);
+  background-color: rgba(153, 27, 27, 0.08);
+}
+
+.reportSuccessBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--status-success-text);
+  background-color: var(--status-success-surface, rgba(16, 185, 129, 0.1));
+  border: 1px solid color-mix(in srgb, var(--status-success-text) 30%, transparent);
 }
 
 .menuIcon {

@@ -12,6 +12,7 @@ import {
   Inbox,
   Loader2,
   MoreVertical,
+  CheckCircle2,
 } from 'lucide-react';
 import api from '../../services/axios';
 import {
@@ -21,6 +22,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
+import { useI18n } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import { ROUTES } from '../../routes/paths';
@@ -162,6 +164,8 @@ export const CommentSection = ({
     open: boolean;
     comment: ForumComment | null;
   }>({ open: false, comment: null });
+  const { t } = useI18n();
+  const [reportSuccess, setReportSuccess] = useState(false);
   const [reportTarget, setReportTarget] = useState<{
     id: number;
     preview: string;
@@ -468,6 +472,13 @@ export const CommentSection = ({
             />
           )}
 
+          {reportSuccess && (
+            <div className={styles.reportSuccessBanner} role="status">
+              <CheckCircle2 size={14} />
+              <span>{t('forum.report.successToast', 'Your report has been submitted to moderators.')}</span>
+            </div>
+          )}
+
           {/* List-level error — shared ErrorBanner */}
           {!actionError && error && (
             <ErrorBanner
@@ -538,7 +549,7 @@ export const CommentSection = ({
                                 currentId === comment.id ? null : comment.id,
                               )
                             }
-                            aria-label="Comment actions"
+                            aria-label={t('forum.comment.actions', 'Comment actions')}
                             aria-haspopup="menu"
                             aria-expanded={openCommentMenuId === comment.id}
                           >
@@ -559,7 +570,7 @@ export const CommentSection = ({
                                 role="menuitem"
                               >
                                 <Flag size={14} aria-hidden="true" />
-                                Report
+                                {t('forum.comment.report', 'Report')}
                               </button>
                             </div>
                           )}
@@ -717,6 +728,10 @@ export const CommentSection = ({
             <ReportModal
               isOpen={true}
               onClose={() => setReportTarget(null)}
+              onSuccess={() => {
+                setReportSuccess(true);
+                setTimeout(() => setReportSuccess(false), 5000);
+              }}
               targetType="ForumComment"
               targetId={reportTarget.id}
               targetPreview={reportTarget.preview}

@@ -102,6 +102,40 @@ export const criteriaUnitLabel = (unit: string, locale: 'en' | 'vi'): string => 
   return unit || (locale === 'en' ? 'times' : 'lần');
 };
 
+export interface PredefinedMetric {
+  metric: string;
+  unit: MedalCriteriaUnit;
+  labelEn: string;
+  labelVi: string;
+}
+
+export const PREDEFINED_METRICS: PredefinedMetric[] = [
+  { metric: 'published_papers', unit: 'papers', labelEn: 'Published research papers (papers)', labelVi: 'Bài báo nghiên cứu xuất bản (bài báo)' },
+  { metric: 'hosted_seminars', unit: 'seminars', labelEn: 'Hosted academic seminars (seminars)', labelVi: 'Buổi seminar học thuật chủ trì (buổi seminar)' },
+  { metric: 'attended_seminars', unit: 'seminars', labelEn: 'Attended seminars with feedback (seminars)', labelVi: 'Buổi seminar tham gia & phản hồi (buổi seminar)' },
+  { metric: 'guided_groups_completed', unit: 'student_groups', labelEn: 'Mentored student groups completed (student groups)', labelVi: 'Nhóm sinh viên hoàn thành đề tài (nhóm sinh viên)' },
+  { metric: 'completed_reviews', unit: 'reviews', labelEn: 'Manuscripts peer-reviewed (reviews)', labelVi: 'Lượt đánh giá & thẩm định bài báo (lượt review)' },
+  { metric: 'orcid_connected', unit: 'account', labelEn: 'ORCID iD verified account (account)', labelVi: 'Tài khoản ORCID đã xác thực (tài khoản)' },
+  { metric: 'orcid_verified_papers', unit: 'papers', labelEn: 'Publications verified via ORCID (papers)', labelVi: 'Công trình xác thực qua ORCID (bài báo)' },
+  { metric: 'flawless_phases', unit: 'phases', labelEn: 'Flawless on-time milestone phases (phases)', labelVi: 'Giai đoạn (Phase) đạt chuẩn đúng hạn (giai đoạn)' },
+  { metric: 'community_post_reach', unit: 'times', labelEn: 'Community post views / reach (times)', labelVi: 'Lượt tiếp cận bài viết cộng đồng (lần)' },
+  { metric: 'community_engagement', unit: 'times', labelEn: 'Community discussions & comments (times)', labelVi: 'Lượt thảo luận & tương tác cộng đồng (lần)' },
+  { metric: 'community_top_comment', unit: 'times', labelEn: 'Helpful voted comments (times)', labelVi: 'Bình luận hữu ích được bình chọn (lần)' },
+];
+
+export function getAutoUnitForMetric(metricCode: string): MedalCriteriaUnit {
+  const code = (metricCode || '').trim().toLowerCase();
+  const match = PREDEFINED_METRICS.find((m) => m.metric.toLowerCase() === code);
+  if (match) return match.unit;
+  if (code.includes('paper') || code.includes('author') || code.includes('prolific')) return 'papers';
+  if (code.includes('seminar') || code.includes('host') || code.includes('participant')) return 'seminars';
+  if (code.includes('mentor') || code.includes('group') || code.includes('student')) return 'student_groups';
+  if (code.includes('review')) return 'reviews';
+  if (code.includes('orcid')) return 'account';
+  if (code.includes('phase')) return 'phases';
+  return 'times';
+}
+
 export interface Medal {
   id: string;
   code: string;

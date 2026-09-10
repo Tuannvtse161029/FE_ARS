@@ -232,7 +232,8 @@
 
 .reminderBtn,
 .aiBtn,
-.previewBtn {
+.previewBtn,
+.setupBtn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -264,25 +265,29 @@
 
 .reminderBtn:focus-visible,
 .aiBtn:focus-visible,
-.previewBtn:focus-visible {
+.previewBtn:focus-visible,
+.setupBtn:focus-visible {
   outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
 }
 
 .reminderBtn:disabled,
 .aiBtn:disabled,
-.previewBtn:disabled {
+.previewBtn:disabled,
+.setupBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.previewBtn {
+.previewBtn,
+.setupBtn {
   background: var(--ars-paper);
   border-color: var(--ars-lecturer);
   color: var(--ars-lecturer);
 }
 
-.previewBtn:hover:not(:disabled) {
+.previewBtn:hover:not(:disabled),
+.setupBtn:hover:not(:disabled) {
   background: var(--ars-lecturer-light);
   border-color: var(--ars-lecturer-dark, #5a1f0a);
   color: var(--ars-lecturer-dark, #5a1f0a);
