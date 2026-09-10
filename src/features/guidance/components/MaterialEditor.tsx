@@ -17,7 +17,7 @@ import {
 import { FieldError } from '../../../components/FieldError';
 import { FILE_UPLOAD_ACCEPT } from '../../../hooks/useFirebaseFileUpload';
 // CSS module kept at the original Materials CSS location for now.
-import styles from '../../pages/Lecturer/Materials.module.css';
+import styles from '../../../pages/Lecturer/Materials.module.css';
 
 export interface MaterialEditorProps {
   onClose: () => void;

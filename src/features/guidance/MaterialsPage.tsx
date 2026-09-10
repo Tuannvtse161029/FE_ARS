@@ -17,11 +17,11 @@ import {
   RefreshCw,
   Library,
   Trash2,
-  Link2,
   Search,
   Share2,
   ChevronRight,
   Eye,
+  Users,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -85,7 +85,11 @@ export type RosterLoadOutcome =
   | { kind: 'forbidden' }
   | { kind: 'error'; message: string };
 
-type TabId = 'my-materials' | 'shared-materials';
+type TabId =
+  | 'my-materials'
+  | 'shared-by-me'
+  | 'shared-with-me'
+  | 'shared-materials';
 
 // ── Source-type detection ──────────────────────────────────────────
 const FILE_URL_PATTERN = /\.(pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|webp)(\?|#|$)/i;
@@ -184,7 +188,7 @@ const fetchLecturerRoster = async (
 
 export const LecturerMaterialsPage = () => {
   const { user } = useAuth();
-  const lecturerId = user?.userId ?? null;
+  const lecturerId = user?.userId ?? (user as { id?: number } | undefined)?.id ?? null;
   const t = useT();
 
   const [activeTab, setActiveTab] = useState<TabId>('my-materials');
@@ -393,7 +397,8 @@ export const LecturerMaterialsPage = () => {
     setSharedLoading(true);
     setSharedError(null);
     try {
-      setSharedItems(await sharedMaterialService.getAll());
+      const res = await sharedMaterialService.getAll();
+      setSharedItems(Array.isArray(res) ? res : []);
     } catch {
       setSharedError('Shared materials could not be loaded.');
     } finally {
@@ -405,8 +410,14 @@ export const LecturerMaterialsPage = () => {
     void loadShared();
   }, [loadShared]);
 
-  const sharedByMe = useMemo(() => sharedItems.filter((s) => s.lecturerId === lecturerId), [sharedItems, lecturerId]);
-  const sharedWithMe = useMemo(() => sharedItems.filter((s) => s.sharedWithColleagueId === lecturerId), [sharedItems, lecturerId]);
+  const sharedByMe = useMemo(
+    () => (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => s.lecturerId === lecturerId),
+    [sharedItems, lecturerId],
+  );
+  const sharedWithMe = useMemo(
+    () => (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => s.sharedWithColleagueId === lecturerId),
+    [sharedItems, lecturerId],
+  );
 
   const learningById = useMemo(() => {
     const map = new Map<number, LearningMaterial>();
@@ -527,19 +538,39 @@ export const LecturerMaterialsPage = () => {
             onClick={() => setActiveTab('my-materials')}
           >
             <Library size={16} aria-hidden />
-            {t('lecturer.materials.tab.myMaterials', 'My Materials')}
+            <span>{t('lecturer.materials.tab.myMaterials', 'My Materials')}</span>
           </button>
           <button
             type="button"
             role="tab"
-            id="tab-shared-materials"
-            aria-selected={activeTab === 'shared-materials'}
-            aria-controls="panel-shared-materials"
-            className={`${styles.tabBtn} ${activeTab === 'shared-materials' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('shared-materials')}
+            id="tab-shared-by-me"
+            aria-selected={
+              activeTab === 'shared-by-me' || activeTab === 'shared-materials'
+            }
+            aria-controls="panel-shared-by-me"
+            className={`${styles.tabBtn} ${
+              activeTab === 'shared-by-me' || activeTab === 'shared-materials'
+                ? styles.tabBtnActive
+                : ''
+            }`}
+            onClick={() => setActiveTab('shared-by-me')}
           >
-            <Link2 size={16} aria-hidden />
-            {t('lecturer.materials.tab.sharedMaterials', 'Shared Materials')}
+            <Share2 size={16} aria-hidden />
+            <span>{t('lecturer.materials.tab.sharedByMe', 'Shared by me')}</span>
+            <span className={styles.tabCountBadge}>{sharedByMe.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-shared-with-me"
+            aria-selected={activeTab === 'shared-with-me'}
+            aria-controls="panel-shared-with-me"
+            className={`${styles.tabBtn} ${activeTab === 'shared-with-me' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('shared-with-me')}
+          >
+            <Users size={16} aria-hidden />
+            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared with me')}</span>
+            <span className={styles.tabCountBadge}>{sharedWithMe.length}</span>
           </button>
         </div>
 
@@ -550,6 +581,29 @@ export const LecturerMaterialsPage = () => {
             </Button>
             <Button variant="primary" size="sm" leftIcon={<X size={14} aria-hidden style={{ display: 'none' }} />} onClick={() => setLmShowForm(true)} data-testid="open-add-material-modal">
               <span>+ Add Material</span>
+            </Button>
+          </div>
+        )}
+
+        {(activeTab === 'shared-by-me' ||
+          activeTab === 'shared-with-me' ||
+          activeTab === 'shared-materials') && (
+          <div className={styles.tabBarActions}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={
+                sharedLoading ? (
+                  <Loader size={13} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <RefreshCw size={13} aria-hidden />
+                )
+              }
+              onClick={() => void loadShared()}
+              disabled={sharedLoading}
+              aria-label="Refresh shared materials"
+            >
+              Refresh
             </Button>
           </div>
         )}
@@ -652,10 +706,12 @@ export const LecturerMaterialsPage = () => {
                       <ExternalLink size={14} aria-hidden />
                       {t('lecturer.materials.action.open', 'Open')}
                     </button>
-                    <button type="button" className={styles.materialShareBtn} aria-label="Share material">
-                      <Share2 size={14} aria-hidden />
-                      {t('lecturer.materials.action.share', 'Share')}
-                    </button>
+                    {!isSharedFromColleague && (
+                      <button type="button" className={styles.materialShareBtn} aria-label="Share material">
+                        <Share2 size={14} aria-hidden />
+                        {t('lecturer.materials.action.share', 'Share')}
+                      </button>
+                    )}
                     {!isSharedFromColleague && (
                       <button
                         type="button"
@@ -681,8 +737,8 @@ export const LecturerMaterialsPage = () => {
         )}
       </div>
 
-      {/* TAB 2: Shared Materials */}
-      <div id="panel-shared-materials" role="tabpanel" aria-labelledby="tab-shared-materials" className={`${styles.tabPanel} ${activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}>
+      {/* TAB 2: Shared by me */}
+      <div id="panel-shared-by-me" role="tabpanel" aria-labelledby="tab-shared-by-me" className={`${styles.tabPanel} ${activeTab !== 'shared-by-me' && activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}>
         <BackendGapBanner
           field={t('lecturer.materials.shared.gapBanner.field', 'SharedMaterial.learningMaterialId, status enum, expiry')}
           feature={t('lecturer.materials.shared.gapBanner.feature', 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.')}
@@ -718,6 +774,24 @@ export const LecturerMaterialsPage = () => {
             return null;
           }}
         />
+      </div>
+
+      {/* TAB 3: Shared with me */}
+      <div id="panel-shared-with-me" role="tabpanel" aria-labelledby="tab-shared-with-me" className={`${styles.tabPanel} ${activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''}`}>
+        <BackendGapBanner
+          field={t('lecturer.materials.shared.gapBanner.field', 'SharedMaterial.learningMaterialId, status enum, expiry')}
+          feature={t('lecturer.materials.shared.gapBanner.feature', 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.')}
+        />
+
+        {sharedError && (
+          <div className={styles.errorBanner} role="alert">
+            <span className={styles.errorBannerIcon}>
+              <AlertTriangle size={14} aria-hidden />
+              <span>{sharedError}</span>
+            </span>
+            <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
+          </div>
+        )}
 
         <SharedSection
           title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}

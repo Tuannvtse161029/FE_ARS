@@ -39,3 +39,6 @@ export type { ShortcutSpec, ShortcutHandler } from './useShortcuts';
 // Part 3 — List/table keyboard navigation: j/k row nav, Enter open, n new, f filter.
 export { useListShortcuts } from './useListShortcuts';
 export type { UseListShortcutsOptions } from './useListShortcuts';
+// Form & popup screen centering and scroll locking
+export { useModalScrollLock, syncModalBodyScrollLock } from './useModalScrollLock';
+export { useFormFieldAutoCenter, centerElementInView } from './useFormFieldAutoCenter';

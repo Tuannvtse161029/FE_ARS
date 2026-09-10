@@ -1,4 +1,5 @@
 import React, { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ShieldCheck } from 'lucide-react';
 import { userService } from '../../../services/user.service';
 import type { User } from '../../../types/auth';
@@ -102,9 +103,12 @@ export const GrantMedalModal: React.FC<GrantMedalModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="grant-medal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -112,7 +116,7 @@ export const GrantMedalModal: React.FC<GrantMedalModalProps> = ({
       <div className={styles.modal}>
         {/* Header */}
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>
+          <h3 id="grant-medal-title" className={styles.modalTitle}>
             {t('admin.medals.grant.title', 'Trao huy hiệu cho người dùng')}
           </h3>
           <button
@@ -300,7 +304,8 @@ export const GrantMedalModal: React.FC<GrantMedalModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

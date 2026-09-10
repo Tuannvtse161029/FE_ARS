@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Tag,
@@ -680,7 +681,7 @@ const CreatePostModal = ({
   const avatarInitials = initialsFromName(currentUserName);
   const paletteIndex = currentUserId % PALETTE.length;
 
-  return (
+  return createPortal(
     <div
       className={styles.modalOverlay}
       onClick={onClose}
@@ -939,7 +940,8 @@ const CreatePostModal = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

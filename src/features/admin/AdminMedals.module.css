@@ -1082,6 +1082,7 @@
   justify-content: center;
   z-index: 1100;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .confirmModal {
@@ -1089,6 +1090,8 @@
   border-radius: var(--radius-lg, 12px);
   width: 100%;
   max-width: 460px;
+  max-height: min(90vh, calc(100dvh - 32px));
+  margin: auto;
   padding: 24px;
   display: flex;
   flex-direction: column;

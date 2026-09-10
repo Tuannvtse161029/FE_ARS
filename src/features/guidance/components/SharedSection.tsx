@@ -9,7 +9,7 @@ import { useT } from '../../../i18n/I18nContext';
 import type { SharedMaterial } from '../../../services/sharedMaterial.service';
 import { resolveUiStatus } from '../MaterialsPage';
 // CSS module kept at the original Materials CSS location for now.
-import styles from '../../pages/Lecturer/Materials.module.css';
+import styles from '../../../pages/Lecturer/Materials.module.css';
 
 export interface SharedSectionProps {
   title: string;

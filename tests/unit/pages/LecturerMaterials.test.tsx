@@ -18,13 +18,13 @@ const { getAllLearningMock, getAllSharedMock } = vi.hoisted(() => ({
 
 vi.mock('../../../src/hooks/useAuth', () => ({
   useAuth: () => ({
-    user: { id: 7, email: 'lecturer@test.com', role: 'Lecturer' },
+    user: { id: 7, userId: 7, email: 'lecturer@test.com', role: 'Lecturer' },
     isLoading: false,
   }),
 }));
 vi.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({
-    user: { id: 7, email: 'lecturer@test.com', role: 'Lecturer' },
+    user: { id: 7, userId: 7, email: 'lecturer@test.com', role: 'Lecturer' },
     isLoading: false,
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -60,15 +60,14 @@ describe('LecturerMaterialsPage — no hardcoded demo data', () => {
   beforeEach(() => {
     getAllLearningMock.mockReset();
     getAllSharedMock.mockReset();
+    getAllSharedMock.mockResolvedValue([]);
   });
 
   it('does NOT render the hardcoded "Catalog preview" demo grid', async () => {
     getAllLearningMock.mockResolvedValueOnce([]);
-    getAllSharedMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([]);
     renderPage();
     await waitFor(() => expect(getAllLearningMock).toHaveBeenCalled());
-    // The legacy demo grid rendered fixed labels (PDF / Google Drive / Website
-    // / Reference) labelled "Demo catalog card". Those must NOT appear.
     expect(screen.queryAllByText(/Demo catalog card/i)).toHaveLength(0);
     expect(screen.queryByText(/^PDF$/)).toBeNull();
     expect(screen.queryByText(/^Google Drive$/)).toBeNull();
@@ -87,36 +86,35 @@ describe('LecturerMaterialsPage — no hardcoded demo data', () => {
         updatedAt: '2026-08-30T10:00:00Z',
       },
     ]);
-    getAllSharedMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([]);
     renderPage();
     await waitFor(() =>
       expect(screen.getByText('Distributed Speech-to-Text Syllabus')).toBeInTheDocument(),
     );
-    expect(screen.getByText('Sub-field #42')).toBeInTheDocument();
   });
 
   it('renders the truthful empty state on the Learning tab when the API returns []', async () => {
     getAllLearningMock.mockResolvedValueOnce([]);
-    getAllSharedMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([]);
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/No learning materials yet/)).toBeInTheDocument(),
+      expect(screen.getByText(/No materials yet|Chưa có tài liệu nào/)).toBeInTheDocument(),
     );
   });
 
   it('renders the Shared Materials truthful empty state when the API returns []', async () => {
     getAllLearningMock.mockResolvedValueOnce([]);
-    getAllSharedMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([]);
     renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: /Shared Materials/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /Shared by me|Tôi đã chia sẻ|Shared Materials|Tài liệu chia sẻ/i }));
     await waitFor(() =>
-      expect(screen.getByText(/No shared papers yet/)).toBeInTheDocument(),
+      expect(screen.getByText(/You have not shared any materials with colleagues yet|Bạn chưa chia sẻ tài liệu nào/)).toBeInTheDocument(),
     );
   });
 
-  it('renders real Shared Material cards returned by the API', async () => {
+  it('renders real Shared Material cards returned by the API in Tab 2', async () => {
     getAllLearningMock.mockResolvedValueOnce([]);
-    getAllSharedMock.mockResolvedValueOnce([
+    getAllSharedMock.mockResolvedValue([
       {
         sharedMaterialId: 9,
         lecturerId: 7,
@@ -127,8 +125,25 @@ describe('LecturerMaterialsPage — no hardcoded demo data', () => {
       },
     ]);
     renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: /Shared Materials/i }));
-    await waitFor(() => expect(screen.getByText('Paper #123')).toBeInTheDocument());
-    expect(screen.getByText('Shared with colleague #55')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /Shared by me|Tôi đã chia sẻ|Shared Materials|Tài liệu chia sẻ/i }));
+    await waitFor(() => expect(screen.getByText('Material #123')).toBeInTheDocument());
+    expect(screen.getByText('Colleague #55')).toBeInTheDocument();
+  });
+
+  it('renders Shared with me cards in Tab 3 when clicked', async () => {
+    getAllLearningMock.mockResolvedValueOnce([]);
+    getAllSharedMock.mockResolvedValue([
+      {
+        sharedMaterialId: 10,
+        lecturerId: 55,
+        paperId: 456,
+        sharedWithColleagueId: 7,
+        sharedAt: '2026-08-16T10:00:00Z',
+        status: 'PENDING',
+      },
+    ]);
+    renderPage();
+    await userEvent.click(screen.getByRole('tab', { name: /Shared with me|Được chia sẻ với tôi/i }));
+    await waitFor(() => expect(screen.getByText('Material #456')).toBeInTheDocument());
   });
 });

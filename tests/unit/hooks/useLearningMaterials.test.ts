@@ -10,6 +10,10 @@ vi.mock('../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: { getAll: getAllMock },
 }));
 
+vi.mock('../../../src/services/sharedMaterial.service', () => ({
+  sharedMaterialService: { getAll: vi.fn(() => Promise.resolve([])) },
+}));
+
 import { useLearningMaterials } from '../../../src/hooks/useLearningMaterials';
 
 const SEED = [

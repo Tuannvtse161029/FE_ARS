@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Flag, X, AlertCircle, Loader2 } from 'lucide-react';
 import { reportService, ReportTargetType } from '../../services/report.service';
 import { ErrorBanner } from '../ErrorBanner';
@@ -145,7 +146,7 @@ export const ReportModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className={styles.overlay} onClick={handleOverlayClick} role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
       <div ref={dialogRef} className={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -257,7 +258,8 @@ export const ReportModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

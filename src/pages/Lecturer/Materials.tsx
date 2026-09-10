@@ -20,7 +20,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   X,
@@ -42,6 +43,9 @@ import {
   ChevronRight,
   Code2,
   Eye,
+  Clock,
+  User,
+  Users,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -88,7 +92,11 @@ import {
 import { ShareApiContractPreview } from '../../components/lecturer/ShareApiContractPreview';
 import styles from './Materials.module.css';
 
-type TabId = 'my-materials' | 'shared-materials';
+type TabId =
+  | 'my-materials'
+  | 'shared-by-me'
+  | 'shared-with-me'
+  | 'shared-materials';
 
 // ── Source-type detection ──────────────────────────────────────────────────
 // Firebase Storage URLs follow a stable pattern; everything else (or missing)
@@ -253,12 +261,23 @@ const fetchLecturerRoster = async (
 
 export const LecturerMaterialsPage = () => {
   const { user } = useAuth();
-  const lecturerId = user?.userId ?? null;
+  const lecturerId = user?.userId ?? (user as { id?: number } | undefined)?.id ?? null;
   const t = useT();
   const navigate = useNavigate();
 
   // ── Tab state ───────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<TabId>('my-materials');
+  const [searchParams] = useSearchParams();
+  const initialTabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    if (initialTabParam === 'shared-with-me') return 'shared-with-me';
+    if (
+      initialTabParam === 'shared-by-me' ||
+      initialTabParam === 'shared-materials'
+    ) {
+      return 'shared-by-me';
+    }
+    return 'my-materials';
+  });
 
   // ── "Used by" modal state ──────────────────────────────────────────────
   // Tracks which material card the user clicked from. We re-derive the
@@ -583,7 +602,8 @@ export const LecturerMaterialsPage = () => {
     setSharedLoading(true);
     setSharedError(null);
     try {
-      setSharedItems(await sharedMaterialService.getAll());
+      const res = await sharedMaterialService.getAll();
+      setSharedItems(Array.isArray(res) ? res : []);
     } catch {
       setSharedError('Shared materials could not be loaded.');
     } finally {
@@ -600,12 +620,67 @@ export const LecturerMaterialsPage = () => {
   // find a LearningMaterial whose numeric id matches `paperId` we treat that
   // as the underlying row. We also keep a fallback map for unmatched ids.
   const sharedByMe = useMemo(() => {
-    return sharedItems.filter((s) => s.lecturerId === lecturerId);
+    return (Array.isArray(sharedItems) ? sharedItems : []).filter(
+      (s) => s.lecturerId === lecturerId,
+    );
   }, [sharedItems, lecturerId]);
 
   const sharedWithMe = useMemo(() => {
-    return sharedItems.filter((s) => s.sharedWithColleagueId === lecturerId);
+    return (Array.isArray(sharedItems) ? sharedItems : []).filter(
+      (s) => s.sharedWithColleagueId === lecturerId,
+    );
   }, [sharedItems, lecturerId]);
+
+  // Active/pending shares initiated by current lecturer, indexed by material id and url
+  const activeSharesByMaterial = useMemo(() => {
+    const idMap = new Map<number, SharedMaterial[]>();
+    const urlMap = new Map<string, SharedMaterial[]>();
+    for (const s of sharedByMe) {
+      const status = resolveUiStatus(s);
+      if (status === 'ACTIVE' || status === 'ACCEPTED' || status === 'PENDING') {
+        const mid =
+          typeof s.learningMaterialId === 'number'
+            ? s.learningMaterialId
+            : typeof s.paperId === 'number'
+            ? s.paperId
+            : null;
+        if (mid !== null) {
+          const list = idMap.get(mid) ?? [];
+          list.push(s);
+          idMap.set(mid, list);
+        }
+        const sUrl = (s.learningMaterialUrl || s.fileUrl || s.url || '').trim();
+        if (sUrl) {
+          const list = urlMap.get(sUrl) ?? [];
+          list.push(s);
+          urlMap.set(sUrl, list);
+        }
+      }
+    }
+    return { idMap, urlMap };
+  }, [sharedByMe]);
+
+  // Shares received by current lecturer, indexed by material id and url
+  const sharedWithMeByMaterial = useMemo(() => {
+    const idMap = new Map<number, SharedMaterial>();
+    const urlMap = new Map<string, SharedMaterial>();
+    for (const s of sharedWithMe) {
+      const mid =
+        typeof s.learningMaterialId === 'number'
+          ? s.learningMaterialId
+          : typeof s.paperId === 'number'
+          ? s.paperId
+          : null;
+      if (mid !== null && !idMap.has(mid)) {
+        idMap.set(mid, s);
+      }
+      const sUrl = (s.learningMaterialUrl || s.fileUrl || s.url || '').trim();
+      if (sUrl && !urlMap.has(sUrl)) {
+        urlMap.set(sUrl, s);
+      }
+    }
+    return { idMap, urlMap };
+  }, [sharedWithMe]);
 
   const learningById = useMemo(() => {
     const map = new Map<number, LearningMaterial>();
@@ -725,6 +800,24 @@ export const LecturerMaterialsPage = () => {
     setShareError(null);
     setShareSaving(false);
   };
+
+  // ESC key closes the Share Material modal.
+  useEffect(() => {
+    if (!shareMaterial) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !shareSaving) {
+        event.preventDefault();
+        closeShareModal();
+      }
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [shareMaterial, shareSaving]);
 
   // ── Backend contract preview ──────────────────────────────────────
   // The Share button currently hits `POST /api/SharedMaterial` and gets
@@ -892,19 +985,39 @@ export const LecturerMaterialsPage = () => {
             onClick={() => setActiveTab('my-materials')}
           >
             <Library size={16} aria-hidden />
-            {t('lecturer.materials.tab.myMaterials', 'My Materials')}
+            <span>{t('lecturer.materials.tab.myMaterials', 'My Materials')}</span>
           </button>
           <button
             type="button"
             role="tab"
-            id="tab-shared-materials"
-            aria-selected={activeTab === 'shared-materials'}
-            aria-controls="panel-shared-materials"
-            className={`${styles.tabBtn} ${activeTab === 'shared-materials' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('shared-materials')}
+            id="tab-shared-by-me"
+            aria-selected={
+              activeTab === 'shared-by-me' || activeTab === 'shared-materials'
+            }
+            aria-controls="panel-shared-by-me"
+            className={`${styles.tabBtn} ${
+              activeTab === 'shared-by-me' || activeTab === 'shared-materials'
+                ? styles.tabBtnActive
+                : ''
+            }`}
+            onClick={() => setActiveTab('shared-by-me')}
           >
-            <Link2 size={16} aria-hidden />
-            {t('lecturer.materials.tab.sharedMaterials', 'Shared Materials')}
+            <Share2 size={16} aria-hidden />
+            <span>{t('lecturer.materials.tab.sharedByMe', 'Shared by me')}</span>
+            <span className={styles.tabCountBadge}>{sharedByMe.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-shared-with-me"
+            aria-selected={activeTab === 'shared-with-me'}
+            aria-controls="panel-shared-with-me"
+            className={`${styles.tabBtn} ${activeTab === 'shared-with-me' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('shared-with-me')}
+          >
+            <Users size={16} aria-hidden />
+            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared with me')}</span>
+            <span className={styles.tabCountBadge}>{sharedWithMe.length}</span>
           </button>
         </div>
 
@@ -934,7 +1047,31 @@ export const LecturerMaterialsPage = () => {
               onClick={() => setLmShowForm(true)}
               data-testid="open-add-material-modal"
             >
-              Add Material
+              {t('lecturer.materials.action.add', 'Add Material')}
+            </Button>
+          </div>
+        )}
+
+        {/* Actions — visible on shared tabs */}
+        {(activeTab === 'shared-by-me' ||
+          activeTab === 'shared-with-me' ||
+          activeTab === 'shared-materials') && (
+          <div className={styles.tabBarActions}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={
+                sharedLoading ? (
+                  <Loader size={13} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <RefreshCw size={13} aria-hidden />
+                )
+              }
+              onClick={() => void loadShared()}
+              disabled={sharedLoading}
+              aria-label="Refresh shared materials"
+            >
+              Refresh
             </Button>
           </div>
         )}
@@ -963,7 +1100,7 @@ export const LecturerMaterialsPage = () => {
           </div>
         )}
 
-        {lmShowForm && (
+        {lmShowForm && createPortal(
           <div
             className={styles.overlay}
             role="presentation"
@@ -1206,7 +1343,8 @@ export const LecturerMaterialsPage = () => {
                 </div>
               </div>
             </form>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {/* Search bar */}
@@ -1275,6 +1413,38 @@ export const LecturerMaterialsPage = () => {
               const isSharedFromColleague =
                 typeof material.lecturerId === 'number' &&
                 material.lecturerId !== lecturerId;
+
+              const activeShares = (() => {
+                if (isSharedFromColleague) return [];
+                const byId =
+                  typeof material.id === 'number'
+                    ? activeSharesByMaterial.idMap.get(material.id)
+                    : undefined;
+                if (byId && byId.length > 0) return byId;
+                const matUrl = material.fileUrl?.trim();
+                if (matUrl) {
+                  const byUrl = activeSharesByMaterial.urlMap.get(matUrl);
+                  if (byUrl && byUrl.length > 0) return byUrl;
+                }
+                return [];
+              })();
+
+              const isCurrentlyShared =
+                !isSharedFromColleague && activeShares.length > 0;
+
+              const shareRecordWithMe = isSharedFromColleague
+                ? (typeof material.id === 'number'
+                    ? sharedWithMeByMaterial.idMap.get(material.id)
+                    : undefined) ??
+                  (material.fileUrl
+                    ? sharedWithMeByMaterial.urlMap.get(material.fileUrl.trim())
+                    : undefined)
+                : undefined;
+
+              const sharedByColleagueName = shareRecordWithMe
+                ? resolveColleagueName(shareRecordWithMe, rosterIndex)
+                : null;
+
               return (
                 <li
                   key={String(material.id ?? id)}
@@ -1282,9 +1452,24 @@ export const LecturerMaterialsPage = () => {
                   data-testid="learning-material-card"
                 >
                   <header className={styles.materialCardHeader}>
-                    <h3 className={styles.materialCardTitle} title={formatTitle(material)}>
-                      {formatTitle(material)}
-                    </h3>
+                    <div className={styles.materialCardTitleWrapper}>
+                      <h3 className={styles.materialCardTitle} title={formatTitle(material)}>
+                        {formatTitle(material)}
+                      </h3>
+                      {isCurrentlyShared && (
+                        <span
+                          className={styles.materialSharingBadge}
+                          title={t(
+                            'lecturer.materials.card.currentlySharedText',
+                            'Bài đang được chia sẻ ({count} đồng nghiệp)',
+                            { count: activeShares.length },
+                          )}
+                        >
+                          <Share2 size={11} aria-hidden />
+                          <span>{t('lecturer.materials.card.currentlySharedBadge', 'Đang chia sẻ')}</span>
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`${styles.materialSourceChip} ${
                         isSharedFromColleague
@@ -1295,7 +1480,7 @@ export const LecturerMaterialsPage = () => {
                       }`}
                     >
                       {isSharedFromColleague
-                        ? t('lecturer.materials.source.shared', 'Shared')
+                        ? t('lecturer.materials.source.sharedWithMe', 'Shared with me')
                         : fileLike
                         ? t('lecturer.materials.source.file', 'File')
                         : t('lecturer.materials.source.link', 'Link')}
@@ -1323,6 +1508,37 @@ export const LecturerMaterialsPage = () => {
                     >
                       {material.description}
                     </p>
+                  )}
+
+                  {isCurrentlyShared && (
+                    <div className={styles.materialSharingStatusRow}>
+                      <Share2 size={13} className={styles.materialSharingStatusIcon} aria-hidden />
+                      <span>
+                        {activeShares.length > 1
+                          ? t(
+                              'lecturer.materials.card.currentlySharedText',
+                              'Bài đang được chia sẻ ({count} đồng nghiệp)',
+                              { count: activeShares.length },
+                            )
+                          : t(
+                              'lecturer.materials.card.currentlySharedTextSingle',
+                              'Bài đang được chia sẻ',
+                            )}
+                      </span>
+                    </div>
+                  )}
+
+                  {isSharedFromColleague && sharedByColleagueName && (
+                    <div className={styles.materialSharedByRow}>
+                      <User size={13} className={styles.materialSharedByIcon} aria-hidden />
+                      <span>
+                        {t(
+                          'lecturer.materials.card.sharedFromColleagueText',
+                          'Được chia sẻ bởi {name}',
+                          { name: sharedByColleagueName },
+                        )}
+                      </span>
+                    </div>
                   )}
 
                   <div className={styles.materialCardUsage}>
@@ -1374,18 +1590,20 @@ export const LecturerMaterialsPage = () => {
                       <ExternalLink size={14} aria-hidden />
                       {t('lecturer.materials.action.open', 'Open')}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.materialShareBtn}
-                      onClick={() => openShareModal(material)}
-                      aria-label={t(
-                        'lecturer.materials.card.shareAria',
-                        'Share material',
-                      )}
-                    >
-                      <Share2 size={14} aria-hidden />
-                      {t('lecturer.materials.action.share', 'Share')}
-                    </button>
+                    {!isSharedFromColleague && (
+                      <button
+                        type="button"
+                        className={styles.materialShareBtn}
+                        onClick={() => openShareModal(material)}
+                        aria-label={t(
+                          'lecturer.materials.card.shareAria',
+                          'Share material',
+                        )}
+                      >
+                        <Share2 size={14} aria-hidden />
+                        {t('lecturer.materials.action.share', 'Share')}
+                      </button>
+                    )}
                     {!isSharedFromColleague && (
                       <button
                         type="button"
@@ -1458,12 +1676,16 @@ export const LecturerMaterialsPage = () => {
         )}
       </div>
 
-      {/* ── TAB 2: Shared Materials ──────────────────────────────────────── */}
+      {/* ── TAB 2: Shared by me ──────────────────────────────────────────── */}
       <div
-        id="panel-shared-materials"
+        id="panel-shared-by-me"
         role="tabpanel"
-        aria-labelledby="tab-shared-materials"
-        className={`${styles.tabPanel} ${activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}
+        aria-labelledby="tab-shared-by-me"
+        className={`${styles.tabPanel} ${
+          activeTab !== 'shared-by-me' && activeTab !== 'shared-materials'
+            ? styles.tabPanelHidden
+            : ''
+        }`}
       >
         <BackendGapBanner
           field={t(
@@ -1503,6 +1725,7 @@ export const LecturerMaterialsPage = () => {
           )}
           loading={sharedLoading}
           items={sharedByMe}
+          learningById={learningById}
           resolveExpiry={resolveSharedExpiry}
           resolveTitle={resolveSharedTitle}
           resolveColleagueName={(item) =>
@@ -1515,22 +1738,85 @@ export const LecturerMaterialsPage = () => {
               status === 'ACCEPTED' ||
               status === 'EXPIRED'
             ) {
-              // After the narrowing above, `status` cannot be 'ENDED' in
-              // this branch, so no `disabled` is needed (and TS rightly
-              // rejects `status === 'ENDED'` as an impossible check).
+              const targetId =
+                typeof item.learningMaterialId === 'number'
+                  ? item.learningMaterialId
+                  : typeof item.paperId === 'number'
+                  ? item.paperId
+                  : null;
+              const foundMaterial =
+                targetId !== null ? learningById.get(targetId) : null;
+              const openUrl =
+                item.learningMaterialUrl ||
+                item.fileUrl ||
+                item.url ||
+                foundMaterial?.fileUrl;
+
               return (
-                <button
-                  type="button"
-                  className={styles.sharedEndBtn}
-                  onClick={() => void updateSharedStatus(item, 'ENDED')}
-                >
-                  {t('lecturer.materials.shared.endSharing', 'End sharing')}
-                </button>
+                <div className={styles.sharedRowActionButtons}>
+                  {openUrl && (
+                    <button
+                      type="button"
+                      className={styles.sharedViewBtn}
+                      onClick={() => {
+                        window.open(openUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      title={t('lecturer.materials.action.view', 'Xem')}
+                    >
+                      <Eye size={14} aria-hidden />
+                      <span>{t('lecturer.materials.action.view', 'Xem')}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.sharedEndBtn}
+                    onClick={() => void updateSharedStatus(item, 'ENDED')}
+                  >
+                    {t('lecturer.materials.shared.endSharing', 'End sharing')}
+                  </button>
+                </div>
               );
             }
             return null;
           }}
         />
+      </div>
+
+      {/* ── TAB 3: Shared with me ────────────────────────────────────────── */}
+      <div
+        id="panel-shared-with-me"
+        role="tabpanel"
+        aria-labelledby="tab-shared-with-me"
+        className={`${styles.tabPanel} ${
+          activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''
+        }`}
+      >
+        <BackendGapBanner
+          field={t(
+            'lecturer.materials.shared.gapBanner.field',
+            'SharedMaterial.learningMaterialId, status enum, expiry',
+          )}
+          feature={t(
+            'lecturer.materials.shared.gapBanner.feature',
+            'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
+          )}
+        />
+
+        {sharedError && (
+          <div className={styles.errorBanner} role="alert">
+            <span className={styles.errorBannerIcon}>
+              <AlertTriangle size={14} aria-hidden />
+              <span>{sharedError}</span>
+            </span>
+            <button
+              type="button"
+              className={styles.errorRetryBtn}
+              onClick={() => void loadShared()}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <SharedSection
           title={t(
@@ -1543,6 +1829,7 @@ export const LecturerMaterialsPage = () => {
           )}
           loading={sharedLoading}
           items={sharedWithMe}
+          learningById={learningById}
           resolveExpiry={resolveSharedExpiry}
           resolveTitle={resolveSharedTitle}
           resolveColleagueName={(item) =>
@@ -1550,9 +1837,36 @@ export const LecturerMaterialsPage = () => {
           }
           renderAction={(item) => {
             const status = resolveUiStatus(item);
+            const targetId =
+              typeof item.learningMaterialId === 'number'
+                ? item.learningMaterialId
+                : typeof item.paperId === 'number'
+                ? item.paperId
+                : null;
+            const foundMaterial =
+              targetId !== null ? learningById.get(targetId) : null;
+            const openUrl =
+              item.learningMaterialUrl ||
+              item.fileUrl ||
+              item.url ||
+              foundMaterial?.fileUrl;
+
             if (status === 'PENDING') {
               return (
                 <div className={styles.sharedAcceptDecline}>
+                  {openUrl && (
+                    <button
+                      type="button"
+                      className={styles.sharedPreviewBtn}
+                      onClick={() => {
+                        window.open(openUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      title={t('lecturer.materials.action.preview', 'Xem trước')}
+                    >
+                      <Eye size={14} aria-hidden />
+                      <span>{t('lecturer.materials.action.preview', 'Xem trước')}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={styles.sharedAcceptBtn}
@@ -1571,20 +1885,6 @@ export const LecturerMaterialsPage = () => {
               );
             }
             if (status === 'ACCEPTED') {
-              const targetId =
-                typeof item.learningMaterialId === 'number'
-                  ? item.learningMaterialId
-                  : typeof item.paperId === 'number'
-                  ? item.paperId
-                  : null;
-              const foundMaterial =
-                targetId !== null ? learningById.get(targetId) : null;
-              const openUrl =
-                item.learningMaterialUrl ||
-                item.fileUrl ||
-                item.url ||
-                foundMaterial?.fileUrl;
-
               return (
                 <button
                   type="button"
@@ -1628,7 +1928,7 @@ export const LecturerMaterialsPage = () => {
 
       {/* Share Modal — also lives outside the tab panels so the dialog
           stays visible regardless of which tab is currently active. */}
-      {shareMaterial && (
+      {shareMaterial && createPortal(
           <div
             className={styles.overlay}
             role="presentation"
@@ -1657,7 +1957,10 @@ export const LecturerMaterialsPage = () => {
                       )}
                     </h3>
                     <span className={styles.modalSubtitle}>
-                      {shareMaterial.title ?? 'Untitled material'}
+                      {t(
+                        'lecturer.materials.shareModal.subtitle',
+                        'Pick the lecturers you want to grant 30-day read access to.',
+                      )}
                     </span>
                   </div>
                 </div>
@@ -1672,123 +1975,257 @@ export const LecturerMaterialsPage = () => {
                 </button>
               </div>
 
-              <p className={styles.shareModalSubtitle}>
-                {t(
-                  'lecturer.materials.shareModal.subtitle',
-                  'Pick the lecturers you want to grant 30-day read access to.',
-                )}
-                {' '}
-                <button
-                  type="button"
-                  className={styles.shareApiContractLink}
-                  onClick={() => setShowApiPreview(true)}
-                  data-testid="share-api-contract-link"
-                >
-                  <Code2 size={12} aria-hidden />
-                  View API contract
-                </button>
-              </p>
+              {/* ── Material Showcase Card ── */}
+              {(() => {
+                const fileUrl = shareMaterial.fileUrl?.trim() ?? '';
+                const fileLike = isFileSource(fileUrl);
+                const fileName = fileLike ? deriveFilenameFromUrl(fileUrl) : fileUrl;
+                const usage = fileUrl ? usageByUrl.get(fileUrl) : null;
+                const usageTotal = (usage?.topicCount ?? 0) + (usage?.phaseCount ?? 0);
 
-              <div className={styles.shareSearchBar}>
-                <Search size={14} aria-hidden />
-                <input
-                  type="search"
-                  className={styles.lmSearchInput}
-                  placeholder={t(
-                    'lecturer.materials.shareModal.searchPlaceholder',
-                    'Search by name or email',
-                  )}
-                  value={shareSearch}
-                  onChange={(e) => setShareSearch(e.target.value)}
-                  aria-label="Search lecturers"
-                />
-              </div>
+                return (
+                  <div className={styles.shareShowcaseCard}>
+                    <div className={styles.shareShowcaseHeader}>
+                      <div className={styles.shareShowcaseBadgeRow}>
+                        <span
+                          className={`${styles.materialSourceChip} ${
+                            fileLike
+                              ? styles.materialSourceChipFile
+                              : styles.materialSourceChipLink
+                          }`}
+                        >
+                          {fileLike ? (
+                            <>
+                              <FileText size={12} aria-hidden />
+                              <span>{t('lecturer.materials.source.file', 'File')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Link2 size={12} aria-hidden />
+                              <span>{t('lecturer.materials.source.link', 'Link')}</span>
+                            </>
+                          )}
+                        </span>
+                        {shareMaterial.createdAt && (
+                          <span className={styles.shareShowcaseDate}>
+                            <Clock size={12} aria-hidden />
+                            <span>{formatDisplayDateTime(shareMaterial.createdAt)}</span>
+                          </span>
+                        )}
+                      </div>
 
-              {rosterLoadOutcome.kind !== 'empty' && (
-                <BackendGapBanner
-                  field={
-                    rosterLoadOutcome.kind === 'forbidden'
-                      ? 'GET /api/User (paginated lecturer roster — Admin-only)'
-                      : `GET /api/User failed: ${rosterLoadOutcome.message}`
-                  }
-                  feature="The Materials Share modal needs a list of other lecturers you can share this material with. Until the BE ships a lecturer-facing roster endpoint, the Share modal renders an empty recipient list and the action is blocked."
-                  className={styles.shareRosterGap}
-                />
-              )}
-
-              <div className={styles.shareSelectAllRow}>
-                <button
-                  type="button"
-                  className={styles.shareSelectAllBtn}
-                  onClick={toggleSelectAll}
-                  disabled={filteredRoster.length === 0}
-                  aria-pressed={allFilteredSelected}
-                >
-                  {allFilteredSelected ? (
-                    <CheckSquare size={14} aria-hidden />
-                  ) : (
-                    <Square size={14} aria-hidden />
-                  )}
-                  {allFilteredSelected
-                    ? t(
-                        'lecturer.materials.shareModal.deselectAll',
-                        'Deselect all',
-                      )
-                    : t(
-                        'lecturer.materials.shareModal.selectAll',
-                        'Select all',
-                      )}
-                </button>
-                <span className={styles.shareSelectedCount}>
-                  {shareSelected.size > 0
-                    ? `${shareSelected.size} selected`
-                    : ''}
-                </span>
-              </div>
-
-              <ul className={styles.shareRoster} role="listbox" aria-multiselectable="true">
-                {filteredRoster.length === 0 ? (
-                  <li className={styles.shareRosterEmpty}>
-                    {t(
-                      'lecturer.materials.shareModal.empty',
-                      'No other lecturers are available to share with.',
-                    )}
-                  </li>
-                ) : (
-                  filteredRoster.map((entry) => {
-                    const selected = shareSelected.has(entry.id);
-                    return (
-                      <li
-                        key={entry.id}
-                        className={`${styles.shareRosterItem} ${selected ? styles.shareRosterItemSelected : ''}`}
-                        role="option"
-                        aria-selected={selected}
-                      >
+                      <div className={styles.shareShowcaseActionRow}>
                         <button
                           type="button"
-                          className={styles.shareRosterCheckBtn}
-                          onClick={() => toggleSelected(entry.id)}
-                          aria-pressed={selected}
+                          className={styles.shareViewBtn}
+                          onClick={() => {
+                            if (fileUrl) {
+                              window.open(fileUrl, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          disabled={!fileUrl}
+                          title={
+                            fileUrl
+                              ? t('lecturer.materials.shareModal.viewMaterial', 'View material')
+                              : t('lecturer.materials.shareModal.noUrl', 'No file or link attached')
+                          }
+                          aria-label={t('lecturer.materials.shareModal.viewMaterial', 'View material')}
                         >
-                          {selected ? (
-                            <CheckSquare size={16} aria-hidden />
-                          ) : (
-                            <Square size={16} aria-hidden />
-                          )}
+                          <Eye size={14} aria-hidden />
+                          <span>{t('lecturer.materials.shareModal.viewMaterial', 'View material')}</span>
                         </button>
-                        <div className={styles.shareRosterInfo}>
-                          <span className={styles.shareRosterName}>
-                            {entry.fullName || `Lecturer #${entry.id}`}
+                      </div>
+                    </div>
+
+                    <h4 className={styles.shareShowcaseTitle}>
+                      {formatTitle(shareMaterial)}
+                    </h4>
+
+                    <div className={styles.shareShowcaseDesc}>
+                      {shareMaterial.description?.trim() ? (
+                        <p>{shareMaterial.description.trim()}</p>
+                      ) : (
+                        <p className={styles.shareShowcaseNoDesc}>
+                          {t('lecturer.materials.shareModal.noDescription', 'No description provided')}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className={styles.shareShowcaseMetaGrid}>
+                      {fileUrl && (
+                        <div className={styles.shareShowcaseMetaItem}>
+                          <span className={styles.shareShowcaseMetaLabel}>
+                            {fileLike ? t('lecturer.materials.source.file', 'File') : t('lecturer.materials.source.link', 'Link')}:
                           </span>
-                          <span className={styles.shareRosterEmail}>
-                            {entry.email}
+                          <span className={styles.shareShowcaseMetaVal} title={fileUrl}>
+                            {fileName || fileUrl}
                           </span>
                         </div>
-                      </li>
-                    );
-                  })
+                      )}
+                      {usageTotal > 0 && (
+                        <div className={styles.shareShowcaseMetaItem}>
+                          <span className={styles.shareShowcaseMetaLabel}>
+                            {t('lecturer.materials.shareModal.usage', 'Usage')}:
+                          </span>
+                          <span className={styles.shareShowcaseMetaVal}>
+                            {t(
+                              'lecturer.materials.usage.summary',
+                              `Used by: ${usage?.topicCount ?? 0} topic(s), ${usage?.phaseCount ?? 0} phase(s)`,
+                              {
+                                topics: usage?.topicCount ?? 0,
+                                phases: usage?.phaseCount ?? 0,
+                              },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── 30-Day Share Policy Banner ── */}
+              <div className={styles.sharePolicyBanner}>
+                <Clock size={16} className={styles.sharePolicyIcon} aria-hidden />
+                <div className={styles.sharePolicyText}>
+                  <span>
+                    {t(
+                      'lecturer.materials.shareModal.durationNotice',
+                      'Selected colleagues will receive read-only access to this material for 30 days. Access will automatically expire after this period.',
+                    )}
+                  </span>
+                  {' '}
+                  <button
+                    type="button"
+                    className={styles.shareApiContractLink}
+                    onClick={() => setShowApiPreview(true)}
+                    data-testid="share-api-contract-link"
+                  >
+                    <Code2 size={12} aria-hidden />
+                    View API contract
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Recipient Selection Section ── */}
+              <div className={styles.shareRecipientSection}>
+                <div className={styles.shareRecipientHeader}>
+                  <h4 className={styles.shareRecipientTitle}>
+                    {t(
+                      'lecturer.materials.shareModal.selectRecipients',
+                      'Select colleague recipients',
+                    )}
+                  </h4>
+                </div>
+
+                <div className={styles.shareSearchBar}>
+                  <Search size={14} aria-hidden />
+                  <input
+                    type="search"
+                    className={styles.lmSearchInput}
+                    placeholder={t(
+                      'lecturer.materials.shareModal.searchPlaceholder',
+                      'Search by name or email',
+                    )}
+                    value={shareSearch}
+                    onChange={(e) => setShareSearch(e.target.value)}
+                    aria-label="Search lecturers"
+                  />
+                </div>
+
+                {rosterLoadOutcome.kind !== 'empty' && (
+                  <BackendGapBanner
+                    field={
+                      rosterLoadOutcome.kind === 'forbidden'
+                        ? 'GET /api/User (paginated lecturer roster — Admin-only)'
+                        : `GET /api/User failed: ${rosterLoadOutcome.message}`
+                    }
+                    feature="The Materials Share modal needs a list of other lecturers you can share this material with. Until the BE ships a lecturer-facing roster endpoint, the Share modal renders an empty recipient list and the action is blocked."
+                    className={styles.shareRosterGap}
+                  />
                 )}
-              </ul>
+
+                <div className={styles.shareSelectAllRow}>
+                  <button
+                    type="button"
+                    className={styles.shareSelectAllBtn}
+                    onClick={toggleSelectAll}
+                    disabled={filteredRoster.length === 0}
+                    aria-pressed={allFilteredSelected}
+                  >
+                    {allFilteredSelected ? (
+                      <CheckSquare size={14} aria-hidden />
+                    ) : (
+                      <Square size={14} aria-hidden />
+                    )}
+                    {allFilteredSelected
+                      ? t(
+                          'lecturer.materials.shareModal.deselectAll',
+                          'Deselect all',
+                        )
+                      : t(
+                          'lecturer.materials.shareModal.selectAll',
+                          'Select all',
+                        )}
+                  </button>
+                  <span className={styles.shareSelectedCount}>
+                    {shareSelected.size > 0
+                      ? `${shareSelected.size} selected`
+                      : ''}
+                  </span>
+                </div>
+
+                <ul className={styles.shareRoster} role="listbox" aria-multiselectable="true">
+                  {filteredRoster.length === 0 ? (
+                    <li className={styles.shareRosterEmpty}>
+                      {t(
+                        'lecturer.materials.shareModal.empty',
+                        'No other lecturers are available to share with.',
+                      )}
+                    </li>
+                  ) : (
+                    filteredRoster.map((entry) => {
+                      const selected = shareSelected.has(entry.id);
+                      return (
+                        <li
+                          key={entry.id}
+                          className={`${styles.shareRosterItem} ${selected ? styles.shareRosterItemSelected : ''}`}
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() => toggleSelected(entry.id)}
+                        >
+                          <button
+                            type="button"
+                            className={styles.shareRosterCheckBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelected(entry.id);
+                            }}
+                            aria-pressed={selected}
+                          >
+                            {selected ? (
+                              <CheckSquare size={16} aria-hidden />
+                            ) : (
+                              <Square size={16} aria-hidden />
+                            )}
+                          </button>
+                          <div className={styles.shareRosterAvatar}>
+                            {(entry.fullName || 'L').charAt(0).toUpperCase()}
+                          </div>
+                          <div className={styles.shareRosterInfo}>
+                            <span className={styles.shareRosterName}>
+                              {entry.fullName || `Lecturer #${entry.id}`}
+                            </span>
+                            <span className={styles.shareRosterEmail}>
+                              {entry.email}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </div>
 
               {shareError && (
                 <div className={styles.errorBanner} role="alert">
@@ -1832,7 +2269,8 @@ export const LecturerMaterialsPage = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
 
       <ShareApiContractPreview
@@ -1856,6 +2294,7 @@ interface SharedSectionProps {
     sharedAt: string | null | undefined,
   ) => { iso: string; daysRemaining: number | null };
   renderAction: (item: SharedMaterial) => ReactNode;
+  learningById?: Map<number, LearningMaterial>;
 }
 
 const SharedSection = ({
@@ -1867,6 +2306,7 @@ const SharedSection = ({
   resolveColleagueName,
   resolveExpiry,
   renderAction,
+  learningById,
 }: SharedSectionProps) => {
   const t = useT();
   return (
@@ -1896,11 +2336,20 @@ const SharedSection = ({
               `lecturer.materials.shared.status.${uiStatus}`,
               uiStatus,
             );
+            const targetId =
+              typeof item.learningMaterialId === 'number'
+                ? item.learningMaterialId
+                : typeof item.paperId === 'number'
+                ? item.paperId
+                : null;
+            const foundMaterial =
+              targetId !== null && learningById ? learningById.get(targetId) : null;
             const openUrl =
               item.learningMaterialUrl ||
               item.fileUrl ||
-              item.url;
-            const canOpen = Boolean(openUrl && (uiStatus === 'ACCEPTED' || uiStatus === 'ACTIVE'));
+              item.url ||
+              foundMaterial?.fileUrl;
+            const canOpen = Boolean(openUrl);
             return (
               <li
                 key={String(id)}
@@ -1911,13 +2360,13 @@ const SharedSection = ({
                   <div className={styles.sharedRowTitleRow}>
                     <span
                       className={styles.sharedRowTitle}
-                      style={canOpen ? { cursor: 'pointer', color: 'var(--ars-lecturer, #7c2d12)' } : undefined}
+                      style={canOpen ? { cursor: 'pointer', color: 'var(--ars-lecturer, #b45309)' } : undefined}
                       onClick={() => {
                         if (canOpen && openUrl) {
                           window.open(openUrl, '_blank', 'noopener,noreferrer');
                         }
                       }}
-                      title={canOpen ? t('lecturer.materials.action.open', 'Open') : undefined}
+                      title={canOpen ? t('lecturer.materials.action.view', 'Xem') : undefined}
                     >
                       {materialTitle}
                     </span>

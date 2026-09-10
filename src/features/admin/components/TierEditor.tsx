@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   UploadCloud,
@@ -655,13 +656,19 @@ export const TierEditor: React.FC<TierEditorProps> = ({
     }
   };
 
-  return (
-    <div className={styles.modalOverlay} onClick={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}>
+  return createPortal(
+    <div
+      className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="medal-editor-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>
+          <h3 id="medal-editor-title" className={styles.modalTitle}>
             {mode === 'create'
               ? t('admin.medals.modal.createTitle', 'Thêm huy hiệu vinh danh mới')
               : t('admin.medals.modal.editTitle', 'Chỉnh sửa huy hiệu')}
@@ -1186,7 +1193,8 @@ export const TierEditor: React.FC<TierEditorProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

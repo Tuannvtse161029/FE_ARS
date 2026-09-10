@@ -4,6 +4,7 @@
  * Extracted from src/pages/Admin/AdminMedals.tsx
  */
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Medal as MedalIcon,
   X,
@@ -92,15 +93,21 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
     }
   };
 
-  return (
-    <div className={styles.modalOverlay} onClick={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}>
+  return createPortal(
+    <div
+      className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="artwork-upload-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <div className={styles.modalTitleRow}>
             <ImageIcon size={20} color="#2563eb" />
-            <h3 className={styles.modalTitle}>
+            <h3 id="artwork-upload-title" className={styles.modalTitle}>
               {copy(
                 `Family Icon: ${medalTitle}`,
                 `Biểu tượng huy hiệu: ${medalTitle}`
@@ -315,7 +322,8 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
