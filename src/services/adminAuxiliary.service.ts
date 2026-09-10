@@ -30,7 +30,9 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
   reportId: row.reportId,
   type: row.targetType?.toUpperCase().includes('PAPER')
     ? 'RESEARCH_PAPER'
-    : 'FORUM_COMMENT',
+    : row.targetType?.toUpperCase().includes('POST')
+      ? 'FORUM_POST'
+      : 'FORUM_COMMENT',
   // The `/api/Report` contract does not expose target-author or reporter
   // display names; the placeholder text below keeps the row honest so admins
   // can tell at a glance which columns the BE hasn't populated yet.
@@ -90,9 +92,18 @@ async function resolveViolationByPayload(
       'Content deletion and account suspension require an atomic backend resolution endpoint. See tickets/backend/BE_ADMIN_REPORT_RESOLUTION_API_TICKET.md.',
     );
   }
+  const current = await api.get<ReportApiRow>(REPORT.GET_BY_ID(reportId));
+  const currentData = current.data;
   const response = await api.put<ReportApiRow>(
     REPORT.UPDATE(reportId),
-    { status: 'Dismissed', violationNotes: resolutionNotes ?? '' },
+    {
+      reporterId: currentData.reporterId,
+      targetType: currentData.targetType,
+      targetId: currentData.targetId,
+      reason: currentData.reason,
+      status: 'Dismissed',
+      violationNotes: resolutionNotes ?? currentData.violationNotes ?? '',
+    },
   );
   return mapReport(response.data);
 }
