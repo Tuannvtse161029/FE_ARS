@@ -407,6 +407,15 @@
   border-color: var(--ars-success);
 }
 
+/* Inactive (suspended) seminars — owner took them offline.
+   Tones use the existing error/danger token family so the pill stays
+   in lockstep with other destructive surfaces on the page. */
+.statusBadge_INACTIVE {
+  color: var(--ars-error);
+  background: var(--ars-error-bg);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
+}
+
 .statusPulse {
   display: inline-block;
   width: 6px;
@@ -625,6 +634,40 @@
 
 .actionBtnOutline:focus-visible {
   outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* Destructive outline button — used by the owner-only Suspend
+   affordance on Upcoming / In-progress seminar cards. Same shape as
+   `actionBtnOutline` but borrows the error/danger token family so the
+   user reads it as a destructive action before the ConfirmModal opens. */
+.actionBtnDangerOutline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-error);
+  border-radius: var(--radius-md);
+  color: var(--ars-error);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
+  font-family: var(--font-family-ui);
+}
+
+.actionBtnDangerOutline:hover:not(:disabled) {
+  background: var(--ars-error-bg);
+}
+
+.actionBtnDangerOutline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actionBtnDangerOutline:focus-visible {
+  outline: 2px solid var(--ars-error);
   outline-offset: 2px;
 }
 
@@ -1191,7 +1234,8 @@
 
   .actionBtnPrimary,
   .actionBtnOutline,
-  .actionBtnGhost {
+  .actionBtnGhost,
+  .actionBtnDangerOutline {
     justify-content: center;
   }
 

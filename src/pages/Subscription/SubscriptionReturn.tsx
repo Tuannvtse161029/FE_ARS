@@ -2,19 +2,21 @@
  * SubscriptionReturn — landing page PayOS redirects users to after a
  * payment attempt. The page NEVER activates access from the browser
  * query string. It shows "Payment received. We are verifying your
- * subscription." and refetches subscription state from the BE. Only a
- * BE-confirmed ACTIVE subscription unlocks the workspace.
+ * subscription." and refetches subscription state from the BE via
+ * `annualFeeService.getMyCurrentSubscription()`. Only a BE-confirmed
+ * ACTIVE subscription unlocks the workspace.
  *
- * TEMPORARY DISABLED STATE: when `AppConfig.features.enableSubscriptionAccess`
- * is `false`, the page shows a "feature disabled" banner and does not
- * attempt payment verification. See `src/config/app.ts`.
+ * Reads PayOS return params:
+ *   - `code`         — PayOS response code. `00` = success.
+ *   - `status`       — PayOS status, e.g. `success` | `cancelled` | `failed`
+ *   - `orderCode` / `order_code` / `id` — PayOS order code (transactionId)
+ *   - `cancel`       — PayOS sends `true` when the user cancels
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ROUTES } from '../../routes/paths';
-import { subscriptionService } from '../../services/subscription.service';
+import { annualFeeService } from '../../services/annualFee.service';
 import { useSubscription } from '../../hooks/useSubscription';
-import { SubscriptionBackendUnavailableError } from '../../types/subscription';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { AppConfig } from '../../config/app';
@@ -25,74 +27,75 @@ type VerificationState =
   | 'active'
   | 'pending'
   | 'failed'
-  | 'api-missing';
+  | 'expired';
 
 export const SubscriptionReturn = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refetch } = useSubscription();
+  const { refetch, current } = useSubscription();
 
   const [state, setState] = useState<VerificationState>('verifying');
   const [message, setMessage] = useState<string>(
     'Payment received. We are verifying your subscription.',
   );
 
+  // PayOS may pass several shapes. Pull the most reliable signal we have.
+  const payosCode = searchParams.get('code');
+  const payosStatus = (searchParams.get('status') ?? '').toLowerCase();
+  const cancelFlag =
+    searchParams.get('cancel') === 'true' ||
+    searchParams.get('cancel') === '1';
   const orderCode =
     searchParams.get('orderCode') ??
     searchParams.get('order_code') ??
     searchParams.get('id') ??
     null;
-  const payosStatus = (searchParams.get('status') ?? '').toLowerCase();
 
   const verify = useCallback(async () => {
-    if (!orderCode) {
-      // No order code at all → tell the user we couldn't identify the
-      // payment, but DO NOT grant access.
-      setState('failed');
-      setMessage(
-        'We could not identify your payment. Please return to your subscription page and try again.',
-      );
-      return;
-    }
-
     setState('verifying');
     setMessage('Payment received. We are verifying your subscription.');
 
     try {
-      const status = await subscriptionService.getPaymentStatus(orderCode);
-      if (status.status === 'PAID') {
-        // Authoritative check: ask the BE for the linked subscription.
-        await refetch();
+      // Authoritative check: ask the BE for the user's current subscription.
+      await refetch();
+
+      // The hook will populate `current`. Read the latest snapshot.
+      const sub = current ?? (await annualFeeService.getMyCurrentSubscription());
+
+      const payosSaysCancelled = cancelFlag || payosStatus === 'cancelled' || payosStatus === 'failed' ||
+        (payosCode !== null && payosCode !== '00');
+
+      if (sub && !sub.isExpired && sub.purchase?.status === 'Paid') {
         setState('active');
         setMessage(
           'Payment confirmed. Your subscription is active — you can return to your workspace.',
         );
-      } else if (status.status === 'PENDING') {
-        setState('pending');
-        setMessage(
-          'Your payment is still being processed. We will update this page as soon as the platform confirms it.',
-        );
-      } else if (status.status === 'FAILED' || status.status === 'CANCELLED') {
-        setState('failed');
-        setMessage(
-          status.status === 'CANCELLED'
-            ? 'You cancelled the payment. Your subscription has not been activated.'
-            : 'Payment was not completed. Please try again from your subscription page.',
-        );
-      } else {
-        setState('failed');
-        setMessage(
-          'We could not verify your payment. Please contact support if you believe this is an error.',
-        );
+        return;
       }
-    } catch (caught) {
-      if (caught instanceof SubscriptionBackendUnavailableError) {
-        setState('api-missing');
+
+      if (sub && sub.isExpired) {
+        setState('expired');
         setMessage(
-          'Subscription payment integration awaiting backend API and VND pricing configuration.',
+          'Your previous subscription has expired. The payment may not have been applied yet. Please check back in a moment.',
         );
         return;
       }
+
+      if (payosSaysCancelled) {
+        setState('failed');
+        setMessage(
+          'You cancelled the payment. Your subscription has not been activated.',
+        );
+        return;
+      }
+
+      // PayOS redirect said success but BE has no active sub yet — typical
+      // race while the webhook is propagating.
+      setState('pending');
+      setMessage(
+        'Your payment is still being processed. We will update this page as soon as the platform confirms it.',
+      );
+    } catch (caught) {
       setState('failed');
       setMessage(
         caught instanceof Error
@@ -100,13 +103,15 @@ export const SubscriptionReturn = () => {
           : 'Failed to verify payment. Please try again.',
       );
     }
-  }, [orderCode, refetch]);
+  }, [refetch, current, payosCode, payosStatus, cancelFlag]);
 
   useEffect(() => {
     void verify();
-  }, [verify]);
+    // We deliberately exclude `current` from deps — it changes after `refetch()`
+    // but we only want the verify flow to run once per PayOS return.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Feature is temporarily disabled — do not attempt payment verification.
   const featureDisabled = !AppConfig.features.enableSubscriptionAccess;
 
   return (
@@ -115,8 +120,8 @@ export const SubscriptionReturn = () => {
         eyebrow="ARS subscription"
         title={featureDisabled ? 'Subscription' : 'Verifying your payment'}
         description={`Reference: ${orderCode ?? '—'}${
-          payosStatus ? ` · PayOS status: ${payosStatus}` : ''
-        }`}
+          payosCode ? ` · PayOS code: ${payosCode}` : ''
+        }${payosStatus ? ` · status: ${payosStatus}` : ''}`}
       />
 
       {featureDisabled && (
@@ -143,8 +148,8 @@ export const SubscriptionReturn = () => {
                 ? 'Subscription active'
                 : state === 'pending'
                   ? 'Payment pending'
-                  : state === 'api-missing'
-                    ? 'Awaiting backend'
+                  : state === 'expired'
+                    ? 'Awaiting activation'
                     : 'Verification failed'}
           </h2>
         </div>
@@ -155,7 +160,7 @@ export const SubscriptionReturn = () => {
               Go to workspace
             </Button>
           )}
-          {(state === 'failed' || state === 'api-missing' || state === 'pending') && (
+          {(state === 'failed' || state === 'pending' || state === 'expired') && (
             <Button onClick={() => navigate(ROUTES.SUBSCRIPTION, { replace: true })}>
               Back to subscription
             </Button>
@@ -169,10 +174,6 @@ export const SubscriptionReturn = () => {
           </Button>
         </div>
       </section>
-
-      {/* Defensive: never render a hidden "Access granted" state.
-          The page never unlocks the workspace itself — it only reports
-          what the BE has confirmed. */}
     </div>
   );
 };

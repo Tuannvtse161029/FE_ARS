@@ -87,6 +87,12 @@ const TransactionsManagement = lazy(() => import('./pages/Admin/TransactionsMana
 // shape via `.then(m => ({ default: m.default }))`.
 const ContentReports = lazy(() => import('./pages/Admin/ContentReports').then((m) => ({ default: m.default })));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ default: m.default })));
+// Admin Annual Fees — Admin tab for managing Researcher / Lecturer
+// subscription plans (BE-ANNUAL-FEE-01). CRUD wired to
+// `/api/AnnualFees` and `/api/AnnualFees/{id}/toggle`.
+const AnnualFees = lazy(() =>
+  import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })),
+);
 // Agent admin-policies — Admin tab for managing the four platform
 // policy documents. Loads Firestore directly through `policyService`;
 // there is no BE endpoint.
@@ -316,6 +322,7 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_MEDALS} element={<AdminMedals />} />
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                   <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />
+                  <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                 </Route>
               </Route>
             </Route>

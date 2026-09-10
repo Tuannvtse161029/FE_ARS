@@ -291,4 +291,85 @@ describe('<RoleRequests> page (live /api/RoleRequest)', () => {
     confirmSpy.mockRestore();
     alertSpy.mockRestore();
   });
+
+  // ── BTR: BE surfaces `requestedRole` (singular string) for INITIAL_REGISTRATION
+  // rows. The Admin UI must fall back to that field when
+  // `requestedAdditionalRoles` is empty — otherwise freshly-registered
+  // Graduate Student / Researcher / Reviewer / Lecturer accounts would
+  // render the "Requested role" column as "—" / "None" while their
+  // requestType reads "Initial registration".
+  it('renders the singular `requestedRole` field for INITIAL_REGISTRATION rows (Graduate Student)', async () => {
+    // Replace the fixture with one that uses the BE's INITIAL_REGISTRATION
+    // shape: `requestedRole` (string), `requestedAdditionalRoles` empty.
+    const NOW_LOCAL = '2026-08-19T10:30:00Z';
+    _internal.requests.splice(0, _internal.requests.length, ...[
+      {
+        id: 9101,
+        userId: 601,
+        userName: 'Nguyen Thi Graduate',
+        email: 'graduate.nguyen@example.com',
+        phone: '+84 905 111 222',
+        affiliation: 'HCMUS University',
+        department: 'Computer Science',
+        currentRoles: [] as string[],
+        requestedAdditionalRoles: [] as string[],
+        requestedRole: 'Graduate Student',
+        requestType: 'INITIAL_REGISTRATION' as const,
+        orcidId: null,
+        isOrcidVerified: false,
+        orcidVerifiedAt: null,
+        proofDocumentUrl: 'https://example.com/proof-graduate.pdf',
+        submissionDate: NOW_LOCAL,
+        status: 'PENDING' as const,
+        notes: undefined,
+      },
+    ]);
+
+    renderPage();
+    const cell = await screen.findByText('Graduate Student');
+    expect(cell).toBeInTheDocument();
+    const row = cell.closest('tr') as HTMLElement;
+    // The same row should also show "Initial registration" as the request type.
+    expect(within(row).getByText(/Initial registration/i)).toBeInTheDocument();
+    // And the row should NOT contain a literal "None" or em-dash where
+    // the requested role would otherwise be — that's the original bug.
+    const requestedCell = within(row)
+      .getAllByRole('cell')
+      .find((td) => td.textContent?.trim() === 'Graduate Student');
+    expect(requestedCell).toBeDefined();
+    expect(requestedCell?.textContent).not.toBe('—');
+  });
+
+  it('search bar matches rows via the singular `requestedRole` field', async () => {
+    const NOW_LOCAL = '2026-08-19T10:30:00Z';
+    _internal.requests.splice(0, _internal.requests.length, ...[
+      {
+        id: 9201,
+        userId: 701,
+        userName: 'Le Van Lecturer',
+        email: 'lecturer.le@example.com',
+        phone: '+84 905 222 333',
+        affiliation: 'HUST University',
+        department: 'Mathematics',
+        currentRoles: [] as string[],
+        requestedAdditionalRoles: [] as string[],
+        requestedRole: 'Lecturer',
+        requestType: 'INITIAL_REGISTRATION' as const,
+        orcidId: null,
+        isOrcidVerified: false,
+        orcidVerifiedAt: null,
+        proofDocumentUrl: 'https://example.com/proof-le.pdf',
+        submissionDate: NOW_LOCAL,
+        status: 'PENDING' as const,
+        notes: undefined,
+      },
+    ]);
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Le Van Lecturer');
+    const searchBox = screen.getByPlaceholderText(/search/i) as HTMLInputElement;
+    await user.type(searchBox, 'Lecturer');
+    expect(screen.getByText('Le Van Lecturer')).toBeInTheDocument();
+  });
 });

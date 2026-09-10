@@ -846,6 +846,10 @@
   margin: var(--space-1) 0;
 }
 
+.dropdownSection {
+  padding: var(--space-2) var(--space-3);
+}
+
 /* ── Toast ─────────────────────────────────────────────── */
 .toast {
   position: fixed;

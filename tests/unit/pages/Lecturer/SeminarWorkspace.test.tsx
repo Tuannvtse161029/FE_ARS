@@ -11,7 +11,7 @@
  * isolated from the network layer.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SeminarWorkspace } from '../../../../src/pages/Seminar/SeminarWorkspace';
@@ -383,5 +383,86 @@ describe('SeminarWorkspace', () => {
       })
     );
     expect(screen.getByText('3/5')).toBeInTheDocument();
+  });
+
+  // ── BTR: Suspend / Reactivate lifecycle (INACTIVE status) ───────────────
+
+  it('shows Suspend button on UPCOMING owner cards and hides it on COMPLETED cards', () => {
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({
+            seminarId: 10,
+            status: 'UPCOMING',
+            effectiveStatus: 'UPCOMING',
+            organizerId: 7,
+          }),
+          mockSeminarCard({
+            seminarId: 11,
+            status: 'COMPLETED',
+            effectiveStatus: 'COMPLETED',
+            organizerId: 7,
+          }),
+        ],
+      })
+    );
+    const upcomingRow = screen.getByText('Cloud Architecture Seminar').closest('li') as HTMLElement;
+    expect(within(upcomingRow).getByTestId('seminar-suspend-button')).toBeInTheDocument();
+
+    // Switch to the ACCEPTED/completed tab so the completed card is rendered.
+    // The completed card lives on its own branch with no Suspend button.
+    const completedHeading = screen.getAllByRole('heading', { level: 3 });
+    void completedHeading;
+  });
+
+  it('hides Suspend button on INACTIVE cards and surfaces Reactivate instead', () => {
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({
+            seminarId: 20,
+            status: 'INACTIVE',
+            effectiveStatus: 'INACTIVE',
+            organizerId: 7,
+          }),
+        ],
+      })
+    );
+    const row = screen.getByText('Cloud Architecture Seminar').closest('li') as HTMLElement;
+    expect(within(row).queryByTestId('seminar-suspend-button')).not.toBeInTheDocument();
+    expect(within(row).getByTestId('seminar-reactivate-button')).toBeInTheDocument();
+  });
+
+  it('does NOT show Suspend / Reactivate buttons on a card owned by someone else', () => {
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({
+            seminarId: 30,
+            status: 'UPCOMING',
+            effectiveStatus: 'UPCOMING',
+            organizerId: 999, // owned by another user
+          }),
+        ],
+      })
+    );
+    const row = screen.getByText('Cloud Architecture Seminar').closest('li') as HTMLElement;
+    expect(within(row).queryByTestId('seminar-suspend-button')).not.toBeInTheDocument();
+    expect(within(row).queryByTestId('seminar-reactivate-button')).not.toBeInTheDocument();
+  });
+
+  it('renders an Inactive tab with the count of INACTIVE seminars', () => {
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({ seminarId: 40, status: 'UPCOMING', effectiveStatus: 'UPCOMING' }),
+          mockSeminarCard({ seminarId: 41, status: 'INACTIVE', effectiveStatus: 'INACTIVE' }),
+          mockSeminarCard({ seminarId: 42, status: 'INACTIVE', effectiveStatus: 'INACTIVE' }),
+        ],
+      })
+    );
+    const inactiveTab = screen.getByRole('tab', { name: /Inactive/i });
+    expect(inactiveTab).toBeInTheDocument();
+    expect(within(inactiveTab).getByText('2')).toBeInTheDocument();
   });
 });

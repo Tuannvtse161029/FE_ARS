@@ -37,7 +37,13 @@ let mockSubscription: {
   isApplicable: boolean;
   isActive: boolean;
   isLoading: boolean;
-} = { isApplicable: false, isActive: true, isLoading: false };
+  refetch: () => Promise<void>;
+} = {
+  isApplicable: false,
+  isActive: true,
+  isLoading: false,
+  refetch: async () => {},
+};
 
 vi.mock('../../../src/hooks/useSubscription', () => ({
   useSubscription: () => mockSubscription,
@@ -92,7 +98,7 @@ describe('SubscriptionRouteGuard', () => {
     // While the subscription feature is disabled, useSubscription always
     // reports isActive === true. The guard must respect that and render
     // the inner route.
-    mockSubscription = { isApplicable: true, isActive: true, isLoading: false };
+    mockSubscription = { isApplicable: true, isActive: true, isLoading: false, refetch: async () => {} };
 
     const screen = render(
       <MemoryRouter initialEntries={['/lecturer/papers']}>
@@ -112,7 +118,7 @@ describe('SubscriptionRouteGuard', () => {
   it('does NOT redirect Lecturer when the feature flag is off — Researcher same behavior', async () => {
     const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
     setAuth('Researcher');
-    mockSubscription = { isApplicable: true, isActive: true, isLoading: false };
+    mockSubscription = { isApplicable: true, isActive: true, isLoading: false, refetch: async () => {} };
 
     const screen = render(
       <MemoryRouter initialEntries={['/researcher/submissions']}>
@@ -133,7 +139,7 @@ describe('SubscriptionRouteGuard', () => {
     const { SubscriptionRouteGuard } = await import('../../../src/routes/SubscriptionRouteGuard');
     for (const role of ['Reviewer', 'Admin', 'Graduate Student']) {
       setAuth(role);
-      mockSubscription = { isApplicable: false, isActive: false, isLoading: false };
+      mockSubscription = { isApplicable: false, isActive: false, isLoading: false, refetch: async () => {} };
 
       const screen = render(
         <MemoryRouter initialEntries={['/lecturer/papers']}>

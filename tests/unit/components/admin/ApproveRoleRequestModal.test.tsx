@@ -107,6 +107,23 @@ describe('<ApproveRoleRequestModal>', () => {
     expect(screen.getByLabelText(/Internal verification notes/i)).toBeInTheDocument();
   });
 
+  // BTR — INITIAL_REGISTRATION rows surface the requested role in the
+  // BE's singular `requestedRole` string, NOT in the
+  // `requestedAdditionalRoles` array. The summary box must read from
+  // that fallback chain so the Approve modal does not present an
+  // "API unavailable" placeholder for a freshly-registered account.
+  it('shows the singular `requestedRole` field in the summary box (INITIAL_REGISTRATION)', () => {
+    renderModal({
+      request: {
+        ...REQUEST,
+        requestType: 'INITIAL_REGISTRATION',
+        requestedAdditionalRoles: [],
+        requestedRole: 'Graduate Student',
+      },
+    });
+    expect(screen.getByText('Graduate Student')).toBeInTheDocument();
+  });
+
   it('counter reflects typed notes length', async () => {
     const user = userEvent.setup();
     renderModal();

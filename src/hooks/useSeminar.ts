@@ -360,6 +360,64 @@ export function useSendReminder(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// useUpdateSeminarStatus — toggle a seminar between Upcoming ↔ Inactive.
+//
+// Owner's "Suspend" / "Reactivate" affordance on `SeminarWorkspace`.
+// PUTs `{ status: 'Inactive' | 'Upcoming' }` to `/api/Seminar/{id}` (the
+// same endpoint the reminder flow uses) and re-runs the workspace
+// refetch so the row flips its status pill / tab count in place.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type SeminarLifecycleAction = 'suspend' | 'reactivate';
+
+export interface UseUpdateSeminarStatusResult {
+  updateStatus: (
+    id: number,
+    action: SeminarLifecycleAction,
+  ) => Promise<void>;
+  /** True while a status toggle is in flight (used to disable the buttons). */
+  isUpdating: boolean;
+  updateError: string | null;
+}
+
+export function useUpdateSeminarStatus(
+  onSuccess?: (id: number, action: SeminarLifecycleAction) => void,
+  refetch?: () => Promise<void>,
+): UseUpdateSeminarStatusResult {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  const updateStatus = useCallback(
+    async (
+      id: number,
+      action: SeminarLifecycleAction,
+    ): Promise<void> => {
+      setIsUpdating(true);
+      setUpdateError(null);
+      const nextStatus = action === 'suspend' ? 'Inactive' : 'Upcoming';
+      try {
+        await seminarService.setStatus(id, nextStatus);
+        void refetch?.();
+        onSuccess?.(id, action);
+      } catch (err) {
+        const msg =
+          (err as { message?: string })?.message ??
+          (action === 'suspend'
+            ? 'Failed to suspend the seminar.'
+            : 'Failed to reactivate the seminar.');
+        setUpdateError(msg);
+        throw err;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [onSuccess, refetch],
+  );
+
+  return { updateStatus, isUpdating, updateError };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // useSeminarParticipants — fetch participants from the role-scoped endpoint,
 // optionally filtered by seminarId.
 // ─────────────────────────────────────────────────────────────────────────────
