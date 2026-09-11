@@ -18,14 +18,9 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   CheckCircle2,
-  ClipboardCheck,
   FileText,
-  Globe,
   GraduationCap,
-  MessageSquare,
   Network,
-  Scale,
-  Send,
   UserCheck,
 } from 'lucide-react';
 import { ROUTES } from '../../routes/paths';
@@ -112,39 +107,6 @@ const WORKFLOW = [
   { num: '03', titleKey: 'landing.workflowStep3Title', titleFallback: 'Review', bodyKey: 'landing.workflowStep3Body', bodyFallback: 'Eligible reviewers return recommendations within their authorized workspace.' },
   { num: '04', titleKey: 'landing.workflowStep4Title', titleFallback: 'Decide', bodyKey: 'landing.workflowStep4Body', bodyFallback: 'Administrators make the final publication decision. Reviewer recommendations are not publication decisions.' },
   { num: '05', titleKey: 'landing.workflowStep5Title', titleFallback: 'Discover', bodyKey: 'landing.workflowStep5Body', bodyFallback: 'Only approved public research becomes available through the research catalog.' },
-] as const;
-
-const PUBLICATION_NODES = [
-  {
-    icon: Send, role: 'researcher',
-    roleKey: 'landing.flowResearcher', roleFallback: 'Researcher',
-    actionKey: 'landing.flowResearcherAction', actionFallback: 'Uploads a paper to ARS for consideration.',
-    noteKey: 'landing.flowResearcherNote', noteFallback: 'cannot choose the reviewer',
-  },
-  {
-    icon: ClipboardCheck, role: 'admin',
-    roleKey: 'landing.flowAdmin', roleFallback: 'Admin',
-    actionKey: 'landing.flowAdminScreenAction', actionFallback: 'Screens the submission and assigns a suitable reviewer.',
-    noteKey: null, noteFallback: null,
-  },
-  {
-    icon: MessageSquare, role: 'reviewer',
-    roleKey: 'landing.flowReviewer', roleFallback: 'Reviewer',
-    actionKey: 'landing.flowReviewerAction', actionFallback: 'Evaluates the paper and returns a recommendation.',
-    noteKey: 'landing.flowReviewerNote', noteFallback: 'recommends, does not publish',
-  },
-  {
-    icon: Scale, role: 'admin',
-    roleKey: 'landing.flowAdmin', roleFallback: 'Admin',
-    actionKey: 'landing.flowAdminDecideAction', actionFallback: 'Makes the final publication decision.',
-    noteKey: null, noteFallback: null,
-  },
-  {
-    icon: Globe, role: 'catalog',
-    roleKey: 'landing.flowCatalog', roleFallback: 'Catalog',
-    actionKey: 'landing.flowCatalogAction', actionFallback: 'Only approved papers are published to the ARS public catalog.',
-    noteKey: null, noteFallback: null,
-  },
 ] as const;
 
 const BOUNDARIES = [
@@ -403,7 +365,6 @@ const TRACE_ACTS = [
   { id: 'tension', label: 'The Problem' },
   { id: 'turn', label: 'The Workflow' },
   { id: 'substance', label: 'Workspaces' },
-  { id: 'commitment', label: 'The Catalog' },
 ] as const;
 
 const EditorialTrace: React.FC = () => {
@@ -634,13 +595,6 @@ const HeroAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string | 
             <Link className={styles.primaryButton} to={ROUTES.LOGIN}>
               {t('landing.ctaPrimary', 'Get started free')} <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <a
-              className={styles.textLink}
-              href="#tension"
-              data-scroll-anchor="tension"
-            >
-              {t('landing.ctaSecondary', 'See the workflow')} <ArrowRight size={16} aria-hidden="true" />
-            </a>
           </div>
         </div>
 
@@ -818,40 +772,6 @@ const TurnAct: React.FC<{ t: (k: string, f: string, p?: Record<string, string | 
             ))}
           </ol>
         </div>
-
-        {/* Publication-flow constellation underneath — always visible */}
-        <aside
-          className={styles.publicationFlow}
-          aria-label={t('landing.flowAria', 'Publication decision flow diagram')}
-        >
-          <p className={styles.publicationFlowHeading} aria-hidden="true">
-            {t('landing.flowKicker', 'Decision authority')}
-          </p>
-          <div className={styles.flowConstellation}>
-            {PUBLICATION_NODES.map((node, index) => {
-              const Icon = node.icon;
-              return (
-                <div
-                  key={`${node.role}-${index}`}
-                  className={styles.flowNodeItem}
-                  data-role={node.role}
-                >
-                  <div className={styles.flowNodeCircle}>
-                    <Icon size={18} aria-hidden="true" />
-                  </div>
-                  <span className={styles.flowNodeRole}>{t(node.roleKey, node.roleFallback)}</span>
-                  <span className={styles.flowNodeAction}>{t(node.actionKey, node.actionFallback)}</span>
-                  {node.noteKey && (
-                    <span className={styles.flowNodeNote}>{t(node.noteKey, node.noteFallback ?? '')}</span>
-                  )}
-                  {index < PUBLICATION_NODES.length - 1 && (
-                    <div className={styles.flowConnectorLine} aria-hidden="true" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </aside>
       </div>
     </section>
   );
@@ -974,9 +894,8 @@ const SubstanceAct: React.FC<{ t: (k: string, f: string, p?: Record<string, stri
             const isActive = ROLE_WORKS[activeIndex]?.role === role.role;
             const accentVar = role.accent.replace('var(', '').replace(')', '');
             return (
-              <Link
+              <div
                 key={role.role}
-                to={role.to}
                 className={styles.substanceCard}
                 data-role={role.role}
                 data-active={isActive}
@@ -1015,16 +934,8 @@ const SubstanceAct: React.FC<{ t: (k: string, f: string, p?: Record<string, stri
                   <p className={styles.substanceCardBody}>
                     {t(role.bodyKey, role.bodyFallback)}
                   </p>
-                  {/* Whole card is the link target — keep "Explore" as a
-                      visual affordance so the cursor reads the card as
-                      clickable, but it is not the click target on its
-                      own (anchoring the entire card avoids dead zones
-                      on the right half of the card). */}
-                  <span className={styles.substanceCardLink}>
-                    Explore <ArrowRight size={14} aria-hidden="true" />
-                  </span>
                 </footer>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -1153,9 +1064,6 @@ const CommitmentSection: React.FC<{ t: (k: string, f: string, p?: Record<string,
             <Link className={styles.primaryButton} to={ROUTES.LOGIN}>
               {t('landing.ctaButton', 'Create a free account')} <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <a className={styles.textLink} href="#workflow" data-scroll-anchor="workflow">
-              {t('landing.ctaSecondary', 'Re-read the workflow')} <ArrowRight size={16} aria-hidden="true" />
-            </a>
           </div>
         </section>
       </Spotlight>

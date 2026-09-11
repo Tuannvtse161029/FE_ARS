@@ -1,0 +1,138 @@
+/* PublicSectionShell — warm paper card with role accent rule on the left.
+ * Designed to feel like a journal page: white surface, mono eyebrow,
+ * serif heading, hairline rules. Color comes from --profile-accent.
+ */
+
+.shell {
+  position: relative;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  isolation: isolate;
+}
+
+.shell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  width: 3px;
+  background: var(--profile-accent, var(--accent-primary));
+  border-radius: 0 2px 2px 0;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.eyebrow {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.viewAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--motion-feedback),
+              border-color var(--motion-feedback),
+              background-color var(--motion-feedback);
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.viewAll:hover {
+  color: var(--ink-primary);
+  border-color: var(--profile-accent, var(--accent-primary));
+  background: var(--surface-paper);
+}
+
+.viewAll:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action,
+  .viewAll {
+    align-self: flex-start;
+  }
+}

@@ -155,6 +155,71 @@ export const SeminarWorkspace = () => {
   const [selectedSeminarForAi, setSelectedSeminarForAi] =
     useState<SeminarCard | null>(null);
 
+  // ── Background-task reopen ─────────────────────────────────────────────────
+  // The header `LoadingTaskWidget` ships a long-task tracker that lets the
+  // user navigate away from this page while the BE is processing an AI
+  // summarisation. When they click the chip to return, we need to re-open
+  // the AI modal that triggered the task — even though the page
+  // unmounted while they were gone. Two mechanisms work together:
+  //
+  //   1. The `AudioSummaryModal` writes a `ars:task-reopen:aiSummary|<id>`
+  //      sessionStorage key on mount and clears it on unmount. We check
+  //      that key here on mount — it's the safety net that survives a
+  //      hard navigation (location change).
+  //   2. The widget also dispatches a `ars:reopen-modal` window event
+  //      with the modalKey. We listen for it directly here so the modal
+  //      can pop up without waiting for the mount effect to run.
+  useEffect(() => {
+    const openAiFor = (seminarId: number) => {
+      const seminar = seminars.find((s) => s.seminarId === seminarId);
+      if (seminar) {
+        setSelectedSeminarForAi(seminar);
+        setShowAiModal(true);
+        return;
+      }
+      // Fallback: the seminars list isn't loaded yet (race on first
+      // mount after navigate). Fall back to a stub object so the modal
+      // still opens; it will fetch its own detail via `loadSeminarDetail`.
+      setSelectedSeminarForAi({
+        seminarId,
+        title: '',
+      } as SeminarCard);
+      setShowAiModal(true);
+    };
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ modalKey?: string }>).detail;
+      const modalKey = detail?.modalKey;
+      if (!modalKey || !modalKey.startsWith('aiSummary|')) return;
+      const seminarId = Number.parseInt(modalKey.split('|')[1] ?? '', 10);
+      if (!Number.isFinite(seminarId)) return;
+      openAiFor(seminarId);
+    };
+    window.addEventListener('ars:reopen-modal', handler);
+
+    // SessionStorage safety net — runs once on mount in case the user
+    // navigated back to this page while the task was still tracked.
+    try {
+      for (let i = 0; i < window.sessionStorage.length; i += 1) {
+        const key = window.sessionStorage.key(i);
+        if (!key?.startsWith('ars:task-reopen:aiSummary|')) continue;
+        const seminarId = Number.parseInt(key.split('|')[1] ?? '', 10);
+        if (!Number.isFinite(seminarId)) continue;
+        openAiFor(seminarId);
+        // Only re-open the first one — multiple simultaneous AI tasks
+        // aren't currently possible from this page so this is safe.
+        break;
+      }
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+
+    return () => window.removeEventListener('ars:reopen-modal', handler);
+    // `seminars` is read inside the handler; we intentionally exclude
+    // it from deps so the listener doesn't re-bind on every refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // "View Notes" info-only modal — opened when an organizer taps the
   // button on a still-upcoming seminar (or one that is currently IN
   // PROGRESS). The full upload + AI summarization only becomes useful

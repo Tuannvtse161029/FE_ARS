@@ -154,6 +154,14 @@ export interface AuthResponse {
    */
   isNewUser?: boolean;
   requiresOnboarding?: boolean;
+  /**
+   * Account creation timestamp (ISO 8601). The persisted auth blob merges
+   * fields from `User` and `AuthResponse`; `createdAt` is sourced from the
+   * freshly-fetched `User` record on login so surfaces like the Profile page
+   * can compute "joined year" without an extra BE round-trip. Optional so
+   * older BE shapes (which don't surface the column) still typecheck.
+   */
+  createdAt?: string;
 }
 
 export interface User {

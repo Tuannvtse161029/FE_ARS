@@ -906,7 +906,7 @@
   padding: var(--space-4);
   margin-top: var(--space-3);
   background: var(--ars-info-bg, #eff6ff);
-  border: 1px solid var(--ars-info, #3b82f6);
+  border: 1px solid var(--ars-info, #facc15);
   border-radius: var(--radius-md);
 }
 
@@ -919,7 +919,7 @@
 .openAlexReminderIcon {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--ars-info, #3b82f6);
+  color: var(--ars-info, #facc15);
 }
 
 .openAlexReminderText {
@@ -935,9 +935,9 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  background: var(--ars-info, #3b82f6);
+  background: var(--ars-info, #facc15);
   color: #ffffff;
-  border: 1px solid var(--ars-info, #3b82f6);
+  border: 1px solid var(--ars-info, #facc15);
   border-radius: var(--radius-md);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);

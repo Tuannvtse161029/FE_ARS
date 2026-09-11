@@ -65,6 +65,11 @@ import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMark
 import { isOrcidEligibleRole } from '../../utils/registrationRoles';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { useI18n } from '../../i18n/I18nContext';
+import { ReviewerPublicView } from '../../components/profile/publicViews/ReviewerPublicView';
+import { ResearcherPublicView } from '../../components/profile/publicViews/ResearcherPublicView';
+import { LecturerPublicView } from '../../components/profile/publicViews/LecturerPublicView';
+import { GraduateStudentPublicView } from '../../components/profile/publicViews/GraduateStudentPublicView';
+import { usePublicProfileData } from '../../hooks/usePublicProfileData';
 import styles from './Profile.module.css';
 
 const ROLE_LABEL = {
@@ -261,7 +266,7 @@ function draftFromProfile(p: {
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const authenticatedUserId = user?.userId ?? null;
   const parsedTargetId = routeUserId ? Number(routeUserId) : null;
   const targetUserId = parsedTargetId && Number.isFinite(parsedTargetId) && parsedTargetId > 0
@@ -370,6 +375,29 @@ export const Profile = () => {
     isLoading: isExtrasLoading,
     error: extrasError,
   } = useProfileExtras(targetUserId);
+
+  // ── Role-specific public profile data (Lecturer seminars/groups/materials,
+  //     Graduate Student milestones/group membership, Reviewer/Researcher metrics)
+  //
+  // Joined year: prefer the target profile's `createdAt` (works for both owner
+  // and visitor) and only fall back to the authenticated user's `createdAt`
+  // when the profile record hasn't loaded yet. This ensures the displayed
+  // year is always the TARGET user's joined year, not the visitor's.
+  const joinedYear = useMemo(() => {
+    const sourceIso = profile?.createdAt ?? user?.createdAt ?? null;
+    if (!sourceIso) return null;
+    const d = new Date(sourceIso);
+    return Number.isFinite(d.getFullYear()) ? d.getFullYear() : null;
+  }, [profile?.createdAt, user?.createdAt]);
+
+  const publicProfileData = usePublicProfileData({
+    role: roleName as 'Reviewer' | 'Researcher' | 'Lecturer' | 'Graduate Student' | null,
+    userId: targetUserId ?? null,
+    joinedYear,
+    profile,
+    publications,
+    forumPosts,
+  });
 
   const [isFollowingTarget, setIsFollowingTarget] = useState<boolean>(false);
   const [isFollowActionLoading, setIsFollowActionLoading] = useState<boolean>(false);
@@ -908,14 +936,57 @@ export const Profile = () => {
       )}
 
       {mode === 'view' ? (
-        <ProfileView
-          draft={savedDraft}
-          avatarInitials={avatarInitials}
-          updatedAt={profile?.updatedAt}
-          isEmpty={isEmptyProfile}
-          profile={profile}
-          isOwner={isOwner}
-        />
+        <>
+          {/* Owner-only account contact strip — visitors never see personal details */}
+          {isOwner && (
+            <AccountContactStrip
+              savedDraft={savedDraft}
+              displayEmail={displayEmail}
+            />
+          )}
+
+          {/* Role-specific public profile view */}
+          {roleName === 'Reviewer' && (
+            <ReviewerPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {roleName === 'Researcher' && (
+            <ResearcherPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {roleName === 'Lecturer' && (
+            <LecturerPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+              locale={locale ?? 'en'}
+            />
+          )}
+          {roleName === 'Graduate Student' && (
+            <GraduateStudentPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {/* Fallback for Admin or unknown roles — keep the original view */}
+          {(roleName === 'Admin' || !roleName) && (
+            <ProfileView
+              draft={savedDraft}
+              avatarInitials={avatarInitials}
+              updatedAt={profile?.updatedAt}
+              isEmpty={isEmptyProfile}
+              profile={profile}
+              isOwner={isOwner}
+            />
+          )}
+        </>
       ) : (
         <ProfileEditForm
           draft={draft}
@@ -1030,6 +1101,57 @@ export const Profile = () => {
         />
       )}
     </div>
+  );
+};
+
+/** Account contact strip — owner-only, shown above the role-specific public view.
+ *  Visitors never see these fields. Shows phone, address, DOB, gender, email.
+ */
+interface AccountContactStripProps {
+  savedDraft: DraftFields;
+  displayEmail: string;
+}
+
+const AccountContactStrip = ({
+  savedDraft,
+  displayEmail,
+}: AccountContactStripProps) => {
+  const { t } = useI18n();
+  return (
+    <section className={styles.accountStrip} aria-label="Account contact information">
+      <dl className={styles.accountStripGrid}>
+        {displayEmail ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.email', 'Email')}</dt>
+            <dd>{displayEmail}</dd>
+          </div>
+        ) : null}
+        {savedDraft.phoneNumber?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.phone', 'Phone')}</dt>
+            <dd>{savedDraft.phoneNumber}</dd>
+          </div>
+        ) : null}
+        {savedDraft.address?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.address', 'Address')}</dt>
+            <dd>{savedDraft.address}</dd>
+          </div>
+        ) : null}
+        {savedDraft.dateOfBirth?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.dob', 'Date of birth')}</dt>
+            <dd>{formatDisplayDate(savedDraft.dateOfBirth)}</dd>
+          </div>
+        ) : null}
+        {savedDraft.gender?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.gender', 'Gender')}</dt>
+            <dd>{savedDraft.gender}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
   );
 };
 

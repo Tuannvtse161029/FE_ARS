@@ -41,7 +41,7 @@
 }
 
 .button:hover {
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
 }
 
 .button:focus-visible {
@@ -51,7 +51,7 @@
 }
 
 .active {
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
 }
 
 .label {
@@ -67,7 +67,7 @@
 }
 
 .iconActive {
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
   opacity: 1;
 }
 
@@ -79,7 +79,7 @@
 .button:hover .iconDim,
 .active .iconDim {
   opacity: 1;
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
 }
 
 /* ── Inline filter dropdown ─────────────────────────────────────────── */
@@ -92,9 +92,9 @@
 }
 
 .filterWrapActive .filterToggle {
-  background: var(--accent-primary, #007aff);
+  background: var(--accent-primary, #e2ad2f);
   color: #ffffff;
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
 }
 
 .filterToggle {
@@ -116,13 +116,13 @@
 }
 
 .filterToggle:hover {
-  border-color: var(--accent-primary, #007aff);
-  color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
+  color: var(--accent-primary, #e2ad2f);
 }
 
 .filterToggleActive {
-  background: var(--accent-primary, #007aff);
-  border-color: var(--accent-primary, #007aff);
+  background: var(--accent-primary, #e2ad2f);
+  border-color: var(--accent-primary, #e2ad2f);
   color: #ffffff;
 }
 
@@ -156,8 +156,8 @@
 }
 
 .filterClear:hover {
-  background: var(--accent-primary, #007aff);
-  border-color: var(--accent-primary, #007aff);
+  background: var(--accent-primary, #e2ad2f);
+  border-color: var(--accent-primary, #e2ad2f);
   color: #ffffff;
 }
 
@@ -210,7 +210,7 @@
 }
 
 .filterOptionActive {
-  background: var(--accent-primary, #007aff);
+  background: var(--accent-primary, #e2ad2f);
   color: #ffffff;
 }
 

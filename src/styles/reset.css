@@ -73,13 +73,13 @@ table {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 ::selection {
-  background-color: var(--ars-blue);
-  color: var(--ars-paper);
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
 }
 
 /* ── Keyboard focus for interactive elements ────────────── */
@@ -88,7 +88,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--ars-blue);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 

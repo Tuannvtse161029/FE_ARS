@@ -1125,7 +1125,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 36px;
-  align-content: start;
+  /* Center the header + cards vertically inside the full-height stage
+     so the cards sit in the middle of the viewport instead of clumping
+     at the top and leaving a large empty void below. */
+  align-content: center;
 }
 
 .turnHeader { max-width: 760px; }
@@ -1152,12 +1155,16 @@
   margin: 24px 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
+  /* One row, five cards at desktop. The earlier `auto-fit` resolved to
+     two rows at common widths; explicit `repeat(5, …)` keeps the
+     Decision-Authority-era vertical fold out of the layout. Tablet
+     collapses to 2-col, mobile to 1-col via the media queries below. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .turnItem {
-  padding: 18px 18px 20px;
+  padding: 16px;
   border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
   border-radius: 8px;
   /* Always-dark glassy item plate — see note on the page-root block. */
@@ -1195,135 +1202,8 @@
 .turnStepBody {
   margin: 6px 0 0;
   color: color-mix(in srgb, var(--sc-ink-on-dark) 65%, transparent);
-  font-size: 0.82rem;
-  line-height: 1.55;
-}
-
-/* Publication flow diagram tucked into the bottom of the turn act */
-.publicationFlow {
-  position: absolute;
-  z-index: 2;
-  left: 50%;
-  bottom: 4%;
-  transform: translateX(-50%);
-  width: min(1180px, calc(100% - 48px));
-  padding: 18px 22px;
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
-  border-radius: 10px;
-  /* Always-dark glassy plate. */
-  background: var(--sc-glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.publicationFlowHeading {
-  margin: 0 0 14px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent-primary);
-}
-
-.flowConstellation {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0;
-}
-
-.flowNodeItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  z-index: 1;
-}
-
-.flowNodeCircle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Always-dark plate so the icon stays high-contrast against the
-     midnight stage in both themes. */
-  background: var(--sc-glass-strong);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  flex-shrink: 0;
-}
-.flowNodeCircle:hover {
-  transform: scale(1.12);
-  box-shadow: 0 6px 20px var(--sc-shadow);
-}
-
-.flowNodeItem[data-role='researcher'] .flowNodeCircle {
-  border-color: var(--ars-researcher);
-  background: color-mix(in srgb, var(--ars-researcher) 16%, var(--sc-stage-bg));
-}
-.flowNodeItem[data-role='researcher'] .flowNodeCircle svg { color: var(--ars-researcher); }
-
-.flowNodeItem[data-role='admin'] .flowNodeCircle {
-  border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sc-stage-bg));
-}
-.flowNodeItem[data-role='admin'] .flowNodeCircle svg { color: var(--accent-primary); }
-
-.flowNodeItem[data-role='reviewer'] .flowNodeCircle {
-  border-color: var(--ars-reviewer);
-  background: color-mix(in srgb, var(--ars-reviewer) 16%, var(--sc-stage-bg));
-}
-.flowNodeItem[data-role='reviewer'] .flowNodeCircle svg { color: var(--ars-reviewer); }
-
-.flowNodeItem[data-role='catalog'] .flowNodeCircle {
-  border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 18%, var(--sc-stage-bg));
-}
-.flowNodeItem[data-role='catalog'] .flowNodeCircle svg { color: var(--accent-primary); }
-
-.flowNodeRole {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--sc-ink-on-dark);
-  white-space: nowrap;
-}
-.flowNodeAction {
-  font-size: 0.66rem;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
-  text-align: center;
-  max-width: 100px;
-  line-height: 1.45;
-}
-.flowNodeNote {
-  font-size: 0.62rem;
-  font-style: italic;
-  color: var(--accent-primary);
-  text-align: center;
-  max-width: 100px;
-  line-height: 1.4;
-}
-
-.flowConnectorLine {
-  flex: 1;
-  height: 2px;
-  margin: 0 2px;
-  background: color-mix(in srgb, var(--accent-primary) 35%, transparent);
-  position: relative;
-  align-self: center;
-  margin-top: -28px; /* align with circle centers */
-}
-.flowConnectorLine::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--accent-primary);
-  transform-origin: left center;
-  transform: scaleX(0);
-  transition: transform 600ms var(--motion-ease-standard);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1462,14 +1342,14 @@
 
 .substanceCard {
   /* Cards are taller and richer — they hold a header + body + a real
-     preview mockup, not just an icon + headline + paragraph. The
-     clamp is tightened from `clamp(320px, 36vw, 420px)` so all four
-     cards fit side-by-side at common viewport widths (≥1180px). Below
-     that the cards overflow and the rail still pans; below ~640px the
-     mobile breakpoint below takes over and stacks the rail. */
-  flex: 0 0 clamp(260px, 22vw, 300px);
+     preview mockup, not just an icon + headline + paragraph.
+     Widened from `clamp(260px, 22vw, 300px)` so each card's body copy
+     has room for two full lines without ellipsizing. Cards are now
+     read-only previews (the surrounding <Link> was removed) so we
+     still size them as a coherent set across the pan stage. */
+  flex: 0 0 clamp(290px, 25vw, 360px);
   min-height: 0;
-  max-height: clamp(440px, 60vh, 540px);
+  max-height: clamp(460px, 64vh, 560px);
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
   border-radius: 16px;
@@ -1487,7 +1367,7 @@
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: transform 360ms var(--motion-ease-standard), box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
+  transition: box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
   box-shadow:
     0 24px 48px var(--sc-shadow),
     inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent);
@@ -1505,25 +1385,19 @@
   );
 }
 .substanceCard[data-active='true'] {
-  transform: translateY(-6px) scale(1.012);
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 50%, transparent);
   box-shadow:
     0 32px 64px var(--sc-shadow-heavy),
     inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
 }
+/* Hover no longer lifts the card — these are read-only previews, so a
+   lift would imply clickability. Keep a small border-color cue so the
+   card still feels responsive to the cursor without signalling "link". */
 .substanceCard:hover {
-  transform: translateY(-4px) scale(1.006);
-  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 40%, transparent);
+  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
 }
-.substanceCard:focus-visible {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
-  box-shadow:
-    0 24px 48px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 45%, transparent);
-}
+/* No focus ring — the card isn't focusable as a link target anymore. */
 
 .substanceCardHeader {
   padding: 22px 22px 14px;
@@ -1642,28 +1516,13 @@
 
 .substanceCardBody {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: color-mix(in srgb, var(--sc-ink-on-dark) 70%, transparent);
-  line-height: 1.5;
+  line-height: 1.55;
+  /* Full width now — the Explore span that used to share the footer
+     row is gone. */
   flex: 1;
-  max-width: 60%;
-}
-
-.substanceCardLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
-  transition: color var(--transition-fast), gap var(--transition-fast);
-  white-space: nowrap;
-}
-.substanceCard:hover .substanceCardLink,
-.substanceCard[data-active='true'] .substanceCardLink {
-  color: var(--accent-role, var(--accent-primary));
-  gap: 10px;
+  max-width: 100%;
 }
 
 .panProgress {
@@ -1979,6 +1838,21 @@
   transform: translateY(24px);
 }
 
+/* Paper-day override: in the bright theme, --sc-stage-bg resolves to
+   warm parchment yellow and the kicker (.issueLine) is brand yellow,
+   which is yellow-on-yellow. Switch the CTA to a deep navy surface in
+   paper-day so the yellow kicker reads cleanly and the section visually
+   mirrors the dark hero at the top of the page. Archive-dusk already
+   uses a dark stage, so no change there. */
+:global(:root[data-theme='paper-day']) .ctaSection {
+  background: var(--sc-stage-bg-deep);
+  color: var(--sc-ink-on-dark);
+}
+:global(:root[data-theme='paper-day']) .ctaSection .issueLine {
+  color: var(--accent-primary);
+  border-left-color: var(--accent-primary);
+}
+
 .ctaSection .issueLine {
   color: var(--accent-primary);
   border-left-color: var(--accent-primary);
@@ -2092,8 +1966,9 @@
     bottom: clamp(2.5rem, 10vh, 7rem);
   }
   .tensionBody { margin-left: 0; }
-  .flowConstellation { flex-wrap: wrap; gap: 12px; justify-content: center; }
-  .flowConnectorLine { display: none; }
+  /* Tablet: five columns doesn't fit cleanly — fall back to 2-col so
+     the body copy stays legible instead of getting squashed. */
+  .turnList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .boundariesInner,
   .faqInner { grid-template-columns: 1fr; gap: 0; }
   .footerInner { flex-direction: column; align-items: flex-start; gap: 20px; }
@@ -2115,12 +1990,8 @@
   .heroActions .textLink { width: 100%; justify-content: center; }
   .tensionChips { display: none; }
   .turnInner { padding: clamp(40px, 8vh, 70px) 0; }
+  /* Mobile: still single column so the body copy stays readable. */
   .turnList { grid-template-columns: 1fr; }
-  .publicationFlow { padding: 14px 14px; }
-  .flowNodeCircle { width: 40px; height: 40px; }
-  .flowNodeRole { font-size: 0.66rem; }
-  .flowNodeAction { font-size: 0.6rem; max-width: 80px; }
-  .flowNodeNote { display: none; }
   .substanceCard { flex: 0 0 86vw; min-height: 0; padding: 28px; }
   .footerCopy { padding-top: 16px; }
 }

@@ -106,7 +106,7 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <div className={styles.modalTitleRow}>
-            <ImageIcon size={20} color="#2563eb" />
+            <ImageIcon size={20} color="#d9a200" />
             <h3 id="artwork-upload-title" className={styles.modalTitle}>
               {copy(
                 `Family Icon: ${medalTitle}`,
@@ -269,7 +269,7 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
                   }
                 }}
               >
-                <UploadCloud size={36} color="#3b82f6" />
+                <UploadCloud size={36} color="#facc15" />
                 <p>
                   {isUploading
                     ? copy('Uploading to Firebase Storage...', 'Đang tải lên Firebase...')

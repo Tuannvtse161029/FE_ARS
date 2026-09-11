@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Check, X, Shield } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Check, X, Crown } from 'lucide-react';
 import type { UserRole } from '../../../types/auth';
 import { useI18n } from '../../../i18n/I18nContext';
 import styles from './RoleSelectionModal.module.css';
@@ -24,11 +25,25 @@ const ROLE_LABELS: Record<UserRole, string> = {
   Admin: 'Administrator',
 };
 
+// Role descriptions verified against each workspace:
+//   Researcher  → /researcher/submissions  (submit, track status, published papers)
+//   Reviewer    → /reviewer/assignments     (accept invitations, evaluate, recommend)
+//   Lecturer    → /lecturer/research-topics (manage topics/phases, evaluate reports, materials)
+//   Grad Student→ /student/dashboard        (milestones, phased reports, group activity)
+//   Admin       → /admin                    (system management)
+//
+// Reviewer no longer earns payouts — the wallet/withdrawal/payout flow was
+// retired long ago (see docs/WALLET_SCOPE_CHANGE.md) and the description
+// must not promise money.
 const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  Researcher: 'Submit manuscripts, manage peer reviews, and deposit locked funds.',
-  Reviewer: 'Review submitted papers, score evaluation scorecards, and earn held funds payouts.',
-  Lecturer: 'Manage research groups, schedule seminars, and AI-summarize recordings.',
-  'Graduate Student': 'Join research cohorts, complete assigned topics, and submit PDF assignments.',
+  Researcher:
+    'Submit manuscripts, track review status, and discover published papers.',
+  Reviewer:
+    'Accept review invitations and evaluate assigned papers with structured recommendations.',
+  Lecturer:
+    'Manage research topics and phases, evaluate student reports, and curate learning materials.',
+  'Graduate Student':
+    'Track milestones and deadlines, submit phased reports, and engage with peers in your research group.',
   Admin: 'System administrator (assigned only via the database).',
 };
 
@@ -36,6 +51,9 @@ const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
  * Modal shown immediately after a multi-role user logs in. The user picks
  * one of the roles assigned to their account; the chosen role becomes the
  * active role for the session and is persisted into the auth store.
+ *
+ * Rendered via `createPortal` at the document body level so the overlay
+ * always covers the FULL page — not just the login card's stacking context.
  */
 const RoleSelectionModal = ({
   open,
@@ -62,7 +80,7 @@ const RoleSelectionModal = ({
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
-  return (
+  const modal = (
     <div
       className={styles.overlay}
       role="dialog"
@@ -74,7 +92,7 @@ const RoleSelectionModal = ({
         <div className={styles.header}>
           <div className={styles.headerTitleWrap}>
             <span className={styles.headerIcon} aria-hidden="true">
-              <Shield size={20} />
+              <Crown size={20} />
             </span>
             <h2 id="role-selection-title" className={styles.title}>
               {t('login.roleSelection.title')}
@@ -167,6 +185,8 @@ const RoleSelectionModal = ({
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 };
 
 export default RoleSelectionModal;

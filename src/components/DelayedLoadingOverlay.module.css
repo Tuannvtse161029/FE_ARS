@@ -20,6 +20,32 @@
   color: var(--ink-primary);
 }
 
+/* Minimize animation — fires when the user has been staring at the
+   overlay for ~3 s. The backdrop plays a scale-down + fade while
+   pointer-events are released so the page becomes interactive again.
+   The header widget takes over from there with its own spinner. The
+   `forwards` fill mode is critical — without it the overlay would
+   re-show at full size when its `transform: scale(0.15)` runs out. */
+.backdrop.minimizing {
+  animation: ars-minimize var(--duration-emphasis) var(--motion-ease-standard) forwards;
+  pointer-events: none;
+}
+
+@keyframes ars-minimize {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(0.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.15);
+    opacity: 0;
+  }
+}
+
 .content {
   display: grid;
   justify-items: center;
@@ -204,5 +230,13 @@
     /* Park the hand at the middle line so the still illustration
        still reads as "writing in progress". */
     transform: translate(0, 8px);
+  }
+
+  /* Skip the minimize animation — just release pointer-events so the
+     page becomes interactive immediately. */
+  .backdrop.minimizing {
+    animation: none;
+    opacity: 0;
+    pointer-events: none;
   }
 }

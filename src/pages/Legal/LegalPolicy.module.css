@@ -36,7 +36,7 @@
 }
 
 .backLink {
-  color: #2563eb;
+  color: #d9a200;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
@@ -101,12 +101,12 @@
 }
 
 .tab:hover {
-  color: #2563eb;
+  color: #d9a200;
 }
 
 .tabActive {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
+  color: #d9a200;
+  border-bottom-color: #d9a200;
   font-weight: 600;
 }
 

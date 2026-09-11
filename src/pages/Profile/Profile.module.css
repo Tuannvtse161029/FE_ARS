@@ -582,6 +582,103 @@
   }
 }
 
+/* ── Account contact strip (owner-only) ─────────────────── */
+/* Compact "Account contact" surface that surfaces phone, address, DOB,
+ * gender, and email ONLY for the owner viewing their own profile.
+ * Visitors never see this strip — it is rendered before the role-specific
+ * public view to keep the visual hierarchy:
+ *   identity card → account contact (owner only) → role view → tabs.
+ */
+.accountStrip {
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+  isolation: isolate;
+}
+
+.accountStrip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-3);
+  bottom: var(--space-3);
+  width: 3px;
+  background: var(--profile-accent);
+  border-radius: 0 2px 2px 0;
+  opacity: 0.6;
+  z-index: 1;
+}
+
+.accountStripGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.accountStripField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.accountStripField dt {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
+  margin: 0;
+}
+
+.accountStripField dd {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  margin: 0;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: var(--line-height-normal);
+}
+
+@media (max-width: 720px) {
+  .accountStrip {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .accountStripGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Public view wrapper (role-specific views) ──────────── */
+/* Reserved wrapper class for the role-specific public profile views
+ * (Reviewer / Researcher / Lecturer / Graduate Student). Each role view
+ * ships its own CSS module; this wrapper provides the consistent
+ * max-width and outer spacing so they line up with the rest of the page.
+ * Kept intentionally minimal — per-role identity comes from each view's
+ * own accent rule and metric palette.
+ */
+.publicView {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 /* ── Trial countdown card (FE_TRIAL_FLOW) ─────────────────── */
 .trialCard {
   display: flex;

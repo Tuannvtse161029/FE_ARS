@@ -25,12 +25,12 @@
 
 .trigger:hover {
   background: var(--control-bg-hover, rgba(255, 255, 255, 0.06));
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   color: var(--ink-primary, inherit);
 }
 
 .trigger:focus-visible {
-  outline: 2px solid var(--focus-ring, #007aff);
+  outline: 2px solid var(--focus-ring, #e2ad2f);
   outline-offset: 2px;
 }
 
@@ -74,7 +74,7 @@
 }
 
 .option:focus-visible {
-  outline: 2px solid var(--focus-ring, #007aff);
+  outline: 2px solid var(--focus-ring, #e2ad2f);
   outline-offset: 2px;
 }
 
@@ -95,6 +95,6 @@
 
 .check {
   margin-left: auto;
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
   font-weight: var(--font-weight-bold, 700);
 }

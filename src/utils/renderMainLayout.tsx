@@ -1,5 +1,5 @@
 /**
- * Test helper for `<MainLayout />` sidebar / header / wallet assertions.
+ * Test helper for `<MainLayout />` sidebar / header assertions.
  *
  * Provides a reusable mock surface and DOM-query helpers so the seven
  * MainLayout test files don't each duplicate the same vi.mock factories,

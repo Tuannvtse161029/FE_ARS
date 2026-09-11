@@ -244,7 +244,7 @@
 }
 
 .searchBox:focus-within {
-  border-color: var(--accent-primary, #2563eb);
+  border-color: var(--accent-primary, #d9a200);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 

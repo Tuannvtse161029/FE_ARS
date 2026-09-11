@@ -4,7 +4,7 @@
 // its inline worker blob. Vercel flagged the resulting `vendor-pdf` chunk
 // as exceeding the build's chunkSizeWarningLimit. Loading the viewer on
 // demand keeps that chunk out of the initial bundle and out of the route
-// bundles that do not show a PDF (login, register, profile, wallet, …).
+// bundles that do not show a PDF (login, register, profile, …).
 //
 // Consumers should import `LazyPdfViewer` (default export) instead of the
 // heavy `PdfViewer` directly. The `<Suspense>` boundary here renders a

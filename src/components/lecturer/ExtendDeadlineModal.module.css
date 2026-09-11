@@ -113,7 +113,7 @@
   border-radius: var(--radius-md, 8px);
   padding: 10px 12px;
   font-size: 0.825rem;
-  color: #1e40af;
+  color: #70490e;
   line-height: 1.4;
 }
 
@@ -149,7 +149,7 @@
 }
 
 .inputDate:focus {
-  border-color: var(--primary, #3b82f6);
+  border-color: var(--primary, #facc15);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
@@ -200,7 +200,7 @@
   padding: 8px 18px;
   border-radius: var(--radius-md, 8px);
   border: none;
-  background: var(--primary, #2563eb);
+  background: var(--primary, #d9a200);
   color: #ffffff;
   font-size: 0.875rem;
   font-weight: 600;
