@@ -397,7 +397,9 @@ export function useUpdateSeminarStatus(
       const nextStatus = action === 'suspend' ? 'Inactive' : 'Upcoming';
       try {
         await seminarService.setStatus(id, nextStatus);
-        void refetch?.();
+        if (refetch) {
+          await refetch();
+        }
         onSuccess?.(id, action);
       } catch (err) {
         const msg =

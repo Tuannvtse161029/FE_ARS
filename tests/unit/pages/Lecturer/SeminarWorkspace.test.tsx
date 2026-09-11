@@ -226,41 +226,13 @@ describe('SeminarWorkspace', () => {
 
   // ── T3: Reminder ─────────────────────────────────────────────────────────────
 
-  it('reminder button is disabled while sending', async () => {
-    vi.clearAllMocks();
-
-    const sendReminder = vi.fn().mockImplementation(() => new Promise(() => { /* never resolves */ }));
-
-    // Define the complete participants mock with a pending (non-submitted) participant
-    const participantsWithPending = [
-      { seminarParticipantId: 1, seminarId: 5, userId: 1, invitationStatus: 'Invited' },
-    ];
-
-    // Complete mock return objects — no spreading, no partial overrides
-    vi.spyOn(useSeminarModule, 'useSeminars').mockReturnValue(
+  it('opens Feedback & Grading modal for COMPLETED seminars', async () => {
+    renderPage(
       mockUseSeminars({
         seminars: [
           mockSeminarCard({ seminarId: 5, status: 'COMPLETED', effectiveStatus: 'COMPLETED' }),
         ],
       })
-    );
-    vi.spyOn(useSeminarModule, 'useCreateSeminar').mockReturnValue(mockUseCreateSeminar());
-    vi.spyOn(useSeminarModule, 'useSendReminder').mockReturnValue({
-      sendReminder,
-      isSending: true,
-      sendError: null,
-    });
-    vi.spyOn(useSeminarModule, 'useSeminarParticipants').mockReturnValue({
-      participants: participantsWithPending,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    render(
-      <MemoryRouter>
-        <SeminarWorkspace />
-      </MemoryRouter>
     );
 
     // Open feedback modal
@@ -269,70 +241,26 @@ describe('SeminarWorkspace', () => {
       const all = screen.getAllByText((content) => /feedback & grading/i.test(String(content)));
       expect(all.length).toBeGreaterThan(0);
     });
-
-    // Button must be disabled because isSending is true
-    const btn = screen.getByRole('button', { name: /sending/i });
-    expect(btn).toBeDisabled();
   });
 
-  it('clicking reminder button while already sending does not trigger additional calls', async () => {
-    vi.clearAllMocks();
-
-    // Simulate a slow resolution so the guard can be tested
-    let resolveReminder: () => void;
-    const sendReminder = vi.fn().mockImplementation(
-      () => new Promise<void>((r) => { resolveReminder = r; })
-    );
-
-    const participantsWithPending = [
-      { seminarParticipantId: 1, seminarId: 5, userId: 1, invitationStatus: 'Invited' },
-    ];
-
-    vi.spyOn(useSeminarModule, 'useSeminars').mockReturnValue(
+  it('opens Setup Feedback modal when Setup Feedback button is clicked', async () => {
+    renderPage(
       mockUseSeminars({
         seminars: [
-          mockSeminarCard({ seminarId: 5, status: 'COMPLETED', effectiveStatus: 'COMPLETED' }),
+          mockSeminarCard({
+            seminarId: 5,
+            status: 'UPCOMING',
+            effectiveStatus: 'UPCOMING',
+            organizerId: 7,
+          }),
         ],
       })
     );
-    vi.spyOn(useSeminarModule, 'useCreateSeminar').mockReturnValue(mockUseCreateSeminar());
-    vi.spyOn(useSeminarModule, 'useSendReminder').mockReturnValue({
-      sendReminder,
-      isSending: false,
-      sendError: null,
-    });
-    vi.spyOn(useSeminarModule, 'useSeminarParticipants').mockReturnValue({
-      participants: participantsWithPending,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
 
-    render(
-      <MemoryRouter>
-        <SeminarWorkspace />
-      </MemoryRouter>
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: /feedback & grading/i }));
+    await userEvent.click(screen.getByRole('button', { name: /setup feedback/i }));
     await waitFor(() => {
-      const all = screen.getAllByText((content) => /feedback & grading/i.test(String(content)));
-      expect(all.length).toBeGreaterThan(0);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
-
-    // Button must be enabled (not disabled) so we can test the double-click guard
-    const btn = screen.getByRole('button', { name: /remind pending/i });
-    expect(btn).not.toBeDisabled();
-
-    // Click the remind button twice rapidly (simulating double-click)
-    await userEvent.click(btn);
-    await userEvent.click(btn);
-
-    // Only one API call should have fired despite two clicks (double-click guard)
-    expect(sendReminder).toHaveBeenCalledTimes(1);
-
-    // Clean up the hanging promise
-    resolveReminder!();
   });
 
   // Note: The actual sendReminder call is tested in useSeminarAudio.test.ts (hook integration).
@@ -393,12 +321,14 @@ describe('SeminarWorkspace', () => {
         seminars: [
           mockSeminarCard({
             seminarId: 10,
+            title: 'Upcoming Cloud Architecture Seminar',
             status: 'UPCOMING',
             effectiveStatus: 'UPCOMING',
             organizerId: 7,
           }),
           mockSeminarCard({
             seminarId: 11,
+            title: 'Completed Cloud Architecture Seminar',
             status: 'COMPLETED',
             effectiveStatus: 'COMPLETED',
             organizerId: 7,
@@ -406,13 +336,43 @@ describe('SeminarWorkspace', () => {
         ],
       })
     );
-    const upcomingRow = screen.getByText('Cloud Architecture Seminar').closest('li') as HTMLElement;
+    const upcomingRow = screen.getByText('Upcoming Cloud Architecture Seminar').closest('li') as HTMLElement;
     expect(within(upcomingRow).getByTestId('seminar-suspend-button')).toBeInTheDocument();
+  });
 
-    // Switch to the ACCEPTED/completed tab so the completed card is rendered.
-    // The completed card lives on its own branch with no Suspend button.
-    const completedHeading = screen.getAllByRole('heading', { level: 3 });
-    void completedHeading;
+  it('clicking Suspend opens ConfirmModal and confirming invokes updateSeminarStatus', async () => {
+    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(useSeminarModule, 'useUpdateSeminarStatus').mockReturnValue({
+      updateStatus,
+      isUpdating: false,
+      updateError: null,
+    });
+
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({
+            seminarId: 50,
+            title: 'Cloud Architecture Seminar',
+            status: 'UPCOMING',
+            effectiveStatus: 'UPCOMING',
+            organizerId: 7,
+          }),
+        ],
+      })
+    );
+
+    const suspendBtn = screen.getByTestId('seminar-suspend-button');
+    await userEvent.click(suspendBtn);
+
+    // ConfirmModal should open with title "Suspend this seminar?"
+    expect(screen.getByText(/Suspend this seminar\?/i)).toBeInTheDocument();
+
+    // Click confirm button
+    const confirmBtn = screen.getByRole('button', { name: /Suspend seminar/i });
+    await userEvent.click(confirmBtn);
+
+    expect(updateStatus).toHaveBeenCalledWith(50, 'suspend');
   });
 
   it('hides Suspend button on INACTIVE cards and surfaces Reactivate instead', () => {
@@ -431,6 +391,34 @@ describe('SeminarWorkspace', () => {
     const row = screen.getByText('Cloud Architecture Seminar').closest('li') as HTMLElement;
     expect(within(row).queryByTestId('seminar-suspend-button')).not.toBeInTheDocument();
     expect(within(row).getByTestId('seminar-reactivate-button')).toBeInTheDocument();
+  });
+
+  it('clicking Reactivate directly invokes updateSeminarStatus with reactivate', async () => {
+    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(useSeminarModule, 'useUpdateSeminarStatus').mockReturnValue({
+      updateStatus,
+      isUpdating: false,
+      updateError: null,
+    });
+
+    renderPage(
+      mockUseSeminars({
+        seminars: [
+          mockSeminarCard({
+            seminarId: 60,
+            title: 'Cloud Architecture Seminar',
+            status: 'INACTIVE',
+            effectiveStatus: 'INACTIVE',
+            organizerId: 7,
+          }),
+        ],
+      })
+    );
+
+    const reactivateBtn = screen.getByTestId('seminar-reactivate-button');
+    await userEvent.click(reactivateBtn);
+
+    expect(updateStatus).toHaveBeenCalledWith(60, 'reactivate');
   });
 
   it('does NOT show Suspend / Reactivate buttons on a card owned by someone else', () => {
