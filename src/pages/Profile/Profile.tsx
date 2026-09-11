@@ -34,6 +34,7 @@ import { Clock, RefreshCw, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RequestAdditionalRoleModal } from '../../components/profile/RequestAdditionalRoleModal';
 import { roleRequestService, type UserPendingRoleRequest } from '../../services/roleRequest.service';
+import { userService } from '../../services/user.service';
 import { useProfile } from '../../hooks/useProfile';
 import { toLocalDateInput, formatDisplayDate } from '../../utils/datetime';
 import {
@@ -280,9 +281,69 @@ export const Profile = () => {
     clearSaveError,
   } = useProfile(targetUserId);
 
-  const roleName = isOwner ? (user?.role ?? null) : (profile?.roleName ?? null);
+  // ── Public-profile role lookup ─────────────────────────────────────────
+  // The `/api/Profile/{id}` and `/api/ProfessionalProfile/{id}` endpoints
+  // do NOT surface a `roleName` field — the BE returns the academic-profile
+  // columns (fullName, institution, hindex, …) but never the user's
+  // business role. For an owner we already have `user.role` from the auth
+  // store; for a visitor the only authoritative source is
+  // `GET /api/User/{id}` (`UserResponse.roleName`, see swagger.json
+  // component UserResponse). Without this fetch the visitor-side
+  // `roleName` is always null and the badge silently falls back to
+  // "Researcher" for every profile — the bug surfaced on John
+  // Reviewer's profile.
+  //
+  // We only run the fetch when the visitor is viewing SOMEONE ELSE
+  // (i.e. `!isOwner`) and the route param resolved to a positive id.
+  // Errors are swallowed — the page must render even if `/api/User/{id}`
+  // 404s (e.g. a suspended account).
+  const [publicUserRole, setPublicUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (isOwner || !targetUserId) {
+      setPublicUserRole(null);
+      return undefined;
+    }
+    let cancelled = false;
+    userService
+      .getById(targetUserId)
+      .then((fetched) => {
+        if (cancelled) return;
+        setPublicUserRole(fetched?.roleName ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPublicUserRole(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, targetUserId]);
+
+  // Role resolution priority:
+  //   1. Owner viewing their own profile → `user.role` from auth store.
+  //   2. Visitor viewing someone else →
+  //        a. `publicUserRole` from /api/User/{id} (authoritative role).
+  //        b. `profile.roleName` from the professional-profile endpoint
+  //           (currently unused by the BE, kept as a future-proof
+  //           fallback in case the BE starts emitting it).
+  //        c. `null` — render a neutral label, NEVER default to
+  //           'Researcher' (the previous fallback mis-classified
+  //           Reviewers / Lecturers / Graduate Students / Admins).
+  const roleName = isOwner
+    ? (user?.role ?? null)
+    : (publicUserRole ?? profile?.roleName ?? null);
   const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
-  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : (roleName || 'Researcher');
+  // Label: prefer the ROLE_LABEL map; if the BE hands back a role we
+  // don't have a localised entry for, fall back to the raw string; only
+  // when the role is genuinely unknown do we render the neutral
+  // 'Member' chip instead of silently labelling the profile
+  // "Researcher" (the original bug).
+  const roleLabel =
+    roleName && roleName in ROLE_LABEL
+      ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL]
+      : roleName
+        ? roleName
+        : 'Member';
   const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);

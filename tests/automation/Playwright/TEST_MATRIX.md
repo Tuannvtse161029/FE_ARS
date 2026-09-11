@@ -30,7 +30,7 @@
 | `/admin/published-papers` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `/admin/reviewer-assignments` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `/reviewer/assignments` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `/reviewer/professional-profile` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `/reviewer/professional-profile` | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | `/evaluation` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `/papers` → `/researcher/submissions` | ❌ | ❌ | ❌ | ✅ ⚠️ | ❌ | ❌ |
 | `/researcher/submissions` | ❌ | ❌ | ❌ | ✅ ⚠️ | ❌ | ❌ |

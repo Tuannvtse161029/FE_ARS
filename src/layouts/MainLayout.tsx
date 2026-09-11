@@ -102,6 +102,7 @@ const ProfileDropdown = ({
   onLogout,
   onProfileClick,
   showProfileAction,
+  showSubscriptionBadge,
 }: {
   username: string;
   activeRole: string;
@@ -110,6 +111,18 @@ const ProfileDropdown = ({
   onLogout: () => void;
   onProfileClick: () => void;
   showProfileAction: boolean;
+  /**
+   * Whether to surface the SubscriptionBadge inside the dropdown.
+   *
+   * Subscriptions only apply to Researcher and Lecturer roles — for
+   * Admin / Reviewer / Graduate Student the badge would otherwise
+   * render a redundant "Subscription · Not required" entry that adds
+   * no value. The MainLayout already gates the sidebar's
+   * "My Subscription" footer on the same predicate, so we mirror it
+   * here to keep the dropdown consistent across both roles that pay
+   * the annual fee and those that don't.
+   */
+  showSubscriptionBadge: boolean;
 }) => {
   const locale = useLocale();
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
@@ -170,11 +183,19 @@ const ProfileDropdown = ({
           {/* Subscription badge — surfaces the user's annual-fee
               subscription state directly in the header. Powers the
               visibility requirement from BE-ANNUAL-FEE-01 §"Subscription
-              visibility". */}
-          <div className={styles.dropdownSection} role="presentation">
-            <SubscriptionBadge />
-          </div>
-          <div className={styles.dropdownDivider} aria-hidden></div>
+              visibility". Only rendered for roles where subscriptions
+              actually apply (Researcher, Lecturer); for Admin /
+              Reviewer / Graduate Student the gate is irrelevant, so
+              we skip the badge AND its trailing divider to avoid a
+              useless "Subscription · Not required" row. */}
+          {showSubscriptionBadge && (
+            <>
+              <div className={styles.dropdownSection} role="presentation">
+                <SubscriptionBadge />
+              </div>
+              <div className={styles.dropdownDivider} aria-hidden></div>
+            </>
+          )}
           {showProfileAction ? (
             <>
               <button type="button" role="menuitem" className={styles.dropdownItem} onClick={() => { onProfileClick(); setIsOpen(false); }}>
@@ -564,8 +585,21 @@ export const MainLayout = () => {
           // Top-level entry points (shared with all roles).
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+
+          // Lecturer Seminar surface. The "Seminar Participations" tab is
+          // intentionally NOT exposed as a top-level sidebar item here,
+          // because the Lecturer's Seminar Workspace already surfaces the
+          // same data through its "My Participations" in-page tab. Keeping
+          // a second entry would duplicate the affordance and clutter the
+          // nav. Route + page are left intact in case the BE ever wants
+          // to deep-link a lecturer straight into participations.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
+
+          // Lecturer Professional Profile — Major Field + Subfield selector.
+          // Lecturers don't own availability or academic metrics (those
+          // are Reviewer / Researcher surfaces), so the page renders in
+          // its trimmed-down "expertise only" mode.
+          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
 
           // PhasedReport core flow — read top-to-bottom in workflow order:
           // define a Topic → assign Groups → manage Phases inline in the
@@ -590,9 +624,23 @@ export const MainLayout = () => {
         return [
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+
+          // Researcher Seminar surface. The "Seminar Participations" tab
+          // is intentionally NOT exposed as a top-level sidebar item here
+          // because the Researcher's Seminar Workspace already surfaces
+          // the same data through its "My Participations" in-page tab.
+          // Duplicating it as a sibling sidebar entry would add no value
+          // and just push the researcher-relevant entries (Submissions,
+          // Professional Profile) further down the list. Route + page are
+          // still wired in App.tsx so a deep-link still works.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
-          { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: copy('My Research Papers', 'Bài báo của tôi'), icon: <PapersIcon size={20} /> },
+
+          // Researcher Professional Profile — Major Field + Subfield selector
+          // plus the academic metrics block (H-Index, citations, publication
+          // count). Researchers don't own reviewer availability, so that
+          // section is hidden on this surface.
+          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
         ];
     }
   };
@@ -930,6 +978,7 @@ export const MainLayout = () => {
               accountTier={accountTier}
               onLogout={handleLogout}
               showProfileAction={activeRole !== 'Admin'}
+              showSubscriptionBadge={showSubscriptionFooter}
               onProfileClick={() => navigate(ROUTES.PROFILE)}
             />
           </div>

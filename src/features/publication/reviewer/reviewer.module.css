@@ -563,17 +563,233 @@
 .formHeader h2 { margin: 0 0 var(--space-2); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-xl); }
 .formHeader p { margin: 0; max-width: 70ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
 .requiredLegend { flex: 0 0 180px; padding: var(--space-2) var(--space-3); background: var(--surface-paper); color: var(--ink-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
-.criteriaList { display: grid; gap: var(--space-3); }
-.criterion { display: grid; gap: var(--space-3); margin: 0; padding: var(--space-4); background: var(--surface-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
-.criterion legend { padding: 0 var(--space-2); color: var(--ink-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold); }
-.criterion > p { margin: 0; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
-.criterionInputs { display: grid; grid-template-columns: minmax(130px, .22fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.criterionInputs label, .reviewField { display: grid; gap: var(--space-2); color: var(--ink-primary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
-.criterionInputs select, .criterionInputs textarea, .reviewField select, .reviewField textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--control-bg); color: var(--control-text); font: inherit; font-size: var(--font-size-sm); }
-.criterionInputs select, .reviewField select { min-height: var(--control-height-lg); padding: 0 var(--space-3); }
-.criterionInputs textarea, .reviewField textarea { min-height: 86px; padding: var(--space-3); resize: vertical; line-height: var(--line-height-normal); }
-.criterionInputs textarea::placeholder, .reviewField textarea::placeholder { color: var(--ink-muted); }
-.criterionInputs select:focus-visible, .criterionInputs textarea:focus-visible, .reviewField select:focus-visible, .reviewField textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-color: var(--focus-ring); }
+/* ── Criterion rubric — structured grid layout ────────────────── */
+.criteriaList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.criterion {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  /* Structured left accent bar for visual hierarchy */
+  border-left: 3px solid var(--ars-reviewer);
+}
+
+.criterion legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.criterionLegendLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.criterionIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ars-reviewer) 15%, var(--surface-raised));
+  color: var(--ars-reviewer);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  border: 1px solid color-mix(in srgb, var(--ars-reviewer) 30%, transparent);
+  flex-shrink: 0;
+}
+
+.criterion > p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* Score + Notes side-by-side grid */
+.criterionInputs {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Score block with visual structure */
+.scoreBlock {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.scoreBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.scoreBlockLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.scoreDropdownWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scoreDropdownWrap select {
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--control-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.scoreDropdownWrap select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Large score chip display */
+.criterionScoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ars-reviewer) 15%, var(--surface-raised));
+  color: var(--ars-reviewer);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  border: 1px solid color-mix(in srgb, var(--ars-reviewer) 30%, transparent);
+  white-space: nowrap;
+}
+
+/* Verbal anchor scale */
+.criterionAnchorRow {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  font-family: var(--font-family-mono);
+}
+
+/* Notes block */
+.notesBlock {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.notesBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.notesBlockLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.notesBlock textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--control-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  resize: vertical;
+}
+
+.notesBlock textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+.notesBlock textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Legacy criterionInputs for specialized criteria */
+.criterionInputs label, .reviewField {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.criterionInputs select, .criterionInputs textarea, .reviewField select, .reviewField textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--control-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.criterionInputs select, .reviewField select {
+  min-height: var(--control-height-lg);
+  padding: 0 var(--space-3);
+}
+
+.criterionInputs textarea, .reviewField textarea {
+  min-height: 86px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: var(--line-height-normal);
+}
+
+.criterionInputs textarea::placeholder, .reviewField textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+.criterionInputs select:focus-visible, .criterionInputs textarea:focus-visible, .reviewField select:focus-visible, .reviewField textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--focus-ring);
+}
 
 /* ── Score input enhancements — chip + verbal anchor ─────────── */
 .criterionLabelRow {
@@ -629,8 +845,9 @@
   border-radius: var(--radius-md);
   border-left: 3px solid var(--accent-primary);
 }
+
 .specializedCriterion legend {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
@@ -639,12 +856,14 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
 }
+
 .specializedCriterion > p {
   margin: 0;
   color: var(--ink-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
 }
+
 .specializedCode {
   display: inline-flex;
   align-items: center;
@@ -659,18 +878,28 @@
   border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
   white-space: nowrap;
 }
+
 .specializedTitle {
   color: var(--ink-primary);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
 }
+
 .specializedStandards {
   display: block;
   color: var(--ink-muted);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   font-family: var(--font-family-ui);
+}
+
+/* Specialized section header */
+.formSectionSubtitle {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
 /* ── Discipline-specific guide (above form, collapsible) ─────── */
@@ -898,6 +1127,117 @@
 }
 .finalReviewGrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: var(--space-4); }
 .reviewField > span { color: var(--ink-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); line-height: var(--line-height-normal); }
+
+/* ── Recommendation button group ─────────────────────────────── */
+.recommendationGroup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.recommendationLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.recommendationButtons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.recommendationBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  min-height: var(--control-height-lg);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-secondary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  flex: 1;
+  min-width: 140px;
+}
+
+.recommendationBtn:hover:not(:disabled) {
+  background: var(--surface-paper);
+  border-color: var(--border-strong);
+  color: var(--ink-primary);
+}
+
+.recommendationBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.recommendationBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Approved button states */
+.recommendationBtnApproved {
+  border-color: var(--status-success-text);
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+}
+
+.recommendationBtnApproved:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-success-surface) 80%, var(--surface-paper));
+  border-color: var(--status-success-text);
+  color: var(--status-success-text);
+}
+
+.recommendationBtnApproved.selected {
+  background: var(--status-success-surface);
+  border-color: var(--status-success-text);
+  color: var(--status-success-text);
+  box-shadow: 0 0 0 1px var(--status-success-text);
+}
+
+/* Revision Needed button states */
+.recommendationBtnRevision {
+  border-color: var(--status-warning-text);
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+}
+
+.recommendationBtnRevision:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-warning-surface) 80%, var(--surface-paper));
+  border-color: var(--status-warning-text);
+  color: var(--status-warning-text);
+}
+
+.recommendationBtnRevision.selected {
+  background: var(--status-warning-surface);
+  border-color: var(--status-warning-text);
+  color: var(--status-warning-text);
+  box-shadow: 0 0 0 1px var(--status-warning-text);
+}
+
+/* Recommendation hint text */
+.recommendationHint {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
 .respondButtons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .submittedBanner { display: grid; gap: var(--space-3); padding: var(--space-5); background: var(--status-success-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
 .submittedBanner h2 { margin: 0; color: var(--status-success-text); font-family: var(--font-family-serif); font-size: var(--font-size-lg); }

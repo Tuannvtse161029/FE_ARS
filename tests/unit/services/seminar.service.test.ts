@@ -20,6 +20,10 @@ import {
   deriveEffectiveStatus,
   hasSubmittedFeedback,
   parseAiFeedback,
+  SEMINAR_STATUS_OVERRIDES_KEY,
+  getSeminarStatusOverrides,
+  setSeminarStatusOverride,
+  clearSeminarStatusOverride,
   type SeminarCreateRequest,
 } from '../../../src/services/seminar.service';
 
@@ -580,3 +584,65 @@ describe('deriveEffectiveStatus — null endTime means open-ended (BE-SEMINAR-EN
     expect(deriveEffectiveStatus('Upcoming', null)).toBe('UPCOMING');
   });
 });
+
+describe('Seminar status overrides (localStorage fallback for BE persistence gap)', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(SEMINAR_STATUS_OVERRIDES_KEY);
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    window.localStorage.removeItem(SEMINAR_STATUS_OVERRIDES_KEY);
+  });
+
+  it('reads empty overrides initially and allows setting and clearing overrides', () => {
+    expect(getSeminarStatusOverrides()).toEqual({});
+
+    setSeminarStatusOverride(47, 'Inactive');
+    expect(getSeminarStatusOverrides()).toEqual({ 47: 'Inactive' });
+
+    setSeminarStatusOverride(48, 'Upcoming');
+    expect(getSeminarStatusOverrides()).toEqual({ 47: 'Inactive', 48: 'Upcoming' });
+
+    clearSeminarStatusOverride(47);
+    expect(getSeminarStatusOverrides()).toEqual({ 48: 'Upcoming' });
+  });
+
+  it('setStatus persists override and returns seminar with updated status', async () => {
+    mockedApi.put.mockResolvedValueOnce({
+      data: { seminarId: 47, status: 'Upcoming', content: 'Demo Seminar' },
+    });
+
+    const result = await seminarService.setStatus(47, 'Inactive');
+
+    expect(mockedApi.put).toHaveBeenCalledWith('/api/Seminar/47', { status: 'Inactive' });
+    expect(result.status).toBe('Inactive');
+    expect(getSeminarStatusOverrides()[47]).toBe('Inactive');
+  });
+
+  it('mapSeminarToCard respects status override even when raw status is Upcoming', () => {
+    setSeminarStatusOverride(47, 'Inactive');
+
+    const card = mapSeminarToCard({
+      seminarId: 47,
+      status: 'Upcoming',
+      startTime: '2026-09-20T10:00:00Z',
+      endTime: '2026-09-20T11:00:00Z',
+      content: 'Demo Seminar 47',
+    });
+
+    expect(card.status).toBe('INACTIVE');
+    expect(card.effectiveStatus).toBe('INACTIVE');
+  });
+
+  it('delete clears status override for the seminar', async () => {
+    setSeminarStatusOverride(47, 'Inactive');
+    expect(getSeminarStatusOverrides()[47]).toBe('Inactive');
+
+    mockedApi.delete.mockResolvedValueOnce({});
+    await seminarService.delete(47);
+
+    expect(getSeminarStatusOverrides()[47]).toBeUndefined();
+  });
+});
+
