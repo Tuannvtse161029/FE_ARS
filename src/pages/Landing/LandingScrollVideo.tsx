@@ -36,6 +36,11 @@ import { useThemeToggle } from '../../hooks/useThemeToggle';
 import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
 import heroPoster from '../../assets/images/login_wallpaper.jpg';
+// Background images are referenced from CSS via `url(...)` paths so the
+// TSX file does not need to import them. The CSS file at
+// ./LandingScrollVideo.module.css wires the three Codex images into
+// the turnStage (workflow / 5 stages), substanceStage (workspaces /
+// collaboration), and testimonialSection (peer-review / desk lamp).
 import styles from './LandingScrollVideo.module.css';
 
 // ── Static content (i18n keys + English fallbacks) ──────────────

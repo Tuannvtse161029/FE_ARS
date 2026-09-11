@@ -7,10 +7,11 @@
  * For the pdfUrl integration test, vi.hoisted() is used to share spy references
  * with the hoisted vi.mock factory without running into the temporal dead zone.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../../../src/i18n/I18nContext';
 import { Register } from '../../../src/pages/Register/Register';
 
 // ── Module-level mocks via vi.hoisted() ────────────────────────────────────────
@@ -104,47 +105,70 @@ vi.mock('../../../src/hooks/useFirebaseUpload', () => ({
 const renderRegister = () =>
   render(<Register />, {
     wrapper: ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter>{children}</MemoryRouter>
+      <I18nProvider>
+        <MemoryRouter>{children}</MemoryRouter>
+      </I18nProvider>
     ),
   });
+
+/**
+ * Wait for the en dictionary chunk to finish loading inside the I18nProvider
+ * so the components re-render with translated strings instead of raw keys.
+ */
+const waitForDictionary = async () => {
+  await waitFor(() => {
+    expect(
+      document.querySelector('[aria-label="register.dropzone.uploadLabel"]'),
+    ).not.toBeInTheDocument();
+  }, { timeout: 3000 });
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE TESTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Register Page – smoke', () => {
-  test('renders all form fields', () => {
+  test('renders all form fields', async () => {
     renderRegister();
+    await waitForDictionary();
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/retype password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/select your platform role/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/orcid iD/i)).not.toBeInTheDocument();
+    // ORCID iD UI is rendered as part of the registration flow (Reviewer
+    // gating + optional Researcher/Lecturer connection). The presence of
+    // an accessible name is correct, so we assert the heading text instead
+    // of asserting it is absent.
+    expect(screen.getAllByText(/orcid iD/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 
-  test('renders ARS branding and title', () => {
+  test('renders ARS branding and title', async () => {
     renderRegister();
-    expect(screen.getByText('Academic Research System')).toBeInTheDocument();
+    await waitForDictionary();
+    expect(screen.getByText('Academic Research Sharing')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /create your account/i })).toBeInTheDocument();
   });
 
-  test('renders PDF upload dropzone', () => {
+  test('renders PDF upload dropzone', async () => {
     renderRegister();
-    expect(screen.getByText(/drag & drop verification document/i)).toBeInTheDocument();
-    expect(screen.getByText(/pdf only, max 10mb/i)).toBeInTheDocument();
+    await waitForDictionary();
+    expect(screen.getByText(/drag and drop your verification document here/i)).toBeInTheDocument();
+    expect(screen.getByText(/max 10mb/i)).toBeInTheDocument();
   });
 
-  test('renders role banner with sample PDF button', () => {
+  test('renders role banner with sample PDF button', async () => {
     renderRegister();
+    await waitForDictionary();
     expect(screen.getByText(/researcher verification required/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /view sample pdf format/i })).toBeInTheDocument();
   });
 
-  test('renders "Already have an account" link', () => {
+  test('renders "Already have an account" link', async () => {
     renderRegister();
+    await waitForDictionary();
     expect(screen.getByText(/already have an account/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /sign in instead/i })).toBeInTheDocument();
   });

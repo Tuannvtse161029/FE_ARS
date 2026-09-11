@@ -253,6 +253,9 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
       const { groupMemberService } = await import(
         '../../../src/services/groupMember.service'
       );
+      const { researchTopicService } = await import(
+        '../../../src/services/researchTopic.service'
+      );
       const getAllGroupsSpy = vi
         .spyOn(researchGroupService, 'getAll')
         .mockResolvedValue([
@@ -266,21 +269,25 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
             assignedAt: new Date().toISOString(),
           },
         ]);
+      // `useResearchTopics` (used by ResearchGroup.tsx) calls BOTH
+      // `researchTopicService.getMyTopics` and `researchTopicService.getAll`
+      // in parallel via Promise.allSettled and merges the results. Stub
+      // both so the page sees the assigned topic for the test group.
+      const topicFixture = {
+        id: 11,
+        topicId: 11,
+        title: 'Whisper STT',
+        status: 'OPEN',
+        description: 'desc',
+        materialsUrl: null,
+        assignedGroupIds: [1],
+      };
+      const getMyTopicsSpy = vi
+        .spyOn(researchTopicService, 'getMyTopics')
+        .mockResolvedValue([topicFixture]);
       const getAllTopicsSpy = vi
-        .spyOn(
-          await import('../../../src/services/guidanceProject.service'),
-          'getAllResearchTopics',
-        )
-        .mockResolvedValue([
-          {
-            id: 11,
-            title: 'Whisper STT',
-            status: 'OPEN',
-            description: 'desc',
-            materialsUrl: null,
-            assignedGroupId: 1,
-          },
-        ]);
+        .spyOn(researchTopicService, 'getAll')
+        .mockResolvedValue([topicFixture]);
       vi.spyOn(groupMemberService, 'getAll').mockResolvedValue([]);
 
       renderAppAt(ROUTES.RESEARCH_GROUP);
@@ -289,6 +296,7 @@ describe('MainLayout — Lecturer navigation (AGENT_LECTURER_NAVIGATION_READY)',
       expect(link.getAttribute('href')).toBe(ROUTES.LECTURER_RESEARCH_TOPICS);
 
       getAllGroupsSpy.mockRestore();
+      getMyTopicsSpy.mockRestore();
       getAllTopicsSpy.mockRestore();
     });
   });

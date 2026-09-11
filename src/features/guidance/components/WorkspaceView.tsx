@@ -36,7 +36,7 @@ import type { SubmittedPhasedReport } from '../../../services/phasedReport.servi
 import type { LearningMaterial } from '../../../services/learningMaterial.service';
 import type { StudentGroupView } from '../../../services/groupMembership.service';
 // CSS module kept at the original StudentResearchGroups CSS location for now.
-import styles from '../../pages/GraduateStudent/StudentResearchGroups.module.css';
+import styles from '../../../pages/GraduateStudent/StudentResearchGroups.module.css';
 
 type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
 type ReportsSortColumn = 'phase' | 'milestone' | 'submitted' | 'deadline' | 'score' | 'status';

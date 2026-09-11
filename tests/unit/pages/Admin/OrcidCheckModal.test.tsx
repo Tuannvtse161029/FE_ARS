@@ -19,7 +19,8 @@ import { afterEach } from 'vitest';
 import { OrcidCheckModal } from '../../../../src/pages/Admin/OrcidCheckModal';
 import { ORCID_CHECK_ENABLED } from '../../../../src/services/orcid.service';
 
-// Make sure the feature is off in the test environment.
+// `VITE_ORCID_CHECK_ENABLED` is stubbed to `'false'` in tests/setup.ts so
+// the orcid.service module evaluates ORCID_CHECK_ENABLED as disabled.
 expect(ORCID_CHECK_ENABLED).toBe(false);
 
 const baseUser = {
