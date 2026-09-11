@@ -99,7 +99,7 @@ export interface InviteParticipantsModalProps {
   onError: (message: string) => void;
 }
 
-export const InviteParticipantsModal: React.FC<InviteParticipantsModalProps> = ({
+export const InviteParticipantsModal = ({
   seminarId,
   seminarTitle,
   subFieldId,
@@ -112,7 +112,7 @@ export const InviteParticipantsModal: React.FC<InviteParticipantsModalProps> = (
   onClose,
   onSuccess,
   onError,
-}) => {
+}: InviteParticipantsModalProps) => {
   const locale = useLocale();
   const isVi = locale === 'vi';
   const copy = (en: string, vi: string) => (isVi ? vi : en);

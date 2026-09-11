@@ -48,11 +48,11 @@ const TIER_LABELS: Record<string, { en: string; vi: string }> = {
   Platinum: { en: 'Platinum', vi: 'Bạch Kim' },
 };
 
-export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
+export const TemplateSelector = ({
   selectedId,
   onSelect,
   filterMetricCodes,
-}) => {
+}: TemplateSelectorProps) => {
   const { locale } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
   const [expandedId, setExpandedId] = useState<string | undefined>(selectedId);
@@ -184,14 +184,14 @@ interface TierBreakdownProps {
   isSelected: boolean;
 }
 
-const TierBreakdown: React.FC<TierBreakdownProps> = ({
+const TierBreakdown = ({
   conditions,
   defaultUnit,
   locale,
   copyFn,
   onApply,
   isSelected,
-}) => {
+}: TierBreakdownProps) => {
   return (
     <div className={styles.tierBreakdown}>
       <div className={styles.tierBreakdownHeader}>

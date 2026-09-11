@@ -51,11 +51,11 @@ export interface UnifiedIconPickerProps {
 
 type TabId = 'library' | 'bold' | 'lucide' | 'upload' | 'url';
 
-export const UnifiedIconPicker: React.FC<UnifiedIconPickerProps> = ({
+export const UnifiedIconPicker = ({
   value,
   onChange,
   title,
-}) => {
+}: UnifiedIconPickerProps) => {
   const { locale } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
 

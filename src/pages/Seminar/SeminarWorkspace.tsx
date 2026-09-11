@@ -74,12 +74,6 @@ type WorkspaceTab = 'manage' | 'participate';
 const formatSeminarId = (id: number): string =>
   `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
-const formatBytesTitle = (raw: string): string => raw;
-
-const toLocalDateTimeInputValue = (date: Date): string => {
-  return toLocalDatetimeInput(date);
-};
-
 interface InviteeCandidate {
   userId: number;
   fullName: string;
@@ -407,7 +401,7 @@ export const SeminarWorkspace = () => {
   );
 
   const minDateTime = useMemo(
-    () => toLocalDateTimeInputValue(new Date(Date.now() + 5 * 60 * 1000)),
+    () => toLocalDatetimeInput(new Date(Date.now() + 5 * 60 * 1000)),
     [],
   );
 
@@ -835,11 +829,6 @@ export const SeminarWorkspace = () => {
     setShowFeedbackModal(true);
   };
 
-  // Legacy reminder entrypoint kept on the page instance so callers can still
-  // trigger it via any future "Remind Pending" action. The new
-  // SeminarFeedbackPanel owns its own reminder flow for completed seminars.
-  void doSendReminder;
-
   const handleOpenAiSummary = useCallback((sem: SeminarCard) => {
     setSelectedSeminarForAi(sem);
     setShowAiModal(true);
@@ -1152,7 +1141,7 @@ export const SeminarWorkspace = () => {
 
                     <div className={styles.cardTitleRow}>
                       <h3 className={styles.cardTitle}>
-                        {formatBytesTitle(sem.title)}
+                        {sem.title}
                       </h3>
                       <span
                         className={`${styles.statusBadge} ${
@@ -1292,9 +1281,7 @@ export const SeminarWorkspace = () => {
                               setDetailSeminar(sem);
                               setShowDetailModal(true);
                             }}
-                            aria-label={`View seminar details for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`View seminar details for ${sem.title}`}
                           >
                             <Eye size={14} aria-hidden />
                             {copy('Seminar Detail', 'Chi tiết hội thảo')}
@@ -1352,9 +1339,7 @@ export const SeminarWorkspace = () => {
                               setIsAttendeeFeedbackPreview(true);
                               setShowAttendeeFeedbackModal(true);
                             }}
-                            aria-label={`Preview feedback form for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`Preview feedback form for ${sem.title}`}
                           >
                             <ClipboardList size={14} aria-hidden />
                             {copy('Preview feedback form', 'Xem trước form')}
@@ -1414,9 +1399,7 @@ export const SeminarWorkspace = () => {
                               setDetailSeminar(sem);
                               setShowDetailModal(true);
                             }}
-                            aria-label={`View seminar details for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`View seminar details for ${sem.title}`}
                           >
                             <Eye size={14} aria-hidden />
                             {copy('Seminar Detail', 'Chi tiết hội thảo')}

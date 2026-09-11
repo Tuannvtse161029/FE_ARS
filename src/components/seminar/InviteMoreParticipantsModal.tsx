@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -72,9 +72,7 @@ function normaliseRole(role: string): string {
   return role;
 }
 
-export const InviteMoreParticipantsModal: React.FC<
-  InviteMoreParticipantsModalProps
-> = ({ isOpen, onClose, seminar, currentUserId, onSuccess }) => {
+export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentUserId, onSuccess }: InviteMoreParticipantsModalProps) => {
   const { t, locale } = useI18n();
   const isVi = locale === 'vi';
 

@@ -776,18 +776,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const roleName = response.role ?? authStore.user?.roleName ?? payload.role ?? null;
         const effectiveRole = (response.effectiveRole as EffectiveRole | null | undefined)
           ?? (isActive && roleName ? (roleName as EffectiveRole) : 'Guest');
-        const guestUser = {
-          ...(authStore.user || {}),
+        // Construct a valid User blob. When `authStore.user` is missing
+        // (cold /complete-google-registration) we still must produce a
+        // User that satisfies the interface, so we fall back to safe
+        // placeholders for the required scalar fields and let the rest
+        // of the post-auth flow rehydrate them from /api/user/{id}.
+        const previous = authStore.user;
+        const guestUser: User = {
           id: response.userId ?? userId,
+          username: previous?.username ?? '',
+          email: previous?.email ?? '',
+          fullName: previous?.fullName ?? '',
+          avatarUrl: previous?.avatarUrl ?? null,
+          orcidId: previous?.orcidId,
+          roleId: response.roleId ?? previous?.roleId ?? null,
           roleName,
-          roleId: response.roleId ?? authStore.user?.roleId ?? null,
+          roles: previous?.roles,
           isActive,
-          verificationStatus: response.verificationStatus ?? authStore.user?.verificationStatus ?? null,
+          isEmailVerified: previous?.isEmailVerified,
+          proofDocumentUrl: previous?.proofDocumentUrl ?? null,
+          verificationStatus: response.verificationStatus ?? previous?.verificationStatus ?? null,
+          accountTier: previous?.accountTier,
+          createdAt: previous?.createdAt,
+          updatedAt: previous?.updatedAt,
+          suspendedUntil: previous?.suspendedUntil ?? null,
           effectiveRole,
+          trialExpiryAt: previous?.trialExpiryAt ?? null,
           isNewUser: false,
           requiresOnboarding: false,
+          flairMedalId: previous?.flairMedalId ?? null,
+          flairOrder: previous?.flairOrder ?? null,
         };
-        storage.setUser(guestUser as any);
+        storage.setUser(guestUser);
         authStore.updateUser(guestUser);
         authStore.setEffectiveRole(effectiveRole);
 

@@ -82,7 +82,7 @@ const TIER_LABEL_KEY: Record<MedalTier, string> = {
   Platinum: 'admin.medals.tier.platinum',
 };
 
-export const MedalCatalog: React.FC<MedalCatalogProps> = ({
+export const MedalCatalog = ({
   medals,
   isLoading,
   onRefetch,
@@ -94,7 +94,7 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
   locale,
   recipientsByMedalCode,
   onOpenRecipients,
-}) => {
+}: MedalCatalogProps) => {
   const { t } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
 

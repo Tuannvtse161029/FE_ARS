@@ -35,13 +35,13 @@ const stripPrefix = (raw: string): string => {
   return raw.startsWith(PREFIX) ? raw.slice(PREFIX.length) : raw;
 };
 
-export const LucideIconPicker: React.FC<LucideIconPickerProps> = ({
+export const LucideIconPicker = ({
   value,
   onChange,
   id = 'lucideIconPickerSearch',
   gridId,
   gridAriaLabel,
-}) => {
+}: LucideIconPickerProps) => {
   const { t, locale } = useI18n();
   const [query, setQuery] = useState<string>('');
 

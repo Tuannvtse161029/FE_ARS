@@ -39,7 +39,7 @@ const formatRole = (role: string, locale: 'vi' | 'en'): string => {
   }
 };
 
-export const SeminarParticipationsPage: React.FC = () => {
+export const SeminarParticipationsPage= () => {
   const locale = useLocale();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
   const { user } = useAuth();
