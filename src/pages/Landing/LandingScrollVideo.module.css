@@ -121,6 +121,64 @@
   --sc-scrim-band-bot: rgba(29, 28, 25, 0.0);
 }
 
+/* Paper-day header: the cream glass plate makes the dark-navy logo
+   unreadable against the warm library photo and feels jarring between
+   the dark hero and the light stage. Replace with the brand's nav-bar
+   dark navy so the header reads as a confident brand rail rather than
+   a floating white strip. The logo elements stay dark (#2D3561) on the
+   dark background for high contrast and brand cohesion. */
+:global(:root[data-theme='paper-day']) .header {
+  background: #1b1a17;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Paper-day: same dark background and white text for the footer. */
+:global(:root[data-theme='paper-day']) .footer {
+  background: #1b1a17;
+  color: #fff;
+}
+:global(:root[data-theme='paper-day']) .footerBrand span {
+  color: #fff;
+}
+:global(:root[data-theme='paper-day']) .footerNav a {
+  color: rgba(255, 255, 255, 0.82);
+}
+:global(:root[data-theme='paper-day']) .footerNav a:hover {
+  color: var(--accent-primary);
+}
+:global(:root[data-theme='paper-day']) .footerCopy {
+  color: rgba(255, 255, 255, 0.45);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Paper-day: brand text and nav links are white; nav links turn
+   yellow on hover for clear affordance against the dark background. */
+:global(:root[data-theme='paper-day']) .brand span {
+  color: #fff;
+}
+:global(:root[data-theme='paper-day']) .navigation a {
+  color: rgba(255, 255, 255, 0.82);
+}
+:global(:root[data-theme='paper-day']) .navigation a:hover,
+:global(:root[data-theme='paper-day']) .navigation a:focus-visible {
+  color: var(--accent-primary);
+}
+
+/* Paper-day substance header: the stage sits on dark navy ground with
+   a library discussion photo blended in via soft-light. The title and
+   lead were using dark ink (--sc-ink-on-dark = #1d1c19 in paper-day)
+   which goes invisible on the dark photo background. Flip to warm
+   cream so the text reads clearly without harsh contrast against the
+   amber-toned photo. */
+:global(:root[data-theme='paper-day']) .substanceTitle {
+  color: #fff8e7;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+:global(:root[data-theme='paper-day']) .substanceLead {
+  color: rgba(255, 248, 231, 0.75);
+}
+
 /* ── Base page chrome ─────────────────────────────────────────── */
 .page {
   min-height: 100vh;
@@ -336,6 +394,19 @@
 :global(:root[data-theme='paper-day']) .turnStage .scrimBand,
 :global(:root[data-theme='paper-day']) .substanceStage .scrimBand {
   background: transparent;
+}
+
+/* Paper-day substanceStage: library discussion area image as a subtle
+   background wash behind the role-based workspace cards. The image is
+   very faint (opacity 0.12) so it reads as an atmospheric texture,
+   not a competing visual layer. The scrimBand stays transparent so
+   the warm-cream card surfaces have the contrast they need. */
+:global(:root[data-theme='paper-day']) .substanceStage {
+  background-image: url('../../assets/images/Codex Image Sep 9, 2026, 05_17_43 PM.png');
+  background-size: cover;
+  background-position: center 40%;
+  background-repeat: no-repeat;
+  background-blend-mode: soft-light;
 }
 /* Hero scrim — always dark because the photo needs contrast. Even
    in paper-day the hero photo is the same dark library shot, so
@@ -1001,11 +1072,48 @@
   /* Always-dark. Previously `var(--ink-primary)` — fine in paper-day
      (near-black) but a near-white panel in archive-dusk, breaking
      every text contrast and chip color in this act. */
-  background: var(--sc-stage-bg);
+  background-color: var(--sc-stage-bg);
   color: var(--sc-ink-on-dark);
   display: flex;
   align-items: stretch;
   justify-content: center;
+}
+
+/* Image background for the 5-stages section — bright open library hall
+   from the workflow image. Placed after the first .turnStage block so
+   background-image overrides the initial background-color in dark mode.
+   In paper-day the image is visible; in dark mode it blends into the
+   dark radial gradient fallback. */
+.turnStage {
+  position: relative;
+  background-image: url('../../assets/images/Codex Image Sep 11, 2026, 04_21_02 PM.png');
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+}
+
+/* Paper-day: the Turn stage uses .scrimBand as well. Replace the
+   transparent scrim override with a soft ivory overlay so the library
+   background stays visible but the text has a warm contrast plate. */
+:global(:root[data-theme='paper-day']) .turnStage .scrimBand {
+  background: linear-gradient(
+    to top,
+    rgba(255, 251, 235, 0.78) 0%,
+    rgba(255, 251, 235, 0.55) 40%,
+    rgba(255, 251, 235, 0.25) 65%,
+    transparent 85%
+  );
+}
+
+/* Paper-day: the section title sits over the warm library hall image,
+   so the default dark ink loses contrast against the amber/golden
+   tones. Flip .turnTitle to a warm parchment-cream that stays readable
+   on the photo while keeping the page's journal tone. A pure white
+   would feel cold against the warm gradient; this off-cream sits in
+   the same hue family as the surrounding paper surfaces. */
+:global(:root[data-theme='paper-day']) .turnTitle {
+  color: #fff8e7;
+  text-shadow: 0 1px 2px rgba(48, 32, 12, 0.35);
 }
 
 .turnInner {
@@ -1671,11 +1779,43 @@
 
 /* ── Testimonial ──────────────────────────────────────────────── */
 .testimonialSection {
+  position: relative;
   padding: clamp(70px, 10vh, 110px) 0;
   background: var(--surface-paper);
   opacity: 1;
   transform: translateY(0);
   transition: opacity 700ms var(--motion-ease-standard) 80ms, transform 700ms var(--motion-ease-standard) 80ms;
+}
+
+/* Paper-day: warm desk lamp / manuscript image behind the testimonial.
+   The dark overlay (0.80 opacity at top, fading to 0.55 at bottom) 
+   gives the light serif quote text the contrast it needs. */
+:global(:root[data-theme='paper-day']) .testimonialSection {
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(30, 22, 8, 0.82) 0%,
+      rgba(30, 22, 8, 0.65) 45%,
+      rgba(30, 22, 8, 0.55) 100%
+    ),
+    url('../../assets/images/Codex Image Sep 11, 2026, 04_22_37 PM.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* Paper-day: the testimonial quote text is light on the dark overlay */
+:global(:root[data-theme='paper-day']) .testimonialQuote {
+  color: #fdf6e3;
+}
+:global(:root[data-theme='paper-day']) .testimonialName {
+  color: #f5e6c8;
+}
+:global(:root[data-theme='paper-day']) .testimonialRole {
+  color: #c8b89a;
+}
+:global(:root[data-theme='paper-day']) .testimonialMark {
+  color: var(--accent-primary);
 }
 .testimonialSection:not(.revealed) {
   opacity: 0;
