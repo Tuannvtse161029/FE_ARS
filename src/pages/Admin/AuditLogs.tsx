@@ -40,11 +40,8 @@ const ACTION_COLOR: Record<
   'green' | 'red' | 'blue' | 'gray' | 'amber'
 > = {
   APPROVED_ROLE_REQUEST: 'green',
-  APPROVED_WITHDRAWAL: 'green',
-  COMPLETED_WITHDRAWAL: 'green',
   SUSPENDED_ACCOUNT: 'red',
   DENIED_ROLE_REQUEST: 'red',
-  DENIED_WITHDRAWAL: 'red',
   DELETED_CONTENT_SUSPENDED_14D: 'red',
   DELETED_CONTENT_WARNED: 'amber',
   DISMISSED_REPORT: 'gray',
@@ -64,9 +61,6 @@ export default function AuditLogs(): JSX.Element {
   const ACTION_LABEL: Record<AuditLogAction, string> = {
     APPROVED_ROLE_REQUEST: t('admin.auditLogs.action.approvedRoleRequest'),
     DENIED_ROLE_REQUEST: t('admin.auditLogs.action.deniedRoleRequest'),
-    APPROVED_WITHDRAWAL: t('admin.auditLogs.action.approvedWithdrawal'),
-    DENIED_WITHDRAWAL: t('admin.auditLogs.action.deniedWithdrawal'),
-    COMPLETED_WITHDRAWAL: t('admin.auditLogs.action.completedWithdrawal'),
     SUSPENDED_ACCOUNT: t('admin.auditLogs.action.suspendedAccount'),
     UNSUSPENDED_ACCOUNT: t('admin.auditLogs.action.unsuspendedAccount'),
     CREATED_PACKAGE: t('admin.auditLogs.action.createdPackage'),

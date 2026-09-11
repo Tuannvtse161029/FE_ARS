@@ -17,7 +17,7 @@
   left: 12px;
   display: inline-flex;
   align-items: center;
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
   pointer-events: none;
 }
 
@@ -25,7 +25,7 @@
   width: 100%;
   padding: 10px 36px 10px 36px;
   border-radius: 8px;
-  border: 1.5px solid var(--accent-primary, #007aff);
+  border: 1.5px solid var(--accent-primary, #e2ad2f);
   background: linear-gradient(
     180deg,
     var(--surface-raised, #ffffff) 0%,
@@ -87,7 +87,7 @@
     var(--surface-raised, #ffffff) 0%,
     var(--surface-subtle, #eff6ff) 100%
   );
-  border: 1.5px dashed var(--accent-primary, #007aff);
+  border: 1.5px dashed var(--accent-primary, #e2ad2f);
   border-radius: 8px;
   font-size: 0.8125rem;
   color: var(--ink-muted, #475569);
@@ -132,7 +132,7 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent-primary, #007aff), #6c4cf2);
+  background: linear-gradient(135deg, var(--accent-primary, #e2ad2f), #6c4cf2);
   color: var(--ink-on-accent, #ffffff);
   font-size: 0.625rem;
   font-weight: 800;
@@ -173,7 +173,7 @@
 
 .tile:hover,
 .tile:focus-visible {
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
   transform: translateY(-2px);
   box-shadow: 0 8px 18px -8px rgba(0, 122, 255, 0.55);
@@ -187,7 +187,7 @@
 }
 
 .tileActive {
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   background: linear-gradient(180deg, #ffffff 0%, #dbeafe 100%);
   color: var(--ink-primary, #0f172a);
   box-shadow:

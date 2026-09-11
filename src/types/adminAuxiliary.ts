@@ -60,16 +60,20 @@ export interface ResolveReportPayload {
 
 // ── Audit logs (Figma screen 11) ───────────────────────────────────────────
 // action values must stay in sync with the Figma color tags:
-//   green = APPROVED_*, COMPLETED_*
+//   green = APPROVED_*
 //   red   = DENIED_*, SUSPENDED_*, DELETED_CONTENT_SUSPENDED_14D, DISMISSED_REPORT
 //   blue  = *_PACKAGE, TOGGLED_PACKAGE
 //   gray  = UNSUSPENDED_ACCOUNT, DELETED_CONTENT_WARNED, TOGGLED_PACKAGE_ACTIVE
+//
+// Note: the historical APPROVED_WITHDRAWAL / DENIED_WITHDRAWAL /
+// COMPLETED_WITHDRAWAL actions were dropped when the wallet money flows
+// (top-up, withdrawal, reviewer payouts) were retired — see
+// docs/WALLET_SCOPE_CHANGE.md. Existing audit rows with those actions
+// still parse because they only live in stored history; no new rows are
+// produced.
 export type AuditLogAction =
   | 'APPROVED_ROLE_REQUEST'
   | 'DENIED_ROLE_REQUEST'
-  | 'APPROVED_WITHDRAWAL'
-  | 'DENIED_WITHDRAWAL'
-  | 'COMPLETED_WITHDRAWAL'
   | 'SUSPENDED_ACCOUNT'
   | 'UNSUSPENDED_ACCOUNT'
   | 'CREATED_PACKAGE'

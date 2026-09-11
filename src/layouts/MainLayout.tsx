@@ -12,6 +12,7 @@ import { NotificationCenter } from '../components/notification/NotificationCente
 import { WelcomeBackBanner } from '../components/WelcomeBackBanner/WelcomeBackBanner';
 import { SubscriptionBadge } from '../components/subscription/SubscriptionBadge';
 import { LanguageToggle } from '../components/i18n/LanguageToggle';
+import { LoadingTaskWidget } from '../components/LoadingTaskWidget/LoadingTaskWidget';
 import { KeyboardShortcutsHelp } from '../components/shortcuts/KeyboardShortcutsHelp';
 import { PublicationToastViewport } from '../features/publication/components/PublicationToastViewport';
 import { useShortcuts } from '../hooks/useShortcuts';
@@ -896,7 +897,7 @@ export const MainLayout = () => {
             </button>
 
             {/* Theme toggle (Agent 38) — sun/moon button placed to the LEFT
-                of the wallet/notifications/user pill so it's easy to find.
+                of the notifications/user pill so it's easy to find.
                 Clicking flips the data-theme attribute on the MainLayout
                 root (and on <html> via applyThemeToRoot) and persists the
                 choice in localStorage under `ars_theme`. The icon shown
@@ -924,6 +925,15 @@ export const MainLayout = () => {
                 the page. Flag + active locale code; click cycles between
                 Vietnamese (default) and English. */}
             <LanguageToggle />
+
+            {/* Loading task chip — surfaces long-running background tasks
+                (e.g. AI seminar summarisation) so the user can keep
+                navigating while the BE finishes. Renders nothing when no
+                task is in flight, so its slot stays invisible most of the
+                time. Sits to the RIGHT of the language toggle and the LEFT
+                of the reviewer availability switch, keeping the settings
+                cluster on one side and the notification bell on the other. */}
+            <LoadingTaskWidget />
 
             {/* Reviewer availability toggle — only shown for Reviewer role.
                 The toggle announces its current state to assistive tech via

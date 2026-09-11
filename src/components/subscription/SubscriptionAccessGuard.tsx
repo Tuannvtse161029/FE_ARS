@@ -62,10 +62,10 @@ export const SubscriptionLockedState = ({
         alignSelf: 'flex-start',
         display: 'inline-block',
         padding: 'var(--space-2) var(--space-4)',
-        border: '1px solid var(--ars-blue-action, #007AFF)',
+        border: '1px solid var(--ars-blue-action, #e2ad2f)',
         borderRadius: 'var(--radius-sm, 4px)',
         background: 'transparent',
-        color: 'var(--ars-blue-action, #007AFF)',
+        color: 'var(--ars-blue-action, #e2ad2f)',
         fontWeight: 'var(--font-weight-semibold, 600)',
         textDecoration: 'none',
       }}

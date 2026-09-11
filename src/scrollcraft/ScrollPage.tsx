@@ -33,7 +33,7 @@ export const defaultTheme: ScrollPageTheme = {
   surface: '#fbf8f1',   // ARS paper card
   ink: '#2d3561',       // ARS deep navy
   inkSoft: '#59627a',   // ARS muted slate
-  accent: '#007aff',    // ARS blue
+  accent: '#e2ad2f',    // ARS blue
   accentInk: '#ffffff',
   fontDisplay: '"Roboto", "Segoe UI", Helvetica, Arial, sans-serif',
   fontText: '"Roboto", "Segoe UI", Helvetica, Arial, sans-serif',

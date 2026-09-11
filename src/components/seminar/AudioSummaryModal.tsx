@@ -9,10 +9,11 @@
 //                        the summary into Seminars.aiSummary — no extra save
 //                        step is needed; ticket §37 explicitly removes the
 //                        legacy `PUT /api/Seminar/{id}/ai-summary` flow)
-//   initialAiSummary   — the summary already stored on the BE (from
-//                        `GET /api/Seminar/{id}`). When non-empty, the modal
-//                        opens directly in summary view so the user does not
-//                        need to re-upload their video just to view it.
+//   initialAiSummary   — OPTIONAL fallback summary text. The BE intentionally
+//                        nulls `aiSummary` in the list response (`GET /api/Seminar`,
+//                        ticket §7), so this prop is almost always null. The
+//                        modal fetches the canonical summary itself via
+//                        `GET /api/Seminar/{id}` on open — see `loadSeminarDetail`.
 //
 // Ticket references: §34-§37 (canonical summarize-audio flow, 409 replace
 // confirm, removal of the standalone save endpoint).
@@ -30,6 +31,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useSeminarAudio } from '../../hooks/useSeminarAudio';
+import { useLongTaskTracker } from '../../hooks/useLongTaskTracker';
+import { seminarService } from '../../services/seminar.service';
+import { ROUTES } from '../../routes/paths';
 import styles from './AudioSummaryModal.module.css';
 
 interface AudioSummaryModalProps {
@@ -55,9 +59,19 @@ export const AudioSummaryModal = ({
   initialAiSummary = null,
 }: AudioSummaryModalProps) => {
   const { summarize, status, progress, result, error, reset } = useSeminarAudio();
+  const { startTask, finishTask, cancelTask } = useLongTaskTracker();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // `currentAiSummary` is the canonical summary rendered in the modal. It is
+  // populated by `loadSeminarDetail()` on open so the host sees the existing
+  // AI summary (the BE intentionally nulls `aiSummary` in the list response,
+  // so we cannot rely on `initialAiSummary` from the seminar card).
+  const [currentAiSummary, setCurrentAiSummary] = useState<string | null>(
+    initialAiSummary,
+  );
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(
     initialAiSummary ? 'summary' : 'upload',
   );
@@ -76,7 +90,66 @@ export const AudioSummaryModal = ({
 
   // `true` when the seminar already had an AI summary when the modal
   // opened. Drives the dropzone warning + replace-prompt on upload.
-  const hadInitialSummary = Boolean(initialAiSummary);
+  const hadInitialSummary = Boolean(currentAiSummary);
+
+  // ── Fetch seminar detail (canonical AI summary) ──────────────────────────
+  // The list endpoint `GET /api/Seminar` intentionally nulls `aiSummary`
+  // (ticket §7). The detail endpoint `GET /api/Seminar/{id}` is the only
+  // place that surfaces the persisted summary. We fetch on open so the
+  // modal opens in summary view when one already exists, and so the
+  // host sees the replace-confirm warning before uploading.
+  //
+  // Declared before the open-time effect below so the effect can call it
+  // without a `used before declaration` TypeScript error.
+  //
+  // A `mountedRef` guards the async setter calls: if the user closes the
+  // modal (or unmounts the page) while `GET /api/Seminar/{id}` is still
+  // in flight, the response handler would otherwise try to update state
+  // on an unmounted component and surface a React warning.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const loadSeminarDetail = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setLoadingDetail(true);
+    setDetailError(null);
+    try {
+      const detail = await seminarService.getById(seminarId);
+      if (!mountedRef.current) return;
+      // Defensive: if a fresh summarize already populated `currentAiSummary`
+      // while the detail request was in flight, keep the fresher value.
+      const fetched = detail?.aiSummary ?? null;
+      setCurrentAiSummary((prev) => {
+        const next = prev ?? fetched;
+        // If the BE says there IS a summary and we haven't already moved
+        // into summary view (e.g. the open-time effect landed in upload
+        // mode because `initialAiSummary` was null), flip the view mode
+        // now so the host actually sees the existing summary instead of
+        // the upload dropzone. This is the core fix for the "View Notes
+        // button didn't get those notes up" bug.
+        if (next && status === 'idle') {
+          setViewMode('summary');
+        }
+        return next;
+      });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Could not load the saved AI summary.';
+      setDetailError(msg);
+      // Fall back to whatever the parent gave us (almost always null).
+      setCurrentAiSummary((prev) => prev ?? initialAiSummary);
+    } finally {
+      if (mountedRef.current) setLoadingDetail(false);
+    }
+  }, [seminarId, initialAiSummary, status]);
 
   // ── Reset state when modal opens ──────────────────────────────────────────
   useEffect(() => {
@@ -85,19 +158,93 @@ export const AudioSummaryModal = ({
       setSelectedFile(null);
       setCopied(false);
       setReplaceConfirmed(false);
+      setCurrentAiSummary(initialAiSummary);
       setViewMode(initialAiSummary ? 'summary' : 'upload');
+      // Always fetch the canonical seminar detail on open. The BE nulls
+      // `aiSummary` in the list response (ticket §7), so without this fetch
+      // the modal cannot tell whether the seminar already has a summary and
+      // opens in upload mode even when a summary exists. The fetch is what
+      // fixes the "View Notes button didn't get those notes up" bug.
+      void loadSeminarDetail();
     }
-  }, [isOpen, initialAiSummary, reset]);
+  }, [isOpen, initialAiSummary, reset, loadSeminarDetail]);
 
-  // Close on Escape
+  // ── Close handler ──────────────────────────────────────────────────────────
+  // The modal can be closed in two different ways:
+  //   1. User explicitly dismisses (X button, Escape, Cancel/Close) — we want
+  //      to clear the in-flight tracker task so the widget disappears too.
+  //      The user has chosen to abandon the operation and we should respect
+  //      that — re-surfacing "click to return" later would be jarring.
+  //   2. User navigates away to another page — the modal unmounts without
+  //      `onClose` firing. We DO NOT cancelTask in that path so the widget
+  //      can carry the loading feedback across the navigation; the orphaned
+  //      explicit origin will be garbage-collected by `loadingTracker.end()`
+  //      when the in-flight axios request eventually resolves.
+  //
+  // `handleClose` is the canonical entry for case (1). It's wired to every
+  // explicit close affordance in the modal JSX so the cleanup stays in one
+  // place. `ReplaceConfirmOverlay` has its own `onClose` because it only
+  // dismisses the inline confirm prompt — never the parent modal.
+  const handleClose = useCallback(() => {
+    cancelTask();
+    onClose?.();
+  }, [cancelTask, onClose]);
+
+  // ── Background task tracker ────────────────────────────────────────────────
+  // The AI summarise flow can run for tens of seconds (upload + BE
+  // processing). Once the request is in flight, we register it with the
+  // global `loadingTracker` so the header `LoadingTaskWidget` chip can
+  // take over from the page-level overlay and let the user navigate
+  // freely while the BE finishes. On success the chip shows a checkmark
+  // and a "click to return" affordance; on failure it silently cancels.
+  //
+  // We also write the reopen intent to `sessionStorage` so when the
+  // user clicks the chip we can re-open this modal on return — even if
+  // the page unmounted while the user was away. The key is keyed by
+  // the modal identity so multiple modals don't trample each other.
+  const reopenStorageKey = `ars:task-reopen:aiSummary|${seminarId}`;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    try {
+      window.sessionStorage.setItem(reopenStorageKey, JSON.stringify({ seminarId }));
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+    return () => {
+      try {
+        window.sessionStorage.removeItem(reopenStorageKey);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [isOpen, reopenStorageKey]);
+
+  // Watch the upload hook's status and reflect the terminal outcome into
+  // the long-task tracker. We intentionally do NOT touch the tracker on
+  // unmount — see the comment on `handleClose` for why cross-page
+  // navigation should keep an in-flight task alive.
+  useEffect(() => {
+    if (status === 'completed') {
+      finishTask(true);
+    } else if (status === 'failed') {
+      // Treat failures as cancellations — don't leave an erroneous
+      // success chip on the screen. The modal itself surfaces the BE
+      // error message inline.
+      cancelTask();
+    }
+  }, [status, finishTask, cancelTask]);
+
+  // Close on Escape (modal-level only; ReplaceConfirmOverlay traps its
+  // own Escape separately).
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   // ── File selection helpers ──────────────────────────────────────────────────
 
@@ -145,8 +292,26 @@ export const AudioSummaryModal = ({
   const trySummarize = useCallback(
     async (replaceExisting: boolean) => {
       if (!selectedFile) return;
+      // Register the long-running task with the global tracker so the
+      // header widget can carry the loading feedback. We register here
+      // (right before the API call) rather than on modal-open, because
+      // most users pick a file, hit Summarize, and the BE takes time;
+      // we don't want to start a "task in progress" the moment the
+      // modal pops open without any actual work happening yet.
+      startTask({
+        path: ROUTES.SEMINAR_WORKSPACE,
+        modalKey: `aiSummary|${seminarId}`,
+        label: 'AI Summary',
+      });
       try {
-        await summarize(seminarId, selectedFile, { replaceExisting });
+        const response = await summarize(seminarId, selectedFile, { replaceExisting });
+        // Persist the freshly generated summary into `currentAiSummary` so
+        // the modal stays in summary view after `reset()` is called from
+        // somewhere else. The `result` from the hook is the source of truth
+        // while it is populated, but `currentAiSummary` outlives that.
+        if (response?.aiSummary) {
+          setCurrentAiSummary(response.aiSummary);
+        }
         // Success — the BE persists `Seminars.aiSummary` itself
         // (ticket §35), so there's no separate save step.
         setViewMode('summary');
@@ -155,7 +320,7 @@ export const AudioSummaryModal = ({
         // Error is surfaced by the hook via `error` state.
       }
     },
-    [seminarId, selectedFile, summarize, onSuccess],
+    [seminarId, selectedFile, summarize, startTask, onSuccess],
   );
 
   const handleUpload = async () => {
@@ -179,7 +344,7 @@ export const AudioSummaryModal = ({
   // ── Copy summary ────────────────────────────────────────────────────────────
 
   const handleCopy = () => {
-    const text = result?.aiSummary ?? initialAiSummary;
+    const text = result?.aiSummary ?? currentAiSummary;
     if (!text) return;
     void navigator.clipboard.writeText(text);
     setCopied(true);
@@ -207,12 +372,17 @@ export const AudioSummaryModal = ({
   const isFailed = status === 'failed';
   const hasFile = selectedFile != null;
 
-  // Summary text priority: freshly generated result > pre-existing summary.
-  const displayedSummary = result?.aiSummary ?? initialAiSummary ?? null;
+  // Summary text priority: freshly generated result > canonical detail-fetched
+  // summary > prop fallback. `currentAiSummary` is populated by the detail
+  // fetch on open, which is the fix for "View Notes didn't show the existing
+  // summary" — the BE nulls `aiSummary` in the list response (ticket §7) so
+  // we have to read it from the detail endpoint.
+  const displayedSummary = result?.aiSummary ?? currentAiSummary ?? null;
   const showSummaryView =
     (isCompleted && displayedSummary) ||
     (status === 'idle' && viewMode === 'summary' && displayedSummary);
-  const showUploadView = status === 'idle' && viewMode === 'upload';
+  const showUploadView =
+    status === 'idle' && viewMode === 'upload' && !loadingDetail;
 
   // Did the BE just 409 us?
   const is409 =
@@ -242,7 +412,7 @@ export const AudioSummaryModal = ({
           </div>
           <button
             className={styles.closeBtn}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             <X size={18} aria-hidden />
@@ -251,6 +421,45 @@ export const AudioSummaryModal = ({
 
         {/* Content */}
         <div className={styles.contentArea}>
+          {/* ── Loading canonical AI summary ──────────────────────────────────
+              Shown briefly while we read `GET /api/Seminar/{id}` so we know
+              whether the seminar already has an AI summary persisted on the
+              BE. Without this fetch the modal would always open in upload
+              mode (because the list response nulls `aiSummary` per ticket
+              §7), which is the original "View Notes button didn't get those
+              notes up" bug. */}
+          {loadingDetail && (
+            <div className={styles.progressArea} data-testid="ai-summary-loading-detail">
+              <div className={styles.progressHeader}>
+                <Loader
+                  size={20}
+                  className={styles.spinningIcon}
+                  aria-hidden
+                />
+                <span className={styles.progressLabel}>
+                  Loading saved AI summary…
+                </span>
+              </div>
+              <p className={styles.progressSub}>
+                Reading the AI summary already stored on this seminar record.
+              </p>
+            </div>
+          )}
+
+          {/* ── Detail fetch failed — show a non-blocking warning and fall
+              through to the regular upload / summary views below. The user
+              can still upload a new recording; we just couldn't confirm
+              whether one already existed. */}
+          {!loadingDetail && detailError && (
+            <div className={styles.replaceWarning} role="note">
+              <AlertTriangle size={14} aria-hidden />
+              <span>
+                Could not load the saved AI summary ({detailError}). You can
+                still upload a new recording below.
+              </span>
+            </div>
+          )}
+
           {/* ── Uploading / Processing ────────────────────────────────────── */}
           {isUploading && (
             <div className={styles.progressArea}>
@@ -432,7 +641,12 @@ export const AudioSummaryModal = ({
                 onClick={() => {
                   reset();
                   setSelectedFile(null);
-                  setViewMode(initialAiSummary ? 'summary' : 'upload');
+                  setViewMode(currentAiSummary ? 'summary' : 'upload');
+                  // Re-read the canonical summary from the BE so the modal
+                  // lands in the right view mode after the user hits Try
+                  // Again — without this re-fetch we'd reopen on whatever
+                  // was cached locally and re-trigger the same 409.
+                  void loadSeminarDetail();
                 }}
               >
                 <RotateCcw size={14} aria-hidden />
@@ -456,7 +670,7 @@ export const AudioSummaryModal = ({
         <div className={styles.footer}>
           {showUploadView && (
             <>
-              <button className={styles.cancelBtn} onClick={onClose}>
+              <button className={styles.cancelBtn} onClick={handleClose}>
                 Cancel
               </button>
               <button
@@ -472,7 +686,7 @@ export const AudioSummaryModal = ({
 
           {showSummaryView && (
             <>
-              <button className={styles.cancelBtn} onClick={onClose}>
+              <button className={styles.cancelBtn} onClick={handleClose}>
                 Close
               </button>
               <button
@@ -491,7 +705,7 @@ export const AudioSummaryModal = ({
           {(isUploading || isFailed) &&
             !showUploadView &&
             !showSummaryView && (
-              <button className={styles.cancelBtn} onClick={onClose}>
+              <button className={styles.cancelBtn} onClick={handleClose}>
                 {isUploading ? 'Cancel' : 'Close'}
               </button>
             )}

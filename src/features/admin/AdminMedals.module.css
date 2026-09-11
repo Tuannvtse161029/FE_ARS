@@ -200,7 +200,7 @@
 
 .changeImageQuickBtn {
   font-size: 0.75rem;
-  color: var(--accent-primary, #2563eb);
+  color: var(--accent-primary, #d9a200);
   background: none;
   border: none;
   text-decoration: underline;
@@ -210,7 +210,7 @@
 }
 
 .changeImageQuickBtn:hover {
-  color: #1d4ed8;
+  color: #c78e12;
 }
 
 .medalTitleInfo {
@@ -254,7 +254,7 @@
 
 .roleTagReviewer {
   background: #dbeafe;
-  color: #1e40af;
+  color: #70490e;
 }
 
 .roleTagStudent {
@@ -449,7 +449,7 @@
 .formSelect:focus,
 .formTextarea:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: #d9a200;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
@@ -773,26 +773,26 @@
 }
 
 .btnActionPrimary {
-  background: #2563eb;
+  background: #d9a200;
   color: #ffffff;
-  border-color: #2563eb;
+  border-color: #d9a200;
 }
 
 .btnActionPrimary:hover {
-  background: #1d4ed8;
+  background: #c78e12;
   color: #ffffff;
 }
 
 .btnChangeImgDirect {
   background: #eff6ff;
-  color: #2563eb;
+  color: #d9a200;
   border-color: #bfdbfe;
   font-weight: 600;
 }
 
 .btnChangeImgDirect:hover {
   background: #dbeafe;
-  color: #1d4ed8;
+  color: #c78e12;
 }
 
 .uploadDropArea {
@@ -810,7 +810,7 @@
 }
 
 .uploadDropArea:hover {
-  border-color: #3b82f6;
+  border-color: #facc15;
   background: #e0f2fe;
 }
 
@@ -825,7 +825,7 @@
 
 .progressBarFill {
   height: 100%;
-  background: #2563eb;
+  background: #d9a200;
   transition: width 0.2s ease;
 }
 
@@ -905,14 +905,14 @@
 .iconPickerItem:hover {
   background: #eff6ff;
   border-color: #93c5fd;
-  color: #1d4ed8;
+  color: #c78e12;
   transform: translateY(-1px);
 }
 
 .iconPickerItemActive {
   background: #dbeafe;
-  border-color: #2563eb;
-  color: #1d4ed8;
+  border-color: #d9a200;
+  color: #c78e12;
   font-weight: 600;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }

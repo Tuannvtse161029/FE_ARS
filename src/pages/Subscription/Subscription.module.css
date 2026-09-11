@@ -113,8 +113,8 @@
 }
 
 .planCardSelected {
-  border-color: var(--ars-blue-action, #007AFF);
-  box-shadow: 0 0 0 1px var(--ars-blue-action, #007AFF);
+  border-color: var(--ars-blue-action, #e2ad2f);
+  box-shadow: 0 0 0 1px var(--ars-blue-action, #e2ad2f);
 }
 
 .planDuration {
@@ -150,7 +150,7 @@
 
 .planFeature::before {
   content: '— ';
-  color: var(--ars-blue-action, #007AFF);
+  color: var(--ars-blue-action, #e2ad2f);
 }
 
 .actionRow {
@@ -162,9 +162,9 @@
 .proceedButton {
   min-height: 40px;
   padding: 0 var(--space-4);
-  border: 1px solid var(--ars-blue-action, #007AFF);
+  border: 1px solid var(--ars-blue-action, #e2ad2f);
   border-radius: var(--radius-sm);
-  background: var(--ars-blue-action, #007AFF);
+  background: var(--ars-blue-action, #e2ad2f);
   color: #fff;
   cursor: pointer;
   font-family: var(--font-family-ui);

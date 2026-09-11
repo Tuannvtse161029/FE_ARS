@@ -278,7 +278,7 @@
 
 .memberAvatar[data-avatar-tone='green']  { --avatar-bg: #10b981; }
 .memberAvatar[data-avatar-tone='amber']  { --avatar-bg: #f59e0b; }
-.memberAvatar[data-avatar-tone='blue']   { --avatar-bg: #3b82f6; }
+.memberAvatar[data-avatar-tone='blue']   { --avatar-bg: #facc15; }
 .memberAvatar[data-avatar-tone='purple'] { --avatar-bg: #7c3aed; }
 .memberAvatar[data-avatar-tone='red']    { --avatar-bg: #ef4444; }
 .memberAvatar[data-avatar-tone='muted']  { --avatar-bg: #94a3b8; }

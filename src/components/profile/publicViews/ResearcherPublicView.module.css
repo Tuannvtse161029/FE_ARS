@@ -1,0 +1,241 @@
+/* ResearcherPublicView — amber ochre publication index */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.identityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.identityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.identityLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.identityValue {
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5em;
+}
+
+.orcid {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--status-success-text, var(--ars-success, #047857));
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-paper);
+  border: 1px solid var(--profile-accent, var(--accent-primary));
+  color: var(--profile-accent, var(--accent-primary));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-height: 28px;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-paper);
+}
+
+.registerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
+.registerTable thead th {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+
+.registerTable tbody td {
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  color: var(--ink-primary);
+}
+
+.registerTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.registerTable tbody tr:hover {
+  background: var(--surface-selected);
+}
+
+.colId {
+  width: 76px;
+}
+
+.colYear {
+  width: 76px;
+}
+
+.colType {
+  width: 110px;
+}
+
+.colTitle {
+  min-width: 220px;
+}
+
+.colStatus {
+  width: 120px;
+}
+
+.idCode {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.typeChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+
+.status-published {
+  color: var(--status-success-text, var(--ars-success, #047857));
+  background: var(--status-success-surface, var(--ars-success-bg, #d1fae5));
+}
+
+.status-open,
+.status-pending,
+.status-draft {
+  color: var(--status-info-text, var(--ars-info, #70490e));
+  background: var(--status-info-surface, var(--ars-info-bg, #dbeafe));
+}
+
+.status-rejected,
+.status-failed {
+  color: var(--status-danger-text, var(--ars-error, #991b1b));
+  background: var(--status-danger-surface, var(--ars-error-bg, #fee2e2));
+}
+
+.empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--surface-paper);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+  max-width: 80ch;
+}
+
+@media (max-width: 720px) {
+  .identityGrid {
+    grid-template-columns: 1fr;
+  }
+  .metricsRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+}

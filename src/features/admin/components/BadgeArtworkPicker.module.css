@@ -34,7 +34,7 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
 }
 
@@ -144,7 +144,7 @@
 
 .tile:hover,
 .tile:focus-visible {
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   background: var(--status-info-surface, #eff6ff);
   transform: translateY(-1px);
   outline: none;
@@ -155,7 +155,7 @@
 }
 
 .tileActive {
-  border-color: var(--accent-primary, #007aff);
+  border-color: var(--accent-primary, #e2ad2f);
   background: var(--status-info-surface, #dbeafe);
   color: var(--ink-primary, #0f172a);
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.18);
@@ -178,7 +178,7 @@
   height: 80%;
   object-fit: contain;
   display: block;
-  color: var(--accent-primary, #007aff);
+  color: var(--accent-primary, #e2ad2f);
 }
 
 .tileCaption {

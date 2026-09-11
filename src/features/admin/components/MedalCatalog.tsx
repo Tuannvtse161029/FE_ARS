@@ -254,7 +254,7 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
         <div className={styles.statCard}>
           <div
             className={styles.statIcon}
-            style={{ color: 'var(--accent-primary, #2563eb)' }}
+            style={{ color: 'var(--accent-primary, #d9a200)' }}
           >
             <MedalIcon size={24} />
           </div>

@@ -46,10 +46,10 @@
 }
 
 .searchInput:focus-visible {
-  outline: 2px solid var(--focus-ring, #007AFF);
+  outline: 2px solid var(--focus-ring, #e2ad2f);
   outline-offset: 1px;
-  border-color: var(--focus-ring, #007AFF);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring, #007AFF) 18%, transparent);
+  border-color: var(--focus-ring, #e2ad2f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring, #e2ad2f) 18%, transparent);
 }
 
 .searchInput::placeholder {
@@ -82,7 +82,7 @@
 }
 
 .clearBtn:focus-visible {
-  outline: 2px solid var(--focus-ring, #007AFF);
+  outline: 2px solid var(--focus-ring, #e2ad2f);
   outline-offset: 1px;
 }
 
@@ -150,14 +150,14 @@
 .item:hover {
   background: var(--surface-selected, #eff6ff);
   border-color: var(--accent-primary, #93c5fd);
-  color: var(--accent-primary, #1d4ed8);
+  color: var(--accent-primary, #c78e12);
   transform: translateY(-1px);
 }
 
 .item:focus-visible {
-  outline: 2px solid var(--focus-ring, #007AFF);
+  outline: 2px solid var(--focus-ring, #e2ad2f);
   outline-offset: 2px;
-  border-color: var(--focus-ring, #007AFF);
+  border-color: var(--focus-ring, #e2ad2f);
 }
 
 .item:active {
@@ -165,11 +165,11 @@
 }
 
 .itemActive {
-  background: color-mix(in srgb, var(--accent-primary, #2563eb) 12%, transparent);
-  border-color: var(--accent-primary, #2563eb);
-  color: var(--accent-primary, #1d4ed8);
+  background: color-mix(in srgb, var(--accent-primary, #d9a200) 12%, transparent);
+  border-color: var(--accent-primary, #d9a200);
+  color: var(--accent-primary, #c78e12);
   font-weight: 600;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #2563eb) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #d9a200) 20%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

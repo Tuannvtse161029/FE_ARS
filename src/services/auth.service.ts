@@ -24,9 +24,9 @@ import type {
  *
  * Every ARS auth artefact that must be cleared during a logout / session
  * reset is listed here so the centralized cleanup routine can target them
- * by name. Domain data keys (e.g. `ars_wallet`, `ars_reviewer_balance`) are
- * intentionally NOT included — they belong to other modules and must
- * survive a session reset so the user does not lose unrelated state.
+ * by name. Domain data keys are intentionally NOT included — they belong
+ * to other modules and must survive a session reset so the user does not
+ * lose unrelated state.
  *
  * NOTE: keep this list in sync with `authSlice.ts` and `storage.ts`. Any
  * new persisted auth field MUST be added here.
@@ -113,7 +113,7 @@ function disableGoogleAutoSelectIfAvailable(): void {
  * trigger the Axios 401 interceptor.
  *
  * No call to `localStorage.clear()` — that would wipe unrelated domain
- * data (wallet, reviewer balance, etc.) and break cross-session state.
+ * data and break cross-session state.
  */
 export function clearAuthSession(): void {
   // ── Synchronous cleanup ───────────────────────

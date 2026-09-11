@@ -438,7 +438,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
                     >
                       <div className={styles.roleCardHeader}>
                         <span className={styles.roleCardTitle}>
-                          <Icon size={16} color={isActive ? '#2563eb' : '#64748b'} />
+                          <Icon size={16} color={isActive ? '#d9a200' : '#64748b'} />
                           {role}
                         </span>
                         <div className={styles.roleCardRadio}>
@@ -460,7 +460,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
             <div
               style={{
                 background: '#f1f5f9',
-                borderLeft: '4px solid #2563eb',
+                borderLeft: '4px solid #d9a200',
                 padding: '10px 14px',
                 borderRadius: '0 8px 8px 0',
                 fontSize: '0.82rem',
@@ -534,7 +534,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
             {uploadedFile && proofDocumentUrl ? (
               <div className={styles.filePreview}>
                 <div className={styles.filePreviewInfo}>
-                  <FileText size={20} color="#2563eb" />
+                  <FileText size={20} color="#d9a200" />
                   <div>
                     <div className={styles.filePreviewName}>{uploadedFile.name}</div>
                     <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
@@ -547,7 +547,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
                     href={proofDocumentUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    style={{ color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                    style={{ color: '#d9a200', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
                   >
                     <ExternalLink size={13} /> {isVi ? 'Xem' : 'View'}
                   </a>

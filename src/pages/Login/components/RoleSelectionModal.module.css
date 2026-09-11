@@ -5,11 +5,16 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(26, 31, 54, 0.55);
+  /* Near-opaque black so the overlay covers the ENTIRE page — not just
+     the login card. `createPortal` renders this at document.body, so
+     `position: fixed` is always relative to the viewport root. */
+  background-color: rgba(10, 10, 20, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: 9999;
   padding: var(--space-4);
   animation: rsFadeIn var(--transition-fast) ease-out;
 }

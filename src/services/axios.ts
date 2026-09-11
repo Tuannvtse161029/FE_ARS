@@ -27,7 +27,7 @@ api.interceptors.request.use(
   (error: AxiosError) => {
     // The request can fail before Axios creates a response, so close the
     // tracker here as well as in the response interceptor.
-    loadingTracker.end();
+    loadingTracker.end(false);
     return Promise.reject(error);
   }
 );
@@ -40,7 +40,7 @@ api.interceptors.request.use(
 // the navigation happens immediately after.
 api.interceptors.response.use(
   (response) => {
-    loadingTracker.end();
+    loadingTracker.end(true);
     const url = (response.config.url ?? '').toLowerCase();
     if (url.includes('/api/auth/')) {
       sessionFailureHandled = false;
@@ -48,7 +48,7 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError<AxiosErrorResponse>) => {
-    loadingTracker.end();
+    loadingTracker.end(false);
 
     // An AbortController cancellation is an expected lifecycle event (for
     // example, React Strict Mode remounts and analytics range changes). Keep

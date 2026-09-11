@@ -68,7 +68,7 @@
   padding: 12px 16px;
   background: #eff6ff;
   border-bottom: 1px solid var(--border-subtle, #e2e8f0);
-  color: #1e40af;
+  color: #70490e;
   font-size: 0.8125rem;
   line-height: 1.5;
 }
@@ -103,7 +103,7 @@
 
 .formInput:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: #d9a200;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
@@ -223,14 +223,14 @@
 .iconPickerItem:hover {
   background: #eff6ff;
   border-color: #93c5fd;
-  color: #1d4ed8;
+  color: #c78e12;
   transform: translateY(-1px);
 }
 
 .iconPickerItemActive {
   background: #dbeafe;
-  border-color: #2563eb;
-  color: #1d4ed8;
+  border-color: #d9a200;
+  color: #c78e12;
   font-weight: 600;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
@@ -256,7 +256,7 @@
 }
 
 .uploadDropArea:hover {
-  border-color: #3b82f6;
+  border-color: #facc15;
   background: #e0f2fe;
 }
 
@@ -271,7 +271,7 @@
 
 .progressBarFill {
   height: 100%;
-  background: #2563eb;
+  background: #d9a200;
   transition: width 0.2s ease;
 }
 

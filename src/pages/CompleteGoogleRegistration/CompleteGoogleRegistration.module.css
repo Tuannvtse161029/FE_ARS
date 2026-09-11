@@ -170,7 +170,7 @@
 }
 
 .select:focus {
-  outline: 2px solid #007AFF;
+  outline: 2px solid #e2ad2f;
   outline-offset: 1px;
 }
 

@@ -19,11 +19,10 @@
 // the safe fallback to prevent a Reviewer from being deep-linked into
 // the Admin surface, etc.
 //
-// Wallet / withdrawal / payment notifications have been retired along
-// with the wallet money flows (see docs/WALLET_SCOPE_CHANGE.md). Any
-// stale notification rows that still match the historical `[Wallet]…`
-// prefixes resolve to the safe `/forum` fallback because no destination
-// route exists for them any longer.
+// Historical wallet / withdrawal / payment notification rows (prefix
+// `[Wallet]…`) are no longer produced; any stale rows that still match
+// those prefixes resolve to the safe `/forum` fallback because no
+// destination route exists for them any longer.
 
 import { ROUTES } from '../routes/paths';
 import type { UserRole } from '../types/auth';

@@ -1,0 +1,87 @@
+/* MetricTile — editorial metric tile with serif numeral, mono eyebrow,
+ * accent rule, and a hint of warm paper. Tone variants recolor the value
+ * while keeping the surface consistent.
+ */
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  position: relative;
+  isolation: isolate;
+  min-height: 96px;
+}
+
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--profile-accent, var(--accent-primary));
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  opacity: 0.4;
+  z-index: 1;
+}
+
+.label {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.value {
+  font-family: var(--font-family-serif);
+  font-size: 2.25rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.icon {
+  color: var(--profile-accent, var(--accent-primary));
+  display: inline-flex;
+  align-items: center;
+}
+
+.caption {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 36ch;
+}
+
+.toneDefault .value {
+  color: var(--ink-primary);
+}
+
+.toneMuted .value {
+  color: var(--text-muted);
+}
+
+.tonePositive .value {
+  color: var(--status-success-text, var(--ars-success, #047857));
+}
+
+.toneAttention .value {
+  color: var(--status-warning-text, var(--ars-warning, #92400e));
+}

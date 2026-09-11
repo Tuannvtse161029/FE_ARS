@@ -158,7 +158,7 @@ export const LucideIconPicker: React.FC<LucideIconPickerProps> = ({
               >
                 <IconComp
                   size={24}
-                  color={isSelected ? '#1d4ed8' : '#475569'}
+                  color={isSelected ? '#c78e12' : '#475569'}
                 />
                 <span>{locale === 'vi' ? item.labelVi : item.labelEn}</span>
               </button>
