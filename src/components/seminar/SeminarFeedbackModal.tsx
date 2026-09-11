@@ -28,7 +28,7 @@ import {
   Loader,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
+  Star,
 } from 'lucide-react';
 import { seminarService } from '../../services/seminar.service';
 import { DynamicQuestionRenderer } from './DynamicQuestionRenderer';
@@ -338,7 +338,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
           <div className={styles.modalBody}>
             {previewMode && (
               <div className={styles.previewBanner} role="status">
-                <Sparkles size={14} aria-hidden />
+                <Star size={14} aria-hidden />
                 <span>
                   Preview only — your form is read-only. Participants will
                   receive this layout when the seminar closes.
@@ -369,7 +369,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
               </div>
             ) : questions.length === 0 ? (
               <div className={styles.feedbackEmpty}>
-                <Sparkles size={20} aria-hidden />
+                <Star size={20} aria-hidden />
                 <div>
                   <strong>
                     The host has not configured a feedback form yet.
@@ -405,7 +405,7 @@ export const SeminarFeedbackModal: React.FC<SeminarFeedbackModalProps> = ({
 
             {!isLoading && questions.length > 0 && (
               <div className={styles.guidanceNote}>
-                <Sparkles size={14} aria-hidden />
+                <Star size={14} aria-hidden />
                 <span>
                   {answeredCount} / {questions.length} answered — your
                   responses are private to the seminar organizer.

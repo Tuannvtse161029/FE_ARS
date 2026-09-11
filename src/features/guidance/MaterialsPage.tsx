@@ -43,7 +43,6 @@ import type { PhasedReport } from '../../services/phasedReport.service';
 import { useFirebaseFileUpload } from '../../hooks/useFirebaseFileUpload';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
-import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { useT } from '../../i18n/I18nContext';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
@@ -739,23 +738,23 @@ export const LecturerMaterialsPage = () => {
 
       {/* TAB 2: Shared by me */}
       <div id="panel-shared-by-me" role="tabpanel" aria-labelledby="tab-shared-by-me" className={`${styles.tabPanel} ${activeTab !== 'shared-by-me' && activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}>
-        <BackendGapBanner
-          field={t('lecturer.materials.shared.gapBanner.field', 'SharedMaterial.learningMaterialId, status enum, expiry')}
-          feature={t('lecturer.materials.shared.gapBanner.feature', 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.')}
-        />
+      {/* ── BackendGapBanner removed ──
+          The BE now auto-applies a 30-day expiry on `SharedMaterial`
+          and exposes the full status enum in its response, so the gap
+          we previously surfaced here is no longer accurate. */}
 
-        {sharedError && (
-          <div className={styles.errorBanner} role="alert">
-            <span className={styles.errorBannerIcon}>
-              <AlertTriangle size={14} aria-hidden />
-              <span>{sharedError}</span>
-            </span>
-            <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
-          </div>
-        )}
+      {sharedError && (
+        <div className={styles.errorBanner} role="alert">
+          <span className={styles.errorBannerIcon}>
+            <AlertTriangle size={14} aria-hidden />
+            <span>{sharedError}</span>
+          </span>
+          <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
+        </div>
+      )}
 
-        <SharedSection
-          title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
+      <SharedSection
+        title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
           emptyText={t('lecturer.materials.shared.emptyByMe', 'You have not shared any materials with colleagues yet.')}
           loading={sharedLoading}
           items={sharedByMe}
@@ -778,23 +777,23 @@ export const LecturerMaterialsPage = () => {
 
       {/* TAB 3: Shared with me */}
       <div id="panel-shared-with-me" role="tabpanel" aria-labelledby="tab-shared-with-me" className={`${styles.tabPanel} ${activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''}`}>
-        <BackendGapBanner
-          field={t('lecturer.materials.shared.gapBanner.field', 'SharedMaterial.learningMaterialId, status enum, expiry')}
-          feature={t('lecturer.materials.shared.gapBanner.feature', 'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.')}
-        />
+      {/* ── BackendGapBanner removed ──
+          The BE now auto-applies a 30-day expiry on `SharedMaterial`
+          and exposes the full status enum in its response, so the gap
+          we previously surfaced here is no longer accurate. */}
 
-        {sharedError && (
-          <div className={styles.errorBanner} role="alert">
-            <span className={styles.errorBannerIcon}>
-              <AlertTriangle size={14} aria-hidden />
-              <span>{sharedError}</span>
-            </span>
-            <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
-          </div>
-        )}
+      {sharedError && (
+        <div className={styles.errorBanner} role="alert">
+          <span className={styles.errorBannerIcon}>
+            <AlertTriangle size={14} aria-hidden />
+            <span>{sharedError}</span>
+          </span>
+          <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
+        </div>
+      )}
 
-        <SharedSection
-          title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
+      <SharedSection
+        title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
           emptyText={t('lecturer.materials.shared.emptyWithMe', 'No colleagues have shared a material with you yet.')}
           loading={sharedLoading}
           items={sharedWithMe}

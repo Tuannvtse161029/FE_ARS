@@ -2,6 +2,45 @@ import api from './axios';
 
 export type MedalTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
+/**
+ * The number of tiers supported by the admin medal editor.
+ * Admins can configure a medal with 2, 3, or 4 tiers depending on how
+ * granular the achievement criteria should be.
+ */
+export type MedalTierCount = 2 | 3 | 4;
+
+/**
+ * A single tier's target value within a tier configuration.
+ * The `target` field replaces the old "threshold" terminology —
+ * it represents the number of units (papers, seminars, etc.) the user
+ * needs to achieve to unlock that tier.
+ */
+export interface TierTarget {
+  tier: MedalTier;
+  target: number;
+  stageLevel: number;
+}
+
+/**
+ * Tier configuration for the medal editor.
+ * Tracks whether the admin is using a predefined template or customizing
+ * targets manually, plus the per-tier target values.
+ */
+export interface TierConfiguration {
+  /** Metric code (e.g. `published_papers`, `hosted_seminars`) */
+  metricCode: string;
+  /** Unit of measurement (auto-derived from metric) */
+  unit: MedalCriteriaUnit;
+  /** Number of active tiers */
+  tierCount: MedalTierCount;
+  /** Per-tier target values (always length === tierCount) */
+  targets: TierTarget[];
+  /** Whether the admin is using a predefined template */
+  useTemplate: boolean;
+  /** Template ID (only set when useTemplate is true) */
+  templateId?: string;
+}
+
 export type RoleTarget = 'All' | 'Researcher' | 'Lecturer' | 'Reviewer' | 'Graduate Student';
 
 export type MedalCriteriaUnit =

@@ -1,0 +1,316 @@
+/**
+ * CustomTierEditor — CSS Module
+ * Custom tier target configuration component
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+/* Tier Count Selector */
+.tierCountSelector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 16px);
+  padding: var(--space-3, 12px);
+  background: var(--surface-sunken, #f5f1e8);
+  border-radius: var(--radius-lg, 8px);
+}
+
+.tierCountLabel {
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--ink-primary, #1d1c19);
+}
+
+.tierCountBtns {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.tierCountBtn {
+  padding: var(--space-2, 8px) var(--space-5, 20px);
+  border: 2px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  background: var(--surface-raised, #ffffff);
+  border-radius: var(--radius-md, 4px);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 700;
+  color: var(--ink-muted, #6f695d);
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.tierCountBtn:hover {
+  border-color: var(--accent-primary, #e2ad2f);
+  color: var(--ink-primary, #1d1c19);
+}
+
+.tierCountBtn--active {
+  background: var(--accent-primary, #e2ad2f);
+  border-color: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+}
+
+.tierCountBtn:focus-visible {
+  outline: 2px solid var(--focus-ring, #a66f0a);
+  outline-offset: 2px;
+}
+
+/* Tier Ladder */
+.tierLadder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  background: var(--surface-sunken, #f5f1e8);
+  border-radius: var(--radius-xl, 12px);
+  border: 1px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+}
+
+.tierLadderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-3, 12px);
+  border-bottom: 1px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted, #6f695d);
+}
+
+.metricTag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+  border-radius: var(--radius-sm, 2px);
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tierRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+/* Tier Row */
+.tierRow {
+  display: grid;
+  grid-template-columns: 100px 1fr 24px;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px);
+  background: var(--surface-raised, #ffffff);
+  border-radius: var(--radius-lg, 8px);
+  border: 1px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  transition: border-color var(--transition-fast, 150ms ease);
+}
+
+.tierRow--bronze {
+  border-left: 4px solid #cd7f32;
+}
+
+.tierRow--silver {
+  border-left: 4px solid #94a3b8;
+}
+
+.tierRow--gold {
+  border-left: 4px solid #eab308;
+}
+
+.tierRow--platinum {
+  border-left: 4px solid #38bdf8;
+}
+
+.tierBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 700;
+  color: var(--ink-primary, #1d1c19);
+}
+
+.tierBadgeDot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full, 9999px);
+  flex-shrink: 0;
+}
+
+.tierTargetInput {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.targetLabel {
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 700;
+  color: var(--ink-muted, #6f695d);
+}
+
+.stepBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong, rgba(29, 28, 25, 0.24));
+  background: var(--surface-raised, #ffffff);
+  border-radius: var(--radius-sm, 2px);
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 700;
+  color: var(--ink-primary, #1d1c19);
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.stepBtn:hover:not(:disabled) {
+  background: var(--accent-primary, #e2ad2f);
+  border-color: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+}
+
+.stepBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepBtn:focus-visible {
+  outline: 2px solid var(--focus-ring, #a66f0a);
+  outline-offset: 2px;
+}
+
+.targetInput {
+  width: 80px;
+  padding: var(--space-2, 8px);
+  border: 1px solid var(--border-strong, rgba(29, 28, 25, 0.24));
+  border-radius: var(--radius-md, 4px);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink-primary, #1d1c19);
+  background: var(--surface-raised, #ffffff);
+  transition: border-color var(--transition-fast, 150ms ease),
+              background-color var(--transition-fast, 150ms ease);
+}
+
+.targetInput:focus {
+  outline: none;
+  border-color: var(--accent-primary, #e2ad2f);
+  box-shadow: 0 0 0 3px rgba(226, 173, 47, 0.2);
+}
+
+.targetInputError {
+  border-color: var(--status-danger-text, #7b3428);
+  background: var(--status-danger-surface, #f9e3dd);
+}
+
+.targetInput::-webkit-inner-spin-button,
+.targetInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.targetInput[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.unitLabel {
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--ink-muted, #6f695d);
+}
+
+.tierArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted, #6f695d);
+}
+
+/* Validation Messages */
+.validationContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+.validationMsg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-md, 4px);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 500;
+}
+
+.validationMsg svg {
+  flex-shrink: 0;
+}
+
+.validationMsgError {
+  background: var(--status-danger-surface, #f9e3dd);
+  color: var(--status-danger-text, #7b3428);
+}
+
+.validationMsgWarning {
+  background: var(--status-warning-surface, #fff0bf);
+  color: var(--status-warning-text, #70490e);
+}
+
+.validationMsgSuccess {
+  background: var(--status-success-surface, #e3f1e7);
+  color: var(--status-success-text, #28563d);
+}
+
+/* Helper Text */
+.helperText {
+  font-size: var(--font-size-xs, 0.6875rem);
+  color: var(--ink-muted, #6f695d);
+  line-height: var(--line-height-relaxed, 1.7);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .tierRow {
+    grid-template-columns: 80px 1fr;
+    gap: var(--space-2, 8px);
+  }
+
+  .tierArrow {
+    display: none;
+  }
+
+  .tierCountSelector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .unitLabel {
+    display: none;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .tierRow,
+  .stepBtn,
+  .targetInput,
+  .tierCountBtn {
+    transition: none;
+  }
+}

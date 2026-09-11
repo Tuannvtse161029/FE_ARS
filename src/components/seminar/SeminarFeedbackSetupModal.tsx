@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCheck2,
-  Sparkles,
+  Star,
   Loader,
   Send,
 } from 'lucide-react';
@@ -385,7 +385,7 @@ export const SeminarFeedbackSetupModal: React.FC<SeminarFeedbackSetupModalProps>
                 >
                   <div className={styles.modeHeader}>
                     <span className={styles.modeTitle}>
-                      <Sparkles size={18} color="var(--ars-lecturer)" aria-hidden />
+                      <Star size={18} color="var(--ars-lecturer)" aria-hidden />
                       {copy('Custom Question Builder', 'Tự tạo câu hỏi riêng cho Hội thảo')}
                     </span>
                     {formMode === 'custom' && (

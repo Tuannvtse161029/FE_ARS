@@ -63,6 +63,7 @@ const makePhase = (nextNumber?: number): PhaseDraft => ({
   startAt: '',
   endAt: '',
   learningMaterialId: null,
+  materialUrl: null,
 });
 
 // Local selection chip — rendered below the picker so the lecturer
@@ -166,7 +167,9 @@ export const PhaseEditorPanel = ({
 
       // Reverse-map material URL → LearningMaterialId. We only get the
       // URL on the BE side; the LearningMaterial table is the source of
-      // truth for picking, but the BE persists only the URL.
+      // truth for picking, but the BE persists only the URL. We carry
+      // BOTH on the draft so the save path knows the URL to PUT without
+      // having to look it up again.
       const { learningMaterialService } = await import(
         '../../services/learningMaterial.service'
       );
@@ -176,10 +179,15 @@ export const PhaseEditorPanel = ({
         const id = typeof m.id === 'number' ? m.id : -1;
         if (id > 0) urlToId.set(m.fileUrl ?? null, id);
       }
-      const assignmentMap = new Map<number, number | null>();
+      const assignmentMap = new Map<
+        number,
+        { url: string | null; id: number | null }
+      >();
       for (const phase of filtered) {
         const url = phase.report?.phasedMaterialsUrl ?? null;
-        assignmentMap.set(phase.phaseNumber, urlToId.get(url) ?? null);
+        const matchedId =
+          url !== null ? urlToId.get(url) ?? null : null;
+        assignmentMap.set(phase.phaseNumber, { url, id: matchedId });
       }
 
       setPhases(filtered);
@@ -196,7 +204,9 @@ export const PhaseEditorPanel = ({
               startAt: p.startAt ? toInputDate(p.startAt) : '',
               endAt: p.endAt ? toInputDate(p.endAt) : '',
               learningMaterialId:
-                assignmentMap.get(p.phaseNumber) ?? null,
+                assignmentMap.get(p.phaseNumber)?.id ?? null,
+              materialUrl:
+                assignmentMap.get(p.phaseNumber)?.url ?? null,
             }))
           : [makePhase()],
       );
@@ -297,26 +307,42 @@ export const PhaseEditorPanel = ({
 
   // ── Material picker wiring ────────────────────────────────────
   // The picker emits a `MaterialSourceValue`. We translate it back into
-  // the draft's `learningMaterialId` so the existing PUT-based
-  // persistence path stays unchanged.
+  // the draft's `learningMaterialId` + `materialUrl` so:
+  //   - the picker can render its selected tab state on remount
+  //   - the save path has the actual URL to PUT to the BE (the BE
+  //     persists only the URL on PhasedReport.phasedMaterialsUrl —
+  //     there is no FK column for the LearningMaterial).
   const handleMaterialChange = useCallback(
     (index: number, selection: MaterialSourceValue | null) => {
       setDrafts((prev) =>
         prev.map((d, i) => {
           if (i !== index) return d;
           if (!selection) {
-            return { ...d, learningMaterialId: null };
+            return {
+              ...d,
+              learningMaterialId: null,
+              materialUrl: null,
+            };
           }
-          // For 'library' picks we have the canonical id. For 'link' /
-          // 'upload' the BE will eventually persist the URL, but the
-          // draft column is `learningMaterialId` (a FK). We send `null`
-          // here and rely on the second-step PUT to attach the URL.
+          if (selection.kind === 'library') {
+            return {
+              ...d,
+              learningMaterialId: selection.learningMaterialId,
+              materialUrl: selection.fileUrl,
+            };
+          }
+          if (selection.kind === 'url') {
+            return {
+              ...d,
+              learningMaterialId: null,
+              materialUrl: selection.url.trim(),
+            };
+          }
+          // selection.kind === 'file'
           return {
             ...d,
-            learningMaterialId:
-              selection.kind === 'library'
-                ? selection.learningMaterialId
-                : null,
+            learningMaterialId: null,
+            materialUrl: selection.fileUrl,
           };
         }),
       );
@@ -351,11 +377,14 @@ export const PhaseEditorPanel = ({
             p.topicId === topicId),
       );
 
-      // Step 2 — per-phase material PUT. The picker keeps the URL
-      // (link/upload) or the library id (library) on the draft. The
-      // existing PUT path persists the matching URL via the
-      // PhasedReport.phasedMaterialsUrl column. See
-      // `researchTopicPhaseService.save` for the round-trip contract.
+      // Step 2 — per-phase material PUT. We send the URL the lecturer
+      // currently has on the draft (draft.materialUrl). Reading from
+      // reportRow.report?.phasedMaterialsUrl here would just echo back
+      // the BE's existing value and silently drop a new library pick —
+      // that was the original bug. We only PUT when the draft value
+      // actually differs from the BE value so an untouched phase doesn't
+      // get a redundant round-trip, and so an un-assign (draft cleared,
+      // BE still has the old URL) correctly writes null back.
       const materialErrors: string[] = [];
       await Promise.all(
         drafts.map((draft, index) => {
@@ -363,11 +392,12 @@ export const PhaseEditorPanel = ({
             (p) => p.phaseNumber === index + 1,
           );
           const reportId = reportRow?.report?.phasedReportId;
-          if (!reportId || draft.learningMaterialId == null) {
-            return Promise.resolve();
-          }
-          const materialUrl =
-            reportRow.report?.phasedMaterialsUrl ?? null;
+          if (!reportId) return Promise.resolve();
+          const beUrl = reportRow.report?.phasedMaterialsUrl ?? null;
+          const draftUrl = draft.materialUrl?.trim()
+            ? draft.materialUrl.trim()
+            : null;
+          if (draftUrl === beUrl) return Promise.resolve();
           return phasedReportService
             .update(reportId, {
               researchGroupId: reportRow.report?.researchGroupId ?? null,
@@ -382,7 +412,7 @@ export const PhaseEditorPanel = ({
               milestoneTitle: reportRow.report?.milestoneTitle ?? null,
               status: reportRow.report?.status ?? null,
               submittedAt: reportRow.report?.submittedAt ?? null,
-              phasedMaterialsUrl: materialUrl,
+              phasedMaterialsUrl: draftUrl,
               topicId: reportRow.report?.topicId ?? null,
               requirements: reportRow.report?.requirements ?? null,
               assessmentCriteria:
@@ -459,13 +489,20 @@ export const PhaseEditorPanel = ({
 
       <form onSubmit={save} className={styles.phasesForm}>
         {drafts.map((draft, index) => {
+          // Rebuild the picker value from the draft. Library picks get
+          // reconstructed as `library` (so the chip shows the Library tab
+          // in its selected state); URL-only picks get reconstructed as
+          // `url` (so the chip shows the Link tab).
           const materialSelection: MaterialSourceValue | null =
-            draft.learningMaterialId != null
+            draft.learningMaterialId != null && draft.materialUrl
               ? {
                   kind: 'library',
                   learningMaterialId: draft.learningMaterialId,
+                  fileUrl: draft.materialUrl,
                 }
-              : null;
+              : draft.materialUrl
+                ? { kind: 'url', url: draft.materialUrl }
+                : null;
           // The phase number is preserved on the draft itself so a deep
           // link highlight survives add / remove / reorder without
           // drifting to a different row.

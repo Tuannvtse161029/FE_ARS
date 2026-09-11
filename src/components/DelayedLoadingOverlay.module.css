@@ -5,11 +5,18 @@
   display: grid;
   place-items: center;
   padding: var(--space-5);
-  /* Surface canvas + 96% opacity so the body radial-gradient still
-     peeks through. Both `paper-day` and `archive-dusk` define
-     `--surface-canvas` in ars-tokens.css, so the cascade auto-themes
-     without a separate dark-mode override. */
-  background: color-mix(in srgb, var(--surface-canvas) 96%, transparent);
+  /* Project-theme yellow wash. `--accent-primary` is the Paper Day yellow
+     (#e2ad2f) in light mode and the dark-mode blue elsewhere, so the
+     overlay automatically re-themes itself. Mixing it into `--surface-paper`
+     (and its muted variant) keeps the cards-legible without flattening the
+     yellow — `--ink-primary` stays near-black so the icon and copy still
+     read with high contrast against the warm backdrop. */
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-primary) 30%, var(--surface-paper)) 0%,
+      color-mix(in srgb, var(--accent-primary) 14%, var(--surface-paper-muted)) 100%
+    );
   color: var(--ink-primary);
 }
 

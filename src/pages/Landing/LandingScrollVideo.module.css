@@ -5,7 +5,12 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 /* Always-dark cinematic surfaces — see the block at the bottom of the
-   file for the full note explaining why these exist. */
+   file for the full note explaining why these exist.
+   NOTE: The paper-day override block below sits in :global() so it
+   applies to every page that uses LandingScrollVideo. The dark
+   defaults are intentionally cinematic; the overrides switch the
+   page to a warm parchment surface so the visitor doesn't read the
+   light theme as "night mode that lost its lights". */
 :root {
   --sc-stage-bg: #0a0d20;            /* Hero / tension / turn stage base */
   --sc-stage-bg-2: #0b1238;          /* Lighter midnight highlight */
@@ -17,6 +22,103 @@
   --sc-glass: rgba(13, 19, 38, 0.65);/* Chip / overlay plate */
   --sc-glass-strong: rgba(13, 19, 38, 0.78);
   --sc-pill-bg: rgba(8, 12, 24, 0.7);/* Editorial trace pill */
+  /* Local mirror of `--ink-on-dark` so the landing page can override
+     it per theme. Default (dark theme) = near-white so all the
+     titles/copy render against the cinematic midnight surfaces. */
+  --sc-ink-on-dark: #fffdf8;
+  --sc-ink-on-dark-soft: rgba(255, 253, 248, 0.78);
+  --sc-ink-on-dark-muted: rgba(255, 253, 248, 0.55);
+  /* Dark-theme defaults for the substance + scrim variables that
+     the paper-day override below flips. */
+  --sc-substance-bg-top: #0a1024;
+  --sc-substance-bg-bot: #060c1e;
+  --sc-substance-act-bg: #0a1024;
+  --sc-scrim-band-top: rgba(8, 12, 24, 0.92);
+  --sc-scrim-band-mid: rgba(8, 12, 24, 0.28);
+  --sc-scrim-band-bot: transparent;
+}
+
+/* Paper-day overrides — switch the cinematic dark surfaces to a
+   clean white paper surface so the page reads as a bright editorial
+   layout. The hero stays dark in BOTH themes because it carries the
+   library photograph that anchors the page; everything below the
+   hero flips to white with warm parchment supporting surfaces.
+
+   Yellow is used as a *measured accent* (not a flood). The brand's
+   `--accent-primary` appears as: the small logo mark, the kicker
+   rule, the primary CTA button, the trace playhead, the role-color
+   tints, and the "Explore" arrow on the substance cards. White is
+   the dominant content surface so the page reads as a journal, not
+   as a yellow blanket. */
+:global(:root[data-theme='paper-day']) {
+  /* Supporting surfaces — warm parchment with a yellow tint so the
+     brand color carries from card surface to background. Previously
+     this was a neutral cream (#f5f1e8) — now it picks up a touch
+     more yellow to match the substance stage gradient and the
+     warm-cream card surface, so the page reads as one continuous
+     warm wash instead of "yellow zone + cream zone". */
+  --sc-stage-bg: #f5ebc8;            /* warm parchment (tension/turn) */
+  --sc-stage-bg-2: #fbf2d4;          /* lighter parchment for highlights */
+  --sc-stage-bg-deep: #ebdfa8;       /* deepest parchment band (footer) */
+
+  /* Content surfaces — warm cream rather than pure white. A subtle
+     yellow gradient wash so the cards feel like printed paper that
+     has soaked up a touch of warm light, not a sterile Word doc.
+     Pure white (#ffffff) was reading as blinding under the bright
+     stage backdrop; this warm cream sits in the same hue family as
+     the page's `--accent-primary` so the brand color carries
+     throughout. */
+  --sc-card-bg: #fdf6e3;
+  --sc-card-bg-edge: #e8dcb8;
+  --sc-shadow: rgba(96, 72, 18, 0.14);
+  --sc-shadow-heavy: rgba(96, 72, 18, 0.22);
+
+  /* Glass surfaces — warm-cream white with a touch of yellow, lower
+     opacity so the parchment stage bleeds through. Reducing the
+     opacity from 0.92 → 0.78 keeps the cards readable as distinct
+     surfaces without the "scrap of paper on parchment" effect, and
+     the warm hue ties them to the project's yellow brand color. */
+  --sc-glass: rgba(255, 247, 220, 0.78);
+  --sc-glass-strong: rgba(255, 247, 220, 0.88);
+
+  /* Editorial trace pill — kept as a dark glass plate so it floats
+     over any scroll position without ever blending into the page.
+     The trace is a piece of UI chrome, not a brand surface, so it
+     stays dark in both themes. */
+  --sc-pill-bg: rgba(15, 18, 28, 0.78);
+
+  /* Local override — `--ink-on-dark` is defined in ars-tokens.css
+     and is near-white in both themes by default. The parchment and
+     white surfaces below the hero need DARK ink so titles, chips,
+     copy, and stage plates render as dark text on a paper surface.
+     The heroCopy override below restores the light ink just for the
+     hero's photo overlay. */
+  --sc-ink-on-dark: #1d1c19;
+  --sc-ink-on-dark-soft: rgba(29, 28, 25, 0.78);
+  --sc-ink-on-dark-muted: rgba(29, 28, 25, 0.55);
+
+  /* Hero layers — kept dark because the photo is dark in both
+     themes. These don't change in paper-day. */
+  --sc-hero-layer: rgba(29, 28, 25, 0.22);
+  --sc-hero-layer-strong: rgba(29, 28, 25, 0.34);
+
+  /* Substance stage — warm yellow gradient so the cards lift off a
+     brand-tinted surface instead of a stark white plane. The top
+     stop is a soft yellow-cream, fading into the deeper parchment
+     at the bottom, so the section reads as a continuous warm wash
+     rather than a white card floating on a cream backdrop. The
+     substanceAct outer wash uses a slightly bolder yellow so the
+     color carries through to the page edges. */
+  --sc-substance-bg-top: #fff3c4;
+  --sc-substance-bg-bot: #f0e2b0;
+  --sc-substance-act-bg: #f7e9c2;
+
+  /* Scrims — were hardcoded `rgba(8, 12, 24, ...)`. Override to a
+     lighter, transparent overlay so they no longer drop a near-black
+     band onto the stage in paper-day. */
+  --sc-scrim-band-top: rgba(29, 28, 25, 0.0);
+  --sc-scrim-band-mid: rgba(29, 28, 25, 0.0);
+  --sc-scrim-band-bot: rgba(29, 28, 25, 0.0);
 }
 
 /* ── Base page chrome ─────────────────────────────────────────── */
@@ -94,7 +196,7 @@
   background: var(--sc-pill-bg);
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 10%, transparent);
   z-index: -1;
 }
 
@@ -105,7 +207,12 @@
   top: 50%;
   height: 1px;
   transform: translateY(-50%);
-  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+  /* Always-light track — the pill plate is dark glass in both themes,
+     so its track must read against a dark surface in both themes.
+     Using `--sc-ink-on-dark` here was a bug in the previous pass: in
+     paper-day that variable flips to dark ink, which made the track
+     a near-invisible dark line on a dark glass pill. */
+  background: rgba(255, 253, 248, 0.28);
   z-index: 1;
 }
 
@@ -141,7 +248,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+  /* Always-light idle dot — pill is dark glass in both themes. */
+  background: rgba(255, 253, 248, 0.5);
   transition: background var(--transition-fast), transform var(--transition-fast);
 }
 .editorialMarker[data-passed='true'] .editorialMarkerDot {
@@ -157,7 +265,8 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+  /* Always-light label — pill is dark glass in both themes. */
+  color: rgba(255, 253, 248, 0.6);
   white-space: nowrap;
   transition: color var(--transition-fast);
 }
@@ -205,9 +314,34 @@
   z-index: 1;
 }
 /* Band: density at the bottom where copy sits on full-width hero.
-   Scrims are ALWAYS dark — in both themes — so they make text readable
-   on top of bright photos without ever lightening the photo. */
+   In dark mode the scrim is dark so text is readable on top of
+   bright photos. In paper-day the same gradient stop values would
+   drop a near-black band onto the warm parchment surface, so the
+   scrim is collapsed to a transparent overlay (the stage is already
+   a paper surface and doesn't need a contrast plate). */
 .scrimBand {
+  background: linear-gradient(
+    to top,
+    rgba(8, 12, 24, 0.92) 0%,
+    rgba(8, 12, 24, 0.68) 28%,
+    rgba(8, 12, 24, 0.28) 56%,
+    transparent 78%
+  );
+}
+/* Paper-day: the Turn and Substance stages use .scrimBand as well.
+   In paper-day those stages sit on warm parchment so the dark band
+   reads as a black bar across a cream surface — collapse it to
+   transparent. The hero scrim has its own override below that
+   keeps the dark gradient because the photo needs the contrast. */
+:global(:root[data-theme='paper-day']) .turnStage .scrimBand,
+:global(:root[data-theme='paper-day']) .substanceStage .scrimBand {
+  background: transparent;
+}
+/* Hero scrim — always dark because the photo needs contrast. Even
+   in paper-day the hero photo is the same dark library shot, so
+   the dark scrim stays. The variable approach below lets the hero
+   override remain scoped to the heroStage descendant. */
+:global(:root[data-theme='paper-day']) .heroStage .scrimBand {
   background: linear-gradient(
     to top,
     rgba(8, 12, 24, 0.92) 0%,
@@ -289,7 +423,7 @@
   top: 0;
   z-index: var(--z-index-sticky);
   border-bottom: 1px solid var(--border-subtle);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   /* Always-dark glassy header. Previous build used
      `color-mix(... --ink-primary 92%, transparent)` which became a
      near-white frosted plate in archive-dusk — the brand bar floated
@@ -325,7 +459,7 @@
 .brand span {
   font-family: var(--font-family-serif);
   font-size: 1rem;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
 }
 
 .navigation {
@@ -335,7 +469,7 @@
   margin-left: auto;
 }
 .navigation a {
-  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
   font-size: 0.83rem;
   text-decoration: none;
   text-underline-offset: 5px;
@@ -528,7 +662,7 @@
 
 .heroTitle {
   margin: 18px 0 0;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   font-family: var(--font-family-serif);
   /* Reduced clamp from (2.8rem, 6vw, 5.6rem) to (2.4rem, 4.6vw, 4.4rem).
      The previous sizing produced 4+ visible lines on 16:9 displays,
@@ -539,11 +673,20 @@
   line-height: 1.04;
   text-wrap: balance;
 }
+/* The hero photo is dark in BOTH themes so the hero title needs to
+   stay near-white regardless of theme. In paper-day `--sc-ink-on-dark`
+   flips to dark ink for the parchment sections below — so we restore
+   the light ink just for the heroCopy. */
+:global(:root[data-theme='paper-day']) .heroCopy {
+  --sc-ink-on-dark: #fffdf8;
+  --sc-ink-on-dark-soft: rgba(255, 253, 248, 0.78);
+  --sc-ink-on-dark-muted: rgba(255, 253, 248, 0.55);
+}
 
 .heroLead {
   margin: 18px 0 0;
   max-width: 46ch;
-  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
   font-size: 1.05rem;
   line-height: 1.55;
 }
@@ -573,14 +716,14 @@
 .metricLabel {
   font-size: 0.7rem;
   font-weight: 600;
-  color: color-mix(in srgb, var(--ink-on-dark) 55%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 55%, transparent);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .metricDivider {
   width: 1px;
   height: 32px;
-  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+  background: color-mix(in srgb, var(--sc-ink-on-dark) 22%, transparent);
 }
 
 .heroActions {
@@ -600,7 +743,7 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -667,8 +810,8 @@
     radial-gradient(35% 40% at 8% 88%, color-mix(in srgb, var(--ars-reviewer) 16%, transparent), transparent 70%),
     /* deep grid: hairline lines at 80px so it doesn't read as a
        webdev grid */
-    linear-gradient(color-mix(in srgb, var(--ink-on-dark) 5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--ink-on-dark) 5%, transparent) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--sc-ink-on-dark) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--sc-ink-on-dark) 5%, transparent) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 80px 80px, 80px 80px;
   z-index: 0;
   will-change: transform;
@@ -751,7 +894,7 @@
   font-weight: 750;
   letter-spacing: -0.012em;
   line-height: 1.04;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   text-wrap: balance;
   text-shadow:
     0 1px 0 var(--sc-card-bg-edge),
@@ -761,7 +904,7 @@
 .tensionBody {
   margin: 22px 0 0;
   margin-left: auto;
-  color: color-mix(in srgb, var(--ink-on-dark) 88%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 88%, transparent);
   font-size: 1.02rem;
   line-height: 1.72;
   max-width: 50ch;
@@ -810,13 +953,13 @@
      `color-mix(... --ink-primary 60%, transparent)` which became a
      near-white plate in archive-dusk — the chips turned into parchment
      labels floating over a midnight stage. */
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   background: var(--sc-glass);
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent);
   backdrop-filter: blur(8px) saturate(140%);
   box-shadow:
     0 8px 24px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
   will-change: transform;
 }
 .tensionChip::before {
@@ -859,7 +1002,7 @@
      (near-black) but a near-white panel in archive-dusk, breaking
      every text contrast and chip color in this act. */
   background: var(--sc-stage-bg);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -888,7 +1031,7 @@
 .turnTitle {
   margin: 18px 0 0;
   font-family: var(--font-family-serif);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   font-size: clamp(2.2rem, 4.4vw, 3.8rem);
   font-weight: 750;
   letter-spacing: 0;
@@ -907,7 +1050,7 @@
 
 .turnItem {
   padding: 18px 18px 20px;
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
   border-radius: 8px;
   /* Always-dark glassy item plate — see note on the page-root block. */
   background: var(--sc-glass);
@@ -938,12 +1081,12 @@
   font-family: var(--font-family-serif);
   font-size: 1.05rem;
   font-weight: 750;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
 }
 
 .turnStepBody {
   margin: 6px 0 0;
-  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 65%, transparent);
   font-size: 0.82rem;
   line-height: 1.55;
 }
@@ -957,7 +1100,7 @@
   transform: translateX(-50%);
   width: min(1180px, calc(100% - 48px));
   padding: 18px 22px;
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
   border-radius: 10px;
   /* Always-dark glassy plate. */
   background: var(--sc-glass);
@@ -1037,12 +1180,12 @@
 .flowNodeRole {
   font-size: 0.72rem;
   font-weight: 800;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   white-space: nowrap;
 }
 .flowNodeAction {
   font-size: 0.66rem;
-  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
   text-align: center;
   max-width: 100px;
   line-height: 1.45;
@@ -1090,8 +1233,10 @@
   /* Deep academic-navy ground that matches the tension act so the two
      dark sections read as one continuous world, not as two unrelated
      panels. The outer scroll area needs a backdrop so first paint
-     doesn't flash the page canvas before the sticky stage settles. */
-  background: #0a1024;
+     doesn't flash the page canvas before the sticky stage settles.
+     Theme-aware via `--sc-substance-act-bg` so paper-day lifts this
+     off to warm parchment. */
+  background: var(--sc-substance-act-bg, #0a1024);
 }
 
 /* Soft accent wash on the act's outer wrapper so the deep navy has
@@ -1115,7 +1260,10 @@
   height: calc(100svh - 72px);
   min-height: 580px; /* a touch taller so the preview mockups fit */
   overflow: hidden;
-  background: linear-gradient(180deg, #0a1024 0%, #060c1e 100%);
+  /* Theme-aware — was hardcoded midnight gradient. Paper-day overrides
+     the gradient stops so the cards lift off a warm parchment surface
+     instead of a midnight void. */
+  background: linear-gradient(180deg, var(--sc-substance-bg-top, #0a1024) 0%, var(--sc-substance-bg-bot, #060c1e) 100%);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -1173,7 +1321,7 @@
 .substanceTitle {
   margin: 14px 0 0;
   font-family: var(--font-family-serif);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   font-size: clamp(1.8rem, 3.2vw, 2.8rem);
   font-weight: 750;
   letter-spacing: -0.008em;
@@ -1183,7 +1331,7 @@
 
 .substanceLead {
   margin: 12px 0 0;
-  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 70%, transparent);
   font-size: 0.94rem;
   line-height: 1.6;
   max-width: 56ch;
@@ -1215,7 +1363,7 @@
   min-height: 0;
   max-height: clamp(440px, 60vh, 540px);
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
   border-radius: 16px;
   /* Always-dark glassy surface with role-tinted edge light. Previous
      build used `var(--ink-primary)` in this gradient which is correct
@@ -1234,7 +1382,7 @@
   transition: transform 360ms var(--motion-ease-standard), box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
   box-shadow:
     0 24px 48px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent);
 }
 .substanceCard::before {
   content: '';
@@ -1253,7 +1401,7 @@
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 50%, transparent);
   box-shadow:
     0 32px 64px var(--sc-shadow-heavy),
-    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
 }
 .substanceCard:hover {
@@ -1265,7 +1413,7 @@
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
   box-shadow:
     0 24px 48px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent),
     0 0 0 3px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 45%, transparent);
 }
 
@@ -1274,7 +1422,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
 }
 
 .substanceIcon {
@@ -1308,7 +1456,7 @@
 .substanceCardTitle {
   margin: 0;
   font-family: var(--font-family-serif);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   font-size: 1.18rem;
   font-weight: 750;
   letter-spacing: -0.005em;
@@ -1342,21 +1490,21 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--ink-on-dark) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  background: color-mix(in srgb, var(--sc-ink-on-dark) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
   font-size: 0.78rem;
-  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
 }
 .substancePreviewRow[data-status='active'] {
   background: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 14%, transparent);
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 35%, transparent);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
 }
 .substancePreviewDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--ink-on-dark) 30%, transparent);
+  background: color-mix(in srgb, var(--sc-ink-on-dark) 30%, transparent);
   flex-shrink: 0;
 }
 .substancePreviewRow[data-status='active'] .substancePreviewDot {
@@ -1372,12 +1520,12 @@
 .substancePreviewMeta {
   font-family: var(--font-family-mono);
   font-size: 0.68rem;
-  color: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 50%, transparent);
 }
 
 .substanceCardFooter {
   padding: 14px 22px 18px;
-  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1387,7 +1535,7 @@
 .substanceCardBody {
   margin: 0;
   font-size: 0.85rem;
-  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 70%, transparent);
   line-height: 1.5;
   flex: 1;
   max-width: 60%;
@@ -1400,7 +1548,7 @@
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
   transition: color var(--transition-fast), gap var(--transition-fast);
   white-space: nowrap;
 }
@@ -1423,7 +1571,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
+  background: color-mix(in srgb, var(--sc-ink-on-dark) 22%, transparent);
   transition: background var(--transition-fast), transform var(--transition-fast), width var(--transition-fast);
 }
 .panDot[data-active='true'] {
@@ -1676,7 +1824,7 @@
      slab with white text on it, completely inverted from the dark
      cinematic feel of the surrounding acts. */
   background: var(--sc-stage-bg);
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   overflow: hidden;
   opacity: 1;
   transform: translateY(0);
@@ -1706,7 +1854,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.04;
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
 }
 
 .ctaActions {
@@ -1721,13 +1869,13 @@
 }
 
 .ctaSection .textLink {
-  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
 }
 .ctaSection .textLink:hover { color: var(--accent-primary); }
 
 /* ── Footer ────────────────────────────────────────────────────── */
 .footer {
-  color: var(--ink-on-dark);
+  color: var(--sc-ink-on-dark);
   /* Always-dark footer (slightly deeper than the cinematic stage so
      the page finishes with a confident terminator rail). */
   background: var(--sc-stage-bg-deep);
@@ -1752,7 +1900,7 @@
   text-decoration: none;
 }
 .footerBrand img { width: 40px; height: 40px; object-fit: cover; }
-.footerBrand span { font-family: var(--font-family-serif); font-size: 0.95rem; color: var(--ink-on-dark); }
+.footerBrand span { font-family: var(--font-family-serif); font-size: 0.95rem; color: var(--sc-ink-on-dark); }
 .footerNav {
   display: flex;
   flex-wrap: wrap;
@@ -1760,7 +1908,7 @@
   align-items: center;
 }
 .footerNav a {
-  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
   font-size: 0.83rem;
   text-decoration: none;
   text-underline-offset: 4px;
@@ -1773,8 +1921,8 @@
   padding-bottom: 28px;
   padding-top: 20px;
   font-size: 0.72rem;
-  color: color-mix(in srgb, var(--ink-on-dark) 35%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+  color: color-mix(in srgb, var(--sc-ink-on-dark) 35%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 10%, transparent);
 }
 
 /* ── Reduced motion ───────────────────────────────────────────── */

@@ -397,7 +397,12 @@ export const MedalAnalyticsDashboard: React.FC<MedalAnalyticsDashboardProps> = (
       {/* Recipients Detail Modal */}
       {selectedMedalForModal && (
         <MedalRecipientsModal
-          medal={selectedMedalForModal}
+          familyName={
+            locale === 'vi'
+              ? selectedMedalForModal.titleVi || selectedMedalForModal.title
+              : selectedMedalForModal.title || selectedMedalForModal.titleVi
+          }
+          primaryMedal={selectedMedalForModal}
           recipients={stats?.recipientsByMedalCode[selectedMedalForModal.code.toUpperCase()] || []}
           onClose={() => setSelectedMedalForModal(null)}
           locale={locale}

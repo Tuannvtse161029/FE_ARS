@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { X, Star } from 'lucide-react';
 import { useWelcomeSignal } from '../../store/welcomeSignal';
 import { useAuthStore } from '../../store';
 import styles from './WelcomeBackBanner.module.css';
@@ -102,7 +102,7 @@ export const WelcomeBackBanner = () => {
       data-testid="welcome-back-banner"
     >
       <span className={styles.bannerIcon} aria-hidden="true">
-        <Sparkles size={18} />
+        <Star size={18} />
       </span>
       <span className={styles.bannerText} data-testid="welcome-back-banner-text">
         {greeting}

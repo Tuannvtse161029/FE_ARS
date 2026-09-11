@@ -1,519 +1,325 @@
 /**
- * PhaseReports — Lecturer phased-report review console (grouped by phase).
+ * PhaseReports — Lecturer phased-report review console (table view).
  *
  * Design direction:
- * - Role accent: --ars-lecturer (#7c2d12)
- * - Tokens are the single source of truth (see src/styles/ars-tokens.css)
- * - Topic accordion: collapsed by default; expands to reveal the phase
- *   groups underneath. Each phase group is a card with a phase header
- *   band and a list of reports.
- * - No mock data, no hardcoded topics/phases — every label is sourced
- *   from the live PhasedReport API.
+ *  - Role accent: --ars-lecturer
+ *  - Tokenised surfaces, borders, shadows; no hardcoded hex
+ *  - One row per PhasedReport; merged topic / group cells via rowSpan
+ *  - Yellow Paper-Day table header (--accent-primary / --ink-primary)
+ *  - Stacks gracefully on narrow viewports (table → card list at < 700px)
  */
 
 /* ── Animations ─────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .topic,
-  .phase,
-  .report {
-    animation: none !important;
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInCard {
-  from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spinning {
   animation: spin 0.9s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation-duration: 1s;
+  }
+}
+
 /* ── Page shell ─────────────────────────────────────────── */
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  color: var(--ars-ink);
-  font-family: var(--font-family-ui);
-}
-
-/* ── Topic grid (overview) ─────────────────────────────── */
-.topics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: var(--space-4);
-  animation: fadeIn 0.25s ease-out;
-}
-
-.topicCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
   color: var(--ars-ink);
-  text-decoration: none;
   font-family: var(--font-family-ui);
-  cursor: pointer;
-  transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
-  overflow: hidden;
 }
 
-.topicCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--ars-lecturer), color-mix(in srgb, var(--ars-lecturer) 60%, var(--ars-info)));
-  opacity: 0.85;
-}
-
-.topicCard:hover {
-  box-shadow: var(--shadow-md);
-  border-color: color-mix(in srgb, var(--ars-lecturer) 50%, transparent);
-  transform: translateY(-2px);
-}
-
-.topicCard:focus-visible {
-  outline: 2px solid var(--ars-lecturer);
-  outline-offset: 2px;
-}
-
-.topicCardHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.topicCardTitleWrap {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  flex: 1;
-}
-
-.topicCardTitle {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.topicCardPulse {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--ars-warn);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--ars-warn) 70%, transparent);
-  animation: pulseDot 1.6s ease-out infinite;
-}
-
-@keyframes pulseDot {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ars-warn) 70%, transparent); }
-  70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--ars-warn) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ars-warn) 0%, transparent); }
-}
-
-.topicCardArrow {
-  flex-shrink: 0;
-  color: var(--ars-ink-muted);
-  margin-top: 2px;
-  transition: transform var(--transition-fast), color var(--transition-fast);
-}
-
-.topicCard:hover .topicCardArrow {
-  transform: translateX(2px);
-  color: var(--ars-lecturer);
-}
-
-.topicCardStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-xs);
-}
-
-.topicStat {
+/* ── Scope chip (deep-link pre-filter) ─────────────────── */
+.scopeChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px var(--space-2);
-  background: var(--ars-paper-inset);
-  border-radius: var(--radius-sm);
-  border: var(--border-thin);
-}
-
-.topicStat strong {
-  color: var(--ars-ink);
-  font-weight: var(--font-weight-bold);
-}
-
-.topicCardFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
-  padding-top: var(--space-2);
-  margin-top: auto;
-  border-top: var(--border-thin);
-}
-
-.topicCardAction {
+  align-self: flex-start;
+  background: var(--ars-lecturer-light);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+  color: var(--ars-lecturer);
+  border-radius: 999px;
+  padding: 4px 12px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--ars-lecturer);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-family: var(--font-family-ui);
 }
 
-.topicCardReviewPill {
-  font-size: 10px;
+.scopeChipClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ars-lecturer);
+  text-decoration: none;
   font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
+  font-family: var(--font-family-ui);
+  font-size: 0.625rem;
   letter-spacing: 0.06em;
-  padding: 3px var(--space-2);
-  background: color-mix(in srgb, var(--ars-warn) 18%, transparent);
-  color: color-mix(in srgb, var(--ars-warn) 90%, black);
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--ars-warn) 35%, transparent);
-  white-space: nowrap;
+  text-transform: uppercase;
 }
 
-/* ── Topic detail (scoped view) ──────────────────────────── */
-.scopedPhases {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  animation: fadeIn 0.25s ease-out;
+.scopeChipClear:hover {
+  text-decoration: underline;
 }
 
-.topicDetail {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.topicDetailHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--ars-paper-alt);
-  border-bottom: var(--border-thin);
-}
-
-.topicDetailTitle {
-  margin: 0;
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-}
-
-.backToTopicsLink {
-  font-size: var(--font-size-xs);
-  color: var(--ars-info);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-}
-
-.backToTopicsLink:hover {
-  background: var(--ars-info-bg);
-}
-
-/* ── Phase list inside an open topic ─────────────────────── */
-.phaseList {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  background: var(--ars-paper);
-}
-
-.phase {
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--ars-paper-alt);
-}
-
-.phaseHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--ars-paper-inset);
-  border-bottom: var(--border-thin);
-}
-
-.phaseHeading h3 {
-  margin: 0;
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.phaseHeadingCount {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-  background: var(--ars-paper);
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  border: var(--border-thin);
-  font-weight: var(--font-weight-bold);
-}
-
-/* ── Report list inside a phase — CARD GRID ─────────────── */
-.reportList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.report {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
-  animation: fadeInCard 0.2s ease-out;
-}
-
-.report:hover {
-  box-shadow: var(--shadow-md);
-  border-color: color-mix(in srgb, var(--ars-lecturer) 40%, transparent);
-}
-
-.reportMain {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
-}
-
-.reportTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.reportGroupName {
-  color: var(--ars-ink);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-base);
-  line-height: 1.3;
-  margin: var(--space-1) 0;
-}
-
-.meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-xs);
-  margin-top: var(--space-2);
-}
-
-.metaItem {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.metaLabel {
-  color: var(--ars-ink-muted);
-  font-weight: var(--font-weight-medium);
-  min-width: 70px;
-}
-
-.metaValue {
-  color: var(--ars-ink);
-  font-weight: var(--font-weight-normal);
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: auto;
-  padding-top: var(--space-3);
-  border-top: var(--border-thin);
-}
-
-.openPdfLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: var(--ars-paper);
-  border: 1px solid color-mix(in srgb, var(--ars-info) 35%, transparent);
-  color: var(--ars-info);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-decoration: none;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-}
-
-.openPdfLink:hover {
-  background: var(--ars-info-bg);
-}
-
-.openPdfLink:focus-visible {
-  outline: 2px solid var(--ars-info);
-  outline-offset: 2px;
-}
-
-.evaluateLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: var(--ars-lecturer);
-  border: 1px solid var(--ars-lecturer);
-  color: #ffffff;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-decoration: none;
-  transition: background var(--transition-fast);
-  white-space: nowrap;
-}
-
-.evaluateLink:hover {
-  background: var(--ars-lecturer-mid);
-  border-color: var(--ars-lecturer-mid);
-}
-
-.evaluateLink:focus-visible {
+.scopeChipClear:focus-visible {
   outline: 2px solid var(--ars-lecturer);
   outline-offset: 2px;
 }
 
-.noFilePill {
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink-muted);
-  font-style: italic;
-  padding: var(--space-1) var(--space-2);
+/* ── Toolbar + filter rows ─────────────────────────────── */
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
-/* ── Loading / error surfaces ───────────────────────────── */
-.loading,
-.errorState {
-  padding: var(--space-6);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
+/* Phase Reports page: toolbar contains nothing but the search input now
+   (refresh lives in the page header), so make the toolbar take the full
+   row width and the search field stretch to fill it. */
+.fullRowToolbar {
+  width: 100%;
+}
+
+.wideSearchField {
+  flex: 1 1 100%;
+  min-width: 100%;
+  max-width: none;
+}
+
+.wideSearchField .searchInput {
+  width: 100%;
+  height: 38px;
+  font-size: var(--font-size-base);
+}
+
+.filterRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--ars-ink-muted);
-  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
 }
 
+/* ── Error ─────────────────────────────────────────────── */
 .errorState {
   background: var(--ars-error-bg);
-  border-color: var(--ars-error);
+  border: 1px solid var(--ars-error);
   color: var(--ars-error);
-}
-
-.emptyText {
-  padding: var(--space-5);
-  text-align: center;
-  color: var(--ars-ink-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-sm);
-  font-style: italic;
-}
-
-/* ── Responsive ─────────────────────────────────────────── */
-@media (max-width: 700px) {
-  .topics {
-    grid-template-columns: 1fr;
-  }
-
-  .reportList {
-    grid-template-columns: 1fr;
-  }
-
-  .topicHeader {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .topicDetailHeader {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .phaseList {
-    padding: var(--space-3);
-  }
-}
-
-/* ── Scope breadcrumb ─────────────────────────────────────── */
-.scopeBreadcrumb {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family-ui);
+}
+
+/* ── Loading ───────────────────────────────────────────── */
+.loadingWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.loadingRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
   color: var(--ars-ink-muted);
-  padding: var(--space-2) var(--space-3);
-  background: var(--ars-paper-inset);
+  font-family: var(--font-family-ui);
+}
+
+/* ── Table ─────────────────────────────────────────────── */
+.tableWrap {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
   border-radius: var(--radius-md);
+  overflow-x: auto;
 }
 
-.scopeBreadcrumbLink {
-  color: var(--ars-lecturer);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-  transition: opacity var(--transition-fast);
-}
-
-.scopeBreadcrumbLink:hover {
-  opacity: 0.8;
-}
-
-.scopeBreadcrumbCurrent {
+.reportsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
   color: var(--ars-ink);
+}
+
+/* Paper-Day header band: yellow surface with near-black ink, matching
+   the design tokens in ars-tokens.css. No white-on-yellow. */
+.reportsTable thead {
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+}
+
+/* Big, bold, centred column labels. The rows underneath stay small /
+   left-aligned (see .reportsTable td below) — only the header reads as
+   a heavy "title band". */
+.reportsTable th {
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+  /* Big bold header; sat 5pt lower than the original 1.5rem (~24px / 18pt)
+     so it reads as a calmer title band while still clearly outranking
+     the small body rows below. */
+  font-size: calc(1.5rem - 5pt);
+  padding: var(--space-4) var(--space-4);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+  color: var(--ink-primary);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-primary) 18%, transparent);
+}
+
+/* Rows: revert to the original smaller, left-aligned, default-weight
+   style. The header above is the only thing that's big/bold/centred. */
+.reportsTable td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.row {
+  /* Row is no longer clickable; visual hover is intentionally absent
+     so users rely on the explicit action buttons. */
+  transition: background var(--transition-fast);
+}
+
+.row:nth-child(even) td {
+  background: var(--table-row-alt);
+}
+
+.row:nth-child(odd) td {
+  background: var(--table-row);
+}
+
+.topicCell {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.groupCell {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-soft);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.deadlineDanger {
+  color: var(--status-danger-text);
   font-weight: var(--font-weight-semibold);
 }
 
+.actionsHeader {
+  width: 1px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.actionsCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .reportsTable th,
+  .reportsTable td {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .topicCell {
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Table → stacked card list. Each td exposes its column label via the
+     `data-cell` attribute set in the JSX; the rowSpan merging done at
+     desktop widths collapses naturally here because each row becomes
+     its own card and shows its own topic / group. */
+  .tableWrap {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+
+  .reportsTable,
+  .reportsTable thead,
+  .reportsTable tbody,
+  .reportsTable tr,
+  .reportsTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .reportsTable thead {
+    display: none;
+  }
+
+  .reportsTable tr {
+    background: var(--table-row);
+    border: 1px solid var(--ars-network);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
+    padding: var(--space-2);
+    display: block;
+  }
+
+  .reportsTable td {
+    border-top: none;
+    padding: var(--space-2) var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .reportsTable td::before {
+    content: attr(data-cell);
+    font-size: 0.65rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ars-ink-muted);
+    font-family: var(--font-family-mono);
+    flex-shrink: 0;
+  }
+
+  .topicCell,
+  .groupCell {
+    max-width: none;
+    white-space: normal;
+    vertical-align: middle;
+  }
+
+  .actionsCell {
+    justify-content: flex-end;
+  }
+
+  .actionsRow {
+    flex-wrap: wrap;
+  }
+}

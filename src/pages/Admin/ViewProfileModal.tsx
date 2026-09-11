@@ -42,7 +42,7 @@ import {
   PlayCircle,
   Wallet,
   CalendarClock,
-  Sparkles,
+  Star,
   AlertTriangle,
 } from 'lucide-react';
 import { profileService } from '../../services/profile.service';
@@ -333,7 +333,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 {accountStatus === 'SUSPENDED' ? (
                   <PauseCircle size={12} aria-hidden="true" />
                 ) : accountStatus === 'TRIAL' ? (
-                  <Sparkles size={12} aria-hidden="true" />
+                  <Star size={12} aria-hidden="true" />
                 ) : accountStatus === 'EXPIRED' ? (
                   <AlertTriangle size={12} aria-hidden="true" />
                 ) : (

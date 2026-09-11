@@ -53,6 +53,17 @@ export interface PhaseDraft {
   endAt: string;
   /** ID of the LearningMaterial assigned to this phase (null = none). */
   learningMaterialId: number | null;
+  /**
+   * Resolved file URL of the assigned material (Firebase upload, HTTPS
+   * link, or the URL of the library item the lecturer picked).
+   *
+   * The BE persists this value on `PhasedReport.phasedMaterialsUrl` —
+   * there is no `learningMaterialId` foreign key on the BE side, so the
+   * URL is the single source of truth for material binding. On reload we
+   * reverse-map the URL back to a `LearningMaterialId` so the picker can
+   * render the Library tab in its selected state.
+   */
+  materialUrl: string | null;
 }
 
 export type ResearchTopicPhaseDraft = PhaseDraft;

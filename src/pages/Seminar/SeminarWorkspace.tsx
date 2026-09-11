@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   Users,
   Sliders,
-  Sparkles,
+  Star,
   Ban,
   RotateCcw,
   Info,
@@ -1784,7 +1784,7 @@ export const SeminarWorkspace = () => {
                         ]);
                       }}
                     >
-                      <Sparkles size={12} aria-hidden />
+                      <Star size={12} aria-hidden />
                       {copy('Load Starter Questions', 'Tạo mẫu câu hỏi gợi ý')}
                     </button>
                   </div>
@@ -2046,7 +2046,7 @@ export const SeminarWorkspace = () => {
             <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
                 <span className={styles.modalIconCircle}>
-                  <Sparkles size={18} aria-hidden />
+                  <Star size={18} aria-hidden />
                 </span>
                 <div>
                   <h3
@@ -2078,7 +2078,7 @@ export const SeminarWorkspace = () => {
 
             <div className={styles.modalBody}>
               <div className={styles.viewNotesInfoBanner}>
-                <Sparkles size={16} aria-hidden />
+                <Star size={16} aria-hidden />
                 <span>
                   {copy(
                     'This tool summarises a recorded meeting video into structured notes. It only unlocks once the seminar reaches the COMPLETED status.',

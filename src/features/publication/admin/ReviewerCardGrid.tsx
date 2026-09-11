@@ -29,7 +29,7 @@ import {
   Circle,
   CircleCheck,
   Loader2,
-  Sparkles,
+  Star,
   Users,
   X,
 } from 'lucide-react';
@@ -475,7 +475,7 @@ export const ReviewerCardGrid = ({
                       className={styles.matchBadge}
                       title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
                     >
-                      <Sparkles size={11} aria-hidden="true" /> Best match
+                      <Star size={11} aria-hidden="true" /> Best match
                     </span>
                   ) : null}
                 </div>
@@ -704,7 +704,7 @@ const ReviewerAssignConfirmModal = ({
       >
         <header className={styles.modalHeader}>
           <div className={styles.modalHeading}>
-            <Sparkles size={18} aria-hidden="true" />
+            <Star size={18} aria-hidden="true" />
             <h2 id="reviewer-confirm-title">Assign this reviewer?</h2>
           </div>
           <button

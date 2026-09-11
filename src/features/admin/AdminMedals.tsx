@@ -19,7 +19,11 @@ import {
   Layers,
   ShieldCheck,
 } from 'lucide-react';
-import { medalService, type Medal, type MedalCreateInput } from '../../services/medal.service';
+import { medalService, type Medal, type MedalCreateInput, type MedalFamilyGroup } from '../../services/medal.service';
+import {
+  medalAnalyticsService,
+  type MedalRecipientInfo,
+} from '../../services/medalAnalytics.service';
 import { useI18n } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -28,6 +32,7 @@ import { TierEditor } from './components/TierEditor';
 import { ArtworkUpload } from './components/ArtworkUpload';
 import { SafeMedalBadge, LUCIDE_ICONS_MAP, LUCIDE_ICONS_LIST, resolveMedalIconName } from './components/SafeMedalBadge';
 import { MedalAnalyticsDashboard } from './components/MedalAnalyticsDashboard';
+import { MedalRecipientsModal } from './components/MedalRecipientsModal';
 import { GrantMedalModal } from './components/GrantMedalModal';
 import { invalidateFlairCache } from '../../hooks/useAuthorFlair';
 // CSS module kept alongside the refactored component so the stale
@@ -50,6 +55,17 @@ export const AdminMedals: React.FC = () => {
   const [targetMedal, setTargetMedal] = useState<Medal | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Recipients data — loaded once on mount (and on demand after revoke
+  // / reinstate) so the catalog metric strip can show "X granted users"
+  // without each card having to fetch its own slice. Also used to power
+  // the family-level recipients modal opened from the catalog cards.
+  const [recipientsByMedalCode, setRecipientsByMedalCode] = useState<
+    Record<string, MedalRecipientInfo[]> | null
+  >(null);
+  const [recipientsFamily, setRecipientsFamily] =
+    useState<MedalFamilyGroup | null>(null);
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState<boolean>(false);
+
   // Load medals
   const loadMedals = useCallback(async () => {
     setIsLoading(true);
@@ -66,9 +82,29 @@ export const AdminMedals: React.FC = () => {
     }
   }, [t]);
 
+  // Load recipients analytics — populates the catalog "granted users" metric.
+  // Wrapped in its own loader so we can refresh it after a revoke/reinstate
+  // without re-pulling the medal catalog.
+  const loadRecipientAnalytics = useCallback(
+    async (force = false) => {
+      setIsLoadingRecipients(true);
+      try {
+        const stats = await medalAnalyticsService.getAnalytics(force);
+        setRecipientsByMedalCode(stats.recipientsByMedalCode);
+      } catch (err: unknown) {
+        console.warn('Failed to load recipient analytics:', err);
+        setRecipientsByMedalCode({});
+      } finally {
+        setIsLoadingRecipients(false);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     void loadMedals();
-  }, [loadMedals]);
+    void loadRecipientAnalytics();
+  }, [loadMedals, loadRecipientAnalytics]);
 
   // Toast notification
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -227,6 +263,7 @@ export const AdminMedals: React.FC = () => {
       );
       setActiveModal(null);
       await loadMedals();
+      await loadRecipientAnalytics(true);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
@@ -234,6 +271,89 @@ export const AdminMedals: React.FC = () => {
         t('admin.medals.error.resetFailed', 'Lỗi khi khôi phục dữ liệu gốc');
       showNotification(msg, 'error');
     }
+  };
+
+  // ─── Family recipients modal (catalog view) ─────────────────────────
+  const handleOpenFamilyRecipients = (family: MedalFamilyGroup) => {
+    setRecipientsFamily(family);
+  };
+
+  const handleCloseFamilyRecipients = () => {
+    setRecipientsFamily(null);
+  };
+
+  const handleRevokeRecipient = async (
+    recipient: MedalRecipientInfo,
+    reason: string,
+  ): Promise<void> => {
+    await medalAnalyticsService.revokeMedal(recipient.userMedalId, recipient.userId);
+    // Optimistic: drop the row from the local recipients map so the modal
+    // and the catalog metric both update immediately. The next
+    // refresh-recipients call below keeps things in sync with the BE.
+    setRecipientsByMedalCode((prev) => {
+      if (!prev) return prev;
+      const next: Record<string, MedalRecipientInfo[]> = {};
+      for (const [key, list] of Object.entries(prev)) {
+        next[key] = list.filter((r) => r.userMedalId !== recipient.userMedalId);
+      }
+      return next;
+    });
+    await loadRecipientAnalytics(true);
+    // Include the admin-supplied reason in the success toast so the
+    // audit trail is preserved client-side even though the BE's revoke
+    // endpoint doesn't accept a reason parameter today. If a future
+    // BE endpoint is added (`/api/Medal/revoke-with-reason`), wire it
+    // through `medalAnalyticsService.revokeMedal` instead.
+    showNotification(
+      copy(
+        `Revoked "${recipient.fullName}" — ${reason}`,
+        `Đã thu hồi huy hiệu của "${recipient.fullName}" — ${reason}`,
+      ),
+    );
+  };
+
+  const handleReinstateRecipient = async (
+    recipient: MedalRecipientInfo,
+    note?: string,
+  ): Promise<void> => {
+    const medalCode = recipient.medalCode;
+    if (!medalCode) {
+      throw new Error(
+        t(
+          'admin.medals.error.missingCode',
+          'Không thể khôi phục — thiếu mã huy hiệu.',
+        ),
+      );
+    }
+    await medalAnalyticsService.reinstateMedal({
+      userId: recipient.userId,
+      medalCode,
+      note,
+    });
+    // Optimistic: re-insert the row (marking it as Active again) so the
+    // user sees the badge appear immediately.
+    setRecipientsByMedalCode((prev) => {
+      const base = prev ?? {};
+      const code = medalCode.toUpperCase();
+      const existing = base[code] ?? [];
+      // Only re-add if the BE doesn't already report this user.
+      if (existing.some((r) => r.userMedalId === recipient.userMedalId)) {
+        return prev;
+      }
+      const restored: MedalRecipientInfo = {
+        ...recipient,
+        unlockedAt: new Date().toISOString(),
+        isUnlocked: true,
+      };
+      return { ...base, [code]: [restored, ...existing] };
+    });
+    await loadRecipientAnalytics(true);
+    showNotification(
+      t(
+        'admin.medals.success.reinstated',
+        `Đã khôi phục huy hiệu cho "${recipient.fullName}".`,
+      ),
+    );
   };
 
   return (
@@ -328,6 +448,8 @@ export const AdminMedals: React.FC = () => {
           onToggleStatus={handleToggleStatus}
           showNotification={showNotification}
           locale={locale}
+          recipientsByMedalCode={isLoadingRecipients ? null : recipientsByMedalCode}
+          onOpenRecipients={handleOpenFamilyRecipients}
         />
       )}
 
@@ -444,6 +566,29 @@ export const AdminMedals: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Family-level recipients modal — opened from the catalog "View" button.
+          Aggregates recipients across every tier in the family so the admin can
+          filter by tier inside the modal. Revoke / reinstate actions live here. */}
+      {recipientsFamily && recipientsByMedalCode && (
+        <MedalRecipientsModal
+          familyName={
+            locale === 'vi'
+              ? recipientsFamily.primary.titleVi || recipientsFamily.primary.title
+              : recipientsFamily.primary.title || recipientsFamily.primary.titleVi
+          }
+          primaryMedal={recipientsFamily.primary}
+          familyTiers={recipientsFamily.tiers}
+          recipients={medalAnalyticsService.aggregateRecipientsByFamily(
+            recipientsByMedalCode,
+            recipientsFamily.tiers.map((t) => t.code),
+          )}
+          locale={locale}
+          onClose={handleCloseFamilyRecipients}
+          onRevoke={handleRevokeRecipient}
+          onReinstate={handleReinstateRecipient}
+        />
       )}
     </div>
   );
