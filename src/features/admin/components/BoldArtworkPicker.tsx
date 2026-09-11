@@ -79,12 +79,12 @@ const CATEGORY_FALLBACKS: Record<
   general: { en: 'General', vi: 'Chung' },
 };
 
-export const BoldArtworkPicker: React.FC<BoldArtworkPickerProps> = ({
+export const BoldArtworkPicker = ({
   value,
   onChange,
   id = 'boldArtworkPickerSearch',
   gridId,
-}) => {
+}: BoldArtworkPickerProps) => {
   const { t, locale } = useI18n();
   const [query, setQuery] = useState<string>('');
 

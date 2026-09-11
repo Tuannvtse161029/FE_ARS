@@ -76,12 +76,12 @@ const formatTime = (iso?: string | null): string => {
   return d.toLocaleString();
 };
 
-export const RawFeedbackViewModal: React.FC<RawFeedbackViewModalProps> = ({
+export const RawFeedbackViewModal = ({
   isOpen,
   onClose,
   entry,
   questions,
-}) => {
+}: RawFeedbackViewModalProps) => {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // Escape closes the modal — convention shared across all seminar modals.
@@ -265,7 +265,7 @@ interface AnswerBlockProps {
   question?: FeedbackQuestion;
 }
 
-const AnswerBlock: React.FC<AnswerBlockProps> = ({ answer, question }) => {
+const AnswerBlock = ({ answer, question }: AnswerBlockProps) => {
   const label =
     question?.questionText ??
     `Question (${answer.questionId ?? 'unknown'})`;

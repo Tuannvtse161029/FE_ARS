@@ -139,10 +139,10 @@ const VERIFICATION_PILL_CLASS: Record<string, string> = {
   Rejected: styles.statusRejected,
 };
 
-export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
+export const ViewProfileModal = ({
   account,
   onClose,
-}) => {
+}: ViewProfileModalProps) => {
   const { t, locale } = useI18n();
   const localeTag: 'en' | 'vi' = locale === 'vi' ? 'vi' : 'en';
 

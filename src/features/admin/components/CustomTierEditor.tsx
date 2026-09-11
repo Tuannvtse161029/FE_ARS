@@ -49,13 +49,13 @@ const TIER_COLORS: Record<MedalTier, string> = {
   Platinum: '#38bdf8',
 };
 
-export const CustomTierEditor: React.FC<CustomTierEditorProps> = ({
+export const CustomTierEditor = ({
   metricCode,
   targets,
   tierCount,
   onTargetsChange,
   onTierCountChange,
-}) => {
+}: CustomTierEditorProps) => {
   const { locale } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
 

@@ -29,9 +29,7 @@ interface SeminarFeedbackModalShellProps {
   children: React.ReactNode;
 }
 
-export const SeminarFeedbackModalShell: React.FC<
-  SeminarFeedbackModalShellProps
-> = ({ seminarTitle, startTime, endTime, onClose, children }) => {
+export const SeminarFeedbackModalShell = ({ seminarTitle, startTime, endTime, onClose, children }: SeminarFeedbackModalShellProps) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const locale = useLocale();
