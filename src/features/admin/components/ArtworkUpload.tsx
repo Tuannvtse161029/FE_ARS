@@ -13,7 +13,7 @@ import {
   ExternalLink,
   HelpCircle,
   GalleryThumbnails,
-  Sparkles,
+  Star,
 } from 'lucide-react';
 import {
   type Medal,
@@ -170,7 +170,7 @@ export const ArtworkUpload: React.FC<ArtworkUploadProps> = ({
               className={`${styles.tabBtn} ${activeTab === 'bold' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('bold')}
             >
-              <Sparkles size={16} />
+              <Star size={16} />
               <span>{t('admin.medals.quick.tab.bold', 'Bold designs')}</span>
             </button>
             <button

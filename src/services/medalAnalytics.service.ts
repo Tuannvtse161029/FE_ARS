@@ -2,6 +2,7 @@ import api from './axios';
 import {
   medalService,
   type Medal,
+  type MedalTier,
   type UserMedal,
 } from './medal.service';
 import { userService } from './user.service';
@@ -70,6 +71,26 @@ export function getMedalCategory(medal: Medal): MedalCategoryKey {
 }
 
 /**
+ * Derives the tier (Bronze/Silver/Gold/Platinum) from a medal code by
+ * reading the trailing tier suffix. Returns null when the code doesn't
+ * end in a recognised tier — e.g. legacy codes or codes that use the
+ * `_I`/`_II`/`_III`/`_IV` Roman-numeral variant from the early spec.
+ *
+ * Used by the analytics pipeline to stamp each `MedalRecipientInfo`
+ * with the tier the recipient actually earned, so the recipients modal
+ * can filter by tier without needing the full medal object around.
+ */
+export function tierFromMedalCode(code: string | null | undefined): MedalTier | null {
+  if (!code) return null;
+  const upper = code.toUpperCase();
+  if (upper.endsWith('_BRONZE')) return 'Bronze';
+  if (upper.endsWith('_SILVER')) return 'Silver';
+  if (upper.endsWith('_GOLD')) return 'Gold';
+  if (upper.endsWith('_PLATINUM')) return 'Platinum';
+  return null;
+}
+
+/**
  * Checks if a medal is compatible with a given target role.
  */
 export function isMedalCompatibleWithRole(medal: Medal, role?: string | null): boolean {
@@ -102,6 +123,19 @@ export interface MedalRecipientInfo {
   isUnlocked: boolean;
   awardedByAdminId?: number | null;
   awardedReason?: string | null;
+  /**
+   * Tier this recipient has earned (Bronze/Silver/Gold/Platinum).
+   * Derived from the medal code suffix (`_BRONZE`, `_SILVER`, etc.).
+   * Null when the BE doesn't include a recognisable tier suffix —
+   * the consumers fall back to a generic "Unlocked" filter in that case.
+   */
+  tier?: MedalTier | null;
+  /**
+   * The medal code this recipient earned. Kept on the recipient so the
+   * catalog view can recompose the family-level recipient list across
+   * tier variants without needing to re-derive the code from the key.
+   */
+  medalCode?: string | null;
 }
 
 export interface MedalAnalyticsStats {
@@ -173,6 +207,37 @@ export const medalAnalyticsService = {
   },
 
   /**
+   * Reinstate a previously revoked medal for a user (Admin).
+   *
+   * The BE doesn't expose a dedicated "reinstate" endpoint today — we
+   * reuse the existing grant endpoint (`POST /api/Medal/grant`) and
+   * record the reason so the audit trail shows this was an admin
+   * reinstate action rather than a fresh grant.
+   *
+   * Side effects:
+   * - Invalidates the per-user flair cache so any visible profile / user
+   *   flair re-renders with the badge back in place.
+   * - Drops the analytics cache so the next refresh shows the user in
+   *   the recipient list again.
+   */
+  async reinstateMedal(input: {
+    userId: number | string;
+    medalCode: string;
+    note?: string;
+  }): Promise<UserMedal> {
+    const result = await this.grantMedal({
+      userId: Number(input.userId),
+      medalCode: input.medalCode,
+      forceUnlocked: true,
+      awardedReason: input.note?.trim()
+        ? `Reinstated by admin — ${input.note.trim()}`
+        : 'Reinstated by admin',
+    });
+    analyticsCache = null;
+    return result;
+  },
+
+  /**
    * Fetches and aggregates medal analytics across users.
    */
   async getAnalytics(forceRefresh = false): Promise<MedalAnalyticsStats> {
@@ -225,6 +290,12 @@ export const medalAnalyticsService = {
                   isUnlocked: true,
                   awardedByAdminId: (um as any).awardedByAdminId ?? null,
                   awardedReason: (um as any).awardedReason ?? null,
+                  // Stamp the tier + raw code so the catalog recipients
+                  // modal can filter by tier without re-deriving from the
+                  // map key. `tierFromMedalCode` handles legacy Roman
+                  // numeral codes by returning null (no filter).
+                  tier: tierFromMedalCode(um.medal?.code),
+                  medalCode: um.medal?.code ?? null,
                 });
 
                 usersWithMedalsSet.add(u.id);
@@ -271,5 +342,42 @@ export const medalAnalyticsService = {
    */
   clearCache(): void {
     analyticsCache = null;
+  },
+
+  /**
+   * Aggregates recipients across every tier of a metric family so the
+   * catalog view can render a single recipient modal per family rather
+   * than one modal per tier variant. The returned list preserves the
+   * analytics order (most-recently unlocked first, when timestamps are
+   * available) and dedupes by `userMedalId` defensively in case the
+   * same row was stamped on multiple tiers.
+   *
+   * Pass the full `recipientsByMedalCode` map plus the list of tier
+   * codes that belong to the family — typically the codes you get
+   * from `family.tiers.map(t => t.code)`.
+   */
+  aggregateRecipientsByFamily(
+    recipientsByMedalCode: Record<string, MedalRecipientInfo[]>,
+    familyCodes: string[],
+  ): MedalRecipientInfo[] {
+    if (!recipientsByMedalCode || familyCodes.length === 0) return [];
+    const seen = new Set<number>();
+    const combined: MedalRecipientInfo[] = [];
+    for (const code of familyCodes) {
+      const list = recipientsByMedalCode[code.toUpperCase()] ?? [];
+      for (const recipient of list) {
+        const key = recipient.userMedalId || recipient.userId;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        combined.push(recipient);
+      }
+    }
+    // Newest first when timestamps exist; users without an unlock date
+    // sink to the bottom but stay grouped by userId for stability.
+    return combined.sort((a, b) => {
+      const ta = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
+      const tb = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
+      return tb - ta;
+    });
   },
 };

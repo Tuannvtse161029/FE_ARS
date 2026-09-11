@@ -24,8 +24,12 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
+  /* Dark tint stays — keeps the modal focus readable — but the backdrop
+     blur is dropped from 4px to 1px so the lecturer can still see the
+     materials page behind (search bar, table, etc.) for spatial context. */
   background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   display: flex;
   align-items: center;
   justify-content: center;

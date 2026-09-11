@@ -449,3 +449,46 @@
     width: 100%;
   }
 }
+
+/* ── Not-submitted panel ───────────────────────────────── */
+.notSubmittedPanel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.notSubmittedIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notSubmittedBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-family-ui);
+}
+
+.notSubmittedTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  letter-spacing: 0.02em;
+}
+
+.notSubmittedDescription {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  line-height: var(--line-height-normal);
+}

@@ -23,7 +23,7 @@ import {
   Loader,
   AlertTriangle,
   Copy,
-  Sparkles,
+  Star,
   Film,
   Upload,
   RotateCcw,
@@ -231,7 +231,7 @@ export const AudioSummaryModal = ({
         <div className={styles.modalHeaderRow}>
           <div className={styles.modalTitleBlock}>
             <span className={styles.aiIconCircle}>
-              <Sparkles size={18} aria-hidden />
+              <Star size={18} aria-hidden />
             </span>
             <div>
               <h3 className={styles.modalTitle} id="ai-modal-title">
@@ -364,7 +364,7 @@ export const AudioSummaryModal = ({
             <div className={styles.resultArea}>
               <div className={styles.resultHeader}>
                 <span className={styles.aiResultBadge}>
-                  <Sparkles size={12} aria-hidden />
+                  <Star size={12} aria-hidden />
                   AI Generated
                 </span>
                 <div className={styles.resultHeaderActions}>

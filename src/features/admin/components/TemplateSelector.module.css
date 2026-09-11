@@ -1,0 +1,363 @@
+/**
+ * TemplateSelector — CSS Module
+ * List-style preset criteria template selector with expandable tier breakdown
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--app-canvas-subtle, #fff8e8);
+  border-radius: var(--radius-md, 4px);
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--ink-secondary, #4f4b42);
+}
+
+.headerIcon {
+  color: var(--accent-primary, #e2ad2f);
+  flex-shrink: 0;
+}
+
+.headerText {
+  font-weight: 600;
+  color: var(--ink-primary, #1d1c19);
+}
+
+.headerHint {
+  font-size: var(--font-size-xs, 0.6875rem);
+  color: var(--ink-muted, #6f695d);
+  margin-left: auto;
+}
+
+/* List */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+/* Row */
+.row {
+  background: var(--surface-raised, #ffffff);
+  border: 2px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  border-radius: var(--radius-lg, 8px);
+  overflow: hidden;
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.row:hover {
+  border-color: var(--accent-primary, #e2ad2f);
+}
+
+.rowSelected {
+  border-color: var(--accent-primary, #e2ad2f);
+  box-shadow: 0 0 0 3px rgba(226, 173, 47, 0.2);
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-3, 12px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-family-ui);
+  transition: background-color var(--transition-fast, 150ms ease);
+}
+
+.rowHeader:hover {
+  background: var(--app-canvas-subtle, #fff8e8);
+}
+
+.rowHeader:focus-visible {
+  outline: 2px solid var(--focus-ring, #a66f0a);
+  outline-offset: -2px;
+}
+
+.rowSelected .rowHeader {
+  background: var(--app-canvas-subtle, #fff8e8);
+}
+
+.rowHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  min-width: 0;
+  flex: 1;
+}
+
+.rowHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex-shrink: 0;
+}
+
+.rowIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-sunken, #f5f1e8);
+  border-radius: var(--radius-full, 9999px);
+  color: var(--ink-muted, #6f695d);
+  flex-shrink: 0;
+}
+
+.rowSelected .rowIcon {
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+}
+
+.rowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 600;
+  color: var(--ink-primary, #1d1c19);
+  line-height: var(--line-height-tight, 1.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMetric {
+  font-family: var(--font-family-mono, 'Consolas', monospace);
+  font-size: var(--font-size-xs, 0.6875rem);
+  color: var(--ink-muted, #6f695d);
+}
+
+.selectedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: 700;
+}
+
+.expandIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--ink-muted, #6f695d);
+}
+
+/* Row Body (expanded) */
+.rowBody {
+  padding: 0 var(--space-3, 12px) var(--space-3, 12px);
+  border-top: 1px dashed var(--border-subtle, rgba(29, 28, 25, 0.12));
+  background: var(--app-canvas-subtle, #fff8e8);
+}
+
+/* Tier Breakdown */
+.tierBreakdown {
+  padding-top: var(--space-3, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.tierBreakdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted, #6f695d);
+}
+
+.tierBreakdownCount {
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: var(--surface-raised, #ffffff);
+  border: 1px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  border-radius: var(--radius-full, 9999px);
+}
+
+.tierList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.tierLine {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px) var(--space-3, 12px);
+  background: var(--surface-raised, #ffffff);
+  border: 1px solid var(--border-subtle, rgba(29, 28, 25, 0.12));
+  border-radius: var(--radius-md, 4px);
+  border-left: 4px solid transparent;
+  transition: border-color var(--transition-fast, 150ms ease);
+}
+
+/* Tier-specific accent border on the left edge */
+.tierLine:has(.tierDot[style*="cd7f32"]) {
+  border-left-color: #cd7f32;
+}
+.tierLine:has(.tierDot[style*="94a3b8"]) {
+  border-left-color: #94a3b8;
+}
+.tierLine:has(.tierDot[style*="eab308"]) {
+  border-left-color: #eab308;
+}
+.tierLine:has(.tierDot[style*="38bdf8"]) {
+  border-left-color: #38bdf8;
+}
+
+.tierLineLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+}
+
+.tierLineRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-family-ui);
+}
+
+.tierDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full, 9999px);
+  flex-shrink: 0;
+}
+
+.tierName {
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 700;
+  color: var(--ink-primary, #1d1c19);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tierLevel {
+  font-size: var(--font-size-xs, 0.6875rem);
+  color: var(--ink-muted, #6f695d);
+  padding: 2px var(--space-2, 8px);
+  background: var(--surface-sunken, #f5f1e8);
+  border-radius: var(--radius-sm, 2px);
+}
+
+.tierOperator {
+  font-size: var(--font-size-base, 1rem);
+  font-weight: 700;
+  color: var(--ink-muted, #6f695d);
+}
+
+.tierTarget {
+  font-size: var(--font-size-lg, 1.0625rem);
+  font-weight: 700;
+  color: var(--accent-primary, #e2ad2f);
+  min-width: 32px;
+  text-align: center;
+}
+
+.tierUnit {
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--ink-secondary, #4f4b42);
+}
+
+/* Apply Button */
+.applyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+  border: none;
+  border-radius: var(--radius-md, 4px);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 150ms ease);
+  align-self: flex-start;
+}
+
+.applyBtn:hover {
+  background: var(--accent-hover, #c78e12);
+}
+
+.applyBtn:focus-visible {
+  outline: 2px solid var(--focus-ring, #a66f0a);
+  outline-offset: 2px;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-8, 32px);
+  border: 1px dashed var(--border-subtle, rgba(29, 28, 25, 0.12));
+  border-radius: var(--radius-lg, 8px);
+  background: var(--surface-sunken, #f5f1e8);
+  color: var(--ink-muted, #6f695d);
+  font-size: var(--font-size-sm, 0.8125rem);
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .tierLine {
+    grid-template-columns: 1fr;
+    gap: var(--space-2, 8px);
+  }
+
+  .tierLineRight {
+    justify-content: flex-start;
+    padding-left: var(--space-4, 16px);
+  }
+
+  .rowHeader {
+    padding: var(--space-2, 8px);
+  }
+
+  .headerHint {
+    display: none;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .rowHeader,
+  .tierLine,
+  .applyBtn {
+    transition: none;
+  }
+}

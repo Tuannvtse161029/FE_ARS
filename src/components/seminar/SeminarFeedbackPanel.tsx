@@ -19,7 +19,7 @@ import {
   Loader,
   Mail,
   RefreshCw,
-  Sparkles,
+  Star,
   Inbox,
   Brain,
   TrendingUp,
@@ -402,7 +402,7 @@ export const SeminarFeedbackPanel: React.FC<SeminarFeedbackPanelProps> = ({
               </>
             ) : (
               <>
-                <Sparkles size={14} aria-hidden />
+                <Star size={14} aria-hidden />
                 Generate AI Feedback Summary
               </>
             )}

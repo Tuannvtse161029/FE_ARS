@@ -1,32 +1,45 @@
 /**
- * PhaseReports — Lecturer phased-report review console.
+ * PhaseReports — Lecturer phased-report review console (table view).
  *
- * Supports two modes:
- *  - All topics (no query params): shows all owned topics with their
- *    phase reports, grouped by topic → phase.
- *  - Topic-scoped (topicId in URL): shows only the specified topic's
- *    phase reports, grouped by phase.
+ * Single page that lists every PhasedReport owned by the lecturer's
+ * research groups as a sortable, searchable, status-filtered table.
  *
- * The URL contract is:
+ * URL contract is preserved:
  *   /lecturer/phase-reports[?topicId=<id>[&groupId=<id>]]
  *
- * The page reads from the URL on every mount and never falls back to a
- * default topic. All data comes from the live PhasedReport API.
+ * `?topicId=` and `?groupId=` apply a read-only pre-filter so deep links
+ * from `ResearchGroup` keep working — they're surfaced as a "Filtered to
+ * topic #X · Clear" chip above the table rather than routing into a
+ * separate drilled-in view.
+ *
+ * Behaviour:
+ *   - Search bar matches free text against topic title, group name,
+ *     phase title, and student name.
+ *   - Status tabs (All / Awaiting / Submitted / Overdue / Evaluated /
+ *     Rejected) filter the table; counts always reflect the full owned
+ *     set, not the search-filtered set.
+ *   - When consecutive rows share a research topic (or topic + group),
+ *     those cells are visually merged via `rowSpan` so the topic name
+ *     appears once, vertically centered across its phase rows.
+ *   - Each row carries an explicit "Evaluate / View detail" button that
+ *     opens the detail modal — the row itself is not clickable, so the
+ *     lecturer always knows where to click.
+ *   - "Update deadline" stays disabled until the report is overdue.
+ *   - The grading form inside the detail modal renders a "Not submitted
+ *     yet" panel until the student uploads a file; lecturers can still
+ *     extend the deadline from the modal.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  ChevronRight,
   Clock,
-  FileText,
+  Eye,
   Inbox,
   Loader,
   RefreshCw,
-  Users,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
@@ -34,30 +47,48 @@ import {
   phasedReportService,
   type PhasedReport,
 } from '../../services/phasedReport.service';
-import { EvaluateReportModal } from '../../components/lecturer/EvaluateReportModal';
 import { ExtendDeadlineModal } from '../../components/lecturer/ExtendDeadlineModal';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
-import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
+import { PhaseReportDetailModal } from '../../components/lecturer/PhaseReportDetailModal';
+import {
+  PhaseReportStatusTabs,
+  type PhaseReportStatusFilter,
+} from '../../components/lecturer/PhaseReportStatusTabs';
+import { useI18n } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { EmptyState } from '../../components/EmptyState';
+import { SkeletonRow } from '../../components/SkeletonRow';
+import { TableToolbar } from '../../components/table/TableToolbar';
 import { parseIdFromSearch } from '../../utils/topicRouting';
-import { formatDisplayDate, formatDisplayDateTime } from '../../utils/datetime';
+import { formatDisplayDate } from '../../utils/datetime';
 import styles from './PhaseReports.module.css';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Status mapping ─────────────────────────────────────────────────────────
 
-const dateLabel = (value?: string | null, withTime = false): string => {
-  if (!value) return '—';
-  return withTime ? formatDisplayDateTime(value) : formatDisplayDate(value);
-};
-
-const displayStatus = (report: PhasedReport): string => {
-  const raw = (report.status ?? '').toLowerCase().replace(/[ _-]/g, '');
-  if (raw === 'rejected' || raw === 'denied') return 'Rejected';
-  if (raw === 'evaluated' || raw === 'passed' || raw === 'approved') return 'Accepted';
-  if (raw === 'underreview' || raw === 'pendingreview') return 'Under Review';
-  if (raw === 'submitted' || raw === 'submittedforreview') {
+/**
+ * Map a PhasedReport to one of the page's six status filter buckets.
+ * Single source of truth for both filter-tab membership and row badges.
+ */
+const statusFilterOf = (report: PhasedReport): PhaseReportStatusFilter => {
+  const raw = (report.status ?? '').toLowerCase().trim();
+  if (raw === 'rejected' || raw === 'denied' || raw === 'declined') {
+    return 'rejected';
+  }
+  if (
+    raw === 'evaluated' ||
+    raw === 'passed' ||
+    raw === 'approved' ||
+    raw === 'graded' ||
+    raw === 'complete'
+  ) {
+    return 'evaluated';
+  }
+  if (
+    raw === 'submitted' ||
+    raw === 'submittedforreview' ||
+    raw === 'pending_review'
+  ) {
     const overdue =
       report.isOverdue ??
       Boolean(
@@ -65,28 +96,131 @@ const displayStatus = (report: PhasedReport): string => {
           report.deadlineAt &&
           new Date(report.submittedAt) > new Date(report.deadlineAt),
       );
-    return overdue ? 'Overdue Submitted' : 'Submitted On Time';
+    return overdue ? 'overdue' : 'submitted';
   }
-  if (raw === 'notopen') return 'Not Open';
-  return 'Awaiting Submission';
+  // Default: anything that is not submitted / evaluated / rejected counts
+  // as "awaiting submission". Includes WAITING, Pending, and any
+  // unknown / null state — the safest fallback for the lecturer.
+  return 'awaiting';
 };
 
-interface PhaseGroup {
-  phase: number;
-  title: string;
-  reports: PhasedReport[];
+/**
+ * Human-readable status label for the row badge. Matches the labels the
+ * existing `PhaseReports` page used so existing screenshots / muscle
+ * memory still apply.
+ */
+const statusLabelOf = (report: PhasedReport): string => {
+  const filter = statusFilterOf(report);
+  switch (filter) {
+    case 'all':
+      return '—';
+    case 'awaiting':
+      return 'Awaiting Submission';
+    case 'submitted':
+      return 'Submitted On Time';
+    case 'overdue':
+      return 'Overdue Submitted';
+    case 'evaluated':
+      return 'Accepted';
+    case 'rejected':
+      return 'Rejected';
+  }
+};
+
+/**
+ * True when the lecturer should be allowed to push the deadline forward:
+ *   - the BE flagged the report as overdue, OR
+ *   - the report's status is overdue (submitted past deadline), OR
+ *   - the report's status is awaiting / pending and its deadline has
+ *     already passed.
+ *
+ * This is separate from `statusFilterOf` because we don't want to move
+ * "awaiting + past deadline" reports into the `overdue` filter bucket
+ * (they're still awaiting submission), but we DO want the lecturer to be
+ * able to extend the deadline for them.
+ */
+const isDeadlineOverdue = (report: PhasedReport): boolean => {
+  if (report.isOverdue === true) return true;
+  const filter = statusFilterOf(report);
+  if (filter === 'overdue') return true;
+  if (filter !== 'awaiting') return false;
+  if (!report.deadlineAt) return false;
+  const d = new Date(report.deadlineAt);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now();
+};
+
+// ─── Row-span / row layout helpers ──────────────────────────────────────────
+
+interface DisplayRow {
+  report: PhasedReport;
+  topicRowSpan: number;
+  groupRowSpan: number;
+  isFirstOfTopic: boolean;
+  isFirstOfGroup: boolean;
 }
 
-interface TopicGroup {
-  topicId: number;
-  topicTitle: string;
-  phases: Map<number, PhaseGroup>;
-}
+/**
+ * Walk the sorted list and assign rowspan values for consecutive rows
+ * that share a research topic (or topic + group). The first row in each
+ * consecutive run renders the cell; subsequent rows skip it so HTML's
+ * rowSpan renders a single tall cell visually centred across them.
+ */
+const buildDisplayRows = (rows: PhasedReport[]): DisplayRow[] => {
+  const result: DisplayRow[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const r = rows[i];
+    const topic = r.topicTitle ?? '';
+    const group = r.researchGroupId ?? -1;
+
+    // Topic run
+    let topicEnd = i + 1;
+    while (
+      topicEnd < rows.length &&
+      (rows[topicEnd].topicTitle ?? '') === topic
+    ) {
+      topicEnd++;
+    }
+    // Topic + group run (within the topic run)
+    let groupEnd = i + 1;
+    while (
+      groupEnd < topicEnd &&
+      (rows[groupEnd].researchGroupId ?? -1) === group
+    ) {
+      groupEnd++;
+    }
+
+    const topicRowSpan = topicEnd - i;
+    const groupRowSpan = groupEnd - i;
+
+    result.push({
+      report: r,
+      topicRowSpan,
+      groupRowSpan,
+      isFirstOfTopic: true,
+      isFirstOfGroup: true,
+    });
+
+    for (let j = i + 1; j < groupEnd; j++) {
+      result.push({
+        report: rows[j],
+        topicRowSpan: 1,
+        groupRowSpan: 1,
+        isFirstOfTopic: false,
+        isFirstOfGroup: false,
+      });
+    }
+    i = groupEnd;
+  }
+  return result;
+};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const PhaseReports = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
 
   // URL-scoped filter values (null = show all)
@@ -100,18 +234,13 @@ export const PhaseReports = () => {
   const [reports, setReports] = useState<PhasedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PhasedReport | null>(null);
-  const [deadlineModalReport, setDeadlineModalReport] = useState<PhasedReport | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] =
+    useState<PhaseReportStatusFilter>('all');
+  const [detailReport, setDetailReport] = useState<PhasedReport | null>(null);
+  const [deadlineModalReport, setDeadlineModalReport] =
+    useState<PhasedReport | null>(null);
 
-  // Determine page mode
-  const isScoped = urlTopicId !== null;
-  const scopeDescription = isScoped
-    ? urlGroupId !== null
-      ? 'Showing reports for a specific group'
-      : 'Showing reports for a specific topic'
-    : 'Showing all your topics';
-
-  // Load all reports; filtering happens in the derived state below.
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -119,7 +248,9 @@ export const PhaseReports = () => {
       const data = await phasedReportService.getAll();
       setReports(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load phase reports.');
+      setError(
+        e instanceof Error ? e.message : 'Failed to load phase reports.',
+      );
       setReports([]);
     } finally {
       setLoading(false);
@@ -130,7 +261,8 @@ export const PhaseReports = () => {
     void load();
   }, []);
 
-  // Only show reports owned by the lecturer's groups.
+  // Only show reports owned by the lecturer's groups. URL pre-filters
+  // (topicId / groupId) apply before the search + status filter layer.
   const ownedReports = useMemo(() => {
     const ids = new Set(
       groups
@@ -142,7 +274,6 @@ export const PhaseReports = () => {
         typeof r.researchGroupId === 'number' &&
         ids.has(r.researchGroupId),
     );
-    // Apply URL filters (topicId, then optionally groupId).
     if (urlTopicId !== null) {
       base = base.filter((r) => r.topicId === urlTopicId);
     }
@@ -152,131 +283,174 @@ export const PhaseReports = () => {
     return base;
   }, [groups, reports, urlTopicId, urlGroupId]);
 
-  // Group by topic → phase number.
-  const topicGrouped = useMemo((): Map<string, TopicGroup> => {
-    const map = new Map<string, TopicGroup>();
-    for (const report of ownedReports) {
-      const topicKey = String(
-        report.topicId ?? report.topicTitle ?? 'unassigned',
-      );
-      let topicGroup = map.get(topicKey);
-      if (!topicGroup) {
-        topicGroup = {
-          topicId: typeof report.topicId === 'number' ? report.topicId : -1,
-          topicTitle: report.topicTitle ?? `Topic ${topicKey}`,
-          phases: new Map<number, PhaseGroup>(),
-        };
-        map.set(topicKey, topicGroup);
-      }
-      const phaseNum = report.phaseNumber ?? 0;
-      let phaseGroup = topicGroup.phases.get(phaseNum);
-      if (!phaseGroup) {
-        phaseGroup = {
-          phase: phaseNum,
-          title:
-            report.milestoneTitle ?? `Phase ${phaseNum || 'unassigned'}`,
-          reports: [],
-        };
-        topicGroup.phases.set(phaseNum, phaseGroup);
-      }
-      phaseGroup.reports.push(report);
-    }
-    return map;
-  }, [ownedReports]);
-
   const groupNames = useMemo(
     () =>
-      new Map(
-        groups.map((g) => [
-          g.id,
-          g.name ?? `Group #${g.id}`,
-        ]),
-      ),
+      new Map(groups.map((g) => [g.id, g.name ?? `Group #${g.id}`])),
     [groups],
   );
 
-  // When scoped by topicId, the URL is the source of truth — no
-  // client-side open/close state needed for the topic grid.
+  // Filter-tab counts — always reflect the FULL owned set so the user
+  // can see how many of each status exist before picking a filter.
+  const filterCounts = useMemo(() => {
+    const counts = {
+      all: ownedReports.length,
+      awaiting: 0,
+      submitted: 0,
+      overdue: 0,
+      evaluated: 0,
+      rejected: 0,
+    };
+    for (const r of ownedReports) {
+      const key = statusFilterOf(r);
+      counts[key] += 1;
+    }
+    return counts;
+  }, [ownedReports]);
+
+  // Search + status filter pipeline applied on top of `ownedReports`,
+  // then sorted so consecutive same-topic / same-group rows are
+  // adjacent. Topic / group rowspan merging reads from this sorted list.
+  const displayedReports = useMemo(() => {
+    let rows = ownedReports;
+    if (statusFilter !== 'all') {
+      rows = rows.filter((r) => statusFilterOf(r) === statusFilter);
+    }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((r) =>
+        [r.topicTitle, r.groupName, r.studentName, r.milestoneTitle]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      );
+    }
+    // Stable ordering: overdue first, then submitted (awaiting review),
+    // then evaluated, then awaiting. Within each bucket sort by topic
+    // title so the rowspan merging kicks in cleanly.
+    const bucketOrder: Record<PhaseReportStatusFilter, number> = {
+      overdue: 0,
+      submitted: 1,
+      rejected: 2,
+      awaiting: 3,
+      evaluated: 4,
+      all: 5,
+    };
+    return [...rows].sort((a, b) => {
+      const order =
+        bucketOrder[statusFilterOf(a)] - bucketOrder[statusFilterOf(b)];
+      if (order !== 0) return order;
+      const topicCompare = String(a.topicTitle ?? '').localeCompare(
+        String(b.topicTitle ?? ''),
+      );
+      if (topicCompare !== 0) return topicCompare;
+      // Within the same topic, group consecutive rows so the group cell
+      // can also be merged.
+      const aGroup = a.researchGroupId ?? -1;
+      const bGroup = b.researchGroupId ?? -1;
+      if (aGroup !== bGroup) return aGroup - bGroup;
+      // Within the same topic + group, sort by phase number so phase 1
+      // sits above phase 2.
+      return (a.phaseNumber ?? 0) - (b.phaseNumber ?? 0);
+    });
+  }, [ownedReports, statusFilter, search]);
+
+  // Compute rowSpan metadata for visual merging.
+  const displayRows = useMemo(
+    () => buildDisplayRows(displayedReports),
+    [displayedReports],
+  );
+
+  // True when a deep-link pre-filter is active and the URL still has it.
+  const scopeChipText =
+    urlTopicId !== null
+      ? t(
+          'lecturer.phaseReports.scopeChip',
+          'Filtered to topic #{id}',
+          { id: urlTopicId },
+        )
+      : null;
 
   return (
     <div className={styles.page}>
-      {/* ── Page header ─────────────────────────────────────────── */}
+      {/* ── Page header ──────────────────────────────────────── */}
       <PageHeader
         eyebrow="LECTURER WORKSPACE"
-        title="Phase Reports"
-        description={
-          isScoped
-            ? `${scopeDescription}. Use the links below to navigate the full drill-down.`
-            : 'Review submissions grouped by topic, phase, and research group.'
-        }
+        title={t('lecturer.phaseReports.title', 'Phase Reports')}
+        description={t(
+          'lecturer.phaseReports.description',
+          'Review submissions across every topic, phase, and research group.',
+        )}
         actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => void load()}
-              disabled={loading || groupsLoading}
-              leftIcon={<RefreshCw size={15} />}
-            >
-              Refresh
-            </Button>
-            {isScoped && (
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<ArrowLeft size={14} />}
-                onClick={() => window.history.back()}
-              >
-                Back
-              </Button>
-            )}
-          </>
+          <Button
+            variant="outline"
+            onClick={() => void load()}
+            disabled={loading || groupsLoading}
+            leftIcon={<RefreshCw size={15} />}
+          >
+            {t('common.refresh', 'Refresh')}
+          </Button>
         }
         accent="var(--ars-lecturer)"
       />
 
-      {/* ── URL scope breadcrumb (when scoped) ─────────────────── */}
-      {isScoped && (
-        <div className={styles.scopeBreadcrumb}>
-          <Link
-            to="/lecturer/phase-reports"
-            className={styles.scopeBreadcrumbLink}
-          >
-            All Topics
+      {/* ── Scope chip (only when a deep-link filter is active) ── */}
+      {scopeChipText && (
+        <div className={styles.scopeChip}>
+          <span>{scopeChipText}</span>
+          <Link to="/lecturer/phase-reports" className={styles.scopeChipClear}>
+            <X size={12} aria-hidden />{' '}
+            {t('lecturer.phaseReports.scopeClear', 'Clear filter')}
           </Link>
-          {urlTopicId !== null && (
-            <>
-              <ChevronRight size={13} aria-hidden />
-              <span className={styles.scopeBreadcrumbCurrent}>
-                Topic #{urlTopicId}
-              </span>
-            </>
-          )}
-          {urlGroupId !== null && (
-            <>
-              <ChevronRight size={13} aria-hidden />
-              <span className={styles.scopeBreadcrumbCurrent}>
-                Group #{urlGroupId}
-              </span>
-            </>
-          )}
         </div>
       )}
 
-      {/* ── Compact inline notice — replaces the prior full-width
-          BackendGapBanner. Only surfaces when there's something to explain
-          about the resubmission lineage. Otherwise quiet. */}
-      {ownedReports.some(
-        (r) =>
-          r.status === 'SUBMITTED' &&
-          typeof (r as { previousReportId?: unknown }).previousReportId !==
-            'number',
-      ) && (
-        <InlineNotice
-          tone="info"
-          title="Resubmission lineage"
-          description="Older reports are detected via the legacy __LINEAGE__: sentinel. New BE responses will populate the structured previousReportId column."
+      {/* ── Toolbar (search only — refresh lives in the header) ── */}
+      <div className={styles.toolbarRow}>
+        <TableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          onRefresh={() => void load()}
+          isRefreshing={loading || groupsLoading}
+          hideRefresh
+          className={styles.fullRowToolbar}
+          searchFieldClassName={styles.wideSearchField}
+          searchPlaceholder={t(
+            'lecturer.phaseReports.searchPlaceholder',
+            'Search by topic, group, phase, or student…',
+          )}
         />
-      )}
+      </div>
+
+      {/* ── Status filter tabs ────────────────────────────── */}
+      <div className={styles.filterRow}>
+        <PhaseReportStatusTabs
+          value={statusFilter}
+          onChange={setStatusFilter}
+          counts={filterCounts}
+          labels={{
+            all: t('lecturer.phaseReports.filters.all', 'All'),
+            awaiting: t(
+              'lecturer.phaseReports.filters.awaiting',
+              'Awaiting',
+            ),
+            submitted: t(
+              'lecturer.phaseReports.filters.submitted',
+              'Submitted',
+            ),
+            overdue: t(
+              'lecturer.phaseReports.filters.overdue',
+              'Overdue',
+            ),
+            evaluated: t(
+              'lecturer.phaseReports.filters.evaluated',
+              'Evaluated',
+            ),
+            rejected: t(
+              'lecturer.phaseReports.filters.rejected',
+              'Rejected',
+            ),
+          }}
+        />
+      </div>
 
       {/* ── Error ────────────────────────────────────────────── */}
       {error && (
@@ -286,263 +460,246 @@ export const PhaseReports = () => {
         </div>
       )}
 
-      {/* ── Loading ────────────────────────────────────────────── */}
+      {/* ── Loading ─────────────────────────────────────────── */}
       {loading || groupsLoading ? (
-        <div className={styles.loading}>
-          <Loader size={18} className={styles.spinning} aria-hidden />{' '}
-          Loading reports…
+        <div className={styles.loadingWrap}>
+          <div className={styles.loadingRow}>
+            <Loader size={16} className={styles.spinning} aria-hidden />{' '}
+            Loading reports…
+          </div>
+          <SkeletonRow count={6} withHeader />
         </div>
-      ) : topicGrouped.size === 0 ? (
+      ) : displayRows.length === 0 ? (
         <EmptyState
           icon={<Inbox size={24} aria-hidden />}
-          title={isScoped ? 'No reports for this scope' : 'No phase reports yet'}
+          title={
+            statusFilter !== 'all' || search.trim()
+              ? t(
+                  'lecturer.phaseReports.empty.filtered',
+                  'No reports match this filter',
+                )
+              : t(
+                  'lecturer.phaseReports.empty.all',
+                  'No phase reports yet',
+                )
+          }
           description={
-            isScoped
-              ? 'There are no phase reports matching the selected topic or group.'
-              : 'Once a student submits a phase report for one of your research groups, it will appear here for review.'
+            statusFilter !== 'all' || search.trim()
+              ? t(
+                  'lecturer.phaseReports.empty.filteredDescription',
+                  'Try adjusting the search or switching to a different status filter.',
+                )
+              : t(
+                  'lecturer.phaseReports.empty.allDescription',
+                  'Once a student submits a phase report for one of your research groups, it will appear here for review.',
+                )
           }
         />
       ) : (
-        <div className={styles.topics}>
-          {/* Topic ordering: any topic with at least one SUBMITTED / REJECTED
-              report needing lecturer review surfaces first. Within each
-              priority bucket the lecturer's natural newest-first order is
-              preserved. */}
-          {Array.from(topicGrouped.entries())
-            .map(([key, group]) => ({ key, group }))
-            .sort((a, b) => {
-              const aHas = Array.from(a.group.phases.values()).some((p) =>
-                p.reports.some(
-                  (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
-                ),
-              );
-              const bHas = Array.from(b.group.phases.values()).some((p) =>
-                p.reports.some(
-                  (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
-                ),
-              );
-              if (aHas !== bHas) return aHas ? -1 : 1;
-              return 0;
-            })
-            .map(({ key: topicKey, group: topicGroup }) => {
-            const reportCount = topicGroup.phases.size;
-            const totalReports = Array.from(topicGroup.phases.values()).reduce(
-              (acc, p) => acc + p.reports.length,
-              0,
-            );
-            const needsReview = Array.from(
-              topicGroup.phases.values(),
-            ).some((p) =>
-              p.reports.some(
-                (r) => r.status === 'SUBMITTED' || r.status === 'REJECTED',
-              ),
-            );
-            const focusHref = isScoped
-              ? '/lecturer/phase-reports'
-              : `/lecturer/phase-reports?topicId=${topicGroup.topicId}`;
-            const focusLabel = isScoped ? 'Back to all topics' : 'Open topic';
-            return (
-              <Link
-                to={focusHref}
-                className={styles.topicCard}
-                key={topicKey}
-                title={focusLabel}
-              >
-                <div className={styles.topicCardHeader}>
-                  <span className={styles.topicCardTitleWrap}>
-                    <h3 className={styles.topicCardTitle}>
-                      {topicGroup.topicTitle}
-                    </h3>
-                    {needsReview && (
-                      <span className={styles.topicCardPulse} aria-hidden />
-                    )}
-                  </span>
-                  <ChevronRight
-                    size={18}
-                    className={styles.topicCardArrow}
-                    aria-hidden
-                  />
-                </div>
-                <div className={styles.topicCardStats}>
-                  <span className={styles.topicStat}>
-                    <FileText size={14} aria-hidden />
-                    <strong>{totalReports}</strong> report
-                    {totalReports !== 1 ? 's' : ''}
-                  </span>
-                  <span className={styles.topicStat}>
-                    <Inbox size={14} aria-hidden />
-                    <strong>{reportCount}</strong> phase
-                    {reportCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className={styles.topicCardFooter}>
-                  <span className={styles.topicCardAction}>
-                    {focusLabel}
-                  </span>
-                  {needsReview && (
-                    <span className={styles.topicCardReviewPill}>
-                      Needs review
-                    </span>
+        <div className={styles.tableWrap}>
+          <table className={styles.reportsTable}>
+            <thead>
+              <tr>
+                <th>
+                  {t(
+                    'lecturer.phaseReports.columns.topic',
+                    'Research topic',
                   )}
-                </div>
-              </Link>
-            );
-          })}
+                </th>
+                <th>
+                  {t(
+                    'lecturer.phaseReports.columns.group',
+                    'Research group',
+                  )}
+                </th>
+                <th>
+                  {t('lecturer.phaseReports.columns.phase', 'Phase')}
+                </th>
+                <th>
+                  {t(
+                    'lecturer.phaseReports.columns.deadline',
+                    'Deadline',
+                  )}
+                </th>
+                <th>
+                  {t('lecturer.phaseReports.columns.status', 'Status')}
+                </th>
+                <th className={styles.actionsHeader} aria-label={t('lecturer.phaseReports.columns.actions', 'Actions')} />
+              </tr>
+            </thead>
+            <tbody>
+              {displayRows.map((row) => {
+                const { report } = row;
+                const id = report.id ?? report.phasedReportId;
+                const groupLabel =
+                  groupNames.get(report.researchGroupId ?? -1) ??
+                  report.groupName ??
+                  '—';
+                const phaseLabel =
+                  report.milestoneTitle ??
+                  `Phase ${report.phaseNumber ?? '—'}`;
+                const deadlineText = formatDisplayDate(report.deadlineAt);
+                const overdue = statusFilterOf(report) === 'overdue';
+                const canExtendDeadline = isDeadlineOverdue(report);
+                const colTopic = t(
+                  'lecturer.phaseReports.columns.topic',
+                  'Research topic',
+                );
+                const colGroup = t(
+                  'lecturer.phaseReports.columns.group',
+                  'Research group',
+                );
+                const colPhase = t(
+                  'lecturer.phaseReports.columns.phase',
+                  'Phase',
+                );
+                const colDeadline = t(
+                  'lecturer.phaseReports.columns.deadline',
+                  'Deadline',
+                );
+                const colStatus = t(
+                  'lecturer.phaseReports.columns.status',
+                  'Status',
+                );
+                const colActions = t(
+                  'lecturer.phaseReports.columns.actions',
+                  'Actions',
+                );
+                const hasSubmission =
+                  !!report.submittedAt && !!report.reportFileUrl;
+                const evaluateLabel = hasSubmission
+                  ? t(
+                      'lecturer.phaseReports.actions.evaluate',
+                      'Evaluate',
+                    )
+                  : t(
+                      'lecturer.phaseReports.actions.viewDetail',
+                      'View detail',
+                    );
+                return (
+                  <tr
+                    key={
+                      id ??
+                      `${report.topicId}-${report.researchGroupId}-${report.phaseNumber}`
+                    }
+                    className={styles.row}
+                  >
+                    {row.isFirstOfTopic && (
+                      <td
+                        className={styles.topicCell}
+                        data-cell={colTopic}
+                        rowSpan={row.topicRowSpan}
+                      >
+                        {report.topicTitle ?? '—'}
+                      </td>
+                    )}
+                    {row.isFirstOfGroup && (
+                      <td
+                        className={styles.groupCell}
+                        data-cell={colGroup}
+                        rowSpan={row.groupRowSpan}
+                      >
+                        {groupLabel}
+                      </td>
+                    )}
+                    <td data-cell={colPhase}>{phaseLabel}</td>
+                    <td
+                      data-cell={colDeadline}
+                      className={
+                        overdue ? styles.deadlineDanger : undefined
+                      }
+                    >
+                      {deadlineText}
+                    </td>
+                    <td data-cell={colStatus}>
+                      <StatusBadge
+                        status={statusFilterOf(report)}
+                        label={statusLabelOf(report)}
+                        size="sm"
+                      />
+                    </td>
+                    <td
+                      className={styles.actionsCell}
+                      data-cell={colActions}
+                    >
+                      <div className={styles.actionsRow}>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => setDetailReport(report)}
+                          leftIcon={<Eye size={13} />}
+                          title={evaluateLabel}
+                        >
+                          {evaluateLabel}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeadlineModalReport(report)}
+                          disabled={!canExtendDeadline || id == null}
+                          leftIcon={<Clock size={13} />}
+                          title={
+                            canExtendDeadline
+                              ? t(
+                                  'lecturer.phaseReports.detail.updateDeadline',
+                                  'Update deadline',
+                                )
+                              : t(
+                                  'lecturer.phaseReports.tooltips.updateDeadlineDisabled',
+                                  'Update deadline is available once the deadline has passed',
+                                )
+                          }
+                        >
+                          {t(
+                            'lecturer.phaseReports.detail.updateDeadline',
+                            'Update deadline',
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* ── Scoped phase reports ───────────────────────────────── */}
-      {isScoped && !loading && !groupsLoading && topicGrouped.size > 0 && (
-        <div className={styles.scopedPhases}>
-          {Array.from(topicGrouped.entries()).map(([, topicGroup]) => (
-            <section className={styles.topicDetail} key={topicGroup.topicId}>
-              <header className={styles.topicDetailHeader}>
-                <h2 className={styles.topicDetailTitle}>
-                  {topicGroup.topicTitle}
-                </h2>
-                <Link
-                  to="/lecturer/phase-reports"
-                  className={styles.backToTopicsLink}
-                >
-                  ← Back to all topics
-                </Link>
-              </header>
-              <div className={styles.phaseList}>
-                {Array.from(topicGroup.phases.values())
-                  .sort((a, b) => a.phase - b.phase)
-                  .map((phase) => (
-                    <div className={styles.phase} key={phase.phase}>
-                      <div className={styles.phaseHeading}>
-                        <h3>{phase.title}</h3>
-                        <span className={styles.phaseHeadingCount}>
-                          {phase.reports.length} report
-                          {phase.reports.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div className={styles.reportList}>
-                        {phase.reports.map((report) => {
-                          const id = report.id ?? report.phasedReportId;
-                          const groupLabel =
-                            groupNames.get(report.researchGroupId ?? -1) ??
-                            report.groupName ??
-                            'Unassigned group';
-                          return (
-                            <article
-                              className={styles.report}
-                              key={id ?? `${phase.phase}-${report.researchGroupId}`}
-                            >
-                              <div className={styles.reportMain}>
-                                <div className={styles.reportTitle}>
-                                  <StatusBadge
-                                    status={displayStatus(report)}
-                                    label={displayStatus(report)}
-                                    size="sm"
-                                  />
-                                </div>
-                                <strong className={styles.reportGroupName}>
-                                  {groupLabel}
-                                </strong>
-                                <div className={styles.meta}>
-                                  <span className={styles.metaItem}>
-                                    <Users size={13} aria-hidden />
-                                    <span className={styles.metaLabel}>
-                                      Student
-                                    </span>
-                                    <span className={styles.metaValue}>
-                                      {report.studentName ?? 'Not supplied'}
-                                    </span>
-                                  </span>
-                                  <span className={styles.metaItem}>
-                                    <Clock size={13} aria-hidden />
-                                    <span className={styles.metaLabel}>
-                                      Deadline
-                                    </span>
-                                    <span className={styles.metaValue}>
-                                      {dateLabel(report.deadlineAt)}
-                                    </span>
-                                  </span>
-                                  <span className={styles.metaItem}>
-                                    <Calendar size={13} aria-hidden />
-                                    <span className={styles.metaLabel}>
-                                      Submitted
-                                    </span>
-                                    <span className={styles.metaValue}>
-                                      {dateLabel(report.submittedAt)}
-                                    </span>
-                                  </span>
-                                </div>
-                              </div>
-                              <div className={styles.actions}>
-                                {report.reportFileUrl ? (
-                                  <a
-                                    className={styles.openPdfLink}
-                                    href={report.reportFileUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    <FileText size={14} aria-hidden /> Open PDF
-                                  </a>
-                                ) : (
-                                  <span className={styles.noFilePill}>
-                                    No file uploaded
-                                  </span>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setDeadlineModalReport(report)}
-                                  disabled={id == null}
-                                  leftIcon={<Clock size={13} />}
-                                  title="Extend deadline for this phase report"
-                                >
-                                  Update Deadline
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => setSelected(report)}
-                                  disabled={id == null || !report.reportFileUrl}
-                                  title={
-                                    !report.reportFileUrl
-                                      ? 'Review opens once a student uploads the report PDF.'
-                                      : 'Open the evaluation modal'
-                                  }
-                                >
-                                  Review
-                                </Button>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-
-      {/* ── Evaluation modal ────────────────────────────────── */}
-      <EvaluateReportModal
-        isOpen={selected !== null}
-        report={selected}
-        onClose={() => setSelected(null)}
+      {/* ── Detail modal (header + PDF + inline grading form) ─ */}
+      <PhaseReportDetailModal
+        isOpen={detailReport !== null}
+        report={detailReport}
+        groupName={
+          detailReport
+            ? (groupNames.get(detailReport.researchGroupId ?? -1) ??
+              detailReport.groupName ??
+              undefined)
+            : undefined
+        }
+        isDeadlineOverdue={
+          detailReport ? isDeadlineOverdue(detailReport) : false
+        }
+        onClose={() => setDetailReport(null)}
+        onRequestExtendDeadline={(r) => {
+          if (!isDeadlineOverdue(r)) return;
+          setDetailReport(null);
+          setDeadlineModalReport(r);
+        }}
         onSubmitted={() => {
-          setSelected(null);
+          setDetailReport(null);
           void load();
         }}
       />
 
-      {/* ── Extend deadline modal ───────────────────────────── */}
+      {/* ── Extend deadline modal (page-level) ─────────────── */}
       <ExtendDeadlineModal
         isOpen={deadlineModalReport !== null}
         report={deadlineModalReport}
         groupName={
           deadlineModalReport
             ? (groupNames.get(deadlineModalReport.researchGroupId ?? -1) ??
-               deadlineModalReport.groupName ??
-               undefined)
+              deadlineModalReport.groupName ??
+              undefined)
             : undefined
         }
         onClose={() => setDeadlineModalReport(null)}
