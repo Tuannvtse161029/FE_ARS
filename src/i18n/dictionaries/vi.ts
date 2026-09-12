@@ -2721,6 +2721,27 @@ export const dictionary: Dictionary = {
     'badges.profile.tabs.forum': 'Diễn đàn',
     'badges.profile.tabs.overview': 'Tổng quan',
     'badges.profile.tabs.publications': 'Công trình',
+    // Profile tab strip — ba tab cấp cao (Hồ sơ / Chuyên môn / Công khai).
+    // Thay thế dải bốn tab "tổng quan / diễn đàn / công trình / huy hiệu"
+    // sau khi hợp nhất trang /reviewer/professional-profile riêng vào
+    // /profile. Khóa đặt dưới `profile.tabs.*` để không xung đột với
+    // nhãn tab huy hiệu.
+    'profile.tabs.account': 'Hồ sơ',
+    'profile.tabs.accountHint': 'Chỉnh sửa thông tin cá nhân',
+    'profile.tabs.professional': 'Hồ sơ chuyên môn',
+    'profile.tabs.professionalHint': 'Quản lý chuyên môn và chỉ số nghiên cứu',
+    'profile.tabs.public': 'Hồ sơ công khai',
+    'profile.tabs.publicHint': 'Cách người khác nhìn thấy hồ sơ của bạn',
+    // Tiêu đề phụ đặt phía trên mỗi phần thân tab để người dùng biết họ
+    // đang xem nội dung gì.
+    'profile.tabBody.accountTitle': 'Thông tin hồ sơ',
+    'profile.tabBody.accountSubtitle': 'Cập nhật thông tin liên hệ, tiểu sử và từ khóa. Chỉ những trường bạn thay đổi mới được lưu.',
+    'profile.tabBody.professionalTitle': 'Hồ sơ chuyên môn',
+    'profile.tabBody.professionalSubtitle': 'Quản lý chuyên môn nghiên cứu, tình trạng nhận phản biện và các chỉ số học thuật.',
+    'profile.tabBody.publicTitle': 'Hồ sơ công khai',
+    'profile.tabBody.publicSubtitle': 'Đây là cách các thành viên khác trên ARS nhìn thấy hồ sơ của bạn.',
+    'profile.tabBody.publicVisitorTitle': 'Hồ sơ công khai',
+    'profile.tabBody.publicVisitorSubtitle': 'Thông tin mà thành viên này đã chọn chia sẻ công khai.',
     'badges.section.howToEarn': 'Cách đạt:',
     'badges.section.locked': 'Chưa mở',
     'badges.section.progress': 'Tiến độ {percent}%',

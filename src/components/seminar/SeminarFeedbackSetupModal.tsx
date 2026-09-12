@@ -1,34 +1,19 @@
 /**
 
-
  * SeminarFeedbackSetupModal.tsx
-
 
  *
 
-
  * Full setup UI for the Lecturer to configure Seminar Feedback:
-
-
  * 1. Choose between ARS General Feedback Form (standard 4 questions) or Custom Form
-
-
  * 2. In Custom Form: Add, reorder (Move Up/Down), delete, toggle Rating vs Text, toggle Required
-
-
  * 3. Live Participant Preview: see exactly what participants will experience
-
-
  * 4. Save & persist to Seminar.feedback (JSON in NVARCHAR(MAX)) & localStorage
-
-
  */
 
 
 
-
-
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 
 import {
@@ -52,6 +37,9 @@ import {
   AlertCircle,
 
 
+  Clock4,
+
+
   FileCheck2,
 
 
@@ -71,6 +59,11 @@ import { useLocale } from '../../i18n/I18nContext';
 
 
 import { Button } from '../Button/Button';
+
+
+import { SEMINAR_FEEDBACK_WINDOW_HOURS } from '../../utils/constants';
+import { getSeminarFeedbackWindow } from '../../utils/seminarFeedbackWindow';
+import { formatDisplayDateTime } from '../../utils/datetime';
 
 
 import {
@@ -184,6 +177,19 @@ export const SeminarFeedbackSetupModal = ({
 
 
 
+  // Fetch the seminar's `endTime` so the 72-hour feedback window banner
+  // can show an absolute deadline (rather than only "the next 72 hours").
+  // The call is silent on failure — the banner gracefully degrades to
+  // showing the window length alone.
+  const [seminarEndTime, setSeminarEndTime] = useState<string | null>(null);
+
+
+  const feedbackWindowInfo = useMemo(
+    () => getSeminarFeedbackWindow(seminarEndTime),
+    [seminarEndTime],
+  );
+
+
   const [activeTab, setActiveTab] = useState<TabType>('setup');
 
 
@@ -217,6 +223,9 @@ export const SeminarFeedbackSetupModal = ({
 
 
 
+    setSeminarEndTime(null);
+
+
     setActiveTab('setup');
 
 
@@ -224,6 +233,45 @@ export const SeminarFeedbackSetupModal = ({
 
 
     setGeneralStatusMsg(null);
+
+
+
+
+
+    // Best-effort fetch of the seminar so we can show an absolute
+    // deadline for the 72-hour feedback window. The banner renders
+    // fine without it — only the "closes at …" line is gated on
+    // `seminarEndTime` being present.
+
+
+    let isMountedForSeminar = true;
+
+
+    seminarService
+
+
+      .getById(seminarId)
+
+
+      .then((sem) => {
+
+
+        if (!isMountedForSeminar) return;
+
+
+        if (sem?.endTime) setSeminarEndTime(sem.endTime);
+
+
+      })
+
+
+      .catch(() => {
+
+
+        /* silent — banner degrades to showing window length only */
+
+
+      });
 
 
 
@@ -449,6 +497,9 @@ export const SeminarFeedbackSetupModal = ({
 
 
       isMounted = false;
+
+
+      isMountedForSeminar = false;
 
 
     };
@@ -779,14 +830,8 @@ export const SeminarFeedbackSetupModal = ({
 
 
       // 1. Cache locally so the form remains usable even during transient
-
-
       //    network failures. The canonical request body is the array of
-
-
       //    questions (ticket §14) and is sent via PUT in the service.
-
-
       setCachedSeminarQuestions(seminarId, questionsToSave);
 
 
@@ -794,8 +839,6 @@ export const SeminarFeedbackSetupModal = ({
 
 
       // 2. Persist to the BE (canonical PUT /api/Seminar/{id}/feedback-form).
-
-
       await seminarService.saveFeedbackQuestions(seminarId, questionsToSave);
 
 
@@ -833,875 +876,337 @@ export const SeminarFeedbackSetupModal = ({
 
 
       // Close modal after brief success confirmation.
-
-
       setTimeout(() => {
-
-
         onClose();
-
-
       }, 1200);
-
-
     } catch (err: unknown) {
-
-
       const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
-
-
       const serverMsg =
-
-
         resp?.data?.message || resp?.data?.title ||
-
-
         (err instanceof Error ? err.message : '');
-
-
       const friendly = serverMsg ||
-
-
         copy('Failed to save the feedback form. Please try again.', 'Không thể lưu biểu mẫu đánh giá. Vui lòng thử lại.');
-
-
       setGeneralStatusMsg({
-
-
         type: 'error',
-
-
         text: friendly,
-
-
       });
-
-
     } finally {
-
-
       setIsSaving(false);
-
-
     }
-
-
   };
 
 
-
+  const isWindowClosed =
+    feedbackWindowInfo.state === 'closed' && Boolean(feedbackWindowInfo.deadline);
 
 
   return (
-
-
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-
-
       <div className={styles.modalCard}>
-
-
         {/* Modal Header */}
-
-
         <div className={styles.modalHeader}>
-
-
           <div className={styles.headerTitleGroup}>
-
-
             <h3 className={styles.modalTitle}>
-
-
               <Sliders size={20} color="var(--ars-lecturer)" aria-hidden />
-
-
               {copy('Configure Seminar Feedback', 'Thiết lập Đánh giá Hội thảo')}
-
-
             </h3>
-
-
             <p className={styles.modalSubtitle}>
-
-
               {seminarTitle ? (
-
-
                 <>
-
-
                   {copy('Seminar:', 'Hội thảo:')} <strong>{seminarTitle}</strong> (ID: {seminarId})
-
-
                 </>
-
-
               ) : (
-
-
                 copy('Set up feedback questions for seminar participants', 'Tạo bộ câu hỏi đánh giá cho người tham dự')
-
-
               )}
-
-
             </p>
-
-
           </div>
-
-
           <button
-
-
             type="button"
-
-
             className={styles.closeBtn}
-
-
             onClick={onClose}
-
-
             aria-label={copy('Close', 'Đóng')}
-
-
           >
-
-
             <X size={20} aria-hidden />
-
-
           </button>
-
-
         </div>
-
-
-
 
 
         {/* Navigation Tabs */}
-
-
         <div className={styles.navTabs}>
-
-
           <button
-
-
             type="button"
-
-
             className={`${styles.navTab} ${activeTab === 'setup' ? styles.navTabActive : ''}`}
-
-
             onClick={() => setActiveTab('setup')}
-
-
           >
-
-
             <Sliders size={16} aria-hidden />
-
-
             <span>{copy('1. Setup Questions', '1. Thiết lập câu hỏi')}</span>
-
-
             <span className={styles.badge}>{currentQuestions.length}</span>
-
-
           </button>
-
-
           <button
-
-
             type="button"
-
-
             className={`${styles.navTab} ${activeTab === 'preview' ? styles.navTabActive : ''}`}
-
-
             onClick={() => {
-
-
               if (validate()) setActiveTab('preview');
-
-
             }}
-
-
           >
-
-
             <Eye size={16} aria-hidden />
-
-
             <span>{copy('2. Participant Preview', '2. Xem trước giao diện')}</span>
-
-
           </button>
-
-
         </div>
-
-
-
 
 
         {/* Modal Content */}
-
-
         <div className={styles.modalBody}>
-
+          {/* 72-hour feedback-window notice — single source of truth lives
+              in `utils/seminarFeedbackWindow.ts`. Tells the lecturer when
+              the participant-side submission window opens / closes so they
+              know how long their invitees have to respond. */}
+          <div
+            className={`${styles.feedbackWindowBanner} ${
+              isWindowClosed ? styles.feedbackWindowBannerClosed : styles.feedbackWindowBannerOpen
+            }`}
+            role="status"
+          >
+            <Clock4 size={16} aria-hidden />
+            <span>
+              {isWindowClosed
+                ? copy(
+                    `The feedback window has closed. Participants can no longer submit feedback because the ${SEMINAR_FEEDBACK_WINDOW_HOURS}-hour submission period ended at ${formatDisplayDateTime(feedbackWindowInfo.deadline, locale)}.`,
+                    `Đã đóng cửa sổ phản hồi. Người tham dự không thể gửi phản hồi vì thời hạn ${SEMINAR_FEEDBACK_WINDOW_HOURS} giờ đã kết thúc lúc ${formatDisplayDateTime(feedbackWindowInfo.deadline, locale)}.`,
+                  )
+                : feedbackWindowInfo.deadline
+                ? copy(
+                    `Your participants will have ${SEMINAR_FEEDBACK_WINDOW_HOURS} hours after this seminar ends to submit feedback. The window will close at ${formatDisplayDateTime(feedbackWindowInfo.deadline, locale)}.`,
+                    `Người tham gia sẽ có ${SEMINAR_FEEDBACK_WINDOW_HOURS} giờ sau khi hội thảo kết thúc để gửi phản hồi. Cửa sổ sẽ đóng lúc ${formatDisplayDateTime(feedbackWindowInfo.deadline, locale)}.`,
+                  )
+                : copy(
+                    `Your participants will have ${SEMINAR_FEEDBACK_WINDOW_HOURS} hours after this seminar ends to submit feedback.`,
+                    `Người tham gia sẽ có ${SEMINAR_FEEDBACK_WINDOW_HOURS} giờ sau khi hội thảo kết thúc để gửi phản hồi.`,
+                  )}
+            </span>
+          </div>
 
           {generalStatusMsg && (
-
-
             <div
-
-
               className={`${styles.alertBox} ${
-
-
                 generalStatusMsg.type === 'error' ? styles.alertError : styles.alertSuccess
-
-
               }`}
-
-
               role="status"
-
-
             >
-
-
               {generalStatusMsg.type === 'error' ? (
-
-
                 <AlertCircle size={16} aria-hidden />
-
-
               ) : (
-
-
                 <CheckCircle2 size={16} aria-hidden />
-
-
               )}
-
-
               <span>{generalStatusMsg.text}</span>
-
-
             </div>
-
-
           )}
-
-
-
 
 
           {activeTab === 'setup' ? (
-
-
             <>
-
-
               {/* Form Mode Selection */}
-
-
               <div className={styles.modeSelection}>
-
-
                 <div
-
-
                   className={`${styles.modeOption} ${
-
-
                     formMode === 'custom' ? styles.modeOptionSelected : ''
-
-
                   }`}
-
-
                   onClick={() => setFormMode('custom')}
-
-
                   role="radio"
-
-
                   aria-checked={formMode === 'custom'}
-
-
                   tabIndex={0}
-
-
                   onKeyDown={(e) => {
-
-
                     if (e.key === 'Enter' || e.key === ' ') setFormMode('custom');
-
-
                   }}
-
-
                 >
-
-
                   <div className={styles.modeHeader}>
-
-
                     <span className={styles.modeTitle}>
-
-
                       <Star size={18} color="var(--ars-lecturer)" aria-hidden />
-
-
                       {copy('Custom Question Builder', 'Tự tạo câu hỏi riêng cho Hội thảo')}
-
-
                     </span>
-
-
                     {formMode === 'custom' && (
-
-
                       <CheckCircle2 size={18} color="var(--ars-lecturer)" aria-hidden />
-
-
                     )}
-
-
                   </div>
-
-
                   <p className={styles.modeDesc}>
-
-
                     {copy(
-
-
                       'Build your own questions. Tailor rating criteria and custom text questions specifically for this topic.',
-
-
                       'Tự do thêm câu hỏi, lựa chọn định dạng đánh giá sao hoặc nhập văn bản theo đúng nội dung buổi chia sẻ này.'
-
-
                     )}
-
-
                   </p>
-
-
                 </div>
-
-
-
 
 
                 <div
-
-
                   className={`${styles.modeOption} ${
-
-
                     formMode === 'general' ? styles.modeOptionSelected : ''
-
-
                   }`}
-
-
                   onClick={() => setFormMode('general')}
-
-
                   role="radio"
-
-
                   aria-checked={formMode === 'general'}
-
-
                   tabIndex={0}
-
-
                   onKeyDown={(e) => {
-
-
                     if (e.key === 'Enter' || e.key === ' ') setFormMode('general');
-
-
                   }}
-
-
                 >
-
-
                   <div className={styles.modeHeader}>
-
-
                     <span className={styles.modeTitle}>
-
-
                       <FileCheck2 size={18} color="var(--ars-lecturer)" aria-hidden />
-
-
                       {copy('ARS General Form', 'Dùng mẫu chuẩn ARS')}
-
-
                     </span>
-
-
                     {formMode === 'general' && (
-
-
                       <CheckCircle2 size={18} color="var(--ars-lecturer)" aria-hidden />
-
-
                     )}
-
-
                   </div>
-
-
                   <p className={styles.modeDesc}>
-
-
                     {copy(
-
-
                       'Use ARS standard evaluation (4 balanced questions: Content & Speaker ratings + Takeaways & Improvements text).',
-
-
                       'Sử dụng bộ câu hỏi mẫu của hệ thống (4 câu: Đánh giá sao nội dung & diễn giả + Trả lời bài học & góp ý).'
-
-
                     )}
-
-
                   </p>
-
-
                 </div>
-
-
               </div>
 
 
-
-
-
               {/* Mode-Specific Content */}
-
-
               {formMode === 'general' ? (
-
-
                 <div className={styles.generalTemplateCard}>
-
-
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-
-
                     <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ars-ink)' }}>
-
-
                       {copy('Standard Questions Included:', 'Các câu hỏi chuẩn bao gồm:')}
-
-
                     </span>
-
-
                     <Button
-
-
                       variant="outline"
-
-
                       size="sm"
-
-
                       leftIcon={<Eye size={14} aria-hidden />}
-
-
                       onClick={() => setActiveTab('preview')}
-
-
                     >
-
-
                       {copy('Preview Live Form', 'Xem trước')}
-
-
                     </Button>
-
-
                   </div>
-
-
-
 
 
                   <ul className={styles.generalList}>
-
-
                     {DEFAULT_GENERAL_QUESTIONS.map((q, idx) => (
-
-
                       <li key={q.id} className={styles.generalItem}>
-
-
                         <span className={styles.generalItemTitle}>
-
-
                           <strong>#{idx + 1}.</strong> {q.questionText}
-
-
                         </span>
-
-
                         <span className={styles.typeBadge}>
-
-
                           {q.type === 'rating' ? copy('Rating (1–5)', '1–5 Sao') : copy('Text', 'Văn bản')}
-
-
                         </span>
-
-
                       </li>
-
-
                     ))}
-
-
                   </ul>
-
-
                 </div>
-
-
               ) : (
-
-
                 /* Custom Question Builder */
-
-
                 <div className={styles.builderSection}>
-
-
                   <div className={styles.questionsList}>
-
-
                     {customQuestions.map((q, idx) => (
-
-
                       <QuestionEditorCard
-
-
                         key={q.id}
-
-
                         question={q}
-
-
                         index={idx}
-
-
                         totalCount={customQuestions.length}
-
-
                         onUpdate={(patch) => handleUpdateQuestion(q.id, patch)}
-
-
                         onMoveUp={() => handleMoveQuestion(idx, 'up')}
-
-
                         onMoveDown={() => handleMoveQuestion(idx, 'down')}
-
-
                         onDelete={() => handleDeleteQuestion(q.id)}
-
-
                         error={validationErrors[q.id]}
-
-
                       />
-
-
                     ))}
-
-
                   </div>
-
-
-
 
 
                   <div className={styles.addQuestionRow}>
-
-
                     <button
-
-
                       type="button"
-
-
                       className={styles.addQuestionBtn}
-
-
                       onClick={handleAddQuestion}
-
-
                       disabled={customQuestions.length >= 15}
-
-
                     >
-
-
                       <Plus size={16} aria-hidden />
-
-
                       <span>{copy('Add Another Question', 'Thêm câu hỏi mới')}</span>
-
-
                     </button>
-
-
                   </div>
-
-
                 </div>
-
-
               )}
-
-
             </>
-
-
           ) : (
-
-
             /* Live Participant Preview Tab */
-
-
             <div>
-
-
               <DynamicQuestionRenderer
-
-
                 questions={currentQuestions}
-
-
                 previewMode={true}
-
-
               />
-
-
             </div>
-
-
           )}
-
-
         </div>
-
-
-
 
 
         {/* Modal Footer */}
-
-
         <div className={styles.modalFooter}>
-
-
           <div className={styles.footerLeft}>
-
-
             <span>
-
-
               {copy('Total:', 'Tổng:')} <strong>{currentQuestions.length}</strong> {copy('questions', 'câu hỏi')}
-
-
             </span>
-
-
           </div>
-
-
-
 
 
           <div className={styles.footerRight}>
-
-
             <Button variant="outline" size="md" onClick={onClose} disabled={isSaving}>
-
-
               {copy('Cancel', 'Hủy')}
-
-
             </Button>
-
-
             {activeTab === 'setup' ? (
-
-
               <Button
-
-
                 variant="outline"
-
-
                 size="md"
-
-
                 leftIcon={<Eye size={14} aria-hidden />}
-
-
                 onClick={() => {
-
-
                   if (validate()) setActiveTab('preview');
-
-
                 }}
-
-
               >
-
-
                 {copy('Preview Form', 'Xem trước')}
-
-
               </Button>
-
-
             ) : (
-
-
               <Button
-
-
                 variant="outline"
-
-
                 size="md"
-
-
                 leftIcon={<Sliders size={14} aria-hidden />}
-
-
                 onClick={() => setActiveTab('setup')}
-
-
               >
-
-
                 {copy('Edit Questions', 'Chỉnh sửa')}
-
-
               </Button>
-
-
             )}
-
-
             <Button
-
-
               variant="primary"
-
-
               size="md"
-
-
               leftIcon={
-
-
                 isSaving ? (
-
-
                   <Loader size={14} className="spinning" aria-hidden />
-
-
                 ) : (
-
-
                   <Send size={14} aria-hidden />
-
-
                 )
-
-
               }
-
-
               onClick={handleSaveAndSend}
-
-
               disabled={isSaving}
-
-
               style={{
-
-
                 backgroundColor: 'var(--ars-lecturer)',
-
-
                 borderColor: 'var(--ars-lecturer)',
-
-
                 color: '#ffffff',
-
-
               }}
-
-
             >
-
-
               {isSaving
-
-
                 ? copy('Saving...', 'Đang lưu...')
-
-
                 : copy('Save & Send Form', 'Lưu & Kích hoạt đánh giá')}
-
-
             </Button>
-
-
           </div>
-
-
         </div>
-
-
       </div>
-
-
     </div>
-
-
   );
-
-
 };
 
 
-
-
-
 export default SeminarFeedbackSetupModal;
-
-

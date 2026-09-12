@@ -277,7 +277,7 @@ export const ReviewerAssignments = () => {
               </p>
             </div>
             <Link
-              to={ROUTES.PROFESSIONAL_PROFILE}
+              to={`${ROUTES.PROFILE}?tab=professional`}
               className={reviewer.availabilityLink}
             >
               {t('reviewer.assignments.availability.manage')}
@@ -329,7 +329,7 @@ export const ReviewerAssignments = () => {
               }
               action={
                 !search ? (
-                  <Link to={ROUTES.PROFESSIONAL_PROFILE}>
+                  <Link to={`${ROUTES.PROFILE}?tab=professional`}>
                     <Button variant="outline" size="md">
                       {t('reviewer.assignments.openAvailability')}
                     </Button>

@@ -84,7 +84,6 @@ const SubmitReport = lazy(() => import('./pages/GraduateStudent/SubmitReport').t
 const StudentResearchGroups = lazy(() => import('./pages/GraduateStudent/StudentResearchGroups').then((m) => ({ default: m.StudentResearchGroups })));
 const GraduateStudentDashboard = lazy(() => import('./pages/GraduateStudent/GraduateStudentDashboard').then((m) => ({ default: m.GraduateStudentDashboard })));
 const Profile = lazy(() => import('./pages/Profile/Profile').then((m) => ({ default: m.Profile })));
-const ProfessionalProfile = lazy(() => import('./pages/Reviewer/ProfessionalProfile').then((m) => ({ default: m.ProfessionalProfile })));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const RoleRequests = lazy(() => import('./pages/Admin/RoleRequests').then((m) => ({ default: m.RoleRequests })));
 const AccountsManagement = lazy(() => import('./pages/Admin/AccountsManagement').then((m) => ({ default: m.AccountsManagement })));
@@ -288,17 +287,7 @@ const App = () => {
                   <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
 
-                {/* Professional Profile — shared surface for the three workspace
-                    roles that own an academic profile:
-                      • Reviewer    — availability + research expertise + academic metrics
-                      • Researcher  — research expertise + academic metrics
-                      • Lecturer    — research expertise only (no availability,
-                                       no academic metrics — see role-policy)
-                    The remaining reviewer-only publication routes
-                    (assignments / evaluation) keep their tight Reviewer guard. */}
-                <Route element={<RoleRouteGuard allow={['Researcher', 'Reviewer', 'Lecturer']} />}>
-                  <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
-                </Route>
+                {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}
 
                 {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}
                 <Route element={<RoleRouteGuard allow={['Reviewer']} />}>
@@ -329,6 +318,13 @@ const App = () => {
                     inbox does not deep-link a user past their RBAC. */}
                 <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
+                {/* Legacy deep-link: the old /reviewer/professional-profile
+                    page was consolidated into /profile?tab=professional so the
+                    single Profile page can own the three-tab surface
+                    (Account / Professional / Public). Redirecting here keeps
+                    existing bookmarks, notification deep-links, and email
+                    links working without showing a 404. */}
+                <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<Navigate to={`${ROUTES.PROFILE}?tab=professional`} replace />} />
                 {/* Public profile viewing: forum authors/commenters of every
                     authenticated role must be able to open another user's
                     profile. Only the Admin workspace routes remain guarded

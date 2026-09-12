@@ -227,6 +227,14 @@ export interface Seminar {
   feedbackJson?: string | null;
   /** When the AI feedback summary was generated. */
   aiFeedbackGeneratedAt?: string | null;
+  /**
+   * Participant-side submission flag, surfaced by the participant-
+   * scoped `/my-invitations` endpoint. Not present in the owner-facing
+   * `GET /api/Seminar` payload — see `SeminarInvitationResponse` for
+   * the canonical contract and `useSeminarParticipations` for the
+   * consumer.
+   */
+  feedbackSubmittedAt?: string | null;
   participants?: SeminarParticipant[] | null;
   organizerName?: string | null;
   invitationStatus?: string | null;
@@ -250,6 +258,19 @@ export interface SeminarInvitationResponse {
   rating?: number | null;
   subFieldId?: number | null;
   subFieldName?: string | null;
+  /**
+   * Submission timestamp for the participant's dynamic feedback form.
+   * Surfaced by `GET /my-invitations` so the FE can show "View
+   * feedback" instead of "Feedback window closed" once a participant
+   * has already submitted — see `seminarService.getMyInvitations`.
+   */
+  feedbackSubmittedAt?: string | null;
+  /**
+   * Dynamic-feedback answers as JSON. Mirrors the `feedbackJson`
+   * exposed by `GET /my-seminars`; the FE uses it as a fallback for
+   * the participant-submitted flag when the timestamp is missing.
+   */
+  feedbackJson?: string | null;
 }
 
 /** Mirror of `GET /api/Seminar/suggested-invitees` item */
@@ -855,6 +876,14 @@ export const seminarService = {
       invitationStatus: row.invitationStatus ?? null,
       participantEvaluation: row.participantEvaluation ?? null,
       rating: row.rating ?? null,
+      // Pass through the participant-side submission flags so the
+      // /my-invitations payload can satisfy `useSeminarParticipations`'s
+      // `participantSubmitted` check. Without this the join was always
+      // reporting "no feedback submitted" for users who had already
+      // submitted, surfacing the read-only "Feedback window closed"
+      // pill even after the 72-hour gate had been cleared.
+      feedbackSubmittedAt: row.feedbackSubmittedAt ?? null,
+      feedbackJson: row.feedbackJson ?? null,
       status:
         row.endTime &&
         (parseApiDateTimeAsUtc(row.endTime)?.getTime() ?? Number.POSITIVE_INFINITY) <
