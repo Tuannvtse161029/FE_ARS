@@ -191,10 +191,10 @@ export const LearningMaterialModal = ({
     if (!id) return;
     setDeleteConfirm({ open: false, materialId: null, materialTitle: '' });
     try {
-      await learningMaterialService.delete(id);
+      const deleteResult = await learningMaterialService.delete(id);
       setBanner({
         visible: true,
-        text: 'Material deleted.',
+        text: deleteResult?.message || 'Material deleted.',
         variant: 'success',
       });
       await refetch();

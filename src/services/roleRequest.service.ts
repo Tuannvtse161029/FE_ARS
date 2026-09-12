@@ -44,8 +44,6 @@ interface CreateAdditionalRoleRequestPayload {
   requestedRole: string;
   proofDocumentUrl: string;
   requestType?: string;
-  affiliation?: string;
-  department?: string;
   phoneNumber?: string;
   orcidId?: string | null;
   reason?: string;
@@ -68,8 +66,6 @@ export const roleRequestService = {
       requestedRole: input.requestedAdditionalRole,
       proofDocumentUrl: input.proofDocumentUrl || '',
       requestType: 'ADDITIONAL_ROLE',
-      affiliation: input.affiliation || '',
-      department: input.department || '',
       phoneNumber: input.phoneNumber || input.phone || '',
       orcidId: input.orcidId || null,
       reason: input.reason || '',

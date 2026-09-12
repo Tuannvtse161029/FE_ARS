@@ -103,8 +103,8 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
               <div><dt>{t('admin.roleRequests.details.userId')}</dt><dd>#{request.userId}</dd></div>
               <div><dt>{t('admin.roleRequests.details.email')}</dt><dd>{request.email}</dd></div>
               <div><dt>{t('admin.roleRequests.details.phone')}</dt><dd>{request.phone ?? '—'}</dd></div>
-              <div><dt>{t('admin.roleRequests.details.affiliation')}</dt><dd>{request.affiliation}</dd></div>
-              <div><dt>{t('admin.roleRequests.details.department')}</dt><dd>{request.department}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.affiliation')}</dt><dd>{request.affiliation ?? '—'}</dd></div>
+              <div><dt>{t('admin.roleRequests.details.department')}</dt><dd>{request.department ?? '—'}</dd></div>
               <div><dt>{t('admin.roleRequests.details.initialCurrentRole')}</dt><dd>{rolesText(request.currentRoles)}</dd></div>
               <div><dt>{t('admin.roleRequests.details.requestedAdditionalRole')}</dt><dd>{rolesText(requestedRolesForDisplay(request))}</dd></div>
               <div><dt>{t('admin.roleRequests.details.requestType')}</dt><dd>{requestTypeLabel(request)}</dd></div>

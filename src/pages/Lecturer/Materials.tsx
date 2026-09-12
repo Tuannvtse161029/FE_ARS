@@ -591,24 +591,12 @@ export const LecturerMaterialsPage = () => {
   const handleLmDelete = async (id: number) => {
     if (!id) return;
     try {
-      // 1. Proactively cleanup/end any active shares for this material
-      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
-      for (const share of activeShares) {
-        if (share.sharedMaterialId) {
-          try {
-            await sharedMaterialService.update(share.sharedMaterialId, {
-              ...share,
-              status: 'ENDED',
-            });
-          } catch {
-            // best-effort cleanup
-          }
-        }
-      }
-
-      await learningMaterialService.delete(id);
+      const deleteResult = await learningMaterialService.delete(id);
       setPendingDeleteId(null);
-      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      const successMessage =
+        deleteResult?.message ||
+        t('lecturer.materials.delete.success', 'Material deleted.');
+      showBanner(successMessage);
       await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
     } catch (err) {
       const message =

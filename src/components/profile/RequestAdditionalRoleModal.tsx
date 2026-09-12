@@ -155,8 +155,6 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
   }, [availableRoles, selectedRole]);
 
   // Form fields
-  const [affiliation, setAffiliation] = useState('');
-  const [department, setDepartment] = useState('');
   const [phone, setPhone] = useState('');
   const [reason, setReason] = useState('');
   const [proofDocumentUrl, setProofDocumentUrl] = useState('');
@@ -170,8 +168,6 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
   // Initialize fields from profile on open
   useEffect(() => {
     if (!isOpen) return;
-    setAffiliation(currentProfile?.institution || '');
-    setDepartment(currentProfile?.department || '');
     setPhone(currentProfile?.phoneNumber || '');
     setReason('');
     setProofDocumentUrl('');
@@ -272,8 +268,6 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
         userName: currentProfile?.fullName || currentUser.username || currentUser.email,
         email: currentUser.email,
         phoneNumber: phone,
-        affiliation,
-        department,
         currentRoles,
         requestedAdditionalRole: selectedRole,
         reason,
@@ -474,54 +468,58 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
             </div>
           )}
 
-          {/* Affiliation & Department */}
+          {/* Contact Information & Profile Overview */}
           <div>
             <h3 className={styles.sectionTitle}>
-              {isVi ? '2. Thông tin công tác & liên hệ' : '2. Academic affiliation & contact'}
+              {isVi ? '2. Thông tin liên hệ & hồ sơ' : '2. Contact & profile information'}
             </h3>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label} htmlFor="role-req-affiliation">
-                  {isVi ? 'Cơ quan / Trường học *' : 'Institution / University *'}
-                </label>
-                <input
-                  id="role-req-affiliation"
-                  className={styles.input}
-                  type="text"
-                  required
-                  value={affiliation}
-                  onChange={(e) => setAffiliation(e.target.value)}
-                  placeholder={isVi ? 'Đại học FPT, Viện nghiên cứu...' : 'e.g. Stanford, FPT University'}
-                />
-              </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label} htmlFor="role-req-department">
-                  {isVi ? 'Khoa / Bộ môn' : 'Department / Faculty'}
-                </label>
-                <input
-                  id="role-req-department"
-                  className={styles.input}
-                  type="text"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder={isVi ? 'Khoa Công nghệ thông tin...' : 'e.g. Computer Science'}
-                />
+            <div className={styles.profileContextCard}>
+              <div className={styles.profileContextItem}>
+                <span className={styles.profileContextLabel}>
+                  {isVi ? 'Đơn vị công tác:' : 'Affiliation / Institution:'}
+                </span>
+                <span className={styles.profileContextValue}>
+                  {currentProfile?.institution || (isVi ? 'Chưa cập nhật' : 'Not set')}
+                </span>
               </div>
+              {currentProfile?.department && (
+                <div className={styles.profileContextItem}>
+                  <span className={styles.profileContextLabel}>
+                    {isVi ? 'Khoa / Chuyên môn:' : 'Department:'}
+                  </span>
+                  <span className={styles.profileContextValue}>
+                    {currentProfile.department}
+                  </span>
+                </div>
+              )}
+              <div className={styles.profileContextNote}>
+                <AlertCircle size={13} aria-hidden />
+                <span>
+                  {isVi
+                    ? 'Thông tin đơn vị công tác và chuyên môn được quản lý tập trung tại trang Hồ sơ cá nhân (Profile).'
+                    : 'Affiliation and department details are centrally managed in your Profile.'}
+                </span>
+              </div>
+            </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label} htmlFor="role-req-phone">
-                  {isVi ? 'Số điện thoại liên hệ' : 'Contact phone number'}
-                </label>
-                <input
-                  id="role-req-phone"
-                  className={styles.input}
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+84 901 234 567"
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="role-req-phone">
+                {isVi ? 'Số điện thoại liên hệ' : 'Contact phone number'}
+              </label>
+              <input
+                id="role-req-phone"
+                className={styles.input}
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+84 901 234 567"
+              />
+              <span className={styles.inputHint}>
+                {isVi
+                  ? 'Số điện thoại này sẽ được tự động lưu và đồng bộ trực tiếp vào Hồ sơ cá nhân của bạn.'
+                  : 'This phone number will be automatically synced directly to your user profile.'}
+              </span>
             </div>
           </div>
 

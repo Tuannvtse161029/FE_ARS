@@ -958,7 +958,11 @@ export const Profile = () => {
           onSubmitted={() => {
             if (user?.userId) {
               setPendingRoleRequest(roleRequestService.getPendingRequest(user.userId));
+              roleRequestService.fetchPendingRequest(user.userId).then((fresh) => {
+                setPendingRoleRequest(fresh);
+              });
             }
+            void refetch();
             setRoleRequestSuccessMessage(
               t(
                 'profile.requestRoleSuccess',

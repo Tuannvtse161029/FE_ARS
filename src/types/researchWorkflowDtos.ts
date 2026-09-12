@@ -136,6 +136,12 @@ export interface LearningMaterialUpdateRequest {
   subFieldId: number | null;
 }
 
+export interface LearningMaterialDeleteResponse {
+  message?: string;
+  deletedId?: number;
+  revokedSharesCount?: number;
+}
+
 // SharedMaterial is a collaboration record in the live Swagger contract.
 // Catalog metadata belongs to isolated demo state until the BE adds fields.
 export interface SharedMaterialCreateRequest {
