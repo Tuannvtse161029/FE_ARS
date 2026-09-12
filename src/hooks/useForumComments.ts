@@ -30,10 +30,18 @@ export function useForumComments(postId: number): UseForumCommentsResult {
     try {
       const [listRes, myVotesRes] = await Promise.allSettled([
         forumCommentService.getByPostId(postId),
-        forumCommentService.getMyVotes(),
+        typeof forumCommentService.getMyVotes === 'function'
+          ? forumCommentService.getMyVotes()
+          : Promise.resolve([]),
       ]);
 
-      const list = listRes.status === 'fulfilled' ? listRes.value : [];
+      if (listRes.status === 'rejected') {
+        throw listRes.reason instanceof Error
+          ? listRes.reason
+          : new Error(String(listRes.reason || 'Failed to load comments'));
+      }
+
+      const list = listRes.value;
       const myVotes = new Set<number>(
         myVotesRes.status === 'fulfilled' && Array.isArray(myVotesRes.value)
           ? myVotesRes.value

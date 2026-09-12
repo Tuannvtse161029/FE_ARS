@@ -422,46 +422,16 @@ export const LecturerMaterialsPage = () => {
     [sharedItems, lecturerId],
   );
 
-  const activeSharesByMaterial = useMemo(() => {
-    const idMap = new Map<number, SharedMaterial[]>();
-    for (const s of sharedByMe) {
-      const status = resolveUiStatus(s);
-      if (status === 'ACTIVE' || status === 'ACCEPTED' || status === 'PENDING') {
-        const mid =
-          typeof s.learningMaterialId === 'number'
-            ? s.learningMaterialId
-            : typeof s.paperId === 'number'
-            ? s.paperId
-            : null;
-        if (mid !== null) {
-          const list = idMap.get(mid) ?? [];
-          list.push(s);
-          idMap.set(mid, list);
-        }
-      }
-    }
-    return { idMap };
-  }, [sharedByMe]);
 
   const handleLmDelete = async (id: number) => {
     if (!id) return;
     try {
-      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
-      for (const share of activeShares) {
-        if (share.sharedMaterialId) {
-          try {
-            await sharedMaterialService.update(share.sharedMaterialId, {
-              ...share,
-              status: 'ENDED',
-            });
-          } catch {
-            // best-effort cleanup
-          }
-        }
-      }
-      await learningMaterialService.delete(id);
+      const deleteResult = await learningMaterialService.delete(id);
       setPendingDeleteId(null);
-      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      const successMessage =
+        deleteResult?.message ||
+        t('lecturer.materials.delete.success', 'Material deleted.');
+      showBanner(successMessage);
       await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete the material.';
@@ -806,8 +776,8 @@ export const LecturerMaterialsPage = () => {
           </div>
         )}
 
-      <SharedSection
-        title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
+        <SharedSection
+          title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
           emptyText={t('lecturer.materials.shared.emptyByMe', 'You have not shared any materials with colleagues yet.')}
           loading={sharedLoading}
           items={sharedByMe}
@@ -840,8 +810,8 @@ export const LecturerMaterialsPage = () => {
           </div>
         )}
 
-      <SharedSection
-        title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
+        <SharedSection
+          title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
           emptyText={t('lecturer.materials.shared.emptyWithMe', 'No colleagues have shared a material with you yet.')}
           loading={sharedLoading}
           items={sharedWithMe}

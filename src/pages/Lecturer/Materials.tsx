@@ -45,7 +45,6 @@ import {
   Clock,
   User,
   Users,
-  Info,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -629,24 +628,12 @@ export const LecturerMaterialsPage = () => {
   const handleLmDelete = async (id: number) => {
     if (!id) return;
     try {
-      // 1. Proactively cleanup/end any active shares for this material
-      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
-      for (const share of activeShares) {
-        if (share.sharedMaterialId) {
-          try {
-            await sharedMaterialService.update(share.sharedMaterialId, {
-              ...share,
-              status: 'ENDED',
-            });
-          } catch {
-            // best-effort cleanup
-          }
-        }
-      }
-
-      await learningMaterialService.delete(id);
+      const deleteResult = await learningMaterialService.delete(id);
       setPendingDeleteId(null);
-      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      const successMessage =
+        deleteResult?.message ||
+        t('lecturer.materials.delete.success', 'Material deleted.');
+      showBanner(successMessage);
       await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
     } catch (err) {
       const message =
@@ -681,10 +668,9 @@ export const LecturerMaterialsPage = () => {
   }, [loadShared]);
 
   // Look up the material title for each SharedMaterial row. The BE contract
-  // stores `paperId` (the underlying LearningMaterial id) together with the
-  // full status enum and a 30-day expiry auto-applied on create, so we use
-  // `paperId` to cross-reference a real LearningMaterial when one exists,
-  // and fall back to whatever the API returned otherwise.
+  // stores only `paperId` today (see the BackendGapBanner below), so when we
+  // find a LearningMaterial whose numeric id matches `paperId` we treat that
+  // as the underlying row. We also keep a fallback map for unmatched ids.
   const sharedByMe = useMemo(() => {
     return (Array.isArray(sharedItems) ? sharedItems : []).filter(
       (s) => s.lecturerId === lecturerId,
@@ -1208,7 +1194,7 @@ export const LecturerMaterialsPage = () => {
             onClick={() => setActiveTab('shared-with-me')}
           >
             <Users size={16} aria-hidden />
-            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared for me')}</span>
+            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared with me')}</span>
             <span className={styles.tabCountBadge}>{sharedWithMe.length}</span>
           </button>
         </div>
@@ -1672,7 +1658,7 @@ export const LecturerMaterialsPage = () => {
                       }`}
                     >
                       {isSharedFromColleague
-                        ? t('lecturer.materials.source.sharedWithMe', 'Shared for me')
+                        ? t('lecturer.materials.source.sharedWithMe', 'Shared with me')
                         : fileLike
                         ? t('lecturer.materials.source.file', 'File')
                         : t('lecturer.materials.source.link', 'Link')}
@@ -1736,26 +1722,11 @@ export const LecturerMaterialsPage = () => {
                   <div className={styles.materialCardUsage}>
                     {crossRefLoading && usageTotal === 0 ? (
                       <span className={styles.materialUsageChipMuted}>
-                        {t(
-                          'lecturer.materials.usage.checking',
-                          'Checking usage…',
-                        )}
+                        Checking usage…
                       </span>
                     ) : usageTotal === 0 ? (
-                      <span
-                        className={styles.materialUsageChipUnlinked}
-                        title={t(
-                          'lecturer.materials.usage.unlinkedHint',
-                          'This material is not part of any research topic or phase yet. You can still share it with colleagues from the Share button.',
-                        )}
-                      >
-                        <Info size={12} aria-hidden />
-                        <span>
-                          {t(
-                            'lecturer.materials.usage.unlinked',
-                            'Not linked to any topic/phase',
-                          )}
-                        </span>
+                      <span className={styles.materialUsageChipMuted}>
+                        {t('lecturer.materials.usage.none', 'Not used')}
                       </span>
                     ) : (
                       <button
@@ -1908,7 +1879,6 @@ export const LecturerMaterialsPage = () => {
             : ''
         }`}
       >
-
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -1993,7 +1963,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── TAB 3: Shared for me ──────────────────────────────────────────── */}
+      {/* ── TAB 3: Shared with me ────────────────────────────────────────── */}
       <div
         id="panel-shared-with-me"
         role="tabpanel"
@@ -2002,7 +1972,6 @@ export const LecturerMaterialsPage = () => {
           activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''
         }`}
       >
-
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -2022,7 +1991,7 @@ export const LecturerMaterialsPage = () => {
         <SharedSection
           title={t(
             'lecturer.materials.shared.sectionWithMe',
-            'Shared for me',
+            'Shared with me',
           )}
           emptyText={t(
             'lecturer.materials.shared.emptyWithMe',

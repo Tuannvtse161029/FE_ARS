@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
-import { useLocale } from '../../i18n/I18nContext';
+import { useLocale, useT } from '../../i18n/I18nContext';
 import { learningMaterialService } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import { learningMaterialUsageService, type MaterialUsage } from '../../services/phaseMaterial.service';
@@ -57,6 +57,7 @@ type SortColumn = 'title' | 'subField' | 'updatedAt';
 export const LecturerLearningMaterialsPage = () => {
   const { user } = useAuth();
   const locale = useLocale();
+  const t = useT();
   const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   const lecturerId = user?.userId ?? null;
   const { materials, isLoading, error, refetch } = useLearningMaterials({
@@ -277,8 +278,11 @@ export const LecturerLearningMaterialsPage = () => {
     const { id } = deleteTarget;
     setDeleteTarget(null);
     try {
-      await learningMaterialService.delete(id);
-      showBanner('Material deleted.');
+      const deleteResult = await learningMaterialService.delete(id);
+      const successMessage =
+        deleteResult?.message ||
+        t('lecturer.materials.delete.success', 'Material deleted.');
+      showBanner(successMessage);
       await refetch();
     } catch (err) {
       const message =
