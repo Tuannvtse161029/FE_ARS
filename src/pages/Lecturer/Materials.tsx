@@ -141,10 +141,10 @@ const resolveUiStatus = (item: SharedMaterial): SharedMaterialUiStatus => {
   const raw = (item.status ?? '').toUpperCase();
   // FE-owned terminal states win over BE status.
   if (raw === 'ENDED') return 'ENDED';
-  if (raw === 'ACCEPTED') return 'ACCEPTED';
   if (raw === 'DECLINED') return 'DECLINED';
-  if (raw === 'PENDING') return 'PENDING';
   if (isExpired(item.sharedAt ?? item.createdAt)) return 'EXPIRED';
+  if (raw === 'ACCEPTED') return 'ACCEPTED';
+  if (raw === 'PENDING') return 'PENDING';
   // BE-known fallback states.
   if (raw === 'ARCHIVED') return 'ARCHIVED';
   return 'ACTIVE';
@@ -204,6 +204,24 @@ const ROSTER_MAX_PAGES = 10;
 const fetchLecturerRoster = async (
   currentUserId: number | null,
 ): Promise<{ rows: LecturerRosterEntry[]; outcome: RosterLoadOutcome }> => {
+  // 1. Primary path: Dedicated lecturer colleagues endpoint for share modal
+  try {
+    const colleagues = await sharedMaterialService.getColleagues();
+    if (Array.isArray(colleagues) && colleagues.length > 0) {
+      const rows: LecturerRosterEntry[] = colleagues
+        .map((c) => ({
+          id: c.id,
+          fullName: (c.fullName ?? '').toString(),
+          email: (c.email ?? '').toString(),
+        }))
+        .filter((u) => u.id !== currentUserId);
+      return { rows, outcome: { kind: 'empty' } as const };
+    }
+  } catch {
+    // If colleagues endpoint not available, fallback to user roster below
+  }
+
+  // 2. Fallback path: Admin-accessible /api/User
   try {
     const seen = new Set<number>();
     const collected: LecturerRosterEntry[] = [];
@@ -227,27 +245,21 @@ const fetchLecturerRoster = async (
         const id = entry.id ?? entry.userId;
         if (typeof id !== 'number') continue;
         if (seen.has(id)) continue;
-      seen.add(id);
-      collected.push({
-        id,
-        fullName: (entry.fullName ?? '').toString(),
-        email: (entry.email ?? '').toString(),
-      });
+        seen.add(id);
+        collected.push({
+          id,
+          fullName: (entry.fullName ?? '').toString(),
+          email: (entry.email ?? '').toString(),
+        });
+      }
+      const totalPages = (payload as { totalPages?: number }).totalPages;
+      if (typeof totalPages === 'number' && page >= totalPages) break;
     }
-    const totalPages = (payload as { totalPages?: number }).totalPages;
-    if (typeof totalPages === 'number' && page >= totalPages) break;
-  }
     return {
       rows: collected.filter((u) => u.id !== currentUserId),
       outcome: { kind: 'empty' } as const,
     };
   } catch (err) {
-    // `/api/User` is Admin-only in the live BE (Swagger summary:
-    // "Lấy danh sách người dùng phân trang (Dành cho Admin)"). A lecturer
-    // JWT hits `403 Forbidden`; we swallow the rejection here so the
-    // Materials page does not crash, and surface the gap as a banner
-    // inside the share modal instead. See ticket
-    // `tickets/backend/FE_MATERIAL_SHARE_403_TICKET.md`.
     if (isForbiddenError(err)) {
       return { rows: [], outcome: { kind: 'forbidden' } as const };
     }
@@ -579,10 +591,25 @@ export const LecturerMaterialsPage = () => {
   const handleLmDelete = async (id: number) => {
     if (!id) return;
     try {
+      // 1. Proactively cleanup/end any active shares for this material
+      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
+      for (const share of activeShares) {
+        if (share.sharedMaterialId) {
+          try {
+            await sharedMaterialService.update(share.sharedMaterialId, {
+              ...share,
+              status: 'ENDED',
+            });
+          } catch {
+            // best-effort cleanup
+          }
+        }
+      }
+
       await learningMaterialService.delete(id);
       setPendingDeleteId(null);
-      showBanner('Material deleted.');
-      await Promise.all([refetchLearning(), loadCrossReference()]);
+      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to delete the material.';
@@ -731,6 +758,14 @@ export const LecturerMaterialsPage = () => {
     item: SharedMaterial,
     rosterIndex: Map<number, LecturerRosterEntry>,
   ): string => {
+    // 1. Direct name from BE response if available
+    if (item.lecturerId === lecturerId && item.sharedWithName) {
+      return item.sharedWithName;
+    }
+    if (item.sharedWithColleagueId === lecturerId && item.lecturerName) {
+      return item.lecturerName;
+    }
+    // 2. Lookup in rosterIndex
     const counterpart =
       item.lecturerId === lecturerId
         ? item.sharedWithColleagueId
@@ -879,6 +914,7 @@ export const LecturerMaterialsPage = () => {
       for (const colleagueId of shareSelected) {
         await sharedMaterialService.create({
           lecturerId,
+          learningMaterialId: paperId,
           paperId,
           sharedWithColleagueId: colleagueId,
           sharedAt,
@@ -908,7 +944,8 @@ export const LecturerMaterialsPage = () => {
     try {
       await sharedMaterialService.update(item.sharedMaterialId, {
         lecturerId: item.lecturerId,
-        paperId: item.paperId,
+        learningMaterialId: item.learningMaterialId ?? item.paperId,
+        paperId: item.paperId ?? item.learningMaterialId,
         sharedWithColleagueId: item.sharedWithColleagueId,
         sharedAt: item.sharedAt,
         status: nextStatus,
@@ -1639,34 +1676,48 @@ export const LecturerMaterialsPage = () => {
 
                   {!isSharedFromColleague && isConfirming && !disabledDelete && (
                     <div className={styles.materialDeleteConfirm}>
-                      <span className={styles.materialDeleteConfirmText}>
-                        {t(
-                          'lecturer.materials.action.deleteConfirmTitle',
-                          'Delete this material?',
-                        )}
-                      </span>
-                      <div className={styles.materialDeleteConfirmActions}>
-                        <button
-                          type="button"
-                          className={styles.materialDeleteCancel}
-                          onClick={() => setPendingDeleteId(null)}
-                        >
+                      <div className={styles.materialDeleteConfirmHeader}>
+                        <span className={styles.materialDeleteConfirmText}>
                           {t(
-                            'lecturer.materials.action.cancel',
-                            'Cancel',
+                            'lecturer.materials.action.deleteConfirmTitle',
+                            'Delete this material?',
                           )}
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.materialDeleteCommit}
-                          onClick={() => void handleLmDelete(id)}
-                        >
-                          {t(
-                            'lecturer.materials.action.deleteConfirm',
-                            'Delete',
-                          )}
-                        </button>
+                        </span>
+                        <div className={styles.materialDeleteConfirmActions}>
+                          <button
+                            type="button"
+                            className={styles.materialDeleteCancel}
+                            onClick={() => setPendingDeleteId(null)}
+                          >
+                            {t(
+                              'lecturer.materials.action.cancel',
+                              'Cancel',
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.materialDeleteCommit}
+                            onClick={() => void handleLmDelete(id)}
+                          >
+                            {t(
+                              'lecturer.materials.action.deleteConfirm',
+                              'Delete',
+                            )}
+                          </button>
+                        </div>
                       </div>
+                      {isCurrentlyShared && (
+                        <div className={styles.materialDeleteShareWarning}>
+                          <AlertTriangle size={13} aria-hidden />
+                          <span>
+                            {t(
+                              'lecturer.materials.action.deleteSharedWarning',
+                              'This material is currently shared with {count} colleague(s). Deleting it will permanently revoke their access.',
+                              { count: activeShares.length },
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
@@ -1687,17 +1738,6 @@ export const LecturerMaterialsPage = () => {
             : ''
         }`}
       >
-        <BackendGapBanner
-          field={t(
-            'lecturer.materials.shared.gapBanner.field',
-            'SharedMaterial.learningMaterialId, status enum, expiry',
-          )}
-          feature={t(
-            'lecturer.materials.shared.gapBanner.feature',
-            'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
-          )}
-        />
-
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -1791,17 +1831,6 @@ export const LecturerMaterialsPage = () => {
           activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''
         }`}
       >
-        <BackendGapBanner
-          field={t(
-            'lecturer.materials.shared.gapBanner.field',
-            'SharedMaterial.learningMaterialId, status enum, expiry',
-          )}
-          feature={t(
-            'lecturer.materials.shared.gapBanner.feature',
-            'API only accepts paperId (numeric) and returns ACTIVE/ARCHIVED — the FE infers the remaining statuses and computes the 30-day expiry client-side.',
-          )}
-        />
-
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>

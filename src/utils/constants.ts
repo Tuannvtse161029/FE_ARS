@@ -362,6 +362,7 @@ export const API_ENDPOINTS = {
       CREATE: '/api/SharedMaterial',
       UPDATE: (id: number) => `/api/SharedMaterial/${id}`,
       DELETE: (id: number) => `/api/SharedMaterial/${id}`,
+      COLLEAGUES: '/api/SharedMaterial/colleagues',
     },
   },
 } as const;

@@ -2146,6 +2146,7 @@ export const dictionary: Dictionary = {
     'lecturer.materials.action.deleteBlockedTitle': 'Không thể xóa tài liệu đang được sử dụng.',
     'lecturer.materials.action.deleteConfirmTitle': 'Xóa tài liệu này?',
     'lecturer.materials.action.deleteConfirmBody': 'Bạn sắp xóa "{title}". Hành động này không thể hoàn tác.',
+    'lecturer.materials.action.deleteSharedWarning': 'Tài liệu này hiện đang được chia sẻ với {count} đồng nghiệp. Việc xóa tài liệu sẽ thu hồi vĩnh viễn quyền truy cập của họ.',
     'lecturer.materials.action.deleteConfirm': 'Xóa',
     'lecturer.materials.action.cancel': 'Hủy',
     'lecturer.materials.card.openAria': 'Mở tài liệu',

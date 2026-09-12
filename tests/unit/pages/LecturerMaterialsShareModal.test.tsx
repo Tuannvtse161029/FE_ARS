@@ -5,9 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { LecturerMaterialsPage } from '../../../src/pages/Lecturer/Materials';
 
-const { getAllLearningMock, getAllSharedMock } = vi.hoisted(() => ({
+const { getAllLearningMock, getAllSharedMock, updateSharedMock, deleteLearningMock } = vi.hoisted(() => ({
   getAllLearningMock: vi.fn(),
   getAllSharedMock: vi.fn(),
+  updateSharedMock: vi.fn(() => Promise.resolve({})),
+  deleteLearningMock: vi.fn(() => Promise.resolve({})),
 }));
 
 vi.mock('../../../src/context/AuthContext', () => ({
@@ -51,7 +53,7 @@ vi.mock('../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: {
     getAll: getAllLearningMock,
     create: vi.fn(),
-    delete: vi.fn(),
+    delete: deleteLearningMock,
   },
   defaultLearningMaterialFolderPath: () => 'lecturer-materials',
 }));
@@ -60,7 +62,7 @@ vi.mock('../../../src/services/sharedMaterial.service', () => ({
   sharedMaterialService: {
     getAll: getAllSharedMock,
     create: vi.fn(),
-    update: vi.fn(),
+    update: updateSharedMock,
     delete: vi.fn(),
   },
 }));
@@ -274,6 +276,37 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     await user.click(withMeTab);
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /shared with me|được chia sẻ với tôi/i })).toBeInTheDocument();
+    });
+  });
+
+  it('displays warning when deleting a material that is currently shared and cleans up shares on delete', async () => {
+    const user = userEvent.setup();
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Advanced AI Architectures Guide')).toBeInTheDocument();
+    });
+
+    // Material #101 is currently shared (active share #501 with colleague 8)
+    const deleteBtn = screen.getByRole('button', { name: /delete material|xóa tài liệu/i });
+    await user.click(deleteBtn);
+
+    // Confirmation dialog should be visible with warning
+    await waitFor(() => {
+      expect(screen.getByText(/Delete this material\?|Xóa tài liệu này\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/This material is currently shared with 1 colleague|Tài liệu này hiện đang được chia sẻ với 1 đồng nghiệp/i)).toBeInTheDocument();
+    });
+
+    // Commit deletion
+    const confirmCommitBtn = screen.getByRole('button', { name: /^delete$|^xóa$/i });
+    await user.click(confirmCommitBtn);
+
+    // Should call sharedMaterialService.update to set status to ENDED
+    await waitFor(() => {
+      expect(updateSharedMock).toHaveBeenCalledWith(501, expect.objectContaining({
+        status: 'ENDED',
+      }));
+      expect(deleteLearningMock).toHaveBeenCalledWith(101);
     });
   });
 });

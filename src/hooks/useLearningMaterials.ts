@@ -5,6 +5,15 @@ import {
 } from '../services/learningMaterial.service';
 import { sharedMaterialService } from '../services/sharedMaterial.service';
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const isShareExpired = (sharedAt: string | null | undefined): boolean => {
+  if (!sharedAt) return false;
+  const ts = new Date(sharedAt).getTime();
+  if (Number.isNaN(ts)) return false;
+  return Date.now() - ts > THIRTY_DAYS_MS;
+};
+
 interface UseLearningMaterialsResult {
   materials: LearningMaterial[];
   isLoading: boolean;
@@ -40,11 +49,16 @@ export const useLearningMaterials = (
 
       let filtered: LearningMaterial[] = list;
       if (lecturerId) {
-        // Collect IDs of materials shared with this colleague that were ACCEPTED or ACTIVE
+        // Collect IDs of materials shared with this colleague that were ACCEPTED or ACTIVE and not expired
         const acceptedShared = shared.filter((s) => {
           const status = (s.status ?? '').toUpperCase();
+          const expired = isShareExpired(s.sharedAt ?? s.createdAt);
           return (
             s.sharedWithColleagueId === lecturerId &&
+            !expired &&
+            status !== 'ENDED' &&
+            status !== 'DECLINED' &&
+            status !== 'EXPIRED' &&
             (status === 'ACCEPTED' || status === 'ACTIVE')
           );
         });
@@ -62,17 +76,18 @@ export const useLearningMaterials = (
         );
 
         // In case the backend shared material record has title/fileUrl but the
-        // underlying learning material was not present in the global list:
+        // underlying learning material was not present in the global list (e.g. pagination):
         for (const s of acceptedShared) {
           const sid = s.paperId ?? s.learningMaterialId;
           const exists =
             typeof sid === 'number' && filtered.some((m) => m.id === sid);
+          const hasValidContent = Boolean(
+            s.learningMaterialUrl || s.fileUrl || s.url,
+          );
           if (
             !exists &&
-            (s.learningMaterialTitle ||
-              s.title ||
-              s.learningMaterialUrl ||
-              s.fileUrl)
+            hasValidContent &&
+            (s.learningMaterialTitle || s.title)
           ) {
             filtered.push({
               id: typeof sid === 'number' ? sid : (s.sharedMaterialId ?? undefined),
