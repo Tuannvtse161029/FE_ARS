@@ -124,6 +124,16 @@ export const SubmitReport = (): JSX.Element => {
     return Boolean(joined?.membershipId && leaderMember?.studentId === studentId);
   }, [studentId, topicMembers, joinedGroups, primaryGroupId, leaderMember]);
 
+  // The BE ships an `isActive` flag on ResearchGroup. When the lecturer
+  // deactivates a group, students must not be able to submit further
+  // phase reports (per the agreed contract — see
+  // tickets/backend/BE_PHASED_REPORT_DEADLINE_PERSISTENCE.md for the
+  // adjacent ticket and the user's confirmation that an inactive group
+  // must block submissions). Treat `undefined` as "active" because the
+  // FE derives true for legacy rows that never had the column populated.
+  const isGroupActive = primaryGroup?.isActive !== false;
+  const canSubmitReports = isCurrentUserLeader && isGroupActive;
+
   const currentMembershipId = useMemo(() => {
     if (!studentId) return undefined;
     const current = topicMembers.find((m) => m.studentId === studentId);
@@ -230,6 +240,29 @@ export const SubmitReport = (): JSX.Element => {
           <AlertCircle size={16} />
           <span>{error.message}</span>
         </div>
+      ) : null}
+
+      {primaryGroup && !isGroupActive ? (
+        <section
+          className={`${styles.leaderNotice} ${styles.leaderNoticeInactive}`}
+          aria-labelledby="group-inactive-title"
+        >
+          <AlertCircle size={18} aria-hidden />
+          <div>
+            <h2 id="group-inactive-title" className={styles.leaderNoticeTitle}>
+              {t(
+                'student.phaseReport.groupInactiveTitle',
+                'This research group is inactive',
+              )}
+            </h2>
+            <p className={styles.leaderNoticeText}>
+              {t(
+                'student.phaseReport.groupInactiveText',
+                'Your lecturer has deactivated this group, so phase report submissions are paused. You can still read previous reports and feedback, but you cannot upload new reports until the group is reactivated.',
+              )}
+            </p>
+          </div>
+        </section>
       ) : null}
 
       {primaryGroup && (
@@ -430,15 +463,33 @@ export const SubmitReport = (): JSX.Element => {
                             type="button"
                             className={styles.submitPhaseButton}
                             onClick={() => handleOpenPhaseSubmit(pNum, phase.phasedReportId, phase.milestoneTitle || undefined)}
-                            disabled={!isCurrentUserLeader && !isLecturer}
+                            // Submission is blocked when the group has
+                            // been deactivated by the lecturer. Even the
+                            // leader cannot submit once the group is
+                            // inactive — students must wait for the
+                            // lecturer to reactivate the group. The
+                            // existing "only the leader can submit"
+                            // guard is also still honoured.
+                            disabled={!canSubmitReports && !isLecturer}
                             aria-describedby={
-                              isCurrentUserLeader ? undefined : `phase-${pNum}-permission`
+                              !isGroupActive
+                                ? `phase-${pNum}-inactive`
+                                : !isCurrentUserLeader
+                                ? `phase-${pNum}-permission`
+                                : undefined
                             }
                           >
                             <Upload size={14} aria-hidden />
                             {hasFile ? t('student.phaseReport.resubmit', 'Resubmit report') : t('student.phaseReport.submit', 'Submit report')}
                           </button>
-                          {!isCurrentUserLeader && !isLecturer ? (
+                          {!isGroupActive ? (
+                            <p id={`phase-${pNum}-inactive`} className={styles.actionExplanation}>
+                              {t(
+                                'student.phaseReport.groupInactiveSubmitBlocked',
+                                'Submissions are paused because this group is inactive. Please contact your lecturer to reactivate it.',
+                              )}
+                            </p>
+                          ) : !isCurrentUserLeader && !isLecturer ? (
                             <p id={`phase-${pNum}-permission`} className={styles.actionExplanation}>
                               {t('student.phaseReport.onlyLeaderCanSubmit', 'Only your Group Leader can submit this phase report. Contact your lecturer to update the group leader.')}
                             </p>

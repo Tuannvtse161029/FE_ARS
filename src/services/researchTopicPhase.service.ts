@@ -214,12 +214,35 @@ export const researchTopicPhaseService = {
     const response = await phasedReportService.setTopicMilestones({
       topicId,
       researchGroupId,
-      phases: drafts.map((draft, index) => ({
-        phaseNumber: index + 1,
+      phases: drafts.map((draft) => ({
+        // Use the draft's own phaseNumber (not the array index + 1) so the
+        // round-trip is robust to renumbering gaps / sort drift. Sending
+        // `index + 1` was the previous bug: if a user reorders phases or
+        // the BE has rows with gaps (e.g. phase 1, 3, 5), `index + 1`
+        // would target the wrong `phaseNumber` and the BE would write the
+        // deadline to a different phase row, making the deadline appear to
+        // "vanish" after reload.
+        phaseNumber: draft.phaseNumber,
         milestoneTitle: draft.title.trim() || null,
+        // Send only the lecturer's picked `endAt` — fall back to `now()`
+        // only as a last resort when both endAt and startAt are empty
+        // (validation should already block this, but the guard keeps the
+        // BE contract valid rather than passing `null` which the BE has
+        // been observed to silently drop).
         deadlineAt:
-          toApiIsoString(draft.endAt || draft.startAt) ||
+          toApiIsoString(draft.endAt) ||
+          toApiIsoString(draft.startAt) ||
           new Date().toISOString(),
+        // Send the Swagger `deadline` alias too. Per TopicPhaseItem,
+        // both `deadlineAt` and `deadline` are writable on the request;
+        // `deadline` becomes readOnly on the response. If the BE has a
+        // quirk where it binds the older `deadline` property instead of
+        // `deadlineAt` to the DB `DeadlineAt` column, this alias covers
+        // that path without changing the canonical contract.
+        deadline:
+          toApiIsoString(draft.endAt) ||
+          toApiIsoString(draft.startAt) ||
+          null,
         // BE Swagger now accepts these fields on TopicPhaseItem.
         requirements: draft.requirements || null,
         assessmentCriteria: draft.assessmentCriteria || null,

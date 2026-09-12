@@ -41,6 +41,13 @@ const OrcidCallback = lazy(() =>
 // (AdminDashboard), pdfjs (any PDF-bearing review/research page), and the
 // larger role dashboards only download when their route activates.
 const Forum = lazy(() => import('./pages/Forum/Forum').then((m) => ({ default: m.Forum })));
+// Agent notifications-page — full-page notification inbox accessible from
+// the bell dropdown's "View all notifications" footer link. Reuses the
+// existing `useNotifications` hook and `resolveNotificationRoute`
+// dispatcher so this surface shares every RBAC + mark-read rule with
+// the dropdown. Lives inside the shared PrivateRoute + MainLayout chain
+// so it inherits the header chrome (including the bell badge).
+const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const HomeResearchCatalog = lazy(() => import('./features/publication/home/HomeResearchCatalog'));
 const ResearcherSubmissions = lazy(() => import('./features/publication/researcher/ResearcherSubmissions'));
 const ResearcherSubmissionForm = lazy(() => import('./features/publication/researcher/ResearcherSubmissionForm'));
@@ -316,6 +323,11 @@ const App = () => {
 
                 {/* Shared / cross-role routes */}
                 <Route path={ROUTES.FORUM} element={<Forum />} />
+                {/* Agent notifications-page — every authenticated role can
+                    view their own inbox. Notification kind routing still
+                    resolves per-role via `resolveNotificationRoute` so the
+                    inbox does not deep-link a user past their RBAC. */}
+                <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
                 <Route path={ROUTES.PROFILE} element={<Profile />} />
                 {/* Public profile viewing: forum authors/commenters of every
                     authenticated role must be able to open another user's

@@ -4,6 +4,7 @@ import { startAccountOrcidLink } from '../../services/orcid.service';
 import { Button } from '../Button';
 import { useOrcidIdentity } from '../../hooks/useOrcidIdentity';
 import { OrcidBrandLogo } from './OrcidBrandLogo';
+import { useT } from '../../i18n/I18nContext';
 import styles from './OrcidIdentityPanel.module.css';
 
 interface OrcidIdentityPanelProps {
@@ -23,6 +24,7 @@ interface OrcidIdentityPanelProps {
  * are being asked to connect to.
  */
 export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidIdentityPanelProps) => {
+  const t = useT();
   const { status, isLoading, error, refetch } = useOrcidIdentity();
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -42,7 +44,11 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
     try {
       await startAccountOrcidLink();
     } catch (cause: unknown) {
-      setConnectError(cause instanceof Error ? cause.message : 'Unable to start ORCID connection. Please try again.');
+      setConnectError(
+        cause instanceof Error
+          ? cause.message
+          : t('orcid.panel.connectError', 'Unable to start ORCID connection. Please try again.'),
+      );
     } finally {
       setIsConnecting(false);
     }
@@ -50,10 +56,10 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
 
   if (isLoading && !status) {
     return (
-      <section className={styles.panel} aria-label="ORCID identity">
+      <section className={styles.panel} aria-label={t('orcid.panel.heading', 'ORCID identity')}>
         <div className={styles.loadingRow}>
-          <OrcidBrandLogo size={24} ariaLabel="ORCID iD" />
-          <p role="status">Checking ORCID connection…</p>
+          <OrcidBrandLogo size={24} ariaLabel={t('orcid.brandAria', 'ORCID iD')} />
+          <p role="status">{t('orcid.panel.loading', 'Checking ORCID connection…')}</p>
         </div>
       </section>
     );
@@ -62,22 +68,22 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
   return (
     <section
       className={`${styles.panel} ${linked ? styles.panelLinked : styles.panelUnlinked}`}
-      aria-label="ORCID identity"
+      aria-label={t('orcid.panel.heading', 'ORCID identity')}
       data-testid="orcid-identity-panel"
     >
       <div className={styles.heading}>
         <div className={styles.headingLeft}>
           <OrcidBrandLogo
             size={32}
-            ariaLabel="ORCID iD"
+            ariaLabel={t('orcid.brandAria', 'ORCID iD')}
             className={styles.brandLogo}
           />
           <div>
-            <h2 className={styles.headingTitle}>ORCID iD</h2>
+            <h2 className={styles.headingTitle}>{t('orcid.brandAria', 'ORCID iD')}</h2>
             <p className={styles.headingSubtitle}>
               {required
-                ? 'A verified ORCID iD is required for Reviewer requests.'
-                : 'An ORCID iD is optional for this role.'}
+                ? t('orcid.panel.requiredHint', 'A verified ORCID iD is required for Reviewer requests.')
+                : t('orcid.panel.optionalHint', 'An ORCID iD is optional for this role.')}
             </p>
           </div>
         </div>
@@ -85,7 +91,7 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
           className={linked ? styles.verified : styles.unlinked}
           data-testid="orcid-link-status"
         >
-          {linked ? 'Verified' : 'Not connected'}
+          {linked ? t('orcid.panel.linkedBadge', 'Verified') : t('orcid.panel.unlinkedBadge', 'Not connected')}
         </span>
       </div>
 
@@ -98,15 +104,15 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
             rel="noreferrer"
             className={styles.recordLink}
           >
-            View public record <ExternalLink size={14} aria-hidden="true" />
+            {t('orcid.panel.viewPublicRecord', 'View public record')} <ExternalLink size={14} aria-hidden="true" />
           </a>
         </div>
       ) : (
         <p className={styles.detail}>
-          ORCID is a third-party identity provider used by researchers worldwide.
-          Click <strong>Connect ORCID iD</strong> below — we will redirect you to
-          the official ORCID site to authorize this connection. ARS never collects
-          ORCID credentials or stores provider tokens in this browser.
+          {t(
+            'orcid.panel.detailBody',
+            'ORCID is a third-party identity provider used by researchers worldwide. Click <strong>Connect ORCID iD</strong> below — we will redirect you to the official ORCID site to authorize this connection. ARS never collects ORCID credentials or stores provider tokens in this browser.',
+          )}
         </p>
       )}
 
@@ -119,14 +125,14 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
             type="button"
             variant="primary"
             size="sm"
-            leftIcon={<OrcidBrandLogo size={18} ariaLabel="ORCID iD" />}
+            leftIcon={<OrcidBrandLogo size={18} ariaLabel={t('orcid.brandAria', 'ORCID iD')} />}
             onClick={() => void startConnection()}
             isLoading={isConnecting}
             disabled={isLoading}
             className={styles.connectButton}
             data-testid="orcid-connect-button"
           >
-            Connect ORCID iD
+            {t('orcid.panel.connectButton', 'Connect ORCID iD')}
           </Button>
         ) : null}
         <Button
@@ -137,11 +143,14 @@ export const OrcidIdentityPanel = ({ required = false, onStatusChange }: OrcidId
           onClick={() => void notify()}
           isLoading={isLoading}
         >
-          Refresh status
+          {t('orcid.panel.refreshButton', 'Refresh status')}
         </Button>
         {linked ? (
           <span className={styles.contractNotice}>
-            Disconnect is unavailable because no backend unlink endpoint is documented.
+            {t(
+              'orcid.panel.unlinkUnavailable',
+              'Disconnect is unavailable because no backend unlink endpoint is documented.',
+            )}
           </span>
         ) : null}
       </div>

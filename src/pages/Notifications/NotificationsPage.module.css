@@ -1,0 +1,496 @@
+/* NotificationsPage — full-page inbox.
+ *
+ * Inherits the ARS paper-day world established by the dropdown
+ * (NotificationCenter.module.css): warm canvas + ochre accent + ink
+ * primary typography. The page chrome is wider than the dropdown so
+ * the same row can stretch its message body across two lines and still
+ * show kind + relative time on the right.
+ *
+ * Reading order on the page:
+ *   1. PageHeader (eyebrow + serif title + description + Mark-all action)
+ *   2. Toolbar: filter tab strip + search input
+ *   3. Day-grouped list of notification rows
+ *
+ * Visual hierarchy: ochre accent is reserved for the Mark-all-read
+ * button and the unread dot. Read rows fade their border-left so the
+ * eye lands on unread first without removing the row from history.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px clamp(20px, 4vw, 40px) 64px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 80px);
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--surface-raised, var(--surface-base));
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 var(--shadow-color);
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+}
+
+.filterTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--surface-sunken);
+  border-radius: 10px;
+}
+
+.filterTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-secondary);
+  font: 600 0.85rem / 1 var(--font-family-ui);
+  border-radius: 8px;
+  transition:
+    background-color 0.15s var(--motion-ease-standard, ease),
+    color 0.15s var(--motion-ease-standard, ease);
+}
+
+.filterTab:hover:not([aria-selected='true']) {
+  background-color: var(--surface-base);
+  color: var(--ink-primary);
+}
+
+.filterTab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.filterTabActive {
+  background-color: var(--surface-base);
+  color: var(--ink-primary);
+  box-shadow: 0 1px 0 var(--border-subtle);
+}
+
+.filterCount {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background-color: var(--surface-paper-muted);
+  color: var(--accent-ochre);
+  padding: 2px 8px;
+  border-radius: 999px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.filterTabActive .filterCount {
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+/* ── Search ─────────────────────────────────────────────────────────────── */
+
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background-color: var(--surface-base);
+  color: var(--ink-primary);
+  font: 500 0.88rem / 1.2 var(--font-family-ui);
+  transition:
+    border-color 0.15s var(--motion-ease-standard, ease),
+    box-shadow 0.15s var(--motion-ease-standard, ease);
+}
+
+.searchInput::placeholder {
+  color: var(--ink-muted);
+}
+
+.searchInput:hover {
+  border-color: var(--accent-ochre);
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--accent-ochre);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.searchClear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink-muted);
+  transition:
+    background-color 0.15s var(--motion-ease-standard, ease),
+    color 0.15s var(--motion-ease-standard, ease);
+}
+
+.searchClear:hover {
+  background-color: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+
+.searchClear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Body / list ───────────────────────────────────────────────────────── */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.groupList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.group {
+  list-style: none;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4px 10px;
+  font-family: var(--font-family-serif);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.groupLabel {
+  font-family: var(--font-family-serif);
+  color: var(--ink-secondary);
+}
+
+.groupCount {
+  font-family: var(--font-family-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-raised, var(--surface-base));
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.itemLi {
+  list-style: none;
+}
+
+.itemLi + .itemLi {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    background-color 0.15s var(--motion-ease-standard, ease),
+    border-color 0.15s var(--motion-ease-standard, ease);
+}
+
+.item:hover {
+  background-color: var(--surface-sunken);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.itemUnread {
+  background-color: var(--surface-paper);
+  border-left-color: var(--accent-primary);
+}
+
+.itemUnread:hover {
+  background-color: var(--surface-paper-muted);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: var(--surface-sunken);
+  color: var(--ink-secondary);
+  flex-shrink: 0;
+}
+
+.itemIconUnread {
+  background-color: var(--accent-primary);
+  color: var(--ink-on-paper);
+}
+
+.itemBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-family-ui);
+  line-height: 1.3;
+}
+
+.itemMessage {
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  word-wrap: break-word;
+  /* Allow up to two lines on the inbox row to keep the day-group
+     readable. Users who want more land on the destination page. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.unreadDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--status-danger-text);
+  flex-shrink: 0;
+}
+
+.itemMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 88px;
+  flex-shrink: 0;
+}
+
+.itemTime {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── States ─────────────────────────────────────────────────────────────── */
+
+.loadingState,
+.errorState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--ink-secondary);
+  background-color: var(--surface-raised, var(--surface-base));
+  border: 1px dashed var(--border-subtle);
+  border-radius: 14px;
+}
+
+.emptyState {
+  border-style: solid;
+  padding: 72px 24px;
+}
+
+.emptyIcon {
+  color: var(--accent-ochre);
+  opacity: 0.75;
+}
+
+.emptyTitle {
+  font-family: var(--font-family-serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.emptyBody {
+  max-width: 44ch;
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.errorState {
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-text);
+}
+
+.errorTitle {
+  font-family: var(--font-family-serif);
+  font-weight: 700;
+  color: var(--status-danger-text);
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--accent-ochre);
+  border-radius: 50%;
+  animation: notifications-page-spin 0.9s linear infinite;
+}
+
+@keyframes notifications-page-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}
+
+/* ── A11y / utility ─────────────────────────────────────────────────────── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .page {
+    padding: 20px 16px 56px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    position: static;
+  }
+
+  .filterTabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .filterTab {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .searchBox {
+    max-width: none;
+  }
+
+  .item {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .itemMeta {
+    grid-column: 2;
+    grid-row: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .itemMessage {
+    -webkit-line-clamp: 3;
+  }
+}

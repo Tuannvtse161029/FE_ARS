@@ -44,6 +44,9 @@ import {
   type ResearchTopicPhase,
 } from '../../services/researchTopicPhase.service';
 import { phasedReportService } from '../../services/phasedReport.service';
+import { notificationService } from '../../services/notification.service';
+import api from '../../services/axios';
+import { API_ENDPOINTS } from '../../utils/constants';
 import {
   MaterialSourcePicker,
   type MaterialSourceValue,
@@ -418,6 +421,14 @@ export const PhaseEditorPanel = ({
               assessmentCriteria:
                 reportRow.report?.assessmentCriteria ?? null,
               startDate: reportRow.report?.startDate ?? null,
+              // Echo `deadlineAt` (and the Swagger `deadline` alias) back so
+              // the PUT cannot wipe the deadline the milestone POST just
+              // persisted. Per PhasedReportUpdateRequest both fields are
+              // nullable on write. Without this echo the BE silently clears
+              // `DeadlineAt` to NULL on the UPDATE round-trip, which was the
+              // original "deadline disappears after save" bug.
+              deadlineAt: reportRow.report?.deadlineAt ?? null,
+              deadline: reportRow.report?.deadlineAt ?? null,
             })
             .catch((err) => {
               materialErrors.push(
@@ -435,6 +446,85 @@ export const PhaseEditorPanel = ({
       } else {
         setMessage('Milestones saved. Some material assignments could not be saved (see below).');
         setError(materialErrors.join('\n'));
+      }
+      // Defensive FE notification fan-out — for each draft that newly
+      // opened a milestone OR newly received / cleared a `materialUrl`,
+      // notify every active GroupMember of the affected group. Best-effort:
+      // failures never block the save itself.
+      try {
+        const previousPhasesByPhaseNumber = new Map<number, ResearchTopicPhase>();
+        for (const prev of apiPhases) {
+          if (typeof prev.phaseNumber === 'number') {
+            previousPhasesByPhaseNumber.set(prev.phaseNumber, prev);
+          }
+        }
+        const openedPhases: PhaseDraft[] = [];
+        const materialsAdded: PhaseDraft[] = [];
+        const materialsRemoved: PhaseDraft[] = [];
+        for (const draft of drafts) {
+          const draftUrl = draft.materialUrl?.trim() ? draft.materialUrl.trim() : null;
+          const prev = previousPhasesByPhaseNumber.get(draft.phaseNumber);
+          if (!prev) {
+            openedPhases.push(draft);
+            if (draftUrl) materialsAdded.push(draft);
+          } else {
+            const prevUrl = prev.report?.phasedMaterialsUrl ?? null;
+            if (!prevUrl && draftUrl) materialsAdded.push(draft);
+            else if (prevUrl && !draftUrl) materialsRemoved.push(draft);
+          }
+        }
+        if (openedPhases.length === 0 && materialsAdded.length === 0 && materialsRemoved.length === 0) {
+          // Nothing to notify about — early skip the BE groupMember fetch.
+        } else {
+          const membersResp = await api.get(API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_ALL);
+          const allMembers: Array<{
+            groupId?: number | null;
+            userId?: number | null;
+            isActive?: boolean | null;
+            status?: string | null;
+          }> = Array.isArray(membersResp.data)
+            ? membersResp.data
+            : Array.isArray((membersResp.data as { items?: unknown[] })?.items)
+              ? (membersResp.data as { items: unknown[] }).items
+              : [];
+          const recipientIds = new Set<number>();
+          for (const m of allMembers) {
+            const memberGroupId = typeof m.groupId === 'number' ? m.groupId : null;
+            const userId = typeof m.userId === 'number' ? m.userId : null;
+            if (!userId || !memberGroupId) continue;
+            if (memberGroupId !== groupId) continue;
+            if (m.isActive === false) continue;
+            if (typeof m.status === 'string' && /left|removed|inactive/i.test(m.status)) continue;
+            recipientIds.add(userId);
+          }
+          const fire = async (userId: number, message: string) => {
+            try {
+              await notificationService.create({ userId, message });
+            } catch (notifyErr) {
+              console.warn('Failed to send phase notification:', notifyErr);
+            }
+          };
+          for (const phase of openedPhases) {
+            const title = phase.title?.trim() || `Phase ${phase.phaseNumber}`;
+            for (const userId of recipientIds) {
+              void fire(userId, `[Student] milestone opened: "${title}" đã được mở bởi giảng viên.`);
+            }
+          }
+          for (const phase of materialsAdded) {
+            const title = phase.title?.trim() || `Phase ${phase.phaseNumber}`;
+            for (const userId of recipientIds) {
+              void fire(userId, `[Student] learning material: "${title}" đã được bổ sung tài liệu học tập.`);
+            }
+          }
+          for (const phase of materialsRemoved) {
+            const title = phase.title?.trim() || `Phase ${phase.phaseNumber}`;
+            for (const userId of recipientIds) {
+              void fire(userId, `[Student] material unshared: "${title}" đã gỡ tài liệu học tập.`);
+            }
+          }
+        }
+      } catch (notifyFanoutErr) {
+        console.warn('Failed to fan out phase notifications:', notifyFanoutErr);
       }
       onSaved?.(apiPhases);
     } catch (err) {

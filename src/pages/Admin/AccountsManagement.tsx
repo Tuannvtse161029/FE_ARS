@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
 import { adminService } from '../../services/admin.service';
+import { notificationService } from '../../services/notification.service';
 import type {
   AccountItem,
   AccountStatus,
@@ -142,6 +143,26 @@ export const AccountsManagement = () => {
         prev.map((a) => (a.id === updated.id ? updated : a)),
       );
       setConfirm(null);
+      // Defensive FE notification — fire a `[Account] status changed`
+      // notification to the affected account. Best-effort: failures
+      // never block the suspend/unsuspend itself.
+      try {
+        if (typeof id === 'number' && id > 0) {
+          const targetName =
+            updated.name?.trim() ||
+            updated.email?.trim() ||
+            `Account #${id}`;
+          const message = confirm.next === 'SUSPENDED'
+            ? `[Account] status changed: tài khoản "${targetName}" đã bị admin tạm khóa.`
+            : `[Account] status changed: tài khoản "${targetName}" đã được admin mở khóa.`;
+          await notificationService.create({
+            userId: id,
+            message,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send account-status notification:', notifyErr);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('admin.accounts.error.failedToUpdate'));
     } finally {
@@ -260,7 +281,7 @@ export const AccountsManagement = () => {
               className={styles.select}
               value={role}
               onChange={(e) => setRole(e.target.value as RoleFilter)}
-              aria-label="Filter by role"
+              aria-label={t('admin.accounts.filterRole', 'Filter by role')}
               data-testid="accounts-role-filter"
             >
               <option value="ALL">{t('admin.accounts.filter.allRoles')}</option>
@@ -273,7 +294,7 @@ export const AccountsManagement = () => {
               className={styles.select}
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
-              aria-label="Filter by status"
+              aria-label={t('admin.accounts.filterStatus', 'Filter by status')}
               data-testid="accounts-status-filter"
             >
               <option value="ALL">{t('admin.accounts.filter.allStatuses')}</option>

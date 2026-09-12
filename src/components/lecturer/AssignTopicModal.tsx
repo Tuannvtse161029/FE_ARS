@@ -27,6 +27,9 @@ import {
   type GroupAssignOutcome,
   type ResearchGroup,
 } from '../../services/researchGroup.service';
+import { notificationService } from '../../services/notification.service';
+import api from '../../services/axios';
+import { API_ENDPOINTS } from '../../utils/constants';
 import type { ResearchTopic } from '../../services/researchTopic.service';
 import { useLocale } from '../../i18n/I18nContext';
 import { formatDisplayDate } from '../../utils/datetime';
@@ -117,6 +120,51 @@ export const AssignTopicModal = ({
       );
       setOutcomes(result);
       const failures = result.filter((r) => !r.ok);
+      // Defensive FE notification fan-out — every successful group
+      // assignment notifies each active GroupMember of that group that
+      // the new topic was assigned to them. Best-effort.
+      const successfulGroupIds = result
+        .filter((r) => r.ok)
+        .map((r) => r.groupId)
+        .filter((gid): gid is number => typeof gid === 'number' && gid > 0);
+      if (successfulGroupIds.length > 0) {
+        try {
+          const membersResp = await api.get(API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_ALL);
+          const allMembers: Array<{
+            groupId?: number | null;
+            userId?: number | null;
+            isActive?: boolean | null;
+            status?: string | null;
+          }> = Array.isArray(membersResp.data)
+            ? membersResp.data
+            : Array.isArray((membersResp.data as { items?: unknown[] })?.items)
+              ? (membersResp.data as { items: unknown[] }).items
+              : [];
+          const recipientIds = new Set<number>();
+          for (const m of allMembers) {
+            const groupId = typeof m.groupId === 'number' ? m.groupId : null;
+            const userId = typeof m.userId === 'number' ? m.userId : null;
+            if (!userId || !groupId) continue;
+            if (!successfulGroupIds.includes(groupId)) continue;
+            if (m.isActive === false) continue;
+            if (typeof m.status === 'string' && /left|removed|inactive/i.test(m.status)) continue;
+            recipientIds.add(userId);
+          }
+          const topicTitle = topic.title ?? `Topic #${topic.id}`;
+          for (const userId of recipientIds) {
+            try {
+              await notificationService.create({
+                userId,
+                message: `[Student] topic assigned: "${topicTitle}" đã được phân công cho nhóm của bạn.`,
+              });
+            } catch (notifyErr) {
+              console.warn('Failed to send topic-assigned notification:', notifyErr);
+            }
+          }
+        } catch (notifyFanoutErr) {
+          console.warn('Failed to fan out topic-assigned notifications:', notifyFanoutErr);
+        }
+      }
       if (failures.length === 0) {
         onSuccess?.(result);
         onClose();

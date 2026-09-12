@@ -342,7 +342,16 @@ export const StudentResearchGroups = (): JSX.Element => {
         onStatusFilterChange={setStatusFilter}
         onBack={() => setSelectedGroupId(null)}
         onOpenSubmit={handleOpenSubmit}
-        isSubmitting={submitting}
+        // Bug fix: the `isSubmitting` prop fed SubmitReportModal's busy
+        // state (`isBusy = isUploading || isSubmittingToServer ||
+        // isSubmitting`), which the modal used to disable every close
+        // surface (X button, Cancel button, overlay click). Because the
+        // WorkspaceView was passing its modal-visibility state as
+        // `isSubmitting`, every close path was disabled the instant the
+        // modal opened — the user was trapped. The actual submission
+        // busy state is already tracked inside the modal by
+        // `useSubmitPhasedReport`, so this prop is always false here.
+        isSubmitting={false}
         submittingReport={submitting}
         resubmittingReport={resubmitting}
         lastSubmitted={lastSubmitted}
@@ -837,6 +846,12 @@ function WorkspaceView({
   );
   const isCurrentUserLeader = Boolean(currentMember?.isLeader || group.isLeader);
 
+  // When the lecturer deactivates the group, the workspace must clearly
+  // surface that and block any further submissions. `group.isActive` is
+  // the FE-canonical flag (defaulting to active when undefined for
+  // legacy rows that pre-date the BE column).
+  const isGroupActive = group.isActive !== false;
+
   const { materials, isLoading: materialsLoading } = useLearningMaterials({
     lecturerId,
   });
@@ -984,11 +999,21 @@ function WorkspaceView({
       <section className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h3 className={styles.tableTitle}>{copy('Milestone Reports (Phase Reports)', 'Báo cáo giai đoạn (Phase Reports)')}</h3>
-          {!isCurrentUserLeader && (
+          {/* When the lecturer has deactivated the group, the table
+              needs an unmistakable banner so the student understands
+              why the Submit / Resubmit button is missing. */}
+          {!isGroupActive ? (
+            <p className={styles.permissionNote} role="status">
+              {copy(
+                'This group is inactive. Submissions are paused until your lecturer reactivates the group.',
+                'Nhóm này đang ở trạng thái không hoạt động. Việc nộp báo cáo tạm dừng cho đến khi giảng viên kích hoạt lại nhóm.',
+              )}
+            </p>
+          ) : !isCurrentUserLeader ? (
             <p className={styles.permissionNote} role="status">
               {copy('You are a group member. Only the Group Leader can submit progress reports.', 'Bạn là thành viên nhóm. Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo tiến độ.')}
             </p>
-          )}
+          ) : null}
         </div>
 
         <TableToolbar
@@ -1190,7 +1215,12 @@ function WorkspaceView({
                               </a>
                             ) : null}
                             {/* Leader only: Submit or Resubmit */}
-                            {isCurrentUserLeader && canSubmit ? (
+                            {/* When the group is inactive (lecturer
+                                deactivated it), the button is hidden
+                                entirely so there is no temptation to
+                                click into a doomed submit flow. A
+                                banner above the table explains why. */}
+                            {isCurrentUserLeader && canSubmit && isGroupActive ? (
                               <button
                                 type="button"
                                 className={styles.submitPhaseBtn}

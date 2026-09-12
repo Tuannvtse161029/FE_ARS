@@ -139,14 +139,18 @@ export interface LearningMaterialUpdateRequest {
 // SharedMaterial is a collaboration record in the live Swagger contract.
 // Catalog metadata belongs to isolated demo state until the BE adds fields.
 export interface SharedMaterialCreateRequest {
-  lecturerId: number | null;
-  paperId: number | null;
-  sharedWithColleagueId: number | null;
-  sharedAt: string | null;
-  status: string | null;
+  lecturerId?: number | null;
+  learningMaterialId?: number | null;
+  paperId?: number | null;
+  sharedWithColleagueId?: number | null;
+  sharedAt?: string | null;
+  expiresAt?: string | null;
+  status?: string | null;
 }
 
-export interface SharedMaterialUpdateRequest extends SharedMaterialCreateRequest {}
+export interface SharedMaterialUpdateRequest extends SharedMaterialCreateRequest {
+  respondedAt?: string | null;
+}
 
 // ---------- PhasedReport ----------
 
@@ -185,6 +189,14 @@ export interface PhasedReportUpdateRequest {
   requirements?: string | null;
   assessmentCriteria?: string | null;
   startDate?: string | null;
+  /**
+   * Phase deadline. Echo back on PUT so the BE doesn't wipe the value the
+   * preceding milestone POST wrote. Per Swagger PhasedReportUpdateRequest
+   * this field is nullable on write.
+   */
+  deadlineAt?: string | null;
+  /** Swagger `deadline` alias — see PhasedReportUpdateRequest schema. */
+  deadline?: string | null;
 }
 
 // ---------- TopicMilestones & Phase Reports ----------

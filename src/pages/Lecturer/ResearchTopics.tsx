@@ -38,6 +38,9 @@ import { useI18n } from '../../i18n/I18nContext';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
 import { useTableSort } from '../../hooks/useTableSort';
 import { researchTopicService } from '../../services/researchTopic.service';
+import { notificationService } from '../../services/notification.service';
+import api from '../../services/axios';
+import { API_ENDPOINTS } from '../../utils/constants';
 import type { ResearchTopic } from '../../types/research';
 import { canTransitionResearchTopic } from '../../utils/researchStatus';
 import type { ResearchTopicStatus } from '../../types/research';
@@ -467,6 +470,56 @@ export const ResearchTopicsPage = () => {
         materialsUrl: topic.materialsUrl ?? null,
         status: to,
       });
+      // Defensive FE notification fan-out — when a topic is moved to
+      // COMPLETED, every active member of every group the topic was
+      // assigned to gets a `[Student] topic completed` notification.
+      // Best-effort: failures never block the transition.
+      if (to === 'COMPLETED') {
+        try {
+          const groupsResp = await researchGroupService.getAll();
+          const groups = Array.isArray(groupsResp) ? groupsResp : [];
+          const assignedGroupIds = groups
+            .filter((g) => typeof g.topicId === 'number' && g.topicId === topic.id)
+            .map((g) => (typeof g.id === 'number' ? g.id : (typeof g.researchGroupId === 'number' ? g.researchGroupId : null)))
+            .filter((gid): gid is number => typeof gid === 'number');
+          if (assignedGroupIds.length > 0) {
+            const membersResp = await api.get(API_ENDPOINTS.RESEARCH_WORKFLOW.GROUP_MEMBER.GET_ALL);
+            const allMembers: Array<{
+              groupId?: number | null;
+              userId?: number | null;
+              isActive?: boolean | null;
+              status?: string | null;
+            }> = Array.isArray(membersResp.data)
+              ? membersResp.data
+              : Array.isArray((membersResp.data as { items?: unknown[] })?.items)
+                ? (membersResp.data as { items: unknown[] }).items
+                : [];
+            const recipientIds = new Set<number>();
+            for (const m of allMembers) {
+              const groupId = typeof m.groupId === 'number' ? m.groupId : null;
+              const userId = typeof m.userId === 'number' ? m.userId : null;
+              if (!userId || !groupId) continue;
+              if (!assignedGroupIds.includes(groupId)) continue;
+              if (m.isActive === false) continue;
+              if (typeof m.status === 'string' && /left|removed|inactive/i.test(m.status)) continue;
+              recipientIds.add(userId);
+            }
+            const title = topic.title ?? `Topic #${topic.id}`;
+            for (const userId of recipientIds) {
+              try {
+                await notificationService.create({
+                  userId,
+                  message: `[Student] topic completed: "${title}" đã được đánh dấu hoàn thành.`,
+                });
+              } catch (notifyErr) {
+                console.warn('Failed to send topic-completed notification:', notifyErr);
+              }
+            }
+          }
+        } catch (notifyFanoutErr) {
+          console.warn('Failed to fan out topic-completed notifications:', notifyFanoutErr);
+        }
+      }
       showBanner(t('lecturer.topics.transSuccess').replace('{title}', topic.title ?? `RT-${topic.id}`).replace('{to}', to));
       await refetchTopics();
     } catch (err) {
@@ -561,7 +614,7 @@ export const ResearchTopicsPage = () => {
               onClick={() =>
                 setBanner({ visible: false, text: '', variant: 'success' })
               }
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
             >
               <X size={14} aria-hidden />
             </button>
@@ -616,7 +669,7 @@ export const ResearchTopicsPage = () => {
       <div
         className={styles.statusTabs}
         role="tablist"
-        aria-label="Filter topics by status"
+        aria-label={t('lecturer.researchTopics.statusTabsAria', 'Filter topics by status')}
         data-testid="research-topics-status-tabs"
       >
         <button

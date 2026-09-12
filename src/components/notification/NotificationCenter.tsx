@@ -10,6 +10,7 @@ import {
   resolveNotificationRoute,
   type NotificationKind,
 } from '../../utils/notificationRouteMap';
+import { ROUTES } from '../../routes/paths';
 import { formatRelativeTime } from '../../utils/formatDate';
 import styles from './NotificationCenter.module.css';
 
@@ -267,7 +268,7 @@ export function NotificationCenter({ userId, onNavigate }: NotificationCenterPro
               onClick={() => {
                 setIsOpen(false);
                 bellRef.current?.focus();
-                onNavigate('/forum');
+                onNavigate(ROUTES.NOTIFICATIONS);
               }}
             >
               {t('notif.viewAll', 'View all notifications')}
@@ -296,6 +297,10 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
       return t('notif.paperStatusUpdated', 'Paper status updated');
     case 'paper-needs-revision':
       return t('notif.paperNeedsRevision', 'Paper needs revision');
+    case 'paper-authorship-verified':
+      return t('notif.paperAuthorshipVerified', 'Authorship confirmed');
+    case 'paper-authorship-rejected':
+      return t('notif.paperAuthorshipRejected', 'Authorship rejected');
     case 'review-result-available':
       return t('notif.reviewResultAvailable', 'Review result available');
     case 'membership-result':
@@ -322,6 +327,12 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
       return t('notif.seminarFeedbackAvailable', 'Seminar feedback available');
     case 'group-membership-response':
       return t('notif.groupMembershipUpdate', 'Group membership update');
+    case 'material-shared':
+      return t('notif.materialShared', 'New shared material');
+    case 'material-share-accepted':
+      return t('notif.materialShareAccepted', 'Share accepted');
+    case 'material-share-declined':
+      return t('notif.materialShareDeclined', 'Share declined');
 
     // Graduate Student
     case 'seminar-invitation':
@@ -338,6 +349,10 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
       return t('notif.milestoneOpened', 'Milestone opened');
     case 'learning-material-available':
       return t('notif.newLearningMaterial', 'New learning material');
+    case 'learning-material-unshared':
+      return t('notif.materialUnshared', 'Shared material removed');
+    case 'topic-completed':
+      return t('notif.topicCompleted', 'Topic completed');
     case 'report-evaluated':
       return t('notif.reportEvaluated', 'Report evaluated');
     case 'report-rejected':
@@ -402,6 +417,9 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
   'seminar-participant-response': 'notif.body.seminarParticipantResponse',
   'seminar-feedback-available': 'notif.body.seminarFeedbackAvailable',
   'group-membership-response': 'notif.body.groupMembershipResponse',
+  'material-shared': 'notif.body.materialShared',
+  'material-share-accepted': 'notif.body.materialShareAccepted',
+  'material-share-declined': 'notif.body.materialShareDeclined',
   'seminar-invitation': 'notif.body.seminarInvitation',
   'seminar-schedule-update': 'notif.body.seminarScheduleUpdate',
   'added-to-research-group': 'notif.body.addedToResearchGroup',
@@ -409,6 +427,10 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
   'group-invitation': 'notif.body.groupInvitation',
   'milestone-opened': 'notif.body.milestoneOpened',
   'learning-material-available': 'notif.body.learningMaterialAvailable',
+  'learning-material-unshared': 'notif.body.materialUnshared',
+  'topic-completed': 'notif.body.topicCompleted',
+  'paper-authorship-verified': 'notif.body.paperAuthorshipVerified',
+  'paper-authorship-rejected': 'notif.body.paperAuthorshipRejected',
   'report-evaluated': 'notif.body.reportEvaluated',
   'report-rejected': 'notif.body.reportRejected',
   'role-request-submitted': 'notif.body.roleRequestSubmitted',

@@ -57,6 +57,7 @@ export type NotificationKind =
   | 'group-invitation'
   | 'milestone-opened'
   | 'learning-material-available'
+  | 'learning-material-unshared'
   | 'report-evaluated'
   | 'report-rejected'
   // Admin
@@ -70,6 +71,15 @@ export type NotificationKind =
   | 'account-platform-update'
   | 'follower-new'
   | 'system-update'
+  // Lecturer material sharing events
+  | 'material-shared'
+  | 'material-share-accepted'
+  | 'material-share-declined'
+  // Researcher authorship events
+  | 'paper-authorship-verified'
+  | 'paper-authorship-rejected'
+  // Graduate Student topic completion
+  | 'topic-completed'
   | 'unknown';
 
 interface NotificationRouteSpec {
@@ -124,6 +134,16 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   {
     kind: 'paper-needs-revision',
     prefix: '[Paper] needs revision',
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
+  },
+  {
+    kind: 'paper-authorship-verified',
+    prefix: '[Paper] authorship confirmed',
+    spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
+  },
+  {
+    kind: 'paper-authorship-rejected',
+    prefix: '[Paper] authorship rejected',
     spec: { path: ROUTES.RESEARCHER_SUBMISSIONS, roles: ['Researcher'] },
   },
 
@@ -193,6 +213,30 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
       roles: ['Lecturer', 'Admin'],
     },
   },
+  {
+    kind: 'material-shared',
+    prefix: '[Lecturer] material shared',
+    spec: {
+      path: ROUTES.LECTURER_MATERIALS,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'material-share-accepted',
+    prefix: '[Lecturer] share accepted',
+    spec: {
+      path: ROUTES.LECTURER_MATERIALS,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'material-share-declined',
+    prefix: '[Lecturer] share declined',
+    spec: {
+      path: ROUTES.LECTURER_MATERIALS,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
 
   // ── Graduate Student events ───────────────────────────────────────────────
   // Seminar invitation → redirect to the Seminar workspace. Accept/Decline
@@ -247,6 +291,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   {
     kind: 'learning-material-available',
     prefix: '[Student] learning material',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'learning-material-unshared',
+    prefix: '[Student] material unshared',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'topic-completed',
+    prefix: '[Student] topic completed',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
       roles: ['Graduate Student', 'Admin'],

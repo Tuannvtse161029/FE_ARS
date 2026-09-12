@@ -312,7 +312,7 @@ export const RoleRequests = () => {
               className={styles.select}
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
-              aria-label="Filter by verification status"
+              aria-label={t('admin.roleRequests.filterAria', 'Filter by verification status')}
               data-testid="role-requests-status-filter"
               disabled={Boolean(error)}
             >

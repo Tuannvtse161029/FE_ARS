@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
+import { notificationService } from '../../services/notification.service';
 import type { RoleRequest } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -54,6 +55,25 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
       const updated = await adminService.decideRoleRequest(request.id, { status: 'DENIED', notes: normalized });
       onActioned(updated);
       onClose();
+      // Defensive FE notification — fire a `[Account] role rejected`
+      // notification to the requester. Best-effort: never block on a
+      // notification failure.
+      try {
+        if (typeof request.userId === 'number' && request.userId > 0) {
+          const roleLabel =
+            request.requestedAdditionalRoles?.length
+              ? request.requestedAdditionalRoles.join(', ')
+              : request.requestedRole?.trim() ||
+                request.requestedRoles?.join(', ') ||
+                'role';
+          await notificationService.create({
+            userId: request.userId,
+            message: `[Account] role rejected: yêu cầu nâng cấp "${roleLabel}" của bạn đã bị admin từ chối${normalized ? ` — ${normalized}` : ''}.`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send role-rejected notification:', notifyErr);
+      }
     } catch (submissionError) {
       setApiError(submissionError instanceof Error ? submissionError.message : t('admin.roleRequests.deny.apiError'));
     } finally {

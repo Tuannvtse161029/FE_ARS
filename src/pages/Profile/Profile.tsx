@@ -74,13 +74,29 @@ import styles from './Profile.module.css';
 import { TrialCountdownCard } from '../../components/profile/TrialCountdownCard';
 
 
-const ROLE_LABEL = {
-  Researcher: 'Researcher',
-  Reviewer: 'Reviewer',
-  Lecturer: 'Lecturer',
-  'Graduate Student': 'Graduate Student',
-  Admin: 'Admin',
-} as const;
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  Researcher: 'profile.title.researcher',
+  Reviewer: 'profile.title.reviewer',
+  Lecturer: 'profile.title.lecturer',
+  'Graduate Student': 'profile.title.graduateStudent',
+  Admin: 'profile.title.admin',
+};
+
+const ROLE_EYEBROW_KEYS: Record<string, string> = {
+  Researcher: 'profile.eyebrow.researcher',
+  Reviewer: 'profile.eyebrow.reviewer',
+  Lecturer: 'profile.eyebrow.lecturer',
+  'Graduate Student': 'profile.eyebrow.graduateStudent',
+  Admin: 'profile.eyebrow.admin',
+};
+
+const ROLE_SUBTITLE_KEYS: Record<string, string> = {
+  Researcher: 'profile.subtitle.researcher',
+  Reviewer: 'profile.subtitle.reviewer',
+  Lecturer: 'profile.subtitle.lecturer',
+  'Graduate Student': 'profile.subtitle.graduateStudent',
+  Admin: 'profile.subtitle.admin',
+};
 
 type Mode = 'view' | 'edit';
 
@@ -145,7 +161,7 @@ function isEmptyDraft(draft: DraftFields): boolean {
  * page can render per-field error messages and disable Save while any
  * field is invalid. Conservative limits — the BE is the authority.
  */
-function validateDraft(draft: DraftFields): Partial<Record<keyof DraftFields, string>> {
+function validateDraft(draft: DraftFields, t: (key: string, fallback: string, params?: Record<string, string | number>) => string): Partial<Record<keyof DraftFields, string>> {
   const errors: Partial<Record<keyof DraftFields, string>> = {};
   // Vietnamese-name policy is centralised in utils/validationRules so it
   // matches the rule used by the Register form. The Profile page keeps the
@@ -154,36 +170,36 @@ function validateDraft(draft: DraftFields): Partial<Record<keyof DraftFields, st
   if (nameErr) {
     errors.fullName = nameErr;
   } else if (draft.fullName.length > PROFILE_VALIDATION.fullName.maxLength) {
-    errors.fullName = `Please keep your full name under ${PROFILE_VALIDATION.fullName.maxLength} characters.`;
+    errors.fullName = t('profile.validation.fullNameTooLong', 'Please keep your full name under {max} characters.', { max: PROFILE_VALIDATION.fullName.maxLength });
   }
   if (
     draft.academicTitle.length > PROFILE_VALIDATION.academicTitle.maxLength
   ) {
-    errors.academicTitle = `Please keep the title under ${PROFILE_VALIDATION.academicTitle.maxLength} characters.`;
+    errors.academicTitle = t('profile.validation.academicTitleTooLong', 'Please keep the title under {max} characters.', { max: PROFILE_VALIDATION.academicTitle.maxLength });
   }
   if (draft.phoneNumber.length > PROFILE_VALIDATION.phoneNumber.maxLength) {
-    errors.phoneNumber = `Please keep the phone number under ${PROFILE_VALIDATION.phoneNumber.maxLength} characters.`;
+    errors.phoneNumber = t('profile.validation.phoneTooLong', 'Please keep the phone number under {max} characters.', { max: PROFILE_VALIDATION.phoneNumber.maxLength });
   } else if (
     draft.phoneNumber.trim() !== '' &&
     !PROFILE_VALIDATION.phoneNumber.pattern.test(draft.phoneNumber.trim())
   ) {
-    errors.phoneNumber = 'Use digits, spaces, dashes, parentheses, or a leading +.';
+    errors.phoneNumber = t('profile.validation.phoneFormat', 'Use digits, spaces, dashes, parentheses, or a leading +.');
   }
   if (draft.institution.length > PROFILE_VALIDATION.institution.maxLength) {
-    errors.institution = `Please keep the institution under ${PROFILE_VALIDATION.institution.maxLength} characters.`;
+    errors.institution = t('profile.validation.institutionTooLong', 'Please keep the institution under {max} characters.', { max: PROFILE_VALIDATION.institution.maxLength });
   }
   if (draft.bio.length > PROFILE_VALIDATION.bio.maxLength) {
-    errors.bio = `Please keep the bio under ${PROFILE_VALIDATION.bio.maxLength} characters.`;
+    errors.bio = t('profile.validation.bioTooLong', 'Please keep the bio under {max} characters.', { max: PROFILE_VALIDATION.bio.maxLength });
   }
   if (draft.address.length > PROFILE_VALIDATION.address.maxLength) {
-    errors.address = `Please keep the address under ${PROFILE_VALIDATION.address.maxLength} characters.`;
+    errors.address = t('profile.validation.addressTooLong', 'Please keep the address under {max} characters.', { max: PROFILE_VALIDATION.address.maxLength });
   }
   if (draft.keywords.length > PROFILE_VALIDATION.keywords.maxItems) {
-    errors.keywords = `Please keep at most ${PROFILE_VALIDATION.keywords.maxItems} keywords.`;
+    errors.keywords = t('profile.validation.keywordsTooMany', 'Please keep at most {max} keywords.', { max: PROFILE_VALIDATION.keywords.maxItems });
   }
   for (const kw of draft.keywords) {
     if (kw.length > PROFILE_VALIDATION.keywords.maxItemLength) {
-      errors.keywords = `Each keyword must be under ${PROFILE_VALIDATION.keywords.maxItemLength} characters.`;
+      errors.keywords = t('profile.validation.keywordTooLong', 'Each keyword must be under {max} characters.', { max: PROFILE_VALIDATION.keywords.maxItemLength });
       break;
     }
   }
@@ -192,7 +208,7 @@ function validateDraft(draft: DraftFields): Partial<Record<keyof DraftFields, st
     (!PROFILE_VALIDATION.avatarInitials.pattern.test(draft.avatarInitials.trim()) ||
       draft.avatarInitials.length > PROFILE_VALIDATION.avatarInitials.maxLength)
   ) {
-    errors.avatarInitials = 'Up to 4 letters or digits, please.';
+    errors.avatarInitials = t('profile.validation.avatarInitialsInvalid', 'Up to 4 letters or digits, please.');
   }
   return errors;
 }
@@ -340,17 +356,26 @@ export const Profile = () => {
     ? (user?.role ?? null)
     : (publicUserRole ?? profile?.roleName ?? null);
   const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
-  // Label: prefer the ROLE_LABEL map; if the BE hands back a role we
+  // Label: prefer the ROLE_LABEL_KEYS map; if the BE hands back a role we
   // don't have a localised entry for, fall back to the raw string; only
   // when the role is genuinely unknown do we render the neutral
   // 'Member' chip instead of silently labelling the profile
   // "Researcher" (the original bug).
-  const roleLabel =
-    roleName && roleName in ROLE_LABEL
-      ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL]
-      : roleName
-        ? roleName
-        : 'Member';
+  const roleLabel = roleName && ROLE_LABEL_KEYS[roleName]
+    ? t(ROLE_LABEL_KEYS[roleName], roleName)
+    : roleName
+      ? roleName
+      : t('profile.roleBadgeMember', 'Member');
+  const roleEyebrow = roleName && ROLE_EYEBROW_KEYS[roleName]
+    ? t(ROLE_EYEBROW_KEYS[roleName], roleName)
+    : roleName
+      ? roleName
+      : t('profile.roleBadgeMember', 'Member');
+  const roleSubtitle = roleName && ROLE_SUBTITLE_KEYS[roleName]
+    ? t(ROLE_SUBTITLE_KEYS[roleName], roleName)
+    : roleName
+      ? roleName
+      : '';
   const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
@@ -562,7 +587,7 @@ export const Profile = () => {
     };
   }, [showSuccess]);
 
-  const validationErrors = useMemo(() => validateDraft(draft), [draft]);
+  const validationErrors = useMemo(() => validateDraft(draft, t), [draft, t]);
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const payload = useMemo(() => buildPayload(draft, savedDraft), [draft, savedDraft]);
   const hasChanges = Object.keys(payload).length > 0;
@@ -647,20 +672,20 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow="Authentication required"
-          title="Sign in to view your profile"
-          description="Your academic profile is private and only available once you have signed in. Please return to the sign-in page and authenticate to continue."
+          eyebrow={t('profile.authRequired.eyebrow', 'Authentication required')}
+          title={t('profile.authRequired.title', 'Sign in to view your profile')}
+          description={t('profile.authRequired.description', 'Your academic profile is private and only available once you have signed in. Please return to the sign-in page and authenticate to continue.')}
           breadcrumbs={
             <>
-              Home <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>Profile</span>
+              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
             </>
           }
         />
         <EmptyState
           icon={null}
-          title="Profile unavailable"
-          description="Authenticate to continue."
+          title={t('profile.unavailable.title', 'Profile unavailable')}
+          description={t('profile.unavailable.description', 'Authenticate to continue.')}
         />
       </div>
     );
@@ -670,13 +695,13 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow="Profile"
-          title={isOwner ? 'Your profile' : `${roleLabel} profile`}
-          description="Fetching the latest profile information from the ARS platform."
+          eyebrow={t('profile.eyebrow', 'Profile')}
+          title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
+          description={t('profile.loadingDescription', 'Fetching the latest profile information from the ARS platform.')}
           breadcrumbs={
             <>
-              Home <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>Profile</span>
+              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
             </>
           }
         />
@@ -689,18 +714,18 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow="Profile"
-          title={isOwner ? 'Your profile' : `${roleLabel} profile`}
+          eyebrow={t('profile.eyebrow', 'Profile')}
+          title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
           breadcrumbs={
             <>
-              Home <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>Profile</span>
+              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
+              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
             </>
           }
         />
         <ErrorBanner
           tone="error"
-          title="Couldn't load profile"
+          title={t('profile.loadErrorTitle', "Couldn't load profile")}
           message={error.message}
           retry={
             <Button
@@ -709,7 +734,7 @@ export const Profile = () => {
               onClick={handleRefresh}
               data-testid="profile-retry-button"
             >
-              Retry
+              {t('profile.retry', 'Retry')}
             </Button>
           }
         />
@@ -731,19 +756,19 @@ export const Profile = () => {
   return (
     <div className={styles.page} style={accentStyle}>
       <PageHeader
-        eyebrow={isOwner ? roleMeta.eyebrow : 'Professional Showcase'}
-        title={isOwner ? roleMeta.title : displayName}
+        eyebrow={isOwner ? roleEyebrow : t('profile.eyebrow.publicShowcase', 'Professional Showcase')}
+        title={isOwner ? roleEyebrow : displayName}
         description={
           isOwner
-            ? roleMeta.subtitle
-            : 'Public academic presence with the profile details this member has chosen to share.'
+            ? roleSubtitle
+            : t('profile.title.publicDescription', 'Public academic presence with the profile details this member has chosen to share.')
         }
         accent={roleMeta.accentVar}
         breadcrumbs={
           <>
-            Home <span aria-hidden>/</span>{' '}
+            {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
             <span className={styles.breadcrumbsActive}>
-              {isOwner ? 'Profile & Account Settings' : `${displayName}'s Profile`}
+              {isOwner ? t('profile.breadcrumbOwnSettings', 'Profile & Account Settings') : `${displayName}${t('profile.view.publicBreadcrumbSuffix', "'s Profile")}`}
             </span>
           </>
         }
@@ -781,7 +806,7 @@ export const Profile = () => {
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
-                {isLoading ? 'Refreshing…' : 'Refresh'}
+                {isLoading ? t('profile.refreshing', 'Refreshing…') : t('profile.refresh', 'Refresh')}
               </Button>
               {isOwner ? (
                 <Button
@@ -790,7 +815,7 @@ export const Profile = () => {
                   onClick={handleEnterEdit}
                   data-testid="profile-edit-button"
                 >
-                  Edit profile
+                  {t('profile.editButton', 'Edit profile')}
                 </Button>
               ) : authenticatedUserId ? (
                 <Button
@@ -802,8 +827,8 @@ export const Profile = () => {
                   {isFollowActionLoading
                     ? '…'
                     : isFollowingTarget
-                      ? 'Following'
-                      : '+ Follow'}
+                      ? t('profile.followingBadge', 'Following')
+                      : t('profile.follow', '+ Follow')}
                 </Button>
               ) : null}
             </>
@@ -846,7 +871,7 @@ export const Profile = () => {
               </span>
             ) : null}
             {isEmptyProfile && isOwner ? (
-              <span className={styles.emptyBadge}>Profile not yet configured</span>
+              <span className={styles.emptyBadge}>{t('profile.emptyBadge', 'Profile not yet configured')}</span>
             ) : null}
           </p>
           {isOwner ? (
@@ -862,9 +887,9 @@ export const Profile = () => {
                 setFollowModalTab('followers');
                 setIsFollowModalOpen(true);
               }}
-              title="View your followers"
+              title={t('profile.viewFollowersTitle', 'View your followers')}
             >
-              <strong>{followersCount}</strong> Followers
+              <strong>{followersCount}</strong> {t('profile.followers', 'Followers')}
             </button>
             <span className={styles.followDot} aria-hidden>·</span>
             <button
@@ -874,9 +899,9 @@ export const Profile = () => {
                 setFollowModalTab('following');
                 setIsFollowModalOpen(true);
               }}
-              title="View people you follow"
+              title={t('profile.viewFollowingTitle', 'View people you follow')}
             >
-              <strong>{followingCount}</strong> Following
+              <strong>{followingCount}</strong> {t('profile.following', 'Following')}
             </button>
           </div>
         </div>
@@ -901,8 +926,8 @@ export const Profile = () => {
         <div data-testid="profile-success-banner">
           <ErrorBanner
             tone="info"
-            title="Profile updated"
-            message="Your academic profile is saved. Other users will see the updated details on your next interaction."
+            title={t('profile.profileUpdated', 'Profile updated')}
+            message={t('profile.profileUpdatedMessage', 'Your academic profile is saved. Other users will see the updated details on your next interaction.')}
           />
         </div>
       )}
@@ -921,7 +946,7 @@ export const Profile = () => {
         <div data-testid="profile-save-error-banner">
           <ErrorBanner
             tone="error"
-            title="We couldn't save your changes"
+            title={t('profile.saveErrorTitle', "We couldn't save your changes")}
             message={saveError.message}
           />
         </div>
@@ -931,8 +956,8 @@ export const Profile = () => {
         <div data-testid="profile-refresh-error-banner">
           <ErrorBanner
             tone="warning"
-            title="Refresh failed"
-            message={`Showing the last cached profile. ${error.message}`}
+            title={t('profile.refreshErrorTitle', 'Refresh failed')}
+            message={t('profile.refreshErrorMessage', 'Showing the last cached profile. {message}').replace('{message}', error.message)}
           />
         </div>
       )}
@@ -1167,42 +1192,43 @@ interface ProfileViewProps {
 }
 
 const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwner }: ProfileViewProps) => {
-  const showValue = (value: string, fallback = 'Not set') =>
-    value.trim() === '' ? <span className={styles.viewEmpty}>{fallback}</span> : value;
+  const { t } = useI18n();
+  const showValue = (value: string, fallback?: string) =>
+    value.trim() === '' ? <span className={styles.viewEmpty}>{fallback ?? t('profile.view.notSet', 'Not set')}</span> : value;
 
   return (
     <section className={styles.viewCard} aria-labelledby="profile-view-title">
       <div className={styles.formHeader}>
         <h2 id="profile-view-title" className={styles.formTitle}>
-          Profile details
+          {t('profile.view.title', 'Profile details')}
         </h2>
         <p className={styles.formSubtitle}>
-          The information other users see across the ARS platform.{' '}
-          {isEmpty ? 'You haven\u2019t filled out your profile yet — use "Edit profile" to get started.' : null}
+          {t('profile.view.subtitle', 'The information other users see across the ARS platform.')}{' '}
+          {isEmpty ? t('profile.view.emptyHint', 'You haven\u2019t filled out your profile yet — use "Edit profile" to get started.') : null}
         </p>
       </div>
 
       <div className={styles.viewGrid}>
         <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Avatar initials</span>
+          <span className={styles.viewLabel}>{t('profile.view.avatarInitials', 'Avatar initials')}</span>
           <p className={styles.viewValue} data-testid="view-avatar-initials">
             {avatarInitials}
           </p>
         </div>
         <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Full name</span>
+          <span className={styles.viewLabel}>{t('profile.view.fullName', 'Full name')}</span>
           <p className={styles.viewValue} data-testid="view-full-name">
             {showValue(draft.fullName)}
           </p>
         </div>
         <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Academic title</span>
+          <span className={styles.viewLabel}>{t('profile.view.academicTitle', 'Academic title')}</span>
           <p className={styles.viewValue} data-testid="view-academic-title">
             {showValue(draft.academicTitle)}
           </p>
         </div>
         <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>Institution</span>
+          <span className={styles.viewLabel}>{t('profile.view.institution', 'Institution')}</span>
           <p className={styles.viewValue} data-testid="view-institution">
             {showValue(draft.institution)}
           </p>
@@ -1210,25 +1236,25 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
         {isOwner ? (
           <>
             <div className={styles.viewItem}>
-              <span className={styles.viewLabel}>Phone number</span>
+              <span className={styles.viewLabel}>{t('profile.view.phone', 'Phone number')}</span>
               <p className={styles.viewValue} data-testid="view-phone-number">
                 {showValue(draft.phoneNumber)}
               </p>
             </div>
             <div className={styles.viewItem}>
-              <span className={styles.viewLabel}>Date of birth</span>
+              <span className={styles.viewLabel}>{t('profile.view.dob', 'Date of birth')}</span>
               <p className={styles.viewValue} data-testid="view-date-of-birth">
-                {draft.dateOfBirth ? formatDisplayDate(draft.dateOfBirth) : '—'}
+                {draft.dateOfBirth ? formatDisplayDate(draft.dateOfBirth) : t('profile.view.dash', '—')}
               </p>
             </div>
             <div className={styles.viewItem}>
-              <span className={styles.viewLabel}>Gender</span>
+              <span className={styles.viewLabel}>{t('profile.view.gender', 'Gender')}</span>
               <p className={styles.viewValue} data-testid="view-gender">
                 {showValue(draft.gender)}
               </p>
             </div>
             <div className={styles.viewItem}>
-              <span className={styles.viewLabel}>Address</span>
+              <span className={styles.viewLabel}>{t('profile.view.address', 'Address')}</span>
               <p className={styles.viewValue} data-testid="view-address">
                 {showValue(draft.address)}
               </p>
@@ -1236,16 +1262,16 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
           </>
         ) : null}
         <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
-          <span className={styles.viewLabel}>Bio</span>
+          <span className={styles.viewLabel}>{t('profile.view.bio', 'Bio')}</span>
           <p className={styles.viewValue} data-testid="view-bio">
-            {showValue(draft.bio, 'No bio yet.')}
+            {showValue(draft.bio, t('profile.view.bioEmpty', 'No bio yet.'))}
           </p>
         </div>
         <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
-          <span className={styles.viewLabel}>Research interest keywords</span>
+          <span className={styles.viewLabel}>{t('profile.view.keywords', 'Research interest keywords')}</span>
           {draft.keywords.length === 0 ? (
             <p className={styles.viewValue}>
-              <span className={styles.viewEmpty}>No keywords yet.</span>
+              <span className={styles.viewEmpty}>{t('profile.view.keywordsEmpty', 'No keywords yet.')}</span>
             </p>
           ) : (
             <div className={styles.keywordChipList} data-testid="view-keywords">
@@ -1259,23 +1285,23 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
         </div>
         {profile?.hindex != null || profile?.totalCitations != null || profile?.publicationCount != null || profile?.majorFieldName ? (
           <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
-            <span className={styles.viewLabel}>Academic &amp; Research Metrics</span>
+            <span className={styles.viewLabel}>{t('profile.view.metricsTitle', 'Academic & Research Metrics')}</span>
             <div className={styles.metricsRow}>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>H-Index</span>
+                <span className={styles.metricLabel}>{t('profile.view.hIndex', 'H-Index')}</span>
                 <strong className={styles.metricValue}>{profile.hindex ?? 0}</strong>
               </div>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>Citations</span>
+                <span className={styles.metricLabel}>{t('profile.view.citations', 'Citations')}</span>
                 <strong className={styles.metricValue}>{profile.totalCitations ?? 0}</strong>
               </div>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>Publications</span>
+                <span className={styles.metricLabel}>{t('profile.view.publications', 'Publications')}</span>
                 <strong className={styles.metricValue}>{profile.publicationCount ?? 0}</strong>
               </div>
               {profile.majorFieldName && (
                 <div className={`${styles.metric} ${styles.metricWide}`}>
-                  <span className={styles.metricLabel}>Research Field</span>
+                  <span className={styles.metricLabel}>{t('profile.view.researchField', 'Research Field')}</span>
                   <strong className={styles.metricValueLg}>{profile.majorFieldName}</strong>
                   {profile.subFieldName && (
                     <span className={styles.metricSubValue}>{profile.subFieldName}</span>
@@ -1287,7 +1313,7 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
         ) : null}
         {updatedAt ? (
           <div className={`${styles.viewItem} ${styles.viewGridFull}`}>
-            <span className={styles.viewLabel}>Last updated</span>
+            <span className={styles.viewLabel}>{t('profile.view.lastUpdated', 'Last updated')}</span>
             <p className={styles.viewValue}>{formatDate(updatedAt)}</p>
           </div>
         ) : null}
@@ -1336,6 +1362,7 @@ const ProfileEditForm = ({
   onSubmit,
   onCancel,
 }: ProfileEditFormProps) => {
+  const { t } = useI18n();
   const fieldError = (key: keyof DraftFields) => errors[key];
   const fieldProps = (key: keyof DraftFields) => ({
     'aria-invalid': fieldError(key) ? true : undefined,
@@ -1346,17 +1373,17 @@ const ProfileEditForm = ({
     <form className={styles.formCard} onSubmit={onSubmit} aria-labelledby="profile-edit-title" noValidate>
       <div className={styles.formHeader}>
         <h2 id="profile-edit-title" className={styles.formTitle}>
-          Edit your profile
+          {t('profile.edit.title', 'Edit your profile')}
         </h2>
         <p className={styles.formSubtitle}>
-          Update the fields below. Only the fields you change are sent to the server.
+          {t('profile.edit.subtitle', 'Update the fields below. Only the fields you change are sent to the server.')}
         </p>
       </div>
 
       <div className={styles.formGrid}>
         <div className={`${styles.field} ${styles.formGridFull}`}>
           <label className={styles.label} htmlFor="full-name-input">
-            Full name <span className={styles.labelHint}>(required)</span>
+            {t('profile.view.fullName', 'Full name')} <span className={styles.labelHint}>{t('profile.edit.requiredTag', '(required)')}</span>
           </label>
           <input
             id="full-name-input"
@@ -1377,7 +1404,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="academic-title-input">
-            Academic title
+            {t('profile.view.academicTitle', 'Academic title')}
           </label>
           <input
             id="academic-title-input"
@@ -1398,7 +1425,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="avatar-initials-input">
-            Avatar initials
+            {t('profile.view.avatarInitials', 'Avatar initials')}
           </label>
           <input
             id="avatar-initials-input"
@@ -1408,7 +1435,7 @@ const ProfileEditForm = ({
             value={draft.avatarInitials}
             onChange={(event) => onChange('avatarInitials', event.target.value)}
             maxLength={PROFILE_VALIDATION.avatarInitials.maxLength}
-            placeholder="e.g. ND"
+            placeholder={t('profile.edit.avatarInitialsExample', 'e.g. ND')}
             {...fieldProps('avatarInitials')}
           />
           {fieldError('avatarInitials') ? (
@@ -1420,7 +1447,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="institution-input">
-            Institution / University
+            {t('profile.edit.institutionLabel', 'Institution / University')}
           </label>
           <input
             id="institution-input"
@@ -1441,7 +1468,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="phone-input">
-            Phone number
+            {t('profile.view.phone', 'Phone number')}
           </label>
           <input
             id="phone-input"
@@ -1451,7 +1478,7 @@ const ProfileEditForm = ({
             value={draft.phoneNumber}
             onChange={(event) => onChange('phoneNumber', event.target.value)}
             maxLength={PROFILE_VALIDATION.phoneNumber.maxLength}
-            placeholder="+84 …"
+            placeholder={t('profile.edit.phonePlaceholder', '+84 …')}
             {...fieldProps('phoneNumber')}
           />
           {fieldError('phoneNumber') ? (
@@ -1463,7 +1490,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="dob-input">
-            Date of birth
+            {t('profile.view.dob', 'Date of birth')}
           </label>
           <input
             id="dob-input"
@@ -1483,7 +1510,7 @@ const ProfileEditForm = ({
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="gender-input">
-            Gender
+            {t('profile.view.gender', 'Gender')}
           </label>
           <input
             id="gender-input"
@@ -1498,7 +1525,7 @@ const ProfileEditForm = ({
 
         <div className={`${styles.field} ${styles.formGridFull}`}>
           <label className={styles.label} htmlFor="address-input">
-            Address
+            {t('profile.view.address', 'Address')}
           </label>
           <input
             id="address-input"
@@ -1519,7 +1546,7 @@ const ProfileEditForm = ({
 
         <div className={`${styles.field} ${styles.formGridFull}`}>
           <label className={styles.label} htmlFor="keywords-input">
-            Research interest keywords
+            {t('profile.view.keywords', 'Research interest keywords')}
           </label>
           <div className={styles.keywordBox}>
             <div className={styles.keywordInputRow}>
@@ -1531,7 +1558,7 @@ const ProfileEditForm = ({
                 value={keywordDraft}
                 onChange={(event) => onKeywordDraftChange(event.target.value)}
                 onKeyDown={onKeywordKeyDown}
-                placeholder="Type a keyword and press Enter"
+                placeholder={t('profile.edit.keywordPlaceholder', 'Type a keyword and press Enter')}
               />
               <button
                 type="button"
@@ -1540,12 +1567,12 @@ const ProfileEditForm = ({
                 disabled={keywordDraft.trim() === ''}
                 data-testid="profile-add-keyword-button"
               >
-                Add
+                {t('profile.edit.keywordAdd', 'Add')}
               </button>
             </div>
             {draft.keywords.length === 0 ? (
               <p className={styles.keywordEmpty}>
-                No keywords yet. Add a few to help researchers find your work.
+                {t('profile.edit.keywordsEmpty', 'No keywords yet. Add a few to help researchers find your work.')}
               </p>
             ) : (
               <div className={styles.keywordChips} data-testid="profile-keyword-chips">
@@ -1556,7 +1583,7 @@ const ProfileEditForm = ({
                       type="button"
                       className={styles.keywordRemoveBtn}
                       onClick={() => onRemoveKeyword(kw)}
-                      aria-label={`Remove keyword ${kw}`}
+                      aria-label={t('profile.edit.removeKeywordAria', 'Remove keyword {keyword}').replace('{keyword}', kw)}
                       data-testid={`profile-remove-keyword-${kw}`}
                     >
                       ×
@@ -1575,7 +1602,7 @@ const ProfileEditForm = ({
 
         <div className={`${styles.field} ${styles.formGridFull}`}>
           <label className={styles.label} htmlFor="bio-input">
-            Biography
+            {t('profile.edit.bioLabel', 'Biography')}
           </label>
           <textarea
             id="bio-input"
@@ -1608,10 +1635,10 @@ const ProfileEditForm = ({
       <div className={styles.formActions}>
         <span className={styles.formActionsHint}>
           {hasValidationErrors
-            ? 'Fix the highlighted fields to continue.'
+            ? t('profile.edit.formActionsHint.invalid', 'Fix the highlighted fields to continue.')
             : hasChanges
-              ? 'Unsaved changes.'
-              : 'No changes to save.'}
+              ? t('profile.edit.formActionsHint.unsaved', 'Unsaved changes.')
+              : t('profile.edit.formActionsHint.unchanged', 'No changes to save.')}
         </span>
         <Button
           type="button"
@@ -1621,7 +1648,7 @@ const ProfileEditForm = ({
           disabled={isSaving}
           data-testid="profile-cancel-button"
         >
-          Cancel
+          {t('profile.edit.cancel', 'Cancel')}
         </Button>
         <Button
           type="submit"
@@ -1631,7 +1658,7 @@ const ProfileEditForm = ({
           data-testid="profile-save-button"
           isLoading={isSaving}
         >
-          Save changes
+          {t('profile.edit.save', 'Save changes')}
         </Button>
       </div>
     </form>

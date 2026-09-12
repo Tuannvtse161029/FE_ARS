@@ -41,6 +41,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { useT } from '../../i18n/I18nContext';
 import { researchTopicService, type ResearchTopic } from '../../services/researchTopic.service';
 import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
 import {
@@ -328,6 +329,7 @@ const CardListView = ({
   onAfterSave,
   highlightPhaseNumber,
 }: CardListViewProps) => {
+  const t = useT();
   // Modal state lives in the card-list view because only this view needs
   // it. Keeping it local avoids prop-drilling `setOpenModal` from the
   // outer component (which would also force the parent to know about
@@ -513,7 +515,7 @@ const CardListView = ({
                 type="button"
                 className={styles.closeBtn}
                 onClick={() => setOpenModal(null)}
-                aria-label="Close phase editor"
+                aria-label={t('lecturer.configureMilestones.closeEditor', 'Close phase editor')}
               >
                 <X size={18} aria-hidden />
               </button>

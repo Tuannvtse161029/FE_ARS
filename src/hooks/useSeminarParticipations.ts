@@ -54,6 +54,9 @@ export interface ParticipationRow {
   /** Nullable — the BE returns null when Google Meet generation is not wired. */
   onlineLink: string | null;
   organizerName: string | null;
+  /** Seminar organizer's user id (mirrors `Seminar.organizerId`). Used by
+   *  the notification fan-out after accept / decline / schedule changes. */
+  organizerId: number | null;
   /** Canonical UI invitation status (PENDING / INVITED / SUBMITTED / DECLINED). */
   invitationStatus: ParticipantUiStatus;
   /** Raw status string from the BE for debugging / round-tripping. */
@@ -165,6 +168,7 @@ export function useSeminarParticipations(): UseSeminarParticipationsResult {
         endTime: sem.endTime,
         onlineLink: sem.onlineLink ?? null,
         organizerName: sem.organizerName ?? null,
+        organizerId: typeof sem.organizerId === 'number' ? sem.organizerId : null,
         invitationStatus: status,
         invitationStatusRaw: participant?.invitationStatus ?? sem.invitationStatus ?? null,
         participantSubmitted: submitted,

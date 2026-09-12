@@ -2,9 +2,21 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type { SharedMaterialCreateRequest, SharedMaterialUpdateRequest } from '../types/researchWorkflowDtos';
 
+export interface ColleagueUser {
+  id: number;
+  fullName: string;
+  email: string;
+  roleName?: string | null;
+  roles?: string[];
+  avatarUrl?: string | null;
+  isEmailVerified?: boolean;
+  isActive?: boolean;
+}
+
 export interface SharedMaterial extends SharedMaterialCreateRequest {
   sharedMaterialId: number;
   id?: number;
+  direction?: 'outbound' | 'inbound' | string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   learningMaterialId?: number | null;
@@ -15,6 +27,13 @@ export interface SharedMaterial extends SharedMaterialCreateRequest {
   url?: string | null;
   description?: string | null;
   lecturerName?: string | null;
+  sharedWithName?: string | null;
+  expiresAt?: string | null;
+  respondedAt?: string | null;
+  effectiveStatus?: string | null;
+  canRevoke?: boolean;
+  canRespond?: boolean;
+  daysRemaining?: number;
 }
 
 const normalize = (raw: any): SharedMaterial => {
@@ -36,6 +55,10 @@ const normalize = (raw: any): SharedMaterial => {
     fileUrl,
     learningMaterialUrl,
     url: fileUrl,
+    lecturerName: raw.lecturerName ?? null,
+    sharedWithName: raw.sharedWithName ?? null,
+    effectiveStatus: raw.effectiveStatus ?? null,
+    daysRemaining: typeof raw.daysRemaining === 'number' ? raw.daysRemaining : undefined,
   };
 };
 const list = (data: unknown): SharedMaterial[] => {
@@ -52,6 +75,17 @@ export const sharedMaterialService = {
   async getAll(): Promise<SharedMaterial[]> {
     const response = await api.get(API_ENDPOINTS.RESEARCH_WORKFLOW.SHARED_MATERIAL.GET_ALL);
     return list(response.data);
+  },
+  async getColleagues(): Promise<ColleagueUser[]> {
+    const response = await api.get(API_ENDPOINTS.RESEARCH_WORKFLOW.SHARED_MATERIAL.COLLEAGUES);
+    const data = response.data;
+    if (Array.isArray(data)) return data as ColleagueUser[];
+    if (data && typeof data === 'object') {
+      const value = data as { items?: ColleagueUser[]; data?: ColleagueUser[] };
+      if (Array.isArray(value.items)) return value.items;
+      if (Array.isArray(value.data)) return value.data;
+    }
+    return [];
   },
   async create(payload: SharedMaterialCreateRequest): Promise<SharedMaterial> {
     const response = await api.post(API_ENDPOINTS.RESEARCH_WORKFLOW.SHARED_MATERIAL.CREATE, payload);

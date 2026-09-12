@@ -40,6 +40,15 @@ export interface ResearchGroup {
   description?: string;
   deadline?: string;
   assignedAt?: string;
+  /**
+   * Whether the group is active (visible/enabled) or inactive (archived/
+   * hidden). When `undefined`, the FE treats the group as active — that
+   * covers legacy rows that pre-date the BE column.
+   *
+   * Mirrors `ResearchGroups.isActive` from the swagger contract and the
+   * `ResearchGroup` interface in `src/services/researchGroup.service.ts`.
+   */
+  isActive?: boolean | null;
 }
 
 export interface GroupMember {

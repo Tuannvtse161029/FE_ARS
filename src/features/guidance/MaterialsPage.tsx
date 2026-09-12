@@ -54,7 +54,6 @@ import {
   MaterialUsageModal,
   type UsageNavigationTarget,
 } from '../../components/lecturer/MaterialUsageModal';
-import { ShareApiContractPreview } from '../../components/lecturer/ShareApiContractPreview';
 import { MaterialEditor } from './components/MaterialEditor';
 import { SharedSection } from './components/SharedSection';
 // CSS module kept at the original Materials CSS location for now.
@@ -71,10 +70,10 @@ const isExpired = (sharedAt: string | null | undefined): boolean => {
 export const resolveUiStatus = (item: SharedMaterial): SharedMaterialUiStatus => {
   const raw = (item.status ?? '').toUpperCase();
   if (raw === 'ENDED') return 'ENDED';
-  if (raw === 'ACCEPTED') return 'ACCEPTED';
   if (raw === 'DECLINED') return 'DECLINED';
-  if (raw === 'PENDING') return 'PENDING';
   if (isExpired(item.sharedAt ?? item.createdAt)) return 'EXPIRED';
+  if (raw === 'ACCEPTED') return 'ACCEPTED';
+  if (raw === 'PENDING') return 'PENDING';
   if (raw === 'ARCHIVED') return 'ARCHIVED';
   return 'ACTIVE';
 };
@@ -143,6 +142,24 @@ const ROSTER_MAX_PAGES = 10;
 const fetchLecturerRoster = async (
   currentUserId: number | null,
 ): Promise<{ rows: LecturerRosterEntry[]; outcome: RosterLoadOutcome }> => {
+  // 1. Primary path: Dedicated lecturer colleagues endpoint for share modal
+  try {
+    const colleagues = await sharedMaterialService.getColleagues();
+    if (Array.isArray(colleagues) && colleagues.length > 0) {
+      const rows: LecturerRosterEntry[] = colleagues
+        .map((c) => ({
+          id: c.id,
+          fullName: (c.fullName ?? '').toString(),
+          email: (c.email ?? '').toString(),
+        }))
+        .filter((u) => u.id !== currentUserId);
+      return { rows, outcome: { kind: 'empty' } };
+    }
+  } catch {
+    // If not available, fallback to user roster below
+  }
+
+  // 2. Fallback path: Admin-accessible /api/User
   try {
     const seen = new Set<number>();
     const collected: LecturerRosterEntry[] = [];
@@ -374,19 +391,6 @@ export const LecturerMaterialsPage = () => {
     }
   };
 
-  const handleLmDelete = async (id: number) => {
-    if (!id) return;
-    try {
-      await learningMaterialService.delete(id);
-      setPendingDeleteId(null);
-      showBanner('Material deleted.');
-      await Promise.all([refetchLearning(), loadCrossReference()]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete the material.';
-      showBanner(message, 'error');
-    }
-  };
-
   // ── Shared Materials ──────────────────────────────────────────
   const [sharedItems, setSharedItems] = useState<SharedMaterial[]>([]);
   const [sharedLoading, setSharedLoading] = useState(true);
@@ -417,6 +421,53 @@ export const LecturerMaterialsPage = () => {
     () => (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => s.sharedWithColleagueId === lecturerId),
     [sharedItems, lecturerId],
   );
+
+  const activeSharesByMaterial = useMemo(() => {
+    const idMap = new Map<number, SharedMaterial[]>();
+    for (const s of sharedByMe) {
+      const status = resolveUiStatus(s);
+      if (status === 'ACTIVE' || status === 'ACCEPTED' || status === 'PENDING') {
+        const mid =
+          typeof s.learningMaterialId === 'number'
+            ? s.learningMaterialId
+            : typeof s.paperId === 'number'
+            ? s.paperId
+            : null;
+        if (mid !== null) {
+          const list = idMap.get(mid) ?? [];
+          list.push(s);
+          idMap.set(mid, list);
+        }
+      }
+    }
+    return { idMap };
+  }, [sharedByMe]);
+
+  const handleLmDelete = async (id: number) => {
+    if (!id) return;
+    try {
+      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
+      for (const share of activeShares) {
+        if (share.sharedMaterialId) {
+          try {
+            await sharedMaterialService.update(share.sharedMaterialId, {
+              ...share,
+              status: 'ENDED',
+            });
+          } catch {
+            // best-effort cleanup
+          }
+        }
+      }
+      await learningMaterialService.delete(id);
+      setPendingDeleteId(null);
+      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete the material.';
+      showBanner(message, 'error');
+    }
+  };
 
   const learningById = useMemo(() => {
     const map = new Map<number, LearningMaterial>();
@@ -450,6 +501,12 @@ export const LecturerMaterialsPage = () => {
   };
 
   const resolveColleagueName = (item: SharedMaterial, rosterIndex: Map<number, LecturerRosterEntry>): string => {
+    if (item.lecturerId === lecturerId && item.sharedWithName) {
+      return item.sharedWithName;
+    }
+    if (item.sharedWithColleagueId === lecturerId && item.lecturerName) {
+      return item.lecturerName;
+    }
     const counterpart = item.lecturerId === lecturerId ? item.sharedWithColleagueId : item.lecturerId;
     if (typeof counterpart === 'number') {
       const found = rosterIndex.get(counterpart);
@@ -480,7 +537,8 @@ export const LecturerMaterialsPage = () => {
     try {
       await sharedMaterialService.update(item.sharedMaterialId, {
         lecturerId: item.lecturerId,
-        paperId: item.paperId,
+        learningMaterialId: item.learningMaterialId ?? item.paperId,
+        paperId: item.paperId ?? item.learningMaterialId,
         sharedWithColleagueId: item.sharedWithColleagueId,
         sharedAt: item.sharedAt,
         status: nextStatus,
@@ -738,20 +796,15 @@ export const LecturerMaterialsPage = () => {
 
       {/* TAB 2: Shared by me */}
       <div id="panel-shared-by-me" role="tabpanel" aria-labelledby="tab-shared-by-me" className={`${styles.tabPanel} ${activeTab !== 'shared-by-me' && activeTab !== 'shared-materials' ? styles.tabPanelHidden : ''}`}>
-      {/* ── BackendGapBanner removed ──
-          The BE now auto-applies a 30-day expiry on `SharedMaterial`
-          and exposes the full status enum in its response, so the gap
-          we previously surfaced here is no longer accurate. */}
-
-      {sharedError && (
-        <div className={styles.errorBanner} role="alert">
-          <span className={styles.errorBannerIcon}>
-            <AlertTriangle size={14} aria-hidden />
-            <span>{sharedError}</span>
-          </span>
-          <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
-        </div>
-      )}
+        {sharedError && (
+          <div className={styles.errorBanner} role="alert">
+            <span className={styles.errorBannerIcon}>
+              <AlertTriangle size={14} aria-hidden />
+              <span>{sharedError}</span>
+            </span>
+            <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
+          </div>
+        )}
 
       <SharedSection
         title={t('lecturer.materials.shared.sectionByMe', 'Shared by me')}
@@ -777,20 +830,15 @@ export const LecturerMaterialsPage = () => {
 
       {/* TAB 3: Shared with me */}
       <div id="panel-shared-with-me" role="tabpanel" aria-labelledby="tab-shared-with-me" className={`${styles.tabPanel} ${activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''}`}>
-      {/* ── BackendGapBanner removed ──
-          The BE now auto-applies a 30-day expiry on `SharedMaterial`
-          and exposes the full status enum in its response, so the gap
-          we previously surfaced here is no longer accurate. */}
-
-      {sharedError && (
-        <div className={styles.errorBanner} role="alert">
-          <span className={styles.errorBannerIcon}>
-            <AlertTriangle size={14} aria-hidden />
-            <span>{sharedError}</span>
-          </span>
-          <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
-        </div>
-      )}
+        {sharedError && (
+          <div className={styles.errorBanner} role="alert">
+            <span className={styles.errorBannerIcon}>
+              <AlertTriangle size={14} aria-hidden />
+              <span>{sharedError}</span>
+            </span>
+            <button type="button" className={styles.errorRetryBtn} onClick={() => void loadShared()}>Retry</button>
+          </div>
+        )}
 
       <SharedSection
         title={t('lecturer.materials.shared.sectionWithMe', 'Shared with me')}
@@ -841,8 +889,6 @@ export const LecturerMaterialsPage = () => {
         }}
         onClose={closeUsageModal}
       />
-
-      <ShareApiContractPreview isOpen={false} onClose={() => undefined} />
     </div>
   );
 };

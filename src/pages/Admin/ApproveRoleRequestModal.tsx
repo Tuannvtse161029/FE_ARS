@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
+import { notificationService } from '../../services/notification.service';
 import type { RoleRequest } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -49,6 +50,25 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
       });
       onActioned(updated);
       onClose();
+      // Defensive FE notification — fire a `[Account] role accepted`
+      // notification to the requester. Best-effort: never block on a
+      // notification failure.
+      try {
+        if (typeof request.userId === 'number' && request.userId > 0) {
+          const roleLabel =
+            request.requestedAdditionalRoles?.length
+              ? request.requestedAdditionalRoles.join(', ')
+              : request.requestedRole?.trim() ||
+                request.requestedRoles?.join(', ') ||
+                'role';
+          await notificationService.create({
+            userId: request.userId,
+            message: `[Account] role accepted: yêu cầu nâng cấp "${roleLabel}" của bạn đã được admin phê duyệt.`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send role-accepted notification:', notifyErr);
+      }
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t('admin.roleRequests.approve.failed'));
     } finally {

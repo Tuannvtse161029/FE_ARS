@@ -518,7 +518,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
 
   async submitPaper(id: string): Promise<PublicationPaper> {
     const current = await paperService.getById(id);
-    return toPublicationPaper(await paperService.update(id, {
+    const updated = await paperService.update(id, {
       title: current.title ?? '',
       abstract: current.abstract ?? '',
       fileUrl: current.fileUrl ?? null,
@@ -526,7 +526,22 @@ class ApiPublicationAdapter implements PublicationAdapter {
       openAlexWorkId: current.openAlexWorkId ?? null,
       doi: current.doi ?? null,
       status: 'Waiting for Review',
-    }));
+    });
+    const paper = await toPublicationPaper(updated);
+    // Defensive FE notification — notify the paper's author that the
+    // paper moved into the review queue. Best-effort: never block the
+    // primary action on a notification failure.
+    if (typeof paper.authorId === 'number' && paper.authorId > 0) {
+      try {
+        await notificationService.create({
+          userId: paper.authorId,
+          message: `[Paper] status changed: "${paper.title ?? `Paper #${id}`}" đã được nộp để chờ phản biện.`,
+        });
+      } catch (notifyErr) {
+        console.warn('Failed to send paper status notification:', notifyErr);
+      }
+    }
+    return paper;
   }
 
   async respondToAssignment(
@@ -546,7 +561,27 @@ class ApiPublicationAdapter implements PublicationAdapter {
       throw new PublicationBackendContractError('The backend did not confirm the assignment response.');
     }
     const paper = await paperService.getById(String(current.paperId));
-    return toPublicationPaper(paper, refreshed);
+    const result = toPublicationPaper(paper, refreshed);
+    // Defensive FE notification — notify the paper's author that a
+    // reviewer accepted or rejected the assignment. Best-effort.
+    const paperIdNum = Number(id);
+    if (Number.isInteger(paperIdNum) && paperIdNum > 0) {
+      try {
+        const authorPaper = await paperService.getById(id);
+        if (typeof authorPaper.authorId === 'number' && authorPaper.authorId > 0) {
+          const title = authorPaper.title ?? `Paper #${id}`;
+          await notificationService.create({
+            userId: authorPaper.authorId,
+            message: accepted
+              ? `[Review] accepted: "${title}" — một reviewer đã chấp nhận yêu cầu phản biện.`
+              : `[Review] rejected: "${title}" — một reviewer đã từ chối yêu cầu phản biện.`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send review-respond notification:', notifyErr);
+      }
+    }
+    return result;
   }
 
   async submitReview(
@@ -653,6 +688,17 @@ class ApiPublicationAdapter implements PublicationAdapter {
       airecommended: false,
       type: 'Editorial',
     });
+    // Defensive FE notification — notify the newly assigned reviewer.
+    // Best-effort: never block the assignment on a notification failure.
+    try {
+      const paper = await paperService.getById(id);
+      await notificationService.create({
+        userId: reviewerId,
+        message: `[Review] new request: "${paper.title ?? `Paper #${id}`}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
+      });
+    } catch (notifyErr) {
+      console.warn('Failed to send review-assignment notification:', notifyErr);
+    }
     return toPublicationPaper(await paperService.getById(id), request);
   }
 
@@ -675,11 +721,58 @@ class ApiPublicationAdapter implements PublicationAdapter {
       paperId: Number(id),
       reviewerIds: normalizedIds,
     });
+    // Defensive FE notification fan-out — one `[Review] new request` per
+    // assigned reviewer. Best-effort.
+    try {
+      const paper = await paperService.getById(id);
+      const title = paper.title ?? `Paper #${id}`;
+      for (const reviewerId of normalizedIds) {
+        try {
+          await notificationService.create({
+            userId: reviewerId,
+            message: `[Review] new request: "${title}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
+          });
+        } catch (notifyErr) {
+          console.warn('Failed to send review-assignment notification:', notifyErr);
+        }
+      }
+    } catch (notifyFanoutErr) {
+      console.warn('Failed to fan out review-assignment notifications:', notifyFanoutErr);
+    }
     return this.getPaperById(id);
   }
 
   async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {
-    return paperService.assignReviewers(id, reviewerCount);
+    const result = await paperService.assignReviewers(id, reviewerCount);
+    // Defensive FE notification fan-out — the BE may return the
+    // assigned reviewer list inside `result` (typically
+    // `{ paperId, assignedReviewerIds: [...] }`). When present we
+    // notify each newly assigned reviewer; otherwise we silently skip
+    // since the BE contract doesn't expose them here.
+    try {
+      const assigned: number[] = Array.isArray(
+        (result as { assignedReviewerIds?: number[] })?.assignedReviewerIds,
+      )
+        ? (result as { assignedReviewerIds: number[] }).assignedReviewerIds
+        : [];
+      if (assigned.length > 0) {
+        const paper = await paperService.getById(id);
+        const title = paper.title ?? `Paper #${id}`;
+        for (const reviewerId of assigned) {
+          try {
+            await notificationService.create({
+              userId: reviewerId,
+              message: `[Review] new request: "${title}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
+            });
+          } catch (notifyErr) {
+            console.warn('Failed to send review-assignment notification:', notifyErr);
+          }
+        }
+      }
+    } catch (notifyFanoutErr) {
+      console.warn('Failed to fan out auto-assignment notifications:', notifyFanoutErr);
+    }
+    return result;
   }
 
   async verifyAuthorship(id: string, _allow = true): Promise<PublicationPaper> {
@@ -705,6 +798,19 @@ class ApiPublicationAdapter implements PublicationAdapter {
       throw new PublicationBackendContractError(
         friendlyAuthorshipVerificationError(rawStatus, rawReason),
       );
+    }
+    // Defensive FE notification — notify the paper's author that the
+    // authorship verification passed. Best-effort.
+    try {
+      if (typeof updated.authorId === 'number' && updated.authorId > 0) {
+        const title = updated.title ?? `Paper #${id}`;
+        await notificationService.create({
+          userId: updated.authorId,
+          message: `[Paper] authorship confirmed: "${title}" — quyền tác giả đã được xác nhận.`,
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Failed to send authorship-confirmed notification:', notifyErr);
     }
     return toPublicationPaper(updated);
   }

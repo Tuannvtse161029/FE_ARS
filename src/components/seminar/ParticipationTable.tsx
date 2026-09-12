@@ -51,6 +51,7 @@ import {
   useSeminarParticipations,
   type ParticipationRow,
 } from '../../hooks/useSeminarParticipations';
+import { notificationService } from '../../services/notification.service';
 import styles from './ParticipationTable.module.css';
 
 type StatusFilter = 'all' | 'invitations' | 'upcoming' | 'in-progress' | 'completed';
@@ -160,6 +161,19 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
     setBusyRowId(row.seminarId);
     try {
       await accept(row.seminarParticipantId);
+      // Defensive FE notification — notify the organizer that an
+      // invitee accepted. Swallow failures so they never block the
+      // accept itself.
+      if (row.organizerId && row.organizerId > 0) {
+        try {
+          await notificationService.create({
+            userId: row.organizerId,
+            message: `[Seminar] participant: "${row.title}" — một khách mời đã chấp nhận lời mời tham gia hội thảo.`,
+          });
+        } catch (notifyErr) {
+          console.warn('Failed to send accept invitation notification:', notifyErr);
+        }
+      }
     } catch {
       // The hook surfaces the error string itself; we keep the table open.
     } finally {
@@ -172,6 +186,18 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
     setBusyRowId(rejecting.row.seminarId);
     try {
       await decline(rejecting.row.seminarParticipantId);
+      // Defensive FE notification — notify the organizer that an
+      // invitee declined so they know the slot opened up.
+      if (rejecting.row.organizerId && rejecting.row.organizerId > 0) {
+        try {
+          await notificationService.create({
+            userId: rejecting.row.organizerId,
+            message: `[Seminar] participant: "${rejecting.row.title}" — một khách mời đã từ chối lời mời tham gia hội thảo.`,
+          });
+        } catch (notifyErr) {
+          console.warn('Failed to send decline invitation notification:', notifyErr);
+        }
+      }
       setRejecting(null);
     } catch {
       // hook surfaces error; keep modal open so the user can retry.
@@ -487,7 +513,7 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
                     <span className={styles.cellSub}>
                       {row.organizerName
                         ? copy(`Hosted by ${row.organizerName}`, `Do ${row.organizerName} tổ chức`)
-                        : `SEM-${String(row.seminarId).padStart(3, '0')}`}
+                        : ''}
                     </span>
                   </td>
                   <td>
@@ -542,7 +568,9 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
       )}
 
       {/* Submit / View feedback modal — reuses the existing dynamic
-          feedback component with `previewMode` for read-only inspection. */}
+          feedback component with `previewMode` for read-only inspection.
+          On successful submit we fan out a `[Seminar] feedback`
+          notification to the organizer so the bell updates immediately. */}
       {feedbackModal && (
         <SeminarFeedbackModal
           isOpen={Boolean(feedbackModal)}
@@ -552,7 +580,23 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
           previewMode={feedbackModal.previewMode}
           hasSubmittedBefore={feedbackModal.isEditing}
           existingDynamicAnswersRaw={feedbackModal.row.feedbackJson}
-          onSuccess={() => void refetch()}
+          onSuccess={async () => {
+            if (
+              !feedbackModal.previewMode &&
+              feedbackModal.row.organizerId &&
+              feedbackModal.row.organizerId > 0
+            ) {
+              try {
+                await notificationService.create({
+                  userId: feedbackModal.row.organizerId,
+                  message: `[Seminar] feedback: "${feedbackModal.row.title}" — một người tham gia vừa gửi phản hồi.`,
+                });
+              } catch (notifyErr) {
+                console.warn('Failed to send feedback notification:', notifyErr);
+              }
+            }
+            await refetch();
+          }}
         />
       )}
     </div>
