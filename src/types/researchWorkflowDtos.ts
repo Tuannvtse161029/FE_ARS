@@ -185,6 +185,14 @@ export interface PhasedReportUpdateRequest {
   requirements?: string | null;
   assessmentCriteria?: string | null;
   startDate?: string | null;
+  /**
+   * Phase deadline. Echo back on PUT so the BE doesn't wipe the value the
+   * preceding milestone POST wrote. Per Swagger PhasedReportUpdateRequest
+   * this field is nullable on write.
+   */
+  deadlineAt?: string | null;
+  /** Swagger `deadline` alias — see PhasedReportUpdateRequest schema. */
+  deadline?: string | null;
 }
 
 // ---------- TopicMilestones & Phase Reports ----------

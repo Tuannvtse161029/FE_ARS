@@ -262,9 +262,9 @@ export const Forum = () => {
 
       <div className={styles.forumLayout}>
         {/* ─── LEFT SIDEBAR ─── */}
-        <aside className={styles.sidebar} aria-label="Forum filters">
+        <aside className={styles.sidebar} aria-label={t('forum.filtersAria', 'Forum filters')}>
           <div className={styles.sidebarSection}>
-            <div className={styles.sidebarSectionLabel}>Categories</div>
+            <div className={styles.sidebarSectionLabel}>{t('forum.categoriesLabel', 'Categories')}</div>
             <div className={styles.categoryList}>
               {visibleCategories.map((cat) => (
                 <button
@@ -282,11 +282,11 @@ export const Forum = () => {
           </div>
 
           <div className={styles.sidebarSection}>
-            <div className={styles.sidebarSectionLabel}>Filters</div>
+            <div className={styles.sidebarSectionLabel}>{t('forum.filtersLabel', 'Filters')}</div>
             <Input
               id="forum-search-input"
-              label="Search"
-              placeholder="Search posts…"
+              label={t('common.search')}
+              placeholder={t('forum.searchPlaceholder', 'Search posts…')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search size={14} />}
@@ -412,7 +412,7 @@ export const Forum = () => {
                 <p className={styles.pendingBannerHint}>
                   {interactDisabledReason ??
                     'Renew your subscription to continue interacting with the Forum.'}{' '}
-                  <a href={ROUTES.SUBSCRIPTION}>View subscription plans</a>.
+                  <a href={ROUTES.SUBSCRIPTION}>{t('forum.viewSubscriptionPlans', 'View subscription plans')}</a>.
                 </p>
               </div>
             </div>
@@ -427,11 +427,11 @@ export const Forum = () => {
                 className={styles.sortSelect}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                aria-label="Sort posts"
+                aria-label={t('forum.sortAria', 'Sort posts')}
               >
-                <option>Newest</option>
-                <option>Most Discussed</option>
-                <option>Most Viewed</option>
+                <option>{t('forum.sort.newest', 'Newest')}</option>
+                <option>{t('forum.sort.mostDiscussed', 'Most Discussed')}</option>
+                <option>{t('forum.sort.mostViewed', 'Most Viewed')}</option>
               </select>
             </div>
             <div className={styles.feedToolbarRight}>
@@ -440,8 +440,8 @@ export const Forum = () => {
                 className={styles.refreshBtn}
                 onClick={() => void refetch()}
                 disabled={isLoading}
-                aria-label="Refresh posts"
-                title="Refresh posts"
+                aria-label={t('forum.refreshAria', 'Refresh posts')}
+                title={t('forum.refreshAria', 'Refresh posts')}
               >
                 <RefreshCw size={14} className={isLoading ? styles.refreshIconSpin : ''} />
               </button>
@@ -452,8 +452,8 @@ export const Forum = () => {
           {error && (
             <ErrorBanner
               tone="error"
-              title="Couldn't load forum posts"
-              message={error.message || 'Failed to load posts.'}
+              title={t('forum.loadError', "Couldn't load forum posts")}
+              message={error.message || t('forum.loadErrorFallback', 'Failed to load posts.')}
               retry={
                 <Button
                   size="sm"
@@ -478,17 +478,17 @@ export const Forum = () => {
                 icon={<AlertCircle size={20} />}
                 title={
                   effectiveCategory === 'Following'
-                    ? 'Not following any authors yet'
+                    ? t('forum.empty.followingTitle', 'Not following any authors yet')
                     : effectiveCategory === 'My Posts'
-                      ? 'You have not published any posts yet'
-                      : 'No posts match your filters'
+                      ? t('forum.empty.myPostsTitle', 'You have not published any posts yet')
+                      : t('forum.empty.noMatchTitle', 'No posts match your filters')
                 }
                 description={
                   effectiveCategory === 'Following'
-                    ? 'Follow a colleague from any forum post to see their updates here.'
+                    ? t('forum.empty.followingDesc', 'Follow a colleague from any forum post to see their updates here.')
                     : effectiveCategory === 'My Posts'
-                      ? 'Use the Create post button to share research with the community.'
-                      : 'Try a different search or clear your filters.'
+                      ? t('forum.empty.myPostsDesc', 'Use the Create post button to share research with the community.')
+                      : t('forum.empty.noMatchDesc', 'Try a different search or clear your filters.')
                 }
                 compact
               />
@@ -575,6 +575,7 @@ const CreatePostModal = ({
   onClose,
   onPublished,
 }: CreatePostModalProps) => {
+  const { t } = useI18n();
   const { create, error: createError } = useCreateForumPost();
 
   // Firebase upload hooks — one per attachment type
@@ -695,12 +696,12 @@ const CreatePostModal = ({
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.modalHeader}>
-          <h2 id="forum-create-post-title" className={styles.modalTitle}>Create Forum Post</h2>
+          <h2 id="forum-create-post-title" className={styles.modalTitle}>{t('forum.createPost.title', 'Create Forum Post')}</h2>
           <button
             type="button"
             className={styles.modalCloseButton}
             onClick={onClose}
-            aria-label="Close create post dialog"
+            aria-label={t('forum.createPost.closeAria', 'Close create post dialog')}
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -716,15 +717,15 @@ const CreatePostModal = ({
           </div>
           <div className={styles.modalAuthorInfo}>
             <span className={styles.modalAuthorName}>{currentUserName}</span>
-            <span className={styles.modalPostingTo}>Posting to Forums</span>
+            <span className={styles.modalPostingTo}>{t('forum.createPost.postingTo', 'Posting to Forums')}</span>
           </div>
         </div>
 
         <div className={styles.modalBody}>
           {/* Title */}
           <Input
-            label="Title"
-            placeholder="Post title"
+            label={t('forum.createPost.titleField', 'Title')}
+            placeholder={t('forum.createPost.titlePlaceholder', 'Post title')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={140}
@@ -732,8 +733,8 @@ const CreatePostModal = ({
 
           {/* Category (optional, free-text until BE ships category list) */}
           <Input
-            label="Category"
-            placeholder="Category (optional)"
+            label={t('forum.createPost.category', 'Category')}
+            placeholder={t('forum.createPost.categoryPlaceholder', 'Category (optional)')}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             required={false}
@@ -742,12 +743,12 @@ const CreatePostModal = ({
           {/* Abstract (optional) */}
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel} htmlFor="post-abstract">
-              Abstract <span className={styles.fieldHint}>(optional)</span>
+              {t('forum.createPost.abstract', 'Abstract')} <span className={styles.fieldHint}>({t('common.optional')})</span>
             </label>
             <textarea
               id="post-abstract"
               className={styles.abstractTextarea}
-              placeholder="Brief abstract (optional)"
+              placeholder={t('forum.createPost.abstractPlaceholder', 'Brief abstract (optional)')}
               rows={2}
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
@@ -757,12 +758,12 @@ const CreatePostModal = ({
           {/* Plain Textarea - content */}
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel} htmlFor="post-content">
-              Content <span className={styles.fieldHint}>(required)</span>
+              {t('forum.createPost.content', 'Content')} <span className={styles.fieldHint}>({t('common.required')})</span>
             </label>
             <textarea
               id="post-content"
               className={styles.modalTextarea}
-              placeholder="Share your thoughts..."
+              placeholder={t('forum.createPost.contentPlaceholder', 'Share your thoughts...')}
               rows={8}
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
@@ -773,14 +774,14 @@ const CreatePostModal = ({
           <div className={styles.tagInputRow}>
             <label className={styles.tagLabel}>
               <Tag size={14} />
-              Tags
+              {t('forum.createPost.tags', 'Tags')}
             </label>
             <div className={styles.tagInputWrapper}>
               <span className={styles.tagHashPrefix}>#</span>
               <input
                 type="text"
                 className={styles.tagInputField}
-                placeholder="Add tags, comma separated..."
+                placeholder={t('forum.createPost.tagsPlaceholder', 'Add tags, comma separated...')}
                 value={postTags}
                 onChange={(e) => setPostTags(e.target.value)}
               />
@@ -900,14 +901,14 @@ const CreatePostModal = ({
           {pdfUpload.error && !pdfUpload.isUploading && (
             <ErrorBanner
               tone="error"
-              title="PDF upload failed"
+              title={t('forum.createPost.pdfUploadFailed', 'PDF upload failed')}
               message={pdfUpload.error}
             />
           )}
           {imageUpload.error && !imageUpload.isUploading && (
             <ErrorBanner
               tone="error"
-              title="Image upload failed"
+              title={t('forum.createPost.imageUploadFailed', 'Image upload failed')}
               message={imageUpload.error}
             />
           )}
@@ -915,7 +916,7 @@ const CreatePostModal = ({
           {submitError && (
             <ErrorBanner
               tone="error"
-              title="Couldn't publish post"
+              title={t('forum.createPost.publishFailed', "Couldn't publish post")}
               message={submitError}
             />
           )}

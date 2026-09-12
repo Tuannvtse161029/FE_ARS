@@ -41,7 +41,6 @@ import {
   Square,
   CheckSquare,
   ChevronRight,
-  Code2,
   Eye,
   Clock,
   User,
@@ -61,6 +60,7 @@ import {
   sharedMaterialService,
   type SharedMaterial,
 } from '../../services/sharedMaterial.service';
+import { notificationService } from '../../services/notification.service';
 import { researchTopicService } from '../../services/researchTopic.service';
 // NOTE: import the canonical `ResearchTopic` from the shared types module,
 // NOT from `researchTopic.service`. The service exposes a BE-response shape
@@ -87,10 +87,14 @@ import {
   buildResearchTopicsUrl,
 } from '../../utils/topicRouting';
 import {
+  isAdminRoleName,
+  isAdminUser,
+  hasAdminRole,
+} from '../../utils/roleNormalizer';
+import {
   MaterialUsageModal,
   type UsageNavigationTarget,
 } from '../../components/lecturer/MaterialUsageModal';
-import { ShareApiContractPreview } from '../../components/lecturer/ShareApiContractPreview';
 import styles from './Materials.module.css';
 
 type TabId =
@@ -177,6 +181,11 @@ interface LecturerRosterEntry {
   id: number;
   fullName: string;
   email: string;
+  /** Optional role signals captured from the `/api/User` payload so we can
+   *  re-check admin status downstream (e.g. after search/filter). */
+  roleName?: string | null;
+  roleId?: number | null;
+  roles?: ReadonlyArray<string | null | undefined>;
 }
 
 // `RosterLoadOutcome` tells the caller whether the roster came back
@@ -224,20 +233,48 @@ const fetchLecturerRoster = async (
       for (const raw of items) {
         const entry = raw as Partial<LecturerRosterEntry> & {
           userId?: number;
+          roleName?: string | null;
+          role?: string | null;
+          roleId?: number | null;
+          roles?: ReadonlyArray<string | null | undefined>;
         };
         const id = entry.id ?? entry.userId;
         if (typeof id !== 'number') continue;
         if (seen.has(id)) continue;
-      seen.add(id);
-      collected.push({
-        id,
-        fullName: (entry.fullName ?? '').toString(),
-        email: (entry.email ?? '').toString(),
-      });
+        seen.add(id);
+
+        // FE_INVITE_HIDE_ADMIN — Admin accounts operate the platform and
+        // must never appear as a share recipient. The BE's `?role=Lecturer`
+        // filter is not authoritative (admin rows sometimes leak through),
+        // so we drop them on the FE against the same role signals used by
+        // the seminar invitee flow. See `isAdminUser` /
+        // `isAdminRoleName` / `hasAdminRole` in `utils/roleNormalizer.ts`.
+        const denormalisedRoles: ReadonlyArray<string | null | undefined> =
+          Array.isArray(entry.roles) && entry.roles.length > 0
+            ? entry.roles
+            : [entry.roleName, entry.role];
+        const isAdmin =
+          hasAdminRole(denormalisedRoles) ||
+          isAdminRoleName(entry.roleName) ||
+          isAdminRoleName(entry.role) ||
+          isAdminUser({
+            roleName: entry.roleName ?? entry.role ?? null,
+            roleId: entry.roleId ?? null,
+          });
+        if (isAdmin) continue;
+
+        collected.push({
+          id,
+          fullName: (entry.fullName ?? '').toString(),
+          email: (entry.email ?? '').toString(),
+          roleName: entry.roleName ?? entry.role ?? null,
+          roleId: entry.roleId ?? null,
+          roles: denormalisedRoles,
+        });
+      }
+      const totalPages = (payload as { totalPages?: number }).totalPages;
+      if (typeof totalPages === 'number' && page >= totalPages) break;
     }
-    const totalPages = (payload as { totalPages?: number }).totalPages;
-    if (typeof totalPages === 'number' && page >= totalPages) break;
-  }
     return {
       rows: collected.filter((u) => u.id !== currentUserId),
       outcome: { kind: 'empty' } as const,
@@ -628,9 +665,20 @@ export const LecturerMaterialsPage = () => {
   }, [sharedItems, lecturerId]);
 
   const sharedWithMe = useMemo(() => {
-    return (Array.isArray(sharedItems) ? sharedItems : []).filter(
-      (s) => s.sharedWithColleagueId === lecturerId,
-    );
+    // Drop terminal states from the recipient's view.
+    // The BE keeps returning ENDED / DECLINED / ARCHIVED rows, but on the
+    // recipient's side they have zero actionable UI: `renderAction` returns
+    // null for them, and the title resolves to a placeholder string
+    // (`Material no longer available`). Leaving them in the list created
+    // ghost rows the recipient could neither act on nor understand.
+    // EXPIRED is kept on purpose — the recipient may want to see why
+    // something disappeared, and the status pill explains itself.
+    const RECIPIENT_HIDDEN_STATUSES: ReadonlySet<SharedMaterialUiStatus> =
+      new Set(['ENDED', 'DECLINED', 'ARCHIVED']);
+    return (Array.isArray(sharedItems) ? sharedItems : []).filter((s) => {
+      if (s.sharedWithColleagueId !== lecturerId) return false;
+      return !RECIPIENT_HIDDEN_STATUSES.has(resolveUiStatus(s));
+    });
   }, [sharedItems, lecturerId]);
 
   // Active/pending shares initiated by current lecturer, indexed by material id and url
@@ -696,21 +744,37 @@ export const LecturerMaterialsPage = () => {
   const resolveSharedTitle = (
     item: SharedMaterial,
   ): { title: string; known: boolean } => {
-    // 1. Prioritize direct title returned by the BE
+    // 1. Prioritize direct title returned by the BE.
     const directTitle = (item.learningMaterialTitle || item.title)?.trim();
     if (directTitle) {
       return { title: directTitle, known: true };
     }
-    // 2. Lookup in learningById (via learningMaterialId or paperId)
+    // 2. Lookup in learningById (via learningMaterialId or paperId).
+    //    For terminal statuses (ENDED / DECLINED / EXPIRED), the recipient's
+    //    `useLearningMaterials` filter strips the share's paperId out of
+    //    `learningById`, even though the BE still returns the share row.
+    //    Skip the lookup in that case so we don't silently mis-resolve to
+    //    *another* material that happens to share an id.
+    const uiStatus = resolveUiStatus(item);
+    const skipLookup =
+      uiStatus === 'ENDED' ||
+      uiStatus === 'DECLINED' ||
+      uiStatus === 'EXPIRED';
     const targetId =
       typeof item.learningMaterialId === 'number'
         ? item.learningMaterialId
         : typeof item.paperId === 'number'
         ? item.paperId
         : null;
-    if (targetId !== null) {
+    if (!skipLookup && targetId !== null) {
       const found = learningById.get(targetId);
       if (found) return { title: formatTitle(found), known: true };
+    }
+    // 3. Fallback. Use a clear "no longer available" string for cancelled
+    //    shares so the row no longer reads as a generic "Material #NNN"
+    //    blank block on the recipient's side.
+    if (skipLookup) {
+      return { title: 'Material no longer available', known: false };
     }
     return { title: `Material #${targetId ?? '—'}`, known: false };
   };
@@ -821,18 +885,35 @@ export const LecturerMaterialsPage = () => {
     };
   }, [shareMaterial, shareSaving]);
 
-  // ── Backend contract preview ──────────────────────────────────────
-  // The Share button currently hits `POST /api/SharedMaterial` and gets
-  // 403 because that endpoint was built for paper sharing, not material
-  // sharing. While the BE fixes the endpoint (ticket:
-  // `tickets/backend/FE_MATERIAL_SHARE_403_TICKET.md`), the lecturer
-  // can open a preview modal that shows the contract the FE wants.
-  const [showApiPreview, setShowApiPreview] = useState(false);
+  // ── Backend contract preview removed ──
+  // The previous "View API contract" link inside the Share modal rendered
+  // an end-user-facing mock of the desired BE endpoint. It was a
+  // developer aid for the BE team (see ticket
+  // `tickets/backend/FE_MATERIAL_SHARE_403_TICKET.md`); end users
+  // (lecturers) never needed to see the wire format. The component itself
+  // is now deleted.
 
   const filteredRoster = useMemo(() => {
     const q = shareSearch.trim().toLowerCase();
-    if (!q) return lecturerRoster;
-    return lecturerRoster.filter((entry) =>
+    // FE_INVITE_HIDE_ADMIN — defensive re-filter at the display layer so a
+    // mocked / legacy payload can never surface an Admin recipient, even
+    // if the source `/api/User` fetch ever leaks one through.
+    const withoutAdmin = lecturerRoster.filter((entry) => {
+      const roleList: ReadonlyArray<string | null | undefined> =
+        Array.isArray(entry.roles) && entry.roles.length > 0
+          ? entry.roles
+          : [entry.roleName];
+      return (
+        !hasAdminRole(roleList) &&
+        !isAdminRoleName(entry.roleName) &&
+        !isAdminUser({
+          roleName: entry.roleName ?? null,
+          roleId: entry.roleId ?? null,
+        })
+      );
+    });
+    if (!q) return withoutAdmin;
+    return withoutAdmin.filter((entry) =>
       `${entry.fullName} ${entry.email}`.toLowerCase().includes(q),
     );
   }, [shareSearch, lecturerRoster]);
@@ -877,6 +958,14 @@ export const LecturerMaterialsPage = () => {
     setShareSaving(true);
     setShareError(null);
     const sharedAt = new Date().toISOString();
+    const materialTitle =
+      shareMaterial.title?.trim() ||
+      shareMaterial.description?.trim() ||
+      `material #${paperId}`;
+    const ownerName =
+      user?.username?.trim() ||
+      user?.email?.trim() ||
+      `Lecturer #${lecturerId}`;
     try {
       for (const colleagueId of shareSelected) {
         await sharedMaterialService.create({
@@ -886,6 +975,18 @@ export const LecturerMaterialsPage = () => {
           sharedAt,
           status: 'PENDING',
         });
+        // Defensive FE notification — the BE may also insert one but we
+        // never let a missing BE-side notification leave the recipient
+        // blind to a new share. Swallow any failure so it never blocks
+        // the share itself.
+        try {
+          await notificationService.create({
+            userId: colleagueId,
+            message: `[Lecturer] material shared: ${ownerName} đã chia sẻ "${materialTitle}" với bạn.`,
+          });
+        } catch (notifyErr) {
+          console.warn('Failed to send material-shared notification:', notifyErr);
+        }
       }
       showBanner('Share invitations created.');
       closeShareModal();
@@ -915,6 +1016,58 @@ export const LecturerMaterialsPage = () => {
         sharedAt: item.sharedAt,
         status: nextStatus,
       });
+
+      // Defensive FE notifications for share lifecycle events. These mirror
+      // the BE's status transition but are fired locally so the bell is
+      // updated immediately (BE-side notifications take the polling
+      // window to surface). The try/catch around each notification never
+      // propagates failures to the caller.
+      const materialTitle =
+        item.learningMaterialTitle?.trim() ||
+        item.title?.trim() ||
+        `material #${item.paperId ?? ''}`;
+      const ownerName =
+        item.lecturerName?.trim() ||
+        (item.lecturerId ? `Lecturer #${item.lecturerId}` : 'A colleague');
+      const receiverName =
+        item.sharedWithColleagueId
+          ? `Lecturer #${item.sharedWithColleagueId}`
+          : 'A colleague';
+      const previousUiStatus = resolveUiStatus(item);
+      try {
+        if (nextStatus === 'ACCEPTED' && item.lecturerId && item.lecturerId !== lecturerId) {
+          // The receiver (current user) accepted the share → notify the
+          // original owner so the share row flips to ACTIVE on their side.
+          await notificationService.create({
+            userId: item.lecturerId,
+            message: `[Lecturer] share accepted: ${receiverName} đã chấp nhận chia sẻ "${materialTitle}".`,
+          });
+        } else if (nextStatus === 'DECLINED' && item.lecturerId && item.lecturerId !== lecturerId) {
+          // The receiver declined → notify the original owner.
+          await notificationService.create({
+            userId: item.lecturerId,
+            message: `[Lecturer] share declined: ${receiverName} đã từ chối chia sẻ "${materialTitle}".`,
+          });
+        } else if (nextStatus === 'ENDED' && item.sharedWithColleagueId) {
+          // The owner ended an active share → notify the receiver that
+          // access has been revoked. This is the user's primary example:
+          // "when lecturer end the sharing material, a notification should
+          // send to the receiver so the user know that this material has
+          // been stop by that user."
+          const targetUserId = previousUiStatus === 'PENDING'
+            ? item.lecturerId ?? null
+            : item.sharedWithColleagueId;
+          if (targetUserId && targetUserId !== lecturerId) {
+            await notificationService.create({
+              userId: targetUserId,
+              message: `[Student] material unshared: ${ownerName} đã gỡ chia sẻ "${materialTitle}".`,
+            });
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send share-status notification:', notifyErr);
+      }
+
       await Promise.all([loadShared(), refetchLearning()]);
     } catch (err) {
       const message =
@@ -931,15 +1084,15 @@ export const LecturerMaterialsPage = () => {
       data-testid="lecturer-materials"
     >
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
-        title="Materials"
-        description="Manage your learning materials and shared research papers in one place."
+        eyebrow={t('common.lecturerWorkspace')}
+        title={t('lecturer.materials.title', 'Materials')}
+        description={t('lecturer.materials.subtitle', 'Manage your learning materials and shared research papers in one place.')}
         accent="var(--ars-lecturer)"
       />
 
       <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Materials</span>
+        {t('common.home')} &gt; <Link to={ROUTES.FORUM}>{t('common.forums')}</Link> &gt;{' '}
+        <span className={styles.activeBreadcrumb}>{t('lecturer.materials.title', 'Materials')}</span>
       </div>
 
       {banner.visible && (
@@ -954,7 +1107,7 @@ export const LecturerMaterialsPage = () => {
             </span>
             <div>
               <span className={styles.toastTitle}>
-                {banner.variant === 'success' ? 'Action Successful' : 'Action Failed'}
+                {banner.variant === 'success' ? t('common.actionSuccess') : t('common.actionFailed')}
               </span>
               <p className={styles.toastSub}>{banner.text}</p>
             </div>
@@ -966,7 +1119,7 @@ export const LecturerMaterialsPage = () => {
               onClick={() =>
                 setBanner({ visible: false, text: '', variant: 'success' })
               }
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
             >
               <X size={14} aria-hidden />
             </button>
@@ -975,7 +1128,7 @@ export const LecturerMaterialsPage = () => {
       )}
 
       {/* Tab Switcher */}
-      <div className={styles.tabBar} role="tablist" aria-label="Materials sections">
+      <div className={styles.tabBar} role="tablist" aria-label={t('lecturer.materials.tabBarAria', 'Materials sections')}>
         <div className={styles.tabBarLeft}>
           <button
             type="button"
@@ -1038,9 +1191,9 @@ export const LecturerMaterialsPage = () => {
               }
               onClick={() => void handleLmRefresh()}
               disabled={lmLoading}
-              aria-label="Refresh materials"
+              aria-label={t('lecturer.materials.refreshMaterialsAria', 'Refresh materials')}
             >
-              Refresh
+              {t('common.refresh')}
             </Button>
             <Button
               variant="primary"
@@ -1071,9 +1224,9 @@ export const LecturerMaterialsPage = () => {
               }
               onClick={() => void loadShared()}
               disabled={sharedLoading}
-              aria-label="Refresh shared materials"
+              aria-label={t('lecturer.materials.refreshSharedAria', 'Refresh shared materials')}
             >
-              Refresh
+              {t('common.refresh')}
             </Button>
           </div>
         )}
@@ -1097,7 +1250,7 @@ export const LecturerMaterialsPage = () => {
               className={styles.errorRetryBtn}
               onClick={() => void refetchLearning()}
             >
-              Retry
+              {t('common.retry', 'Retry')}
             </button>
           </div>
         )}
@@ -1126,10 +1279,10 @@ export const LecturerMaterialsPage = () => {
                   </span>
                   <div>
                     <h3 id="lm-modal-title" className={styles.modalTitle}>
-                      Add a learning material
+                      {t('lecturer.materials.addModal.title', 'Add a learning material')}
                     </h3>
                     <span className={styles.modalSubtitle}>
-                      Upload a file or paste a URL — both are optional.
+                      {t('lecturer.materials.addModal.subtitle', 'Upload a file or paste a URL — both are optional.')}
                     </span>
                   </div>
                 </div>
@@ -1137,7 +1290,7 @@ export const LecturerMaterialsPage = () => {
                   type="button"
                   className={styles.modalCloseBtn}
                   onClick={closeLmForm}
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                   disabled={lmSubmitting}
                 >
                   <X size={16} aria-hidden />
@@ -1146,7 +1299,7 @@ export const LecturerMaterialsPage = () => {
               <div className={styles.modalForm}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel} htmlFor="lm-title">
-                    * Title
+                    {t('lecturer.materials.addModal.titleLabel', '* Title')}
                   </label>
                   <input
                     id="lm-title"
@@ -1164,7 +1317,7 @@ export const LecturerMaterialsPage = () => {
                   <FieldError id="lm-title-error" message={lmTitleError} testId="lm-title-error" />
                 </div>
 
-                <div className={styles.sourceModeToggle} role="group" aria-label="Choose material source">
+                <div className={styles.sourceModeToggle} role="group" aria-label={t('lecturer.materials.addModal.sourceModeAria', 'Choose material source')}>
                   <button
                     type="button"
                     className={`${styles.modeBtn} ${lmSourceMode === 'file' ? styles.modeBtnActive : ''}`}
@@ -1172,7 +1325,7 @@ export const LecturerMaterialsPage = () => {
                     aria-pressed={lmSourceMode === 'file'}
                   >
                     <Upload size={14} aria-hidden />
-                    Upload file
+                    {t('lecturer.materials.addModal.uploadFile', 'Upload file')}
                   </button>
                   <button
                     type="button"
@@ -1181,13 +1334,13 @@ export const LecturerMaterialsPage = () => {
                     aria-pressed={lmSourceMode === 'url'}
                   >
                     <Link2 size={14} aria-hidden />
-                    Paste URL
+                    {t('lecturer.materials.addModal.pasteUrl', 'Paste URL')}
                   </button>
                 </div>
 
                 {lmSourceMode === 'file' && (
                   <div className={styles.formGroup}>
-                    <span className={styles.formLabel}>File (optional)</span>
+                    <span className={styles.formLabel}>{t('lecturer.materials.addModal.fileOptional', 'File (optional)')}</span>
                     {lmUploadedFile && lmUploadedUrl ? (
                       <div className={styles.filePreviewCard}>
                         <div className={styles.filePreviewIcon}>
@@ -1206,7 +1359,7 @@ export const LecturerMaterialsPage = () => {
                             setLmUploadedFile(null);
                             lmResetUpload();
                           }}
-                          aria-label="Remove selected file"
+                          aria-label={t('lecturer.materials.addModal.removeFileAria', 'Remove selected file')}
                         >
                           <X size={14} aria-hidden />
                         </button>
@@ -1242,9 +1395,9 @@ export const LecturerMaterialsPage = () => {
                       >
                         <CloudUpload size={22} className={styles.dropzoneIcon} aria-hidden />
                         <span className={styles.dropzoneText}>
-                          Click to browse — PDF, Word, Excel, PowerPoint, image
+                          {t('lecturer.materials.addModal.dropzoneText', 'Click to browse — PDF, Word, Excel, PowerPoint, image')}
                         </span>
-                        <span className={styles.dropzoneHint}>Max 10 MB</span>
+                        <span className={styles.dropzoneHint}>{t('lecturer.materials.addModal.maxSize', 'Max 10 MB')}</span>
                         <input
                           id="lm-file-input"
                           type="file"
@@ -1274,7 +1427,7 @@ export const LecturerMaterialsPage = () => {
                 {lmSourceMode === 'url' && (
                   <div className={styles.formGroup}>
                     <label className={styles.formLabel} htmlFor="lm-url">
-                      File URL (optional)
+                      {t('lecturer.materials.addModal.fileUrlLabel', 'File URL (optional)')}
                     </label>
                     <input
                       id="lm-url"
@@ -1295,14 +1448,14 @@ export const LecturerMaterialsPage = () => {
 
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel} htmlFor="lm-description">
-                    Description (optional)
+                    {t('lecturer.materials.addModal.descriptionLabel', 'Description (optional)')}
                   </label>
                   <textarea
                     id="lm-description"
                     className={styles.formTextarea}
                     value={lmDescription}
                     onChange={(e) => setLmDescription(e.target.value)}
-                    placeholder="Brief note about this material…"
+                    placeholder={t('lecturer.materials.addModal.descriptionPlaceholder', 'Brief note about this material…')}
                     rows={3}
                   />
                 </div>
@@ -1320,7 +1473,7 @@ export const LecturerMaterialsPage = () => {
                     onClick={closeLmForm}
                     disabled={lmSubmitting}
                   >
-                    Cancel
+                    {t('common.cancel', 'Cancel')}
                   </button>
                   <button
                     type="submit"
@@ -1337,10 +1490,10 @@ export const LecturerMaterialsPage = () => {
                       <Plus size={14} aria-hidden />
                     )}
                     {lmSubmitting
-                      ? 'Adding…'
+                      ? t('lecturer.materials.addModal.adding', 'Adding…')
                       : lmIsUploading
-                      ? 'Uploading…'
-                      : 'Add Material'}
+                      ? t('lecturer.materials.addModal.uploading', 'Uploading…')
+                      : t('lecturer.materials.action.add', 'Add Material')}
                   </button>
                 </div>
               </div>
@@ -1355,16 +1508,16 @@ export const LecturerMaterialsPage = () => {
           <input
             type="search"
             className={styles.lmSearchInput}
-            placeholder="Search materials by title, description, or URL"
+            placeholder={t('lecturer.materials.searchPlaceholder', 'Search materials by title, description, or URL')}
             value={lmSearch}
             onChange={(e) => setLmSearch(e.target.value)}
-            aria-label="Search materials"
+            aria-label={t('lecturer.materials.searchAria', 'Search materials')}
           />
           {lmSearch && (
             <button
               type="button"
               className={styles.lmSearchClear}
-              aria-label="Clear search"
+              aria-label={t('common.search.clear')}
               onClick={() => setLmSearch('')}
             >
               <X size={12} aria-hidden />
@@ -1376,7 +1529,7 @@ export const LecturerMaterialsPage = () => {
         {lmLoading ? (
           <div className={styles.lmEmpty}>
             <Loader size={16} className={styles.spinningIcon} aria-hidden />
-            Loading materials…
+            {t('lecturer.materials.loading', 'Loading materials…')}
           </div>
         ) : materials.length === 0 ? (
           <div className={styles.lmEmpty}>
@@ -1973,7 +2126,7 @@ export const LecturerMaterialsPage = () => {
                   type="button"
                   className={styles.modalCloseBtn}
                   onClick={closeShareModal}
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                   disabled={shareSaving}
                 >
                   <X size={16} aria-hidden />
@@ -2099,16 +2252,6 @@ export const LecturerMaterialsPage = () => {
                       'Selected colleagues will receive read-only access to this material for 30 days. Access will automatically expire after this period.',
                     )}
                   </span>
-                  {' '}
-                  <button
-                    type="button"
-                    className={styles.shareApiContractLink}
-                    onClick={() => setShowApiPreview(true)}
-                    data-testid="share-api-contract-link"
-                  >
-                    <Code2 size={12} aria-hidden />
-                    View API contract
-                  </button>
                 </div>
               </div>
 
@@ -2134,7 +2277,7 @@ export const LecturerMaterialsPage = () => {
                     )}
                     value={shareSearch}
                     onChange={(e) => setShareSearch(e.target.value)}
-                    aria-label="Search lecturers"
+                    aria-label={t('lecturer.materials.shareModal.searchLecturersAria', 'Search lecturers')}
                   />
                 </div>
 
@@ -2277,11 +2420,6 @@ export const LecturerMaterialsPage = () => {
           </div>,
           document.body,
         )}
-
-      <ShareApiContractPreview
-        isOpen={showApiPreview}
-        onClose={() => setShowApiPreview(false)}
-      />
     </div>
   );
 };
@@ -2433,6 +2571,9 @@ const SharedSection = ({
                   <span
                     className={styles.sharedColMaterial}
                     role="cell"
+                    title={
+                      materialTitle.length > 0 ? materialTitle : undefined
+                    }
                   >
                     <span className={styles.sharedRowTitleIcon} aria-hidden>
                       <FileText size={14} />
@@ -2452,7 +2593,9 @@ const SharedSection = ({
                       disabled={!canOpen}
                       title={
                         canOpen
-                          ? t('lecturer.materials.action.view', 'View')
+                          ? materialTitle.length > 0
+                            ? `${t('lecturer.materials.action.view', 'View')} — ${materialTitle}`
+                            : t('lecturer.materials.action.view', 'View')
                           : undefined
                       }
                     >
@@ -2469,7 +2612,10 @@ const SharedSection = ({
                         'Shared with',
                       )}
                     </span>
-                    <span className={styles.sharedRowColleagueName}>
+                    <span
+                      className={styles.sharedRowColleagueName}
+                      title={resolveColleagueName(item)}
+                    >
                       {resolveColleagueName(item)}
                     </span>
                   </span>

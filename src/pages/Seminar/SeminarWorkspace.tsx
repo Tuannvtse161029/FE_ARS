@@ -37,18 +37,13 @@ import {
   isValidMeetLink,
   ownsSeminar,
   seminarService,
+  seminarParticipantService,
   type SeminarCard,
 } from '../../services/seminar.service';
-import {
-  useSeminars,
-  useCreateSeminar,
-  useSendReminder,
-  useSeminarRoleContext,
-  useUpdateSeminarStatus,
-  type SeminarLifecycleAction,
-} from '../../hooks/useSeminar';
+import { useSeminars, useCreateSeminar, useSendReminder, useSeminarRoleContext, useUpdateSeminarStatus, type SeminarLifecycleAction } from '../../hooks/useSeminar';
 import { hasAdminRole, isAdminRoleName } from '../../utils/roleNormalizer';
 import { safeHref } from '../../utils/validationRules';
+import { notificationService } from '../../services/notification.service';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
 import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
@@ -72,9 +67,6 @@ const SEMINARS_PER_PAGE = 3;
 
 type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts' | 'inactive';
 type WorkspaceTab = 'manage' | 'participate';
-
-const formatSeminarId = (id: number): string =>
-  `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
 
 interface InviteeCandidate {
   userId: number;
@@ -446,8 +438,46 @@ export const SeminarWorkspace = () => {
       closeLifecycleModal();
       return;
     }
+    const actionLabel =
+      lifecycleAction === 'suspend'
+        ? copy('suspended', 'tạm dừng')
+        : copy('reactivated', 'kích hoạt lại');
     try {
       await updateSeminarStatus(lifecycleTarget.seminarId, lifecycleAction);
+      // Defensive FE notification fan-out — notify every participant of
+      // the lifecycle change so their bell reflects the new state
+      // without waiting for the polling window. Best-effort: failures
+      // never block the suspend/reactivate itself.
+      try {
+        const participants =
+          await seminarParticipantService.getAll();
+        const recipients = new Map<number, string>();
+        for (const p of participants) {
+          if (
+            typeof p.userId === 'number' &&
+            p.userId > 0 &&
+            p.seminarId === lifecycleTarget.seminarId &&
+            p.userId !== currentUserId &&
+            (!p.invitationStatus || p.invitationStatus !== 'DECLINED')
+          ) {
+            recipients.set(p.userId, p.userFullName || p.userEmail || '');
+          }
+        }
+        const title = lifecycleTarget.title || `Seminar #${lifecycleTarget.seminarId}`;
+        for (const [userId] of recipients) {
+          try {
+            await notificationService.create({
+              userId,
+              message: `[Seminar] schedule: "${title}" đã được ${actionLabel} bởi host.`,
+            });
+          } catch (notifyErr) {
+            console.warn('Failed to send seminar schedule notification:', notifyErr);
+          }
+        }
+      } catch (participantFetchErr) {
+        // Don't surface — the lifecycle action already succeeded.
+        console.warn('Failed to load seminar participants for notify fan-out:', participantFetchErr);
+      }
       closeLifecycleModal();
     } catch (err) {
       const msg =
@@ -806,6 +836,27 @@ export const SeminarWorkspace = () => {
         status: 'Upcoming',
         subFieldId: selectedSubId ?? undefined,
       });
+      // Defensive FE notification fan-out for the invitee list. The BE
+      // invite endpoint may emit its own notification row, but we never
+      // rely on that — the FE side mirrors the invites so the bell is
+      // updated immediately (without waiting for the polling window).
+      const title = seminarName.trim() || seminarDetails.trim().slice(0, 80);
+      const recipientsByEmail = new Map<string, InviteeCandidate>();
+      for (const inv of allInvitees) {
+        if (inv.email) recipientsByEmail.set(inv.email.toLowerCase(), inv);
+      }
+      for (const email of guestEmails) {
+        const candidate = recipientsByEmail.get(email.toLowerCase());
+        if (!candidate || typeof candidate.userId !== 'number') continue;
+        try {
+          await notificationService.create({
+            userId: candidate.userId,
+            message: `[Seminar] invitation: ${title} — bạn được mời tham gia hội thảo.`,
+          });
+        } catch (notifyErr) {
+          console.warn('Failed to send seminar invitation notification:', notifyErr);
+        }
+      }
       // Reset form for next create.
       setSeminarName('');
       setDateTime('');
@@ -1139,11 +1190,6 @@ export const SeminarWorkspace = () => {
             return (
                   <li className={styles.seminarCard} key={sem.seminarId}>
                     <div className={styles.cardTopRow}>
-                      <div className={styles.metaRow}>
-                        <span className={styles.metaBadge}>
-                          ID {formatSeminarId(sem.seminarId)}
-                        </span>
-                      </div>
                       <div className={styles.dateMeta}>
                         <span className={styles.dateMetaInline}>
                           <Calendar size={12} aria-hidden />

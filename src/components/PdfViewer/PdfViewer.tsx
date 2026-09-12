@@ -8,6 +8,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 // limit (the main JS bundle still won't ship the worker at all).
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { RefreshCw, ExternalLink, FileText, Download } from 'lucide-react';
+import { useT } from '../../i18n/I18nContext';
 import {
   resolvePdfSource,
   classifyPdfSource,
@@ -130,6 +131,7 @@ export const PdfViewer = ({
   mode = 'standard',
   reviewCopyId,
 }: PdfViewerProps) => {
+  const t = useT();
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -516,25 +518,25 @@ export const PdfViewer = ({
   const renderErrorReasonExtra = () => {
     if (!error) return null;
     if (error.reason === 'notFound') {
-      return <span>The document was not found at {safeLabelForCategory(error.category)}.</span>;
+      return <span>{t('pdfViewer.error.notFound', 'The document was not found at {category}.').replace('{category}', safeLabelForCategory(error.category))}</span>;
     }
     if (error.reason === 'forbidden') {
-      return <span>Access is restricted. Try reloading or requesting a new link.</span>;
+      return <span>{t('pdfViewer.error.forbidden', 'Access is restricted. Try reloading or requesting a new link.')}</span>;
     }
     if (error.reason === 'server') {
-      return <span>The document server reported an error. Please try again shortly.</span>;
+      return <span>{t('pdfViewer.error.server', 'The document server reported an error. Please try again shortly.')}</span>;
     }
     if (error.reason === 'network') {
-      return <span>Check your connection and try again.</span>;
+      return <span>{t('pdfViewer.error.network', 'Check your connection and try again.')}</span>;
     }
     if (error.reason === 'htmlResponse') {
-      return <span>The link responded with a non-PDF document instead of a PDF.</span>;
+      return <span>{t('pdfViewer.error.htmlResponse', 'The link responded with a non-PDF document instead of a PDF.')}</span>;
     }
     if (error.reason === 'invalid') {
-      return <span>The document link is not in a recognized format.</span>;
+      return <span>{t('pdfViewer.error.invalid', 'The document link is not in a recognized format.')}</span>;
     }
     if (error.reason === 'firebaseNotConfigured') {
-      return <span>Document storage is not configured for this environment.</span>;
+      return <span>{t('pdfViewer.error.firebaseNotConfigured', 'Document storage is not configured for this environment.')}</span>;
     }
     return null;
   };
@@ -552,7 +554,7 @@ export const PdfViewer = ({
           <FileText size={28} />
         </div>
         <div className={styles.errorBody}>
-          <strong className={styles.errorTitle}>Unable to load proof document</strong>
+          <strong className={styles.errorTitle}>{t('pdfViewer.error.title', 'Unable to load proof document')}</strong>
           <p className={styles.errorMessage} data-testid="pdf-error-message">{error.message}</p>
           <p className={styles.errorHint}>{renderErrorReasonExtra()}</p>
         </div>
@@ -564,7 +566,7 @@ export const PdfViewer = ({
               onClick={handleRetry}
               data-testid="pdf-error-retry"
             >
-              <RefreshCw size={14} /> Retry
+              <RefreshCw size={14} /> {t('pdfViewer.retry', 'Retry')}
             </button>
           ) : null}
           {openTarget ? (
@@ -576,7 +578,7 @@ export const PdfViewer = ({
               className={styles.errorOpen}
               data-testid="pdf-error-open"
             >
-              <ExternalLink size={14} /> Open in new tab
+              <ExternalLink size={14} /> {t('pdfViewer.openInNewTab', 'Open in new tab')}
             </a>
             {error.reason === 'network' || error.reason === 'forbidden' ? <a href={openTarget} download target="_blank" rel="noreferrer noopener" className={styles.errorOpen}>
               <Download size={14} /> Download PDF
@@ -591,8 +593,8 @@ export const PdfViewer = ({
   const renderEmpty = () => (
     <div className={styles.emptyCard} role="status" data-testid="pdf-empty">
       <FileText size={28} aria-hidden="true" />
-      <strong>No proof document supplied</strong>
-      <span>This request did not include an attached document.</span>
+      <strong>{t('pdfViewer.empty.title', 'No proof document supplied')}</strong>
+      <span>{t('pdfViewer.empty.body', 'This request did not include an attached document.')}</span>
     </div>
   );
 
@@ -610,10 +612,10 @@ export const PdfViewer = ({
         data-testid="pdf-protected-overlay"
       >
         <span className={styles.protectedNotice}>
-          Confidential review copy — copying and redistribution are prohibited.
+          {t('pdfViewer.protected.notice', 'Confidential review copy — copying and redistribution are prohibited.')}
         </span>
         {reviewCopyId ? (
-          <span className={styles.protectedWatermark} aria-label="Review copy identifier">
+          <span className={styles.protectedWatermark} aria-label={t('pdfViewer.protected.reviewCopyAria', 'Review copy identifier')}>
             {reviewCopyId}
           </span>
         ) : null}
@@ -631,13 +633,13 @@ export const PdfViewer = ({
       data-testid="pdf-viewer"
     >
       {showToolbar ? (
-        <div className={styles.toolbar} role="toolbar" aria-label="PDF viewer controls">
+        <div className={styles.toolbar} role="toolbar" aria-label={t('pdfViewer.toolbarAria', 'PDF viewer controls')}>
           <div className={styles.navGroup}>
             <button
               className={styles.navBtn}
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 1}
-              aria-label="Previous page"
+              aria-label={t('pdfViewer.prevPageAria', 'Previous page')}
               data-testid="pdf-prev-btn"
             >
               ‹
@@ -650,7 +652,7 @@ export const PdfViewer = ({
                 value={currentPage}
                 min={1}
                 max={totalPages}
-                aria-label="Current page"
+                aria-label={t('pdfViewer.currentPageAria', 'Current page')}
                 onChange={(e) => {
                   const v = parseInt(e.target.value, 10);
                   if (!isNaN(v)) goToPage(v);
@@ -664,7 +666,7 @@ export const PdfViewer = ({
               className={styles.navBtn}
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages}
-              aria-label="Next page"
+              aria-label={t('pdfViewer.nextPageAria', 'Next page')}
               data-testid="pdf-next-btn"
             >
               ›
@@ -676,7 +678,7 @@ export const PdfViewer = ({
               className={styles.zoomBtn}
               onClick={zoomOut}
               disabled={scale <= MIN_SCALE}
-              aria-label="Zoom out"
+              aria-label={t('pdfViewer.zoomOutAria', 'Zoom out')}
               data-testid="pdf-zoom-out-btn"
             >
               −
@@ -685,8 +687,8 @@ export const PdfViewer = ({
             <button
               className={styles.zoomPercent}
               onClick={zoomReset}
-              aria-label="Reset zoom"
-              title="Reset zoom"
+              aria-label={t('pdfViewer.resetZoomAria', 'Reset zoom')}
+              title={t('pdfViewer.resetZoomAria', 'Reset zoom')}
               data-testid="pdf-zoom-percent"
             >
               {Math.round(scale * 100)}%
@@ -696,7 +698,7 @@ export const PdfViewer = ({
               className={styles.zoomBtn}
               onClick={zoomIn}
               disabled={scale >= MAX_SCALE}
-              aria-label="Zoom in"
+              aria-label={t('pdfViewer.zoomInAria', 'Zoom in')}
               data-testid="pdf-zoom-in-btn"
             >
               +
@@ -714,11 +716,11 @@ export const PdfViewer = ({
                 type="button"
                 className={styles.toolbarOpenBtn}
                 onClick={openResolvedInNewTab}
-                aria-label="Open PDF in new tab"
-                title="Open in new tab"
+                aria-label={t('pdfViewer.openInNewTabAria', 'Open PDF in new tab')}
+                title={t('pdfViewer.openInNewTab', 'Open in new tab')}
                 data-testid="pdf-open-newtab-btn"
               >
-                <ExternalLink size={14} /> Open in new tab
+                <ExternalLink size={14} /> {t('pdfViewer.openInNewTab', 'Open in new tab')}
               </button>
               <a
                 href={pdfObjectUrlRef.current ?? undefined}
@@ -726,7 +728,7 @@ export const PdfViewer = ({
                 className={styles.toolbarOpenBtn}
                 data-testid="pdf-download-link"
               >
-                <Download size={14} /> Download PDF
+                <Download size={14} /> {t('pdfViewer.download', 'Download PDF')}
               </a>
             </div>
           ) : null}
@@ -735,9 +737,9 @@ export const PdfViewer = ({
 
       {/* Body: sidebar + main canvas */}
       <div className={styles.viewerBody}>
-        <aside className={styles.sidebar} ref={sidebarRef} aria-label="Page thumbnails">
+        <aside className={styles.sidebar} ref={sidebarRef} aria-label={t('pdfViewer.thumbnailsAria', 'Page thumbnails')}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarTitle}>Pages</span>
+            <span className={styles.sidebarTitle}>{t('pdfViewer.pages', 'Pages')}</span>
           </div>
           <div className={styles.thumbList}>
             {showSidebarThumbs ? (
@@ -776,7 +778,7 @@ export const PdfViewer = ({
                 );
               })
             ) : (
-              <div className={styles.sidebarEmpty}>{showPagination ? 'No pages' : '0 pages'}</div>
+              <div className={styles.sidebarEmpty}>{showPagination ? t('pdfViewer.noPages', 'No pages') : t('pdfViewer.zeroPages', '0 pages')}</div>
             )}
           </div>
         </aside>
@@ -786,13 +788,13 @@ export const PdfViewer = ({
           ref={containerRef}
           tabIndex={0}
           onKeyDown={handleKeyDown}
-          aria-label="PDF page viewer"
+          aria-label={t('pdfViewer.canvasAria', 'PDF page viewer')}
           data-testid="pdf-canvas-container"
         >
           {loading ? (
             <div className={styles.overlay} data-testid="pdf-loading">
-              <div className={styles.spinner} aria-label="Loading PDF" />
-              <span>Loading PDF...</span>
+              <div className={styles.spinner} aria-label={t('pdfViewer.loadingPdfAria', 'Loading PDF')} />
+              <span>{t('pdfViewer.loadingPdf', 'Loading PDF...')}</span>
             </div>
           ) : null}
 

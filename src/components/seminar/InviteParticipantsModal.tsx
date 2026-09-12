@@ -43,6 +43,7 @@ import {
   GOOGLE_MEET_FREE_PARTICIPANT_CAP,
   seminarService,
 } from '../../services/seminar.service';
+import { notificationService } from '../../services/notification.service';
 import type { MajorField } from '../../types/domain';
 import { useLocale } from '../../i18n/I18nContext';
 import { isAdminRoleName, isAdminUser } from '../../utils/roleNormalizer';
@@ -371,6 +372,31 @@ export const InviteParticipantsModal = ({
     setIsSubmitting(true);
     try {
       await seminarService.invite(seminarId, Array.from(selectedEmails));
+      // Defensive FE notification fan-out — resolve each invited email
+      // back to a userId via the loaded candidate list and notify each
+      // invitee. Best-effort: failures never block the parent flow.
+      try {
+        const userIdByEmail = new Map<string, number>();
+        for (const u of allUsers) {
+          if (u.email && typeof u.userId === 'number') {
+            userIdByEmail.set(u.email.toLowerCase(), u.userId);
+          }
+        }
+        for (const email of selectedEmails) {
+          const userId = userIdByEmail.get(email.toLowerCase());
+          if (!userId) continue;
+          try {
+            await notificationService.create({
+              userId,
+              message: `[Seminar] invitation: ${seminarTitle} — bạn được mời tham gia hội thảo.`,
+            });
+          } catch (notifyErr) {
+            console.warn('Failed to send seminar invitation notification:', notifyErr);
+          }
+        }
+      } catch (notifyFanoutErr) {
+        console.warn('Failed to fan out seminar invitations:', notifyFanoutErr);
+      }
       onSuccess(selectedEmails.size);
     } catch (err) {
       const raw = (err as { response?: { data?: { message?: string; title?: string } } })?.response?.data;
@@ -382,7 +408,7 @@ export const InviteParticipantsModal = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedEmails, seminarId, onSuccess, onError, isVi, copy]);
+  }, [selectedEmails, seminarId, allUsers, seminarTitle, onSuccess, onError, isVi, copy]);
 
   // ── Capacity meter ───────────────────────────────────────────────────────
 

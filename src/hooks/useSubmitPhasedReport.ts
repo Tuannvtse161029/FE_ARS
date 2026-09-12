@@ -26,6 +26,9 @@ import {
   type SubmittedPhasedReport,
 } from '../services/phasedReport.service';
 import { useFirebaseUpload } from './useFirebaseUpload';
+import { notificationService } from '../services/notification.service';
+import { researchTopicService } from '../services/researchTopic.service';
+import { researchGroupService } from '../services/researchGroup.service';
 
 const buildFolderPath = (researchGroupId: number, phaseKey: string): string =>
   `research-groups/${researchGroupId}/phased-reports/${phaseKey}/`;
@@ -134,6 +137,45 @@ export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
         // starts with a clean slate.
         upload.resetUpload();
         setPostUploadFailure(null);
+        // Defensive FE notification — fire a `[Lecturer] report submitted`
+        // (first submission) or `[Lecturer] report resubmitted` (re-submit)
+        // notification to the topic's lecturer. Best-effort: failures
+        // never block the primary action. We resolve the lecturerId by
+        // fetching the group → topic chain.
+        try {
+          if (typeof options.topicId === 'number' && options.topicId > 0) {
+            const group = await researchGroupService.getById(options.researchGroupId).catch(() => null);
+            const topic = await researchTopicService
+              .getById(options.topicId)
+              .catch(() => null);
+            const lecturerId =
+              typeof topic?.lecturerId === 'number'
+                ? topic.lecturerId
+                : typeof group?.lecturerId === 'number'
+                  ? group.lecturerId
+                  : null;
+            if (lecturerId && lecturerId > 0) {
+              const title =
+                result?.milestoneTitle?.trim() ||
+                result?.topicTitle?.trim() ||
+                `Phase ${options.phaseNumber ?? ''}`.trim() ||
+                `Report #${result?.id ?? ''}`;
+              const message = options.isResubmission
+                ? `[Lecturer] report resubmitted: "${title}" — student vừa nộp lại báo cáo.`
+                : `[Lecturer] report submitted: "${title}" — student vừa nộp báo cáo.`;
+              try {
+                await notificationService.create({
+                  userId: lecturerId,
+                  message,
+                });
+              } catch (notifyErr) {
+                console.warn('Failed to send report-submission notification:', notifyErr);
+              }
+            }
+          }
+        } catch (notifyFanoutErr) {
+          console.warn('Failed to fan out report-submission notification:', notifyFanoutErr);
+        }
         return result;
       } catch (err) {
         const message =

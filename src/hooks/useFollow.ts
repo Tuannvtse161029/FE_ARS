@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { followerService } from '../services/follower.service';
+import { notificationService } from '../services/notification.service';
 import type { Follower } from '../types/domain';
 import { useAuth } from '../context/AuthContext';
 import { storage } from '../utils/storage';
@@ -166,6 +167,22 @@ export function useFollow(): UseFollowResult {
           await followerService.unfollow(userId);
         } else {
           await followerService.follow({ followedId: userId });
+          // Defensive FE notification — fire a `[Follower]` notification
+          // to the followed user. Best-effort: failures never block the
+          // follow itself. We only fire on the follow (not unfollow)
+          // branch and skip self-follow (already guarded above).
+          try {
+            const followerName =
+              user?.username?.trim() ||
+              user?.email?.trim() ||
+              `User #${currentUserId}`;
+            await notificationService.create({
+              userId,
+              message: `[Follower] ${followerName} đã theo dõi bạn.`,
+            });
+          } catch (notifyErr) {
+            console.warn('Failed to send follower notification:', notifyErr);
+          }
         }
         // Pull the authoritative list
         await refetch();

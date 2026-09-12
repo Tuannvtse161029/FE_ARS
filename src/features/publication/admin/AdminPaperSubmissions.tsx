@@ -42,16 +42,6 @@ const ROLE_ACCENT = 'var(--ars-admin)';
 // Verification filter tabs - Primary filter for the table
 type VerificationTab = 'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
-const VERIFICATION_TABS: Array<{
-  value: VerificationTab;
-  label: string;
-}> = [
-  { value: 'ALL', label: 'All' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' },
-];
-
 // Helper to get researcher-verification (identity) badge CSS class
 const getVerificationBadgeClass = (status: string | undefined): string => {
   if (!status) return adminStyles.verificationUnverified;
@@ -72,18 +62,18 @@ const getVerificationBadgeClass = (status: string | undefined): string => {
 // Helper to format researcher-verification label — render human-readable
 // copy rather than the raw enum token so admins do not see the row say
 // "PENDING" after they have already acted.
-const formatVerification = (status: string | undefined): string => {
+const formatVerification = (status: string | undefined, t: (key: string, fallback?: string) => string): string => {
   switch ((status ?? '').toUpperCase()) {
     case 'VERIFIED':
     case 'ALLOW':
     case 'ALLOWED':
-      return 'Verified';
+      return t('common.status.verified', 'Verified');
     case 'PENDING':
-      return 'Pending';
+      return t('common.status.pending', 'Pending');
     case 'REJECTED':
-      return 'Rejected';
+      return t('common.status.rejected', 'Rejected');
     default:
-      return 'Pending';
+      return t('common.status.pending', 'Pending');
   }
 };
 
@@ -329,20 +319,28 @@ export const AdminPaperSubmissions = () => {
       </div>
 
       {/* Tab filter for researcher verification status — identity only */}
-      <div className={adminStyles.tabFilterBar} role="tablist" aria-label="Filter by researcher identity verification">
-        {VERIFICATION_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            role="tab"
-            aria-selected={verificationTab === tab.value}
-            className={`${adminStyles.tabButton} ${verificationTab === tab.value ? adminStyles.tabButtonActive : ''}`}
-            onClick={() => setVerificationTab(tab.value)}
-            type="button"
-          >
-            {tab.label}
-            <span className={adminStyles.tabCount}>{tabCounts[tab.value]}</span>
-          </button>
-        ))}
+      <div className={adminStyles.tabFilterBar} role="tablist" aria-label={t('admin.paperIntake.tabsAria', 'Filter by researcher identity verification')}>
+        {(['ALL', 'PENDING', 'VERIFIED', 'REJECTED'] as VerificationTab[]).map((value) => {
+          const labelKey = {
+            ALL: 'admin.paperIntake.tabAll',
+            PENDING: 'admin.paperIntake.tabPending',
+            VERIFIED: 'admin.paperIntake.tabVerified',
+            REJECTED: 'admin.paperIntake.tabRejected',
+          }[value];
+          return (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={verificationTab === value}
+              className={`${adminStyles.tabButton} ${verificationTab === value ? adminStyles.tabButtonActive : ''}`}
+              onClick={() => setVerificationTab(value)}
+              type="button"
+            >
+              {t(labelKey, value === 'ALL' ? 'All' : value === 'PENDING' ? 'Pending' : value === 'VERIFIED' ? 'Verified' : 'Rejected')}
+              <span className={adminStyles.tabCount}>{tabCounts[value]}</span>
+            </button>
+          );
+        })}
       </div>
 
       <TableToolbar
@@ -475,7 +473,7 @@ export const AdminPaperSubmissions = () => {
                               'Verifies that the submitter is who they claim to be (ORCID match, institution).'
                             )}
                           >
-                            {formatVerification(paper.researcherVerificationStatus)}
+                            {formatVerification(paper.researcherVerificationStatus, t)}
                           </span>
                           {/* Only show Accept/Reject buttons when:
                               1. Authorship is NOT already allowed (not verified/allowed)

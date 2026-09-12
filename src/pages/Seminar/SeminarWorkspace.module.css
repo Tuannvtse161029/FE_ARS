@@ -287,26 +287,6 @@
   flex-wrap: wrap;
 }
 
-.metaRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.metaBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  background: var(--ars-paper-inset);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-}
-
 .metaNewBadge {
   background: var(--ars-info-bg);
   color: var(--ars-info);

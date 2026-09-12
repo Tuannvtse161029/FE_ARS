@@ -591,7 +591,16 @@
    ══════════════════════════════════════════════════════════════════ */
 .heroAct {
   position: relative;
-  /* The act owns 3 viewports of scroll. Most of any act — this is the peak. */
+  /* The act owns 3 viewports of scroll. Most of any act — this is the peak.
+     Without an explicit min-height the sticky stage has no scroll range and
+     scrolls past with the page on the very first scroll tick — the hero
+     title and metrics clip into the tension section and the editorial trace
+     markers all fire at once. 170vh gives the parallax handlers enough
+     range to fire and the sticky stage enough room to actually pin the
+     visitor inside the scene before letting go into the next act.
+     Tightened from 220vh so the dead-scroll gap before the next act
+     doesn't feel like a pause. */
+  min-height: 170vh;
 }
 
 .heroStage {
@@ -842,6 +851,13 @@
    ══════════════════════════════════════════════════════════════════ */
 .tensionAct {
   position: relative;
+  /* Give the sticky stage scroll range so the parallax layers actually have
+     room to drift before the act lets go into the turn. Without it the
+     tension title clips into the turn header and the chips overlap the
+     workflow cards on a single scroll tick. Tightened from 180vh so
+     visitors don't scroll through a long empty buffer before the next
+     scene starts. */
+  min-height: 140vh;
 }
 
 .tensionStage {
@@ -1059,7 +1075,15 @@
 /* ══════════════════════════════════════════════════════════════════
    ACT 3 — TURN (pin + kinetic): five editorial stages, one by one
    ══════════════════════════════════════════════════════════════════ */
-.turnAct { position: relative; }
+.turnAct {
+  position: relative;
+  /* Same pattern as the hero/tension acts: the sticky stage needs scroll
+     range on the parent or it scrolls past in a single tick and the
+     workflow cards clip into the substance rail. Tightened from 180vh
+     so visitors don't scroll through a long empty buffer before the
+     substance act starts. */
+  min-height: 140vh;
+}
 
 .turnStage {
   /* Sticks below the sticky header (72px) so the title and stages are
@@ -1218,6 +1242,15 @@
    ══════════════════════════════════════════════════════════════════ */
 .substanceAct {
   position: relative;
+  /* The pan rail translates horizontally as `usePanProgress` reports
+     progress 0..1 based on how far the visitor has scrolled through the
+     parent act. If the parent is the same height as the sticky stage
+     (100vh - 72px) the progress jumps from 0 straight to 1 on the
+     first scroll tick and the four roles whip past with no pan at all.
+     170vh gives a clean pan arc through the four role workspaces.
+     Tightened from 220vh so the dead-scroll gap before the boundaries
+     section doesn't feel like a pause. */
+  min-height: 170vh;
   /* Deep academic-navy ground that matches the tension act so the two
      dark sections read as one continuous world, not as two unrelated
      panels. The outer scroll area needs a backdrop so first paint
@@ -2201,3 +2234,174 @@
     width: min(380px, 90vw);
   }
 }
+
+/* ── Scroll progress rail ───────────────────────────────────────
+   Slim vertical rail on the right edge that names the current
+   pinned act. Hidden until the visitor passes the hero and shows
+   again until the last pinned act releases into the regular flow.
+   Respects prefers-reduced-motion via a fade-only transition.
+   Mobile (<= 720px): rail collapses to a compact vertical pill at
+   the right edge; labels and numbers stay hidden so it never
+   clashes with on-screen content. */
+.scrollRail {
+  position: fixed;
+  top: 50%;
+  right: clamp(14px, 2vw, 28px);
+  transform: translateY(-50%);
+  z-index: 60;
+  padding: 14px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-paper) 88%, transparent);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 18px 38px -22px rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms ease;
+}
+
+.scrollRailVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scrollRailList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+.scrollRailItem {
+  display: flex;
+  align-items: center;
+}
+
+.scrollRailDot {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink-secondary);
+  letter-spacing: 0.02em;
+  position: relative;
+  transition: color 220ms ease;
+}
+
+.scrollRailDot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-secondary) 38%, transparent);
+  transition: width 220ms ease, height 220ms ease, border-radius 220ms ease,
+    background 220ms ease;
+  flex: 0 0 auto;
+}
+
+.scrollRailDot:hover,
+.scrollRailDot:focus-visible {
+  color: var(--ink-primary);
+  outline: none;
+}
+
+.scrollRailDot:hover::before,
+.scrollRailDot:focus-visible::before {
+  background: var(--accent-primary);
+}
+
+.scrollRailDotActive {
+  color: var(--ink-primary);
+}
+
+.scrollRailDotActive::before {
+  width: 22px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent-primary);
+}
+
+.scrollRailNum,
+.scrollRailLabel {
+  /* Numbers and labels stay hidden until hover/focus/active so the
+     rail reads as a slim progress indicator by default. */
+  position: absolute;
+  inset-inline-end: 100%;
+  margin-inline-end: 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 180ms ease, transform 220ms ease;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 4px 10px;
+  box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.28);
+}
+
+.scrollRailLabel {
+  /* Center the label vertically against the dot. */
+  inset-block-start: 50%;
+  transform: translateY(-50%) translateX(6px);
+  font-variant-numeric: normal;
+}
+
+.scrollRailDot:hover .scrollRailNum,
+.scrollRailDot:focus-visible .scrollRailNum,
+.scrollRailDot:hover .scrollRailLabel,
+.scrollRailDot:focus-visible .scrollRailLabel {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.scrollRailDot:hover .scrollRailNum,
+.scrollRailDot:focus-visible .scrollRailNum {
+  /* Numbers align top with the label baseline. */
+  transform: translateY(-100%) translateX(0);
+}
+
+.scrollRailDotActive .scrollRailLabel {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollRail,
+  .scrollRailDot::before,
+  .scrollRailNum,
+  .scrollRailLabel {
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .scrollRail {
+    right: 8px;
+    padding: 10px 6px;
+  }
+
+  .scrollRailDot {
+    padding: 6px 4px;
+  }
+
+  /* On mobile the rail is dot-only — number/label are disabled so
+     it stays out of the way of swipe targets and on-screen content. */
+  .scrollRailNum,
+  .scrollRailLabel {
+    display: none;
+  }
+}
+

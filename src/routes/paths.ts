@@ -20,6 +20,12 @@ export const ROUTES = {
   SEMINAR_PARTICIPATIONS: '/seminar-participations',
   RESEARCH_GROUP: '/research-group',
   CONFIGURE_MILESTONES: '/configure-milestones',
+  // Full-page notification inbox. Replaces the bell dropdown's "View all
+  // notifications" footer link, which used to drop users at the forum as
+  // a placeholder. Wired to `GET /api/Notification` via the shared
+  // `useNotifications` hook so the page reuses every existing sort /
+  // mark-read / route-map rule from the dropdown.
+  NOTIFICATIONS: '/notifications',
   // Equivalent deep-link URL for the Lecturer "Manage Phases" button on
   // the Research Topics table. The route handler reads `:topicId` from the
   // path and redirects to CONFIGURE_MILESTONES with `?topicId=<id>` so

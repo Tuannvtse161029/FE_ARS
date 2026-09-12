@@ -54,7 +54,6 @@ import {
   MaterialUsageModal,
   type UsageNavigationTarget,
 } from '../../components/lecturer/MaterialUsageModal';
-import { ShareApiContractPreview } from '../../components/lecturer/ShareApiContractPreview';
 import { MaterialEditor } from './components/MaterialEditor';
 import { SharedSection } from './components/SharedSection';
 // CSS module kept at the original Materials CSS location for now.
@@ -841,8 +840,6 @@ export const LecturerMaterialsPage = () => {
         }}
         onClose={closeUsageModal}
       />
-
-      <ShareApiContractPreview isOpen={false} onClose={() => undefined} />
     </div>
   );
 };

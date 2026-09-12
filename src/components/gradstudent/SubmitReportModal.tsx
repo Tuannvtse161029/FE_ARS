@@ -91,6 +91,27 @@ export function SubmitReportModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, resubmittingReport?.id ?? null]);
 
+  // Escape key always closes the modal — even during an upload. Trapping
+  // the user in the dialog is worse than letting them cancel a submission
+  // mid-flight; the worst case is a half-uploaded file that the FE retry
+  // logic already handles (see `postUploadFailure`). A previous version of
+  // this modal disabled every close surface whenever `isSubmitting` was
+  // true, which trapped users whenever the WorkspaceView mistakenly wired
+  // modal-visibility into `isSubmitting`. Esc is the safety hatch.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   // Promote the hook's "successful submit" into the success view + parent.
   useEffect(() => {
     if (!isOpen) return;
@@ -173,7 +194,10 @@ export function SubmitReportModal({
   const handleOverlayClick = (
     event: React.MouseEvent<HTMLDivElement>,
   ): void => {
-    if (event.target === event.currentTarget && !isSubmitting) onClose();
+    // Always allow overlay-click to close — we already provide an Esc
+    // keypress safety hatch; there is no scenario where trapping the
+    // user behind the backdrop is the right UX.
+    if (event.target === event.currentTarget) onClose();
   };
 
   const isBusy =
@@ -217,7 +241,12 @@ export function SubmitReportModal({
             className={styles.closeBtn}
             aria-label="Close"
             onClick={onClose}
-            disabled={isBusy}
+            // The close button is NEVER disabled — users must always be
+            // able to exit the modal. Previously this was wired to
+            // `isBusy`, which (combined with the WorkspaceView wiring the
+            // modal-visibility state into `isSubmitting`) trapped users
+            // inside the dialog the moment it opened. See the Escape-key
+            // effect above for the keyboard safety hatch.
           >
             <X size={18} />
           </button>
@@ -357,7 +386,9 @@ export function SubmitReportModal({
                 type="button"
                 className={styles.cancelBtn}
                 onClick={onClose}
-                disabled={isBusy}
+                // The Cancel button is NEVER disabled — same rationale
+                // as the X close button. The actual submission button is
+                // the one that needs `isBusy` to prevent duplicate POSTs.
               >
                 Cancel
               </button>

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, type CSSProperties } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReviewerAvailability, useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { reviewerService } from '../../services/reviewer.service';
@@ -45,67 +46,60 @@ interface RoleSurfaceConfig {
   saveButtonLabel: string;
 }
 
-const ROLE_SURFACE_CONFIG: Record<SupportedRoleKey, RoleSurfaceConfig> = {
+const buildRoleSurfaceConfig = (t: (k: string) => string): Record<SupportedRoleKey, RoleSurfaceConfig> => ({
   Reviewer: {
-    eyebrow: 'REVIEWER WORKSPACE',
-    pageTitle: 'Professional Profile',
-    pageSubtitle: 'Manage your reviewer availability and research expertise.',
-    badgeLabel: 'Reviewer',
+    eyebrow: t('profile.professional.eyebrow.reviewer'),
+    pageTitle: t('profile.professional.title'),
+    pageSubtitle: t('profile.professional.subtitle.reviewer'),
+    badgeLabel: t('common.role.Reviewer'),
     accentVar: 'var(--ars-reviewer, #065f46)',
     accentMidVar: 'var(--ars-reviewer-mid, #047857)',
     accentLightVar: 'var(--ars-reviewer-light, #d1fae5)',
     showAvailability: true,
     showAcademicMetrics: true,
     fallbackInitial: 'R',
-    expertiseHeading: 'Your research specialization',
-    expertiseSubheading:
-      'Select your Major Field and Subfield. This helps researchers find reviewers with matching expertise.',
-    saveButtonLabel: 'Save Expertise',
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.reviewer'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
   },
   Researcher: {
-    eyebrow: 'RESEARCHER WORKSPACE',
-    pageTitle: 'Professional Profile',
-    pageSubtitle: 'Curate your research expertise so reviewers and other researchers can find you.',
-    badgeLabel: 'Researcher',
+    eyebrow: t('profile.professional.eyebrow.researcher'),
+    pageTitle: t('profile.professional.title'),
+    pageSubtitle: t('profile.professional.subtitle.researcher'),
+    badgeLabel: t('common.role.Researcher'),
     accentVar: 'var(--ars-researcher, #b45309)',
     accentMidVar: 'var(--ars-researcher-mid, #d97706)',
     accentLightVar: 'var(--ars-researcher-light, #fef3c7)',
-    // Researchers aren't routed review requests — availability is Reviewer-only.
     showAvailability: false,
-    // H-Index / citations / publication count still apply to researchers.
     showAcademicMetrics: true,
     fallbackInitial: 'R',
-    expertiseHeading: 'Your research specialization',
-    expertiseSubheading:
-      'Pick a Major Field and Subfield. Other researchers and reviewers use this to surface your work to the right audience.',
-    saveButtonLabel: 'Save Expertise',
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.researcher'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
   },
   Lecturer: {
-    eyebrow: 'LECTURER WORKSPACE',
-    pageTitle: 'Professional Profile',
-    pageSubtitle: 'Surface your teaching and research field for seminars and research groups.',
-    badgeLabel: 'Lecturer',
+    eyebrow: t('profile.professional.eyebrow.lecturer'),
+    pageTitle: t('profile.professional.title'),
+    pageSubtitle: t('profile.professional.subtitle.lecturer'),
+    badgeLabel: t('common.role.Lecturer'),
     accentVar: 'var(--ars-lecturer, #7c2d12)',
     accentMidVar: 'var(--ars-lecturer-mid, #9a3412)',
     accentLightVar: 'var(--ars-lecturer-light, #fef2f2)',
-    // Lecturers don't take review requests and aren't indexed on research
-    // metrics — both surfaces stay hidden.
     showAvailability: false,
     showAcademicMetrics: false,
     fallbackInitial: 'L',
-    expertiseHeading: 'Your research specialization',
-    expertiseSubheading:
-      'Pick a Major Field and Subfield so seminar organisers and group leaders can match you with the right topics.',
-    saveButtonLabel: 'Save Expertise',
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.lecturer'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
   },
-};
+});
 
 type Feedback = { type: 'success' | 'error'; message: string } | null;
 
-const formatUpdatedAt = (value?: string): string => {
+const formatUpdatedAt = (value: string | undefined, locale: string): string => {
   if (!value) return 'Not available';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Not available' : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? 'Not available' : date.toLocaleString(locale);
 };
 
 const getInitials = (value: string, fallback: string): string =>
@@ -119,11 +113,7 @@ const getInitials = (value: string, fallback: string): string =>
 
 /**
  * Narrow an arbitrary string from the auth store / BE into one of the
- * supported role keys for this page. Unknown values fall back to
- * `Reviewer` because that role still has a valid profile surface (it's
- * the historical "default" for this page); we deliberately don't throw —
- * the route guard above already locks out unsupported roles, so anything
- * we receive here is at minimum a workspace role.
+ * supported role keys for this page.
  */
 function resolveRoleKey(role: string | null | undefined): SupportedRoleKey {
   if (role === 'Researcher' || role === 'Lecturer' || role === 'Reviewer') {
@@ -135,13 +125,12 @@ function resolveRoleKey(role: string | null | undefined): SupportedRoleKey {
 export const ProfessionalProfile = () => {
   const { user } = useAuth();
   const authenticatedUserId = user?.userId;
+  const { t, locale } = useI18n();
+  const ROLE_SURFACE_CONFIG = useMemo(() => buildRoleSurfaceConfig(t), [t]);
   const roleKey = resolveRoleKey(user?.role);
   const roleConfig = ROLE_SURFACE_CONFIG[roleKey];
 
   const { profiles, isLoading, error, refetch } = useReviewerProfiles();
-  // Availability hook is Reviewer-only, but we still need the variable to
-  // satisfy the linter — the result is only consumed when
-  // roleConfig.showAvailability is true.
   const { isAvailable, isLoading: isAvailabilityLoading } = useReviewerAvailability(authenticatedUserId);
   const professionalProfile = useMemo(
     () => profiles.find((profile) => profile.userId === authenticatedUserId) ?? null,
@@ -158,7 +147,6 @@ export const ProfessionalProfile = () => {
 
   // Load Major Fields and Subfields
   const { fields: majorFields, isLoading: isMajorsLoading } = useMajorFields();
-  // Only fetch subfields when a valid positive majorId is selected
   const { subFields, isLoading: isSubsLoading } = useSubFields(selectedMajorId);
 
   // Initialize expertise fields from profile
@@ -203,7 +191,6 @@ export const ProfessionalProfile = () => {
   const handleMajorChange = (event: import('react').ChangeEvent<HTMLSelectElement>) => {
     const newMajorId = parseEntityId(event.target.value);
     setSelectedMajorId(newMajorId);
-    // Clear Subfield when Major changes to avoid invalid combinations
     setSelectedSubId(null);
     setExpertiseFeedback(null);
   };
@@ -218,7 +205,7 @@ export const ProfessionalProfile = () => {
     event.preventDefault();
     if (!professionalProfile || authenticatedUserId === undefined || !isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise) {
       if (!isExpertiseValid) {
-        setExpertiseFeedback({ type: 'error', message: 'Please select both Major Field and Subfield.' });
+        setExpertiseFeedback({ type: 'error', message: t('profile.professional.expertise.validation.required') });
       }
       return;
     }
@@ -229,31 +216,25 @@ export const ProfessionalProfile = () => {
     setExpertiseFeedback(null);
 
     try {
-      // Send only taxonomy IDs (minimal PATCH payload)
       await reviewerService.update(authenticatedUserId, {
         userId: authenticatedUserId,
         majorFieldId: selectedMajorId,
         subFieldId: selectedSubId
       });
       await refetch();
-      setExpertiseFeedback({ type: 'success', message: 'Research expertise updated successfully.' });
+      setExpertiseFeedback({ type: 'success', message: t('profile.professional.expertise.saved') });
     } catch (saveError) {
-      // Restore previous values on error
       setSelectedMajorId(previousMajor ?? null);
       setSelectedSubId(previousSub ?? null);
       setExpertiseFeedback({
         type: 'error',
-        message: saveError instanceof Error && saveError.message ? saveError.message : 'Unable to save research expertise. Previous values restored.',
+        message: saveError instanceof Error && saveError.message ? saveError.message : t('profile.professional.expertise.saveFailed'),
       });
     } finally {
       setIsSubmittingExpertise(false);
     }
   };
 
-  // ── Per-role CSS accent override ──────────────────────────────────────
-  // Drives the inline `--profile-accent` custom property used by the
-  // module CSS to tint the page-header rule, avatar, primary buttons,
-  // and focus rings for non-Reviewer roles.
   const accentStyle = useMemo<CSSProperties>(
     () => ({
       ['--profile-accent' as string]: roleConfig.accentVar,
@@ -264,34 +245,29 @@ export const ProfessionalProfile = () => {
   );
 
   if (isLoading) {
-    return <div className={styles.state} role="status" style={accentStyle}>Loading your professional profile…</div>;
+    return <div className={styles.state} role="status" style={accentStyle}>{t('profile.professional.loading')}</div>;
   }
 
   if (error) {
     return (
       <div className={styles.state} role="alert" style={accentStyle}>
-        <p>We couldn’t load your professional profile.</p>
+        <p>{t('profile.professional.loadError')}</p>
         <button className={styles.primaryButton} onClick={handleRetry} disabled={isRetrying}>
-          {isRetrying ? 'Retrying…' : 'Retry'}
+          {isRetrying ? t('profile.professional.retrying') : t('profile.professional.retry')}
         </button>
       </div>
     );
   }
 
   if (!professionalProfile) {
-    // Professional profile missing — provide a clear onboarding destination
-    // OR an explanation when setup is unavailable in the current environment.
     return (
       <div className={styles.state} role="status" style={accentStyle}>
-        <h1>Professional Profile</h1>
+        <h1>{t('profile.professional.title')}</h1>
         <p>
-          No professional profile was found for the authenticated {roleConfig.badgeLabel.toLowerCase()} account.
-          A profile is required so reviewers and other researchers can find you.
+          {t('profile.professional.empty.notFound', 'No professional profile found for {role}.', { role: roleConfig.badgeLabel.toLowerCase() })}
         </p>
         <p className={styles.stateHint}>
-          If you have just upgraded to the {roleConfig.badgeLabel} role, it may take a moment for
-          the system to provision your profile. Otherwise, contact the editorial
-          Admin to request onboarding, or use the action below to retry.
+          {t('profile.professional.empty.hint', 'You can request access through the role request workflow above.', { role: roleConfig.badgeLabel })}
         </p>
         <div className={styles.stateActions}>
           <button
@@ -300,7 +276,7 @@ export const ProfessionalProfile = () => {
             disabled={isRetrying}
             data-testid="profile-retry"
           >
-            {isRetrying ? 'Retrying…' : 'Retry loading profile'}
+            {isRetrying ? t('profile.professional.retrying') : t('profile.professional.empty.retryLoad')}
           </button>
           {roleKey === 'Reviewer' ? (
             <a
@@ -308,7 +284,7 @@ export const ProfessionalProfile = () => {
               href="/onboarding/reviewer"
               data-testid="profile-onboarding-link"
             >
-              Open reviewer onboarding
+              {t('profile.professional.empty.openOnboarding')}
             </a>
           ) : null}
         </div>
@@ -317,28 +293,25 @@ export const ProfessionalProfile = () => {
   }
 
   const fullName = account?.fullName || user?.username || roleConfig.badgeLabel;
-  const email = account?.email || user?.email || 'Email unavailable';
-  const displayAvailability =
-    !roleConfig.showAvailability
-      ? '—'
-      : isAvailabilityLoading
-        ? 'Checking…'
-        : isAvailable === null
-          ? 'Unavailable'
-          : isAvailable
-            ? 'Available'
-            : 'Unavailable';
+  const email = account?.email || user?.email || t('profile.professional.emailUnavailable');
+  const displayAvailability = !roleConfig.showAvailability
+    ? '—'
+    : isAvailabilityLoading
+      ? t('profile.professional.availability.checking')
+      : isAvailable === null
+        ? t('profile.professional.availability.unavailable')
+        : isAvailable
+          ? t('profile.professional.availability.available')
+          : t('profile.professional.availability.unavailable');
 
-  // The <dl> rows are built conditionally so a non-Reviewer profile card
-  // never advertises an "Availability" field that doesn't apply to them.
   const profileDetailRows: Array<{ label: string; value: React.ReactNode; testId?: string }> = [
-    { label: 'ORCID', value: professionalProfile.orcidId ?? 'Not set' },
-    { label: 'Synchronization', value: professionalProfile.syncStatus ?? 'Not available' },
-    { label: 'Last updated', value: formatUpdatedAt(professionalProfile.updatedAt) },
+    { label: t('profile.professional.detail.orcid'), value: professionalProfile.orcidId ?? t('common.notSet') },
+    { label: t('profile.professional.detail.sync'), value: professionalProfile.syncStatus ?? t('profile.professional.detail.notAvailable') },
+    { label: t('profile.professional.detail.lastUpdated'), value: formatUpdatedAt(professionalProfile.updatedAt, locale) },
   ];
   if (roleConfig.showAvailability) {
     profileDetailRows.push({
-      label: 'Availability',
+      label: t('profile.professional.detail.availability'),
       value: (
         <span className={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>
           {displayAvailability}
@@ -349,7 +322,7 @@ export const ProfessionalProfile = () => {
 
   return (
     <div className={styles.page} style={accentStyle} data-role={roleKey}>
-      <div className={styles.breadcrumbs}>Home <span>/</span> Professional Profile</div>
+      <div className={styles.breadcrumbs}>{t('common.home')} <span>/</span> {t('profile.professional.breadcrumb')}</div>
       <header className={styles.pageHeader}>
         <div>
           <p className={styles.eyebrow} data-testid="professional-profile-eyebrow">
@@ -359,7 +332,7 @@ export const ProfessionalProfile = () => {
           <p className={styles.subtitle}>{roleConfig.pageSubtitle}</p>
         </div>
         <button className={styles.secondaryButton} onClick={handleRetry} disabled={isRetrying}>
-          Refresh profile
+          {t('profile.professional.refresh')}
         </button>
       </header>
 
@@ -392,7 +365,7 @@ export const ProfessionalProfile = () => {
       <section className={styles.expertiseSection} data-testid="research-expertise-section" aria-labelledby="research-expertise-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.eyebrow}>RESEARCH EXPERTISE</p>
+            <p className={styles.eyebrow}>{t('profile.professional.expertise.eyebrow')}</p>
             <h2 id="research-expertise-title">{roleConfig.expertiseHeading}</h2>
             <p>{roleConfig.expertiseSubheading}</p>
           </div>
@@ -400,7 +373,7 @@ export const ProfessionalProfile = () => {
         <form className={styles.expertiseForm} onSubmit={handleSaveExpertise}>
           <div className={styles.formRow}>
             <div className={styles.formField}>
-              <label htmlFor="major-field">Major Field</label>
+              <label htmlFor="major-field">{t('profile.professional.expertise.majorField')}</label>
               <select
                 id="major-field"
                 data-testid="major-field-select"
@@ -408,7 +381,7 @@ export const ProfessionalProfile = () => {
                 onChange={handleMajorChange}
                 disabled={isMajorsLoading}
               >
-                <option value="">Select a Major Field</option>
+                <option value="">{t('profile.professional.expertise.selectMajor')}</option>
                 {majorFields.map((field) => (
                   <option key={field.id} value={field.id}>
                     {field.name}
@@ -417,7 +390,7 @@ export const ProfessionalProfile = () => {
               </select>
             </div>
             <div className={styles.formField}>
-              <label htmlFor="sub-field">Subfield</label>
+              <label htmlFor="sub-field">{t('profile.professional.expertise.subfield')}</label>
               <select
                 id="sub-field"
                 data-testid="sub-field-select"
@@ -425,7 +398,7 @@ export const ProfessionalProfile = () => {
                 onChange={handleSubChange}
                 disabled={selectedMajorId === null || isMajorsLoading || isSubsLoading}
               >
-                <option value="">Select a Subfield</option>
+                <option value="">{t('profile.professional.expertise.selectSubfield')}</option>
                 {subFields.map((field) => (
                   <option key={field.id} value={field.id}>
                     {field.name}
@@ -440,7 +413,7 @@ export const ProfessionalProfile = () => {
             data-testid="save-expertise-button"
             disabled={!isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise}
           >
-            {isSubmittingExpertise ? 'Saving…' : roleConfig.saveButtonLabel}
+            {isSubmittingExpertise ? t('profile.professional.expertise.saving') : roleConfig.saveButtonLabel}
           </button>
           {expertiseFeedback && (
             <div
@@ -461,15 +434,15 @@ export const ProfessionalProfile = () => {
         >
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.eyebrow}>ACADEMIC METRICS</p>
-              <h2 id="academic-metrics-title">Verified researcher metrics</h2>
+              <p className={styles.eyebrow}>{t('profile.professional.metrics.eyebrow')}</p>
+              <h2 id="academic-metrics-title">{t('profile.professional.metrics.title')}</h2>
             </div>
-            <span className={styles.lockLabel}>🔒 Verified metric — managed by Admin</span>
+            <span className={styles.lockLabel}>{t('profile.professional.metrics.lockLabel')}</span>
           </div>
           <div className={styles.metricGrid}>
-            <article className={styles.metricCard} data-testid="metric-hindex"><span>H-index</span><strong>{professionalProfile.hindex ?? 'Not set'}</strong></article>
-            <article className={styles.metricCard} data-testid="metric-total-citations"><span>Total citations</span><strong>{professionalProfile.totalCitations ?? 'Not set'}</strong></article>
-            <article className={styles.metricCard} data-testid="metric-publication-count"><span>Publication count</span><strong>{professionalProfile.publicationCount ?? 'Not set'}</strong></article>
+            <article className={styles.metricCard} data-testid="metric-hindex"><span>{t('profile.professional.metrics.hindex')}</span><strong>{professionalProfile.hindex ?? t('common.notSet')}</strong></article>
+            <article className={styles.metricCard} data-testid="metric-total-citations"><span>{t('profile.professional.metrics.totalCitations')}</span><strong>{professionalProfile.totalCitations ?? t('common.notSet')}</strong></article>
+            <article className={styles.metricCard} data-testid="metric-publication-count"><span>{t('profile.professional.metrics.publicationCount')}</span><strong>{professionalProfile.publicationCount ?? t('common.notSet')}</strong></article>
           </div>
         </section>
       ) : null}

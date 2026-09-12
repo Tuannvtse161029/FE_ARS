@@ -38,6 +38,7 @@ import {
   indexGroupMembersByGroupId,
 } from '../../services/groupMember.service';
 import type { GroupMember } from '../../services/groupMember.service';
+import { notificationService } from '../../services/notification.service';
 import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { GroupStatusBadge } from '../../components/lecturer/GroupStatusBadge';
 import { GroupStatusFilterTabs } from '../../components/lecturer/GroupStatusFilterTabs';
@@ -313,15 +314,68 @@ export const ResearchGroup = () => {
     }
   };
 
+  /**
+   * Fan out a deactivation notification to every student currently in
+   * the group. Best-effort: a notification failure must NEVER block the
+   * primary deactivation — the lecturer toggle is the source of truth,
+   * the notification is a courtesy. We fetch the member roster using the
+   * existing `groupMemberService` so the BE contract stays in one place.
+   *
+   * Per the agreed product contract (see user's confirmation): when the
+   * group moves from Active → Inactive, every member must be told AND
+   * must lose the ability to submit phase reports until the group is
+   * reactivated. The submit blocking lives in
+   * `pages/GraduateStudent/SubmitReport.tsx` and the workspace view in
+   * `pages/GraduateStudent/StudentResearchGroups.tsx` — this function
+   * is the matching "tell the students" half of that contract.
+   */
+  const notifyGroupMembersOfDeactivation = async (
+    groupId: number,
+    groupName: string,
+  ): Promise<void> => {
+    try {
+      const members = await groupMemberService.getMembersForGroup(groupId);
+      const recipients = members
+        .map((m) => (typeof m.studentId === 'number' && m.studentId > 0 ? m.studentId : null))
+        .filter((id): id is number => id !== null);
+      if (recipients.length === 0) return;
+      const safeName = groupName?.trim() || `Group #${groupId}`;
+      const message = `[Group] "${safeName}" was deactivated by your lecturer. Submissions are paused until the group is reactivated.`;
+      await Promise.allSettled(
+        recipients.map((userId) =>
+          notificationService.create({ userId, message }).catch((err) => {
+            console.warn(
+              `Failed to send deactivation notification to user ${userId}:`,
+              err,
+            );
+          }),
+        ),
+      );
+    } catch (err) {
+      console.warn(
+        'Failed to fan out group-deactivation notifications:',
+        err,
+      );
+    }
+  };
+
   const confirmDeactivate = async () => {
     const { groupId } = deactivateConfirm;
     if (groupId === null) return;
     setDeactivateConfirm({ open: false, groupId: null });
+    // Capture the group's human-readable name BEFORE the success banner
+    // refreshes `groups` — we need it for the notification body.
+    const targetGroup = sortedGroups.find((g) => g.id === groupId);
+    const targetGroupName = targetGroup?.name ?? '';
     setTogglingGroupIds((prev) => new Set(prev).add(groupId));
     try {
       await researchGroupService.setActive(groupId, false);
       showBannerMessage(t('lecturer.researchGroups.deactivateSuccess'));
       await refetchGroups();
+      // Fire deactivation notifications AFTER the BE toggle succeeds so
+      // students are only told once the change is durable. Failure here
+      // is swallowed (best-effort) and never blocks the lecturer's UX.
+      await notifyGroupMembersOfDeactivation(groupId, targetGroupName);
     } catch (err) {
       const message = err instanceof Error
         ? err.message
@@ -655,7 +709,10 @@ export const ResearchGroup = () => {
                   </span>
                   <span
                     data-tone={deadlineTone(deadlineLabel)}
-                    title="Next deadline"
+                    title={t(
+                      'lecturer.researchGroups.dueTitle',
+                      'Expected end date',
+                    )}
                   >
                     <Calendar size={12} aria-hidden />
                     {deadlineLabel

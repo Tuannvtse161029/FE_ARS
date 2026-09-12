@@ -11,6 +11,7 @@ import {
   Users,
   Calendar,
 } from 'lucide-react';
+import { useT } from '../../i18n/I18nContext';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import {
@@ -40,6 +41,7 @@ const formatDate = (iso: string | null | undefined): string => {
 };
 
 export const EvaluateReports = () => {
+  const t = useT();
   const { user } = useAuth();
   const lecturerId = user?.userId ?? null;
 
@@ -69,7 +71,7 @@ export const EvaluateReports = () => {
       setReportsError(
         err instanceof Error
           ? err.message
-          : 'Failed to load phased reports.',
+          : t('lecturer.evaluateReports.loadError', 'Failed to load phased reports.'),
       );
       setReports([]);
     } finally {
@@ -182,8 +184,8 @@ export const EvaluateReports = () => {
   ) => {
     showBanner(
       action === 'approve'
-        ? 'Report approved. Student can now see your feedback.'
-        : 'Resubmit requested. The student may revise and submit again.',
+        ? t('lecturer.evaluateReports.approved', 'Report approved. Student can now see your feedback.')
+        : t('lecturer.evaluateReports.resubmit', 'Resubmit requested. The student may revise and submit again.'),
       'success',
     );
     // Refresh the list — we don't merge the optimistically-updated row
@@ -209,9 +211,9 @@ export const EvaluateReports = () => {
   return (
     <div className={styles.evaluateReports}>
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
-        title="Phased Report Review Console"
-        description="Review submissions from your research groups, approve or reject with feedback, and track waiting reports."
+        eyebrow={t('common.lecturerWorkspace')}
+        title={t('lecturer.evaluateReports.title', 'Phased Report Review Console')}
+        description={t('lecturer.evaluateReports.description', 'Review submissions from your research groups, approve or reject with feedback, and track waiting reports.')}
         actions={
           <Button
             variant="outline"
@@ -226,9 +228,9 @@ export const EvaluateReports = () => {
             }
             onClick={() => void refreshAll()}
             disabled={isLoadingGroups || isLoadingReports}
-            aria-label="Refresh reports"
+            aria-label={t('lecturer.evaluateReports.refreshAria', 'Refresh reports')}
           >
-            {isLoadingReports ? 'Refreshing…' : 'Refresh'}
+            {isLoadingReports ? t('common.refreshing', 'Refreshing…') : t('common.refresh')}
           </Button>
         }
         accent="var(--ars-lecturer)"
@@ -254,7 +256,7 @@ export const EvaluateReports = () => {
             type="button"
             className={styles.bannerCloseBtn}
             onClick={() => setBanner({ visible: false, text: '', variant: 'success' })}
-            aria-label="Dismiss"
+            aria-label={t('common.dismiss')}
           >
             <X size={14} aria-hidden />
           </button>
@@ -406,6 +408,7 @@ const ReportColumn = ({
   flatOffset,
   emptyText,
 }: ReportColumnProps) => {
+  const t = useT();
   const toneClass = {
     warning: styles.columnHeaderWarning,
     danger: styles.columnHeaderDanger,
@@ -421,7 +424,7 @@ const ReportColumn = ({
         {isLoading ? (
           <div className={styles.columnLoading}>
             <Loader size={18} className={styles.spinningIcon} aria-hidden />
-            <span>Loading…</span>
+            <span>{t('common.loading')}</span>
           </div>
         ) : reports.length === 0 ? (
           <EmptyState
@@ -435,8 +438,8 @@ const ReportColumn = ({
               const id = typeof r.id === 'number' ? r.id : '—';
               const groupName =
                 typeof r.researchGroupId === 'number'
-                  ? groupNameById.get(r.researchGroupId) ?? `Group #${r.researchGroupId}`
-                  : 'Unassigned';
+                  ? groupNameById.get(r.researchGroupId) ?? `${t('lecturer.evaluateReports.groupFallback', 'Group #{id}', { id: r.researchGroupId })}`
+                  : t('lecturer.evaluateReports.unassigned', 'Unassigned');
               const cardSelected = selectedIndex === flatOffset + index;
               const isOverdue = Boolean(
                 r.submittedAt &&
@@ -464,17 +467,17 @@ const ReportColumn = ({
                     </span>
                     <span className={isOverdue ? styles.overdueMeta : styles.metaLine}>
                       <Calendar size={12} aria-hidden />
-                      Submitted {formatDate(r.submittedAt)}
+                      {t('lecturer.evaluateReports.submittedAt', 'Submitted {date}', { date: formatDate(r.submittedAt) })}
                     </span>
                   </div>
                   {r.capacityEvaluation && (
                     <div className={styles.reportCardNote}>
-                      <b>Rejection Reason:</b> {r.capacityEvaluation}
+                      <b>{t('lecturer.evaluateReports.rejectionReason', 'Rejection Reason:')}</b> {r.capacityEvaluation}
                     </div>
                   )}
                   {r.finalOutcomeEvaluation && (
                     <div className={styles.reportCardNote}>
-                      <b>Outcome Notes:</b> {r.finalOutcomeEvaluation}
+                      <b>{t('lecturer.evaluateReports.outcomeNotes', 'Outcome Notes:')}</b> {r.finalOutcomeEvaluation}
                     </div>
                   )}
                   <div className={styles.reportCardActions}>
@@ -486,10 +489,10 @@ const ReportColumn = ({
                         className={styles.viewFileBtn}
                       >
                         <FileText size={14} aria-hidden />
-                        Open PDF
+                        {t('lecturer.evaluateReports.openPdf', 'Open PDF')}
                       </a>
                     ) : (
-                      <span className={styles.noFilePill}>No file uploaded</span>
+                      <span className={styles.noFilePill}>{t('lecturer.evaluateReports.noFile', 'No file uploaded')}</span>
                     )}
                     <button
                       type="button"
@@ -497,7 +500,7 @@ const ReportColumn = ({
                       onClick={() => onOpen(r)}
                     >
                       <ClipboardCheck size={14} aria-hidden />
-                      Evaluate
+                      {t('lecturer.evaluateReports.evaluate', 'Evaluate')}
                     </button>
                   </div>
                 </li>

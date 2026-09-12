@@ -119,6 +119,12 @@
   color: var(--ars-ink-soft);
 }
 
+.leaderNoticeInactive {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+
 .leaderNoticeTitle,
 .leaderNoticeText {
   margin: 0;

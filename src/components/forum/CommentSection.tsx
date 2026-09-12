@@ -21,6 +21,8 @@ import {
 } from '../../hooks/useForumComments';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { notificationService } from '../../services/notification.service';
+import { forumPostService } from '../../services/forumPost.service';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useI18n } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -282,6 +284,31 @@ export const CommentSection = ({
       setDraft('');
       setLocalComments((prev) => [...prev, result]);
       void refetch();
+      // Defensive FE notification — fire a `[Forum] reply` notification
+      // to the original post author (skip self-reply). Best-effort:
+      // failures never block the comment submit itself.
+      try {
+        const post = await forumPostService.getById(postId).catch(() => null);
+        const authorId =
+          typeof post?.authorId === 'number'
+            ? post.authorId
+            : null;
+        if (
+          authorId &&
+          authorId > 0 &&
+          authorId !== currentUserId
+        ) {
+          const preview = trimmed.length > 80
+            ? `${trimmed.slice(0, 80).trim()}…`
+            : trimmed;
+          await notificationService.create({
+            userId: authorId,
+            message: `[Forum] reply: "${post?.title ?? `Post #${postId}`}" — ${preview}`,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to send forum reply notification:', notifyErr);
+      }
     } else {
       setActionError('Failed to post comment. Please try again.');
     }

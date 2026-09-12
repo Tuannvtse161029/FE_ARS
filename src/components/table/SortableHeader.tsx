@@ -34,6 +34,7 @@
 import { ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
 import type { CSSProperties, MouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../../i18n/I18nContext';
 import styles from './SortableHeader.module.css';
 
 export interface SortableHeaderFilterOption {
@@ -75,6 +76,7 @@ export function SortableHeader<K extends string>({
   activeFilter,
   onFilterChange,
 }: SortableHeaderProps<K>) {
+  const t = useT();
   const ariaSort = ariaSortFor(column);
   const isActive = ariaSort !== undefined;
   const [filterOpen, setFilterOpen] = useState(false);
@@ -187,8 +189,8 @@ export function SortableHeader<K extends string>({
               type="button"
               className={styles.filterClear}
               onClick={() => onFilterChange('ALL')}
-              aria-label="Clear filter"
-              title="Clear filter"
+              aria-label={t('common.clearFilter', 'Clear filter')}
+              title={t('common.clearFilter', 'Clear filter')}
             >
               <X size={10} aria-hidden />
             </button>

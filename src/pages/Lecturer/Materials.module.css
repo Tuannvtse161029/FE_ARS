@@ -1758,6 +1758,13 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   line-height: 1.2;
+  /* Header label is short by construction, but on the narrowest stacked
+     layout the label is rendered inline next to the value — keep it on a
+     single line so the row geometry stays predictable. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Stack the label/value on narrow viewports so the row never clips. */
@@ -1767,7 +1774,15 @@
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
   line-height: 1.35;
-  word-break: break-word;
+  /* Long Vietnamese names (e.g. "Nguyễn Thị Thanh Huyền Phương Lê") used to
+     wrap to two lines and visually overflow the grid column. Truncate with
+     an ellipsis instead; the full string is exposed via the `title`
+     attribute on the span so the user can still hover to read it. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
 }
 
 .sharedRowDateValue {
@@ -1779,6 +1794,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .sharedRowDaysLeft {
@@ -2149,40 +2166,6 @@
 
 .sharePolicyText {
   flex: 1;
-}
-
-.shareApiContractLink {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: var(--space-2);
-  padding: 2px 8px;
-  background: transparent;
-  border: 1px solid var(--ars-network);
-  border-radius: 999px;
-  font: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
-}
-
-.shareApiContractLink:hover {
-  background: var(--ars-paper-inset);
-  border-color: var(--ars-lecturer);
-  color: var(--ars-lecturer);
-}
-
-.shareApiContractLink:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Recipient Selection Section */

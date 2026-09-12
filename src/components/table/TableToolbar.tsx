@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { RefreshCw, Search } from 'lucide-react';
+import { useT } from '../../i18n/I18nContext';
 import {
   TABLE_TOOLBAR_TESTID,
   TABLE_SEARCH_INPUT_TESTID,
@@ -57,7 +58,9 @@ export const TableToolbar = ({
   hideRefresh = false,
   className,
   searchFieldClassName,
-}: TableToolbarProps) => (
+}: TableToolbarProps) => {
+  const t = useT();
+  return (
   <div
     className={
       className ? `${styles.toolbar} ${className}` : styles.toolbar
@@ -82,7 +85,7 @@ export const TableToolbar = ({
         placeholder={searchPlaceholder}
         onChange={(e) => onSearchChange(e.target.value)}
         data-testid={TABLE_SEARCH_INPUT_TESTID}
-        aria-label="Search table"
+        aria-label={t('common.searchTable', 'Search table')}
       />
     </label>
     <div className={styles.toolbarFilters}>{filters}</div>
@@ -99,10 +102,11 @@ export const TableToolbar = ({
           className={isRefreshing ? styles.spinning : undefined}
           aria-hidden
         />
-        {isRefreshing ? 'Refreshing…' : refreshLabel}
+        {isRefreshing ? t('common.refreshing', 'Refreshing…') : refreshLabel}
       </button>
     )}
   </div>
-);
+  );
+};
 
 export default TableToolbar;
