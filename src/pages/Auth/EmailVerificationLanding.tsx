@@ -99,7 +99,6 @@ export const EmailVerificationLanding = (): JSX.Element => {
     return (
       locationState.email ||
       searchParams.get('email') ||
-      sessionStorage.getItem('ars_registered_email') ||
       ''
     );
   });
@@ -183,7 +182,6 @@ export const EmailVerificationLanding = (): JSX.Element => {
   const completeOtpSuccess = (verifiedEmail: string) => {
     setOtpSuccess({ email: verifiedEmail });
     try {
-      sessionStorage.removeItem('ars_registered_email');
       sessionStorage.removeItem(DEV_SKIP_SENTINEL);
     } catch {
       /* ignore */

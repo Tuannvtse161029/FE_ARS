@@ -83,7 +83,7 @@
 }
 
 .logoContainer:focus-visible {
-  outline: 2px solid var(--focus-ring, #007AFF);
+  outline: 2px solid var(--focus-ring, var(--accent-primary));
   outline-offset: 2px;
 }
 
@@ -567,57 +567,6 @@
   gap: var(--space-3);
 }
 
-/* Wallet */
-.walletBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background-color: var(--surface-canvas);
-  border: 1px solid var(--ars-node);
-  padding: 0 var(--space-3);
-  height: 36px;
-  border-radius: var(--radius-md);
-  color: var(--ars-ink);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.walletIcon {
-  display: flex;
-  align-items: center;
-  color: var(--ars-ink-muted);
-}
-
-.walletAmount {
-  color: var(--ars-ink);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.walletTopUpButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--ars-node);
-  background: var(--ars-paper-alt);
-  color: var(--ars-ink-soft);
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.walletTopUpButton:hover {
-  background-color: var(--ars-blue-light);
-  color: var(--ars-ink);
-}
-
-.walletTopUpButton:focus-visible {
-  outline: 2px solid var(--ars-blue);
-  outline-offset: 2px;
-}
-
 /* Availability Toggle (Reviewer) */
 .availabilityToggle {
   display: inline-flex;
@@ -1071,10 +1020,10 @@
 }
 
 /* ── Theme toggle button (header) ─────────────────────────
-   Sits in the header right-cluster, to the LEFT of the wallet/notifications/
-   user pill so it's easy to find. Renders a 36x36 button matching the rest of
-   the 36px-tall control rhythm. Color follows currentColor so it inverts in
-   night mode without a separate override. */
+   Sits in the header right-cluster, to the LEFT of the notifications/
+   user pill so it's easy to find. Renders a 36x36 button matching the rest
+   of the 36px-tall control rhythm. Color follows currentColor so it inverts
+   in night mode without a separate override. */
 .themeToggle {
   display: inline-flex;
   align-items: center;
@@ -1123,7 +1072,7 @@
 }
 
 .moonIcon {
-  color: #3b82f6;
+  color: var(--accent-primary);
 }
 
 /* ── Sidebar collapse button (already-present from prior work) ──
@@ -1342,7 +1291,7 @@
   border-bottom-color: var(--border-subtle);
   backdrop-filter: blur(14px);
 }
-.menuToggle, .themeToggle, .walletBadge, .availabilityToggle, .profileDropdownTrigger, .searchContainer {
+.menuToggle, .themeToggle, .availabilityToggle, .profileDropdownTrigger, .searchContainer {
   background: var(--control-bg);
   border-color: var(--border-subtle);
   color: var(--control-text);
@@ -1354,7 +1303,6 @@
 .searchContainer:focus-within,
 .themeToggle:focus-visible,
 .menuToggle:focus-visible,
-.walletTopUpButton:focus-visible,
 .toggleSwitch:focus-visible,
 .dropdownItem:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -1362,10 +1310,8 @@
   border-color: var(--focus-ring);
   box-shadow: none;
 }
-.searchInput, .walletAmount, .userPillName { color: var(--control-text); }
-.searchIcon, .walletIcon, .userPillRole { color: var(--ink-muted); }
-.walletTopUpButton { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink-secondary); }
-.walletTopUpButton:hover { background: var(--accent-primary); color: var(--ink-on-paper); }
+.searchInput, .userPillName { color: var(--control-text); }
+.searchIcon, .userPillRole { color: var(--ink-muted); }
 .avatarCircleSmall { background: var(--accent-primary); color: var(--ink-on-paper); }
 .profileDropdownMenu { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 14px 36px var(--shadow-color); }
 .dropdownItem { color: var(--ink-primary); }

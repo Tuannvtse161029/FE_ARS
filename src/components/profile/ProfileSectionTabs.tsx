@@ -21,11 +21,11 @@ export interface ProfileSectionTabsProps {
 
 const TAB_IDS: ProfileTabId[] = ['overview', 'forum', 'publications', 'badges'];
 
-export const ProfileSectionTabs: React.FC<ProfileSectionTabsProps> = ({
+export const ProfileSectionTabs = ({
   activeTab,
   onChange,
   badgeCount,
-}) => {
+}: ProfileSectionTabsProps) => {
   const { t } = useI18n();
 
   const labelFor = (id: ProfileTabId): string => {

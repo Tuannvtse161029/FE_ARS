@@ -200,7 +200,7 @@
 
 .changeImageQuickBtn {
   font-size: 0.75rem;
-  color: var(--accent-primary, #2563eb);
+  color: var(--accent-primary, #d9a200);
   background: none;
   border: none;
   text-decoration: underline;
@@ -210,7 +210,7 @@
 }
 
 .changeImageQuickBtn:hover {
-  color: #1d4ed8;
+  color: #c78e12;
 }
 
 .medalTitleInfo {
@@ -254,7 +254,7 @@
 
 .roleTagReviewer {
   background: #dbeafe;
-  color: #1e40af;
+  color: #70490e;
 }
 
 .roleTagStudent {
@@ -386,7 +386,7 @@
 /* Card Grid */
 .cardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: var(--space-5, 20px);
 }
 
@@ -543,26 +543,26 @@
 }
 
 .btnActionPrimary {
-  background: #2563eb;
+  background: #d9a200;
   color: #ffffff;
-  border-color: #2563eb;
+  border-color: #d9a200;
 }
 
 .btnActionPrimary:hover {
-  background: #1d4ed8;
+  background: #c78e12;
   color: #ffffff;
 }
 
 .btnChangeImgDirect {
   background: #eff6ff;
-  color: #2563eb;
+  color: #d9a200;
   border-color: #bfdbfe;
   font-weight: 600;
 }
 
 .btnChangeImgDirect:hover {
   background: #dbeafe;
-  color: #1d4ed8;
+  color: #c78e12;
 }
 
 .emptyStateContainer {
@@ -587,6 +587,115 @@
   border-radius: 6px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+/* Metric strip — tier count + granted users + view button */
+.cardMetricStrip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: linear-gradient(
+    180deg,
+    var(--surface-subtle, #f8fafc) 0%,
+    var(--surface-paper, #ffffff) 100%
+  );
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.cardMetric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cardMetricAccent .cardMetricIcon {
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--ink-primary, #1d1c19);
+}
+
+.cardMetricAccent .cardMetricValue {
+  color: var(--ink-primary, #0f172a);
+  font-weight: 800;
+}
+
+.cardMetricIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-raised, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  color: var(--ink-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.cardMetricInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.cardMetricLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted, #64748b);
+  white-space: nowrap;
+}
+
+.cardMetricValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink-on-paper, #0f172a);
+  font-feature-settings: 'tnum';
+}
+
+.cardMetricDivider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-subtle, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.btnViewRecipients {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--accent-primary, #e2ad2f);
+  color: var(--button-primary-ink, #1d1c19);
+  border: 1px solid var(--accent-primary, #e2ad2f);
+  border-radius: var(--radius-md, 6px);
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btnViewRecipients:hover:not(:disabled) {
+  background: var(--accent-hover, #c78e12);
+  border-color: var(--accent-hover, #c78e12);
+}
+
+.btnViewRecipients:focus-visible {
+  outline: 2px solid var(--focus-ring, #a66f0a);
+  outline-offset: 2px;
+}
+
+.btnViewRecipients:disabled {
+  opacity: 0.5;
+  background: var(--surface-subtle, #e2e8f0);
+  border-color: var(--border-subtle, #e2e8f0);
+  color: var(--ink-muted, #94a3b8);
+  cursor: not-allowed;
 }
 
 .tierCountHint {
@@ -684,4 +793,25 @@
 .tierLadderActions .btnAction {
   padding: 4px 8px;
   font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .cardMetricStrip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cardMetric {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .cardMetricDivider {
+    display: none;
+  }
+
+  .btnViewRecipients {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
 }

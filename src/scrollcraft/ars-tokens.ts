@@ -39,7 +39,7 @@ export const arsScrollThemes = {
     surface: '#101726',     // archive-dusk surface-base
     ink: '#f8fafc',        // archive-dusk ink-primary
     inkSoft: '#94a3b8',     // archive-dusk ink-muted
-    accent: '#3b82f6',      // archive-dusk accent-primary
+    accent: '#facc15',      // archive-dusk accent-primary
     accentInk: '#ffffff',   // light on blue
     fontDisplay: '"Roboto", "Segoe UI", Helvetica, Arial, sans-serif',
     fontText: '"Roboto", "Segoe UI", Helvetica, Arial, sans-serif',
@@ -138,7 +138,7 @@ export const arsScrollCSS = `
   --sc-surface: var(--surface-base, #101726);
   --sc-ink: var(--ink-primary, #f8fafc);
   --sc-ink-soft: var(--ink-secondary, #94a3b8);
-  --sc-accent: var(--accent-primary, #3b82f6);
+  --sc-accent: var(--accent-primary, #facc15);
   --sc-accent-ink: var(--ink-on-paper, #ffffff);
 }
 

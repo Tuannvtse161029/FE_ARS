@@ -10,7 +10,7 @@ import {
   Award,
   Trophy,
   Gem,
-  Sparkles,
+  Layers,
   HelpCircle,
   Edit2,
   Trash2,
@@ -19,6 +19,8 @@ import {
   Table,
   CheckCircle2,
   Image as ImageIcon,
+  Users,
+  Eye,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -31,6 +33,7 @@ import {
   type MedalCriteriaUnit,
   groupMedalsByFamily,
 } from '../../../services/medal.service';
+import type { MedalRecipientInfo } from '../../../services/medalAnalytics.service';
 import { useI18n } from '../../../i18n/I18nContext';
 import { EmptyState } from '../../../components/EmptyState';
 import { Button } from '../../../components/Button/Button';
@@ -49,6 +52,20 @@ export interface MedalCatalogProps {
   onToggleStatus: (medal: Medal) => Promise<void>;
   showNotification: (message: string, type?: 'success' | 'error') => void;
   locale: string;
+  /**
+   * Per-medal-code recipient list (key = uppercase medal code, value = users
+   * who earned that tier). The catalog aggregates across every tier in the
+   * family to compute a single "granted users" count per card. Pass `null`
+   * when analytics haven't loaded yet — the card will display an em-dash
+   * instead of fabricating a zero.
+   */
+  recipientsByMedalCode?: Record<string, MedalRecipientInfo[]> | null;
+  /**
+   * Fired when the admin clicks "View" on a family card. The catalog passes
+   * the family key + the primary medal so the parent can open the
+   * recipients modal with the right data.
+   */
+  onOpenRecipients?: (family: MedalFamilyGroup) => void;
 }
 
 const TIER_ICON_FOR_PILL: Record<MedalTier, LucideIcon> = {
@@ -65,7 +82,7 @@ const TIER_LABEL_KEY: Record<MedalTier, string> = {
   Platinum: 'admin.medals.tier.platinum',
 };
 
-export const MedalCatalog: React.FC<MedalCatalogProps> = ({
+export const MedalCatalog = ({
   medals,
   isLoading,
   onRefetch,
@@ -75,7 +92,9 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
   onToggleStatus,
   showNotification,
   locale,
-}) => {
+  recipientsByMedalCode,
+  onOpenRecipients,
+}: MedalCatalogProps) => {
   const { t } = useI18n();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
 
@@ -125,6 +144,31 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
   const familyGroups = useMemo<MedalFamilyGroup[]>(() => {
     return groupMedalsByFamily(filteredMedals);
   }, [filteredMedals]);
+
+  /**
+   * Pre-compute the granted-users count for every family. We do this in
+   * one pass over the family list rather than calling `useMemo` inside the
+   * render loop (which would violate React's Rules of Hooks) and dedupe
+   * by userId so a single user with Bronze+Silver+Gold shows as 1.
+   *
+   * Returns `null` (not 0) when the parent hasn't passed the analytics
+   * data yet, so the card can render an em-dash placeholder instead of
+   * fabricating a zero.
+   */
+  const grantedUsersByFamily = useMemo<Record<string, number> | null>(() => {
+    if (!recipientsByMedalCode) return null;
+    const map: Record<string, number> = {};
+    for (const group of familyGroups) {
+      const ids = new Set<number>();
+      for (const tier of group.tiers) {
+        const key = tier.code.toUpperCase();
+        const list = recipientsByMedalCode[key] ?? [];
+        for (const r of list) ids.add(r.userId);
+      }
+      map[group.family] = ids.size;
+    }
+    return map;
+  }, [recipientsByMedalCode, familyGroups]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -210,7 +254,7 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
         <div className={styles.statCard}>
           <div
             className={styles.statIcon}
-            style={{ color: 'var(--accent-primary, #2563eb)' }}
+            style={{ color: 'var(--accent-primary, #d9a200)' }}
           >
             <MedalIcon size={24} />
           </div>
@@ -259,7 +303,7 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
             className={styles.statIcon}
             style={{ color: 'var(--tier-platinum-icon, #0ea5e9)' }}
           >
-            <Sparkles size={24} />
+            <Trophy size={24} />
           </div>
           <div className={styles.statInfo}>
             <span className={styles.statLabel}>
@@ -435,6 +479,9 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
               .replace(/_(BRONZE|SILVER|GOLD|PLATINUM)$/i, '')
               .replace(/_(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i, '');
 
+            const grantedCount =
+              grantedUsersByFamily?.[family.family] ?? 0;
+
             return (
               <div key={family.family} className={styles.medalCard}>
                 <div
@@ -461,6 +508,67 @@ export const MedalCatalog: React.FC<MedalCatalogProps> = ({
                           'Một số cấp đang tắt'
                         )}
                   </span>
+                </div>
+
+                {/* Metric strip — shows tier variants count + granted users
+                    count + the "View" button that opens the recipients modal. */}
+                <div className={styles.cardMetricStrip}>
+                  <div className={styles.cardMetric}>
+                    <div className={styles.cardMetricIcon}>
+                      <Layers size={14} />
+                    </div>
+                    <div className={styles.cardMetricInfo}>
+                      <span className={styles.cardMetricLabel}>
+                        {copy('Tier variants', 'Cấp bậc')}
+                      </span>
+                      <span className={styles.cardMetricValue}>
+                        {family.tiers.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.cardMetricDivider} />
+
+                  <div
+                    className={`${styles.cardMetric} ${styles.cardMetricAccent}`}
+                  >
+                    <div className={styles.cardMetricIcon}>
+                      <Users size={14} />
+                    </div>
+                    <div className={styles.cardMetricInfo}>
+                      <span className={styles.cardMetricLabel}>
+                        {copy('Granted users', 'Người đã đạt')}
+                      </span>
+                      <span className={styles.cardMetricValue}>
+                        {recipientsByMedalCode == null
+                          ? '—'
+                          : grantedCount.toLocaleString(
+                              locale === 'vi' ? 'vi-VN' : 'en-US',
+                            )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`${styles.btnAction} ${styles.btnViewRecipients}`}
+                    onClick={() => onOpenRecipients?.(family)}
+                    disabled={!onOpenRecipients || grantedCount === 0}
+                    title={
+                      grantedCount === 0
+                        ? copy(
+                            'No users have earned this medal yet',
+                            'Chưa có người dùng nào đạt huy hiệu này'
+                          )
+                        : copy(
+                            `View ${grantedCount} recipients`,
+                            `Xem ${grantedCount} người đã đạt`
+                          )
+                    }
+                  >
+                    <Eye size={14} />
+                    <span>{copy('View', 'Xem')}</span>
+                  </button>
                 </div>
 
                 <div className={styles.cardBody}>

@@ -281,9 +281,20 @@ const App = () => {
                   <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
 
+                {/* Professional Profile — shared surface for the three workspace
+                    roles that own an academic profile:
+                      • Reviewer    — availability + research expertise + academic metrics
+                      • Researcher  — research expertise + academic metrics
+                      • Lecturer    — research expertise only (no availability,
+                                       no academic metrics — see role-policy)
+                    The remaining reviewer-only publication routes
+                    (assignments / evaluation) keep their tight Reviewer guard. */}
+                <Route element={<RoleRouteGuard allow={['Researcher', 'Reviewer', 'Lecturer']} />}>
+                  <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
+                </Route>
+
                 {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}
                 <Route element={<RoleRouteGuard allow={['Reviewer']} />}>
-                  <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
                   <Route path={ROUTES.REVIEWER_ASSIGNMENTS} element={<ReviewerAssignments />} />
                   <Route path={ROUTES.REVIEWER_ASSIGNMENT_DETAIL} element={<ReviewerAssignmentDetail />} />
                   <Route path={ROUTES.EVALUATION} element={<Navigate to={ROUTES.REVIEWER_ASSIGNMENTS} replace />} />

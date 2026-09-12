@@ -12,7 +12,7 @@
  * rather than flat.
  */
 import { useMemo, useState } from 'react';
-import { Sparkles, Search, X } from 'lucide-react';
+import { Star, Search, X } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
 import {
   BADGE_BOLD_ARTWORK_LIST,
@@ -79,12 +79,12 @@ const CATEGORY_FALLBACKS: Record<
   general: { en: 'General', vi: 'Chung' },
 };
 
-export const BoldArtworkPicker: React.FC<BoldArtworkPickerProps> = ({
+export const BoldArtworkPicker = ({
   value,
   onChange,
   id = 'boldArtworkPickerSearch',
   gridId,
-}) => {
+}: BoldArtworkPickerProps) => {
   const { t, locale } = useI18n();
   const [query, setQuery] = useState<string>('');
 
@@ -194,7 +194,7 @@ export const BoldArtworkPicker: React.FC<BoldArtworkPickerProps> = ({
 
       {isEmpty ? (
         <div className={styles.emptyState} role="status">
-          <Sparkles size={20} aria-hidden="true" />
+          <Star size={20} aria-hidden="true" />
           <span>{emptyTemplate.replace('{query}', query)}</span>
         </div>
       ) : (
@@ -219,7 +219,7 @@ export const BoldArtworkPicker: React.FC<BoldArtworkPickerProps> = ({
                 <header className={styles.groupHeader}>
                   <span className={styles.groupHeaderText}>{headerLabel}</span>
                   <span className={styles.groupBadge}>
-                    <Sparkles size={11} />
+                    <Star size={11} />
                     BOLD
                   </span>
                 </header>

@@ -37,14 +37,17 @@ import {
 } from '../../hooks/useFirebaseFileUpload';
 import { defaultLearningMaterialFolderPath } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
-import { validateHttpsUrl } from '../../utils/validationRules';
+import { safeHref, validateHttpsUrl } from '../../utils/validationRules';
 import { FieldError } from '../FieldError';
 import styles from './MaterialSourcePicker.module.css';
 
 export type MaterialSourceValue =
   | { kind: 'url'; url: string }
   | { kind: 'file'; fileUrl: string; fileName: string }
-  | { kind: 'library'; learningMaterialId: number };
+  // Library picks carry BOTH the id (for picker display state and
+  // reverse-mapping on reload) AND the resolved file URL (for persistence —
+  // the BE stores `phasedMaterialsUrl`, not a FK to the LearningMaterial).
+  | { kind: 'library'; learningMaterialId: number; fileUrl: string };
 
 export interface MaterialSourcePickerProps {
   onChange: (value: MaterialSourceValue | null) => void;
@@ -149,7 +152,23 @@ export const MaterialSourcePicker = ({
       }
     } else {
       if (pickedLibraryId != null) {
-        onChange({ kind: 'library', learningMaterialId: pickedLibraryId });
+        // Resolve the URL from the loaded library — the parent needs the
+        // URL to PUT it back to the BE (PhasedReport.phasedMaterialsUrl).
+        // Without this, the BE never receives the new assignment and the
+        // chip appears empty after reload.
+        const mat = materials.find((m) => m.id === pickedLibraryId);
+        if (mat?.fileUrl) {
+          onChange({
+            kind: 'library',
+            learningMaterialId: pickedLibraryId,
+            fileUrl: mat.fileUrl,
+          });
+        } else {
+          // Material missing or has no URL — degrade to null so the parent
+          // can show an explicit error instead of silently saving a broken
+          // link.
+          onChange(null);
+        }
       } else {
         onChange(null);
       }
@@ -425,10 +444,10 @@ export const MaterialSourcePicker = ({
                     ) : (
                       <p className={styles.libraryCardDescMuted}>No description</p>
                     )}
-                    {m.fileUrl && (
+                    {m.fileUrl && safeHref(m.fileUrl) && (
                       <a
                         className={styles.libraryCardLink}
-                        href={m.fileUrl}
+                        href={safeHref(m.fileUrl) ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

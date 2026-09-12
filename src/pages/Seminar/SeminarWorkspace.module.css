@@ -810,6 +810,90 @@
   background: var(--ars-paper-alt);
 }
 
+/* ── View Notes info modal (UPCOMING / IN PROGRESS preview) ──
+   Read-only counterpart to the AI summary upload flow. Surfaces
+   the "record → wait for completion → upload" workflow so organizers
+   know to capture footage before the meeting ends. Reuses the existing
+   modal chrome (.modalCard, .modalHeader, .modalBody, .modalFooter)
+   and layers in three pieces:
+     1. .viewNotesInfoBanner — single-line headline reminder
+     2. .viewNotesInfoSteps — numbered "do this, then this, then this"
+     3. .viewNotesInfoFootnote — small tip with an info icon
+   Visual language intentionally echoes the modalErrorBanner palette so
+   it reads as "official guidance" rather than an error. */
+.viewNotesInfoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ars-lecturer-light);
+  border: 1px solid var(--ars-lecturer);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.viewNotesInfoBanner svg {
+  color: var(--ars-lecturer);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.viewNotesInfoSteps {
+  list-style: decimal;
+  padding-left: var(--space-5);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--ars-ink);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.viewNotesInfoSteps li {
+  padding-left: var(--space-1);
+}
+
+.viewNotesInfoSteps li::marker {
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-lecturer);
+}
+
+.viewNotesInfoSteps li strong {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+.viewNotesInfoSteps li span {
+  color: var(--ars-ink-muted);
+}
+
+.viewNotesInfoFootnote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-node);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.viewNotesInfoFootnote svg {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 /* ── Form fields (modal-scoped) ───────────────────────────────── */
 .formGroup {
   display: flex;
@@ -1537,7 +1621,7 @@
 
 .roleGraduateStudent {
   background-color: rgba(59, 130, 246, 0.15);
-  color: #2563eb;
+  color: #d9a200;
 }
 
 .roleDefault {

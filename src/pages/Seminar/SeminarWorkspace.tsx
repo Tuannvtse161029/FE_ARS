@@ -16,9 +16,10 @@ import {
   AlertTriangle,
   Users,
   Sliders,
-  Sparkles,
+  Star,
   Ban,
   RotateCcw,
+  Info,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { fieldService } from '../../services/field.service';
@@ -46,6 +47,8 @@ import {
   useUpdateSeminarStatus,
   type SeminarLifecycleAction,
 } from '../../hooks/useSeminar';
+import { hasAdminRole, isAdminRoleName } from '../../utils/roleNormalizer';
+import { safeHref } from '../../utils/validationRules';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
 import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
@@ -72,12 +75,6 @@ type WorkspaceTab = 'manage' | 'participate';
 
 const formatSeminarId = (id: number): string =>
   `SEM-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
-
-const formatBytesTitle = (raw: string): string => raw;
-
-const toLocalDateTimeInputValue = (date: Date): string => {
-  return toLocalDatetimeInput(date);
-};
 
 interface InviteeCandidate {
   userId: number;
@@ -153,6 +150,82 @@ export const SeminarWorkspace = () => {
   const [showAiModal, setShowAiModal] = useState(false);
   const [selectedSeminarForAi, setSelectedSeminarForAi] =
     useState<SeminarCard | null>(null);
+
+  // ── Background-task reopen ─────────────────────────────────────────────────
+  // The header `LoadingTaskWidget` ships a long-task tracker that lets the
+  // user navigate away from this page while the BE is processing an AI
+  // summarisation. When they click the chip to return, we need to re-open
+  // the AI modal that triggered the task — even though the page
+  // unmounted while they were gone. Two mechanisms work together:
+  //
+  //   1. The `AudioSummaryModal` writes a `ars:task-reopen:aiSummary|<id>`
+  //      sessionStorage key on mount and clears it on unmount. We check
+  //      that key here on mount — it's the safety net that survives a
+  //      hard navigation (location change).
+  //   2. The widget also dispatches a `ars:reopen-modal` window event
+  //      with the modalKey. We listen for it directly here so the modal
+  //      can pop up without waiting for the mount effect to run.
+  useEffect(() => {
+    const openAiFor = (seminarId: number) => {
+      const seminar = seminars.find((s) => s.seminarId === seminarId);
+      if (seminar) {
+        setSelectedSeminarForAi(seminar);
+        setShowAiModal(true);
+        return;
+      }
+      // Fallback: the seminars list isn't loaded yet (race on first
+      // mount after navigate). Fall back to a stub object so the modal
+      // still opens; it will fetch its own detail via `loadSeminarDetail`.
+      setSelectedSeminarForAi({
+        seminarId,
+        title: '',
+      } as SeminarCard);
+      setShowAiModal(true);
+    };
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ modalKey?: string }>).detail;
+      const modalKey = detail?.modalKey;
+      if (!modalKey || !modalKey.startsWith('aiSummary|')) return;
+      const seminarId = Number.parseInt(modalKey.split('|')[1] ?? '', 10);
+      if (!Number.isFinite(seminarId)) return;
+      openAiFor(seminarId);
+    };
+    window.addEventListener('ars:reopen-modal', handler);
+
+    // SessionStorage safety net — runs once on mount in case the user
+    // navigated back to this page while the task was still tracked.
+    try {
+      for (let i = 0; i < window.sessionStorage.length; i += 1) {
+        const key = window.sessionStorage.key(i);
+        if (!key?.startsWith('ars:task-reopen:aiSummary|')) continue;
+        const seminarId = Number.parseInt(key.split('|')[1] ?? '', 10);
+        if (!Number.isFinite(seminarId)) continue;
+        openAiFor(seminarId);
+        // Only re-open the first one — multiple simultaneous AI tasks
+        // aren't currently possible from this page so this is safe.
+        break;
+      }
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+
+    return () => window.removeEventListener('ars:reopen-modal', handler);
+    // `seminars` is read inside the handler; we intentionally exclude
+    // it from deps so the listener doesn't re-bind on every refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "View Notes" info-only modal — opened when an organizer taps the
+  // button on a still-upcoming seminar (or one that is currently IN
+  // PROGRESS). The full upload + AI summarization only becomes useful
+  // once the meeting is over, so on a not-yet-completed seminar we
+  // explain the workflow instead of letting the user stare at an empty
+  // dropzone. Keeping the trigger wired everywhere (instead of only on
+  // COMPLETED) makes the feature discoverable so users know they should
+  // be recording the meeting in preparation for the post-meeting step.
+  const [showAiInfoModal, setShowAiInfoModal] = useState(false);
+  const [aiInfoSeminar, setAiInfoSeminar] = useState<SeminarCard | null>(null);
   const [isAttendeeFeedbackPreview, setIsAttendeeFeedbackPreview] =
     useState(false);
 
@@ -330,7 +403,7 @@ export const SeminarWorkspace = () => {
   );
 
   const minDateTime = useMemo(
-    () => toLocalDateTimeInputValue(new Date(Date.now() + 5 * 60 * 1000)),
+    () => toLocalDatetimeInput(new Date(Date.now() + 5 * 60 * 1000)),
     [],
   );
 
@@ -448,6 +521,15 @@ export const SeminarWorkspace = () => {
           const profiles = profRes.value.data;
           const candidates: InviteeCandidate[] = profiles
             .filter((p: any) => p && p.userId && p.email)
+            // FE_INVITE_HIDE_ADMIN — Admin accounts operate the platform
+            // and must never appear in the seminar-create invitee
+            // candidate list. We drop them at the source so downstream
+            // filters never have to know about Admin.
+            .filter((p: any) => {
+              const joinedRoles: string[] = userRolesMap.get(p.userId) ?? [];
+              const profileRole = typeof p.role === 'string' ? p.role : null;
+              return !hasAdminRole([profileRole, ...joinedRoles]);
+            })
             .map((p: any) => {
               const uRoles = userRolesMap.get(p.userId) || [];
               const fallback = p.reviewFee ? 'Reviewer' : 'Scholar';
@@ -511,6 +593,12 @@ export const SeminarWorkspace = () => {
                 const bRoles: string[] = Array.isArray(b.roles) && b.roles.length > 0
                   ? (b.roles as string[]).map(String)
                   : (b.role ? b.role.split(' • ').map((s: string) => s.trim()).filter(Boolean) : ['Colleague']);
+                // FE_INVITE_HIDE_ADMIN — the BE-suggested invitees endpoint
+                // may include Admin accounts; drop them here so Admin
+                // users never become selectable invitees in the create
+                // modal regardless of which upstream surface populated
+                // the candidate list.
+                if (hasAdminRole(bRoles) || isAdminRoleName(b.role)) continue;
                 map.set(b.userId, {
                   userId: b.userId,
                   fullName: b.fullName || `User #${b.userId}`,
@@ -758,14 +846,28 @@ export const SeminarWorkspace = () => {
     setShowFeedbackModal(true);
   };
 
-  // Legacy reminder entrypoint kept on the page instance so callers can still
-  // trigger it via any future "Remind Pending" action. The new
-  // SeminarFeedbackPanel owns its own reminder flow for completed seminars.
-  void doSendReminder;
-
   const handleOpenAiSummary = useCallback((sem: SeminarCard) => {
     setSelectedSeminarForAi(sem);
     setShowAiModal(true);
+  }, []);
+
+  /**
+   * Open the read-only "View Notes" info modal on a not-yet-completed
+   * seminar. The real upload + AI summarization is gated to COMPLETED
+   * seminars (the BE only has the recorded meeting video to summarize
+   * once the meeting actually happened). Showing this modal here keeps
+   * the affordance discoverable and nudges the organizer to actually
+   * record the meeting — without letting them pointlessly upload
+   * pre-meeting footage.
+   */
+  const handleOpenAiInfoForUpcoming = useCallback((sem: SeminarCard) => {
+    setAiInfoSeminar(sem);
+    setShowAiInfoModal(true);
+  }, []);
+
+  const closeAiInfoModal = useCallback(() => {
+    setShowAiInfoModal(false);
+    setAiInfoSeminar(null);
   }, []);
 
   const tabs: Array<{ key: TabKey; label: string; count: number }> = [
@@ -1013,7 +1115,18 @@ export const SeminarWorkspace = () => {
               sem.effectiveStatus === 'UPCOMING' ||
               sem.effectiveStatus === 'IN PROGRESS';
             const owns = ownsSeminar(sem, currentUserId, currentRole);
-            const showAi = canModify && owns && isCompleted;
+            // Two flavors of the "View Notes" button:
+            //   showAiCompleted → full upload + AI summary flow. Only
+            //     available after the meeting is over, because that is
+            //     when there is a real recording to summarize.
+            //   showAiUpcoming  → read-only info popup that explains the
+            //     workflow ("record the meeting first, then upload here
+            //     once it's done"). Showing this on UPCOMING / IN PROGRESS
+            //     cards makes the feature discoverable so organizers know
+            //     they should be recording the meeting in preparation.
+            const showAiCompleted = canModify && owns && isCompleted;
+            const showAiUpcoming = canModify && owns && isUpcomingish;
+            const showAi = showAiCompleted || showAiUpcoming;
             const showFeedbackOrganizer =
               canModify && owns && isCompleted;
             // Owner-only lifecycle gates:
@@ -1045,7 +1158,7 @@ export const SeminarWorkspace = () => {
 
                     <div className={styles.cardTitleRow}>
                       <h3 className={styles.cardTitle}>
-                        {formatBytesTitle(sem.title)}
+                        {sem.title}
                       </h3>
                       <span
                         className={`${styles.statusBadge} ${
@@ -1185,9 +1298,7 @@ export const SeminarWorkspace = () => {
                               setDetailSeminar(sem);
                               setShowDetailModal(true);
                             }}
-                            aria-label={`View seminar details for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`View seminar details for ${sem.title}`}
                           >
                             <Eye size={14} aria-hidden />
                             {copy('Seminar Detail', 'Chi tiết hội thảo')}
@@ -1198,14 +1309,33 @@ export const SeminarWorkspace = () => {
                           <button
                             type="button"
                             className={styles.actionBtnPrimary}
-                            onClick={() =>
-                              window.open(sem.onlineLink, '_blank')
-                            }
+                            onClick={() => {
+                              const safe = safeHref(sem.onlineLink);
+                              if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+                            }}
                             disabled={!isValidMeetLink(sem.onlineLink)}
                           >
                             <Video size={14} aria-hidden />
                             {copy('Join Google Meet', 'Tham gia Google Meet')}
                           </button>
+                          {/* "View Notes" on UPCOMING / IN PROGRESS cards opens
+                              a read-only info modal that explains the
+                              meeting-recording workflow. The full upload +
+                              AI summary experience is reserved for the
+                              COMPLETED branch above; here we just want to
+                              teach organizers to record the meeting so they
+                              have footage to upload later. */}
+                          {showAiUpcoming && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => handleOpenAiInfoForUpcoming(sem)}
+                              data-testid="seminar-view-notes-info-button"
+                            >
+                              <Eye size={14} aria-hidden />
+                              {copy('View Notes', 'Xem ghi chú')}
+                            </button>
+                          )}
                           {canModify && owns && (
                             <button
                               type="button"
@@ -1227,9 +1357,7 @@ export const SeminarWorkspace = () => {
                               setIsAttendeeFeedbackPreview(true);
                               setShowAttendeeFeedbackModal(true);
                             }}
-                            aria-label={`Preview feedback form for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`Preview feedback form for ${sem.title}`}
                           >
                             <ClipboardList size={14} aria-hidden />
                             {copy('Preview feedback form', 'Xem trước form')}
@@ -1289,9 +1417,7 @@ export const SeminarWorkspace = () => {
                               setDetailSeminar(sem);
                               setShowDetailModal(true);
                             }}
-                            aria-label={`View seminar details for ${formatBytesTitle(
-                              sem.title,
-                            )}`}
+                            aria-label={`View seminar details for ${sem.title}`}
                           >
                             <Eye size={14} aria-hidden />
                             {copy('Seminar Detail', 'Chi tiết hội thảo')}
@@ -1724,7 +1850,7 @@ export const SeminarWorkspace = () => {
                         ]);
                       }}
                     >
-                      <Sparkles size={12} aria-hidden />
+                      <Star size={12} aria-hidden />
                       {copy('Load Starter Questions', 'Tạo mẫu câu hỏi gợi ý')}
                     </button>
                   </div>
@@ -1898,9 +2024,10 @@ export const SeminarWorkspace = () => {
                 variant="primary"
                 size="md"
                 leftIcon={<Video size={14} aria-hidden />}
-                onClick={() =>
-                  window.open(generatedMeetLink, '_blank', 'noopener')
-                }
+                onClick={() => {
+                  const safe = safeHref(generatedMeetLink);
+                  if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+                }}
                 className={styles.actionBtnSuccess}
               >
                 Launch Google Meet
@@ -1956,6 +2083,144 @@ export const SeminarWorkspace = () => {
             void id;
           }}
         />
+      )}
+
+      {/* VIEW NOTES — INFO MODAL (UPCOMING / IN PROGRESS ONLY)
+          ------------------------------------------------------------------
+          Read-only counterpart of the AI Summary Modal. Opened when the
+          organizer taps "View Notes" on a seminar that has NOT YET ended.
+          The modal explains the intended workflow:
+
+            1. Record the Google Meet session so there is footage of the
+               actual discussion.
+            2. Once the meeting wraps up, the seminar flips to COMPLETED
+               and the upload + AI summary flow unlocks automatically.
+            3. They come back here, drop the recorded file in, and the
+               system returns a structured meeting summary.
+
+          We deliberately do NOT show a file picker here. The BE has
+          nothing useful to summarize before the meeting has actually
+          taken place, so we keep the surface informational rather than
+          letting the organizer queue up a useless pre-meeting upload. */}
+      {showAiInfoModal && aiInfoSeminar && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="view-notes-info-title"
+        >
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleBlock}>
+                <span className={styles.modalIconCircle}>
+                  <Star size={18} aria-hidden />
+                </span>
+                <div>
+                  <h3
+                    id="view-notes-info-title"
+                    className={styles.modalTitle}
+                  >
+                    {copy(
+                      'View Notes — Record the meeting first',
+                      'Xem ghi chú — Hãy ghi hình buổi họp trước',
+                    )}
+                  </h3>
+                  <span className={styles.modalSubtitle}>
+                    {copy(
+                      'How this feature works once the meeting is over',
+                      'Cách tính năng này hoạt động khi buổi họp kết thúc',
+                    )}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={closeAiInfoModal}
+                aria-label={copy('Close', 'Đóng')}
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div className={styles.viewNotesInfoBanner}>
+                <Star size={16} aria-hidden />
+                <span>
+                  {copy(
+                    'This tool summarises a recorded meeting video into structured notes. It only unlocks once the seminar reaches the COMPLETED status.',
+                    'Công cụ này tóm tắt video buổi họp đã ghi thành ghi chú có cấu trúc. Tính năng chỉ mở khi hội thảo chuyển sang trạng thái ĐÃ HOÀN THÀNH.',
+                  )}
+                </span>
+              </div>
+
+              <ol className={styles.viewNotesInfoSteps}>
+                <li>
+                  <strong>
+                    {copy(
+                      'Join the seminar & record it.',
+                      'Tham gia hội thảo và ghi hình buổi họp.',
+                    )}
+                  </strong>
+                  <span>
+                    {copy(
+                      'Use your screen recorder (e.g. Google Meet built-in recording, OBS, or your OS screen capture) to capture the full discussion while the meeting is in progress.',
+                      'Dùng phần mềm ghi màn hình (ví dụ: tính năng ghi hình có sẵn của Google Meet, OBS, hoặc công cụ ghi màn hình của hệ điều hành) để ghi lại toàn bộ nội dung cuộc thảo luận khi buổi họp đang diễn ra.',
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <strong>
+                    {copy(
+                      'Wait for the seminar to finish.',
+                      'Chờ hội thảo kết thúc.',
+                    )}
+                  </strong>
+                  <span>
+                    {copy(
+                      'When the end time passes, this card will automatically move from Upcoming to Completed and the full upload flow becomes available.',
+                      'Khi thời gian kết thúc đã qua, thẻ hội thảo sẽ tự động chuyển từ Sắp diễn ra sang Đã hoàn thành và luồng tải lên đầy đủ sẽ xuất hiện.',
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <strong>
+                    {copy(
+                      'Come back here and upload the recording.',
+                      'Quay lại đây và tải video ghi hình lên.',
+                    )}
+                  </strong>
+                  <span>
+                    {copy(
+                      'Once the seminar is Completed, click "View Notes" again on this card. You will see a dropzone where you can attach the MP4 file you captured — the system will return a structured meeting summary.',
+                      'Khi hội thảo đã hoàn thành, nhấn "Xem ghi chú" lần nữa trên thẻ này. Bạn sẽ thấy vùng thả tệp để đính kèm file MP4 đã ghi — hệ thống sẽ trả về bản tóm tắt buổi họp có cấu trúc.',
+                    )}
+                  </span>
+                </li>
+              </ol>
+
+              <div className={styles.viewNotesInfoFootnote}>
+                <Info size={14} aria-hidden />
+                <span>
+                  {copy(
+                    'Tip: most meeting tools let you start recording from the toolbar once the call is in progress. Save the file locally so you can upload it here after the seminar ends.',
+                    'Mẹo: hầu hết công cụ họp cho phép bạn bắt đầu ghi hình từ thanh công cụ khi cuộc gọi đang diễn ra. Lưu file cục bộ để bạn có thể tải lên tại đây sau khi hội thảo kết thúc.',
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={closeAiInfoModal}
+              >
+                {copy('Got it', 'Đã hiểu')}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ATTENDEE FEEDBACK MODAL — participant submits structured feedback

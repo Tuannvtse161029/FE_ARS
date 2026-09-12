@@ -173,10 +173,10 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     // Private comments textarea
     expect(screen.getByLabelText(/Private review feedback for Admin/i)).toBeInTheDocument();
 
-    // Recommendation select contains all three options
-    const select = screen.getByLabelText(/Recommendation/i) as HTMLSelectElement;
-    const optionValues = Array.from(select.options).map((option) => option.value);
-    expect(optionValues).toEqual(expect.arrayContaining(['ACCEPT', 'REVISION_REQUIRED', 'REJECT']));
+    // Recommendation is now two buttons: Approved / Revision Needed (no REJECT)
+    expect(screen.getByRole('button', { name: /^Approved$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Revision Needed$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Reject$/i })).toBeNull();
 
     // Submit button
     expect(screen.getByRole('button', { name: /Submit private review to Admin/i })).toBeInTheDocument();
@@ -226,10 +226,24 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
       within(form).getByLabelText(/Private review feedback for Admin/i),
       'Strong contribution with minor revision suggestions.',
     );
-    const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
-    await user.selectOptions(recommendationSelect, 'ACCEPT');
+    await user.click(within(form).getByRole('button', { name: /^Approved$/ }));
+    // Wait for the click state to flush.
+    await waitFor(() => {
+      expect(within(form).getByRole('button', { name: /^Approved$/ })).toHaveAttribute('aria-pressed', 'true');
+    });
     for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
+    // Also fill the discipline-specific criteria (always present as 3 fallback items).
+    for (const specScore of form.querySelectorAll<HTMLSelectElement>('select[id^="spec-score-"]')) {
+      await user.selectOptions(specScore, '5');
+    }
+    for (const specNote of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="spec-note-"]')) {
+      await user.type(specNote, 'Subfield evidence.');
+    }
 
+    // Wait for the submit button to become enabled.
+    await waitFor(() => {
+      expect(within(form).getByRole('button', { name: /Submit private review to Admin/i })).not.toBeDisabled();
+    });
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // New behavior: a confirmation dialog appears before the API call.
@@ -282,10 +296,20 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
       within(form).getByLabelText(/Private review feedback for Admin/i),
       'Methodology section needs more detail.',
     );
-    const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
-    await user.selectOptions(recommendationSelect, 'REVISION_REQUIRED');
+    await user.click(within(form).getByRole('button', { name: /^Revision Needed$/ }));
     for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
+    // Also fill the discipline-specific criteria.
+    for (const specScore of form.querySelectorAll<HTMLSelectElement>('select[id^="spec-score-"]')) {
+      await user.selectOptions(specScore, '5');
+    }
+    for (const specNote of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="spec-note-"]')) {
+      await user.type(specNote, 'Subfield evidence.');
+    }
 
+    // Wait for the submit button to become enabled.
+    await waitFor(() => {
+      expect(within(form).getByRole('button', { name: /Submit private review to Admin/i })).not.toBeDisabled();
+    });
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // Confirmation dialog appears before the API call.
@@ -307,11 +331,11 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     );
     const submitted: PublicationPaper = {
       ...paper,
-      status: 'REVIEWER_RECOMMENDED_REJECT',
+      status: 'REVIEWER_RECOMMENDED_REVISION',
       reviewer: {
         reviewerName: 'Assigned reviewer',
-        recommendation: 'REJECT',
-        privateComments: 'Not suitable for the venue.',
+        recommendation: 'REVISION_REQUIRED',
+        privateComments: 'Needs revision.',
         privateScores: {},
         submittedAt: '2026-08-25T00:00:00.000Z',
       },
@@ -323,12 +347,22 @@ describe('ReviewerAssignmentDetail — Evaluate Paper gating', () => {
     const form = await screen.findByTestId('evaluate-form');
     await user.type(
       within(form).getByLabelText(/Private review feedback for Admin/i),
-      'Not suitable for the venue.',
+      'Needs revision in section 3.',
     );
-    const recommendationSelect = within(form).getByLabelText(/Recommendation/i);
-    await user.selectOptions(recommendationSelect, 'REJECT');
+    await user.click(within(form).getByRole('button', { name: /^Revision Needed$/ }));
     for (const note of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="note-"]')) await user.type(note, 'Criterion evidence.');
+    // Also fill the discipline-specific criteria.
+    for (const specScore of form.querySelectorAll<HTMLSelectElement>('select[id^="spec-score-"]')) {
+      await user.selectOptions(specScore, '5');
+    }
+    for (const specNote of form.querySelectorAll<HTMLTextAreaElement>('textarea[id^="spec-note-"]')) {
+      await user.type(specNote, 'Subfield evidence.');
+    }
 
+    // Wait for the submit button to become enabled.
+    await waitFor(() => {
+      expect(within(form).getByRole('button', { name: /Submit private review to Admin/i })).not.toBeDisabled();
+    });
     await user.click(within(form).getByRole('button', { name: /Submit private review to Admin/i }));
 
     // Confirmation dialog appears before the API call.

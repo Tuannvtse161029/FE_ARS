@@ -77,11 +77,13 @@ export const REVIEWER_CRITERIA: ReadonlyArray<ReviewerCriterion> = [
 
 export type ReviewerCriterionScores = Record<ReviewerCriterionKey, number>;
 
+// Recommendation options for reviewer submission.
+// Per user choice (2026-09): only two options — Approved or Revision Needed.
+// The Reject option has been removed from the UI.
 export const REVIEWER_RECOMMENDATIONS = [
   { value: '', label: 'Select recommendation' },
-  { value: 'ACCEPT', label: 'Accept' },
-  { value: 'REVISION_REQUIRED', label: 'Revision required' },
-  { value: 'REJECT', label: 'Reject' },
+  { value: 'ACCEPT', label: 'Approved' },
+  { value: 'REVISION_REQUIRED', label: 'Revision Needed' },
 ] as const;
 
 export type ReviewerRecommendationValue =

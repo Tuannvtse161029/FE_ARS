@@ -1,0 +1,302 @@
+/* LecturerPublicView — burgundy academic coordination board */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.identityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.identityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.identityLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.identityValue {
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5em;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-paper);
+}
+
+.calendarTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
+.calendarTable thead th {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+
+.calendarTable tbody td {
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  color: var(--ink-primary);
+}
+
+.calendarTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.calendarTable tbody tr:hover {
+  background: var(--surface-selected);
+}
+
+.colDate {
+  width: 200px;
+}
+
+.colState {
+  width: 130px;
+}
+
+.colEvent {
+  min-width: 220px;
+}
+
+.dateText {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.eventTitle {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+}
+
+.statePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+
+.stateUpcoming {
+  color: var(--status-info-text, var(--ars-info, #70490e));
+  background: var(--status-info-surface, var(--ars-info-bg, #dbeafe));
+}
+
+.stateInProgress {
+  color: var(--status-warning-text, var(--ars-warning, #92400e));
+  background: var(--status-warning-surface, var(--ars-warning-bg, #fef3c7));
+}
+
+.stateCompleted {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.stateInactive,
+.stateDraft {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.groupList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--profile-accent, var(--accent-primary));
+}
+
+.groupMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.groupName {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.groupDescription {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 60ch;
+}
+
+.groupTopic {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.groupTopicLabel {
+  font-family: var(--font-family-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--font-weight-bold);
+  font-style: normal;
+}
+
+.groupMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.memberCount {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.groupStatePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+
+.groupStateActive {
+  color: var(--status-success-text, var(--ars-success, #047857));
+  background: var(--status-success-surface, var(--ars-success-bg, #d1fae5));
+}
+
+.groupStateArchived {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.groupStateUnknown {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--surface-paper);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+  max-width: 80ch;
+}
+
+@media (max-width: 720px) {
+  .identityGrid {
+    grid-template-columns: 1fr;
+  }
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+  .groupRow {
+    flex-direction: column;
+  }
+  .groupMeta {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

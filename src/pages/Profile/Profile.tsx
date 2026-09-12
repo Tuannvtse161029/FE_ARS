@@ -34,6 +34,7 @@ import { Clock, RefreshCw, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RequestAdditionalRoleModal } from '../../components/profile/RequestAdditionalRoleModal';
 import { roleRequestService, type UserPendingRoleRequest } from '../../services/roleRequest.service';
+import { userService } from '../../services/user.service';
 import { useProfile } from '../../hooks/useProfile';
 import { toLocalDateInput, formatDisplayDate } from '../../utils/datetime';
 import {
@@ -64,7 +65,14 @@ import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMark
 import { isOrcidEligibleRole } from '../../utils/registrationRoles';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { useI18n } from '../../i18n/I18nContext';
+import { ReviewerPublicView } from '../../components/profile/publicViews/ReviewerPublicView';
+import { ResearcherPublicView } from '../../components/profile/publicViews/ResearcherPublicView';
+import { LecturerPublicView } from '../../components/profile/publicViews/LecturerPublicView';
+import { GraduateStudentPublicView } from '../../components/profile/publicViews/GraduateStudentPublicView';
+import { usePublicProfileData } from '../../hooks/usePublicProfileData';
 import styles from './Profile.module.css';
+import { TrialCountdownCard } from '../../components/profile/TrialCountdownCard';
+
 
 const ROLE_LABEL = {
   Researcher: 'Researcher',
@@ -260,7 +268,7 @@ function draftFromProfile(p: {
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const authenticatedUserId = user?.userId ?? null;
   const parsedTargetId = routeUserId ? Number(routeUserId) : null;
   const targetUserId = parsedTargetId && Number.isFinite(parsedTargetId) && parsedTargetId > 0
@@ -280,9 +288,69 @@ export const Profile = () => {
     clearSaveError,
   } = useProfile(targetUserId);
 
-  const roleName = isOwner ? (user?.role ?? null) : (profile?.roleName ?? null);
+  // ── Public-profile role lookup ─────────────────────────────────────────
+  // The `/api/Profile/{id}` and `/api/ProfessionalProfile/{id}` endpoints
+  // do NOT surface a `roleName` field — the BE returns the academic-profile
+  // columns (fullName, institution, hindex, …) but never the user's
+  // business role. For an owner we already have `user.role` from the auth
+  // store; for a visitor the only authoritative source is
+  // `GET /api/User/{id}` (`UserResponse.roleName`, see swagger.json
+  // component UserResponse). Without this fetch the visitor-side
+  // `roleName` is always null and the badge silently falls back to
+  // "Researcher" for every profile — the bug surfaced on John
+  // Reviewer's profile.
+  //
+  // We only run the fetch when the visitor is viewing SOMEONE ELSE
+  // (i.e. `!isOwner`) and the route param resolved to a positive id.
+  // Errors are swallowed — the page must render even if `/api/User/{id}`
+  // 404s (e.g. a suspended account).
+  const [publicUserRole, setPublicUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (isOwner || !targetUserId) {
+      setPublicUserRole(null);
+      return undefined;
+    }
+    let cancelled = false;
+    userService
+      .getById(targetUserId)
+      .then((fetched) => {
+        if (cancelled) return;
+        setPublicUserRole(fetched?.roleName ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPublicUserRole(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, targetUserId]);
+
+  // Role resolution priority:
+  //   1. Owner viewing their own profile → `user.role` from auth store.
+  //   2. Visitor viewing someone else →
+  //        a. `publicUserRole` from /api/User/{id} (authoritative role).
+  //        b. `profile.roleName` from the professional-profile endpoint
+  //           (currently unused by the BE, kept as a future-proof
+  //           fallback in case the BE starts emitting it).
+  //        c. `null` — render a neutral label, NEVER default to
+  //           'Researcher' (the previous fallback mis-classified
+  //           Reviewers / Lecturers / Graduate Students / Admins).
+  const roleName = isOwner
+    ? (user?.role ?? null)
+    : (publicUserRole ?? profile?.roleName ?? null);
   const roleMeta = useMemo(() => resolveRoleProfileMeta(roleName), [roleName]);
-  const roleLabel = roleName && roleName in ROLE_LABEL ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL] : (roleName || 'Researcher');
+  // Label: prefer the ROLE_LABEL map; if the BE hands back a role we
+  // don't have a localised entry for, fall back to the raw string; only
+  // when the role is genuinely unknown do we render the neutral
+  // 'Member' chip instead of silently labelling the profile
+  // "Researcher" (the original bug).
+  const roleLabel =
+    roleName && roleName in ROLE_LABEL
+      ? ROLE_LABEL[roleName as keyof typeof ROLE_LABEL]
+      : roleName
+        ? roleName
+        : 'Member';
   const accentStyle = { ['--profile-accent' as string]: roleMeta.accentVar } as CSSProperties;
 
   const { followersCount, followingCount, refetch: refetchCounts } = useFollowCounts(targetUserId);
@@ -309,6 +377,29 @@ export const Profile = () => {
     isLoading: isExtrasLoading,
     error: extrasError,
   } = useProfileExtras(targetUserId);
+
+  // ── Role-specific public profile data (Lecturer seminars/groups/materials,
+  //     Graduate Student milestones/group membership, Reviewer/Researcher metrics)
+  //
+  // Joined year: prefer the target profile's `createdAt` (works for both owner
+  // and visitor) and only fall back to the authenticated user's `createdAt`
+  // when the profile record hasn't loaded yet. This ensures the displayed
+  // year is always the TARGET user's joined year, not the visitor's.
+  const joinedYear = useMemo(() => {
+    const sourceIso = profile?.createdAt ?? user?.createdAt ?? null;
+    if (!sourceIso) return null;
+    const d = new Date(sourceIso);
+    return Number.isFinite(d.getFullYear()) ? d.getFullYear() : null;
+  }, [profile?.createdAt, user?.createdAt]);
+
+  const publicProfileData = usePublicProfileData({
+    role: roleName as 'Reviewer' | 'Researcher' | 'Lecturer' | 'Graduate Student' | null,
+    userId: targetUserId ?? null,
+    joinedYear,
+    profile,
+    publications,
+    forumPosts,
+  });
 
   const [isFollowingTarget, setIsFollowingTarget] = useState<boolean>(false);
   const [isFollowActionLoading, setIsFollowActionLoading] = useState<boolean>(false);
@@ -847,14 +938,57 @@ export const Profile = () => {
       )}
 
       {mode === 'view' ? (
-        <ProfileView
-          draft={savedDraft}
-          avatarInitials={avatarInitials}
-          updatedAt={profile?.updatedAt}
-          isEmpty={isEmptyProfile}
-          profile={profile}
-          isOwner={isOwner}
-        />
+        <>
+          {/* Owner-only account contact strip — visitors never see personal details */}
+          {isOwner && (
+            <AccountContactStrip
+              savedDraft={savedDraft}
+              displayEmail={displayEmail}
+            />
+          )}
+
+          {/* Role-specific public profile view */}
+          {roleName === 'Reviewer' && (
+            <ReviewerPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {roleName === 'Researcher' && (
+            <ResearcherPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {roleName === 'Lecturer' && (
+            <LecturerPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+              locale={locale ?? 'en'}
+            />
+          )}
+          {roleName === 'Graduate Student' && (
+            <GraduateStudentPublicView
+              data={publicProfileData}
+              displayName={displayName}
+              showPrivacyFootnote={!isOwner}
+            />
+          )}
+          {/* Fallback for Admin or unknown roles — keep the original view */}
+          {(roleName === 'Admin' || !roleName) && (
+            <ProfileView
+              draft={savedDraft}
+              avatarInitials={avatarInitials}
+              updatedAt={profile?.updatedAt}
+              isEmpty={isEmptyProfile}
+              profile={profile}
+              isOwner={isOwner}
+            />
+          )}
+        </>
       ) : (
         <ProfileEditForm
           draft={draft}
@@ -973,6 +1107,57 @@ export const Profile = () => {
         />
       )}
     </div>
+  );
+};
+
+/** Account contact strip — owner-only, shown above the role-specific public view.
+ *  Visitors never see these fields. Shows phone, address, DOB, gender, email.
+ */
+interface AccountContactStripProps {
+  savedDraft: DraftFields;
+  displayEmail: string;
+}
+
+const AccountContactStrip = ({
+  savedDraft,
+  displayEmail,
+}: AccountContactStripProps) => {
+  const { t } = useI18n();
+  return (
+    <section className={styles.accountStrip} aria-label="Account contact information">
+      <dl className={styles.accountStripGrid}>
+        {displayEmail ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.email', 'Email')}</dt>
+            <dd>{displayEmail}</dd>
+          </div>
+        ) : null}
+        {savedDraft.phoneNumber?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.phone', 'Phone')}</dt>
+            <dd>{savedDraft.phoneNumber}</dd>
+          </div>
+        ) : null}
+        {savedDraft.address?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.address', 'Address')}</dt>
+            <dd>{savedDraft.address}</dd>
+          </div>
+        ) : null}
+        {savedDraft.dateOfBirth?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.dob', 'Date of birth')}</dt>
+            <dd>{formatDisplayDate(savedDraft.dateOfBirth)}</dd>
+          </div>
+        ) : null}
+        {savedDraft.gender?.trim() ? (
+          <div className={styles.accountStripField}>
+            <dt>{t('profile.accountContact.gender', 'Gender')}</dt>
+            <dd>{savedDraft.gender}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
   );
 };
 
@@ -1473,195 +1658,4 @@ const ProfileEditForm = ({
 // Design tokens: Paper Day warm surfaces, near-black ink, accent primary
 // for the day-count and progress bar fill. The card keeps `--profile-accent`
 // as a fallback so the visual links back to the role-accent bar above.
-//
-// The countdown self-refreshes every minute while the tab is open, so a
-// user who keeps the page open past midnight still sees an accurate count.
-// A tab-visibility check pauses the timer when the tab is hidden (cheap
-// CPU/perf saving — common pattern in countdown widgets).
-const TRIAL_WINDOW_DAYS = 7;
-
-interface TrialCountdownCardProps {
-  trialExpiryAt: string | null | undefined;
-  roleName: string | null;
-}
-
-function parseTrialExpiry(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function computeTrialState(expiry: Date | null): {
-  totalDays: number;
-  daysRemaining: number;
-  daysUsed: number;
-  endsAt: Date;
-  isExpired: boolean;
-  isToday: boolean;
-} {
-  if (!expiry) {
-    return {
-      totalDays: TRIAL_WINDOW_DAYS,
-      daysRemaining: 0,
-      daysUsed: TRIAL_WINDOW_DAYS,
-      endsAt: new Date(0),
-      isExpired: true,
-      isToday: false,
-    };
-  }
-  const now = Date.now();
-  const msRemaining = expiry.getTime() - now;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const daysRemaining = Math.max(0, Math.ceil(msRemaining / msPerDay));
-  const daysUsed = Math.max(0, TRIAL_WINDOW_DAYS - daysRemaining);
-  const isExpired = msRemaining <= 0;
-  const isToday = daysRemaining === 1 || (daysRemaining === 0 && !isExpired);
-  return {
-    totalDays: TRIAL_WINDOW_DAYS,
-    daysRemaining,
-    daysUsed,
-    endsAt: expiry,
-    isExpired,
-    isToday,
-  };
-}
-
-const TrialCountdownCard = ({ trialExpiryAt, roleName }: TrialCountdownCardProps) => {
-  const { t } = useI18n();
-  const expiry = useMemo(() => parseTrialExpiry(trialExpiryAt), [trialExpiryAt]);
-  const [tick, setTick] = useState(0);
-
-  // Live update — re-render every minute so the countdown stays correct
-  // while the tab stays open. Pause while the tab is hidden.
-  useEffect(() => {
-    if (!expiry || expiry.getTime() <= Date.now()) return undefined;
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      setTick((prev) => prev + 1);
-    }, 60_000);
-    const onVisible = () => setTick((prev) => prev + 1);
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', onVisible);
-    }
-    return () => {
-      window.clearInterval(intervalId);
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVisible);
-      }
-    };
-  }, [expiry]);
-
-  const state = useMemo(() => computeTrialState(expiry), [expiry, tick]);
-
-  if (!expiry) return null;
-
-  const roleLabel = roleName && roleName.trim() ? roleName : 'Researcher';
-  const endsAtLabel = state.endsAt.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  });
-  const fillPercent = Math.min(
-    100,
-    Math.max(0, Math.round((state.daysUsed / state.totalDays) * 100)),
-  );
-
-  // Tone: 3+ days left = calm, 1-2 = warning, today/expired = urgent.
-  const tone = state.isExpired
-    ? 'ended'
-    : state.daysRemaining <= 2
-      ? 'urgent'
-      : state.daysRemaining <= 4
-        ? 'warn'
-        : 'calm';
-
-  return (
-    <section
-      className={`${styles.trialCard} ${styles[`trialCard-${tone}`]}`}
-      aria-label={t('profile.trial.aria', 'Trial status')}
-      data-testid="profile-trial-card"
-    >
-      <div className={styles.trialIcon} aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <circle cx="11" cy="11" r="9.25" stroke="currentColor" strokeWidth="1.5" />
-          <path
-            d="M11 6v5.4l3.4 1.95"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <div className={styles.trialBody}>
-        <div className={styles.trialHeaderRow}>
-          <p className={styles.trialEyebrow}>
-            {state.isExpired
-              ? t('profile.trial.eyebrowEnded', 'TRIAL ENDED')
-              : t('profile.trial.eyebrow', 'TRIAL ACTIVE')}
-          </p>
-          <p className={styles.trialRole}>
-            {t('profile.trial.roleLine', `${roleLabel} · 7-day trial`).replace('{role}', roleLabel)}
-          </p>
-        </div>
-        <div className={styles.trialCountRow}>
-          <p className={styles.trialCount} data-testid="profile-trial-days">
-            <strong>{state.daysRemaining}</strong>
-            <span className={styles.trialCountUnit}>
-              {state.isExpired
-                ? t('profile.trial.daysEnded', 'day(s) ago')
-                : state.isToday
-                  ? t('profile.trial.endsToday', 'day left · ends today')
-                  : t('profile.trial.daysLeft', 'days left')}
-            </span>
-          </p>
-          <p className={styles.trialExpiry}>
-            {t('profile.trial.expiresOn', `Ends ${endsAtLabel}`).replace('{date}', endsAtLabel)}
-          </p>
-        </div>
-        <div
-          className={styles.trialProgress}
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={state.totalDays}
-          aria-valuenow={state.daysRemaining}
-          aria-valuetext={t(
-            'profile.trial.progressAria',
-            `${state.daysUsed} of ${state.totalDays} days used`,
-          )
-            .replace('{used}', String(state.daysUsed))
-            .replace('{total}', String(state.totalDays))}
-        >
-          <span
-            className={styles.trialProgressFill}
-            style={{ width: `${fillPercent}%` }}
-          />
-          <span className={styles.trialProgressTick} style={{ left: '14.28%' }} />
-          <span className={styles.trialProgressTick} style={{ left: '28.57%' }} />
-          <span className={styles.trialProgressTick} style={{ left: '42.85%' }} />
-          <span className={styles.trialProgressTick} style={{ left: '57.14%' }} />
-          <span className={styles.trialProgressTick} style={{ left: '71.42%' }} />
-          <span className={styles.trialProgressTick} style={{ left: '85.71%' }} />
-        </div>
-        <p className={styles.trialHint}>
-          {state.isExpired
-            ? t(
-                'profile.trial.hintEnded',
-                'Your trial has ended. Continue using ARS with your existing account access.',
-              )
-            : state.daysRemaining <= 2
-              ? t(
-                  'profile.trial.hintUrgent',
-                  'Your trial is almost over. Reach out to your administrator or upgrade to keep uninterrupted access.',
-                )
-              : t(
-                  'profile.trial.hintCalm',
-                  'Your free trial gives you full platform access. The trial ends automatically on the date below — no action is required from you today.',
-                )}
-        </p>
-      </div>
-    </section>
-  );
-};
-
 export default Profile;

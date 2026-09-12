@@ -106,6 +106,20 @@ interface AuthContextType {
   confirmRoleSelection: (role: UserRole) => void;
   cancelRoleSelection: () => void;
   /**
+   * SECURITY (SEC-003): In-flight GIS credential held in React state
+   * instead of sessionStorage. Cleared once the registration flow
+   * completes (success or error).
+   */
+  pendingGoogleCredential: string | null;
+  setPendingGoogleCredential: (credential: string | null) => void;
+  /**
+   * SECURITY (SEC-003): Opaque ORCID registration ticket held in React
+   * state. Set by OrcidCallback after the BE exchange and consumed by
+   * Register during the registration API call.
+   */
+  pendingOrcidTicket: string | null;
+  setPendingOrcidTicket: (ticket: string | null) => void;
+  /**
    * Agent 39 — authoritative role the user holds *right now*. Mirrors
    * `AuthResponse.effectiveRole` (BE-derived) or the persisted value after
    * page reload. `null` until the next successful login or while a
@@ -185,6 +199,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     authResponse: AuthResponse;
     rememberMe: boolean;
   } | null>(null);
+  // SECURITY (SEC-003): Keep the in-flight GIS credential in React state
+  // instead of sessionStorage. Storing it in storage made it reachable
+  // from any same-origin XSS during the onboarding handoff window, which
+  // allowed an attacker to replay it against /complete-google-registration
+  // (account-takeover pivot). React state is cleared on a hard refresh —
+  // acceptable because the registration flow is single-tab by design and
+  // the user can re-trigger the GIS prompt from the login screen.
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState<string | null>(null);
+  // SECURITY (SEC-003): Same rationale as the GIS credential — the opaque
+  // ORCID registration ticket issued by the BE callback lives in React
+  // state until Register consumes it. A page refresh forces the user to
+  // restart the ORCID link, which is the intended trade-off.
+  const [pendingOrcidTicket, setPendingOrcidTicket] = useState<string | null>(null);
 
   // Agent 53 — single in-flight logout guard. Multiple subscribers
   // (MainLayout profile menu, Onboarding flow, PendingVerification page,
@@ -451,11 +478,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('ars_google_credential', credential);
-        } catch {
-          /* ignore */
-        }
+        setPendingGoogleCredential(credential);
       }
 
       try {
@@ -625,11 +648,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Existing user no longer needs the GIS credential. Keep it only for
         // the first-time onboarding handoff, where the live completion API
         // requires it.
-        try {
-          sessionStorage.removeItem('ars_google_credential');
-        } catch {
-          /* ignore storage privacy errors */
-        }
+        setPendingGoogleCredential(null);
 
         // Existing user — delegate to the centralised persist + navigate
         // helper so storage, the Zustand store, the welcome signal and the
@@ -743,10 +762,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!Number.isInteger(userId) || userId <= 0) {
         throw new Error('A valid authenticated user is required to complete onboarding.');
       }
-      const credential =
-        (typeof window !== 'undefined'
-          ? sessionStorage.getItem('ars_google_credential')
-          : null) || undefined;
+      const credential = pendingGoogleCredential ?? undefined;
 
       setIsLoading(true);
       setError(null);
@@ -763,11 +779,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             },
             idempotencyKey: `complete-google-registration-${userId}`,
           });
-        try {
-          sessionStorage.removeItem('ars_google_credential');
-        } catch {
-          /* ignore storage privacy errors */
-        }
+        setPendingGoogleCredential(null);
 
         // Persist the backend response. When the endpoint omits optional state
         // fields, retain the existing profile rather than inventing IDs or
@@ -776,18 +788,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const roleName = response.role ?? authStore.user?.roleName ?? payload.role ?? null;
         const effectiveRole = (response.effectiveRole as EffectiveRole | null | undefined)
           ?? (isActive && roleName ? (roleName as EffectiveRole) : 'Guest');
-        const guestUser = {
-          ...(authStore.user || {}),
+        // Construct a valid User blob. When `authStore.user` is missing
+        // (cold /complete-google-registration) we still must produce a
+        // User that satisfies the interface, so we fall back to safe
+        // placeholders for the required scalar fields and let the rest
+        // of the post-auth flow rehydrate them from /api/user/{id}.
+        const previous = authStore.user;
+        const guestUser: User = {
           id: response.userId ?? userId,
+          username: previous?.username ?? '',
+          email: previous?.email ?? '',
+          fullName: previous?.fullName ?? '',
+          avatarUrl: previous?.avatarUrl ?? null,
+          orcidId: previous?.orcidId,
+          roleId: response.roleId ?? previous?.roleId ?? null,
           roleName,
-          roleId: response.roleId ?? authStore.user?.roleId ?? null,
+          roles: previous?.roles,
           isActive,
-          verificationStatus: response.verificationStatus ?? authStore.user?.verificationStatus ?? null,
+          isEmailVerified: previous?.isEmailVerified,
+          proofDocumentUrl: previous?.proofDocumentUrl ?? null,
+          verificationStatus: response.verificationStatus ?? previous?.verificationStatus ?? null,
+          accountTier: previous?.accountTier,
+          createdAt: previous?.createdAt,
+          updatedAt: previous?.updatedAt,
+          suspendedUntil: previous?.suspendedUntil ?? null,
           effectiveRole,
+          trialExpiryAt: previous?.trialExpiryAt ?? null,
           isNewUser: false,
           requiresOnboarding: false,
+          flairMedalId: previous?.flairMedalId ?? null,
+          flairOrder: previous?.flairOrder ?? null,
         };
-        storage.setUser(guestUser as any);
+        storage.setUser(guestUser);
         authStore.updateUser(guestUser);
         authStore.setEffectiveRole(effectiveRole);
 
@@ -1049,6 +1081,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pendingRoleSelection,
     confirmRoleSelection,
     cancelRoleSelection,
+    pendingGoogleCredential,
+    setPendingGoogleCredential,
+    pendingOrcidTicket,
+    setPendingOrcidTicket,
     effectiveRole: authStore.effectiveRole,
   };
 

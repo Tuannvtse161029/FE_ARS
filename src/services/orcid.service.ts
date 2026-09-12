@@ -9,8 +9,7 @@
 //   Notification · Paper · Payment · PhasedReport · PremiumPackage ·
 //   ProfessionalProfile · Profile · Report · ResearchGroup · ResearchTopic ·
 //   ReviewRequest · Role · Seminar · SeminarParticipant · SharedMaterial ·
-//   SubField · Transaction · User · UserRole · UserToken ·
-//   WithdrawalRequest
+//   SubField · Transaction · User · UserRole · UserToken
 //
 // The live API now exposes POST /api/Admin/orcid-lookup. It accepts a
 // roleRequestId and returns OpenAlex-backed metadata; the frontend must receive

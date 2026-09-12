@@ -21,8 +21,6 @@ export interface Permissions {
   canCreatePost: boolean;
   /** Admin-only flag for the route guard and admin nav menus. */
   canViewAdminPanel: boolean;
-  /** Whether the user has a personal wallet row. Admins and Guests do not. */
-  hasWallet: boolean;
   /**
    * Agent 39 — true when the effective role is 'Guest' (pending Admin
    * approval of a RoleRequest). Sourced from the auth store when present,
@@ -92,17 +90,10 @@ export const usePermissions = (): Permissions => {
     canViewAdminPanel,
   });
 
-  // Wallet row exists for verified, non-Admin users. Admins do not hold a
-  // personal wallet; Guests haven't been approved yet, so they have no
-  // row. Single derivation collapses the old `!isAdmin && !isGuest` check
-  // at every header / modal site.
-  const hasWallet = isVerified && !canViewAdminPanel && !isGuest;
-
   return {
     isVerified,
     canCreatePost,
     canViewAdminPanel,
-    hasWallet,
     isGuest,
   };
 };

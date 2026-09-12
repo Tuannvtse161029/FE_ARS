@@ -63,11 +63,11 @@ const normalizeStatusKey = (raw: string | null | undefined): string => {
   );
 };
 
-export const SeminarDetailModal: React.FC<SeminarDetailModalProps> = ({
+export const SeminarDetailModal = ({
   isOpen,
   onClose,
   seminar,
-}) => {
+}: SeminarDetailModalProps) => {
   const locale = useLocale();
   const isVi = locale === 'vi';
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -292,7 +292,7 @@ export const SeminarDetailModal: React.FC<SeminarDetailModalProps> = ({
 
 // Local FileText glyph — keeps the import surface tight and lets us style
 // it the same way as the other section icons.
-const FileTextGlyph: React.FC = () => (
+const FileTextGlyph= () => (
   <svg
     width="14"
     height="14"

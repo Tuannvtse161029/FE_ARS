@@ -42,7 +42,7 @@ import {
   PlayCircle,
   Wallet,
   CalendarClock,
-  Sparkles,
+  Star,
   AlertTriangle,
 } from 'lucide-react';
 import { profileService } from '../../services/profile.service';
@@ -52,6 +52,7 @@ import type { User } from '../../types/auth';
 import { useI18n } from '../../i18n/I18nContext';
 import { displayAccountTier } from '../../services/user.service';
 import type { AccountItem } from '../../types/admin';
+import { safeHref } from '../../utils/validationRules';
 import styles from './ViewProfileModal.module.css';
 
 export interface ViewProfileModalProps {
@@ -139,10 +140,10 @@ const VERIFICATION_PILL_CLASS: Record<string, string> = {
   Rejected: styles.statusRejected,
 };
 
-export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
+export const ViewProfileModal = ({
   account,
   onClose,
-}) => {
+}: ViewProfileModalProps) => {
   const { t, locale } = useI18n();
   const localeTag: 'en' | 'vi' = locale === 'vi' ? 'vi' : 'en';
 
@@ -333,7 +334,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                 {accountStatus === 'SUSPENDED' ? (
                   <PauseCircle size={12} aria-hidden="true" />
                 ) : accountStatus === 'TRIAL' ? (
-                  <Sparkles size={12} aria-hidden="true" />
+                  <Star size={12} aria-hidden="true" />
                 ) : accountStatus === 'EXPIRED' ? (
                   <AlertTriangle size={12} aria-hidden="true" />
                 ) : (
@@ -985,21 +986,23 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       'Proof of identity',
                     )}
                   </h3>
-                  <a
-                    href={proofDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className={styles.proofLink}
-                  >
-                    <FileText size={14} aria-hidden="true" />
-                    <span>
-                      {t(
-                        'admin.accounts.modal.viewProfile.openProof',
-                        localeTag === 'vi' ? 'Mở tài liệu xác minh trong tab mới' : 'Open proof document in new tab',
-                      )}
-                    </span>
-                    <ExternalLink size={12} aria-hidden="true" />
-                  </a>
+                  {proofDocumentUrl && safeHref(proofDocumentUrl) ? (
+                    <a
+                      href={safeHref(proofDocumentUrl) ?? '#'}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={styles.proofLink}
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      <span>
+                        {t(
+                          'admin.accounts.modal.viewProfile.openProof',
+                          localeTag === 'vi' ? 'Mở tài liệu xác minh trong tab mới' : 'Open proof document in new tab',
+                        )}
+                      </span>
+                      <ExternalLink size={12} aria-hidden="true" />
+                    </a>
+                  ) : null}
                 </section>
               ) : null}
 

@@ -1,0 +1,52 @@
+/* RoleBadgeChip — uppercase mono role tag with accent dot.
+ * Sits inline next to the user identity. Color flows from --profile-accent.
+ */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface-paper);
+  border: 1px solid var(--chip-accent, var(--accent-primary));
+  border-radius: var(--radius-sm);
+  padding: 4px var(--space-3);
+  min-height: 28px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chip-accent, var(--accent-primary));
+  width: fit-content;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chip-accent, var(--accent-primary));
+  flex-shrink: 0;
+}
+
+.text {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.1;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+  color: var(--chip-accent, var(--accent-primary));
+}
+
+.hint {
+  font-family: var(--font-family-ui);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-muted);
+}

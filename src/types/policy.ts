@@ -215,5 +215,5 @@ ARS has zero tolerance for reviewers who:
 - Demand citations to their own papers as a condition of acceptance.
 - Contact authors directly outside the ARS review workflow to negotiate outcomes.
 
-Such behaviour results in immediate removal from the reviewer pool and revocation of any pending payouts.`,
+Such behaviour results in immediate removal from the reviewer pool.`,
 };

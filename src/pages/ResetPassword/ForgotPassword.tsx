@@ -55,7 +55,6 @@ const ForgotPassword = () => {
     try {
       const cleanEmail = data.email.trim();
       await authService.forgotPassword({ email: cleanEmail });
-      sessionStorage.setItem('ars_forgot_email', cleanEmail);
       setSubmittedEmail(cleanEmail);
       navigate(ROUTES.VERIFY_OTP, { state: { email: cleanEmail } });
     } catch (err: unknown) {

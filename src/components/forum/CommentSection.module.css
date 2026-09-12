@@ -233,8 +233,8 @@
 
 .actionBtnUpvoted:hover {
   background-color: rgba(37, 99, 235, 0.16);
-  border-color: var(--ars-blue, #2563eb);
-  color: var(--ars-blue, #2563eb);
+  border-color: var(--ars-blue, #d9a200);
+  color: var(--ars-blue, #d9a200);
 }
 
 .editBlock {

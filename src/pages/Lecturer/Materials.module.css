@@ -1343,6 +1343,32 @@
   border: 1px solid var(--ars-node);
 }
 
+/* "Not linked to any topic/phase" — distinct from sharing info so the user
+ * doesn't read it as "no one is using this". The icon, the explicit phrasing
+ * ("not linked to any topic/phase"), and the info-color palette all signal
+ * "this is about research workflows, not sharing". A `title` tooltip
+ * explains further when the chip is hovered. */
+.materialUsageChipUnlinked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border: 1px dashed color-mix(in srgb, var(--ars-info) 45%, transparent);
+  cursor: help;
+  max-width: 100%;
+  line-height: 1.35;
+}
+
+.materialUsageChipUnlinked svg {
+  flex-shrink: 0;
+}
+
 /* Clickable variant of the usage chip — opens the "where this material is
  * used" modal. The chip looks like the static one at rest, then signals
  * interactivity on hover/focus. */
@@ -1575,19 +1601,68 @@
 .sharedSectionTitle {
   margin: 0;
   font-family: var(--font-family-ui);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--ars-ink);
+  letter-spacing: -0.01em;
 }
 
 .sharedSectionCount {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
+  padding: 3px var(--space-2);
+  background: var(--ars-lecturer-light, #fef3c7);
+  color: var(--ars-lecturer, #7c2d12);
+  border: 1px solid color-mix(in srgb, var(--ars-lecturer, #7c2d12) 25%, transparent);
+  border-radius: var(--radius-pill, 999px);
+  min-width: 1.75rem;
+  text-align: center;
+}
+
+/* ── Shared Materials table card ────────────────────────── */
+.sharedTableCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Header row (column labels). Uses the same grid template as the rows
+   below so columns line up perfectly. */
+.sharedTableHead {
+  display: grid;
+  grid-template-columns:
+    minmax(140px, 1.5fr)   /* Material — compact: icon + title only */
+    minmax(160px, 1.6fr)   /* Shared with */
+    minmax(140px, 1.2fr)   /* Shared at */
+    minmax(160px, 1.3fr)   /* Expires */
+    minmax(110px, 0.9fr)   /* Status */
+    minmax(140px, 1fr);    /* Actions */
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--ars-paper-inset);
-  border-radius: var(--radius-sm);
+  border-bottom: var(--border-thin);
+}
+
+.sharedTableHead > span {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
   color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sharedTableHead > span:last-child {
+  justify-content: flex-end;
 }
 
 .sharedList {
@@ -1596,64 +1671,184 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
+.sharedList > li + li {
+  border-top: 1px solid var(--ars-network);
+}
+
+/* Data row — uses the same grid template as the header. */
 .sharedRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns:
+    minmax(140px, 1.5fr)
+    minmax(160px, 1.6fr)
+    minmax(140px, 1.2fr)
+    minmax(160px, 1.3fr)
+    minmax(110px, 0.9fr)
+    minmax(140px, 1fr);
+  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4);
   background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast);
+  transition: background var(--transition-fast);
 }
 
 .sharedRow:hover {
-  border-color: var(--ars-info);
+  background: var(--ars-paper-inset);
 }
 
-.sharedRowMain {
+.sharedRow > [role="cell"] {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
+  gap: 2px;
   min-width: 0;
 }
 
-.sharedRowTitleRow {
+/* ── Column-specific layout helpers ─────────────────────── */
+.sharedColMaterial {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.sharedRowTitleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--ars-lecturer-light, #fef3c7);
+  color: var(--ars-lecturer, #7c2d12);
+  flex-shrink: 0;
 }
 
 .sharedRowTitle {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
   font-family: var(--font-family-ui);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast);
   flex: 1;
   min-width: 0;
+  display: inline-block;
 }
 
+.sharedRowTitle:hover:not(:disabled) {
+  color: var(--ars-lecturer);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sharedRowTitle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ars-lecturer);
+  border-radius: var(--radius-sm);
+}
+
+.sharedRowTitle:disabled {
+  cursor: default;
+  color: var(--ars-ink-muted);
+}
+
+.sharedRowTitle:disabled:hover {
+  text-decoration: none;
+}
+
+.sharedColStatus {
+  align-items: flex-start;
+}
+
+.sharedColActions {
+  align-items: flex-end;
+}
+
+/* ── Meta column content (label + value pairs) ───────────── */
+.sharedRowMetaLabel {
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+/* Stack the label/value on narrow viewports so the row never clips. */
+.sharedRowColleagueName {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.sharedRowDateValue {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ars-ink);
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sharedRowDaysLeft {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border: 1px solid color-mix(in srgb, var(--ars-success) 35%, transparent);
+  align-self: flex-start;
+}
+
+.sharedRowDaysLeft[data-tone="warning"] {
+  background: var(--ars-warning-bg, #fef3c7);
+  color: var(--ars-warning, #b45309);
+  border-color: color-mix(in srgb, var(--ars-warning, #b45309) 35%, transparent);
+}
+
+.sharedRowMetaMuted {
+  color: var(--ars-ink-muted);
+}
+
+/* ── Status pill (now actually colored via variant class) ─ */
 .sharedRowStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-pill, 999px);
+  /* Fallback (no variant class) — slightly darker than before so it never
+     looks like an inert tag when the row is mid-load. */
   background: var(--ars-paper-inset);
-  color: var(--ars-ink-muted);
+  color: var(--ars-ink);
   border: 1px solid var(--ars-node);
   white-space: nowrap;
+  line-height: 1;
 }
 
 .sharedRowStatusPENDING { background: var(--ars-info-bg); color: var(--ars-info); border-color: color-mix(in srgb, var(--ars-info) 35%, transparent); }
@@ -1664,56 +1859,63 @@
 .sharedRowStatusACTIVE { background: var(--ars-lecturer-light); color: var(--ars-lecturer); border-color: color-mix(in srgb, var(--ars-lecturer) 25%, transparent); }
 .sharedRowStatusARCHIVED { background: var(--status-inactive-surface); color: var(--status-inactive-text); border-color: var(--status-inactive-text); }
 
-.sharedRowMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  font-size: var(--font-size-xs);
-  color: var(--ars-ink);
+/* Status indicator dot — makes the colored pill more readable at a glance. */
+.sharedRowStatusPill::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
-.sharedRowMetaLabel {
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-right: 4px;
-}
-
-.sharedRowMetaMuted {
-  color: var(--ars-ink-muted);
-}
-
+/* ── Action buttons — strong, color-coded ───────────────── */
 .sharedRowActions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .sharedEndBtn,
 .sharedAcceptBtn,
-.sharedDeclineBtn {
+.sharedDeclineBtn,
+.sharedViewBtn,
+.sharedPreviewBtn,
+.sharedOpenBtn {
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md, 6px);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  min-height: 30px;
 }
 
 .sharedEndBtn {
-  background: var(--ars-paper);
-  color: var(--ars-ink);
-  border: 1px solid var(--ars-node);
+  /* End sharing is destructive → filled red. */
+  background: var(--ars-error);
+  color: #ffffff;
+  border-color: var(--ars-error);
 }
 
 .sharedEndBtn:hover:not(:disabled) {
-  background: var(--ars-error-bg);
-  color: var(--ars-error);
-  border-color: var(--ars-error);
+  background: color-mix(in srgb, var(--ars-error) 80%, #000000 20%);
+  border-color: color-mix(in srgb, var(--ars-error) 80%, #000000 20%);
+}
+
+.sharedEndBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
 }
 
 .sharedEndBtn:disabled {
@@ -1723,13 +1925,15 @@
 
 .sharedAcceptDecline {
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 .sharedAcceptBtn {
+  /* Accept → filled green. */
   background: var(--ars-success);
   color: #ffffff;
-  border: 1px solid var(--ars-success);
+  border-color: var(--ars-success);
 }
 
 .sharedAcceptBtn:hover {
@@ -1737,14 +1941,26 @@
   border-color: color-mix(in srgb, var(--ars-success) 80%, #000000 20%);
 }
 
-.sharedDeclineBtn {
-  background: var(--ars-paper);
-  color: var(--ars-error);
-  border: 1px solid color-mix(in srgb, var(--ars-error) 35%, transparent);
+.sharedAcceptBtn:focus-visible {
+  outline: 2px solid var(--ars-success);
+  outline-offset: 2px;
 }
 
-.sharedDeclineBtn:hover {
+.sharedDeclineBtn {
+  /* Decline → red outline (less visually heavy than the End Sharing button). */
+  background: var(--ars-paper);
+  color: var(--ars-error);
+  border: 1px solid color-mix(in srgb, var(--ars-error) 45%, transparent);
+}
+
+.sharedDeclineBtn:hover:not(:disabled) {
   background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+}
+
+.sharedDeclineBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
 }
 
 .sharedOpenBtn {
@@ -2179,29 +2395,32 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .sharedViewBtn,
 .sharedPreviewBtn {
+  /* View / Preview — primary filled (navy/lecturer) so it reads as the
+     primary action next to End Sharing (destructive). */
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--ars-paper);
-  border: 1px solid var(--ars-lecturer, #d97706);
-  border-radius: var(--radius-sm);
-  color: var(--ars-lecturer, #b45309);
-  padding: var(--space-1) var(--space-3);
+  background: var(--ars-lecturer, #7c2d12);
+  color: #ffffff;
+  border: 1px solid var(--ars-lecturer, #7c2d12);
+  border-radius: var(--radius-md, 6px);
+  padding: 6px var(--space-3);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  min-height: 28px;
-  transition: all var(--transition-fast);
+  min-height: 30px;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.sharedViewBtn:hover,
-.sharedPreviewBtn:hover {
-  background: var(--ars-lecturer-light, #fef3c7);
+.sharedViewBtn:hover:not(:disabled),
+.sharedPreviewBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-mid, #92400e);
   border-color: var(--ars-lecturer-mid, #92400e);
 }
 
@@ -2211,17 +2430,72 @@
   outline-offset: 2px;
 }
 
+.sharedViewBtn:disabled,
+.sharedPreviewBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Responsive: collapse the table into stacked rows on narrow viewports.
+   The column header hides; each row re-renders its cells as a 2-column
+   label/value pair list. ───────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .sharedTableHead {
+    display: none;
+  }
+
+  .sharedRow {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .sharedRow > [role="cell"] {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-bottom: 1px dashed var(--ars-network);
+    padding-bottom: var(--space-2);
+  }
+
+  .sharedRow > [role="cell"]:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .sharedColMaterial {
+    align-items: center;
+  }
+
+  .sharedColStatus,
+  .sharedColActions {
+    align-items: center;
+  }
+
+  .sharedRowMetaLabel {
+    flex: 0 0 auto;
+  }
+
+  .sharedRowColleagueName,
+  .sharedRowDateValue {
+    text-align: right;
+  }
+
+  .sharedRowActions {
+    justify-content: flex-end;
+  }
+
+  .sharedRowDaysLeft {
+    align-self: center;
+  }
+}
+
 @media (max-width: 640px) {
   .materialCardActions {
     flex-direction: column;
   }
 
-  .sharedRow {
-    flex-direction: column;
-  }
-
-  .sharedRowActions {
-    width: 100%;
-    justify-content: flex-end;
+  .sharedList {
+    border-radius: var(--radius-md);
   }
 }

@@ -34,11 +34,11 @@ const computeState = (current: number, cap: number) => {
   return 'safe' as const;
 };
 
-export const GoogleMeetCapacityMeter: React.FC<GoogleMeetCapacityMeterProps> = ({
+export const GoogleMeetCapacityMeter = ({
   current,
   cap = GOOGLE_MEET_FREE_PARTICIPANT_CAP,
   compact = false,
-}) => {
+}: GoogleMeetCapacityMeterProps) => {
   const safeCurrent = Math.max(0, Math.floor(current || 0));
   // Google Meet (free account) enforces a hard floor of 100 participants.
   // The BE may return maxParticipants: 1 or null; in those cases the cap

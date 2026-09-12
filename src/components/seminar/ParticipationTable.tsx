@@ -74,7 +74,7 @@ export interface ParticipationTableProps {
   embedded?: boolean;
 }
 
-export const ParticipationTable: React.FC<ParticipationTableProps> = ({ embedded }) => {
+export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
   const locale = useLocale();
   const copy = (en: string, vi: string) => (locale === 'vi' ? vi : en);
 

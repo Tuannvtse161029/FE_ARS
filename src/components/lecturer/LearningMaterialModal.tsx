@@ -25,6 +25,7 @@ import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { learningMaterialService } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
 import type { ResearchTopic } from '../../services/researchTopic.service';
+import { safeHref } from '../../utils/validationRules';
 import {
   MaterialSourcePicker,
   type MaterialSourceValue,
@@ -315,10 +316,10 @@ export const LearningMaterialModal = ({
                       )}
                     </div>
                     <div className={styles.itemActions}>
-                      {m.fileUrl && (
+                      {m.fileUrl && safeHref(m.fileUrl) && (
                         <a
                           className={styles.openLink}
-                          href={m.fileUrl}
+                          href={safeHref(m.fileUrl) ?? '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`Open ${formatTitle(m)} in a new tab`}

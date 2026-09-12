@@ -56,7 +56,7 @@ export interface ConfirmModalProps {
   onClose: () => void;
 }
 
-export const ConfirmModal: React.FC<ConfirmModalProps> = ({
+export const ConfirmModal = ({
   open,
   title,
   description,
@@ -65,7 +65,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelLabel,
   onConfirm,
   onClose,
-}) => {
+}: ConfirmModalProps) => {
   if (!open) return null;
 
   const isDestructive = variant === 'destructive';

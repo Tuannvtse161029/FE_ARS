@@ -4,20 +4,34 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SECURITY (SEC-005): Defense-in-depth Content Security Policy.
+         The .NET BE sets the response header in production; this <meta>
+         is the FE-side fallback so dev/preview/static hosts still benefit
+         from a tightened policy if the header is missing or stripped by a
+         proxy. `script-src` allows `'unsafe-inline'` because index.html
+         still ships the pre-paint theme bootstrap as a classic inline
+         script — moving it to a hashed/nonce script would require the BE
+         to inject the nonce on every render and is out of scope here.
+         Every other directive is locked down. Update this policy in
+         lockstep with index.html script/style sources. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://arsplatform.onrender.com https://*.googleapis.com https://*.google.com https://accounts.google.com https://firebasestorage.googleapis.com wss://*.firebaseio.app; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    />
 
-    <!-- ── Vietnamese-friendly font stack ───────────────────
-         Roboto (preferred) is loaded via the non-blocking `media="print"
-         onload=…` trick below so the stylesheet does NOT block first
-         paint. Browsers fetch it at low priority while the page renders
-         with the next stack entry — Segoe UI on Windows, San Francisco
-         on macOS, Roboto on Android. We swap `media` to `all` once the
-         file is parsed so the rendered text reflows to Roboto without a
-         layout shift.
+    <!-- ── Bilingual font stack (this worker) ───────────────────
+         The platform pairs one typeface per language. Both families
+         ship from Google Fonts with the full weight range we use:
+
+         English (Latin)        → Inter, weights 300-800
+         Vietnamese             → Be Vietnam Pro, weights 300-800
 
          Why not `<link rel="stylesheet">`? A blocking stylesheet on
          `fonts.googleapis.com` / `fonts.gstatic.com` added 5-10 s to
          dev-server cold start when the network was slow. The blocking
-         hint also stalled the Vite HMR client from connecting.
+         hint also stalled the Vite HMR client from connecting. The
+         non-blocking `media="print" onload=…` trick reflows to the
+         loaded fonts without layout shift once the file parses.
 
          Why no `preconnect` to fonts.gstatic.com? We keep a single
          preconnect to fonts.googleapis.com (which serves the CSS) and
@@ -25,32 +39,39 @@
          fonts.gstatic.com connection lazily. This avoids a useless
          preconnect handshake when the network is fast enough that the
          font never matters.
+
+         The `display=swap` query keeps first paint from blocking on
+         the network round-trip and the platform's CSS uses the
+         `--font-family-{en,vi}-{ui,serif,mono}` tokens declared in
+         ars-tokens.css — the `<html lang="…">` attribute (set by the
+         i18n provider) rebinds `--font-family-ui/serif/mono` to the
+         correct per-locale stack automatically.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
       />
     </noscript>
     <meta
       name="description"
       content="ARS is a trusted academic platform for research discovery, structured paper review, seminars, and role-based collaboration."
     />
-    <!-- Default browser chrome colour (this worker).
+    <!-- Default browser chrome colour — yellow project primary.
          Two media-gated tags cover the OS-level light/dark preference
          so the address bar matches on a fresh visit. A third tag
          (no media) is overwritten by `useThemeToggle` once the React
          app mounts and the user's explicit choice wins. -->
-    <meta name="theme-color" content="#f8fafc" />
-    <meta name="theme-color" content="#10172b" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#fff8e8" />
+    <meta name="theme-color" content="#0d1320" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fff8e8" media="(prefers-color-scheme: light)" />
     <script>
       // ── Pre-paint theme bootstrap (this worker) ────────────────
       // Synchronously apply the user's last-chosen theme to <html>

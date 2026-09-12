@@ -1,0 +1,76 @@
+/* PhaseReportStatusTabs — pill-style tab bar for the Phase Reports page.
+ * Mirrors GroupStatusFilterTabs styling: pills + count badges, role accent
+ * (--ars-lecturer) on the selected pill. Tokenised; no hard-coded hex.
+ */
+
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+/* Individual tab button */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-ui);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.tab:hover:not(.tabSelected) {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  border-color: var(--ars-node);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* Selected tab — uses the lecturer accent */
+.tabSelected {
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  border-color: color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Count badge inside each tab */
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+  border-radius: 999px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.countSelected {
+  background: color-mix(in srgb, var(--ars-lecturer) 18%, transparent);
+  color: var(--ars-lecturer);
+}

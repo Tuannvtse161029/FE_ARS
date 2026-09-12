@@ -76,16 +76,22 @@
   --ars-network: rgba(45, 53, 97, 0.08);  /* Subtle constellation lines */
   --ars-node: rgba(45, 53, 97, 0.12);     /* Node backgrounds */
 
-  /* Accent — ARS Blue (used across all roles) */
-  --ars-blue: #007aff;
-  --ars-blue-action: #005bb5;
-  --ars-blue-mid: #004b95;
-  --ars-blue-light: #dceeff;
-
-  /* Accent — ARS Yellow (primary brand accent — yellow / white / black) */
+  /* ── ARS Yellow (project primary accent) ──────────────── */
+  /* The platform's brand colour is yellow / white / black. These tokens
+     are the single source of truth — legacy `--ars-blue*` aliases below
+     forward to the same yellow scale so old modules inherit the new
+     theme without per-file rewrites. */
   --ars-yellow: #f5b400;
   --ars-yellow-hover: #d9a200;
   --ars-yellow-soft: #fff3cc;
+
+  /* Legacy blue aliases — retained only so old code that references
+     `--ars-blue*` keeps compiling. They all forward to the yellow scale
+     so the platform no longer presents a blue brand colour anywhere. */
+  --ars-blue: var(--ars-yellow);
+  --ars-blue-action: var(--ars-yellow-hover);
+  --ars-blue-mid: var(--accent-hover);
+  --ars-blue-light: var(--ars-yellow-soft);
 
   /* ── Role Accent Colors ─────────────────────────────────── */
   /* Researcher — warm amber/ochre (academic ink, paper) */
@@ -106,9 +112,9 @@
   /* Graduate Student — slate blue (potential, growth) */
   --ars-gradstudent: #1e3a8a;
   --ars-gradstudent-light: #dbeafe;
-  --ars-gradstudent-mid: #1d4ed8;
+  --ars-gradstudent-mid: #c78e12;
 
-  /* Admin — violet (system oversight) */
+  /* Admin — yellow (project brand) */
   --ars-admin: var(--accent-primary);
   --ars-admin-light: var(--surface-selected);
   --ars-admin-mid: var(--accent-hover);
@@ -120,23 +126,45 @@
   --ars-warning-bg: #fef3c7;
   --ars-error: #991b1b;
   --ars-error-bg: #fee2e2;
-  --ars-info: #1e40af;
+  --ars-info: #70490e;
   --ars-info-bg: #dbeafe;
 
   /* ── Typography ─────────────────────────────────────────── */
-  /* Primary: Roboto for UI, numbers, labels.
-     Roboto is chosen as the platform typeface because it carries the full
-     set of Vietnamese-specific code points (ă, â, ê, ô, ơ, ư and every
-     tone combination) and pairs naturally with Georgia for editorial
-     headings. The system fallbacks (Segoe UI, Helvetica, Arial) keep text
-     readable before Roboto has finished downloading, and Arial itself has
-     complete Vietnamese coverage so an offline user still sees correct
-     diacritics. Weights 300-800 mirror the design system's weight scale. */
-  --font-family-ui: 'Roboto', 'Segoe UI', Helvetica, Arial, sans-serif;
-  /* Serif: Georgia for editorial headings, section titles */
-  --font-family-serif: Georgia, 'Times New Roman', serif;
-  /* Mono: Consolas for IDs, metadata, citation-style text */
-  --font-family-mono: 'Consolas', 'Courier New', monospace;
+  /* The platform uses ONE typeface for English and ANOTHER for Vietnamese.
+     The choice is centralised here so every component inherits the same
+     pair — no per-call-site font override exists below this layer.
+
+     English (Latin) stack:
+       Inter — modern, neutral geometric sans. Ships complete weight
+       range (300–800) so headings, body, captions, and editorial text
+       all read from the same family. Selected because its letterforms
+       stay legible at 11 px caption size and at 48 px hero size.
+
+     Vietnamese stack:
+       Be Vietnam Pro — purpose-built for Vietnamese typography. Tone
+       marks (ă, â, ê, ô, ơ, ư and their tone-marked variants) sit on
+       a tuned vertical rhythm that generic Latin fonts do not provide;
+       the alternative — forcing Roboto/Inter to render Vietnamese — has
+       diacritics that ride too high or low and break line rhythm in
+       paragraph copy.
+
+     The `lang` attribute on <html> (set by the i18n provider) switches
+     which stack is active. Components read `--font-family-ui`,
+     `--font-family-serif`, and `--font-family-mono` and the cascade
+     picks the right per-locale value automatically — see the
+     `[lang="en"]` / `[lang="vi"]` selectors further down. */
+  --font-family-en-ui: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-family-en-serif: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-family-en-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+
+  --font-family-vi-ui: 'Be Vietnam Pro', 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-family-vi-serif: 'Be Vietnam Pro', 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-family-vi-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+
+  /* Default (Latin) — overridden per locale below. */
+  --font-family-ui: var(--font-family-en-ui);
+  --font-family-serif: var(--font-family-en-serif);
+  --font-family-mono: var(--font-family-en-mono);
 
   --font-size-xs: 0.6875rem;   /* 11px — metadata, annotations */
   --font-size-sm: 0.8125rem;   /* 13px — labels, secondary text */
@@ -389,12 +417,33 @@
 
 }
 
+/* ── Per-locale font stacks ───────────────────────────── */
+/* The <html lang="…"> attribute is set by the i18n provider on locale
+   change (see I18nContext.applyDocumentLocale). The two selectors below
+   rebind the three font-family tokens to the matching locale stack so
+   every `font-family: var(--font-family-ui)` declaration in the codebase
+   automatically follows the active language without a per-component
+   prop or context. */
+html[lang='en'],
+:root[lang='en'] {
+  --font-family-ui: var(--font-family-en-ui);
+  --font-family-serif: var(--font-family-en-serif);
+  --font-family-mono: var(--font-family-en-mono);
+}
+
+html[lang='vi'],
+:root[lang='vi'] {
+  --font-family-ui: var(--font-family-vi-ui);
+  --font-family-serif: var(--font-family-vi-serif);
+  --font-family-mono: var(--font-family-vi-mono);
+}
+
 /* ── Intentional theme variants ─────────────────────────── */
 /* ARS Academic Midnight / Deep Research Constellation (Dark Mode)
    Designed specifically for Academic Research Sharing Platform (ARS):
    - Eye-comfortable deep slate/obsidian canvas (#090d16) for sustained reading
    - Crisp, high-contrast typography (WCAG AAA readability on long research abstracts)
-   - Professional academic blue (#3b82f6) and amber gold (#f59e0b) for scholarly metrics
+   - Scholarly yellow (#facc15) and amber gold (#f59e0b) for metrics & accents
    - Layered surface hierarchy: deep obsidian canvas -> slate paper cards -> raised modals
    - Full compatibility tokens: seamlessly recolors tables, cards, toolbars, badges, and text
 */
@@ -416,7 +465,7 @@
   --surface-inset: #060910;
   --surface-paper: #121a2d;
   --surface-paper-muted: #18233c;
-  --surface-selected: rgba(59, 130, 246, 0.18);
+  --surface-selected: rgba(250, 204, 21, 0.22);
   --surface-inverse: #f8fafc;
 
   /* Discussion & Forum Surfaces */
@@ -456,17 +505,17 @@
   --border-subtle: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
 
-  /* Accents & Focus Rings */
-  --accent-primary: #3b82f6;
-  --action-primary: #3b82f6;
-  --accent-hover: #60a5fa;
-  --action-primary-hover: #60a5fa;
+  /* Accents & Focus Rings — yellow (project primary) */
+  --accent-primary: #facc15;
+  --action-primary: #facc15;
+  --accent-hover: #eab308;
+  --action-primary-hover: #eab308;
   --accent-ochre: #f59e0b;
   --accent-sage: #10b981;
   --accent-teal: #06b6d4;
   --accent-indigo: #818cf8;
   --accent-coral: #f43f5e;
-  --focus-ring: #3b82f6;
+  --focus-ring: #facc15;
   --shadow-color: rgba(0, 0, 0, 0.65);
 
   /* Medal tiers (dark) — saturated, slightly luminous */
@@ -545,8 +594,8 @@
   --status-danger-text: #f87171;
   --status-danger-surface: rgba(239, 68, 68, 0.18);
   --status-critical: #f87171;
-  --status-info-text: #60a5fa;
-  --status-info-surface: rgba(59, 130, 246, 0.18);
+  --status-info-text: #fbbf24;
+  --status-info-surface: rgba(250, 204, 21, 0.18);
   --status-neutral-text: var(--ink-secondary);
   --status-neutral-surface: var(--surface-sunken);
   --status-draft-text: #a8b4d4;
@@ -567,12 +616,16 @@
   --ars-ink-muted: #94a3b8;
   --ars-network: rgba(255, 255, 255, 0.08);
   --ars-node: rgba(255, 255, 255, 0.14);
-  --ars-blue: #3b82f6;
-  --ars-blue-action: #2563eb;
-  --ars-blue-mid: #1d4ed8;
-  --ars-blue-light: rgba(59, 130, 246, 0.18);
-  --ars-yellow: #f59e0b;
-  --ars-yellow-hover: #d97706;
+  /* Yellow (project primary) — dark-mode shades, kept consistent with the
+     light-mode yellow scale so modules that read `--ars-blue*` inherit
+     the new theme without per-file rewrites. */
+  --ars-blue: #facc15;
+  --ars-blue-action: #eab308;
+  --ars-blue-mid: #ca8a04;
+  --ars-blue-light: rgba(250, 204, 21, 0.18);
+  --ars-yellow: #facc15;
+  --ars-yellow-hover: #eab308;
+  --ars-yellow-soft: rgba(250, 204, 21, 0.18);
   --ars-yellow-soft: rgba(245, 158, 11, 0.18);
 
   /* Role-specific Accents for Dark Mode */
@@ -588,9 +641,9 @@
   --ars-lecturer-light: rgba(244, 63, 94, 0.18);
   --ars-lecturer-mid: #e11d48;
 
-  --ars-gradstudent: #60a5fa;
+  --ars-gradstudent: #eab308;
   --ars-gradstudent-light: rgba(96, 165, 250, 0.18);
-  --ars-gradstudent-mid: #3b82f6;
+  --ars-gradstudent-mid: #facc15;
 
   --ars-admin: #818cf8;
   --ars-admin-light: rgba(129, 140, 248, 0.18);
@@ -602,7 +655,7 @@
   --ars-warning-bg: rgba(245, 158, 11, 0.18);
   --ars-error: #f87171;
   --ars-error-bg: rgba(239, 68, 68, 0.18);
-  --ars-info: #60a5fa;
+  --ars-info: #eab308;
   --ars-info-bg: rgba(59, 130, 246, 0.18);
 
   /* ── Overlay & Dialog (dark mode) ───────────────────────── */

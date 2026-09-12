@@ -1,0 +1,394 @@
+/* PhaseReportDetailModal — Lecturer click-through detail surface for a
+ * single PhasedReport. Embeds the inline grading form (EvaluateReportForm)
+ * so the lecturer can review without opening a second modal.
+ *
+ * Design direction:
+ *  - Role accent: --ars-lecturer
+ *  - Tokenised surfaces, borders, shadows
+ *  - Overdue deadline highlighted with --status-danger-text/surface
+ *  - Header + meta + form + footer stacked in a single card
+ */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.card {
+  background: var(--ars-paper);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 760px;
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  text-align: left;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ars-network);
+  padding-bottom: var(--space-3);
+  gap: var(--space-3);
+}
+
+.titleBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.iconCircle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.titleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.title {
+  font-family: var(--font-family-serif);
+  font-size: 1.35rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-soft);
+  font-family: var(--font-family-ui);
+}
+
+.statusColumn {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--ars-ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Meta strip ─────────────────────────────────────────── */
+.metaStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+  min-width: 0;
+}
+
+.metaItem svg {
+  color: var(--ars-ink-muted);
+  flex-shrink: 0;
+}
+
+.metaLabel {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+.metaValue {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaItemDanger svg {
+  color: var(--ars-error);
+}
+
+.metaItemDanger .metaValue {
+  color: var(--ars-error);
+}
+
+.overdueTag {
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+  color: var(--ars-error);
+}
+
+/* ── Prior evaluation block ─────────────────────────────── */
+.priorBlock {
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.priorLabel {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+
+.priorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.priorCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.priorCellWide {
+  grid-column: 1 / -1;
+}
+
+.priorCellLabel {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+
+.priorCellValue {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+/* ── Form section ───────────────────────────────────────── */
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+  padding-top: var(--space-4);
+}
+
+.sectionLabel {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--ars-network);
+  padding-top: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.footerLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.footerRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.noFilePill,
+.filePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--space-2);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+
+.noFilePill {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-muted);
+}
+
+.filePill {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border: 1px solid color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+.updateDeadlineBtn {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-lecturer);
+  color: var(--ars-lecturer);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.updateDeadlineBtn:hover:not(:disabled) {
+  background: var(--ars-lecturer-light);
+}
+
+.updateDeadlineBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.updateDeadlineBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .card {
+    padding: var(--space-4);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .statusColumn {
+    align-self: flex-start;
+  }
+
+  .metaStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .priorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updateDeadlineBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+}

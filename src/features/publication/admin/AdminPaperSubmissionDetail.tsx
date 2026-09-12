@@ -586,14 +586,14 @@ export const AdminPaperSubmissionDetail = () => {
             <div
               className={adminStyles.actionZone}
               style={{
-                border: '1px solid ' + (isAuthorshipAllowed(paper) ? '#10b981' : '#3b82f6'),
+                border: '1px solid ' + (isAuthorshipAllowed(paper) ? '#10b981' : '#facc15'),
                 background: isAuthorshipAllowed(paper) ? '#f0fdf4' : '#eff6ff',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {isAuthorshipAllowed(paper) ? <CheckCircle2 size={20} color="#059669" /> : <ShieldCheck size={20} color="#2563eb" />}
-                  <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: isAuthorshipAllowed(paper) ? '#065f46' : '#1e40af' }}>
+                  {isAuthorshipAllowed(paper) ? <CheckCircle2 size={20} color="#059669" /> : <ShieldCheck size={20} color="#d9a200" />}
+                  <h3 className={adminStyles.actionZoneTitle} style={{ margin: 0, color: isAuthorshipAllowed(paper) ? '#065f46' : '#70490e' }}>
                     Researcher authorship verification
                   </h3>
                 </div>
@@ -638,7 +638,7 @@ export const AdminPaperSubmissionDetail = () => {
                     <button
                       type="button"
                       className={shared.button}
-                      style={{ background: '#2563eb' }}
+                      style={{ background: '#d9a200' }}
                       disabled={busy}
                       onClick={() => void handleAllowVerification()}
                     >

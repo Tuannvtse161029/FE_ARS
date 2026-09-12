@@ -82,7 +82,7 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
 export const Register = () => {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, pendingOrcidTicket, setPendingOrcidTicket } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
     {}
@@ -173,19 +173,11 @@ export const Register = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — pull the opaque ORCID
-  // registration ticket out of sessionStorage when the page mounts and
-  // whenever the browser returns with `?orcid=verified` (i.e. the BE
-  // callback page redirected here). The ticket is required for Reviewer
-  // submissions and optional for every other role.
+  // SECURITY (SEC-003): pull the opaque ORCID registration ticket out of
+  // AuthContext React state (set by OrcidCallback) instead of sessionStorage.
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem('orcidRegistrationTicket');
-      setOrcidTicket(stored && stored.trim() ? stored : null);
-    } catch {
-      setOrcidTicket(null);
-    }
-  }, []);
+    setOrcidTicket(pendingOrcidTicket ?? null);
+  }, [pendingOrcidTicket]);
 
   const handleStartOrcid = async () => {
     setOrcidStartError(null);
@@ -360,24 +352,17 @@ export const Register = () => {
 
       await authService.registerUser(payload);
 
-      // Store registered email for OTP page reload safety
-      try {
-        sessionStorage.setItem('ars_registered_email', form.email.trim());
-      } catch {
-        /* ignore */
-      }
+      // SECURITY (SEC-003): The registered email flows through React-Router
+      // location.state only — never sessionStorage — so a same-origin XSS
+      // cannot pivot to a takeover of the verification flow.
 
       // Clear any session artifacts so the user is purely in unauthenticated verification state
       authService.logout();
 
-      // FE_ORCID_CONNECT_CALLBACK_FIX_TICKET — the ticket has done its
-      // job (it reached the BE inside `registerUser`). Drop it from
-      // sessionStorage so a refresh after the OTP page cannot replay it.
-      try {
-        sessionStorage.removeItem('orcidRegistrationTicket');
-      } catch {
-        /* ignore */
-      }
+      // SECURITY (SEC-003): the ORCID ticket has done its job (it reached
+      // the BE inside `registerUser`). Drop it from React state so a
+      // refresh after the OTP page cannot replay it.
+      setPendingOrcidTicket(null);
       setOrcidTicket(null);
 
       // Trigger sending registration verification email / OTP

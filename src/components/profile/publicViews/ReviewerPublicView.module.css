@@ -1,0 +1,155 @@
+/* ReviewerPublicView — forest-green trust ledger
+ * Each section card uses --profile-accent for its left rule (parent sets it).
+ */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.identityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.identityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.identityLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.identityValue {
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5em;
+}
+
+.orcid {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--status-success-text, var(--ars-success, #047857));
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.orcid code {
+  background: transparent;
+  color: inherit;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.availabilityPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid currentColor;
+}
+
+.tone-positive {
+  color: var(--status-success-text, var(--ars-success, #047857));
+  background: var(--status-success-surface, var(--ars-success-bg, #d1fae5));
+  border-color: var(--status-success-text, var(--ars-success, #047857));
+}
+
+.tone-attention {
+  color: var(--status-warning-text, var(--ars-warning, #92400e));
+  background: var(--status-warning-surface, var(--ars-warning-bg, #fef3c7));
+  border-color: var(--status-warning-text, var(--ars-warning, #92400e));
+}
+
+.tone-muted {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-paper);
+  border: 1px solid var(--profile-accent, var(--accent-primary));
+  color: var(--profile-accent, var(--accent-primary));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-height: 28px;
+}
+
+.empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--surface-paper);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+  max-width: 80ch;
+}
+
+@media (max-width: 720px) {
+  .identityGrid,
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+}

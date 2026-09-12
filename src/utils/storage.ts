@@ -8,13 +8,11 @@ const rememberBucket = (): Storage => (storage.getRememberMe() ? localStorage : 
 // We force-define `storage` object first, then call it from helpers.
 export const storage = {
   getToken: (): string | null => {
-    return (
-      (storage.getRememberMe()
-        ? localStorage.getItem(STORAGE_KEYS.TOKEN)
-        : sessionStorage.getItem(STORAGE_KEYS.TOKEN)) ||
-      localStorage.getItem(STORAGE_KEYS.TOKEN) ||
-      sessionStorage.getItem(STORAGE_KEYS.TOKEN)
-    );
+    // Read deterministically from the bucket matching the active Remember Me
+    // flag. Cross-bucket fallback chains (localStorage || sessionStorage)
+    // previously let a missing primary bucket silently borrow from the wrong
+    // session -- logout wipes both buckets via clearAll() so this is safe.
+    return rememberBucket().getItem(STORAGE_KEYS.TOKEN);
   },
 
   setToken: (token: string): void => {
@@ -27,12 +25,8 @@ export const storage = {
   },
 
   getUser: (): User | null => {
-    const raw =
-      (storage.getRememberMe()
-        ? localStorage.getItem(STORAGE_KEYS.USER)
-        : sessionStorage.getItem(STORAGE_KEYS.USER)) ||
-      localStorage.getItem(STORAGE_KEYS.USER) ||
-      sessionStorage.getItem(STORAGE_KEYS.USER);
+    // Mirror getToken(): deterministic bucket selection -- see comment there.
+    const raw = rememberBucket().getItem(STORAGE_KEYS.USER);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as User;

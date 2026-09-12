@@ -75,6 +75,7 @@ import { OpenTopicModal } from '../../components/lecturer/OpenTopicModal';
 import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
+import { safeHref } from '../../utils/validationRules';
 import styles from './GroupDetail.module.css';
 
 interface BannerState {
@@ -1029,10 +1030,10 @@ export const LecturerGroupDetail = (): JSX.Element => {
                         <span className={styles.materialDesc}>{m.description}</span>
                       )}
                     </div>
-                    {m.fileUrl && (
+                    {m.fileUrl && safeHref(m.fileUrl) && (
                       <a
                         className={styles.openLink}
-                        href={m.fileUrl}
+                        href={safeHref(m.fileUrl) ?? "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

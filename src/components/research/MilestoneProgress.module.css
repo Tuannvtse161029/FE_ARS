@@ -66,7 +66,7 @@
 }
 
 .countRow[data-status='submitted'] .countValue {
-  color: #007aff; /* matches design system Primary Accent */
+  color: #e2ad2f; /* matches design system Primary Accent */
 }
 
 .countRow[data-status='rejected'] .countValue {

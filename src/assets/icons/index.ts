@@ -3,7 +3,6 @@
 // Usage: import { Search } from '@/assets/icons/SearchIcon';
 
 export { Search } from 'lucide-react';
-export { Wallet } from 'lucide-react';
 export { Bell } from 'lucide-react';
 export { Home } from 'lucide-react';
 export { MessageSquare } from 'lucide-react';

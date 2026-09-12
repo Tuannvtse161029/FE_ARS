@@ -17,6 +17,24 @@ export interface TableToolbarProps {
   refreshLabel?: string;
   // Right-side slot for additional filter <select>s the page wants to keep.
   filters?: ReactNode;
+  /**
+   * Hide the refresh button. Some pages already render a refresh action in
+   * their PageHeader actions slot and want to keep the toolbar clean
+   * (e.g. Lecturer Phase Reports, where the duplicate would confuse the
+   * user).
+   */
+  hideRefresh?: boolean;
+  /**
+   * Optional className applied to the toolbar root. Lets callers override
+   * layout (e.g. make the search field fill the row when it's the only
+   * control in the toolbar).
+   */
+  className?: string;
+  /**
+   * Optional className applied to the search field wrapper. Use this to
+   * widen / constrain the search field without leaking globals.
+   */
+  searchFieldClassName?: string;
 }
 
 // Shared toolbar for every business-data table. The contract is:
@@ -36,9 +54,23 @@ export const TableToolbar = ({
   searchPlaceholder = 'Search…',
   refreshLabel = 'Refresh',
   filters,
+  hideRefresh = false,
+  className,
+  searchFieldClassName,
 }: TableToolbarProps) => (
-  <div className={styles.toolbar} data-testid={TABLE_TOOLBAR_TESTID}>
-    <label className={styles.searchField}>
+  <div
+    className={
+      className ? `${styles.toolbar} ${className}` : styles.toolbar
+    }
+    data-testid={TABLE_TOOLBAR_TESTID}
+  >
+    <label
+      className={
+        searchFieldClassName
+          ? `${styles.searchField} ${searchFieldClassName}`
+          : styles.searchField
+      }
+    >
       <span className={styles.searchIcon}>
         <Search size={14} aria-hidden />
       </span>
@@ -54,20 +86,22 @@ export const TableToolbar = ({
       />
     </label>
     <div className={styles.toolbarFilters}>{filters}</div>
-    <button
-      type="button"
-      className={styles.refreshBtn}
-      onClick={onRefresh}
-      disabled={isRefreshing}
-      data-testid={TABLE_REFRESH_BTN_TESTID}
-    >
-      <RefreshCw
-        size={13}
-        className={isRefreshing ? styles.spinning : undefined}
-        aria-hidden
-      />
-      {isRefreshing ? 'Refreshing…' : refreshLabel}
-    </button>
+    {!hideRefresh && (
+      <button
+        type="button"
+        className={styles.refreshBtn}
+        onClick={onRefresh}
+        disabled={isRefreshing}
+        data-testid={TABLE_REFRESH_BTN_TESTID}
+      >
+        <RefreshCw
+          size={13}
+          className={isRefreshing ? styles.spinning : undefined}
+          aria-hidden
+        />
+        {isRefreshing ? 'Refreshing…' : refreshLabel}
+      </button>
+    )}
   </div>
 );
 

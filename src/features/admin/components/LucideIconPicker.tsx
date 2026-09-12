@@ -35,13 +35,13 @@ const stripPrefix = (raw: string): string => {
   return raw.startsWith(PREFIX) ? raw.slice(PREFIX.length) : raw;
 };
 
-export const LucideIconPicker: React.FC<LucideIconPickerProps> = ({
+export const LucideIconPicker = ({
   value,
   onChange,
   id = 'lucideIconPickerSearch',
   gridId,
   gridAriaLabel,
-}) => {
+}: LucideIconPickerProps) => {
   const { t, locale } = useI18n();
   const [query, setQuery] = useState<string>('');
 
@@ -158,7 +158,7 @@ export const LucideIconPicker: React.FC<LucideIconPickerProps> = ({
               >
                 <IconComp
                   size={24}
-                  color={isSelected ? '#1d4ed8' : '#475569'}
+                  color={isSelected ? '#c78e12' : '#475569'}
                 />
                 <span>{locale === 'vi' ? item.labelVi : item.labelEn}</span>
               </button>

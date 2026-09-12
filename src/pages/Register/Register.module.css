@@ -125,12 +125,13 @@
 .nativeInput {
   width: 100%;
   min-height: 48px;
-  padding: 18px var(--space-4) 6px;
+  padding: 12px var(--space-4);
   background-color: var(--control-bg);
   border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   font-family: inherit;
+  line-height: 1.5;
   color: var(--ink-primary);
   transition:
     border-color var(--transition-fast),
@@ -164,12 +165,13 @@
 .nativeSelect {
   width: 100%;
   min-height: 48px;
-  padding: 18px 40px 6px var(--space-4);
+  padding: 12px 40px 12px var(--space-4);
   background-color: var(--control-bg);
   border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   font-family: inherit;
+  line-height: 1.5;
   color: var(--ink-primary);
   transition:
     border-color var(--transition-fast),

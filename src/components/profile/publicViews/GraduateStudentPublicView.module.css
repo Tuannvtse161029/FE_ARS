@@ -1,0 +1,354 @@
+/* GraduateStudentPublicView — slate-blue research journey log */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.identityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.identityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.identityLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.identityValue {
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5em;
+}
+
+.groupName {
+  font-weight: var(--font-weight-semibold);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.orcidCode {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--status-success-text, var(--ars-success, #047857));
+}
+
+/* Phase strip */
+
+.phaseStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.phaseNode {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.phaseConnector {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.phaseLine {
+  flex: 1;
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.phaseDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.dot-positive {
+  color: var(--status-success-text, var(--ars-success, #047857));
+  background: var(--status-success-surface, var(--ars-success-bg, #d1fae5));
+}
+
+.dot-muted {
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.dot-attention {
+  color: var(--status-warning-text, var(--ars-warning, #92400e));
+  background: var(--status-warning-surface, var(--ars-warning-bg, #fef3c7));
+}
+
+.dot-rejected {
+  color: var(--status-danger-text, var(--ars-error, #991b1b));
+  background: var(--status-danger-surface, var(--ars-error-bg, #fee2e2));
+}
+
+.phaseCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  max-width: 180px;
+}
+
+.phaseNumber {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.phaseTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  line-height: var(--line-height-tight);
+}
+
+.phaseStatus {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-positive {
+  color: var(--status-success-text, var(--ars-success, #047857));
+}
+
+.status-muted {
+  color: var(--text-muted);
+}
+
+.status-attention {
+  color: var(--status-warning-text, var(--ars-warning, #92400e));
+}
+
+.status-rejected {
+  color: var(--status-danger-text, var(--ars-error, #991b1b));
+}
+
+/* Activity grid */
+
+.activityGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.activityFull {
+  grid-column: 1 / -1;
+}
+
+.activityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-paper);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.activityLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.activityValue {
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5em;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-top: var(--space-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-paper);
+  border: 1px solid var(--profile-accent, var(--accent-primary));
+  color: var(--profile-accent, var(--accent-primary));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-height: 28px;
+}
+
+/* Contribution markers */
+
+.markerList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.marker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-paper);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
+.markerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.marker-positive .markerDot {
+  background: var(--status-success-text, var(--ars-success, #047857));
+}
+
+.marker-muted .markerDot {
+  background: var(--text-muted);
+}
+
+.marker-attention .markerDot {
+  background: var(--status-warning-text, var(--ars-warning, #92400e));
+}
+
+.marker-rejected .markerDot {
+  background: var(--status-danger-text, var(--ars-error, #991b1b));
+}
+
+.markerLabel {
+  flex: 1;
+  color: var(--ink-primary);
+}
+
+.marker-positive .markerLabel {
+  color: var(--status-success-text, var(--ars-success, #047857));
+  font-weight: var(--font-weight-semibold);
+}
+
+.marker-muted .markerLabel {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.markerCount {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--profile-accent, var(--accent-primary));
+}
+
+/* Metrics */
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+/* Footer */
+
+.empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--surface-paper);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+  max-width: 80ch;
+}
+
+@media (max-width: 720px) {
+  .identityGrid {
+    grid-template-columns: 1fr;
+  }
+  .activityGrid {
+    grid-template-columns: 1fr;
+  }
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+}
