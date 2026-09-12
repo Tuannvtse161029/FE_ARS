@@ -1,4 +1,21 @@
-import { useMemo, useState, useEffect, type CSSProperties } from 'react';
+// ProfessionalProfileTab — body content for the "Professional" tab on the
+// Profile page. Holds the Major Field / Subfield selector, reviewer
+// availability toggle, and academic metrics block.
+//
+// This component used to live as a stand-alone page at
+// /reviewer/professional-profile. After we consolidated the Professional
+// Profile surface into the unified /profile page (with three tabs:
+// Account / Professional / Public), the page shell, breadcrumb, role
+// guard, and route were stripped away. The data fetching, role-aware
+// copy, and academic metrics block below are unchanged so existing
+// tests and behaviour continue to work.
+//
+// Owner-only: the Profile page renders this tab only when the visitor
+// is the authenticated user AND their role owns a professional profile
+// (Researcher / Reviewer / Lecturer). Graduate Students, Admins, and
+// visitors do not see the tab.
+
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useI18n } from '../../i18n/I18nContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReviewerAvailability, useReviewerProfiles } from '../../hooks/useReviewerProfiles';
@@ -6,50 +23,35 @@ import { reviewerService } from '../../services/reviewer.service';
 import { userService } from '../../services/user.service';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
 import { parseEntityId } from '../../utils/entityId';
-import styles from './ProfessionalProfile.module.css';
+import styles from './ProfessionalProfileTab.module.css';
 
 // ── Role-keyed configuration ───────────────────────────────────────────────
-// The page is now reachable by three workspace roles (Researcher, Reviewer,
-// Lecturer). Each role gets its own eyebrow / accent / page subtitle / which
-// sections are rendered.
+// Same per-role surface as the original page. Each role gets its own
+// accent / page subtitle / which sections are rendered.
 //
-//   Reviewer    — full surface: availability + expertise + academic metrics
-//   Researcher  — expertise + academic metrics (no availability: researchers
-//                 aren't routed review requests)
-//   Lecturer    — expertise only (no availability AND no academic metrics:
-//                 lecturers aren't indexed on H-Index / citations)
-//
-// Adding a fourth role later means appending a single entry here, plus a
-// matching CSS accent class in ProfessionalProfile.module.css.
+//   Reviewer    — availability + expertise + academic metrics
+//   Researcher  — expertise + academic metrics (no availability)
+//   Lecturer    — expertise only (no availability AND no academic metrics)
 type SupportedRoleKey = 'Researcher' | 'Reviewer' | 'Lecturer';
 
 interface RoleSurfaceConfig {
   eyebrow: string;
-  pageTitle: string;
   pageSubtitle: string;
   badgeLabel: string;
-  /** Primary accent token — drives header rule + avatar + buttons. */
   accentVar: string;
-  /** Mid-tone accent token — drives hover states. */
   accentMidVar: string;
-  /** Light accent token — drives the role badge background. */
   accentLightVar: string;
-  /** Whether to render the Availability section (Reviewer-only). */
   showAvailability: boolean;
-  /** Whether to render the Academic Metrics section (Reviewer + Researcher). */
   showAcademicMetrics: boolean;
-  /** Fallback avatar initial when the user's name is empty. */
   fallbackInitial: string;
-  /** Copy for the Major/Sub field section heading + form. */
   expertiseHeading: string;
   expertiseSubheading: string;
   saveButtonLabel: string;
 }
 
-const buildRoleSurfaceConfig = (t: (k: string) => string): Record<SupportedRoleKey, RoleSurfaceConfig> => ({
+const buildRoleSurfaceConfig = (t: (k: string, fb?: string) => string): Record<SupportedRoleKey, RoleSurfaceConfig> => ({
   Reviewer: {
     eyebrow: t('profile.professional.eyebrow.reviewer'),
-    pageTitle: t('profile.professional.title'),
     pageSubtitle: t('profile.professional.subtitle.reviewer'),
     badgeLabel: t('common.role.Reviewer'),
     accentVar: 'var(--ars-reviewer, #065f46)',
@@ -64,7 +66,6 @@ const buildRoleSurfaceConfig = (t: (k: string) => string): Record<SupportedRoleK
   },
   Researcher: {
     eyebrow: t('profile.professional.eyebrow.researcher'),
-    pageTitle: t('profile.professional.title'),
     pageSubtitle: t('profile.professional.subtitle.researcher'),
     badgeLabel: t('common.role.Researcher'),
     accentVar: 'var(--ars-researcher, #b45309)',
@@ -79,7 +80,6 @@ const buildRoleSurfaceConfig = (t: (k: string) => string): Record<SupportedRoleK
   },
   Lecturer: {
     eyebrow: t('profile.professional.eyebrow.lecturer'),
-    pageTitle: t('profile.professional.title'),
     pageSubtitle: t('profile.professional.subtitle.lecturer'),
     badgeLabel: t('common.role.Lecturer'),
     accentVar: 'var(--ars-lecturer, #7c2d12)',
@@ -113,7 +113,7 @@ const getInitials = (value: string, fallback: string): string =>
 
 /**
  * Narrow an arbitrary string from the auth store / BE into one of the
- * supported role keys for this page.
+ * supported role keys for this tab.
  */
 function resolveRoleKey(role: string | null | undefined): SupportedRoleKey {
   if (role === 'Researcher' || role === 'Lecturer' || role === 'Reviewer') {
@@ -122,16 +122,29 @@ function resolveRoleKey(role: string | null | undefined): SupportedRoleKey {
   return 'Reviewer';
 }
 
-export const ProfessionalProfile = () => {
+export interface ProfessionalProfileTabProps {
+  /** Optional override for the user id under inspection. Defaults to the
+   *  authenticated user. Visitors are never routed here so this stays 1:1
+   *  with the authenticated user in practice. */
+  userIdOverride?: number | null;
+}
+
+export const ProfessionalProfileTab = ({
+  userIdOverride,
+}: ProfessionalProfileTabProps) => {
   const { user } = useAuth();
-  const authenticatedUserId = user?.userId;
+  const authenticatedUserId = userIdOverride ?? user?.userId ?? null;
   const { t, locale } = useI18n();
   const ROLE_SURFACE_CONFIG = useMemo(() => buildRoleSurfaceConfig(t), [t]);
   const roleKey = resolveRoleKey(user?.role);
   const roleConfig = ROLE_SURFACE_CONFIG[roleKey];
 
   const { profiles, isLoading, error, refetch } = useReviewerProfiles();
-  const { isAvailable, isLoading: isAvailabilityLoading } = useReviewerAvailability(authenticatedUserId);
+  // useReviewerAvailability takes `number | undefined` — null means
+  // "no user", which the hook already handles internally.
+  const { isAvailable, isLoading: isAvailabilityLoading } = useReviewerAvailability(
+    authenticatedUserId ?? undefined,
+  );
   const professionalProfile = useMemo(
     () => profiles.find((profile) => profile.userId === authenticatedUserId) ?? null,
     [profiles, authenticatedUserId],
@@ -158,7 +171,7 @@ export const ProfessionalProfile = () => {
   }, [professionalProfile?.userId, professionalProfile?.majorFieldId, professionalProfile?.subFieldId]);
 
   useEffect(() => {
-    if (authenticatedUserId === undefined) return;
+    if (authenticatedUserId === null || authenticatedUserId === undefined) return;
 
     let cancelled = false;
     userService.getById(authenticatedUserId).then((nextAccount) => {
@@ -203,7 +216,7 @@ export const ProfessionalProfile = () => {
 
   const handleSaveExpertise = async (event: import('react').FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!professionalProfile || authenticatedUserId === undefined || !isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise) {
+    if (!professionalProfile || authenticatedUserId === null || authenticatedUserId === undefined || !isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise) {
       if (!isExpertiseValid) {
         setExpertiseFeedback({ type: 'error', message: t('profile.professional.expertise.validation.required') });
       }
@@ -321,28 +334,14 @@ export const ProfessionalProfile = () => {
   }
 
   return (
-    <div className={styles.page} style={accentStyle} data-role={roleKey}>
-      <div className={styles.breadcrumbs}>{t('common.home')} <span>/</span> {t('profile.professional.breadcrumb')}</div>
-      <header className={styles.pageHeader}>
-        <div>
-          <p className={styles.eyebrow} data-testid="professional-profile-eyebrow">
-            {roleConfig.eyebrow}
-          </p>
-          <h1>{roleConfig.pageTitle}</h1>
-          <p className={styles.subtitle}>{roleConfig.pageSubtitle}</p>
-        </div>
-        <button className={styles.secondaryButton} onClick={handleRetry} disabled={isRetrying}>
-          {t('profile.professional.refresh')}
-        </button>
-      </header>
-
-      <section className={styles.profileCard} aria-labelledby="profile-summary-title">
+    <div className={styles.tabBody} style={accentStyle} data-role={roleKey}>
+      <section className={styles.profileCard} aria-labelledby="professional-profile-summary-title">
         <div className={styles.identity}>
           <div className={styles.avatar} aria-label={`${fullName} avatar`} data-testid="professional-profile-avatar">
             {getInitials(fullName, roleConfig.fallbackInitial)}
           </div>
           <div>
-            <h2 id="profile-summary-title">{fullName}</h2>
+            <h2 id="professional-profile-summary-title">{fullName}</h2>
             <p>{email}</p>
             <span
               className={styles.reviewerBadge}
@@ -446,9 +445,8 @@ export const ProfessionalProfile = () => {
           </div>
         </section>
       ) : null}
-
     </div>
   );
 };
 
-export default ProfessionalProfile;
+export default ProfessionalProfileTab;

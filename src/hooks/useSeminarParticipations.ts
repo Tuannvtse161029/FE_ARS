@@ -157,9 +157,24 @@ export function useSeminarParticipations(): UseSeminarParticipationsResult {
       const status = mapParticipantStatus(
         participant?.invitationStatus ?? sem.invitationStatus ?? null,
       );
+      // `submitted` is computed from EITHER endpoint — the
+      // participant-scoped `/my-seminars` payload OR the invitation-
+      // scoped `/my-invitations` payload. The hook unions both because:
+      //   • `/my-seminars` historically stripped feedback flags per
+      //     ticket §20 (see `seminarService.getMySeminars`); the
+      //     service still does, so `participant.feedbackSubmittedAt`
+      //     is usually null.
+      //   • `/my-invitations` keeps the flag (see `getMyInvitations`'s
+      //     pass-through mapping), so `sem.feedbackSubmittedAt` is
+      //     the authoritative source.
+      // Without this union the table would mark already-submitted
+      // participants as "not submitted" and surface the "Feedback
+      // window closed" pill instead of "View feedback".
       const submitted =
         Boolean(participant?.feedbackSubmittedAt) ||
-        Boolean(participant?.feedbackJson && participant.feedbackJson.trim().length > 0);
+        Boolean(participant?.feedbackJson && participant.feedbackJson.trim().length > 0) ||
+        Boolean(sem.feedbackSubmittedAt) ||
+        Boolean(sem.feedbackJson && sem.feedbackJson.trim().length > 0);
       return {
         seminarId: sem.seminarId,
         title: sem.title ?? sem.content?.split('\n')[0]?.slice(0, 80) ?? `Seminar #${sem.seminarId}`,

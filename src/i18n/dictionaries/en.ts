@@ -2723,6 +2723,26 @@ export const dictionary: Dictionary = {
     'badges.profile.tabs.forum': 'Forum',
     'badges.profile.tabs.overview': 'Overview',
     'badges.profile.tabs.publications': 'Publications',
+    // Profile tab strip — three top-level tabs (Account / Professional /
+    // Public). Replaces the older four-tab "overview / forum / publications
+    // / badges" strip after we consolidated the separate
+    // /reviewer/professional-profile surface into /profile. Keys live
+    // under `profile.tabs.*` so they don't clash with badge tab labels.
+    'profile.tabs.account': 'Profile',
+    'profile.tabs.accountHint': 'Edit your personal details',
+    'profile.tabs.professional': 'Professional Profile',
+    'profile.tabs.professionalHint': 'Manage your research expertise and metrics',
+    'profile.tabs.public': 'Public Profile',
+    'profile.tabs.publicHint': 'How others see your profile',
+    // Shown above each tab body so the user knows what they're looking at.
+    'profile.tabBody.accountTitle': 'Profile details',
+    'profile.tabBody.accountSubtitle': 'Update your contact information, bio, and keywords. Only the fields you change are saved.',
+    'profile.tabBody.professionalTitle': 'Professional Profile',
+    'profile.tabBody.professionalSubtitle': 'Manage your research expertise, availability, and academic metrics.',
+    'profile.tabBody.publicTitle': 'Public Profile',
+    'profile.tabBody.publicSubtitle': 'This is how other members of the ARS platform see your profile.',
+    'profile.tabBody.publicVisitorTitle': 'Public profile',
+    'profile.tabBody.publicVisitorSubtitle': 'The information this member has chosen to share publicly.',
     'badges.section.howToEarn': 'How to earn:',
     'badges.section.locked': 'Locked',
     'badges.section.progress': 'Progress {percent}%',

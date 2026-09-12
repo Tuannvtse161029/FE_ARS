@@ -365,8 +365,21 @@ export const Register = () => {
       setPendingOrcidTicket(null);
       setOrcidTicket(null);
 
-      // Trigger sending registration verification email / OTP
-      void authService.sendRegistrationOtp(form.email.trim());
+      // IMPORTANT: do NOT call `sendRegistrationOtp` here.
+      //
+      // `registerUser` already triggers the registration verification
+      // OTP email server-side (POST /api/Auth/register emits it as
+      // part of the registration flow). Hitting POST /api/Auth/resend-otp
+      // again right after registration causes the BE to send a SECOND
+      // OTP email — and worse, the second OTP overwrites / invalidates
+      // the first, so whichever code the user types may fail with
+      // "Invalid or expired OTP".
+      //
+      // If the user genuinely needs a new code (typo, expired, lost
+      // email), they can use the "Resend code" button on
+      // /verify-email — that path is wired through
+      // `authService.sendRegistrationOtp` from
+      // EmailVerificationLanding.handleResendCode.
 
       // Navigate to /verify-email with the registered email in state
       navigate(ROUTES.VERIFY_EMAIL, {

@@ -43,7 +43,7 @@ import {
   ShieldCheck as PoliciesIcon,
   Receipt as AnnualFeesIcon,
   Upload,
-  BriefcaseBusiness,
+  UserRound,
   Home as HomeIcon,
   ClipboardList as AssignmentsIcon,
   CalendarCheck as SeminarParticipationIcon,
@@ -579,7 +579,11 @@ export const MainLayout = () => {
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
           { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: copy('Review Assignments', 'Nhiệm vụ phản biện'), icon: <AssignmentsIcon size={20} /> },
-          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
+          // Profile — single sidebar entry for every role. The page renders
+          // three tabs (Account / Professional / Public) so users no longer
+          // see two parallel "Profile" links and have to figure out which is
+          // which.
+          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
         ];
       case 'Lecturer':
         return [
@@ -596,11 +600,12 @@ export const MainLayout = () => {
           // to deep-link a lecturer straight into participations.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
 
-          // Lecturer Professional Profile — Major Field + Subfield selector.
-          // Lecturers don't own availability or academic metrics (those
-          // are Reviewer / Researcher surfaces), so the page renders in
-          // its trimmed-down "expertise only" mode.
-          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
+          // Profile — single sidebar entry for every role. The page renders
+          // three tabs (Account / Professional / Public) so users no longer
+          // see two parallel "Profile" links and have to figure out which is
+          // which. Lecturers get the "Professional" tab in trimmed-down
+          // mode (expertise only — no availability, no academic metrics).
+          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
 
           // PhasedReport core flow — read top-to-bottom in workflow order:
           // define a Topic → assign Groups → manage Phases inline in the
@@ -632,16 +637,17 @@ export const MainLayout = () => {
           // the same data through its "My Participations" in-page tab.
           // Duplicating it as a sibling sidebar entry would add no value
           // and just push the researcher-relevant entries (Submissions,
-          // Professional Profile) further down the list. Route + page are
-          // still wired in App.tsx so a deep-link still works.
+          // Profile) further down the list. Route + page are still wired
+          // in App.tsx so a deep-link still works.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: copy('My Research Papers', 'Bài báo của tôi'), icon: <PapersIcon size={20} /> },
 
-          // Researcher Professional Profile — Major Field + Subfield selector
-          // plus the academic metrics block (H-Index, citations, publication
-          // count). Researchers don't own reviewer availability, so that
-          // section is hidden on this surface.
-          { to: ROUTES.PROFESSIONAL_PROFILE, label: copy('Professional Profile', 'Hồ sơ chuyên môn'), icon: <BriefcaseBusiness size={20} />, end: true },
+          // Profile — single sidebar entry for every role. The page renders
+          // three tabs (Account / Professional / Public). The Professional
+          // tab hides the reviewer availability toggle for Researchers and
+          // keeps the academic metrics block (H-Index, citations,
+          // publication count).
+          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
         ];
     }
   };

@@ -11,6 +11,20 @@ export const API_BASE_URL =
 export const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
 
 /**
+ * Seminar feedback window — the participant-side deadline for submitting
+ * feedback after a seminar ends. After this many hours past `endTime`,
+ * the FE hides the Submit feedback button (showing a "window closed"
+ * pill instead) and the setup modal surfaces the same value to the
+ * lecturer so they know how long invitees have to respond.
+ *
+ * Centralised here so ParticipationTable (gate), SeminarFeedbackSetupModal
+ * (copy), and any future module derive the deadline from the same source.
+ */
+export const SEMINAR_FEEDBACK_WINDOW_HOURS = 72;
+export const SEMINAR_FEEDBACK_WINDOW_MS =
+  SEMINAR_FEEDBACK_WINDOW_HOURS * 60 * 60 * 1000;
+
+/**
  * BE gap — temporary FE placeholder for `Seminar.endTime` on create.
  *
  * The current BE contract (Swagger `POST /api/Seminar` §9, ticket

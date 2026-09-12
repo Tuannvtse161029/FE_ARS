@@ -319,6 +319,47 @@
   gap: var(--space-2, 8px);
 }
 
+/* 72-hour feedback window notice — single source of truth lives in
+   `utils/seminarFeedbackWindow.ts`. Two variants share a base; the
+   lecturer sees a yellow "open" tone while the window is still live
+   and a neutral "closed" tone once `endTime + 72h` has passed. */
+.feedbackWindowBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-xs, 0.8125rem);
+  line-height: 1.45;
+  margin-bottom: var(--space-3, 12px);
+  border: 1px solid transparent;
+}
+
+.feedbackWindowBanner > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.feedbackWindowBannerOpen {
+  background: #fffbe6;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.feedbackWindowBannerOpen > svg {
+  color: #b45309;
+}
+
+.feedbackWindowBannerClosed {
+  background: var(--ars-surface-muted, #f8fafc);
+  border-color: var(--ars-network, #e2e8f0);
+  color: var(--ars-ink-muted, #64748b);
+}
+
+.feedbackWindowBannerClosed > svg {
+  color: var(--ars-ink-muted, #64748b);
+}
+
 .alertBox {
   padding: var(--space-3, 12px);
   border-radius: var(--radius-md, 8px);

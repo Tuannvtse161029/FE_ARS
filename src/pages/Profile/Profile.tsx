@@ -29,7 +29,7 @@
 //   can re-enter edit mode to make further changes.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { Clock, RefreshCw, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RequestAdditionalRoleModal } from '../../components/profile/RequestAdditionalRoleModal';
@@ -44,6 +44,7 @@ import {
   type ProfileUpdateRequest,
 } from '../../types/profile';
 import { formatDate } from '../../utils/formatDate';
+import { ROUTES } from '../../utils/constants';
 import { validateVietnameseName } from '../../utils/validationRules';
 import { useFollowCounts } from '../../hooks/useFollowers';
 import { followerService } from '../../services/follower.service';
@@ -51,7 +52,9 @@ import { FollowListModal } from '../../components/profile/FollowListModal';
 import { ProfilePublicationsSection } from '../../components/profile/ProfilePublicationsSection';
 import { ProfileForumSection } from '../../components/profile/ProfileForumSection';
 import { ProfileSectionTabs, type ProfileTabId } from '../../components/profile/ProfileSectionTabs';
+import { ProfessionalProfileTab } from '../../components/profile/ProfessionalProfileTab';
 import { ProfileBadgesSection } from '../../components/profile/ProfileBadgesSection';
+import { useSearchParams } from 'react-router-dom';
 import { FeaturedFlairPicker } from '../../components/profile/FeaturedFlairPicker';
 import { useAuthorFlair } from '../../hooks/useAuthorFlair';
 import { useProfileExtras } from '../../hooks/useProfileExtras';
@@ -284,6 +287,19 @@ function draftFromProfile(p: {
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
+
+  // ── Admin role gate ─────────────────────────────────────────────
+  // The Admin role does not own a profile surface — the sidebar entry
+  // is hidden and the header dropdown skips "My Profile & Role
+  // Upgrades" (see MainLayout.tsx). This guard handles deep-links
+  // and stale tabs that bypass the chrome: any time an authenticated
+  // Admin lands on `/profile` (own or another user), bounce them to
+  // `/admin` so they cannot accidentally edit their account details
+  // or inspect member profiles through this surface.
+  if (user?.role === 'Admin') {
+    return <Navigate to={ROUTES.ADMIN} replace />;
+  }
+
   const { t, locale } = useI18n();
   const authenticatedUserId = user?.userId ?? null;
   const parsedTargetId = routeUserId ? Number(routeUserId) : null;
@@ -496,11 +512,38 @@ export const Profile = () => {
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [keywordDraft, setKeywordDraft] = useState<string>('');
 
-  // ── Tab navigation (Phase 2.4) ────────────────────────────────
-  // The Profile page splits its content into Overview / Forum /
-  // Publications / Badges tabs. Owner starts on Overview; visitor
-  // defaults to Overview as well so the profile reads as one document.
-  const [activeTab, setActiveTab] = useState<ProfileTabId>('overview');
+  // ── Tab navigation (Phase 3) ─────────────────────────────────
+  // The Profile page splits its content into three top-level tabs:
+  //   account     — Personal profile details + edit form (owner only)
+  //   professional — Research expertise / availability / metrics
+  //                 (Reviewer / Researcher / Lecturer, owner only)
+  //   public      — Role-specific public view + forum posts +
+  //                 publications + badges. Visible to both owner and
+  //                 visitor; visitors land here by default.
+  //
+  // The page also accepts `?tab=account|professional|public` so the
+  // legacy /reviewer/professional-profile redirect
+  // (`/profile?tab=professional`) lands on the right tab. We resolve
+  // the requested tab once on mount and let the tab strip drive the
+  // rest via `setActiveTab`. If the requested tab is not visible to the
+  // current viewer (e.g. a visitor asked for `tab=professional`), the
+  // tab strip falls back to the first visible tab automatically.
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const isEligibleProfessionalRole = roleName === 'Researcher'
+    || roleName === 'Reviewer'
+    || roleName === 'Lecturer';
+  // Owners get all eligible tabs; visitors only get `public`.
+  const visibleTabs: ProfileTabId[] = isOwner
+    ? (isEligibleProfessionalRole ? ['account', 'professional', 'public'] : ['account', 'public'])
+    : ['public'];
+  const resolveInitialTab = (): ProfileTabId => {
+    if (requestedTab === 'account' && visibleTabs.includes('account')) return 'account';
+    if (requestedTab === 'professional' && visibleTabs.includes('professional')) return 'professional';
+    if (requestedTab === 'public' && visibleTabs.includes('public')) return 'public';
+    return visibleTabs[0];
+  };
+  const [activeTab, setActiveTab] = useState<ProfileTabId>(resolveInitialTab);
 
   // unlockedMedals comes from the existing flair fetch above. We just
   // count unlocked ones for the badge chip on the Badges tab.
@@ -962,59 +1005,9 @@ export const Profile = () => {
         </div>
       )}
 
-      {mode === 'view' ? (
-        <>
-          {/* Owner-only account contact strip — visitors never see personal details */}
-          {isOwner && (
-            <AccountContactStrip
-              savedDraft={savedDraft}
-              displayEmail={displayEmail}
-            />
-          )}
-
-          {/* Role-specific public profile view */}
-          {roleName === 'Reviewer' && (
-            <ReviewerPublicView
-              data={publicProfileData}
-              displayName={displayName}
-              showPrivacyFootnote={!isOwner}
-            />
-          )}
-          {roleName === 'Researcher' && (
-            <ResearcherPublicView
-              data={publicProfileData}
-              displayName={displayName}
-              showPrivacyFootnote={!isOwner}
-            />
-          )}
-          {roleName === 'Lecturer' && (
-            <LecturerPublicView
-              data={publicProfileData}
-              displayName={displayName}
-              showPrivacyFootnote={!isOwner}
-              locale={locale ?? 'en'}
-            />
-          )}
-          {roleName === 'Graduate Student' && (
-            <GraduateStudentPublicView
-              data={publicProfileData}
-              displayName={displayName}
-              showPrivacyFootnote={!isOwner}
-            />
-          )}
-          {/* Fallback for Admin or unknown roles — keep the original view */}
-          {(roleName === 'Admin' || !roleName) && (
-            <ProfileView
-              draft={savedDraft}
-              avatarInitials={avatarInitials}
-              updatedAt={profile?.updatedAt}
-              isEmpty={isEmptyProfile}
-              profile={profile}
-              isOwner={isOwner}
-            />
-          )}
-        </>
-      ) : (
+      {mode === 'edit' ? (
+        // Edit form replaces all tab content so the owner can't navigate
+        // away mid-edit. The tabs strip is hidden below in edit mode too.
         <ProfileEditForm
           draft={draft}
           errors={validationErrors}
@@ -1034,61 +1027,150 @@ export const Profile = () => {
           onSubmit={handleSave}
           onCancel={handleCancelEdit}
         />
-      )}
+      ) : null}
 
-      {/* Phase 2.4 — Tab navigation (view-only) + per-tab sections.
-          The identity card / banners / ProfileView stay mounted above the
-          tabs so they read as the profile's "masthead"; the tabs only swap
-          the four lower sections (Overview / Forum / Publications / Badges).
-          In edit mode we render the edit form instead and skip tabs so the
-          user can't navigate away mid-edit. */}
+      {/* Phase 3 — Three-tab profile strip (Account / Professional /
+          Public). The identity card / banners / ORCID panel / trial
+          countdown stay mounted above the tabs so they read as the
+          profile's "masthead"; the tabs swap the body content below.
+          Edit mode above replaces the tabs entirely so the owner can't
+          navigate away mid-edit.
+
+          The public tab is visible to both owner and visitor; the
+          account and professional tabs are owner-only and the strip
+          hides them automatically when `!isOwner` or when the role
+          doesn't own a professional profile. */}
       {targetUserId && mode === 'view' ? (
         <>
           <ProfileSectionTabs
             activeTab={activeTab}
             onChange={setActiveTab}
+            showProfessional={isOwner && isEligibleProfessionalRole}
             badgeCount={unlockedBadgeCount}
           />
 
-          <div
-            id="profile-tabpanel-overview"
+          {/* ── Account tab (owner only) ─────────────────────────
+              Owner's private surface: account contact strip + the
+              full ProfileView (which includes the owner-only phone /
+              address / DOB / gender columns). The Edit button on the
+              page header flips `mode` to 'edit' and replaces this panel
+              with the ProfileEditForm above. */}
+          <section
+            id="profile-tabpanel-account"
             role="tabpanel"
-            hidden={activeTab !== 'overview'}
-            data-testid="profile-tabpanel-overview"
+            hidden={activeTab !== 'account'}
+            data-testid="profile-tabpanel-account"
           >
-            {/*
-              The overview tab intentionally renders nothing below the
-              ProfileView — ProfileView is the overview content, already
-              mounted above. This empty panel keeps the tabpanel contract
-              honest (every tab has a panel).
-            */}
-          </div>
+            {activeTab === 'account' && isOwner ? (
+              <>
+                <AccountContactStrip
+                  savedDraft={savedDraft}
+                  displayEmail={displayEmail}
+                />
+                <ProfileView
+                  draft={savedDraft}
+                  avatarInitials={avatarInitials}
+                  updatedAt={profile?.updatedAt}
+                  isEmpty={isEmptyProfile}
+                  profile={profile}
+                  isOwner={isOwner}
+                />
+              </>
+            ) : null}
+          </section>
 
-          {activeTab === 'publications' ? (
-            <ProfilePublicationsSection
-              publications={publications}
-              isLoading={isExtrasLoading}
-              error={extrasError}
-              isOwner={isOwner}
-            />
-          ) : null}
+          {/* ── Professional tab (owner + role-eligible only) ────
+              Mounts the ProfessionalProfileTab body which owns its own
+              loading / error / empty states. The strip hides this tab
+              entirely for visitors and for owners whose role doesn't
+              own a professional profile (Graduate Student, Admin). */}
+          <section
+            id="profile-tabpanel-professional"
+            role="tabpanel"
+            hidden={activeTab !== 'professional'}
+            data-testid="profile-tabpanel-professional"
+          >
+            {activeTab === 'professional' && isOwner && isEligibleProfessionalRole ? (
+              <ProfessionalProfileTab userIdOverride={targetUserId} />
+            ) : null}
+          </section>
 
-          {activeTab === 'forum' ? (
-            <ProfileForumSection
-              posts={forumPosts}
-              isLoading={isExtrasLoading}
-              error={extrasError}
-              isOwner={isOwner}
-            />
-          ) : null}
+          {/* ── Public tab (everyone) ────────────────────────────
+              Visitors land here by default; owners use it to preview
+              what other users see. The AccountContactStrip is
+              intentionally NOT rendered here — the public surface
+              never reveals private contact details. */}
+          <section
+            id="profile-tabpanel-public"
+            role="tabpanel"
+            hidden={activeTab !== 'public'}
+            data-testid="profile-tabpanel-public"
+          >
+            {activeTab === 'public' ? (
+              <>
+                {roleName === 'Reviewer' ? (
+                  <ReviewerPublicView
+                    data={publicProfileData}
+                    displayName={displayName}
+                    showPrivacyFootnote={!isOwner}
+                  />
+                ) : null}
+                {roleName === 'Researcher' ? (
+                  <ResearcherPublicView
+                    data={publicProfileData}
+                    displayName={displayName}
+                    showPrivacyFootnote={!isOwner}
+                  />
+                ) : null}
+                {roleName === 'Lecturer' ? (
+                  <LecturerPublicView
+                    data={publicProfileData}
+                    displayName={displayName}
+                    showPrivacyFootnote={!isOwner}
+                    locale={locale ?? 'en'}
+                  />
+                ) : null}
+                {roleName === 'Graduate Student' ? (
+                  <GraduateStudentPublicView
+                    data={publicProfileData}
+                    displayName={displayName}
+                    showPrivacyFootnote={!isOwner}
+                  />
+                ) : null}
+                {/* Fallback for Admin or unknown roles — keep the
+                    original view. We force `isOwner={false}` so private
+                    contact columns never leak into the public surface. */}
+                {roleName === 'Admin' || !roleName ? (
+                  <ProfileView
+                    draft={savedDraft}
+                    avatarInitials={avatarInitials}
+                    updatedAt={profile?.updatedAt}
+                    isEmpty={isEmptyProfile}
+                    profile={profile}
+                    isOwner={false}
+                  />
+                ) : null}
 
-          {activeTab === 'badges' ? (
-            <ProfileBadgesSection
-              userId={targetUserId}
-              isOwner={isOwner}
-              medals={unlockedMedals}
-            />
-          ) : null}
+                <ProfilePublicationsSection
+                  publications={publications}
+                  isLoading={isExtrasLoading}
+                  error={extrasError}
+                  isOwner={isOwner}
+                />
+                <ProfileForumSection
+                  posts={forumPosts}
+                  isLoading={isExtrasLoading}
+                  error={extrasError}
+                  isOwner={isOwner}
+                />
+                <ProfileBadgesSection
+                  userId={targetUserId}
+                  isOwner={isOwner}
+                  medals={unlockedMedals}
+                />
+              </>
+            ) : null}
+          </section>
         </>
       ) : null}
 

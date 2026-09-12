@@ -43,8 +43,10 @@ import {
 import {
   formatDisplayDate,
   formatDisplayTime,
+  formatDisplayDateTime,
   parseApiDateTimeAsUtc,
 } from '../../utils/datetime';
+import { getSeminarFeedbackWindow } from '../../utils/seminarFeedbackWindow';
 import {
   useAcceptInvitation,
   useDeclineInvitation,
@@ -272,6 +274,74 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
       );
     }
 
+    // COMPLETED must be checked BEFORE INVITED — otherwise a seminar that
+    // ended while the participant still has `INVITED` status (i.e. they
+    // accepted but never joined) renders the Participate/Reject buttons
+    // and never exposes the Submit feedback / View feedback affordance.
+    // The bug surfaced because the effective status (derived from
+    // `endTime`) flipped to COMPLETED but the participant row was still
+    // `INVITED`, so the user saw "Join on Google Meet" on a finished
+    // seminar and no way to submit feedback.
+    if (effective === 'COMPLETED') {
+      // Once feedback has been submitted we always allow the participant
+      // to read it back — the 72-hour window only gates NEW submissions.
+      if (row.participantSubmitted) {
+        return (
+          <div className={styles.actionsCell}>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
+              onClick={() => openViewFeedback(row)}
+            >
+              <ClipboardList size={14} aria-hidden />
+              View feedback
+            </button>
+          </div>
+        );
+      }
+
+      // Gate new submissions on the 72-hour post-endTime window.
+      // After the window closes we replace the Submit feedback button
+      // with a read-only pill so the participant can still see why the
+      // action is unavailable (and when it closed), without leaving the
+      // row visually empty.
+      const feedbackWindow = getSeminarFeedbackWindow(row.endTime);
+      if (feedbackWindow.state === 'closed') {
+        return (
+          <div className={styles.actionsCell}>
+            <span className={styles.cellSub}>
+              {copy(
+                'Feedback window closed. The 72-hour submission period has ended.',
+                'Đã đóng cửa sổ phản hồi. Thời hạn gửi phản hồi 72 giờ đã kết thúc.'
+              )}
+              {feedbackWindow.deadline && (
+                <>
+                  {' '}
+                  {copy(
+                    `Closed at ${formatDisplayDateTime(feedbackWindow.deadline, locale)}.`,
+                    `Đã đóng lúc ${formatDisplayDateTime(feedbackWindow.deadline, locale)}.`
+                  )}
+                </>
+              )}
+            </span>
+          </div>
+        );
+      }
+
+      return (
+        <div className={styles.actionsCell}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+            onClick={() => openSubmitFeedback(row)}
+          >
+            <ClipboardList size={14} aria-hidden />
+            Submit feedback
+          </button>
+        </div>
+      );
+    }
+
     // PENDING invitation → Accept / Reject.
     if (row.invitationStatus === 'PENDING') {
       return (
@@ -342,38 +412,24 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
       );
     }
 
-    // COMPLETED → Submit Feedback / View Feedback.
-    if (effective === 'COMPLETED') {
-      if (row.participantSubmitted) {
-        return (
-          <div className={styles.actionsCell}>
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
-              onClick={() => openViewFeedback(row)}
-            >
-              <ClipboardList size={14} aria-hidden />
-              View feedback
-            </button>
-          </div>
-        );
-      }
+    // SUBMITTED → just a read-only confirmation pill (the View/Submit
+    // feedback branch is handled up top once the effective status flips
+    // to COMPLETED, which is the only state that exposes feedback).
+    if (row.invitationStatus === 'SUBMITTED') {
       return (
         <div className={styles.actionsCell}>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-            onClick={() => openSubmitFeedback(row)}
-          >
-            <ClipboardList size={14} aria-hidden />
-            Submit feedback
-          </button>
+          <span className={styles.cellSub}>
+            {copy(
+              'You joined this seminar. Feedback will unlock once it ends.',
+              'Bạn đã tham gia hội thảo này. Phản hồi sẽ mở khi buổi kết thúc.'
+            )}
+          </span>
         </div>
       );
     }
 
-    // UPCOMING / IN PROGRESS → Participate (only meaningful while INVITED;
-    // defensive default for SUBMITTED-before-completion rows).
+    // Fallback (UPCOMING / IN PROGRESS without an explicit invitation
+    // status) → Participate.
     return (
       <div className={styles.actionsCell}>
         <div className={styles.actionBtnTooltip} data-tooltip="Open the Google Meet link">
