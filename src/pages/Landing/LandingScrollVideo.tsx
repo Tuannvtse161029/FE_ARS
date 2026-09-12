@@ -1352,26 +1352,21 @@ const Spotlight = ({ className = '', children }: SpotlightProps) => {
 
 
 
+
+
+
+  // CRITICAL: this component MUST render the children it receives. An
+  // earlier patch left `return null;` in place while the JSX wrapper
+  // was commented out, which silently dropped the entire CTA section
+  // (the only place `<Spotlight>` is used). Restore the wrapper so
+  // the pointer-tracking variables --mx / --my actually drive a
+  // visible gradient on a DOM element, and the children reach the
+  // page.
   return (
-
-
-
     <div ref={ref} className={`${styles.spotlight} ${className}`}>
-
-
-
       {children}
-
-
-
     </div>
-
-
-
   );
-
-
-
 };
 
 
@@ -2013,6 +2008,10 @@ const HeroAct = ({ t }: { t: (k: string, f: string, p?: Record<string, string | 
 
 
     <section
+
+
+
+      id="hero"
 
 
 
@@ -3272,6 +3271,16 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
 
+  // BUG FIX: progress was driven from `stageRef` (the sticky child,
+  // height = 100vh - 72px). Because that child is shorter than the
+  // viewport, `total = rect.height - vh` was negative and
+  // `usePanProgress` reported progress = 0 forever -- the rail never
+  // panned. Track the parent act (height = 118vh) so progress
+  // 0 -> 1 cleanly as the visitor scrolls through the section.
+  const actRef = useRef<HTMLElement>(null);
+
+
+
   const stageRef = useRef<HTMLDivElement>(null);
 
 
@@ -3280,7 +3289,7 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
 
-  const progress = usePanProgress(stageRef);
+  const progress = usePanProgress(actRef);
 
 
 
@@ -3425,6 +3434,10 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
       id="substance"
+
+
+
+      ref={actRef}
 
 
 
@@ -4560,171 +4573,6 @@ const Footer = ({ t }: { t: (k: string, f: string, p?: Record<string, string | n
 
 
 
-// ════════════════════════════════════════════════════════════════
-
-
-
-// ── ScrollProgressRail ─────────────────────────────────────────
-// A small vertical rail on the right edge that names the current
-// pinned act. The four pinned acts each occupy 100vh of stage but
-// 140–170vh of scroll range (see min-height comments on the act
-// CSS), so the rail keeps the visitor oriented while the parallax
-// layers run and gives them a one-click jump to whichever scene
-// they want. Respects prefers-reduced-motion: fades only, no slide.
-interface ScrollRailSection {
-  labelledBy: string;
-  num: string;
-  titleKey: string;
-  titleFallback: string;
-}
-
-const SCROLL_RAIL_SECTIONS: ScrollRailSection[] = [
-  { labelledBy: 'hero-title',      num: '01', titleKey: 'landing.railHeroTitle',      titleFallback: 'Hero' },
-  { labelledBy: 'tension-title',   num: '02', titleKey: 'landing.railTensionTitle',   titleFallback: 'The problem' },
-  { labelledBy: 'turn-title',      num: '03', titleKey: 'landing.railTurnTitle',      titleFallback: 'Editorial workflow' },
-  { labelledBy: 'substance-title', num: '04', titleKey: 'landing.railSubstanceTitle', titleFallback: 'Workspaces' },
-];
-
-interface ScrollProgressRailProps {
-  t: (key: string, fallback: string) => string;
-}
-
-const ScrollProgressRail = ({ t }: ScrollProgressRailProps) => {
-  const [activeLabelledBy, setActiveLabelledBy] = useState<string | null>(null);
-  const [pinnedVisible, setPinnedVisible] = useState(false);
-
-  useEffect(() => {
-    // Resolve once on mount: each pinned act is a <section> labelled
-    // by a stable heading id, so we walk up from the heading to the
-    // section and observe that element.
-    const sections = SCROLL_RAIL_SECTIONS
-      .map((item) => {
-        const heading = document.getElementById(item.labelledBy);
-        const el = heading?.closest('section');
-        return el ? { item, el } : null;
-      })
-      .filter((s): s is { item: ScrollRailSection; el: HTMLElement } => s !== null);
-
-    if (sections.length === 0) return;
-
-    // Compute the active section by which one contains the viewport's
-    // vertical center. IntersectionObserver's thresholds with a tight
-    // rootMargin leave a "dead zone" where no entry fires at all,
-    // which left the active state stuck on the previous section. A
-    // pure scroll-position lookup is more reliable for a single-axis
-    // vertical rail.
-    const computeActive = () => {
-      const center = window.scrollY + window.innerHeight * 0.5;
-      let bestEl: HTMLElement | null = null;
-      let bestDistance = Infinity;
-      for (const { el } of sections) {
-        const top = window.scrollY + el.getBoundingClientRect().top;
-        const bottom = top + el.offsetHeight;
-        if (center >= top && center <= bottom) {
-          // Centre is inside this section — pick it immediately.
-          setActiveLabelledBy(
-            sections.find((s) => s.el === el)?.item.labelledBy ?? null,
-          );
-          return;
-        }
-        // Otherwise pick the closest section as a fallback.
-        const distance =
-          center < top ? top - center : center - bottom;
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestEl = el;
-        }
-      }
-      if (bestEl) {
-        setActiveLabelledBy(
-          sections.find((s) => s.el === bestEl)?.item.labelledBy ?? null,
-        );
-      }
-    };
-
-    // Observe each section so the compute runs whenever any pinned
-    // act enters or leaves the viewport — covers the case where a
-    // scroll lands exactly between two sections.
-    const observer = new IntersectionObserver(() => computeActive(), {
-      threshold: [0, 0.25, 0.5, 0.75, 1],
-    });
-    sections.forEach((s) => observer.observe(s.el));
-
-    // Show the rail once the visitor has scrolled past the hero and
-    // hide it again once they've reached the non-pinned "rest" of
-    // the page (boundaries / FAQ / CTA), so it doesn't sit on top
-    // of content that has its own well-defined reading flow. A
-    // single rAF-throttled handler keeps both states fresh on every
-    // scroll frame without forcing two listeners.
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(() => {
-        computeActive();
-
-        const heroEl = sections[0]?.el;
-        const substanceEl = sections[sections.length - 1]?.el;
-        if (heroEl && substanceEl) {
-          const heroRect = heroEl.getBoundingClientRect();
-          const substanceRect = substanceEl.getBoundingClientRect();
-
-          const pastHero = heroRect.bottom < window.innerHeight * 0.5;
-          const stillInSubstance =
-            substanceRect.bottom > window.innerHeight * 0.5;
-          setPinnedVisible(pastHero && stillInSubstance);
-        }
-        ticking = false;
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, []);
-
-  const handleJump = (labelledBy: string) => {
-    const heading = document.getElementById(labelledBy);
-    const el = heading?.closest('section');
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  return (
-    <nav
-      className={`${styles.scrollRail} ${pinnedVisible ? styles.scrollRailVisible : ''}`}
-      aria-label={t('landing.railNavLabel', 'Section navigation')}
-    >
-      <ol className={styles.scrollRailList}>
-        {SCROLL_RAIL_SECTIONS.map((item) => {
-          const isActive = activeLabelledBy === item.labelledBy;
-          return (
-            <li key={item.labelledBy} className={styles.scrollRailItem}>
-              <button
-                type="button"
-                className={`${styles.scrollRailDot} ${isActive ? styles.scrollRailDotActive : ''}`}
-                onClick={() => handleJump(item.labelledBy)}
-                aria-current={isActive ? 'true' : undefined}
-                aria-label={t(item.titleKey, item.titleFallback)}
-              >
-                <span className={styles.scrollRailNum} aria-hidden="true">
-                  {item.num}
-                </span>
-                <span className={styles.scrollRailLabel} aria-hidden="true">
-                  {t(item.titleKey, item.titleFallback)}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-};
-
 export const LandingScrollVideo = () => {
 
 
@@ -4886,7 +4734,6 @@ export const LandingScrollVideo = () => {
 
 
       <EditorialTrace />
-      <ScrollProgressRail t={t} />
 
 
 

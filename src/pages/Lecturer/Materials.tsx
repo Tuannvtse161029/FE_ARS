@@ -1963,7 +1963,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── TAB 3: Shared with me ────────────────────────────────────────── */}
+      {/* ΓöÇΓöÇ TAB 3: Shared with me ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <div
         id="panel-shared-with-me"
         role="tabpanel"
@@ -2031,10 +2031,10 @@ export const LecturerMaterialsPage = () => {
                       onClick={() => {
                         window.open(openUrl, '_blank', 'noopener,noreferrer');
                       }}
-                      title={t('lecturer.materials.action.preview', 'Xem trước')}
+                      title={t('lecturer.materials.action.preview', 'Xem tr╞░ß╗¢c')}
                     >
                       <Eye size={14} aria-hidden />
-                      <span>{t('lecturer.materials.action.preview', 'Xem trước')}</span>
+                      <span>{t('lecturer.materials.action.preview', 'Xem tr╞░ß╗¢c')}</span>
                     </button>
                   )}
                   <button
@@ -2081,7 +2081,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── All modals must live OUTSIDE the tab panels ─────────────────────
+      {/* ΓöÇΓöÇ All modals must live OUTSIDE the tab panels ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
           If a modal is rendered inside the inactive panel, the panel's
           `display: none` hides it; the moment the panel becomes visible
           (e.g. user clicks the Shared Materials tab) the modal pops up
@@ -2096,7 +2096,7 @@ export const LecturerMaterialsPage = () => {
         onClose={closeUsageModal}
       />
 
-      {/* Share Modal — also lives outside the tab panels so the dialog
+      {/* Share Modal ΓÇö also lives outside the tab panels so the dialog
           stays visible regardless of which tab is currently active. */}
       {shareMaterial && createPortal(
           <div
@@ -2145,7 +2145,7 @@ export const LecturerMaterialsPage = () => {
                 </button>
               </div>
 
-              {/* ── Material Showcase Card ── */}
+              {/* ΓöÇΓöÇ Material Showcase Card ΓöÇΓöÇ */}
               {(() => {
                 const fileUrl = shareMaterial.fileUrl?.trim() ?? '';
                 const fileLike = isFileSource(fileUrl);
@@ -2254,7 +2254,7 @@ export const LecturerMaterialsPage = () => {
                 );
               })()}
 
-              {/* ── 30-Day Share Policy Banner ── */}
+              {/* ΓöÇΓöÇ 30-Day Share Policy Banner ΓöÇΓöÇ */}
               <div className={styles.sharePolicyBanner}>
                 <Clock size={16} className={styles.sharePolicyIcon} aria-hidden />
                 <div className={styles.sharePolicyText}>
@@ -2267,7 +2267,7 @@ export const LecturerMaterialsPage = () => {
                 </div>
               </div>
 
-              {/* ── Recipient Selection Section ── */}
+              {/* ΓöÇΓöÇ Recipient Selection Section ΓöÇΓöÇ */}
               <div className={styles.shareRecipientSection}>
                 <div className={styles.shareRecipientHeader}>
                   <h4 className={styles.shareRecipientTitle}>
@@ -2297,7 +2297,7 @@ export const LecturerMaterialsPage = () => {
                   <BackendGapBanner
                     field={
                       rosterLoadOutcome.kind === 'forbidden'
-                        ? 'GET /api/User (paginated lecturer roster — Admin-only)'
+                        ? 'GET /api/User (paginated lecturer roster ΓÇö Admin-only)'
                         : `GET /api/User failed: ${rosterLoadOutcome.message}`
                     }
                     feature="The Materials Share modal needs a list of other lecturers you can share this material with. Until the BE ships a lecturer-facing roster endpoint, the Share modal renders an empty recipient list and the action is blocked."
@@ -2415,7 +2415,7 @@ export const LecturerMaterialsPage = () => {
                     <Share2 size={14} aria-hidden />
                   )}
                   {shareSaving
-                    ? 'Sharing…'
+                    ? 'SharingΓÇª'
                     : shareSelected.size === 1
                     ? t(
                         'lecturer.materials.shareModal.submitOne',
@@ -2436,7 +2436,7 @@ export const LecturerMaterialsPage = () => {
   );
 };
 
-// ── Shared Materials section renderer ─────────────────────────────────────
+// ΓöÇΓöÇ Shared Materials section renderer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 interface SharedSectionProps {
   title: string;
@@ -2473,7 +2473,7 @@ const SharedSection = ({
       {loading ? (
         <div className={styles.sharedEmpty}>
           <Loader size={16} className={styles.spinningIcon} aria-hidden />
-          Loading…
+          LoadingΓÇª
         </div>
       ) : items.length === 0 ? (
         <div className={styles.sharedEmpty}>
@@ -2544,7 +2544,7 @@ const SharedSection = ({
           </div>
           <ul className={styles.sharedList}>
             {items.map((item) => {
-              const id = item.sharedMaterialId ?? item.id ?? '—';
+              const id = item.sharedMaterialId ?? item.id ?? 'ΓÇö';
               const { title: materialTitle } = resolveTitle(item);
               const uiStatus = resolveUiStatus(item);
               const expiry = resolveExpiry(item.sharedAt ?? item.createdAt);
@@ -2606,7 +2606,7 @@ const SharedSection = ({
                       title={
                         canOpen
                           ? materialTitle.length > 0
-                            ? `${t('lecturer.materials.action.view', 'View')} — ${materialTitle}`
+                            ? `${t('lecturer.materials.action.view', 'View')} ΓÇö ${materialTitle}`
                             : t('lecturer.materials.action.view', 'View')
                           : undefined
                       }
@@ -2644,7 +2644,7 @@ const SharedSection = ({
                     <span className={styles.sharedRowDateValue}>
                       {item.sharedAt
                         ? formatDisplayDateTime(item.sharedAt)
-                        : '—'}
+                        : 'ΓÇö'}
                     </span>
                   </span>
                   <span
@@ -2663,7 +2663,7 @@ const SharedSection = ({
                           )}
                     </span>
                     <span className={styles.sharedRowDateValue}>
-                      {expiry.iso ? formatDisplayDateTime(expiry.iso) : '—'}
+                      {expiry.iso ? formatDisplayDateTime(expiry.iso) : 'ΓÇö'}
                       {expiry.daysRemaining !== null &&
                         uiStatus !== 'EXPIRED' && (
                           <span
