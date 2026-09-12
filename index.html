@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SECURITY (SEC-005): Defense-in-depth Content Security Policy.
+         The .NET BE sets the response header in production; this <meta>
+         is the FE-side fallback so dev/preview/static hosts still benefit
+         from a tightened policy if the header is missing or stripped by a
+         proxy. `script-src` allows `'unsafe-inline'` because index.html
+         still ships the pre-paint theme bootstrap as a classic inline
+         script — moving it to a hashed/nonce script would require the BE
+         to inject the nonce on every render and is out of scope here.
+         Every other directive is locked down. Update this policy in
+         lockstep with index.html script/style sources. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://arsplatform.onrender.com https://*.googleapis.com https://*.google.com https://accounts.google.com https://firebasestorage.googleapis.com wss://*.firebaseio.app; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    />
 
     <!-- ── Bilingual font stack (this worker) ───────────────────
          The platform pairs one typeface per language. Both families

@@ -30,10 +30,69 @@ export const VIETNAMESE_NAME_MAX = 100;
 // can normalise "Code must be exactly 6 digits".
 export const OTP_REGEX = /^\d{6}$/;
 export const OTP_LENGTH = 6;
-// Paper / learning-material URL must be a parseable absolute URL with a known
-// scheme. The actual upload is gated by the PDF dropzone, but the inline form
-// lets the user paste a Firebase Storage URL.
-export const SAFE_URL_REGEX = /^https?:\/\/\S+$/i;
+// Allowed URL protocols — only these can reach href / window.open targets.
+// javascript:, data:, vbscript: are always blocked.
+const SAFE_HREF_PROTOCOLS = ['http:', 'https:'] as const;
+
+/**
+ * SECURITY FIX (SEC-001): Render-time URL sanitiser for href / window.open targets.
+ *
+ * Takes any string — including Firebase Storage URLs, bare paths, or values
+ * from the BE — and returns either a safe URL string or null.
+ *
+ * Rules:
+ *   • Only http/https protocols are allowed.
+ *   • javascript:, data:, vbscript: are always rejected.
+ *   • Bare paths (no scheme) are rejected (they cannot be reliably validated
+ *     without a base URL, and would accept `javascript:alert(1)` as a path).
+ *   • Firebase Storage download URLs (firebasestorage.googleapis.com) are allowed.
+ *
+ * Usage in JSX:
+ *   <a href={safeHref(topic.material.url) ?? '#'} ...>
+ *   // If safeHref returns null, fall back to '#' — the link becomes a no-op.
+ *
+ * Usage for window.open:
+ *   const href = safeHref(someUrl);
+ *   if (href) window.open(href, '_blank', 'noopener,noreferrer');
+ *
+ * NOTE: This is a RENDER-TIME defence. Input-time validation is handled
+ * separately by validateHttpsUrl(). Both should be applied: the input
+ * validator gives users immediate feedback, this renderer guard catches any
+ * value the BE stored without a proper scheme check.
+ */
+export function safeHref(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (!SAFE_HREF_PROTOCOLS.includes(parsed.protocol as 'http:' | 'https:')) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    // Not a parseable absolute URL (bare path, malformed, etc.) → reject.
+    return null;
+  }
+}
+
+/**
+ * Validate a pasted URL (Firebase Storage or other HTTPS link).
+ * Uses new URL() parsing instead of a regex for stronger validation.
+ */
+export function validateHttpsUrl(raw: string | undefined | null): string | null {
+  const value = (raw ?? '').trim();
+  if (value.length === 0) return 'URL is required';
+  try {
+    const parsed = new URL(value);
+    if (!SAFE_HREF_PROTOCOLS.includes(parsed.protocol as 'http:' | 'https:')) {
+      return 'URL must start with http:// or https://';
+    }
+    return null;
+  } catch {
+    return 'URL must be a valid absolute URL starting with http:// or https://';
+  }
+}
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const ACCEPT_FILE_MIME = 'application/pdf';
@@ -143,18 +202,6 @@ export function validatePdfFile(file: File | null | undefined): FileValidationRe
     return { ok: false, message: 'File exceeds the 10 MB limit.' };
   }
   return { ok: true, message: null };
-}
-
-/**
- * Validate a pasted URL (Firebase Storage or other HTTPS link).
- */
-export function validateHttpsUrl(raw: string | undefined | null): string | null {
-  const value = (raw ?? '').trim();
-  if (value.length === 0) return 'URL is required';
-  if (!SAFE_URL_REGEX.test(value)) {
-    return 'URL must start with http:// or https://';
-  }
-  return null;
 }
 
 /**

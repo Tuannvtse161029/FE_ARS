@@ -36,7 +36,7 @@ const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
-  const email = state.email || sessionStorage.getItem('ars_forgot_email') || '';
+  const email = state.email || '';
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [otp, setOtp] = useState<string[]>(Array(OTP_CELL_COUNT).fill(''));
@@ -118,8 +118,6 @@ const VerifyOtp = () => {
     verifyInFlightRef.current = true;
     setIsLoading(true);
     try {
-      sessionStorage.setItem('ars_forgot_otp', code);
-      sessionStorage.setItem('ars_forgot_email', email);
       navigate(ROUTES.RESET_PASSWORD, { state: { email, otpCode: code } });
     } catch (err: unknown) {
       const msg = authFlowError(err, t('reset.errorInvalidCode', 'Invalid code. Please try again.'));

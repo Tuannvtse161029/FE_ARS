@@ -52,6 +52,7 @@ import type { User } from '../../types/auth';
 import { useI18n } from '../../i18n/I18nContext';
 import { displayAccountTier } from '../../services/user.service';
 import type { AccountItem } from '../../types/admin';
+import { safeHref } from '../../utils/validationRules';
 import styles from './ViewProfileModal.module.css';
 
 export interface ViewProfileModalProps {
@@ -985,21 +986,23 @@ export const ViewProfileModal = ({
                       'Proof of identity',
                     )}
                   </h3>
-                  <a
-                    href={proofDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className={styles.proofLink}
-                  >
-                    <FileText size={14} aria-hidden="true" />
-                    <span>
-                      {t(
-                        'admin.accounts.modal.viewProfile.openProof',
-                        localeTag === 'vi' ? 'Mở tài liệu xác minh trong tab mới' : 'Open proof document in new tab',
-                      )}
-                    </span>
-                    <ExternalLink size={12} aria-hidden="true" />
-                  </a>
+                  {proofDocumentUrl && safeHref(proofDocumentUrl) ? (
+                    <a
+                      href={safeHref(proofDocumentUrl) ?? '#'}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={styles.proofLink}
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      <span>
+                        {t(
+                          'admin.accounts.modal.viewProfile.openProof',
+                          localeTag === 'vi' ? 'Mở tài liệu xác minh trong tab mới' : 'Open proof document in new tab',
+                        )}
+                      </span>
+                      <ExternalLink size={12} aria-hidden="true" />
+                    </a>
+                  ) : null}
                 </section>
               ) : null}
 

@@ -47,6 +47,8 @@ import {
   useUpdateSeminarStatus,
   type SeminarLifecycleAction,
 } from '../../hooks/useSeminar';
+import { hasAdminRole, isAdminRoleName } from '../../utils/roleNormalizer';
+import { safeHref } from '../../utils/validationRules';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
 import { SeminarFeedbackModalShell } from '../../components/seminar/SeminarFeedbackModalShell';
@@ -519,6 +521,15 @@ export const SeminarWorkspace = () => {
           const profiles = profRes.value.data;
           const candidates: InviteeCandidate[] = profiles
             .filter((p: any) => p && p.userId && p.email)
+            // FE_INVITE_HIDE_ADMIN — Admin accounts operate the platform
+            // and must never appear in the seminar-create invitee
+            // candidate list. We drop them at the source so downstream
+            // filters never have to know about Admin.
+            .filter((p: any) => {
+              const joinedRoles: string[] = userRolesMap.get(p.userId) ?? [];
+              const profileRole = typeof p.role === 'string' ? p.role : null;
+              return !hasAdminRole([profileRole, ...joinedRoles]);
+            })
             .map((p: any) => {
               const uRoles = userRolesMap.get(p.userId) || [];
               const fallback = p.reviewFee ? 'Reviewer' : 'Scholar';
@@ -582,6 +593,12 @@ export const SeminarWorkspace = () => {
                 const bRoles: string[] = Array.isArray(b.roles) && b.roles.length > 0
                   ? (b.roles as string[]).map(String)
                   : (b.role ? b.role.split(' • ').map((s: string) => s.trim()).filter(Boolean) : ['Colleague']);
+                // FE_INVITE_HIDE_ADMIN — the BE-suggested invitees endpoint
+                // may include Admin accounts; drop them here so Admin
+                // users never become selectable invitees in the create
+                // modal regardless of which upstream surface populated
+                // the candidate list.
+                if (hasAdminRole(bRoles) || isAdminRoleName(b.role)) continue;
                 map.set(b.userId, {
                   userId: b.userId,
                   fullName: b.fullName || `User #${b.userId}`,
@@ -1292,9 +1309,10 @@ export const SeminarWorkspace = () => {
                           <button
                             type="button"
                             className={styles.actionBtnPrimary}
-                            onClick={() =>
-                              window.open(sem.onlineLink, '_blank')
-                            }
+                            onClick={() => {
+                              const safe = safeHref(sem.onlineLink);
+                              if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+                            }}
                             disabled={!isValidMeetLink(sem.onlineLink)}
                           >
                             <Video size={14} aria-hidden />
@@ -2006,9 +2024,10 @@ export const SeminarWorkspace = () => {
                 variant="primary"
                 size="md"
                 leftIcon={<Video size={14} aria-hidden />}
-                onClick={() =>
-                  window.open(generatedMeetLink, '_blank', 'noopener')
-                }
+                onClick={() => {
+                  const safe = safeHref(generatedMeetLink);
+                  if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+                }}
                 className={styles.actionBtnSuccess}
               >
                 Launch Google Meet

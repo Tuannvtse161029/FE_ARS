@@ -133,3 +133,6 @@ test/report/
 test-report/
 tests/automation/Playwright/.auth/
 tests/automation/Playwright/storage/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

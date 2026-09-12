@@ -37,7 +37,7 @@ import {
 } from '../../hooks/useFirebaseFileUpload';
 import { defaultLearningMaterialFolderPath } from '../../services/learningMaterial.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
-import { validateHttpsUrl } from '../../utils/validationRules';
+import { safeHref, validateHttpsUrl } from '../../utils/validationRules';
 import { FieldError } from '../FieldError';
 import styles from './MaterialSourcePicker.module.css';
 
@@ -444,10 +444,10 @@ export const MaterialSourcePicker = ({
                     ) : (
                       <p className={styles.libraryCardDescMuted}>No description</p>
                     )}
-                    {m.fileUrl && (
+                    {m.fileUrl && safeHref(m.fileUrl) && (
                       <a
                         className={styles.libraryCardLink}
-                        href={m.fileUrl}
+                        href={safeHref(m.fileUrl) ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

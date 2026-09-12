@@ -567,11 +567,7 @@ export async function postCompleteGoogleRegistration({
     );
   }
 
-  const credential =
-    payload.credential ||
-    (typeof window !== 'undefined'
-      ? sessionStorage.getItem('ars_google_credential') || ''
-      : '');
+  const credential = payload.credential || '';
 
   const body: Record<string, unknown> = {
     credential,

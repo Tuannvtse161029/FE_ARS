@@ -3,6 +3,7 @@ import { AlertTriangle, Download, ExternalLink, FileText, RefreshCw } from 'luci
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
 import { useT } from '../../../i18n/I18nContext';
+import { safeHref } from '../../../utils/validationRules';
 import reviewer from './reviewer.module.css';
 
 /**
@@ -135,20 +136,24 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
           {t('reviewer.detail.doc.protected')}
         </span>
         <div>
-          <a href={fileUrl} target="_blank" rel="noreferrer">
-            <ExternalLink size={15} aria-hidden="true" />{' '}
-            {t('reviewer.detail.doc.openLink')}
-          </a>
-          <a href={fileUrl} download>
-            <Download size={15} aria-hidden="true" />{' '}
-            {t('reviewer.detail.doc.download')}
-          </a>
+          {safeHref(fileUrl) && (
+            <a href={safeHref(fileUrl) ?? '#'} target="_blank" rel="noreferrer">
+              <ExternalLink size={15} aria-hidden="true" />{' '}
+              {t('reviewer.detail.doc.openLink')}
+            </a>
+          )}
+          {fileUrl && (
+            <a href={safeHref(fileUrl) ?? undefined} download>
+              <Download size={15} aria-hidden="true" />{' '}
+              {t('reviewer.detail.doc.download')}
+            </a>
+          )}
         </div>
       </div>
 
-      {state === 'ready' && (
+      {state === 'ready' && safeHref(fileUrl) && (
         <iframe
-          src={fileUrl}
+          src={safeHref(fileUrl) ?? ''}
           title={t('reviewer.detail.doc.frameTitle', undefined, { title })}
         />
       )}
@@ -179,15 +184,24 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
             >
               {t('reviewer.detail.manuscript.retry', 'Retry')}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<AlertTriangle size={14} aria-hidden />}
-              onClick={() => window.open(fileUrl, '_blank', 'noopener,noreferrer')}
+            {(() => {
+              const safe = safeHref(fileUrl);
+              return safe ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<AlertTriangle size={14} aria-hidden />}
+                  onClick={() => window.open(safe, '_blank', 'noopener,noreferrer')}
+                >
+                  {t('reviewer.detail.manuscript.openRaw', 'Open anyway')}
+                </Button>
+              ) : null;
+            })()}
+            <a
+              href={safeHref(fileUrl) ?? undefined}
+              download
+              className={reviewer.manuscriptDownloadLink}
             >
-              {t('reviewer.detail.manuscript.openRaw', 'Open anyway')}
-            </Button>
-            <a href={fileUrl} download className={reviewer.manuscriptDownloadLink}>
               <Download size={14} aria-hidden />{' '}
               {t('reviewer.detail.manuscript.downloadAnyway', 'Download anyway')}
             </a>

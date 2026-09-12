@@ -26,6 +26,7 @@ import { Button } from '../../components/Button/Button';
 import { formatDisplayDateTime } from '../../utils/datetime';
 import { EmptyState } from '../../components/EmptyState';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
+import { safeHref } from '../../utils/validationRules';
 import styles from './EvaluateReports.module.css';
 
 interface BannerState {
@@ -477,9 +478,9 @@ const ReportColumn = ({
                     </div>
                   )}
                   <div className={styles.reportCardActions}>
-                    {r.reportFileUrl ? (
+                    {r.reportFileUrl && safeHref(r.reportFileUrl) ? (
                       <a
-                        href={r.reportFileUrl}
+                        href={safeHref(r.reportFileUrl) ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.viewFileBtn}

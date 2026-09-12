@@ -13,6 +13,7 @@ import type { SubmittedPhasedReport } from '../../services/phasedReport.service'
 import { StatusBadge } from '../lecturer/StatusBadge';
 import { Button } from '../Button/Button';
 import { useLocale } from '../../i18n/I18nContext';
+import { safeHref } from '../../utils/validationRules';
 import styles from './PhaseReportDetailModal.module.css';
 
 export interface PhaseReportDetailModalProps {
@@ -147,7 +148,7 @@ export const PhaseReportDetailModal = ({
               <FileText size={16} color="#0284c7" />
               {copy('Submitted Report Document', 'Tài liệu báo cáo đã nộp')}
             </h3>
-            {report.reportFileUrl ? (
+            {report.reportFileUrl && safeHref(report.reportFileUrl) ? (
               <div className={styles.fileCard}>
                 <div className={styles.fileInfo}>
                   <FileText size={24} className={styles.fileIcon} />
@@ -156,7 +157,7 @@ export const PhaseReportDetailModal = ({
                   </div>
                 </div>
                 <a
-                  href={report.reportFileUrl}
+                  href={safeHref(report.reportFileUrl) ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.openFileBtn}

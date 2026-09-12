@@ -39,7 +39,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
-import { validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
+import { safeHref, validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
@@ -621,10 +621,10 @@ export const LecturerLearningMaterialsPage = () => {
                         </td>
                         <td>
                           <div className={styles.topicActionStack}>
-                            {m.fileUrl && (
+                            {m.fileUrl && safeHref(m.fileUrl) && (
                               <a
                                 className={styles.assignGroupBtn}
-                                href={m.fileUrl}
+                                href={safeHref(m.fileUrl) ?? "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >

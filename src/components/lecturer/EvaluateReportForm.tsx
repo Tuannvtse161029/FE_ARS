@@ -38,6 +38,7 @@ import {
 import LazyPdfViewer from '../PdfViewer/LazyPdfViewer';
 import { useEvaluatePhasedReport } from '../../hooks/useEvaluatePhasedReport';
 import type { PhasedReport } from '../../services/phasedReport.service';
+import { safeHref } from '../../utils/validationRules';
 import styles from './EvaluateReportModal.module.css';
 
 export type EvaluationAction = 'approve' | 'requestResubmit';
@@ -185,7 +186,7 @@ export const EvaluateReportForm = ({
             </button>
             <a
               className={styles.openExternalBtn}
-              href={report.reportFileUrl ?? '#'}
+              href={safeHref(report.reportFileUrl) ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
             >
