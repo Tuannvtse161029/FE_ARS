@@ -1879,10 +1879,6 @@ export const LecturerMaterialsPage = () => {
             : ''
         }`}
       >
-<<<<<<< HEAD
-
-=======
->>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -1967,7 +1963,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── TAB 3: Shared with me ────────────────────────────────────────── */}
+      {/* ΓöÇΓöÇ TAB 3: Shared with me ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <div
         id="panel-shared-with-me"
         role="tabpanel"
@@ -1976,10 +1972,6 @@ export const LecturerMaterialsPage = () => {
           activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''
         }`}
       >
-<<<<<<< HEAD
-
-=======
->>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -2039,10 +2031,10 @@ export const LecturerMaterialsPage = () => {
                       onClick={() => {
                         window.open(openUrl, '_blank', 'noopener,noreferrer');
                       }}
-                      title={t('lecturer.materials.action.preview', 'Xem trước')}
+                      title={t('lecturer.materials.action.preview', 'Xem tr╞░ß╗¢c')}
                     >
                       <Eye size={14} aria-hidden />
-                      <span>{t('lecturer.materials.action.preview', 'Xem trước')}</span>
+                      <span>{t('lecturer.materials.action.preview', 'Xem tr╞░ß╗¢c')}</span>
                     </button>
                   )}
                   <button
@@ -2089,7 +2081,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── All modals must live OUTSIDE the tab panels ─────────────────────
+      {/* ΓöÇΓöÇ All modals must live OUTSIDE the tab panels ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
           If a modal is rendered inside the inactive panel, the panel's
           `display: none` hides it; the moment the panel becomes visible
           (e.g. user clicks the Shared Materials tab) the modal pops up
@@ -2104,7 +2096,7 @@ export const LecturerMaterialsPage = () => {
         onClose={closeUsageModal}
       />
 
-      {/* Share Modal — also lives outside the tab panels so the dialog
+      {/* Share Modal ΓÇö also lives outside the tab panels so the dialog
           stays visible regardless of which tab is currently active. */}
       {shareMaterial && createPortal(
           <div
@@ -2153,7 +2145,7 @@ export const LecturerMaterialsPage = () => {
                 </button>
               </div>
 
-              {/* ── Material Showcase Card ── */}
+              {/* ΓöÇΓöÇ Material Showcase Card ΓöÇΓöÇ */}
               {(() => {
                 const fileUrl = shareMaterial.fileUrl?.trim() ?? '';
                 const fileLike = isFileSource(fileUrl);
@@ -2262,7 +2254,7 @@ export const LecturerMaterialsPage = () => {
                 );
               })()}
 
-              {/* ── 30-Day Share Policy Banner ── */}
+              {/* ΓöÇΓöÇ 30-Day Share Policy Banner ΓöÇΓöÇ */}
               <div className={styles.sharePolicyBanner}>
                 <Clock size={16} className={styles.sharePolicyIcon} aria-hidden />
                 <div className={styles.sharePolicyText}>
@@ -2275,7 +2267,7 @@ export const LecturerMaterialsPage = () => {
                 </div>
               </div>
 
-              {/* ── Recipient Selection Section ── */}
+              {/* ΓöÇΓöÇ Recipient Selection Section ΓöÇΓöÇ */}
               <div className={styles.shareRecipientSection}>
                 <div className={styles.shareRecipientHeader}>
                   <h4 className={styles.shareRecipientTitle}>
@@ -2305,7 +2297,7 @@ export const LecturerMaterialsPage = () => {
                   <BackendGapBanner
                     field={
                       rosterLoadOutcome.kind === 'forbidden'
-                        ? 'GET /api/User (paginated lecturer roster — Admin-only)'
+                        ? 'GET /api/User (paginated lecturer roster ΓÇö Admin-only)'
                         : `GET /api/User failed: ${rosterLoadOutcome.message}`
                     }
                     feature="The Materials Share modal needs a list of other lecturers you can share this material with. Until the BE ships a lecturer-facing roster endpoint, the Share modal renders an empty recipient list and the action is blocked."
@@ -2423,7 +2415,7 @@ export const LecturerMaterialsPage = () => {
                     <Share2 size={14} aria-hidden />
                   )}
                   {shareSaving
-                    ? 'Sharing…'
+                    ? 'SharingΓÇª'
                     : shareSelected.size === 1
                     ? t(
                         'lecturer.materials.shareModal.submitOne',
@@ -2444,7 +2436,7 @@ export const LecturerMaterialsPage = () => {
   );
 };
 
-// ── Shared Materials section renderer ─────────────────────────────────────
+// ΓöÇΓöÇ Shared Materials section renderer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 interface SharedSectionProps {
   title: string;
@@ -2481,7 +2473,7 @@ const SharedSection = ({
       {loading ? (
         <div className={styles.sharedEmpty}>
           <Loader size={16} className={styles.spinningIcon} aria-hidden />
-          Loading…
+          LoadingΓÇª
         </div>
       ) : items.length === 0 ? (
         <div className={styles.sharedEmpty}>
@@ -2489,7 +2481,6 @@ const SharedSection = ({
           <span>{emptyText}</span>
         </div>
       ) : (
-<<<<<<< HEAD
         <div className={styles.sharedTableCard}>
           <div
             className={styles.sharedTableHead}
@@ -2553,7 +2544,7 @@ const SharedSection = ({
           </div>
           <ul className={styles.sharedList}>
             {items.map((item) => {
-              const id = item.sharedMaterialId ?? item.id ?? '—';
+              const id = item.sharedMaterialId ?? item.id ?? 'ΓÇö';
               const { title: materialTitle } = resolveTitle(item);
               const uiStatus = resolveUiStatus(item);
               const expiry = resolveExpiry(item.sharedAt ?? item.createdAt);
@@ -2601,111 +2592,119 @@ const SharedSection = ({
                     </span>
                     <button
                       type="button"
-=======
-        <ul className={styles.sharedList}>
-          {items.map((item) => {
-            const id = item.sharedMaterialId ?? item.id ?? '—';
-            const { title: materialTitle } = resolveTitle(item);
-            const uiStatus = resolveUiStatus(item);
-            const expiry = resolveExpiry(item.sharedAt ?? item.createdAt);
-            const statusLabel = t(
-              `lecturer.materials.shared.status.${uiStatus}`,
-              uiStatus,
-            );
-            const targetId =
-              typeof item.learningMaterialId === 'number'
-                ? item.learningMaterialId
-                : typeof item.paperId === 'number'
-                ? item.paperId
-                : null;
-            const foundMaterial =
-              targetId !== null && learningById ? learningById.get(targetId) : null;
-            const openUrl =
-              item.learningMaterialUrl ||
-              item.fileUrl ||
-              item.url ||
-              foundMaterial?.fileUrl;
-            const canOpen = Boolean(openUrl);
-            return (
-              <li
-                key={String(id)}
-                className={`${styles.sharedRow} ${styles[`sharedRowStatus${uiStatus}`] ?? ''}`}
-                data-testid="shared-material-row"
-              >
-                <div className={styles.sharedRowMain}>
-                  <div className={styles.sharedRowTitleRow}>
-                    <span
->>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                       className={styles.sharedRowTitle}
-                      style={canOpen ? { cursor: 'pointer', color: 'var(--ars-lecturer, #b45309)' } : undefined}
                       onClick={() => {
                         if (canOpen && openUrl) {
-                          window.open(openUrl, '_blank', 'noopener,noreferrer');
+                          window.open(
+                            openUrl,
+                            '_blank',
+                            'noopener,noreferrer',
+                          );
                         }
                       }}
-<<<<<<< HEAD
                       disabled={!canOpen}
                       title={
                         canOpen
                           ? materialTitle.length > 0
-                            ? `${t('lecturer.materials.action.view', 'View')} — ${materialTitle}`
+                            ? `${t('lecturer.materials.action.view', 'View')} ΓÇö ${materialTitle}`
                             : t('lecturer.materials.action.view', 'View')
                           : undefined
                       }
-=======
-                      title={canOpen ? t('lecturer.materials.action.view', 'Xem') : undefined}
->>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                     >
                       {materialTitle}
+                    </button>
+                  </span>
+                  <span
+                    className={styles.sharedColSharedWith}
+                    role="cell"
+                  >
+                    <span className={styles.sharedRowMetaLabel}>
+                      {t(
+                        'lecturer.materials.shared.colHeader.sharedWith',
+                        'Shared with',
+                      )}
                     </span>
-<<<<<<< HEAD
                     <span
                       className={styles.sharedRowColleagueName}
                       title={resolveColleagueName(item)}
                     >
-=======
-                    <span className={styles.sharedRowStatusPill}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                  <div className={styles.sharedRowMeta}>
-                    <span>
-                      <span className={styles.sharedRowMetaLabel}>Colleague</span>{' '}
->>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                       {resolveColleagueName(item)}
                     </span>
-                    <span>
-                      <span className={styles.sharedRowMetaLabel}>Shared</span>{' '}
+                  </span>
+                  <span
+                    className={styles.sharedColSharedAt}
+                    role="cell"
+                  >
+                    <span className={styles.sharedRowMetaLabel}>
+                      {t(
+                        'lecturer.materials.shared.colHeader.sharedAt',
+                        'Shared at',
+                      )}
+                    </span>
+                    <span className={styles.sharedRowDateValue}>
                       {item.sharedAt
                         ? formatDisplayDateTime(item.sharedAt)
-                        : '—'}
+                        : 'ΓÇö'}
                     </span>
-                    {expiry.iso && (
-                      <span>
-                        <span className={styles.sharedRowMetaLabel}>
-                          {uiStatus === 'EXPIRED'
-                            ? 'Expired'
-                            : 'Expires'}
-                        </span>{' '}
-                        {formatDisplayDateTime(expiry.iso)}
-                        {expiry.daysRemaining !== null &&
-                          uiStatus !== 'EXPIRED' && (
-                            <>
-                              {' '}
-                              <span className={styles.sharedRowMetaMuted}>
-                                {`(${expiry.daysRemaining}d left)`}
-                              </span>
-                            </>
+                  </span>
+                  <span
+                    className={styles.sharedColExpires}
+                    role="cell"
+                  >
+                    <span className={styles.sharedRowMetaLabel}>
+                      {uiStatus === 'EXPIRED'
+                        ? t(
+                            'lecturer.materials.shared.expiredShort',
+                            'Expired',
+                          )
+                        : t(
+                            'lecturer.materials.shared.expiresShort',
+                            'Expires',
                           )}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className={styles.sharedRowActions}>{renderAction(item)}</div>
-              </li>
-            );
-          })}
-        </ul>
+                    </span>
+                    <span className={styles.sharedRowDateValue}>
+                      {expiry.iso ? formatDisplayDateTime(expiry.iso) : 'ΓÇö'}
+                      {expiry.daysRemaining !== null &&
+                        uiStatus !== 'EXPIRED' && (
+                          <span
+                            className={styles.sharedRowDaysLeft}
+                            data-tone={
+                              expiry.daysRemaining <= 3
+                                ? 'warning'
+                                : 'normal'
+                            }
+                          >
+                            {expiry.daysRemaining === 0
+                              ? t(
+                                  'lecturer.materials.shared.daysLeftZero',
+                                  'Today',
+                                )
+                              : t(
+                                  'lecturer.materials.shared.daysLeft',
+                                  '{days}d left',
+                                  { days: expiry.daysRemaining },
+                                )}
+                          </span>
+                        )}
+                    </span>
+                  </span>
+                  <span
+                    className={styles.sharedColStatus}
+                    role="cell"
+                  >
+                    <span className={statusPillClass}>{statusLabel}</span>
+                  </span>
+                  <span
+                    className={styles.sharedColActions}
+                    role="cell"
+                  >
+                    {renderAction(item)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </section>
   );
