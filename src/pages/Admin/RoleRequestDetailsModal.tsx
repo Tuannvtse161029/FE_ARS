@@ -4,6 +4,7 @@ import { useI18n, useLocale } from '../../i18n/I18nContext';
 import LazyPdfViewer from '../../components/PdfViewer/LazyPdfViewer';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import type { RoleRequest, RoleRequestStatus } from '../../types/admin';
+import { safeHref } from '../../utils/validationRules';
 import styles from './AdminDialog.module.css';
 
 interface Props {
@@ -139,8 +140,8 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
           <div className={styles.documentPane}>
             <div className={styles.documentHeader}>
               <span>{t('admin.roleRequests.details.proofDocument')}</span>
-              {request.proofDocumentUrl ? (
-                <a href={request.proofDocumentUrl} target="_blank" rel="noreferrer noopener" className={styles.textLink}>
+              {request.proofDocumentUrl && safeHref(request.proofDocumentUrl) ? (
+                <a href={safeHref(request.proofDocumentUrl) ?? '#'} target="_blank" rel="noreferrer noopener" className={styles.textLink}>
                   <ExternalLink size={14} /> {t('admin.roleRequests.details.openNewTab')}
                 </a>
               ) : null}

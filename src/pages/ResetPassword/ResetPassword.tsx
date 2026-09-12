@@ -31,8 +31,8 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
-  const email = state.email || sessionStorage.getItem('ars_forgot_email') || '';
-  const otpCode = state.otpCode || sessionStorage.getItem('ars_forgot_otp') || '';
+  const email = state.email || '';
+  const otpCode = state.otpCode || '';
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +69,6 @@ const ResetPassword = () => {
         newPassword: data.newPassword,
         confirmPassword: data.confirmPassword,
       });
-      sessionStorage.removeItem('ars_forgot_email');
-      sessionStorage.removeItem('ars_forgot_otp');
       setSuccessMessage(t('reset.successMessage', 'Password reset successfully! Redirecting to login...'));
       setTimeout(() => {
         navigate(ROUTES.LOGIN, { replace: true });

@@ -6,6 +6,7 @@
 import { Loader, AlertTriangle, ExternalLink, Library } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
 import type { LearningMaterial } from '../../../services/learningMaterial.service';
+import { safeHref } from '../../../utils/validationRules';
 // CSS module kept at the original GroupDetail CSS location for now.
 import styles from '../../../pages/Lecturer/GroupDetail.module.css';
 
@@ -69,7 +70,7 @@ export const MaterialsDisplay = ({
                 {m.fileUrl && (
                   <a
                     className={styles.openLink}
-                    href={m.fileUrl}
+                    href={safeHref(m.fileUrl) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

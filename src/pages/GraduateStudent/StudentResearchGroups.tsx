@@ -64,6 +64,7 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
+import { safeHref } from '../../utils/validationRules';
 import styles from './StudentResearchGroups.module.css';
 
 const DEFAULT_FOLDER_KEY = 'milestone';
@@ -932,9 +933,9 @@ function WorkspaceView({
             {visibleMaterials.map((m) => (
               <li key={m.id ?? m.learningMaterialId ?? m.title} className={styles.materialItem}>
                 <span className={styles.materialTitle}>{m.title ?? copy('Untitled material', 'Tài liệu chưa đặt tên')}</span>
-                {m.fileUrl ? (
+                {m.fileUrl && safeHref(m.fileUrl) ? (
                   <a
-                    href={m.fileUrl}
+                    href={safeHref(m.fileUrl) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.linkBtn}
@@ -1178,9 +1179,9 @@ function WorkspaceView({
                                 {t('student.phaseReport.viewDetail', 'Xem chi tiết')}
                               </button>
                             ) : null}
-                            {report.reportFileUrl ? (
+                            {report.reportFileUrl && safeHref(report.reportFileUrl) ? (
                               <a
-                                href={report.reportFileUrl}
+                                href={safeHref(report.reportFileUrl) ?? "#"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={styles.linkBtn}

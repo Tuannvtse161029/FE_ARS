@@ -41,8 +41,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { ROUTES } from '../../routes/paths';
+import { useAuth } from '../../context/AuthContext';
 
-const ORCID_REGISTRATION_TICKET_KEY = 'orcidRegistrationTicket';
 
 type CallbackContext = 'ACCOUNT_LINK' | 'REGISTRATION' | string;
 type CallbackOutcome = 'success' | 'cancel' | 'error';
@@ -93,6 +93,7 @@ const isCancellation = (payload: CallbackPayload): boolean => {
 
 export const OrcidCallback = () => {
   const navigate = useNavigate();
+  const { setPendingOrcidTicket } = useAuth();
   const processedRef = useRef(false);
   const [outcome, setOutcome] = useState<CallbackOutcome>('success');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -106,11 +107,7 @@ export const OrcidCallback = () => {
     // ── Failure branch ───────────────────────────────────────────────────
     if (!payload.success) {
       // Make sure no stale ticket leaks from a previous cancelled attempt.
-      try {
-        sessionStorage.removeItem(ORCID_REGISTRATION_TICKET_KEY);
-      } catch {
-        /* ignore storage failures */
-      }
+      setPendingOrcidTicket(null);
 
       if (isCancellation(payload)) {
         setOutcome('cancel');
@@ -156,18 +153,12 @@ export const OrcidCallback = () => {
         return;
       }
 
-      // Stash the opaque ticket briefly. The Register page reads it back
-      // (and removes it after a successful submit). We use sessionStorage
-      // so the ticket is naturally scoped to this tab and dies with it.
-      try {
-        sessionStorage.setItem(ORCID_REGISTRATION_TICKET_KEY, ticket);
-      } catch {
-        setOutcome('error');
-        setErrorMessage(
-          'Unable to store the ORCID registration ticket. Please retry from the register screen.',
-        );
-        return;
-      }
+      // SECURITY (SEC-003): Stash the opaque ticket in React state (via
+      // AuthContext) instead of sessionStorage. Same-origin XSS during
+      // the registration handoff cannot reach React state, so a stolen
+      // ticket can't be replayed against the registration API. The
+      // ticket is cleared by Register on success / on close.
+      setPendingOrcidTicket(ticket);
 
       navigate(`${ROUTES.REGISTER}?orcid=verified`, { replace: true });
       return;
@@ -185,11 +176,7 @@ export const OrcidCallback = () => {
   // already navigated away on success, so this branch only renders for
   // cancel/error outcomes.
   const handleReturn = () => {
-    try {
-      sessionStorage.removeItem(ORCID_REGISTRATION_TICKET_KEY);
-    } catch {
-      /* ignore */
-    }
+    setPendingOrcidTicket(null);
     // Try to fall back to the original context (registration vs account
     // link) so the user lands somewhere meaningful.
     navigate(ROUTES.REGISTER, { replace: true });

@@ -28,6 +28,7 @@ import {
 } from '../../services/phasedReport.service';
 import type { GroupMember } from '../../services/groupMember.service';
 import { formatDisplayDateTime } from '../../utils/datetime';
+import { safeHref } from '../../utils/validationRules';
 import styles from './SubmitReport.module.css';
 
 const DEFAULT_FOLDER_KEY = 'milestone';
@@ -386,12 +387,12 @@ export const SubmitReport = (): JSX.Element => {
                       )}
                     </div>
 
-                    {hasFile && (
+                    {hasFile && safeHref(phase.reportFileUrl ?? undefined) && (
                       <div className={styles.submittedFile}>
                         <FileText size={14} aria-hidden />
                         <span>{t('student.phaseReport.submittedFile', 'Submitted report file:')}</span>
                         <a
-                          href={phase.reportFileUrl!}
+                          href={safeHref(phase.reportFileUrl) ?? '#'}
                           target="_blank"
                           rel="noreferrer"
                           className={styles.fileLink}

@@ -53,6 +53,34 @@ export function resolveRoleName(signals: RoleSignals): UserRole | null {
 }
 
 /**
+ * True iff the given single role-string is the Admin role. Case- and
+ * whitespace-insensitive; treats `Admin`, `admin`, ` System Admin ` all as
+ * Admin. Returns false for any non-string / null / undefined input.
+ *
+ * Use this in invite / participant / membership flows that only have a
+ * plain role name available (e.g. denormalised role strings from
+ * `/api/ProfessionalProfile`, role-filter dropdowns, or merged
+ * `user.roleName` maps). For the dual-signal check (roleName + roleId)
+ * use `isAdminUser` instead.
+ */
+export function isAdminRoleName(value: string | null | undefined): boolean {
+  if (typeof value !== 'string') return false;
+  return value.trim().toLowerCase().replace(/\s+/g, '') === 'admin';
+}
+
+/**
+ * True iff ANY of the given role strings is Admin. Pass an array (e.g. the
+ * multi-role `roles: string[]` from `/api/User`) to check the whole set.
+ * Nullish entries are skipped.
+ */
+export function hasAdminRole(values: ReadonlyArray<string | null | undefined>): boolean {
+  for (const v of values) {
+    if (isAdminRoleName(v)) return true;
+  }
+  return false;
+}
+
+/**
  * Agent 39 — returns true when the auth snapshot represents a Guest user.
  * Prefers the BE-derived `effectiveRole` field; falls back to the derived
  * `!isActive && !isAdmin` heuristic for pre-migration persisted blobs (when

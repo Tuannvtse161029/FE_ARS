@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import type { LearningMaterial } from '../../services/learningMaterial.service';
+import { safeHref } from '../../utils/validationRules';
 import styles from './OpenTopicModal.module.css';
 
 export interface OpenTopicMaterial {
@@ -161,7 +162,7 @@ export const OpenTopicModal = ({
           ) : topic.material.kind === 'url' ? (
             <a
               className={styles.materialRow}
-              href={topic.material.url ?? '#'}
+              href={safeHref(topic.material.url) ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -179,7 +180,7 @@ export const OpenTopicModal = ({
           ) : topic.material.kind === 'file' ? (
             <a
               className={styles.materialRow}
-              href={topic.material.url ?? '#'}
+              href={safeHref(topic.material.url) ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -213,7 +214,7 @@ export const OpenTopicModal = ({
             ) : libraryMaterial && libraryMaterial.fileUrl ? (
               <a
                 className={styles.materialRow}
-                href={libraryMaterial.fileUrl}
+                href={safeHref(libraryMaterial.fileUrl) ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
               >

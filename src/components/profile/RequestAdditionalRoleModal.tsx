@@ -25,6 +25,7 @@ import {
   type UserPendingRoleRequest,
 } from '../../services/roleRequest.service';
 import type { AuthResponse } from '../../types/auth';
+import { safeHref } from '../../utils/validationRules';
 import styles from './RequestAdditionalRoleModal.module.css';
 
 export interface RequestAdditionalRoleModalProps {
@@ -542,9 +543,10 @@ export const RequestAdditionalRoleModal = ({
                     </div>
                   </div>
                 </div>
+                {proofDocumentUrl && safeHref(proofDocumentUrl) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <a
-                    href={proofDocumentUrl}
+                    href={safeHref(proofDocumentUrl) ?? "#"}
                     target="_blank"
                     rel="noreferrer noopener"
                     style={{ color: '#d9a200', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
@@ -560,6 +562,7 @@ export const RequestAdditionalRoleModal = ({
                     <X size={16} />
                   </button>
                 </div>
+                ) : null}
               </div>
             ) : isUploading ? (
               <div style={{ padding: '12px', textAlign: 'center' }}>

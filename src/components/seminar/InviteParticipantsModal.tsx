@@ -45,6 +45,7 @@ import {
 } from '../../services/seminar.service';
 import type { MajorField } from '../../types/domain';
 import { useLocale } from '../../i18n/I18nContext';
+import { isAdminRoleName, isAdminUser } from '../../utils/roleNormalizer';
 import styles from './InviteParticipantsModal.module.css';
 
 // ── User candidate shape ───────────────────────────────────────────────────────
@@ -150,7 +151,12 @@ export const InviteParticipantsModal = ({
         if (usersResult.status === 'fulfilled' && usersResult.value.data) {
           const uData = usersResult.value.data;
           const uList = Array.isArray(uData) ? uData : (uData.items || []);
-          for (const u of uList as Array<{ id?: number; roleName?: string; role?: string }>) {
+          for (const u of uList as Array<{
+            id?: number;
+            roleName?: string;
+            role?: string;
+            roleId?: number;
+          }>) {
             if (u.id) userRoleMap.set(u.id, u.roleName || u.role || '');
           }
         }
@@ -192,6 +198,16 @@ export const InviteParticipantsModal = ({
               profileRole ||
               userRole ||
               (hasReviewFee ? 'Reviewer' : null);
+
+            // FE_INVITE_HIDE_ADMIN — the Admin role operates the platform
+            // and must never appear as an invitee. We check BOTH the
+            // profile-derived role AND the joined `/api/User` role because
+            // the BE may surface the admin signal on either endpoint
+            // depending on the serializer path. See `isAdminUser` /
+            // `isAdminRoleName` in `utils/roleNormalizer.ts` for the full
+            // rationale (single source of truth for admin detection).
+            if (isAdminRoleName(profileRole) || isAdminRoleName(userRole)) continue;
+            if (isAdminUser({ roleName: role })) continue;
 
             const majorField = majorFields.find((m) => m.id === p.majorFieldId);
 
